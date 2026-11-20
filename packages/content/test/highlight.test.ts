@@ -3,7 +3,7 @@ import { expect, test } from 'vitest'
 import { compile } from 'clarusjs/compiler'
 import markdown from '../src/index.ts'
 
-const md = (code: string, options = {}) => markdown(options).toTscl(code, '/a/src/pages/x.md', { route: '/x' })
+const md = (code: string, options = {}) => markdown(options).toTscl(code, '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })
 
 test('a fenced block is highlighted with light and dark colours as CSS variables, no inline colours', () => {
   const out = md('```ts\nconst a: number = 1\n```\n')

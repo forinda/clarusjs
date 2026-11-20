@@ -18,6 +18,6 @@ export default defineConfig({
 - **Headings** get ids and anchor links.
 - **Static output:** `{{ }}` and `@` in your prose are text, never template code.
 
-Build-time only: nothing here ships to the browser. See the [Markdown pages guide](https://clarusjs.netlify.app/guide/markdown).
+Build-time only: nothing here ships to the browser. See the [Markdown pages guide](https://clarusjs.com/guide/markdown).
 
 MIT licensed.

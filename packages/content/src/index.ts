@@ -1,9 +1,11 @@
 // Markdown pages for clarusjs. A page source: each .md file under src/pages becomes .tscl text (its HTML inside
 // the layout), then compiles like any page. Build-time only: nothing here reaches the browser.
+import { dirname, relative, resolve, sep } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import { parse as parseYaml } from 'yaml'
 import type { Source } from 'clarusjs/vite'
 import { highlight } from './highlight.ts'
+import { expand } from './snippets.ts'
 
 export type MarkdownOptions = {
   /** The layout every page renders in, root-relative (`/src/layouts/docs.tscl`). Frontmatter `layout` overrides it; `false` means none. */
@@ -146,6 +148,24 @@ function renderer(options: MarkdownOptions): Md {
     }
     return '</div>\n'
   }
+  // [text](./other.md): relative links to page source files become their routes, so authors link by file.
+  md.core.ruler.push('cl_page_links', (state) => {
+    const { file, root } = state.env as { file?: string; root?: string }
+    if (!file || !root) return
+    const pages = resolve(root, 'src/pages') + sep
+    for (const block of state.tokens) {
+      for (const token of block.children ?? []) {
+        if (token.type !== 'link_open') continue
+        const m = /^(?![a-z][\w+.-]*:|\/|#)([^?#]+\.(?:md|tscl))([?#].*)?$/i.exec(String(token.attrGet('href') ?? ''))
+        if (!m) continue
+        const target = resolve(dirname(file), m[1]!)
+        if (!target.startsWith(pages)) continue // not a page: left for the link checker
+        const route = `/${relative(pages, target).split(sep).join('/').replace(/\.(md|tscl)$/i, '').replace(/(^|\/)index$/, '')}`
+        token.attrSet('href', (route.length > 1 ? route.replace(/\/$/, '') : route) + (m[2] ?? ''))
+      }
+    }
+  })
+
   // Headings get an id and an anchor link; ids are unique within the page.
   md.core.ruler.push('cl_anchors', (state) => {
     const used = new Map<string, number>()
@@ -159,6 +179,8 @@ function renderer(options: MarkdownOptions): Md {
       const id = n ? `${base}-${n}` : base
       token.attrSet('id', id)
       token.attrSet('tabindex', '-1')
+      // The page title keeps its id, but no anchor link: it would only repeat the heading for screen readers.
+      if (token.tag === 'h1') return
       const anchor = new state.Token('html_inline', '', 0)
       anchor.content = ` <a class="header-anchor" href="#${id}" aria-label="Permalink to ${escapeHtml(text)}">#</a>`
       inline.children = [...(inline.children ?? []), anchor]
@@ -189,11 +211,13 @@ export default function markdown(options: MarkdownOptions = {}): Source {
   const md = renderer(options)
   return {
     extension: '.md',
-    toTscl(code, _file, { route }) {
+    toTscl(code, file, context) {
+      const { route } = context
       // ---\nyaml\n---: the page's frontmatter.
       const front = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(code)
       const data = (front ? parseYaml(front[1]!) : null) ?? {}
-      let body = front ? code.slice(front[0].length) : code
+      // Snippets and includes first: what they bring in is Markdown like the rest of the page.
+      let body = expand(front ? code.slice(front[0].length) : code, file, context)
       // @import lines at the top pass through, so components can be used in the Markdown.
       const imports: string[] = []
       for (;;) {
@@ -210,7 +234,7 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       if (options.copy && !imports.some((line) => new RegExp(`^@import\\s+${options.copy!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.copy.tag} from '${options.copy.from}'`)
       }
-      const env = { tags: [] as string[], groups: 0 }
+      const env = { tags: [] as string[], groups: 0, file, root: context.root }
       const tags = protectTags(body, components, env.tags)
       const tokens = md.parse(tags.body, env)
       const h1 = tokens.findIndex((t: Tok & { tag: string }) => t.type === 'heading_open' && t.tag === 'h1')
