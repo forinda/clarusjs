@@ -22,6 +22,7 @@
     <li><strong>Holes and attributes.</strong> Every <code verbatim>{{ }}</code> and <code>[attr]</code> expression is type-checked against the inputs, script variables and imports it can see.</li>
     <li><strong>Control flow.</strong> <code>@if</code> narrows types like <code>if</code>, and <code>@for</code> types the row variable from the list.</li>
     <li><strong>Events.</strong> In <code>(click)="…"</code>, <code>$event</code> has the right event type, such as <code>MouseEvent</code>.</li>
+    <li><strong>Rendering by name.</strong> <code>render('components/pill', {{ '{' }} text {{ '}' }})</code> from <code>clarusjs/views</code> is checked against the view's inputs, through the generated <code>.clarusjs/views.d.ts</code>.</li>
     <li><strong>Scripts and data.</strong> An island's script, and data brought in with <code>@import</code>, are ordinary TypeScript.</li>
   </ul>
   <div class="sample"><pre><code verbatim>{{-- src/pages/index.tscl --}}

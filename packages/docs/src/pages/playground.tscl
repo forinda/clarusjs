@@ -3,6 +3,7 @@
 @input name: string = ''
 @input renderedAt: string = ''
 @input agent: string = ''
+@input pillHtml: string = ''
 
 <docs [title]="'Server playground'" [path]="'/playground'" [description]="'A page this site renders on every request, on a Netlify Function, from the same handler that builds the static pages.'">
   <h1>Server playground</h1>
@@ -19,6 +20,10 @@
     <dt>Rendered at</dt><dd id="rendered-at"><time [datetime]="renderedAt">{{ renderedAt }}</time></dd>
     <dt>Your browser</dt><dd id="agent">{{ agent }}</dd>
   </dl>
+
+  <h2>Rendering a view by name</h2>
+  <p>The loader also rendered the <code>pill</code> component to HTML with <code>render('components/pill', {{ '{' }} text {{ '}' }})</code> from <code>clarusjs/views</code>. Here is the HTML it returned, shown as text:</p>
+  <pre><code id="pill-html">{{ pillHtml }}</code></pre>
 
   <callout [type]="'info'">@slot('title') {How it works}<p>The route is <code>'server'</code> in this site's <code>vite.config.ts</code>, so the build leaves it out of the static files. Its <code>load()</code> reads the request: the <code>?name=</code> query and your browser's user agent. On Netlify, <code>adapter: 'netlify'</code> deploys it as a function; the page is plain HTML with no JavaScript of its own. Run <code>clarusjs explain /playground</code> to see it.</p></callout>
 </docs>

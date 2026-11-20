@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { createRequire } from 'node:module'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { ClarusError } from '../compiler/errors.ts'
-import { generateTs, toSourceOffset, type Mapping } from '../check/generate.ts'
+import { generateTs, toSourceOffset, viewsDeclaration, type Mapping } from '../check/generate.ts'
 import { findClarusFiles } from '../vite/build.ts'
 
 export type Diagnostic = { file: string; line: number; column: number; code: string; message: string }
@@ -52,6 +52,12 @@ export function check(options: { root: string; typescript?: string }): CheckResu
     }
   }
 
+  // The view registry: every view's name → its inputs, so render(name, props) is checked. Declarations only, so apps
+  // can add .clarusjs/views.d.ts to their own tsconfig's include and get the same types in their editor.
+  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  const sources = findClarusFiles(resolve(root, 'src')).map((path) => ({ file: posix(relative(root, path)), source: readFileSync(path, 'utf8') }))
+  writeFileSync(resolve(root, '.clarusjs/views.d.ts'), viewsDeclaration(sources))
+
   // The project's own settings, plus what checking templates needs. Scripts are JavaScript, so untyped parameters
   // are expected (noImplicitAny off). rootDirs lets virtual files and real sources import each other.
   const hasConfig = existsSync(resolve(root, 'tsconfig.json'))
@@ -65,7 +71,7 @@ export function check(options: { root: string; typescript?: string }): CheckResu
       skipLibCheck: true,
       rootDirs: ['..', './virtual'],
     },
-    include: ['../src', './virtual'],
+    include: ['../src', './virtual', './views.d.ts'],
   }
   const configPath = resolve(root, '.clarusjs/tsconfig.check.json')
   mkdirSync(dirname(configPath), { recursive: true })

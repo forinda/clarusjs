@@ -394,6 +394,8 @@ test('server playground: rendered on every request, reading the request; escaped
   await expect(page).toHaveURL(/\?name=/)
   await expect(page.locator('#greeting')).toHaveText('Hello, <img src=x onerror=alert(1)>!')
   await expect(page.locator('#greeting img')).toHaveCount(0)
+  // The loader rendered a component by name with render(); its HTML is shown as text, escaped like any value.
+  await expect(page.locator('#pill-html')).toHaveText('<span class="pill">&lt;img src=x onerror=alert(1)&gt;</span>')
 })
 
 test('the generated Netlify function serves only the server routes', async () => {

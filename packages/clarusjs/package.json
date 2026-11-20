@@ -34,7 +34,8 @@
     "./runtime/server": "./src/runtime/server.ts",
     "./server": "./src/server/handler.ts",
     "./vite": "./src/vite/plugin.ts",
-    "./manifest": "./src/server/manifest.ts"
+    "./manifest": "./src/server/manifest.ts",
+    "./views": "./src/server/views.ts"
   },
   "bin": {
     "clarusjs": "./dist/cli/index.js"
@@ -93,6 +94,10 @@
       "./manifest": {
         "types": "./dist/server/manifest.d.ts",
         "default": "./dist/server/manifest.js"
+      },
+      "./views": {
+        "types": "./dist/server/views.d.ts",
+        "default": "./dist/server/views.js"
       }
     }
   }
