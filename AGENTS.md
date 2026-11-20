@@ -4,7 +4,7 @@ Guidance for AI agents (and humans) working in this repo.
 
 ## What this is
 
-kview compiles `.kvw` components (Vue/Angular-style templates + an optional `<script>` with signals) into:
+clarujs compiles `.kvw` components (Vue/Angular-style templates + an optional `<script>` with signals) into:
 
 - a **server module**: `render(props) → string`, HTML with markers around reactive holes only;
 - a **client module**, only for stateful components: `attach(root, props)`, which wires signals to the server's HTML without re-rendering it.
@@ -39,13 +39,13 @@ Run both `npm test` and `npm run typecheck` before calling work done.
 
 - **Compiler is pure.** `src/compiler/` takes strings and returns strings: no `fs`, no Vite imports.
 - **ESTree only.** Treat acorn output as plain ESTree so the parser can be swapped (e.g. `oxc-parser`).
-- **Server code never reaches the client.** Client modules must not import `render`, `kview/runtime/server` or loaders.
+- **Server code never reaches the client.** Client modules must not import `render`, `clarujs/runtime/server` or loaders.
 - **Stateless components ship nothing.** No `<script>` → client compile is `export {}`.
 - **HTML contract is fixed** (changing it is a design change; update `docs/architecture.md` §5 first):
   `<kv-island c="NAME" src="URL" p="JSON">`, `<!--[N-->…<!--]-->`, `data-kv-e="N"`. Static parts carry no markers.
 - **Escape everything dynamic.** Server holes go through `escape()`; island props through `island()`; the client writes text nodes only.
 - **Generated names start with `__kv_`** so they never collide with author code.
-- **Errors are located.** Compile errors are `KviewError` with `file:line:col message`. Never let a raw acorn error escape.
+- **Errors are located.** Compile errors are `ClaruError` with `file:line:col message`. Never let a raw acorn error escape.
 - **Compiled output stays readable.** Exact-output tests in `test/compiler/emit-*.test.ts` pin it; update them deliberately.
 - **Tests first.** Write the failing test, watch it fail, then implement. Bug fixes start with a reproducing test.
 - **Keep it small.** No new runtime dependencies (only `acorn`, compiler-side). Deliberate shortcuts get a `ponytail:` comment naming the limit and the upgrade path.

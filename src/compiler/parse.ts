@@ -1,5 +1,5 @@
 // .kvw source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
-import { KviewError } from './errors.ts'
+import { ClaruError } from './errors.ts'
 
 export type Attr =
   | { kind: 'static'; name: string; value: string | true; start: number }
@@ -25,7 +25,7 @@ const IMPORT_RE = /^@import\s+([A-Za-z_$][\w-]*)\s+from\s+(['"])(.+?)\2\s*$/
 export function parse(source: string, file: string): ParsedFile {
   const out: ParsedFile = { inputs: [], imports: [], nodes: [] }
   let i = 0
-  const fail = (text: string, at: number): never => { throw new KviewError(text, file, source, at) }
+  const fail = (text: string, at: number): never => { throw new ClaruError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
 
   function directive(): void {

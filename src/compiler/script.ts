@@ -1,6 +1,6 @@
 // <script> analysis and signal rewrites. Reads `count` → `count.get()`, writes `count++` → `count.set(count.get() + 1)`.
 import { parse as acornParse, parseExpressionAt } from 'acorn'
-import { KviewError } from './errors.ts'
+import { ClaruError } from './errors.ts'
 
 export type Signals = Map<string, 'state' | 'derived'>
 
@@ -53,7 +53,7 @@ function parseScript(code: string, file = '<script>', source = code, offset = 0)
     return acornParse(code, OPTS) as unknown as N
   } catch (e) {
     const pos = (e as { pos?: number }).pos ?? 0
-    throw new KviewError(`script: ${(e as Error).message.replace(/ \(\d+:\d+\)$/, '')}`, file, source, offset + pos)
+    throw new ClaruError(`script: ${(e as Error).message.replace(/ \(\d+:\d+\)$/, '')}`, file, source, offset + pos)
   }
 }
 
@@ -71,17 +71,17 @@ function located<T>(fn: () => T, what: string, file: string, source: string, off
   try {
     return fn()
   } catch (e) {
-    if (e instanceof KviewError) throw e
-    throw new KviewError(`${what}: ${(e as Error).message.replace(/ \(\d+:\d+\)$/, '')}`, file, source, offset)
+    if (e instanceof ClaruError) throw e
+    throw new ClaruError(`${what}: ${(e as Error).message.replace(/ \(\d+:\d+\)$/, '')}`, file, source, offset)
   }
 }
 
-/** Throw a located KviewError unless `expr` is exactly one JS expression. */
+/** Throw a located ClaruError unless `expr` is exactly one JS expression. */
 export function checkExpr(expr: string, file: string, source: string, offset: number): void {
   located(() => parseExpr(expr), 'invalid expression', file, source, offset)
 }
 
-/** Throw a located KviewError unless `code` parses as statements (event handlers may hold several). */
+/** Throw a located ClaruError unless `code` parses as statements (event handlers may hold several). */
 export function checkHandler(code: string, file: string, source: string, offset: number): void {
   located(() => acornParse(code, OPTS), 'invalid event handler', file, source, offset)
 }
@@ -108,7 +108,7 @@ export function analyzeScript(code: string, file: string, source: string, offset
   const signals: Signals = new Map()
   for (const stmt of parseScript(code, file, source, offset).body as N[]) {
     if (stmt.type === 'ImportDeclaration' || stmt.type.startsWith('Export')) {
-      throw new KviewError('imports in <script> are not supported yet', file, source, offset + stmt.start)
+      throw new ClaruError('imports in <script> are not supported yet', file, source, offset + stmt.start)
     }
     if (stmt.type !== 'VariableDeclaration') continue
     for (const d of stmt.declarations as N[]) {

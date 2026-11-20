@@ -15,7 +15,7 @@ export function emitClient(ir: ComponentIR): string {
     ir.events.length > 0 && 'on as __kv_on',
   ].filter(Boolean)
 
-  let out = used.length ? `import { ${used.join(', ')} } from 'kview/runtime'\n` : ''
+  let out = used.length ? `import { ${used.join(', ')} } from 'clarujs/runtime'\n` : ''
   out += `\nexport function attach(__kv_root, __kv_props = {}) {\n`
   out += inputsLine(ir)
   if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals))

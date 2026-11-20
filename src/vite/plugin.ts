@@ -1,24 +1,24 @@
-// The kview Vite plugin: a thin adapter around the compiler.
+// The clarujs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
 import { relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isRunnableDevEnvironment, type Plugin } from 'vite'
-import { compile, KviewError } from '../compiler/index.ts'
+import { compile, ClaruError } from '../compiler/index.ts'
 import { sendResponse, toRequest } from './node.ts'
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
-const ENTRY = 'virtual:kview/server-entry'
+const ENTRY = 'virtual:clarujs/server-entry'
 
-export default function kview(): Plugin {
+export default function clarujs(): Plugin {
   let root = process.cwd()
   return {
-    name: 'kview',
+    name: 'clarujs',
     config: () => ({
       appType: 'custom',
       resolve: {
         alias: [
-          { find: 'kview/runtime/server', replacement: here('../runtime/server.ts') },
-          { find: 'kview/runtime', replacement: here('../runtime/index.ts') },
+          { find: 'clarujs/runtime/server', replacement: here('../runtime/server.ts') },
+          { find: 'clarujs/runtime', replacement: here('../runtime/index.ts') },
         ],
       },
     }),
@@ -42,7 +42,7 @@ export default function kview(): Plugin {
         try {
           return { code: compile(code, { file, target, clientUrl }).code, map: null }
         } catch (err) {
-          if (err instanceof KviewError) this.error(err.message)
+          if (err instanceof ClaruError) this.error(err.message)
           throw err
         }
       },

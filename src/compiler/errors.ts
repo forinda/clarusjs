@@ -1,5 +1,5 @@
 /** A compile error pointing at a place in a .kvw file. Message format: `file:line:column text` (1-based). */
-export class KviewError extends Error {
+export class ClaruError extends Error {
   file: string
   line: number
   column: number
@@ -9,7 +9,7 @@ export class KviewError extends Error {
     const line = before.split('\n').length
     const column = offset - (before.lastIndexOf('\n') + 1) + 1
     super(`${file}:${line}:${column} ${text}`)
-    this.name = 'KviewError'
+    this.name = 'ClaruError'
     this.file = file
     this.line = line
     this.column = column

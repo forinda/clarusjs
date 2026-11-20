@@ -2,7 +2,7 @@
 @import counter from '../components/counter.kvw'
 @import greeting from '../components/greeting.kvw'
 
-<h1>kview POC</h1>
+<h1>clarujs POC</h1>
 <greeting [name]="'world'" />
 <counter [start]="3" />
 <counter [start]="10" />

@@ -2,14 +2,14 @@
 // Regression tests for the whole-branch review findings.
 import { expect, test } from 'vitest'
 import { compile } from '../../src/compiler/index.ts'
-import { KviewError } from '../../src/compiler/errors.ts'
+import { ClaruError } from '../../src/compiler/errors.ts'
 import { lower } from '../../src/compiler/ir.ts'
 import { parse } from '../../src/compiler/parse.ts'
 import { importCode } from '../helpers.ts'
 
 const lowerSource = (source: string, file = 'x.kvw') => lower(parse(source, file), file, source)
-function compileError(source: string): KviewError {
-  try { compile(source, { file: 'x.kvw', target: 'client' }) } catch (e) { return e as KviewError }
+function compileError(source: string): ClaruError {
+  try { compile(source, { file: 'x.kvw', target: 'client' }) } catch (e) { return e as ClaruError }
   throw new Error('expected compile to throw')
 }
 async function mount(source: string, props = {}) {
@@ -23,7 +23,7 @@ async function mount(source: string, props = {}) {
 
 test('a hole that is not a single expression is a located build error', () => {
   const e = compileError('<p>a</p>\n<p>{{ a) + (b }}</p>')
-  expect(e).toBeInstanceOf(KviewError)
+  expect(e).toBeInstanceOf(ClaruError)
   expect(e.message.startsWith('x.kvw:2:4 ')).toBe(true)
 })
 

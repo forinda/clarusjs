@@ -17,7 +17,7 @@ test('static page ships no script', async () => {
   expect(res.status).toBe(200)
   expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8')
   const html = await res.text()
-  expect(html).toBe('<!doctype html><html><head><meta charset="utf-8"><title>kview</title></head><body><h1>x</h1></body></html>')
+  expect(html).toBe('<!doctype html><html><head><meta charset="utf-8"><title>clarujs</title></head><body><h1>x</h1></body></html>')
 })
 
 test('page with islands ships exactly the loader script', async () => {

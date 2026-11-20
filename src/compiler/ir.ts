@@ -1,5 +1,5 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
-import { KviewError } from './errors.ts'
+import { ClaruError } from './errors.ts'
 import type { ImportDecl, InputDecl, ParsedFile, TemplateNode } from './parse.ts'
 import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, type Signals } from './script.ts'
 
@@ -23,7 +23,7 @@ export type ComponentIR = {
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
 export function lower(parsed: ParsedFile, file: string, source: string): ComponentIR {
-  const fail = (text: string, at: number): never => { throw new KviewError(text, file, source, at) }
+  const fail = (text: string, at: number): never => { throw new ClaruError(text, file, source, at) }
   const stateful = !!parsed.script
   const signals: Signals = parsed.script ? analyzeScript(parsed.script.code, file, source, parsed.script.start) : new Map()
   // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.

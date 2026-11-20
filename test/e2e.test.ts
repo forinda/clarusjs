@@ -17,7 +17,7 @@ test('page is server-rendered with the counters as the only islands', async () =
   const res = await fetch(`${base}/`)
   expect(res.status).toBe(200)
   const html = await res.text()
-  expect(html).toContain('<h1>kview POC</h1>')
+  expect(html).toContain('<h1>clarujs POC</h1>')
   expect(html).toContain('<p>Hello, world!</p>')
   expect(html.match(/<kv-island c="counter"/g)).toHaveLength(2)
   expect(html.match(/<script/g)).toHaveLength(1)
