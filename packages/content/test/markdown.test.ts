@@ -104,3 +104,11 @@ test('frontmatter jsonLd becomes JSON-LD scripts in <cl-head>, as JSON the templ
   // The JSON survives the template compiler unchanged.
   expect(compile(out.replace(/^@import.*\n/, '').replace(/<\/?cl-layout[^>]*>/g, ''), { file: 'x.tscl', target: 'server' }).code).toContain('\\\\u007b not a hole')
 })
+
+test('#116: frontmatter image is the page social card image', () => {
+  expect(page('---\ntitle: T\nimage: /cards/t.png\n---\nx\n')).toContain('<cl-head><meta property="og:image" content="/cards/t.png"></cl-head>')
+})
+
+test('frontmatter sitemap: false opts the page out of the sitemap', () => {
+  expect(page('---\ntitle: T\nsitemap: false\n---\nx\n')).toContain('<cl-head><meta name="sitemap" content="false"></cl-head>')
+})

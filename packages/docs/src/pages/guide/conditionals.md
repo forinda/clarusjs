@@ -7,7 +7,7 @@ description: "Show one of several branches with @if, @else if and @else."
 
 <p class="lead">Show one of several branches with <code>@if</code>, <code>@else if</code> and <code>@else</code>.</p>
 
-```text
+```tscl
 @if (user.isAdmin) {
   <a href="/admin">Admin</a>
 } @else if (user.isEditor) {

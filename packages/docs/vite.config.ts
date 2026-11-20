@@ -10,6 +10,8 @@ export default defineConfig({
       adapter: 'netlify',
       // Moving between pages swaps the page instead of reloading it (see the Fragment navigation guide).
       fragments: true,
+      // The public address: canonical URLs and social cards on every page (public/og.png unless a page sets its own).
+      site: { url: 'https://clarusjs.com', name: 'clarusjs', image: '/og.png' },
       // Every page's <head>: the title template and tags all pages share (src/head.ts adds the rest).
       head: {
         titleTemplate: '%s · clarusjs',

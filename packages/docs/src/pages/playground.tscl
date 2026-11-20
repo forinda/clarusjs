@@ -23,7 +23,7 @@
 
   <h2>Rendering a view by name</h2>
   <p>The loader also rendered the <code>pill</code> component to HTML with <code>render('components/pill', {{ '{' }} text {{ '}' }})</code> from <code>clarusjs/views</code>. Here is the HTML it returned, shown as text:</p>
-  <pre><code id="pill-html">{{ pillHtml }}</code></pre>
+  <pre tabindex="0"><code id="pill-html">{{ pillHtml }}</code></pre>
 
   <callout [type]="'info'">@slot('title') {How it works}<p>The route is <code>'server'</code> in this site's <code>vite.config.ts</code>, so the build leaves it out of the static files. Its <code>load()</code> reads the request: the <code>?name=</code> query and your browser's user agent. On Netlify, <code>adapter: 'netlify'</code> deploys it as a function; the page is plain HTML with no JavaScript of its own. Run <code>clarusjs explain /playground</code> to see it.</p></callout>
 </docs>

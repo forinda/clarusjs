@@ -19,6 +19,8 @@
     <script type="application/ld+json">{{ { '@context': 'https://schema.org', '@type': 'TechArticle', headline: title, description, url: `https://clarusjs.com${path === '/' ? '' : path}` } }}</script>
   </head>
   <body>
+    {{-- First in the tab order: keyboard and screen reader users jump past the header and page list. --}}
+    <a class="skip-link" href="#content">Skip to content</a>
     <header class="site-header">
       <a class="brand" href="/"><img src="/logo.svg" alt="" width="28" height="28"><span>clarus<span class="js">.js</span></span></a>
       <nav class="top-nav" aria-label="Main">
@@ -32,15 +34,16 @@
       <div class="docs">
         <input type="checkbox" id="menu" class="menu-toggle" aria-label="Show the page list">
         <label for="menu" class="menu-button">Menu</label>
-        <aside class="sidebar" aria-label="Pages">
+        <nav class="sidebar" aria-label="Pages">
           @for (group of groupsOf(path); track group.title) {
             <p class="group">{{ group.title }}</p>
             <ul>
               @for (item of group.items; track item.href) {<li><a [href]="item.href" [aria-current]="item.href === path ? 'page' : false">{{ item.title }}</a></li>}
             </ul>
           }
-        </aside>
-        <main class="content">
+        </nav>
+        {{-- tabindex -1: the skip link (and navigation, #121) can move focus here. --}}
+        <main class="content" id="content" tabindex="-1">
           <p class="crumb">{{ crumb(path) }}</p>
           <slot />
           <footer class="page-footer">
@@ -53,7 +56,7 @@
         </main>
       </div>
     } @else {
-      <main class="content home"><slot /></main>
+      <main class="content home" id="content" tabindex="-1"><slot /></main>
     }
     <footer class="site-footer">
       <p>MIT licensed. This site is built with clarusjs: its pages are static HTML, and only its interactive parts ship JavaScript.</p>

@@ -12,9 +12,15 @@ export type HeadOptions = {
   tags?: HeadTag[]
   /** Structured data on every page (schema.org WebSite, Organization…): one JSON-LD script per object. */
   jsonLd?: object | object[]
+  /** The site's public address: canonical URLs and social cards (Open Graph, Twitter) on every page. */
+  site?: SiteOptions
+  /** Vite's base ('/' or '/docs/'): public files and pages live under it. */
+  base?: string
   /** Last word on the head's HTML (from src/head.ts in an app). */
   transform?: (head: string, page: { route: string; path: string }) => string
 }
+
+export type SiteOptions = { url: string; name?: string; image?: string }
 
 const VOID = new Set(['meta', 'link', 'base'])
 
@@ -58,6 +64,7 @@ export function completeHead(html: string, mask: (html: string) => string, optio
   if (!open || close === -1) return html
   const start = open.index + open[0].length
   let head = html.slice(start, close)
+  const rawTitle = /<title\b[^>]*>([\s\S]*?)<\/title\s*>/i.exec([...own, ...tags(head)].find((t) => key(t) === 'title') ?? '')?.[1] ?? ''
   if (options.titleTemplate && !own.some((t) => key(t) === 'title')) {
     head = head.replace(/(<title\b[^>]*>)([\s\S]*?)(<\/title\s*>)/i, (_, a: string, text: string, b: string) => a + escape(options.titleTemplate!).replace('%s', () => text) + b)
   }
@@ -67,6 +74,7 @@ export function completeHead(html: string, mask: (html: string) => string, optio
     const same = k ? tags(head).find((t) => key(t) === k) : undefined
     head = same ? head.replace(same, () => tag) : head + tag
   }
+  head = social(head, rawTitle, options, page)
   const present = new Set(tags(head).map(key).filter(Boolean))
   for (const t of options.tags ?? []) {
     const tag = renderTag(t)
@@ -76,4 +84,49 @@ export function completeHead(html: string, mask: (html: string) => string, optio
   for (const data of [options.jsonLd ?? []].flat()) head += `<script type="application/ld+json">${json(data)}</script>`
   if (options.transform) head = options.transform(head, page)
   return html.slice(0, start) + head + html.slice(close)
+}
+
+const decode = (html: string) => html.replace(/&(#x?[\da-f]+|amp|lt|gt|quot|apos|#39);/gi, (m, e: string) => {
+  const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
+  if (e[0] !== '#') return named[e.toLowerCase()] ?? m
+  return String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10))
+})
+
+/**
+ * Canonical URL and social card tags from site.url, filling only keys the page left unset. A root-relative image is
+ * a public file under the base; a relative one is resolved against the page. Without site.url, a relative og:image
+ * or og:url can't be made absolute, so it is an error instead of a card that silently breaks.
+ */
+function social(head: string, title: string, options: HeadOptions, page: { path: string }): string {
+  const content = (k: string) => decode(new RegExp(`\\scontent\\s*=\\s*"([^"]*)"`, 'i').exec(tags(head).find((t) => key(t) === k) ?? '')?.[1] ?? '')
+  const relative = (u: string) => u !== '' && !/^[a-z][\w+.-]*:|^\/\//i.test(u)
+  if (!options.site) {
+    for (const k of ['meta:property:og:image', 'meta:property:og:url']) {
+      if (relative(content(k))) throw new Error(`${page.path}: ${k.slice(14)} "${content(k)}" is relative: set site.url in the clarusjs plugin so it can be made absolute`)
+    }
+    return head
+  }
+  const base = options.base ?? '/'
+  const root = new URL(base, options.site.url.replace(/\/?$/, '/'))
+  // './' keeps the request path a path under the root: '/https:/evil.com' must not become another site.
+  const url = new URL(`./${page.path.slice(1)}`, root).href
+  const absolute = (u: string) => (u.startsWith('/') && !u.startsWith('//') ? new URL(u.slice(1), root).href : new URL(u, url.endsWith('/') ? url : `${url}/`).href)
+  const pageImage = content('meta:property:og:image')
+  const image = pageImage || options.site.image || ''
+  const present = new Set(tags(head).map(key))
+  const add = (tag: string) => { if (!present.has(key(tag))) head += tag }
+  if (pageImage && relative(pageImage)) {
+    const old = tags(head).find((t) => key(t) === 'meta:property:og:image')!
+    head = head.replace(old, () => `<meta property="og:image" content="${escape(absolute(pageImage))}">`)
+  }
+  const description = content('meta:name:description')
+  add(`<link rel="canonical" href="${escape(url)}">`)
+  add(`<meta property="og:title" content="${escape(decode(title))}">`)
+  if (description) add(`<meta property="og:description" content="${escape(description)}">`)
+  add(`<meta property="og:url" content="${escape(url)}">`)
+  add('<meta property="og:type" content="website">')
+  if (options.site.name) add(`<meta property="og:site_name" content="${escape(options.site.name)}">`)
+  if (image) add(`<meta property="og:image" content="${escape(relative(image) ? absolute(image) : image)}">`)
+  add(`<meta name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}">`)
+  return head
 }

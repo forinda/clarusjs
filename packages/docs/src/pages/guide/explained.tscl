@@ -25,7 +25,7 @@
 
   <h2>How this page is made</h2>
   <p>A page can read the manifest with <code>readManifest()</code>. While the site is built, any page that reads it is rendered again once the manifest is written; outside a build it returns <code>null</code>.</p>
-  <div class="sample"><pre><code verbatim>@import { readManifest } from 'clarusjs/manifest'
+  <div class="sample"><pre tabindex="0"><code verbatim>@import { readManifest } from 'clarusjs/manifest'
 
 @for (entry of Object.entries(readManifest()?.routes ?? {}); track entry[0]) {
   <p>{{ entry[0] }}: {{ entry[1].islands.length }} islands</p>

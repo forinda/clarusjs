@@ -17,7 +17,7 @@ A page that fails to render fails the build, naming the page. `vite preview` ser
 
 The build also writes `dist/clarusjs-manifest.json`: for every route, how it was rendered, which islands it has and when each attaches, and how much JavaScript it ships (gzip bytes, in all and on page load). It is read from the pages that were actually written, and it sits outside `dist/client`, so it isn't published with the site.
 
-```text
+```json
 "/guide/state": {
   "mode": "static",
   "html": "guide/state/index.html",

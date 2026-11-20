@@ -1,6 +1,6 @@
 import { modeFor, type ModeTable } from './modes.ts'
 import { stringify } from '../runtime/serialize.ts'
-import { completeHead, type HeadOptions } from './head.ts'
+import { completeHead, type HeadOptions, type SiteOptions } from './head.ts'
 import { escape } from '../runtime/html.ts'
 
 const DATA = '__data.json'
@@ -65,6 +65,8 @@ export function createHandler(
     css?: Record<string, string[]>
     /** Title template, site-wide head tags and a transform (see head.ts). */
     head?: HeadOptions
+    /** The site's public address: canonical URLs and social cards (see head.ts). */
+    site?: SiteOptions
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -112,7 +114,7 @@ export function createHandler(
     return !list || list.some((entry) => route.keys.every((key) => entry[key] === params[key]))
   }
 
-  return {
+  const handler: ReturnType<typeof createHandler> = {
     routes: routes.map((r) => r.path).sort(),
     /** Routes rendered per request ('server' mode), as their files name them. */
     serverRoutes: routes.filter((r) => modeFor(r.path, modes) === 'server').map((r) => r.path).sort(),
@@ -190,7 +192,14 @@ export function createHandler(
         }
       }
       const head = request.method === 'HEAD'
-      const notFound = () => new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+      const plain = () => new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+      // An unknown page gets src/pages/404.tscl (when there is one) with status 404; data and fragment requests don't.
+      const notFound = async () => {
+        if (pathname.endsWith(`/${DATA}`) || pathname.endsWith(`/${FRAG}`) || trim(pathname) === '/404' || !routes.some((r) => r.path === '/404')) return plain()
+        const page = await handler.fetch(new Request(new URL('/404', request.url), { method: request.method }))
+        if (page.status !== 200) return plain()
+        return new Response(head ? null : rootLinks(await page.text(), options.base ?? '/'), { status: 404, headers: page.headers })
+      }
       const mode = found && modeFor(found.route.path, modes)
       if (!found) return notFound()
       // A prerendered dynamic route only has the pages its entries() lists, as on a static host.
@@ -233,7 +242,11 @@ export function createHandler(
       let html = (await found.route.load()).render(props)
       // A page that isn't a whole document is put in a minimal one, so every page's head is completed the same way.
       if (!/<html[\s>]/i.test(maskComments(html))) html = `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title></head><body>${html}</body></html>`
-      html = completeHead(html, maskComments, options.head ?? {}, { route: found.route.path, path: pathname })
+      try {
+        html = completeHead(html, maskComments, { ...options.head, site: options.site, base: options.base }, { route: found.route.path, path: pagePath(pathname, wantsFrag) })
+      } catch (err) {
+        return failure(`${found.route.file}: ${(err as Error).message}`)
+      }
       if (wantsFrag) {
         // The page's stylesheet links go right after its title, so fragment navigation can load any that are missing.
         const fragment = toFragment(html).replace(/^(<title\b[^>]*>[\s\S]*?<\/title\s*>)/i, (t) => t + pageLinks(found.route))
@@ -253,9 +266,16 @@ export function createHandler(
       return new Response(head ? null : body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     },
   }
+  return handler
 }
 
 /** A 500 that tells the visitor nothing internal; the details go to the server log (and the build's output). */
+/** The page's own path: no trailing slash (but '/'), and without index.frag.html for a fragment. */
+function pagePath(pathname: string, fragment: boolean): string {
+  const path = fragment ? pathname.slice(0, -FRAG.length) : pathname
+  return path.replace(/(.)\/+$/, '$1') || '/'
+}
+
 function failure(message: string): Response {
   console.error(`[clarusjs] ${message}`)
   return new Response('Internal Server Error', { status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' } })
@@ -311,4 +331,16 @@ function fullDocument(html: string, style: string, script: string): string {
     out = body === -1 ? out + script : out.slice(0, body) + script + out.slice(body)
   }
   return out
+}
+
+/**
+ * The 404 page is served at any depth (/a/b/c), so its relative links (href, src) are resolved from the site root:
+ * 'guide' means <base>guide wherever the visitor is.
+ */
+export function rootLinks(html: string, base: string): string {
+  return html.replace(/(\s(?:href|src)=")([^"]*)"/gi, (all, attr: string, url: string) => {
+    if (/^(?:[a-z][\w+.-]*:|\/|#|\?)/i.test(url)) return all
+    const resolved = new URL(url.replace(/&amp;/g, '&'), `http://x${base}`)
+    return `${attr}${(resolved.pathname + resolved.search + resolved.hash).replace(/&/g, '&amp;')}"`
+  })
 }

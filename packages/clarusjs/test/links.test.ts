@@ -73,3 +73,9 @@ test('malformed escapes, directories and an absolute base', () => {
   const docs = site({ '/': '<a href="/docs/nope">a</a>' })
   expect(checkLinks({ outDir: docs, routes: ['/'], serverRoutes: [], clientRoutes: [], base: 'https://cdn.example.com/docs/' })).toHaveLength(1)
 })
+
+test('absolute links to the site itself are checked like internal ones', () => {
+  const out = site({ '/': '<a href="https://example.com/docs/guide">a</a><a href="https://example.com/docs/nope#x">b</a><a href="https://example.com/other">c</a><a href="https://other.dev/docs/nope">d</a>', '/guide': '<p>g</p>' })
+  const issues = checkLinks({ outDir: out, routes: ['/', '/guide'], serverRoutes: [], clientRoutes: [], base: '/docs/', site: 'https://example.com' })
+  expect(issues.map((i) => i.message)).toEqual(['no page at /nope'])
+})

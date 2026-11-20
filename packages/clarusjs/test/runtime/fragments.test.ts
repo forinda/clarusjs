@@ -24,7 +24,7 @@ test('swap() replaces the region, updates the title, keeps persisted elements, a
   expect(document.querySelector('footer')!.textContent).toBe('f') // outside the region: untouched
   expect(document.getElementById('t')).toBe(kept) // the very same element, moved in
   expect(kept!.textContent).toBe('dark')
-  expect(attach).toHaveBeenCalledWith(document.querySelector('main'))
+  expect(attach).toHaveBeenCalledWith(document.querySelector('main'), 1) // navigated: focus and announce (loader)
 })
 
 test('without a marked region the body is swapped', async () => {

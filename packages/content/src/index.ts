@@ -198,12 +198,14 @@ function renderer(options: MarkdownOptions): Md {
 }
 
 /**
- * Frontmatter `jsonLd` (an object or a list), `head: [[tag, attrs, content?]]` and `titleTemplate: false` (the title as written) as <cl-head>, which
+ * Frontmatter `image` (the social card), `jsonLd` (an object or a list), `head: [[tag, attrs, content?]]` and `titleTemplate: false` (the title as written) as <cl-head>, which
  * the server moves into the page's <head>.
  */
 function pageHead(data: Record<string, unknown>, title: string | undefined): string {
   const tags: string[] = []
   if (data.titleTemplate === false && title !== undefined) tags.push(`<title>${escapeHtml(title)}</title>`)
+  if (data.sitemap === false) tags.push('<meta name="sitemap" content="false">')
+  if (typeof data.image === 'string') tags.push(`<meta property="og:image" content="${escapeHtml(data.image)}">`)
   for (const entry of Array.isArray(data.head) ? data.head : []) {
     const [tag, attrs = {}, content] = entry as [string, Record<string, unknown>, string?]
     if (typeof tag !== 'string' || !/^[a-z]+$/.test(tag)) continue
