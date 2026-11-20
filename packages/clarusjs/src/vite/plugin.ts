@@ -36,7 +36,9 @@ export default function clarusjs(): Plugin {
     if (command !== 'build') return undefined
     if (built) return built
     const manifestFile = resolve(root, CLIENT_OUT, '.vite/manifest.json')
-    if (!existsSync(manifestFile)) return undefined
+    if (!existsSync(manifestFile)) {
+      throw new Error(`clarusjs: client manifest not found at ${manifestFile}; the server build must run after the client build`)
+    }
     const manifest = JSON.parse(readFileSync(manifestFile, 'utf8')) as Record<string, { file: string; name?: string; isEntry?: boolean }>
     built = new Map()
     for (const chunk of Object.values(manifest)) if (chunk.isEntry && chunk.name) built.set(chunk.name, base + chunk.file)
@@ -56,6 +58,10 @@ export default function clarusjs(): Plugin {
       }
       if (env.isPreview) config.build = { outDir: CLIENT_OUT } // preview serves the static site
       if (env.command !== 'build') return config
+      if (userConfig.base !== undefined && !userConfig.base.startsWith('/') && !/^https?:\/\//.test(userConfig.base)) {
+        // Pages live at different depths and islands are imported from the loader, so URLs must not be relative.
+        throw new Error(`clarusjs: relative base "${userConfig.base}" is not supported; use an absolute base such as "/" or "/docs/"`)
+      }
       // Client entries: the island loader plus every stateful component. Stateless components never reach the client.
       const appRoot = resolve(userConfig.root ?? process.cwd())
       const input: Record<string, string> = { [LOADER_ENTRY]: here('../runtime/loader') }
@@ -66,7 +72,8 @@ export default function clarusjs(): Plugin {
       config.environments = {
         // Island chunks are loaded with import() and must keep their `attach` export.
         client: { build: { outDir: CLIENT_OUT, manifest: true, rolldownOptions: { input, preserveEntrySignatures: 'exports-only' } } },
-        ssr: { build: { outDir: SERVER_OUT, rolldownOptions: { input: { index: ENTRY } } } },
+        // Always .mjs, so Node loads it as ESM whatever the app's package.json says.
+        ssr: { build: { outDir: SERVER_OUT, rolldownOptions: { input: { index: ENTRY }, output: { entryFileNames: '[name].mjs' } } } },
       }
       return config
     },
@@ -81,7 +88,7 @@ export default function clarusjs(): Plugin {
       if (!client || !ssr) return
       await builder.build(client)
       await builder.build(ssr)
-      await prerender(resolve(builder.config.root, SERVER_OUT, 'index.js'), resolve(builder.config.root, CLIENT_OUT))
+      await prerender(resolve(builder.config.root, SERVER_OUT, 'index.mjs'), resolve(builder.config.root, CLIENT_OUT))
     },
     resolveId(id) {
       if (id === '/cl-loader.js') return here('../runtime/loader')
@@ -115,11 +122,13 @@ export default function clarusjs(): Plugin {
     // The built site is static files: /guide/x is guide/x/index.html. appType 'custom' turns off Vite's own lookup.
     configurePreviewServer(server) {
       const outDir = resolve(server.config.root, server.config.build.outDir)
+      const base = server.config.base // e.g. '/' or '/docs/'; Vite strips it after this middleware
       server.middlewares.use((req, _res, next) => {
-        const path = decodeURIComponent((req.url ?? '/').split('?')[0]!)
-        if (!/\.[a-z0-9]+$/i.test(path)) {
-          const file = resolve(outDir, `.${path.replace(/\/?$/, '/')}index.html`)
-          if (file.startsWith(outDir) && existsSync(file)) req.url = file.slice(outDir.length).replace(/\\/g, '/')
+        const url = decodeURIComponent((req.url ?? '/').split('?')[0]!)
+        const inBase = url === base.slice(0, -1) ? '/' : url.startsWith(base) ? '/' + url.slice(base.length) : undefined
+        if (inBase !== undefined && !/\.[a-z0-9]+$/i.test(inBase)) {
+          const file = resolve(outDir, `.${inBase.replace(/\/?$/, '/')}index.html`)
+          if (file.startsWith(outDir) && existsSync(file)) req.url = base + file.slice(outDir.length + 1).replace(/\\/g, '/')
         }
         next()
       })

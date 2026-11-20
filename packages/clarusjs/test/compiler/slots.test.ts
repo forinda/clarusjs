@@ -61,3 +61,10 @@ test('named slots are not supported yet', () => {
 test('<slot> takes no children', () => {
   expect(compileError('<slot>fallback</slot>').message).toMatch(/^x\.clarus:1:1 .*<slot \/> takes no children/)
 })
+
+test('content given to a component without <slot /> fails when rendering instead of vanishing', async () => {
+  const plain = server('<div class="plain">no slot here</div>', 'plain.clarus')
+  const page = server(`@import plain from './plain.clarus'\n<plain>lost text</plain>`, 'page.clarus')
+  const { render } = await importCode(page, 'slot-none', { './plain.clarus': plain })
+  expect(() => render()).toThrow(/<plain> has no <slot \/> for the content passed to it/)
+})

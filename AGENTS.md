@@ -37,12 +37,12 @@ Releases are automated from `main` (see RELEASE.md): never run `npm publish` or 
 | `packages/clarusjs/` | the published `clarusjs` package; paths below are inside it |
 | `src/compiler/` | `parse.ts` (source → syntax tree) → `ir.ts` (checks + IR) → `emit-server.ts` / `emit-client.ts`. `script.ts` does signal analysis and rewrites. `index.ts` exports `compile()` |
 | `src/runtime/` | `server.ts` (escape, island), `signals.ts`, `dom.ts` (holes/text/on), `loader.ts` (finds islands, calls attach) |
-| `src/server/handler.ts` | `createHandler(pages)` → `{ fetch }` |
-| `src/vite/` | `plugin.ts`, `node.ts` (Node http ⇄ fetch) |
+| `src/server/handler.ts` | `createHandler(pages, { loaderUrl })` → `{ fetch, routes }`; full-document pages get doctype, island style and loader injected |
+| `src/vite/` | `plugin.ts` (dev SSR, `vite build` = client build → server build → prerender, preview routing), `build.ts` (find components, prerender), `node.ts` (Node http ⇄ fetch) |
 | `packages/docs/` | the docs site, built with clarusjs; private. Its Playwright tests (`e2e/`) run against the built site and are the end-to-end proof of each framework feature |
 | `examples/counter/` | the POC app (private workspace package, depends on `clarusjs: workspace:*`) |
 | `.changeset/` | pending changesets and config |
-| `test/` | mirrors `src/`; `test/fixtures/*.clarus`; `test/helpers.ts` (`importCode`) |
+| `test/` | mirrors `src/`; `test/fixtures/` (components and small apps built by the build tests); `test/helpers.ts` (`importCode`) |
 | `docs/` | architecture (committed); `docs/superpowers/` holds local specs and plans (gitignored, never commit) |
 | `.scratch/` | local notes and research (gitignored, never commit) |
 

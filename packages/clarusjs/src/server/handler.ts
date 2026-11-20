@@ -18,7 +18,9 @@ export function createHandler(
     routes: [...routes.keys()].sort(),
     async fetch(request) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 })
-      const load = routes.get(new URL(request.url).pathname)
+      const pathname = new URL(request.url).pathname
+      // '/guide/x/' is the same page as '/guide/x', in dev as on a static host.
+      const load = routes.get(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
       const head = request.method === 'HEAD'
       if (!load) return new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
       const html = (await load()).render({})

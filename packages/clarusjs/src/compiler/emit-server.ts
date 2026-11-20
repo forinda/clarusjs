@@ -13,6 +13,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
 
   out += `\nexport function render(__cl_props = {}, __cl_slot) {\n`
   if (ir.stateful) out += `  if (__cl_slot !== undefined) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> does not accept children yet`)})\n`
+  else if (!hasSlot(ir.nodes)) out += `  if (__cl_slot !== undefined) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> has no <slot /> for the content passed to it`)})\n`
   out += inputsLine(ir)
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   out += ir.stateful
@@ -34,4 +35,8 @@ function htmlExpr(nodes: IRNode[]): string {
     return n.reactive ? `"<!--[${n.index}-->" + ${value} + "<!--]-->"` : value
   })
   return parts.length ? parts.join(' + ') : '""'
+}
+
+function hasSlot(nodes: IRNode[]): boolean {
+  return nodes.some((n) => n.kind === 'slot' || (n.kind === 'component' && hasSlot(n.children)))
 }

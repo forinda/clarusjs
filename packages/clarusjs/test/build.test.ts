@@ -21,7 +21,7 @@ const read = (path: string) => readFileSync(resolve(client, path), 'utf8')
 test('writes a static page per route, the server handler and public files', () => {
   expect(existsSync(resolve(client, 'index.html'))).toBe(true)
   expect(existsSync(resolve(client, 'about/team/index.html'))).toBe(true)
-  expect(existsSync(resolve(root, 'dist/server/index.js'))).toBe(true)
+  expect(existsSync(resolve(root, 'dist/server/index.mjs'))).toBe(true)
   expect(existsSync(resolve(client, 'site.css'))).toBe(true)
 })
 

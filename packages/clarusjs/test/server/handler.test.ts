@@ -84,3 +84,9 @@ describe('full-document pages', () => {
     expect(await get('<p>x</p>')).toBe('<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title></head><body><p>x</p></body></html>')
   })
 })
+
+test('a trailing slash reaches the same page in dev as in the built site', async () => {
+  const res = await handler.fetch(new Request('http://x/app/'))
+  expect(res.status).toBe(200)
+  expect(await res.text()).toContain('<cl-island')
+})
