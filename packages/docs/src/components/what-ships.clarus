@@ -1,0 +1,14 @@
+<script>
+  let open = state(false)
+</script>
+
+<div class="what-ships">
+  <button class="toggle" (click)="open = !open" [aria-expanded]="open ? 'true' : 'false'">@if (open) {Hide} @else {What ships to the browser?}</button>
+  @if (open) {
+    <ul class="ships">
+      <li>A small loader, only on pages that have islands.</li>
+      <li>One chunk per interactive component: the counter, and this toggle.</li>
+      <li>Nothing for the rest of the page. It is plain HTML.</li>
+    </ul>
+  }
+</div>

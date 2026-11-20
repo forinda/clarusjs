@@ -11,6 +11,8 @@ export type TemplateNode =
   | { type: 'text'; value: string; start: number }
   | { type: 'expr'; expr: string; start: number } // {{ expr }}
   | { type: 'raw'; value: string; start: number } // content of a `verbatim` element, shown as text
+  | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
+  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
 export type InputDecl = { name: string; type: string; default?: string; start: number }
 export type ImportDecl = { name: string; from: string; start: number }
 export type ParsedFile = {
@@ -113,7 +115,96 @@ export function parse(source: string, file: string): ParsedFile {
   }
 
   // Parse children until `</parent>` (or end of input at top level).
-  function children(parent?: { tag: string; start: number }): TemplateNode[] {
+  // A parenthesised JS condition after `@if` / `@else if`, skipping strings and nested parentheses.
+  function condition(keyword: string): { cond: string; condStart: number } {
+    while (/\s/.test(source[i] ?? '')) i++
+    if (source[i] !== '(') fail(`expected ( after ${keyword}`, i)
+    const open = i
+    let depth = 0
+    for (; i < source.length; i++) {
+      const c = source[i]!
+      if (c === '"' || c === "'" || c === '`') {
+        for (i++; i < source.length && source[i] !== c; i++) if (source[i] === '\\') i++
+      } else if (c === '(') depth++
+      else if (c === ')' && --depth === 0) {
+        i++
+        return { cond: source.slice(open + 1, i - 1).trim(), condStart: open + 1 }
+      }
+    }
+    return fail(`unclosed ( after ${keyword}`, open)
+  }
+
+  // @if (a) { … } @else if (b) { … } @else { … }
+  function ifBlock(): TemplateNode {
+    const start = i
+    i += 3
+    const branches: { cond: string | null; condStart: number; children: TemplateNode[] }[] = []
+    let next: { cond: string | null; condStart: number } | null = condition('@if')
+    while (next) {
+      while (/\s/.test(source[i] ?? '')) i++
+      if (source[i] !== '{') fail('expected { to open the block', i)
+      i++
+      branches.push({ ...next, children: children({ tag: '@if', start, block: true }) })
+      if (next.cond === null) break // @else is last
+      const save = i
+      while (/\s/.test(source[i] ?? '')) i++
+      if (!source.startsWith('@else', i)) { i = save; break }
+      i += 5
+      while (/\s/.test(source[i] ?? '')) i++
+      if (/^if[\s(]/.test(source.slice(i, i + 3))) { i += 2; next = condition('@else if') }
+      else next = { cond: null, condStart: i }
+    }
+    return { type: 'if', branches, start }
+  }
+
+  // Split at top-level ';' (outside strings and brackets).
+  function splitClauses(text: string): string[] {
+    const parts: string[] = []
+    let depth = 0
+    let from = 0
+    for (let j = 0; j < text.length; j++) {
+      const c = text[j]!
+      if (c === '"' || c === "'" || c === '`') { for (j++; j < text.length && text[j] !== c; j++) if (text[j] === '\\') j++ }
+      else if ('([{'.includes(c)) depth++
+      else if (')]}'.includes(c)) depth--
+      else if (c === ';' && depth === 0) { parts.push(text.slice(from, j)); from = j + 1 }
+    }
+    return [...parts, text.slice(from)].map((p) => p.trim()).filter(Boolean)
+  }
+
+  // @for (item of list; track key) { … } @empty { … }
+  function forBlock(): TemplateNode {
+    const start = i
+    i += 4
+    const { cond: head, condStart: headStart } = condition('@for')
+    const [first = '', ...rest] = splitClauses(head)
+    const m = /^([\s\S]+?)\s+of\s+([\s\S]+)$/.exec(first)
+    if (!m) fail('expected "item of list" in @for', headStart)
+    if (!/^[A-Za-z_$][\w$]*$/.test(m![1]!.trim())) fail('the @for item must be a simple name', headStart)
+    let track: string | null = null
+    for (const clause of rest) {
+      const t = /^track\s+([\s\S]+)$/.exec(clause)
+      if (!t) fail(`unknown @for clause "${clause}"`, headStart)
+      track = t![1]!.trim()
+    }
+    while (/\s/.test(source[i] ?? '')) i++
+    if (source[i] !== '{') fail('expected { to open the block', i)
+    i++
+    const body = children({ tag: '@for', start, block: true })
+    let empty: TemplateNode[] | null = null
+    const save = i
+    while (/\s/.test(source[i] ?? '')) i++
+    if (/^@empty[\s{]/.test(source.slice(i, i + 7))) {
+      i += 6
+      while (/\s/.test(source[i] ?? '')) i++
+      if (source[i] !== '{') fail('expected { to open the block', i)
+      i++
+      empty = children({ tag: '@empty', start, block: true })
+    } else i = save
+    return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, children: body, empty, start }
+  }
+
+  function children(parent?: { tag: string; start: number; block?: boolean }): TemplateNode[] {
     const nodes: TemplateNode[] = []
     let text = ''
     let textStart = i
@@ -131,6 +222,13 @@ export function parse(source: string, file: string): ParsedFile {
         if (end === -1) fail('unclosed <!-- comment', i)
         text += source.slice(i, end + 3) // kept verbatim as static text: no tags, no holes inside
         i = end + 3
+      } else if (/^@if[\s(]/.test(source.slice(i, i + 4))) {
+        flush(); nodes.push(ifBlock()); textStart = i
+      } else if (/^@for[\s(]/.test(source.slice(i, i + 5))) {
+        flush(); nodes.push(forBlock()); textStart = i
+      } else if (parent?.block && source[i] === '}') {
+        flush(); i++
+        return nodes
       } else if (!parent && source[i] === '@' && atLineStart(i)) {
         flush(); directive(); textStart = i
       } else if (source.startsWith('{{', i)) {
@@ -185,7 +283,7 @@ export function parse(source: string, file: string): ParsedFile {
         text += source[i++]
       }
     }
-    if (parent) fail(`unclosed <${parent.tag}>`, parent.start)
+    if (parent) fail(parent.block ? `unclosed ${parent.tag} block` : `unclosed <${parent.tag}>`, parent.start)
     flush()
     return nodes
   }
