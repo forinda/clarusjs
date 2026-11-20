@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
+import markdown from '@clarusjs/content'
 
 export default defineConfig({
   plugins: [
@@ -9,6 +10,14 @@ export default defineConfig({
       adapter: 'netlify',
       // Moving between pages swaps the page instead of reloading it (see the Fragment navigation guide).
       fragments: true,
+      // Markdown pages (src/pages/**/*.md), rendered in the docs layout.
+      sources: [markdown({
+        layout: '/src/layouts/docs.tscl',
+        // ::: tip blocks and > [!NOTE] alerts render through the site's callout component.
+        container: { tag: 'callout', from: '/src/components/callout.tscl' },
+        // Every highlighted code block gets the site's copy button (an island that loads on first use).
+        copy: { tag: 'copy', from: '/src/components/copy.tscl' },
+      })],
     }),
   ],
 })

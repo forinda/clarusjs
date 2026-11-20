@@ -142,8 +142,8 @@ pre code { background: none; padding: 0; font-size: 14px; line-height: 1.55; }
 .todo-list { list-style: none; padding: 0; margin: 12px 0 0; }
 .todo-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
 .todo-list .empty { color: var(--muted); }
-.remove { background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; }
-.remove:hover { color: var(--accent); }
+.todo-list .remove { background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; }
+.todo-list .remove:hover { color: var(--accent); }
 
 
 .todo-count { margin: 10px 0 0; }
@@ -226,3 +226,42 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
 .tour .next { margin-left: auto; }
 
 .persist { display: contents; }
+
+/* ::: details blocks from Markdown: a native <details>. */
+details.custom-block { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px; margin: 20px 0; }
+details.custom-block > summary { cursor: pointer; font-weight: 600; }
+details.custom-block[open] > summary { margin-bottom: 8px; }
+
+/* Highlighted code from Markdown (Shiki, build time). Tokens carry both themes as variables; the page picks one. */
+.code-block { position: relative; margin: 0 0 20px; }
+.code-block pre { margin: 0; padding-right: 72px; }
+.code-block .lang { position: absolute; top: 8px; right: 64px; font: 12px var(--mono); color: var(--muted); pointer-events: none; }
+.code-block .code-title { margin: 0; padding: 6px 12px; font: 600 13px/20px var(--mono); border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--code-bg); }
+.code-block .code-title + .lang + pre { border-top-left-radius: 0; border-top-right-radius: 0; }
+.shiki span { color: var(--shiki-light); }
+.shiki { background: var(--code-bg); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .shiki span { color: var(--shiki-dark); } }
+:root[data-theme='dark'] .shiki span { color: var(--shiki-dark); }
+.shiki code { display: block; }
+.shiki .line { display: inline-block; width: 100%; }
+.shiki .line.highlighted { background: var(--accent-soft); }
+.shiki .line.diff.add { background: rgba(47, 158, 110, 0.14); }
+.shiki .line.diff.remove { background: rgba(208, 69, 59, 0.14); opacity: 0.75; }
+.shiki .line.diff.add::before { content: '+ '; }
+.shiki .line.diff.remove::before { content: '- '; }
+.shiki.has-focused .line:not(.focused) { opacity: 0.45; filter: blur(0.5px); }
+.shiki.has-focused:hover .line { opacity: 1; filter: none; }
+.code-block.line-numbers pre { padding-left: 44px; }
+.line-numbers-column { position: absolute; top: 14px; left: 0; width: 32px; display: flex; flex-direction: column; text-align: right; font: 14px/1.55 var(--mono); color: var(--muted); }
+/* Below a title (6 + 20 + 6 px, and its 1px top border) the code, and so the numbers, start lower. */
+.code-block .code-title ~ .line-numbers-column { top: calc(14px + 33px); }
+
+/* ::: code-group: radio tabs, no JavaScript. The checked tab's label is followed by its block. */
+.code-group { display: flex; flex-wrap: wrap; margin: 0 0 20px; }
+.code-group > input { position: absolute; opacity: 0; pointer-events: none; }
+.code-group > label { order: 0; font: 600 13px var(--mono); padding: 6px 12px; border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; color: var(--muted); cursor: pointer; }
+.code-group > input:checked + label { color: var(--accent); background: var(--code-bg); }
+.code-group > input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.code-group > .code-block { order: 1; width: 100%; display: none; margin: 0; }
+.code-group > input:checked + label + .code-block { display: block; }
+.code-group > .code-block pre { border-top-left-radius: 0; }

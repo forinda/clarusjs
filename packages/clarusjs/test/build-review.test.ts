@@ -62,7 +62,7 @@ test('a server build without the client manifest fails instead of shipping dev U
   const plugin = clarusjs() as any
   plugin.configResolved({ root, command: 'build', base: '/' })
   expect(existsSync(resolve(root, 'dist/client/.vite/manifest.json'))).toBe(false)
-  expect(() => plugin.load.call({}, '\0virtual:clarusjs/server-entry')).toThrow(/client manifest/)
+  expect(() => plugin.load.handler.call({}, '\0virtual:clarusjs/server-entry')).toThrow(/client manifest/)
 })
 
 test('building twice with the same builder uses the new island chunk and the new page HTML', async () => {
