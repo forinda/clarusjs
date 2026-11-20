@@ -4,7 +4,7 @@ const TMP = `${import.meta.dirname}/.tmp/`
 let counter = 0
 
 /**
- * Write compiled code to test/.tmp and import it, so vitest's aliases resolve `clarujs/runtime*`.
+ * Write compiled code to test/.tmp and import it, so vitest's aliases resolve `clarusjs/runtime*`.
  * `deps` maps an import path used in `code` (e.g. '../components/greeting.kvw') to that module's compiled code.
  */
 export async function importCode(code: string, name: string, deps: Record<string, string> = {}): Promise<any> {

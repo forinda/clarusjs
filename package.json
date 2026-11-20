@@ -1,9 +1,32 @@
 {
-  "name": "clarujs",
+  "name": "clarusjs",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Compiled .kvw views: server HTML, attach-only islands, Vite-hosted",
+  "description": "Clear, compiled views: templates compiled to server HTML, with JavaScript only for interactive islands. SSR, SSG and CSR from one component model, built on Vite.",
+  "keywords": [
+    "clarusjs",
+    "framework",
+    "compiler",
+    "templates",
+    "ssr",
+    "ssg",
+    "islands",
+    "partial-hydration",
+    "signals",
+    "vite",
+    "vite-plugin",
+    "html-first",
+    "typescript"
+  ],
+  "homepage": "https://github.com/forinda/kview#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forinda/kview.git"
+  },
+  "bugs": {
+    "url": "https://github.com/forinda/kview/issues"
+  },
   "engines": {
     "node": ">=22"
   },

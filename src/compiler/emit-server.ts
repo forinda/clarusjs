@@ -5,7 +5,7 @@ import { indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitServer(ir: ComponentIR, clientUrl: string): string {
   const runtime = ir.stateful ? 'escape as __kv_escape, island as __kv_island' : 'escape as __kv_escape'
-  let out = `import { ${runtime} } from 'clarujs/runtime/server'\n`
+  let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
   for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}'\n`
 
   const parts = ir.nodes.map((n) => {

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { analyzeScript, referencesSignal, rewriteClient, rewriteClientExpr, rewriteServer, type Signals } from '../../src/compiler/script.ts'
-import { ClaruError } from '../../src/compiler/errors.ts'
+import { ClarusError } from '../../src/compiler/errors.ts'
 
 const signals: Signals = new Map([['count', 'state'], ['double', 'derived']])
 
@@ -48,7 +48,7 @@ test('script syntax errors point into the .kvw file', () => {
     analyzeScript('\nlet = ', 'x.kvw', source, 8)
     throw new Error('expected throw')
   } catch (e) {
-    expect(e).toBeInstanceOf(ClaruError)
-    expect((e as ClaruError).line).toBe(2)
+    expect(e).toBeInstanceOf(ClarusError)
+    expect((e as ClarusError).line).toBe(2)
   }
 })

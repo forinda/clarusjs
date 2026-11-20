@@ -2,12 +2,12 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { parse } from '../../src/compiler/parse.ts'
 import { lower } from '../../src/compiler/ir.ts'
-import { ClaruError } from '../../src/compiler/errors.ts'
+import { ClarusError } from '../../src/compiler/errors.ts'
 
 const fixture = (name: string) => readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8')
 const lowerSource = (source: string, file = 'x.kvw') => lower(parse(source, file), file, source)
-function lowerError(source: string): ClaruError {
-  try { lowerSource(source) } catch (e) { return e as ClaruError }
+function lowerError(source: string): ClarusError {
+  try { lowerSource(source) } catch (e) { return e as ClarusError }
   throw new Error('expected lower to throw')
 }
 

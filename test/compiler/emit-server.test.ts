@@ -9,7 +9,7 @@ const server = (source: string, file: string) => compile(source, { file, target:
 
 test('counter server output is readable and exact', () => {
   expect(server(fixture('counter.kvw'), 'src/components/counter.kvw').code).toBe(
-`import { escape as __kv_escape, island as __kv_island } from 'clarujs/runtime/server'
+`import { escape as __kv_escape, island as __kv_island } from 'clarusjs/runtime/server'
 
 export function render(__kv_props = {}) {
   const { start = 0 } = __kv_props

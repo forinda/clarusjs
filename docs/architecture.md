@@ -1,6 +1,6 @@
-# clarujs architecture
+# clarusjs architecture
 
-> How clarujs turns `.kvw` files into HTML and JS, where every piece runs, and
+> How clarusjs turns `.kvw` files into HTML and JS, where every piece runs, and
 > how it plugs into Vite, servers, TypeScript and AI agents.
 >
 > Status: draft for the first proof of concept (POC). Background research
@@ -25,10 +25,10 @@ flowchart LR
   subgraph Author["You write"]
     KVW[".kvw components<br/>template + optional &lt;script&gt;"]
     LOAD["*.load.ts<br/>one loader per route"]
-    CFG["vite.config.ts<br/>clarujs({ routes })"]
+    CFG["vite.config.ts<br/>clarusjs({ routes })"]
   end
 
-  subgraph Compiler["clarujs compiler (TypeScript, pure functions)"]
+  subgraph Compiler["clarusjs compiler (TypeScript, pure functions)"]
     P[parse] --> C[check] --> IR[(IR)]
     IR --> ES[emit server<br/>render → string]
     IR --> EC[emit client<br/>attach → DOM]
@@ -44,7 +44,7 @@ flowchart LR
     H["fetch(Request) → Response"]
     S["static .html files"]
     J["island JS chunks<br/>(stateful components only)"]
-    M["clarujs-manifest.json"]
+    M["clarusjs-manifest.json"]
   end
 
   KVW --> P
@@ -69,7 +69,7 @@ Three rules make the whole system explainable:
 
 ## 3. Where does my code run?
 
-This table is the heart of clarujs. `clarujs explain` prints it for a real route.
+This table is the heart of clarusjs. `clarusjs explain` prints it for a real route.
 
 | You wrote | `static` route | `server` route | `client` route |
 |---|---|---|---|
@@ -84,7 +84,7 @@ Nothing else runs anywhere. No hidden prefetch, no hidden cache.
 ## 4. The compiler
 
 Written in TypeScript. A pure `compile(source, options) → { code, map, meta }`
-function, called by the Vite plugin and the `clarujs check` CLI. No file system
+function, called by the Vite plugin and the `clarusjs check` CLI. No file system
 access inside the compiler.
 
 ```mermaid
@@ -114,7 +114,7 @@ flowchart TD
 
 ### 4.2 The IR
 
-The IR is plain data, so it can be dumped for debugging (`clarujs explain --ir`).
+The IR is plain data, so it can be dumped for debugging (`clarusjs explain --ir`).
 
 ```ts
 // shape (simplified)
@@ -155,7 +155,7 @@ Source:
 Server output (readable, roughly what you'll see in `dist/`):
 
 ```js
-import { escape as __kv_escape, island as __kv_island } from 'clarujs/runtime/server'
+import { escape as __kv_escape, island as __kv_island } from 'clarusjs/runtime/server'
 
 export function render(__kv_props = {}) {
   const { start = 0 } = __kv_props
@@ -169,7 +169,7 @@ export function render(__kv_props = {}) {
 Client output:
 
 ```js
-import { state, derived, holes as __kv_holes, text as __kv_text, on as __kv_on } from 'clarujs/runtime'
+import { state, derived, holes as __kv_holes, text as __kv_text, on as __kv_on } from 'clarusjs/runtime'
 
 export function attach(__kv_root, __kv_props = {}) {
   const { start = 0 } = __kv_props
@@ -185,7 +185,7 @@ export function attach(__kv_root, __kv_props = {}) {
 ```
 
 `count++` became `count.set(count.get() + 1)`. That rewrite is the only
-"magic", and it's visible in the output. Names clarujs generates start with
+"magic", and it's visible in the output. Names clarusjs generates start with
 `__kv_`, so they never collide with names in your `<script>`.
 
 ## 5. The HTML contract
@@ -224,10 +224,10 @@ Target under 5 KB total; the POC aims at about 1–2 KB.
 
 | Module | Job | Runs |
 |---|---|---|
-| `clarujs/runtime/server` | `escape`, `escapeAttr`, `island()` | server/build |
-| `clarujs/runtime` signals | `state`, `derived`, `effect` (push-pull, alien-signals-style) | browser |
-| `clarujs/runtime` DOM | `holes`, `text`, `attr`, `on` (one delegated listener per event type) | browser |
-| `clarujs/runtime/loader` | find `<kv-island>`, `import(src)`, call `attach` | browser |
+| `clarusjs/runtime/server` | `escape`, `escapeAttr`, `island()` | server/build |
+| `clarusjs/runtime` signals | `state`, `derived`, `effect` (push-pull, alien-signals-style) | browser |
+| `clarusjs/runtime` DOM | `holes`, `text`, `attr`, `on` (one delegated listener per event type) | browser |
+| `clarusjs/runtime/loader` | find `<kv-island>`, `import(src)`, call `attach` | browser |
 
 ```mermaid
 sequenceDiagram
@@ -256,10 +256,10 @@ server's values and the script only runs for its functions.
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
-import clarujs from 'clarujs/vite'
+import clarusjs from 'clarusjs/vite'
 
 export default defineConfig({
-  plugins: [clarujs({
+  plugins: [clarusjs({
     routes: {
       '/blog/*':    'static',   // HTML at build time
       '/account/*': 'server',   // HTML per request
@@ -275,7 +275,7 @@ outside the template" visible from the file tree.
 
 ```ts
 // src/pages/users/[id].load.ts
-import type { Load } from 'clarujs'
+import type { Load } from 'clarusjs'
 export const load: Load<'users/[id]'> = async ({ params, request }) => {
   return { user: await db.users.find(params.id) }   // must match the page's @input
 }
@@ -330,7 +330,7 @@ its typed `@input`s.
 
 **Mode guard:** a loader always runs on a server or at build, even for
 `client` routes (the browser calls it over HTTP). So secrets in loaders are
-safe in every mode, and clarujs never needs a "server-only" annotation.
+safe in every mode, and clarusjs never needs a "server-only" annotation.
 
 ## 8. State
 
@@ -345,7 +345,7 @@ Shared state is plain module state, no store library:
 
 ```ts
 // src/stores/cart.ts
-import { state } from 'clarujs'
+import { state } from 'clarusjs'
 export const cart = state<Item[]>([])
 ```
 
@@ -359,7 +359,7 @@ and props.
 ```mermaid
 flowchart LR
   A[link click] --> Q{target route mode}
-  Q -- static / server --> F["fetch page with header<br/>clarujs-fragment: main"]
+  Q -- static / server --> F["fetch page with header<br/>clarusjs-fragment: main"]
   F --> SW["swap &lt;main&gt; contents"]
   SW --> AT["loader sees new &lt;kv-island&gt;<br/>(MutationObserver) → attach"]
   Q -- client --> RT["client router<br/>(Navigation API, routes compiled to RegExp)"]
@@ -367,7 +367,7 @@ flowchart LR
 ```
 
 - `static` and `server` routes: no client router. The server returns just the
-  fragment when it sees the `clarujs-fragment` header (`Vary` set). Static
+  fragment when it sees the `clarusjs-fragment` header (`Vary` set). Static
   routes get a prebuilt `index.frag.html` beside `index.html` **(later)**.
 - Islands re-attach on their own after a swap. You never write an `onLoad`
   hook. Mark an element `kv-persist` to keep it across swaps **(later)**.
@@ -379,9 +379,9 @@ One plugin. It's a thin adapter around the compiler.
 
 ```mermaid
 flowchart TD
-  subgraph Plugin["clarujs/vite"]
+  subgraph Plugin["clarusjs/vite"]
     T["transform (filter: id /\.kvw$/)<br/>this.environment.config.consumer"]
-    V["virtual modules<br/>virtual:clarujs/server-entry<br/>virtual:clarujs/routes"]
+    V["virtual modules<br/>virtual:clarusjs/server-entry<br/>virtual:clarusjs/routes"]
     D["configureServer<br/>dev middleware → runner.import(server-entry)"]
     B["buildApp<br/>client → server → prerender → manifest"]
     HMR["hotUpdate<br/>(POC: full reload)"]
@@ -390,12 +390,12 @@ flowchart TD
   T -->|consumer = client| CL["attach module (stateful only)"]
 ```
 
-| Hook | What clarujs does |
+| Hook | What clarusjs does |
 |---|---|
 | `transform` | Compile `.kvw`. Server environment gets `render`, client environment gets `attach`. Hook filter means Rolldown never calls into JS for other files |
 | `resolveId`/`load` | Virtual modules: the server entry (route table + handler) and the route list |
 | `configureServer` | Dev: turn the Node request into a `Request`, call the handler loaded via `runner.import()`, so server code gets HMR |
-| `buildApp` | Build client (with `build.manifest`), build server, call the handler for every `static` route, write `clarujs-manifest.json` |
+| `buildApp` | Build client (with `build.manifest`), build server, call the handler for every `static` route, write `clarusjs-manifest.json` |
 | `hotUpdate` | POC: full reload. **(later)** swap the island in place |
 
 Targets Vite 8 (Rolldown). Minimum Vite 6.3 (hook filters). Files are
@@ -415,12 +415,12 @@ sequenceDiagram
   SB-->>V: dist/server/index.js  (export default { fetch })
   V->>P: for each static route: fetch(new Request(url))
   P-->>V: dist/client/**/index.html
-  V->>V: write dist/clarujs-manifest.json
+  V->>V: write dist/clarusjs-manifest.json
 ```
 
 ### 10.2 Route manifest
 
-Plain JSON, one entry per route. This is what `clarujs explain` reads.
+Plain JSON, one entry per route. This is what `clarusjs explain` reads.
 
 ```json
 {
@@ -468,7 +468,7 @@ One code generator, three hosts.
 ```mermaid
 flowchart LR
   KVW[".kvw"] --> GEN["type emitter<br/>(pure: kvw → virtual TS + span mappings)"]
-  GEN --> CLI["clarujs check<br/>writes .clarujs/virtual/*.ts<br/>runs tsc --noEmit<br/>maps errors → file.kvw:line:col"]
+  GEN --> CLI["clarusjs check<br/>writes .clarusjs/virtual/*.ts<br/>runs tsc --noEmit<br/>maps errors → file.kvw:line:col"]
   GEN --> CM["TS 7.1 content mapper<br/>editor hover / completion / errors<br/>(later)"]
   GEN --> VOL["Volar plugin for TS 6 editors<br/>(only if asked)"]
 ```
@@ -486,28 +486,28 @@ Template → virtual TS, Angular-style:
 | `let count = state(0)` | `let count = state(0)` with `state<T>(v: T): T` |
 
 Typed `render('users/show', data)` and `Load<'users/[id]'>` come from a
-generated `.clarujs/views.d.ts` that adds each view to a `ViewRegistry`
+generated `.clarusjs/views.d.ts` that adds each view to a `ViewRegistry`
 interface. Errors TypeScript can't see (unknown component, `(click)` in a
 stateless component) come from the compiler, in the same `file:line:col`
 format.
 
 ## 13. AI agents and humans reading the same things
 
-clarujs is explainable by producing artifacts, not by special AI features:
+clarusjs is explainable by producing artifacts, not by special AI features:
 
 | Artifact | Who reads it |
 |---|---|
 | Readable compiled output in `dist/` | anyone debugging |
-| `clarujs-manifest.json` | tools, CI budgets, agents |
-| `clarujs explain <route> [--json]` | humans (text), agents (JSON) |
-| `clarujs check [--json]` | humans, CI, agents (tsc-style lines) |
+| `clarusjs-manifest.json` | tools, CI budgets, agents |
+| `clarusjs explain <route> [--json]` | humans (text), agents (JSON) |
+| `clarusjs check [--json]` | humans, CI, agents (tsc-style lines) |
 | `docs/architecture.md` (this file) | anyone new |
 | `llms.txt`, MCP server over `check`/`explain` | agents **(later)** |
 
 Example:
 
 ```
-$ clarujs explain /users/42
+$ clarusjs explain /users/42
 /users/[id]  mode: server
   loader     src/pages/users/[id].load.ts — runs per request on the server
   render     src/pages/users/[id].kvw     — runs per request on the server
@@ -521,7 +521,7 @@ $ clarujs explain /users/42
 One npm package to start, with subpath exports. Split later if needed.
 
 ```
-clarujs/
+clarusjs/
   src/
     compiler/   parse.ts check.ts ir.ts emit-server.ts emit-client.ts emit-types.ts
     runtime/    signals.ts dom.ts loader.ts server.ts
@@ -534,14 +534,14 @@ clarujs/
 
 | Export | Contents |
 |---|---|
-| `clarujs/compiler` | `compile()` |
-| `clarujs/runtime` | signals + DOM attach (browser) |
-| `clarujs/runtime/server` | escape, island |
-| `clarujs/vite` | the plugin |
-| `clarujs` | types (`Load`, `ViewRegistry`) and `state` for shared stores |
+| `clarusjs/compiler` | `compile()` |
+| `clarusjs/runtime` | signals + DOM attach (browser) |
+| `clarusjs/runtime/server` | escape, island |
+| `clarusjs/vite` | the plugin |
+| `clarusjs` | types (`Load`, `ViewRegistry`) and `state` for shared stores |
 
 Runtime dependencies: `acorn` (compiler only). Nothing ships to the browser
-except clarujs's own runtime.
+except clarusjs's own runtime.
 
 ## 15. Decisions so far
 
@@ -565,14 +565,14 @@ In: parser (elements, text, `{{ }}`, `@input`, `<script>`, `(click)`,
 emitters, runtime, Vite plugin (dev SSR via `runner.import`), fetch handler,
 one test asserting the page's scripts are exactly loader + counter.
 
-Out (designed for, later): `@if`/`@for`, slots, layouts, `clarujs check`,
+Out (designed for, later): `@if`/`@for`, slots, layouts, `clarusjs check`,
 modes/loaders/SSG, manifest, `explain`, fragments, router, HMR beyond full
 reload, content mapper, MCP.
 
 ## 17. Later stages
 
-1. `@if`/`@for` with block markers, nested islands, state serialization, `clarujs check` + `views.d.ts`.
-2. Route modes, loaders with type contracts, `buildApp` prerender, `clarujs-manifest.json`, `clarujs explain`.
+1. `@if`/`@for` with block markers, nested islands, state serialization, `clarusjs check` + `views.d.ts`.
+2. Route modes, loaders with type contracts, `buildApp` prerender, `clarusjs-manifest.json`, `clarusjs explain`.
 3. Fragment navigation, auto re-attach, `kv-persist`, client router, lazy attach with event replay.
 4. TS 7.1 content mapper (editor support), `llms.txt`, MCP server.
 5. Only if profiling demands: `oxc-parser` or a Rust compiler core.

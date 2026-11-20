@@ -11,7 +11,7 @@ export function escape(value: unknown): string {
 function assertSerializable(value: unknown, path: string): void {
   const t = typeof value
   if (t === 'function' || t === 'symbol' || t === 'bigint') {
-    throw new TypeError(`[clarujs] island prop "${path}" is a ${t}; island props must be JSON-serializable`)
+    throw new TypeError(`[clarusjs] island prop "${path}" is a ${t}; island props must be JSON-serializable`)
   }
   if (value && t === 'object') {
     for (const [k, v] of Object.entries(value)) assertSerializable(v, path ? `${path}.${k}` : k)

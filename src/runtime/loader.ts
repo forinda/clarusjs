@@ -12,7 +12,7 @@ export async function attachAll(
       const mod = await load(el.getAttribute('src')!)
       mod.attach(el, JSON.parse(el.getAttribute('p') ?? '{}'))
     } catch (err) {
-      console.error(`[clarujs] island "${el.getAttribute('c')}" failed to attach`, err)
+      console.error(`[clarusjs] island "${el.getAttribute('c')}" failed to attach`, err)
     }
   })
   await Promise.all(pending)

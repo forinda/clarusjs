@@ -19,7 +19,7 @@ beforeEach(() => { document.body.innerHTML = '' })
 
 test('counter client output is readable and exact', () => {
   expect(compile(fixture('counter.kvw'), { file: 'counter.kvw', target: 'client' }).code).toBe(
-`import { state, derived, holes as __kv_holes, text as __kv_text, on as __kv_on } from 'clarujs/runtime'
+`import { state, derived, holes as __kv_holes, text as __kv_text, on as __kv_on } from 'clarusjs/runtime'
 
 export function attach(__kv_root, __kv_props = {}) {
   const { start = 0 } = __kv_props

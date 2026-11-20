@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { parse } from '../../src/compiler/parse.ts'
-import { ClaruError } from '../../src/compiler/errors.ts'
+import { ClarusError } from '../../src/compiler/errors.ts'
 
 const counter = readFileSync(new URL('../fixtures/counter.kvw', import.meta.url), 'utf8')
 
-function parseError(source: string): ClaruError {
-  try { parse(source, 'x.kvw') } catch (e) { return e as ClaruError }
+function parseError(source: string): ClarusError {
+  try { parse(source, 'x.kvw') } catch (e) { return e as ClarusError }
   throw new Error('expected parse to throw')
 }
 
@@ -59,7 +59,7 @@ test('void elements close themselves', () => {
 
 test('unclosed element reports file:line:col', () => {
   const e = parseError('<p>a</p>\n<div>\n  <span>')
-  expect(e).toBeInstanceOf(ClaruError)
+  expect(e).toBeInstanceOf(ClarusError)
   expect(e.message.startsWith('x.kvw:3:3 ')).toBe(true)
 })
 

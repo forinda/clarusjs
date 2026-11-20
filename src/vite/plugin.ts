@@ -1,24 +1,24 @@
-// The clarujs Vite plugin: a thin adapter around the compiler.
+// The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
 import { relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isRunnableDevEnvironment, type Plugin } from 'vite'
-import { compile, ClaruError } from '../compiler/index.ts'
+import { compile, ClarusError } from '../compiler/index.ts'
 import { sendResponse, toRequest } from './node.ts'
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
-const ENTRY = 'virtual:clarujs/server-entry'
+const ENTRY = 'virtual:clarusjs/server-entry'
 
-export default function clarujs(): Plugin {
+export default function clarusjs(): Plugin {
   let root = process.cwd()
   return {
-    name: 'clarujs',
+    name: 'clarusjs',
     config: () => ({
       appType: 'custom',
       resolve: {
         alias: [
-          { find: 'clarujs/runtime/server', replacement: here('../runtime/server.ts') },
-          { find: 'clarujs/runtime', replacement: here('../runtime/index.ts') },
+          { find: 'clarusjs/runtime/server', replacement: here('../runtime/server.ts') },
+          { find: 'clarusjs/runtime', replacement: here('../runtime/index.ts') },
         ],
       },
     }),
@@ -42,7 +42,7 @@ export default function clarujs(): Plugin {
         try {
           return { code: compile(code, { file, target, clientUrl }).code, map: null }
         } catch (err) {
-          if (err instanceof ClaruError) this.error(err.message)
+          if (err instanceof ClarusError) this.error(err.message)
           throw err
         }
       },

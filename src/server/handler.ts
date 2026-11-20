@@ -20,7 +20,7 @@ export function createHandler(pages: Record<string, () => Promise<PageModule>>):
       const hasIslands = html.includes('<kv-island')
       const scripts = hasIslands ? '<script type="module" src="/kv-loader.js"></script>' : ''
       const style = hasIslands ? '<style>kv-island{display:contents}</style>' : '' // islands never affect layout
-      const body = `<!doctype html><html><head><meta charset="utf-8"><title>clarujs</title>${style}</head><body>${html}${scripts}</body></html>`
+      const body = `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title>${style}</head><body>${html}${scripts}</body></html>`
       return new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     },
   }

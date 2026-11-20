@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 450" width="880" height="450" role="img" aria-labelledby="title desc">
+  <title id="title">The name clarusjs</title>
+  <desc id="desc">The Latin word clarus, meaning clear, bright and plain to see, becomes clarus plus .js. Five inspirations flow into clarusjs: KickJS views (checked templates and fragments), Vue and Angular (template syntax), Svelte (compiler first, signals), Astro (static by default, islands) and htmx with Turbo (server fragments).</desc>
+  <style>
+    :root { --ink: #1f2328; --muted: #59636e; --line: #d0d7de; --accent: #0f7f81; --wash: #e7f5f5; }
+    @media (prefers-color-scheme: dark) {
+      :root { --ink: #e6edf3; --muted: #9198a1; --line: #3d444d; --accent: #4cc9cb; --wash: #0f2a2b; }
+    }
+    .serif { font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif; }
+    .sans { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .ink { fill: var(--ink); }
+    .muted { fill: var(--muted); }
+    .accent { fill: var(--accent); }
+    .rule { stroke: var(--line); stroke-width: 1; fill: none; }
+    .flow { stroke: var(--accent); stroke-width: 1.25; fill: none; opacity: 0.55; }
+    .dot { fill: var(--accent); }
+    .eyebrow { font-size: 11px; letter-spacing: 0.18em; }
+  </style>
+
+  <!-- Derivation: clārus → clarus + .js -->
+  <text x="60" y="58" class="sans muted eyebrow">LATIN · ADJECTIVE</text>
+  <text x="56" y="122" class="serif ink" font-size="64" font-style="italic">clārus</text>
+  <text x="60" y="156" class="serif muted" font-size="17" font-style="italic">clear · bright · plain to see</text>
+
+  <path d="M 330 100 H 418" class="rule" stroke-width="1.25"/>
+  <path d="M 410 94 L 420 100 L 410 106" class="rule" stroke-width="1.25"/>
+
+  <text x="456" y="58" class="sans muted eyebrow">THE FRAMEWORK</text>
+  <text x="452" y="122" class="sans ink" font-size="60" font-weight="600" letter-spacing="-1">clarus<tspan class="accent" font-weight="400">.js</tspan></text>
+  <text x="456" y="156" class="serif muted" font-size="17" font-style="italic">clear to read · clear where it runs</text>
+
+  <path d="M 60 196 H 820" class="rule"/>
+
+  <!-- Inspirations -->
+  <text x="440" y="228" class="sans muted eyebrow" text-anchor="middle">DRAWN FROM</text>
+
+  <g class="sans" text-anchor="middle">
+    <circle cx="106" cy="262" r="3.5" class="dot"/>
+    <text x="106" y="286" class="ink" font-size="15" font-weight="600">KickJS views</text>
+    <text x="106" y="304" class="muted" font-size="12">checked templates, fragments</text>
+
+    <circle cx="268" cy="262" r="3.5" class="dot"/>
+    <text x="268" y="286" class="ink" font-size="15" font-weight="600">Vue · Angular</text>
+    <text x="268" y="304" class="muted" font-size="12">familiar template syntax</text>
+
+    <circle cx="440" cy="262" r="3.5" class="dot"/>
+    <text x="440" y="286" class="ink" font-size="15" font-weight="600">Svelte</text>
+    <text x="440" y="304" class="muted" font-size="12">compiler first, signals</text>
+
+    <circle cx="612" cy="262" r="3.5" class="dot"/>
+    <text x="612" y="286" class="ink" font-size="15" font-weight="600">Astro</text>
+    <text x="612" y="304" class="muted" font-size="12">static by default, islands</text>
+
+    <circle cx="774" cy="262" r="3.5" class="dot"/>
+    <text x="774" y="286" class="ink" font-size="15" font-weight="600">htmx · Turbo</text>
+    <text x="774" y="304" class="muted" font-size="12">server fragments</text>
+  </g>
+
+  <path d="M 106 314 C 106 352, 440 330, 440 362" class="flow"/>
+  <path d="M 268 314 C 268 348, 440 336, 440 362" class="flow"/>
+  <path d="M 440 314 V 362" class="flow"/>
+  <path d="M 612 314 C 612 348, 440 336, 440 362" class="flow"/>
+  <path d="M 774 314 C 774 352, 440 330, 440 362" class="flow"/>
+
+  <rect x="368" y="362" width="144" height="40" rx="20" fill="var(--wash)" stroke="var(--accent)" stroke-width="1.25"/>
+  <text x="440" y="388" class="sans ink" font-size="17" font-weight="600" text-anchor="middle">clarus<tspan class="accent" font-weight="400">.js</tspan></text>
+
+  <text x="440" y="428" class="serif muted" font-size="14" font-style="italic" text-anchor="middle">one template language · HTML first · JavaScript only where it is interactive</text>
+</svg>
