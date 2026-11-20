@@ -53,16 +53,6 @@ export default defineConfig({ plugins: [clarusjs()] })
 - `vite build` writes a static site to `dist/client/`: one HTML file per page, plus JavaScript only for components
   with a `<script>` (the counter above). The `<h1>` ships no JavaScript at all.
 
-## Exports
-
-| Import | What |
-|---|---|
-| `clarusjs/vite` | the Vite plugin |
-| `clarusjs/compiler` | `compile()`, for tools |
-| `clarusjs/runtime` | browser runtime used by compiled components (signals, attach) |
-| `clarusjs/runtime/server` | server helpers used by compiled components |
-| `clarusjs/server` | `createHandler()`, the `fetch(Request)` handler |
-
 ## Links
 
 - Repository and design: [github.com/forinda/clarusjs](https://github.com/forinda/clarusjs)

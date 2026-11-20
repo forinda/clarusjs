@@ -55,16 +55,6 @@ pnpm test       # compiler, runtime and an end-to-end test against a real Vite d
 pnpm dev        # serves examples/counter
 ```
 
-## What to look at
-
-- **`packages/clarusjs`**: the framework (compiler, runtime, Vite plugin). **`examples/counter/src`**: one page, one stateless component (`greeting`), one stateful component (`counter`).
-- **View source** in the browser: the `<h1>` and greeting are plain HTML with no markers. Each counter is a
-  `<cl-island c src p>` with `<!--[n-->…<!--]-->` around its reactive text only.
-- **Network tab**: the page loads `cl-loader.js`, which fetches `counter.clarus?import` (the counter's `attach` function)
-  and the clarusjs runtime. No JS for the page or the greeting. (`/@vite/client` is Vite's dev-only HMR client.)
-- **Compiled output**: `GET /src/components/counter.clarus?import` in the dev server shows the client module.
-  The server module has the same shape with `render()`; see `packages/clarusjs/test/compiler/emit-server.test.ts`.
-
 ## Docs
 
 The docs site lives in [`packages/docs`](packages/docs) and is built with clarusjs itself. Run it with `pnpm docs:dev`.
