@@ -13,6 +13,9 @@ function assertSerializable(value: unknown, path: string): void {
   if (t === 'function' || t === 'symbol' || t === 'bigint') {
     throw new TypeError(`[clarusjs] island prop "${path}" is a ${t}; island props must be JSON-serializable`)
   }
+  if (t === 'number' && !Number.isFinite(value)) {
+    throw new TypeError(`[clarusjs] island prop "${path}" is ${value}; island props must be JSON-serializable`)
+  }
   if (value && t === 'object') {
     for (const [k, v] of Object.entries(value)) assertSerializable(v, path ? `${path}.${k}` : k)
   }

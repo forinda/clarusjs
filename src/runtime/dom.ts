@@ -39,10 +39,32 @@ export function text(hole: Hole, fn: () => unknown): void {
   })
 }
 
-/** Delegated listener on the island root for elements marked `data-cl-e="index"` that belong to this island. */
+type Handlers = Map<number, ((e: Event) => void)[]>
+const registry = new WeakMap<Element, Map<string, Handlers>>()
+// These don't bubble, so they are caught on the way down instead.
+const CAPTURE = new Set(['focus', 'blur'])
+
+/**
+ * Register a handler for elements marked `data-cl-e="index"` inside this island.
+ * One listener per island per event type; it walks from the target up to the island root, running handlers
+ * innermost first and stopping when one calls `stopPropagation()`.
+ */
 export function on(root: Element, index: number, type: string, fn: (e: Event) => void): void {
-  root.addEventListener(type, (e) => {
-    const el = (e.target as Element | null)?.closest?.(`[data-cl-e="${index}"]`)
-    if (el && el.closest('cl-island') === root) fn(e)
-  })
+  let types = registry.get(root)
+  if (!types) registry.set(root, (types = new Map()))
+  let handlers = types.get(type)
+  if (!handlers) {
+    const own = (handlers = new Map())
+    types.set(type, own)
+    root.addEventListener(type, (e) => {
+      for (let el = e.target as Element | null; el && el !== root.parentElement; el = el.parentElement) {
+        const i = el.getAttribute?.('data-cl-e')
+        if (i === null || i === undefined || el.closest('cl-island') !== root) continue
+        for (const h of own.get(Number(i)) ?? []) h(e)
+        if (e.cancelBubble) break
+      }
+    }, CAPTURE.has(type))
+  }
+  if (!handlers.has(index)) handlers.set(index, [])
+  handlers.get(index)!.push(fn)
 }

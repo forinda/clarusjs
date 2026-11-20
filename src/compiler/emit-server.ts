@@ -1,6 +1,6 @@
 // IR → server module: `render(props) → string`. Runs at build time or per request.
 import type { ComponentIR } from './ir.ts'
-import { rewriteServer } from './script.ts'
+import { rewriteServer, wrapExpr } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitServer(ir: ComponentIR, clientUrl: string): string {
@@ -11,10 +11,10 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
   const parts = ir.nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
     if (n.kind === 'component') {
-      const props = n.props.map((p) => `${p.name}: ${p.expr}`).join(', ')
+      const props = n.props.map((p) => `${p.name}: ${wrapExpr(p.expr)}`).join(', ')
       return `${renderName(n.name)}({ ${props} })`
     }
-    const value = `__cl_escape(${n.expr})`
+    const value = `__cl_escape(${wrapExpr(n.expr)})`
     return n.reactive ? `"<!--[${n.index}-->" + ${value} + "<!--]-->"` : value
   })
   const html = parts.length ? parts.join(' + ') : '""'

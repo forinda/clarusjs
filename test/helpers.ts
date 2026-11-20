@@ -13,7 +13,7 @@ export async function importCode(code: string, name: string, deps: Record<string
   for (const [path, depCode] of Object.entries(deps)) {
     const depFile = `${id}-dep-${counter++}.mjs`
     writeFileSync(TMP + depFile, depCode)
-    code = code.split(`'${path}'`).join(`'./${depFile}'`)
+    code = code.split(`from '${path}'`).join(`from './${depFile}'`) // only module specifiers
   }
   writeFileSync(`${TMP}${id}.mjs`, code)
   return import(/* @vite-ignore */ `${TMP}${id}.mjs`)

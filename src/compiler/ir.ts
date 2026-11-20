@@ -41,11 +41,17 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     else nodes.push({ kind: 'static', html })
   }
 
-  function visit(node: TemplateNode): void {
+  for (const input of parsed.inputs) if (input.default !== undefined) checkExpr(input.default, file, source, input.start)
+
+  // Elements whose content is raw text: comment markers inside them would be literal text, not Comment nodes.
+  const RAW_TEXT = new Set(['textarea', 'title', 'style'])
+
+  function visit(node: TemplateNode, rawText?: string): void {
     if (node.type === 'text') return emitStatic(node.value)
     if (node.type === 'expr') {
       checkExpr(node.expr, file, source, node.start)
       const reactive = referencesNames(node.expr, scriptScope)
+      if (reactive && rawText) fail(`reactive {{ }} inside <${rawText}> is not supported yet (it cannot hold update markers)`, node.start)
       nodes.push({ kind: 'hole', expr: node.expr, reactive, index: reactive ? holeCount++ : -1 })
       return
     }
@@ -74,11 +80,11 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       for (const a of elementEvents) events.push({ index, type: a.name, handler: a.kind === 'event' ? a.expr : '' })
     }
     emitStatic(open + '>')
-    node.children.forEach(visit)
+    node.children.forEach((child) => visit(child, RAW_TEXT.has(node.tag) ? node.tag : rawText))
     if (!VOID.has(node.tag)) emitStatic(`</${node.tag}>`)
   }
 
-  parsed.nodes.forEach(visit)
+  parsed.nodes.forEach((n) => visit(n))
   return {
     file,
     name: file.split('/').pop()!.replace(/\.clarus$/, ''),

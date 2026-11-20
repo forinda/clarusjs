@@ -1,6 +1,6 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
-import { relative } from 'node:path'
+import { isAbsolute, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isRunnableDevEnvironment, type Plugin } from 'vite'
 import { compile, ClarusError } from '../compiler/index.ts'
@@ -8,6 +8,12 @@ import { sendResponse, toRequest } from './node.ts'
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 const ENTRY = 'virtual:clarusjs/server-entry'
+
+/** Dev URL of a component's client module: root-relative, or Vite's /@fs/ form for files outside the root. */
+export function clientUrlFor(root: string, file: string): string {
+  const rel = relative(root, file)
+  return rel.startsWith('..') || isAbsolute(rel) ? `/@fs${file}?import` : `/${rel}?import`
+}
 
 export default function clarusjs(): Plugin {
   let root = process.cwd()
@@ -38,7 +44,7 @@ export default function clarusjs(): Plugin {
         const file = id.replace(/\?.*$/, '')
         const target = this.environment.config.consumer === 'server' ? 'server' : 'client'
         // ponytail: ?import makes Vite's dev transform middleware serve .clarus as JS for the loader's dynamic import; build output uses hashed chunk URLs from the client manifest (stage 3)
-        const clientUrl = '/' + relative(root, file) + '?import'
+        const clientUrl = clientUrlFor(root, file)
         try {
           return { code: compile(code, { file, target, clientUrl }).code, map: null }
         } catch (err) {

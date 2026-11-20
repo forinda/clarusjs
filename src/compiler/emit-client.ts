@@ -1,6 +1,6 @@
 // IR → client module: `attach(root, props)`. Runs in the browser, only for stateful components.
 import type { ComponentIR } from './ir.ts'
-import { rewriteClient, rewriteClientExpr } from './script.ts'
+import { rewriteClient, rewriteClientExpr, wrapExpr } from './script.ts'
 import { indentScript, inputsLine } from './shared.ts'
 
 export function emitClient(ir: ComponentIR): string {
@@ -23,10 +23,12 @@ export function emitClient(ir: ComponentIR): string {
   const wiring: string[] = []
   if (reactive.length) wiring.push('const __cl_h = __cl_holes(__cl_root)')
   for (const h of [...reactive].sort((a, b) => a.index - b.index)) {
-    wiring.push(`__cl_text(__cl_h[${h.index}], () => ${rewriteClientExpr(h.expr, ir.signals)})`)
+    wiring.push(`__cl_text(__cl_h[${h.index}], () => ${wrapExpr(rewriteClientExpr(h.expr, ir.signals))})`)
   }
   for (const e of ir.events) {
-    wiring.push(`__cl_on(__cl_root, ${e.index}, ${JSON.stringify(e.type)}, ($event) => { ${rewriteClient(e.handler, ir.signals).trim()} })`)
+    const body = rewriteClient(e.handler, ir.signals).trim()
+    const end = body.includes('//') ? '\n  ' : ' ' // a trailing line comment must not swallow the closing `})`
+    wiring.push(`__cl_on(__cl_root, ${e.index}, ${JSON.stringify(e.type)}, ($event) => { ${body}${end}})`)
   }
   if (wiring.length) out += '\n' + wiring.map((l) => `  ${l}\n`).join('')
   return out + '}\n'

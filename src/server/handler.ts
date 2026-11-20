@@ -14,14 +14,15 @@ export function createHandler(pages: Record<string, () => Promise<PageModule>>):
     async fetch(request) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 })
       const load = routes.get(new URL(request.url).pathname)
-      if (!load) return new Response('Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+      const head = request.method === 'HEAD'
+      if (!load) return new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
       const html = (await load()).render({})
       // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
-      const hasIslands = html.includes('<cl-island')
+      const hasIslands = html.replace(/<!--[\s\S]*?-->/g, '').includes('<cl-island ')
       const scripts = hasIslands ? '<script type="module" src="/cl-loader.js"></script>' : ''
       const style = hasIslands ? '<style>cl-island{display:contents}</style>' : '' // islands never affect layout
       const body = `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title>${style}</head><body>${html}${scripts}</body></html>`
-      return new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
+      return new Response(head ? null : body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     },
   }
 }

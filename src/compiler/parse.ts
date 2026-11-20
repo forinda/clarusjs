@@ -68,6 +68,32 @@ export function parse(source: string, file: string): ParsedFile {
     }
   }
 
+  // Find the `}}` that closes a hole, skipping strings, template literals and nested brackets.
+  // ponytail: regex literals containing quotes or braces are not recognised; tokenise with acorn if that ever bites
+  function holeEnd(from: number): number {
+    const stack: string[] = []
+    for (let j = from; j < source.length; j++) {
+      const c = source[j]!
+      const top = stack[stack.length - 1]
+      if (top === '`') {
+        if (c === '\\') j++
+        else if (c === '`') stack.pop()
+        else if (c === '$' && source[j + 1] === '{') { stack.push('${'); j++ }
+        continue
+      }
+      if (c === '"' || c === "'") {
+        for (j++; j < source.length && source[j] !== c; j++) if (source[j] === '\\') j++
+      } else if (c === '`') stack.push('`')
+      else if (c === '(' || c === '[' || c === '{') stack.push(c)
+      else if (c === ')' || c === ']') stack.pop()
+      else if (c === '}') {
+        if (!stack.length && source[j + 1] === '}') return j
+        stack.pop()
+      }
+    }
+    return -1
+  }
+
   // Parse children until `</parent>` (or end of input at top level).
   function children(parent?: { tag: string; start: number }): TemplateNode[] {
     const nodes: TemplateNode[] = []
@@ -90,7 +116,7 @@ export function parse(source: string, file: string): ParsedFile {
       } else if (!parent && source[i] === '@' && atLineStart(i)) {
         flush(); directive(); textStart = i
       } else if (source.startsWith('{{', i)) {
-        const end = source.indexOf('}}', i + 2)
+        const end = holeEnd(i + 2)
         if (end === -1) fail('unclosed {{', i)
         flush()
         nodes.push({ type: 'expr', expr: source.slice(i + 2, end).trim(), start: i })
