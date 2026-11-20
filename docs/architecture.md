@@ -255,6 +255,11 @@ selects a fragment, so it works on static hosts and caches like any file.
 |---|---|
 | `data-cl-swap` | the region a fragment replaces (one per page); without it, the body |
 | `<path>/index.frag.html` | `<title>…</title>` + the swap region's HTML |
+| `data-cl-persist="key"` | an element kept across swaps: the one already on the page moves into the new region, in place of the new page's element with the same key |
+
+Each static and server page loads the navigation script (`cl-nav`), which
+brings the island loader. It intercepts same-site navigations with the
+Navigation API, swaps the fragment in and calls the loader's attach hook.
 
 ## 6. The runtime
 

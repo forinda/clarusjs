@@ -147,3 +147,11 @@ test('#35: with fragments on, static pages get index.frag.html; the manifest lea
   const { default: handler } = await import(`${pathToFileURL(resolve(root, 'dist/server/index.mjs')).href}?t=${Date.now()}`)
   expect(await (await handler.fetch(new Request('http://x/account/7/index.frag.html'))).text()).toContain('<h1>Account 7</h1>')
 })
+
+test('#36: with fragments on, static pages load the navigation script, which stays within 1 KB gzip', async () => {
+  const { gzipSync } = await import('node:zlib')
+  const html = readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')
+  const nav = /<script type="module" src="(\/assets\/cl-nav-[^"]+)"><\/script>/.exec(html)?.[1]
+  expect(nav).toBeDefined()
+  expect(gzipSync(readFileSync(resolve(root, 'dist/client', nav!.slice(1))), { level: 9 }).length).toBeLessThanOrEqual(1024)
+})

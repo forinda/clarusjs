@@ -35,3 +35,12 @@ test('prerendering writes each static page fragment next to it', async () => {
   expect(routeToFile('/index.frag.html')).toBe('index.frag.html')
   expect(routeToFile('/guide/x/index.frag.html')).toBe('guide/x/index.frag.html')
 })
+
+test('#36: with fragments on, every static and server page loads the navigation script and the island style', async () => {
+  const h = createHandler({ '/src/pages/index.tscl': page(doc('<h1>Home</h1>')) }, { fragments: true, navUrl: '/nav.js' })
+  const html = await (await h.fetch(new Request('http://x/'))).text()
+  expect(html).toContain('<script type="module" src="/nav.js"></script>')
+  expect(html).toContain('<style>cl-island{display:contents}</style>')
+  const off = await (await createHandler({ '/src/pages/index.tscl': page(doc('<h1>Home</h1>')) }).fetch(new Request('http://x/'))).text()
+  expect(off).not.toContain('<script')
+})
