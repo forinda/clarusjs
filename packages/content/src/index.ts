@@ -179,6 +179,8 @@ function renderer(options: MarkdownOptions): Md {
       const id = n ? `${base}-${n}` : base
       token.attrSet('id', id)
       token.attrSet('tabindex', '-1')
+      // The page title keeps its id, but no anchor link: it would only repeat the heading for screen readers.
+      if (token.tag === 'h1') return
       const anchor = new state.Token('html_inline', '', 0)
       anchor.content = ` <a class="header-anchor" href="#${id}" aria-label="Permalink to ${escapeHtml(text)}">#</a>`
       inline.children = [...(inline.children ?? []), anchor]
