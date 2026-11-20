@@ -5,7 +5,7 @@
 <docs [title]="'Styles'" [path]="'/guide/styles'" [description]="'Give components their own CSS with a style block scoped with native @scope, and import stylesheets that go through Vite.'">
   <h1>Styles</h1>
   <p class="lead">A component can bring its own CSS in a <code>&lt;style&gt;</code> block. It is scoped to the component, so its rules don't reach the rest of the page.</p>
-  <div class="sample"><pre><code verbatim>{{-- components/card.tscl --}}
+  <div class="sample"><pre tabindex="0"><code verbatim>{{-- components/card.tscl --}}
 <section class="card">
   <h2><slot name="title" /></h2>
   <slot />
@@ -26,13 +26,13 @@
 
   <h2>Global styles</h2>
   <p>Add <code>global</code> to write CSS that isn't scoped, such as custom properties for the whole site.</p>
-  <div class="sample"><pre><code verbatim><style global>
+  <div class="sample"><pre tabindex="0"><code verbatim><style global>
   :root { --accent: #0b6e70; }
 </style></code></pre><copy attach="interaction" /></div>
 
   <h2>Values from the template</h2>
   <p>A <code>&lt;style&gt;</code> block is plain CSS: <code verbatim>{{ }}</code> holes aren't allowed in it. Pass values as CSS custom properties instead.</p>
-  <div class="sample"><pre><code verbatim><div class="bar" style="--width: {{ percent }}%"></div>
+  <div class="sample"><pre tabindex="0"><code verbatim><div class="bar" style="--width: {{ percent }}%"></div>
 
 <style>
   .bar { width: var(--width); }
@@ -40,7 +40,7 @@
 
   <h2>Dark mode without a flash</h2>
   <p>A saved theme has to be on the page before it is first drawn, or visitors see the wrong colours for a moment. Put a small <code>&lt;script inline&gt;</code> at the top of your layout's <code>&lt;head&gt;</code>: it is written into the page as is and runs before anything is shown. This site does exactly that.</p>
-  <div class="sample"><pre><code verbatim><head>
+  <div class="sample"><pre tabindex="0"><code verbatim><head>
   <script inline>
     try {
       const t = localStorage.getItem('theme')
@@ -53,7 +53,7 @@
 
   <h2>Stylesheets</h2>
   <p>Import a CSS file with <code>@import</code> and no name. It goes through Vite's CSS pipeline (PostCSS or Lightning CSS, minified and hashed), and every page that uses the component links it.</p>
-  <div class="sample"><pre><code verbatim>{{-- layouts/docs.tscl --}}
+  <div class="sample"><pre tabindex="0"><code verbatim>{{-- layouts/docs.tscl --}}
 @import '../styles/docs.css'</code></pre><copy attach="interaction" /></div>
   <p>Each page links exactly the stylesheets it imports, directly or through its components, in import order with a layout's before the page's own. This site's whole stylesheet is imported that way, by its layout.</p>
 

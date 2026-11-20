@@ -45,6 +45,9 @@ export const sections: Section[] = [
         { title: 'This site, explained', href: '/guide/explained' },
         { title: 'Server playground', href: '/playground' },
       ] },
+      { title: 'Site quality', items: [
+        { title: 'Accessibility', href: '/guide/accessibility' },
+      ] },
       { title: 'Tooling', items: [
         { title: 'Type checking', href: '/guide/type-checking' },
       ] },
@@ -118,6 +121,7 @@ const MARKDOWN = new Set([
   '/guide/lazy-attach',
   '/guide/lists',
   '/guide/markdown',
+  '/guide/accessibility',
   '/guide/project-structure',
   '/guide/rendering-modes',
   '/guide/routing',

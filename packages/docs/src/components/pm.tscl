@@ -23,6 +23,6 @@
   <div class="pm-tabs" role="tablist" aria-label="Package manager">
     @for (m of managers; track m) {<button type="button" role="tab" [aria-selected]="manager === m ? 'true' : 'false'" (click)="pick(m)">{{ m }}</button>}
   </div>
-  <pre><code>{{ commands.map((c) => command(manager, c)).join('\n') }}</code></pre>
+  <pre tabindex="0"><code>{{ commands.map((c) => command(manager, c)).join('\n') }}</code></pre>
   <copy attach="interaction" />
 </div>

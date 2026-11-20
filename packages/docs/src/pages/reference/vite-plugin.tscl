@@ -3,13 +3,13 @@
 
 <docs [title]="'Vite plugin'" [path]="'/reference/vite-plugin'" [description]="'The clarusjs Vite plugin: its routes option, and what it does in dev, build and preview.'">
   <h1>Vite plugin</h1>
-  <div class="sample"><pre><code verbatim>import clarusjs from 'clarusjs/vite'
+  <div class="sample"><pre tabindex="0"><code verbatim>import clarusjs from 'clarusjs/vite'
 
 export default defineConfig({ plugins: [clarusjs()] })</code></pre><copy attach="interaction" /></div>
   <h2>routes</h2>
   <p><strong>Type:</strong> <code>Record&lt;string, 'static' | 'server' | 'client'&gt;</code> · <strong>Default:</strong> <code>{}</code> (every route is static)</p>
   <p>When each route renders. Keys are paths (<code>/about</code>) or folders (<code>/account/*</code>, which also matches <code>/account</code>); the most specific one wins. An unknown mode, or a pattern that doesn't start with <code>/</code>, stops the build. See <a href="/guide/rendering-modes">Rendering modes</a>.</p>
-  <div class="sample"><pre><code verbatim>clarusjs({ routes: { '/account/*': 'server' } })</code></pre><copy attach="interaction" /></div>
+  <div class="sample"><pre tabindex="0"><code verbatim>clarusjs({ routes: { '/account/*': 'server' } })</code></pre><copy attach="interaction" /></div>
   <h2>adapter</h2>
   <p><strong>Type:</strong> <code>'netlify'</code> · <strong>Default:</strong> none</p>
   <p>Where server routes deploy. With <code>'netlify'</code>, <code>vite build</code> writes <code>.netlify/v1/functions/clarusjs-server.mjs</code> (Netlify's Frameworks API, read from the site's package directory: in a monorepo, set Netlify's package directory to the folder with <code>vite.config.ts</code>, and don't also set <code>base</code> to it): a function that calls <code>dist/server/index.mjs</code> for the server routes' paths, with static files served first. With no server routes, no function is written.</p>
@@ -25,7 +25,7 @@ export default defineConfig({ plugins: [clarusjs()] })</code></pre><copy attach=
   <p>A page adds its own tags anywhere in its template with <code>&lt;cl-head&gt;…&lt;/cl-head&gt;</code>: they move into the <code>&lt;head&gt;</code> and win over the site's. A <code>&lt;title&gt;</code> there is used as written, without the template. For anything else, export <code>transformHead(head, page)</code> from <code>src/head.ts</code>: it gets the head's HTML and <code>{{ '{' }} route, path {{ '}' }}</code>, and returns the new HTML.</p>
   <p><code>jsonLd</code> (an object or a list) adds schema.org structured data to every page, one <code>&lt;script type="application/ld+json"&gt;</code> each. In a template, a JSON-LD script takes one <code>{{ '{{' }} {{ '}}' }}</code> hole with the whole value, written as JSON (safe inside the script, never HTML-escaped): <code>&lt;script type="application/ld+json"&gt;{{ '{{' }} {{ '{' }} '@type': 'Article', headline: title {{ '}' }} {{ '}}' }}&lt;/script&gt;</code>. Components with a <code>&lt;script&gt;</code> can't have one: JSON-LD is rendered on the server.</p>
   <p>Analytics such as Google's gtag are site tags too. A script's content is written as given, and boolean attributes are <code>true</code>:</p>
-  <pre verbatim><code verbatim>clarusjs({
+  <pre verbatim tabindex="0"><code verbatim>clarusjs({
   head: {
     tags: [
       ['script', { async: true, src: 'https://www.googletagmanager.com/gtag/js?id=G-XXXX' }, ''],

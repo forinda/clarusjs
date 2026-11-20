@@ -5,7 +5,7 @@
   <h1>CLI</h1>
   <h2>clarusjs check</h2>
   <p>Type-checks every <code>.tscl</code> file under <code>src/</code>, and the TypeScript they use, with your project's TypeScript. Errors are reported at <code>file.tscl:line:col</code>.</p>
-  <div class="sample"><pre><code verbatim>clarusjs check [dir] [--json]</code></pre><copy attach="interaction" /></div>
+  <div class="sample"><pre tabindex="0"><code verbatim>clarusjs check [dir] [--json]</code></pre><copy attach="interaction" /></div>
   <table>
     <thead><tr><th>Option</th><th>Meaning</th></tr></thead>
     <tbody>
@@ -17,7 +17,7 @@
 
   <h2>clarusjs explain</h2>
   <p>Explains where each part of a built route runs: how it was rendered, its data, its islands and when they attach, and the JavaScript and CSS it ships. Reads <code>dist/clarusjs-manifest.json</code>, so run <code>vite build</code> first.</p>
-  <div class="sample"><pre><code verbatim>clarusjs explain [route] [--root dir] [--json]</code></pre><copy attach="interaction" /></div>
+  <div class="sample"><pre tabindex="0"><code verbatim>clarusjs explain [route] [--root dir] [--json]</code></pre><copy attach="interaction" /></div>
   <table>
     <thead><tr><th>Option</th><th>Meaning</th></tr></thead>
     <tbody>
@@ -26,7 +26,7 @@
       <tr><td><code>--json</code></td><td>print the route's manifest entry as JSON</td></tr>
     </tbody>
   </table>
-  <pre verbatim><code>$ clarusjs explain /guide/state
+  <pre verbatim tabindex="0"><code>$ clarusjs explain /guide/state
 /guide/state
   Rendered    at build time, to dist/client/guide/state/index.html
   Data        no loader
