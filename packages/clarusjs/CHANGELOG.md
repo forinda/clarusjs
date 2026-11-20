@@ -1,5 +1,25 @@
 # clarusjs
 
+## 0.5.0
+
+### Minor Changes
+
+- [#103](https://github.com/forinda/clarusjs/pull/103) [`a1ae98a`](https://github.com/forinda/clarusjs/commit/a1ae98aafbf13bc9a367a04a75c7c04d926cd10a) Thanks [@forinda](https://github.com/forinda)! - Client routes: `routes: { '/app/*': 'client' }`. A client route is answered with a shell (the island loader, a router under 1 KB gzip and a table of the client routes); the router loads the page's render module and its `<path>/__data.json` (params plus `load()`, written at build, served by the handler in dev and on a server), renders the page in the browser and attaches its islands. Navigations between client routes go through the Navigation API without reloads; browsers without it load pages normally, and a page that fails to render falls back to a normal load. The manifest and `clarusjs explain` show client routes. Also fixes nested components in browser render modules: a `?render` module now imports its child components as render modules too.
+
+- [#88](https://github.com/forinda/clarusjs/pull/88) [`a003443`](https://github.com/forinda/clarusjs/commit/a00344314c132d7caad2cd737873e48e16e404f3) Thanks [@forinda](https://github.com/forinda)! - Dynamic routes: `src/pages/users/[id].tscl` renders `/users/<anything>`, with each `[param]` passed to the page as a string input. Static routes win over dynamic ones. A static build lists a dynamic route's pages with `entries()` exported from `[id].load.ts`; a dynamic route without it, or an entry value that is empty, `.`, `..` or contains `/`, fails the build naming the file.
+
+- [#101](https://github.com/forinda/clarusjs/pull/101) [`23aa505`](https://github.com/forinda/clarusjs/commit/23aa5052a590d0f1cb13858536e36fa20e91c642) Thanks [@forinda](https://github.com/forinda)! - `adapter: 'netlify'`: `vite build` writes a Netlify Function (`.netlify/v1/functions/clarusjs-server.mjs`, Frameworks API) that runs the same `fetch` handler for server routes only, with their paths in URLPattern syntax and static files served first. No server routes, no function. An unknown adapter is a config error.
+
+- [#91](https://github.com/forinda/clarusjs/pull/91) [`956ddb9`](https://github.com/forinda/clarusjs/commit/956ddb99b059ffc5eeca0842021dee496761653e) Thanks [@forinda](https://github.com/forinda)! - Per-route rendering modes: `clarusjs({ routes: { '/account/*': 'server' } })`. Static routes (the default) are prerendered; server routes are left out of prerendering (a dynamic one needs no `entries()`) and render per request from `dist/server/index.mjs`, with `load()` getting the visitor's request. The most specific pattern wins; an unknown mode or a malformed pattern is a config error. `vite preview` serves server routes through the built handler, and the route manifest and `clarusjs explain` show each route's mode.
+
+- [#89](https://github.com/forinda/clarusjs/pull/89) [`b9cbda3`](https://github.com/forinda/clarusjs/commit/b9cbda3440ddec1ab417737c111525fde3cb0b3c) Thanks [@forinda](https://github.com/forinda)! - Typed loaders: a page's `.load.ts` can export `load({ params, request })`. It runs on the server (at build time for prerendered pages, never in the browser), and what it returns is merged into the page's inputs. `clarusjs check` checks the returned value against the page's `@input` types. A loader that throws or returns a non-object answers 500 with no internal details and logs the error (at build, the build fails naming the loader). The route manifest and `clarusjs explain` show which pages ran a loader.
+
+- [#104](https://github.com/forinda/clarusjs/pull/104) [`41bc58e`](https://github.com/forinda/clarusjs/commit/41bc58e4cae6377eb901643b131d1df76106ddb2) Thanks [@forinda](https://github.com/forinda)! - `render(name, props)` from `clarusjs/views`: render any view under `src/` to HTML from server code (a loader, a script importing the built server), by its path without the extension (`render('components/pill', { text })`). The server entry registers every view, and `dist/server/index.mjs` exports `render` too. `clarusjs check` writes `.clarusjs/views.d.ts`, a registry of each view's inputs, so an unknown name or a wrong prop is a type error; add it to your tsconfig's `include` for editor types.
+
+### Patch Changes
+
+- [#88](https://github.com/forinda/clarusjs/pull/88) [`93d60ba`](https://github.com/forinda/clarusjs/commit/93d60ba1a1352d9ec8244eb5fc675fde4c411e83) Thanks [@forinda](https://github.com/forinda)! - README: the logo's alt text is just "clarusjs logo".
+
 ## 0.4.0
 
 ### Minor Changes
