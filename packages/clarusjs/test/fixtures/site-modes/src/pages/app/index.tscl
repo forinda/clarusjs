@@ -1,1 +1,2 @@
-<html><head><title>App home</title></head><body><h1>App</h1><a href="/app/one">One</a></body></html>
+@import tag from '../../components/[tag].tscl'
+<html lang="en"><head><title>App home</title></head><body><h1>App</h1><a href="/app/one">One</a><tag /></body></html>

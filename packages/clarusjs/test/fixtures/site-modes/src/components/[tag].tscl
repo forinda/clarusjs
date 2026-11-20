@@ -1,0 +1,4 @@
+<script>
+  let n = state(0)
+</script>
+<button class="tag" (click)="n++">tag {{ n }}</button>

@@ -423,10 +423,15 @@ test('client tour: rendered in the browser, navigated without reloads, islands a
   expect(documents).toEqual(['/tour/1']) // one document request: the first shell
   await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
 
-  // Leaving the client routes is a normal page load.
-  await page.click('nav.tour a.prev')
-  await page.goto('/tour/3')
+  // Leaving the client routes is a normal page load: step 3's last link goes back to the guide.
+  await page.click('nav.tour a.next')
   await expect(page.locator('h1')).toHaveText('No reload')
+  await page.click('nav.tour a.next')
+  await expect(page).toHaveURL(/\/guide\/client-routes\/?$/)
+  await expect(page.locator('h1')).toHaveText('Client routes')
+  expect(documents).toEqual(['/tour/1', '/guide/client-routes'])
+  // A step that doesn't exist is a 404, as on any static host.
+  expect((await page.goto('/tour/4'))?.status()).toBe(404)
 })
 
 test('client tour without JavaScript shows the shell message', async ({ browser }) => {

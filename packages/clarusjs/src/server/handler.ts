@@ -75,6 +75,20 @@ export function createHandler(
     return null
   }
 
+  // entries() per route, asked once. Without entries() a route isn't restricted here (the build reports it).
+  const listedCache = new Map<Route, Promise<Params[] | null>>()
+  async function listed(route: Route, params: Params): Promise<boolean> {
+    if (!listedCache.has(route)) {
+      const file = `/${route.file.replace(/\.tscl$/, '.load.ts')}`
+      listedCache.set(route, (async () => {
+        const mod = data[file] ? await data[file]!() : undefined
+        return mod?.entries ? await mod.entries() : null
+      })())
+    }
+    const list = await listedCache.get(route)!
+    return !list || list.some((entry) => route.keys.every((key) => entry[key] === params[key]))
+  }
+
   return {
     routes: routes.map((r) => r.path).sort(),
     /** Routes rendered per request ('server' mode), as their files name them. */
@@ -112,8 +126,9 @@ export function createHandler(
             const value = (params as Record<string, unknown>)[key]
             // Each value fills one path segment and names a folder in the build: never empty, '.' or '..'.
             // Path separators on any OS ('/', '\\') and NUL could step out of that folder once the segment is decoded.
-            if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || /[/\\\0]/.test(value)) {
-              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/" or "\\", and not "." or ".."`)
+            // __data.json is a client route's data file, so it can't also name a page.
+            if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || value === DATA || /[/\\\0]/.test(value)) {
+              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/" or "\\", and not ".", ".." or "${DATA}"`)
             }
             return encodeURIComponent(value)
           }).join('/'))
@@ -123,15 +138,26 @@ export function createHandler(
     },
     async fetch(request) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 })
-      let pathname = new URL(request.url).pathname
-      // <client route>/__data.json: the page's props, for the router.
-      const wantsData = pathname.endsWith(`/${DATA}`)
-      if (wantsData) pathname = pathname.slice(0, -DATA.length - 1) || '/'
+      const pathname = new URL(request.url).pathname
       // '/guide/x/' is the same page as '/guide/x', in dev as on a static host.
-      const found = match(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
+      const trim = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') : path)
+      // <client route>/__data.json is that page's props, for the router. Only for a client route: anywhere else the
+      // path is an ordinary page path (a server route may well have an [id] of "__data.json").
+      let found = match(trim(pathname))
+      let wantsData = false
+      if (pathname.endsWith(`/${DATA}`)) {
+        const owner = match(trim(pathname.slice(0, -DATA.length - 1) || '/'))
+        if (owner && modeFor(owner.route.path, modes) === 'client') {
+          found = owner
+          wantsData = true
+        }
+      }
       const head = request.method === 'HEAD'
+      const notFound = () => new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
       const mode = found && modeFor(found.route.path, modes)
-      if (!found || (wantsData && mode !== 'client')) return new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+      if (!found) return notFound()
+      // A prerendered dynamic route only has the pages its entries() lists, as on a static host.
+      if (mode !== 'server' && found.route.keys.length && !(await listed(found.route, found.params))) return notFound()
       if (mode === 'client' && !wantsData) {
         // In matching order (static before dynamic, as on the server): the router takes the first match.
         const client = options.client ?? {}

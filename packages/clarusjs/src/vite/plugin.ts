@@ -123,7 +123,12 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     generateBundle(_options, bundle) {
       if (this.environment.config.consumer !== 'client' || command !== 'build') return
       const byName = new Map<string, string>()
-      for (const out of Object.values(bundle)) if (out.type === 'chunk' && out.isEntry) byName.set(out.name, base + out.fileName)
+      // By sanitized name and by the raw entry name from the source path ([id] stays [id]).
+      for (const out of Object.values(bundle)) {
+        if (out.type !== 'chunk' || !out.isEntry) continue
+        byName.set(out.name, base + out.fileName)
+        if (out.facadeModuleId) byName.set(entryName(root, out.facadeModuleId.replace(/\?.*$/, '')), base + out.fileName)
+      }
       for (const out of Object.values(bundle)) {
         if (out.type !== 'chunk' || !out.code.includes(CHUNK_TOKEN)) continue
         out.code = out.code.replace(/__CLARUS_CHUNK__\[(.+?)\]__/g, (_, name: string) => {
@@ -197,8 +202,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         // Server build: chunk URLs come from the client manifest. Client build (a ?render child): the chunk doesn't
         // exist yet, so write a placeholder that generateBundle swaps for the real file name. Dev: the source URL.
         const urls = consumer === 'server' ? builtUrls() : undefined
+        // Built URLs by entry name, or by source key when the name was sanitized ([tag] → _tag_).
         const clientUrl = urls
-          ? urls.get(entryName(root, file))
+          ? urls.get(entryName(root, file)) ?? urls.get(relative(root, file).split(sep).join('/'))
           : command === 'build' ? `${CHUNK_TOKEN}[${entryName(root, file)}]__` : clientUrlFor(root, file)
         if (urls && !clientUrl && compile(code, { file, target: 'client' }).stateful) {
           this.error(`${file}: stateful component is not under src/, so it has no client chunk`)

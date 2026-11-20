@@ -32,5 +32,33 @@ test('show() loads the render module and the data, swaps the document, and attac
 test('show() leaves other routes alone, and a failed data request is an error', async () => {
   expect(await show(new URL('http://x/elsewhere'), table)).toBe(false)
   const get = async () => new Response('nope', { status: 500 })
-  await expect(show(new URL('http://x/app'), table, async () => ({ render: () => '' }), get)).rejects.toThrow('/app/__data.json: 500')
+  await expect(show(new URL('http://x/app'), table, async () => ({ render: () => '' }), get)).rejects.toThrow('500: /app/__data.json')
+})
+
+test('review: the rendered <html> attributes replace the old ones (lang, dir)', async () => {
+  document.documentElement.setAttribute('data-old', 'x')
+  const load = async () => ({ render: () => '<html lang="ar" dir="rtl"><head><title>t</title></head><body><p>x</p></body></html>' })
+  await show(new URL('http://x/app'), table, load, async () => new Response('{}'))
+  expect(document.documentElement.getAttribute('lang')).toBe('ar')
+  expect(document.documentElement.getAttribute('dir')).toBe('rtl')
+  expect(document.documentElement.hasAttribute('data-old')).toBe(false)
+  await show(new URL('http://x/app'), table, async () => ({ render: () => '<html lang="en"><body></body></html>' }), async () => new Response('{}'))
+  expect(document.documentElement.getAttribute('lang')).toBe('en')
+  expect(document.documentElement.hasAttribute('dir')).toBe(false)
+})
+
+test('review: a navigation that is no longer current never touches the document', async () => {
+  let current = 'second'
+  const slow = show(new URL('http://x/app/1'), table, async () => {
+    await new Promise((r) => setTimeout(r, 20))
+    return { render: () => '<p>first</p>' }
+  }, async () => new Response('{}'), () => current === 'first')
+  await show(new URL('http://x/app/2'), table, async () => ({ render: () => '<p>second</p>' }), async () => new Response('{}'), () => current === 'second')
+  expect(await slow).toBe(false)
+  expect(document.body.textContent).toBe('second')
+})
+
+test('review: a missing page (404 data) is reported as not found', async () => {
+  const get = async () => new Response('Not Found', { status: 404 })
+  await expect(show(new URL('http://x/app/9'), table, async () => ({ render: () => '' }), get)).rejects.toThrow(/^not found: \/app\/9\/__data\.json$/)
 })

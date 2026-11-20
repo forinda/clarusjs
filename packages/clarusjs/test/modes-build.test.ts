@@ -103,3 +103,19 @@ test('size budget: the client router stays within 1 KB gzip', async () => {
   const size = gzipSync(readFileSync(resolve(root, 'dist/client', router.slice(1))), { level: 9 }).length
   expect(size).toBeLessThanOrEqual(1024)
 })
+
+test('review: Netlify parameter names never collide', async () => {
+  const { netlifyPaths } = await import('../src/vite/netlify.ts')
+  expect(netlifyPaths('/[p0]/[$id]')).toEqual(['/:p0/:p1', '/:p0/:p1/'])
+  expect(netlifyPaths('/[$id]/[p0]')).toEqual(['/:p1/:p0', '/:p1/:p0/'])
+  expect(netlifyPaths('/account/[id]')).toEqual(['/account/:id', '/account/:id/'])
+})
+
+test('review: an island with a bracketed file name inside a client page points at its real chunk', async () => {
+  const shell = readFileSync(resolve(root, 'dist/client/app/index.html'), 'utf8')
+  const table = JSON.parse(/<script type="application\/json" id="cl-routes">(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
+  const mod = await import(pathToFileURL(resolve(root, 'dist/client', table.find((t) => t.p === '/app')!.r.slice(1))).href)
+  const src = /<cl-island c="\[tag\]" src="([^"]+)"/.exec(mod.render({}))![1]!
+  expect(src).not.toContain('__CLARUS_CHUNK__')
+  expect(existsSync(resolve(root, 'dist/client', src.slice(1)))).toBe(true)
+})

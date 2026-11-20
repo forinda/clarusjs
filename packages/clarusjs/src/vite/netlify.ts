@@ -7,10 +7,20 @@ const FUNCTION = '.netlify/v1/functions/clarusjs-server.mjs'
 
 /** '/account/[id]' → ['/account/:id', '/account/:id/'] (Netlify paths use URLPattern syntax). */
 export function netlifyPaths(route: string): string[] {
+  const segments = route.split('/')
+  const keyOf = (seg: string) => /^\[([A-Za-z_$][\w$]*)\]$/.exec(seg)?.[1]
+  const valid = (key: string) => /^[A-Za-z_]\w*$/.test(key)
+  // Names already valid in URLPattern are kept; others get p0, p1, … that aren't taken (URLPattern rejects duplicates).
+  const taken = new Set(segments.map(keyOf).filter((k): k is string => k !== undefined && valid(k)))
   let n = 0
-  const path = route.split('/').map((seg) => {
-    const key = /^\[([A-Za-z_$][\w$]*)\]$/.exec(seg)?.[1]
-    if (key !== undefined) return `:${/^[A-Za-z_]\w*$/.test(key) ? key : `p${n++}`}`
+  const fresh = () => {
+    while (taken.has(`p${n}`)) n++
+    taken.add(`p${n}`)
+    return `p${n}`
+  }
+  const path = segments.map((seg) => {
+    const key = keyOf(seg)
+    if (key !== undefined) return `:${valid(key) ? key : fresh()}`
     return seg.replace(/[:*?+(){}\\]/g, '\\$&') // literal text, not pattern syntax
   }).join('/')
   return path === '/' || path === '' ? ['/'] : [path, `${path}/`]

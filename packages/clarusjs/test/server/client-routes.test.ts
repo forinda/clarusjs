@@ -52,3 +52,20 @@ test('prerendering writes each client page shell and its data file', async () =>
   expect(routeToFile('/app/1/__data.json')).toBe('app/1/__data.json')
   expect(routeToFile('/__data.json')).toBe('__data.json')
 })
+
+test('review: <path>/__data.json is only a data request for a client route; reserved as an entries() value', async () => {
+  const echo = async () => ({ render: (p: Record<string, unknown> = {}) => `<p>${JSON.stringify(p)}</p>` })
+  const h = createHandler({ '/src/pages/account/[id].tscl': echo }, { modes: { '/account/*': 'server' } })
+  const res = await h.fetch(new Request('http://x/account/__data.json'))
+  expect(res.status).toBe(200)
+  expect(await res.text()).toContain('{"id":"__data.json"}')
+  const bad = createHandler({ '/src/pages/app/[id].tscl': echo }, { modes: { '/app/*': 'client' }, data: { '/src/pages/app/[id].load.ts': async () => ({ entries: () => [{ id: '__data.json' }] }) } })
+  await expect(bad.paths()).rejects.toThrow(/entries\(\) gave "__data.json" for "id"/)
+})
+
+test('review: a prerendered dynamic route only answers for the pages its entries() lists, as on a static host', async () => {
+  const h = handler()
+  expect((await h.fetch(new Request('http://x/app/1'))).status).toBe(200)
+  expect((await h.fetch(new Request('http://x/app/9'))).status).toBe(404)
+  expect((await h.fetch(new Request('http://x/app/9/__data.json'))).status).toBe(404)
+})
