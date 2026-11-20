@@ -33,7 +33,13 @@ export async function prerender(serverEntry: string, outDir: string, manifestFil
     const routeToFile = ${routeToFile.toString()}
     const [entry, outDir, only] = process.argv.slice(1)
     const { default: handler } = await import(pathToFileURL(entry).href)
-    const routes = only ? JSON.parse(only) : handler.routes
+    let routes
+    try {
+      routes = only ? JSON.parse(only) : await handler.paths()
+    } catch (err) {
+      process.stderr.write('prerender: ' + (err && err.message || err))
+      process.exit(1)
+    }
     const readers = []
     for (const route of routes) {
       globalThis.__clManifestRead = false

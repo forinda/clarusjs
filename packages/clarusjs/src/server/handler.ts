@@ -1,6 +1,23 @@
 // The fetch handler: Request → Response. Same function for dev, per-request SSR and (later) build-time prerender.
 
 type PageModule = { render(props?: object): string }
+type Params = Record<string, string>
+/** `[page].load.ts`: data for a route. entries() lists a dynamic route's pages to prerender. */
+type DataModule = { entries?(): Params[] | Promise<Params[]> }
+
+type Route = { path: string; file: string; keys: string[]; regex: RegExp; load: () => Promise<PageModule> }
+
+/** '/users/[id]' → keys ['id'] and a RegExp that captures each segment. */
+function compile(path: string): { keys: string[]; regex: RegExp } {
+  const keys: string[] = []
+  const source = path.split('/').map((seg) => {
+    const m = /^\[([A-Za-z_$][\w$]*)\]$/.exec(seg)
+    if (!m) return seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    keys.push(m[1]!)
+    return '([^/]+)'
+  }).join('/')
+  return { keys, regex: new RegExp(`^${source}$`) }
+}
 
 /** '/src/pages/index.tscl' → '/', '/src/pages/blog/index.tscl' → '/blog', '/src/pages/about.tscl' → '/about' */
 export function routeFromFile(file: string): string {
@@ -10,20 +27,61 @@ export function routeFromFile(file: string): string {
 
 export function createHandler(
   pages: Record<string, () => Promise<PageModule>>,
-  options: { loaderUrl?: string } = {},
-): { fetch(request: Request): Promise<Response>; routes: string[] } {
-  const routes = new Map(Object.entries(pages).map(([file, load]) => [routeFromFile(file), load]))
+  options: { loaderUrl?: string; data?: Record<string, () => Promise<DataModule>> } = {},
+): { fetch(request: Request): Promise<Response>; routes: string[]; paths(): Promise<string[]> } {
+  // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
+  const routes: Route[] = Object.entries(pages)
+    .map(([file, load]) => ({ path: routeFromFile(file), file: file.replace(/^\//, ''), load, ...compile(routeFromFile(file)) }))
+    .sort((a, b) => a.keys.length - b.keys.length || b.path.split('/').length - a.path.split('/').length)
+  const data = options.data ?? {}
   const loaderUrl = options.loaderUrl ?? '/cl-loader.js'
+
+  function match(pathname: string): { route: Route; params: Params } | null {
+    for (const route of routes) {
+      const m = route.regex.exec(pathname)
+      if (!m) continue
+      const params: Params = {}
+      try {
+        route.keys.forEach((key, i) => { params[key] = decodeURIComponent(m[i + 1]!) })
+      } catch {
+        return null // a malformed %-escape names no page
+      }
+      return { route, params }
+    }
+    return null
+  }
+
   return {
-    routes: [...routes.keys()].sort(),
+    routes: routes.map((r) => r.path).sort(),
+    /** Every concrete path to prerender: static routes as they are, dynamic ones from their entries(). */
+    async paths() {
+      const out: string[] = []
+      for (const route of routes) {
+        if (!route.keys.length) { out.push(route.path); continue }
+        const dataFile = route.file.replace(/\.tscl$/, '.load.ts')
+        const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
+        if (!mod?.entries) throw new Error(`${route.path} is a dynamic route: export entries() from ${dataFile} to list the pages to prerender`)
+        for (const params of await mod.entries()) {
+          out.push(route.path.replace(/\[(\w+)\]/g, (_, key: string) => {
+            const value = (params as Record<string, unknown>)[key]
+            // Each value fills one path segment and names a folder in the build: never empty, '.', '..' or with a '/'.
+            if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || value.includes('/')) {
+              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/"`)
+            }
+            return encodeURIComponent(value)
+          }))
+        }
+      }
+      return out.sort()
+    },
     async fetch(request) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 })
       const pathname = new URL(request.url).pathname
       // '/guide/x/' is the same page as '/guide/x', in dev as on a static host.
-      const load = routes.get(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
+      const found = match(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
       const head = request.method === 'HEAD'
-      if (!load) return new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
-      const html = (await load()).render({})
+      if (!found) return new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+      const html = (await found.route.load()).render(found.params)
       const visible = maskComments(html)
       const hasIslands = visible.includes('<cl-island ')
       // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.

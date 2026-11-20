@@ -1,0 +1,2 @@
+@input id: string
+<h1>User {{ id }}</h1>

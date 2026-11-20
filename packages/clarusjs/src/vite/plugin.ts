@@ -128,7 +128,10 @@ export default function clarusjs(): Plugin {
       if (id !== '\0' + ENTRY) return
       const loaderUrl = builtUrls()?.get(LOADER_ENTRY) ?? '/cl-loader.js'
       return `import { createHandler } from ${JSON.stringify(here('../server/handler'))}\n` +
-        `export default createHandler(import.meta.glob('/src/pages/**/*.tscl'), { loaderUrl: ${JSON.stringify(loaderUrl)} })\n`
+        `export default createHandler(import.meta.glob('/src/pages/**/*.tscl'), {\n` +
+        `  loaderUrl: ${JSON.stringify(loaderUrl)},\n` +
+        `  data: import.meta.glob('/src/pages/**/*.load.ts'),\n` +
+        `})\n`
     },
     transform: {
       filter: { id: /\.tscl(\?|$)/ },

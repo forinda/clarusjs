@@ -1,0 +1,16 @@
+@import docs from '../../layouts/docs.tscl'
+@import { release } from '../../releases.ts'
+@input version: string
+
+<docs [title]="'clarusjs ' + version" [path]="'/releases'" [description]="'What changed in clarusjs ' + version + '.'">
+  <h1>clarusjs {{ version }}</h1>
+  <p class="lead"><a href="/releases">All releases</a> · <a href="https://www.npmjs.com/package/clarusjs/v/{{ version }}">clarusjs@{{ version }} on npm</a></p>
+  @for (group of release(version).groups; track group.title) {
+    <h2>{{ group.title }}</h2>
+    <ul class="changes">
+      @for (change of group.changes; track change.url) {
+        <li>@for (part of change.text.split('`'); track $index) {@if ($index % 2) {<code>{{ part }}</code>} @else {<span>{{ part }}</span>}} @if (change.pr) {<a [href]="change.url">{{ change.pr }}</a>}</li>
+      }
+    </ul>
+  }
+</docs>

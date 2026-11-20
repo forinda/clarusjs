@@ -261,7 +261,9 @@ test('copy buttons load on first click and copy their sample', async ({ page, co
 test('the route manifest matches what the browser loads', async ({ page }) => {
   const { readFileSync } = await import('node:fs')
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
-  expect(Object.keys(manifest.routes).sort()).toEqual(pages.map((p) => p.path).sort())
+  // Every sidebar page, plus the pages dynamic routes generate (release notes per version).
+  const routes = Object.keys(manifest.routes)
+  expect(routes.filter((r) => !r.startsWith('/releases/')).sort()).toEqual(pages.map((p) => p.path).sort())
   for (const path of ['/', '/guide/state']) {
     const route = manifest.routes[path]
     const { scripts } = await visit(page, path)
@@ -291,9 +293,29 @@ test('this site, explained: the table is generated from the manifest at build ti
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
   await page.goto('/guide/explained')
   const rows = page.locator('table.explained tbody tr')
-  await expect(rows).toHaveCount(pages.length)
+  await expect(rows).toHaveCount(Object.keys(manifest.routes).length)
   const home = rows.filter({ has: page.locator('a[href="/"]') })
   for (const island of manifest.routes['/'].islands) await expect(home).toContainText(island.component)
   // The page lists itself, so it was rendered after the manifest existed.
   await expect(rows.filter({ has: page.locator('a[href="/guide/explained"]') })).toContainText('copy (interaction)')
+})
+
+test('release notes: one prerendered page per version in the changelog (a dynamic route)', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  const changelog = readFileSync(new URL('../../clarusjs/CHANGELOG.md', import.meta.url), 'utf8')
+  const versions = [...changelog.matchAll(/^## (.+)$/gm)].map((m) => m[1]!.trim())
+  expect(versions.length).toBeGreaterThan(0)
+  await page.goto('/releases')
+  await expect(page.locator('ul.releases a')).toHaveText(versions.map((v) => `clarusjs ${v}`))
+  for (const v of versions) {
+    const response = await page.goto(`/releases/${v}`)
+    expect(response?.status(), v).toBe(200)
+    await expect(page.locator('h1')).toHaveText(`clarusjs ${v}`)
+    await expect(page.locator('.changes li').first()).toBeVisible()
+  }
+  // Inline code from the changelog is real <code>, and changes link to their pull requests.
+  await page.goto(`/releases/${versions[0]}`)
+  await expect(page.locator('.changes code').first()).toBeVisible()
+  await expect(page.locator('.changes a[href*="/pull/"]').first()).toBeVisible()
+  expect((await page.goto('/releases/9.9.9'))?.status()).toBe(404)
 })
