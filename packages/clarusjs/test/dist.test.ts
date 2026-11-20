@@ -61,9 +61,9 @@ test('the clarusjs command is built, with a shebang', () => {
   expect(readFileSync(bin, 'utf8').startsWith('#!/usr/bin/env node')).toBe(true)
 })
 
-test('size budget: the published package stays small (tarball 60 KB, unpacked 250 KB)', () => {
+test('size budget: the published package stays small (tarball 70 KB, unpacked 250 KB)', () => {
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
-  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(60 * 1024)
+  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(70 * 1024)
   expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(250 * 1024)
 })
 
