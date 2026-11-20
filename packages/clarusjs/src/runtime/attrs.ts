@@ -31,11 +31,14 @@ export function attrValue(name: string, value: unknown): string | true | null {
   if (value === true) return true
   const s = String(value)
   const n = name.toLowerCase()
+  // List-valued URL attributes: every entry must be safe, not just the first.
   if (n === 'srcset') {
-    // "url 1x, url 2x": every candidate's URL must be safe.
+    // "url 1x, url 2x"
     const ok = s.split(',').every((candidate) => safeUrl(candidate.trim().split(/\s+/)[0] ?? '', true))
     return ok ? s : UNSAFE_URL
   }
+  if (n === 'values') return s.split(';').every((entry) => safeUrl(entry.trim(), false)) ? s : UNSAFE_URL
+  if (n === 'ping') return s.split(/\s+/).filter(Boolean).every((url) => safeUrl(url, false)) ? s : UNSAFE_URL
   if (URL_ATTRS.has(n) && !safeUrl(s, IMAGE_ATTRS.has(n))) return UNSAFE_URL
   return s
 }

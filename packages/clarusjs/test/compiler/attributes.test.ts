@@ -125,3 +125,10 @@ test('binding srcdoc is a located build error', () => {
   expect(compileError('@input h: string\n<iframe [srcdoc]="h"></iframe>').message).toMatch(/^x\.clarus:2:9 .*srcdoc/)
   expect(compileError('@input h: string\n<iframe srcdoc="{{ h }}"></iframe>').message).toMatch(/^x\.clarus:2:9 .*srcdoc/)
 })
+
+test('list-valued URL attributes check every entry (values by ";", ping by whitespace)', async () => {
+  expect(await render('@input v: string\n<animate [values]="v" />', { v: '/a;/b' })).toContain('values="/a;/b"')
+  expect(await render('@input v: string\n<animate [values]="v" />', { v: '/ok;javascript:alert(1)' })).toContain('values="about:invalid#unsafe"')
+  expect(await render('@input p: string\n<a [ping]="p">x</a>', { p: '/track https://x.example/t' })).toContain('ping="/track https://x.example/t"')
+  expect(await render('@input p: string\n<a [ping]="p">x</a>', { p: '/track javascript:alert(1)' })).toContain('ping="about:invalid#unsafe"')
+})
