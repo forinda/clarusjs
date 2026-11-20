@@ -14,8 +14,8 @@ describe('escape', () => {
 
 describe('island', () => {
   test('wraps html in a self-describing cl-island element', () => {
-    expect(island('counter', '/c.clarus?import', { start: 3 }, '<b>x</b>')).toBe(
-      '<cl-island c="counter" src="/c.clarus?import" p="{&quot;start&quot;:3}"><b>x</b></cl-island>',
+    expect(island('counter', '/c.tscl?import', { start: 3 }, '<b>x</b>')).toBe(
+      '<cl-island c="counter" src="/c.tscl?import" p="{&quot;start&quot;:3}"><b>x</b></cl-island>',
     )
   })
   test('cannot break out of the props attribute', () => {

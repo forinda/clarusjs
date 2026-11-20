@@ -1,4 +1,4 @@
-// .clarus → virtual TypeScript for type checking (it never runs). Template expressions are copied verbatim inside
+// .tscl → virtual TypeScript for type checking (it never runs). Template expressions are copied verbatim inside
 // TypeScript that has the same meaning (@if → if, @for → for…of, a component → an object typed as its Inputs), and
 // every copied span is recorded so tsc's errors can be mapped back to the template. Pure: string in, string out.
 import { parse, type Attr, type TemplateNode } from '../compiler/parse.ts'

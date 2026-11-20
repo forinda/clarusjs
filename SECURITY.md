@@ -18,7 +18,7 @@ Report privately through GitHub: open the repository's **Security** tab and choo
 
 - what the problem is and what an attacker could do with it;
 - the clarusjs version (or commit) and your Node, Vite and browser versions;
-- a minimal `.clarus` file, page or steps that reproduce it.
+- a minimal `.tscl` file, page or steps that reproduce it.
 
 You can expect an acknowledgement within a few days and an assessment within two weeks. When a fix is ready, we
 publish it with a GitHub security advisory and credit you, unless you'd rather stay anonymous.

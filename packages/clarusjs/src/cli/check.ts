@@ -1,5 +1,5 @@
-// `clarusjs check`: type-check every .clarus file in a project (and the .ts it uses) with the project's TypeScript,
-// reporting each error at file.clarus:line:col.
+// `clarusjs check`: type-check every .tscl file in a project (and the .ts it uses) with the project's TypeScript,
+// reporting each error at file.tscl:line:col.
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'

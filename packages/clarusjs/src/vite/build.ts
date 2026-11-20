@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-/** Absolute paths of every `.clarus` file under `srcDir` (empty if it doesn't exist). */
+/** Absolute paths of every `.tscl` file under `srcDir` (empty if it doesn't exist). */
 export function findClarusFiles(srcDir: string): string[] {
   let entries: string[]
   try {
@@ -11,7 +11,7 @@ export function findClarusFiles(srcDir: string): string[] {
   } catch {
     return []
   }
-  return entries.filter((f) => f.endsWith('.clarus')).map((f) => resolve(srcDir, f)).sort()
+  return entries.filter((f) => f.endsWith('.tscl')).map((f) => resolve(srcDir, f)).sort()
 }
 
 /** '/' → 'index.html', '/about/team' → 'about/team/index.html' */

@@ -5,7 +5,7 @@ let counter = 0
 
 /**
  * Write compiled code to test/.tmp and import it, so vitest's aliases resolve `clarusjs/runtime*`.
- * `deps` maps an import path used in `code` (e.g. '../components/greeting.clarus') to that module's compiled code.
+ * `deps` maps an import path used in `code` (e.g. '../components/greeting.tscl') to that module's compiled code.
  */
 export async function importCode(code: string, name: string, deps: Record<string, string> = {}): Promise<any> {
   mkdirSync(TMP, { recursive: true })

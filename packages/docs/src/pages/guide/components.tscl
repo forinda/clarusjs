@@ -1,0 +1,27 @@
+@import copy from '../../components/copy.tscl'
+@import docs from '../../layouts/docs.tscl'
+@import callout from '../../components/callout.tscl'
+
+<docs [title]="'Components'" [path]="'/guide/components'" [description]="'A clarusjs component is a .tscl file: a template, optional typed inputs and an optional script.'">
+  <h1>Components</h1>
+  <p class="lead">A component is a <code>.tscl</code> file: a template, optional typed inputs, and an optional <code>&lt;script&gt;</code>. Without a script it is HTML only.</p>
+  <div class="sample"><pre><code verbatim>{{-- components/greeting.tscl --}}
+@input name: string
+
+<p>Hello, {{ name }}!</p></code></pre><copy attach="interaction" /></div>
+
+  <h2>Using components</h2>
+  <p>Import a component by name, then use it as a tag. Pass inputs with <code>[name]="expression"</code>.</p>
+  <div class="sample"><pre><code verbatim>@import greeting from '../components/greeting.tscl'
+
+<greeting [name]="'world'" /></code></pre><copy attach="interaction" /></div>
+
+  <h2>Importing data</h2>
+  <p>Import values a template needs with <code verbatim>@import { … } from '…'</code>, or <code verbatim>@import data from './data.json'</code>. In a component without a script the import only runs on the server, so it can even read files at build time; in an interactive component it is sent to the browser with the component's code.</p>
+  <div class="sample"><pre><code verbatim>@import { posts } from '../data/posts.ts'
+
+<ul>
+  @for (post of posts; track post.slug) { <li>{{ post.title }}</li> }
+</ul></code></pre><copy attach="interaction" /></div>
+  <callout [type]="'tip'"><p>Mistakes are build errors with a location, for example <code>components.tscl:3:9 unclosed &lt;span&gt;</code>.</p></callout>
+</docs>
