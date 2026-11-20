@@ -124,3 +124,26 @@ test('#22: render() is typed against each view\'s inputs through the generated v
   expect(existsSync(resolve(root, '.clarusjs/views.d.ts'))).toBe(true)
   expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/server/mail.ts:3 TS2322', 'src/server/mail.ts:4 TS2345'])
 })
+
+test('review: views.d.ts is declarations only, so an app tsconfig can include it (noImplicitAny on, relative type imports)', async () => {
+  const { spawnSync } = await import('node:child_process')
+  const root = project({
+    'src/domain/user.ts': 'export interface User { name: string }\n',
+    // A JavaScript script with an untyped parameter, and an input typed through a relative @import type.
+    'src/components/card.tscl': "@import type { User } from '../domain/user'\n@input user: User\n<script>\n  let n = state(0)\n  function bump(x) { n = n + x }\n</script>\n<b (click)=\"bump(1)\">{{ user.name }} {{ n }}</b>\n",
+    'src/server/mail.ts': "import { render } from 'clarusjs/views'\nexport const ok = render('components/card', { user: { name: 'Ada' } })\nexport const bad = render('components/card', { user: { nam: 'Ada' } })\n",
+    'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true, noImplicitAny: true, noEmit: true, target: 'ES2023', module: 'ESNext', moduleResolution: 'Bundler', allowImportingTsExtensions: true, skipLibCheck: true }, include: ['src', '.clarusjs/views.d.ts'] }),
+  })
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  check({ root, typescript })
+  const registry = readFileSync(resolve(root, '.clarusjs/views.d.ts'), 'utf8')
+  expect(registry).not.toContain('virtual/')
+  // The app's own tsc, with its own strict settings: only the deliberate mistake is reported.
+  const bin = JSON.parse(readFileSync(resolve(typescript, 'package.json'), 'utf8')).bin
+  const tsc = resolve(typescript, typeof bin === 'string' ? bin : bin.tsc)
+  const run = spawnSync(process.execPath, [tsc, '-p', root, '--pretty', 'false'], { cwd: root, encoding: 'utf8' })
+  const errors = run.stdout.split('\n').filter((l) => l.includes('error TS'))
+  expect(errors).toHaveLength(1)
+  expect(errors[0]).toMatch(/^src\/server\/mail\.ts\(3,.*'nam' does not exist/)
+})
