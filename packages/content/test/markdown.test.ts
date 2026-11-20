@@ -4,7 +4,7 @@ import { compile } from 'clarusjs/compiler'
 import markdown, { slugify } from '../src/index.ts'
 
 const md = markdown({ layout: '/src/layouts/docs.tscl' })
-const page = (code: string, route = '/guide/intro') => md.toTscl(code, '/app/src/pages/guide/intro.md', { route })
+const page = (code: string, route = '/guide/intro') => md.toTscl(code, '/app/src/pages/guide/intro.md', { route, root: '/a', addDependency: () => {} })
 
 test('frontmatter title and description go to the layout, with the route as path', () => {
   const out = page('---\ntitle: Intro\ndescription: "What it is, and why"\n---\n\nHello *world*.\n')
@@ -40,7 +40,7 @@ test('@import lines at the top pass through, so components can be used in the Ma
 })
 
 test('layout: false in frontmatter (or no layout) renders the bare HTML; strings are quoted safely', () => {
-  expect(markdown().toTscl('Plain.\n', '/a/src/pages/x.md', { route: '/x' })).toBe('<p>Plain.</p>\n')
+  expect(markdown().toTscl('Plain.\n', '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })).toBe('<p>Plain.</p>\n')
   expect(page('---\nlayout: false\n---\nPlain.\n')).toBe('<p>Plain.</p>\n')
   const tricky = page('---\ntitle: "It\'s a \\"quote\\" \\\\ here"\n---\nx\n')
   expect(tricky).toContain('[title]="\'It\\\'s a \\u0022quote\\u0022 \\\\ here\'"')

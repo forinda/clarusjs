@@ -4,6 +4,7 @@ import MarkdownIt from 'markdown-it'
 import { parse as parseYaml } from 'yaml'
 import type { Source } from 'clarusjs/vite'
 import { highlight } from './highlight.ts'
+import { expand } from './snippets.ts'
 
 export type MarkdownOptions = {
   /** The layout every page renders in, root-relative (`/src/layouts/docs.tscl`). Frontmatter `layout` overrides it; `false` means none. */
@@ -189,11 +190,13 @@ export default function markdown(options: MarkdownOptions = {}): Source {
   const md = renderer(options)
   return {
     extension: '.md',
-    toTscl(code, _file, { route }) {
+    toTscl(code, file, context) {
+      const { route } = context
       // ---\nyaml\n---: the page's frontmatter.
       const front = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(code)
       const data = (front ? parseYaml(front[1]!) : null) ?? {}
-      let body = front ? code.slice(front[0].length) : code
+      // Snippets and includes first: what they bring in is Markdown like the rest of the page.
+      let body = expand(front ? code.slice(front[0].length) : code, file, context)
       // @import lines at the top pass through, so components can be used in the Markdown.
       const imports: string[] = []
       for (;;) {

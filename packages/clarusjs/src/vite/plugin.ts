@@ -107,7 +107,9 @@ export type ClarusOptions = {
  * A page source: files with another extension (such as Markdown) turned into .tscl text, then compiled like any
  * page. `route` is the page's route when the file is under src/pages.
  */
-export type Source = { extension: string; toTscl(code: string, file: string, context: { route: string }): string }
+export type Source = { extension: string; toTscl(code: string, file: string, context: SourceContext): string }
+/** `root`: the app root. `addDependency(file)`: another file the output depends on (rebuilt when it changes in dev). */
+export type SourceContext = { route: string; root: string; addDependency(file: string): void }
 
 /** How the plugin finds and reads component files: .tscl, plus the extensions of its page sources. */
 type Files = { find(dir: string): string[]; read(file: string, root: string): string }
@@ -132,14 +134,15 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   }
   const extensions = ['.tscl', ...sources.map((src) => src.extension)]
   // Component files of every kind, read as .tscl text (a source's output, or the file itself).
+  // Page sources only apply under src/pages: elsewhere (src/parts, …) their files are plain files, not components.
   const files: Files = {
-    find: (dir) => findClarusFiles(dir, extensions),
+    find: (dir) => findClarusFiles(dir, extensions).filter((f) => f.endsWith('.tscl') || f.includes(`${sep}src${sep}pages${sep}`)),
     read: (file, appRoot) => {
       const code = readFileSync(file, 'utf8')
       const src = sources.find((x) => file.endsWith(x.extension))
       if (!src) return code
       const rel = relative(appRoot, file).split(sep).join('/')
-      return src.toTscl(code, file, { route: rel.startsWith('src/pages/') ? routeFromFile(`/${rel}`) : '' })
+      return src.toTscl(code, file, { route: rel.startsWith('src/pages/') ? routeFromFile(`/${rel}`) : '', root: appRoot, addDependency: () => {} })
     },
   }
   const fileRe = new RegExp(`\\.(${extensions.map((e) => e.slice(1)).join('|')})(\\?|$)`)
@@ -298,7 +301,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       return `import { createHandler } from ${JSON.stringify(here('../server/handler'))}\n` +
         `import { registerViews, render } from ${JSON.stringify(here('../server/views'))}\n` +
         // Every view under src/, for render(name, props) in server code. Also exported for apps that import the build.
-        `registerViews(import.meta.glob(${glob('/src')}))\n` +
+        `registerViews(import.meta.glob(${JSON.stringify(['/src/**/*.tscl', ...extensions.slice(1).map((e) => `/src/pages/**/*${e}`)])}))\n` +
         `export { render }\n` +
         `export default createHandler(import.meta.glob(${glob('/src/pages')}), {\n` +
         `  loaderUrl: ${JSON.stringify(loaderUrl)},\n` +
@@ -317,12 +320,14 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       filter: { id: fileRe },
       handler(raw, id) {
         const file = id.replace(/\?.*$/, '')
-        // A page source's file is compiled from the .tscl text it produces: only under src/, and never when it is
+        // A page source's file is compiled from the .tscl text it produces: only under src/pages, and never when it is
         // imported as text or a URL (CHANGELOG.md?raw stays a string).
         const src = sources.find((x) => file.endsWith(x.extension))
-        if (src && (/[?&](raw|url|inline)\b/.test(id) || !file.startsWith(resolve(root, 'src') + sep))) return null
+        if (src && (/[?&](raw|url|inline)\b/.test(id) || !file.startsWith(resolve(root, 'src/pages') + sep))) return null
         const rel = relative(root, file).split(sep).join('/')
-        const code = src ? src.toTscl(raw, file, { route: rel.startsWith('src/pages/') ? routeFromFile(`/${rel}`) : '' }) : raw
+        const code = src
+          ? src.toTscl(raw, file, { route: rel.startsWith('src/pages/') ? routeFromFile(`/${rel}`) : '', root, addDependency: (dep) => this.addWatchFile(dep) })
+          : raw
         // ?render: a component's server render function, used in the browser to render children of islands.
         const renderQuery = /[?&]render\b/.test(id)
         const target = this.environment.config.consumer === 'server' || renderQuery ? 'server' : 'client'

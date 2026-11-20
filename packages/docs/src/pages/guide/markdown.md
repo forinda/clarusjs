@@ -82,6 +82,26 @@ npm install @clarusjs/content
 ```
 :::
 
+## Snippets and includes
+
+Show a file, or part of it, with `<<<`. `@` is the project root; regions are marked with `#region name` and `#endregion` comments:
+
+```md
+<<< @/src/nav.ts#pager [src/nav.ts]
+```
+
+<<< @/src/nav.ts#pager [src/nav.ts]
+
+The code above is this site's real `src/nav.ts`, read when the site is built. Include shared Markdown with `<!-- @include: ./part.md -->` (or `#region` of it); its relative links are rewritten to work from the including page:
+
+```md
+<!-- @include: ../../parts/requirements.md -->
+```
+
+<!-- @include: ../../parts/requirements.md -->
+
+In development, editing a snippet's file or an included file updates the page.
+
 ## Containers and alerts
 
 `::: tip`, `::: info`, `::: warning` and `::: danger` blocks, with an optional title, and `::: details` (a native `<details>`):

@@ -565,7 +565,7 @@ test('a Markdown page renders in the layout, with anchors, a component and the r
   await expect(page).toHaveTitle('What is clarusjs? · clarusjs')
   await expect(page.locator('h2#what-makes-it-different a.header-anchor')).toHaveAttribute('href', '#what-makes-it-different')
   await expect(page.locator('.sidebar a[aria-current="page"]')).toHaveText('What is clarusjs?')
-  await expect(page.locator('aside.callout.info')).toContainText('This page is written in Markdown.')
+  await expect(page.locator('aside.callout.info').filter({ hasText: 'proving ground' })).toContainText('This page is written in Markdown.')
   await expect(page.locator('main li code').first()).toHaveText('<script>')
   await expect(page.locator('a.edit')).toHaveAttribute('href', /\/src\/pages\/guide\/what-is-clarusjs\.md$/)
 })
@@ -613,4 +613,17 @@ test('highlighted code: colours follow the theme, code groups switch without Jav
   await expect(group.locator('.code-block').nth(1)).toBeVisible()
   await expect(group.locator('.code-block').nth(0)).toBeHidden()
   await noJs.close()
+})
+
+test('snippets show real source files; includes share Markdown between pages', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  const snippet = page.locator('.code-block').filter({ has: page.locator('.code-title', { hasText: 'src/nav.ts' }) })
+  await expect(snippet.locator('code')).toContainText('export function pager(path: string)')
+  await expect(snippet.locator('code')).not.toContainText('#region')
+  for (const path of ['/guide/markdown', '/guide/what-is-clarusjs']) {
+    await page.goto(path)
+    const box = page.locator('aside.callout.info').filter({ hasText: 'Node 22.12' })
+    await expect(box.locator('.callout-title'), path).toHaveText('Requirements')
+    await expect(box.locator('a'), path).toHaveAttribute('href', '/guide/getting-started')
+  }
 })
