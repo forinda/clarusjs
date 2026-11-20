@@ -395,7 +395,7 @@ test('server playground: rendered on every request, reading the request; escaped
   await expect(page.locator('#greeting')).toHaveText('Hello, <img src=x onerror=alert(1)>!')
   await expect(page.locator('#greeting img')).toHaveCount(0)
   // The loader rendered a component by name with render(); its HTML is shown as text, escaped like any value.
-  await expect(page.locator('#pill-html')).toHaveText('<span class="pill">&lt;img src=x onerror=alert(1)&gt;</span>')
+  await expect(page.locator('#pill-html')).toHaveText(/^<span class="pill" data-cl-c="pill-[a-z0-9]+">&lt;img src=x onerror=alert\(1\)&gt;<\/span>$/)
 })
 
 test('the generated Netlify function serves only the server routes', async () => {
@@ -483,7 +483,7 @@ test('fragment navigation reaches server routes; client routes and failures load
   await page.goto('/guide/rendering-modes')
   await page.locator('a[href="/playground"]').first().click()
   await expect(page.locator('h1')).toHaveText('Server playground')
-  await expect(page.locator('#pill-html')).toHaveText('<span class="pill">guest</span>') // rendered by the server for this request
+  await expect(page.locator('#pill-html')).toHaveText(/^<span class="pill" data-cl-c="pill-[a-z0-9]+">guest<\/span>$/) // rendered by the server for this request
   expect(documents).toEqual(['/guide/rendering-modes'])
   // A client route has no fragment: the browser loads it normally, then the router renders it.
   await page.goto('/guide/client-routes')
@@ -501,4 +501,29 @@ test('fragment navigation to a missing page with a #hash loads it normally (no s
   await expect(page).toHaveURL(/\/nope#details$/)
   await expect.poll(() => documents).toEqual(['/guide/holes', '/nope']) // the missing page was really loaded
   await expect(page.locator('h1')).toHaveCount(0) // the Holes page is gone
+})
+
+test('component styles: scoped with @scope, from one stylesheet, not leaking', async ({ page }) => {
+  await page.goto('/guide/state')
+  const warning = page.locator('aside.callout.warning')
+  await expect(warning).toHaveAttribute('data-cl-c', /^callout-/)
+  expect(await warning.evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe('rgb(201, 138, 18)')
+  expect(await warning.locator('p').last().evaluate((el) => getComputedStyle(el).marginBottom)).toBe('0px')
+  // The callout's p:last-child rule stays inside callouts.
+  const outside = await page.evaluate(() => {
+    const div = document.createElement('div')
+    div.innerHTML = '<p>outside</p>'
+    document.querySelector('main')!.append(div)
+    return getComputedStyle(div.firstElementChild!).marginBottom
+  })
+  expect(outside).toBe('16px')
+  const sheets = await page.locator('link[rel="stylesheet"]').evaluateAll((links) => links.map((l) => l.getAttribute('href')))
+  expect(sheets.some((h) => /\/assets\/cl-styles-.+\.css$/.test(h!))).toBe(true)
+})
+
+test('component styles reach components rendered inside islands', async ({ page }) => {
+  await page.goto('/')
+  const pill = page.locator('cl-island[c="todo"] .pill').first()
+  await expect(pill).toBeVisible()
+  expect(await pill.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('999px')
 })

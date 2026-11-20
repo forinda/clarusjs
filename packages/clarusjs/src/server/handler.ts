@@ -57,6 +57,8 @@ export function createHandler(
     fragments?: boolean
     /** URL of the fragment navigation script (with fragments on, every static and server page loads it). */
     navUrl?: string
+    /** URL of the stylesheet with every component's <style>, linked from every page. */
+    stylesUrl?: string
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -189,6 +191,7 @@ export function createHandler(
         const prefix = (options.base ?? '/').replace(/\/$/, '')
         const table = routes.filter((r) => client[r.path]).map((r) => ({ p: (prefix + r.path).replace(/(.)\/$/, '$1'), r: client[r.path]! }))
         const shell = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
+          (options.stylesUrl ? `<link rel="stylesheet" href="${options.stylesUrl}">` : '') +
           `<style>cl-island{display:contents}</style><script type="application/json" id="cl-routes">${safeJson(JSON.stringify(table))}</script>` +
           `<script type="module" src="${loaderUrl}"></script><script type="module" src="${options.routerUrl ?? '/cl-router.js'}"></script>` +
           '</head><body><noscript>This page is rendered in the browser and needs JavaScript.</noscript></body></html>'
@@ -220,7 +223,8 @@ export function createHandler(
       // Only pages with islands get a script, and only the loader; it fetches each island's own chunk. With fragment
       // navigation every page gets the navigation script instead, which brings the loader for islands that arrive.
       const nav = options.fragments === true
-      const style = hasIslands || nav ? '<style>cl-island{display:contents}</style>' : '' // islands never affect layout
+      const sheet = options.stylesUrl ? `<link rel="stylesheet" href="${options.stylesUrl}">` : ''
+      const style = sheet + (hasIslands || nav ? '<style>cl-island{display:contents}</style>' : '') // islands never affect layout
       const script = nav
         ? `<script type="module" src="${options.navUrl ?? '/cl-nav.js'}"></script>`
         : hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''

@@ -1,3 +1,19 @@
 @input type: 'tip' | 'info' | 'warning' | 'danger' = 'info'
 
 <aside class="callout {{ type }}"><p class="callout-title"><slot name="title">{{ type[0].toUpperCase() + type.slice(1) }}</slot></p><slot /></aside>
+
+<style>
+  /* Scoped to this component: :scope is the <aside>; slot content inside it is styled too. */
+  :scope {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 24px 0;
+  }
+  :scope.tip { border-left-color: #2f9e6e; }
+  :scope.warning { border-left-color: #c98a12; }
+  :scope.danger { border-left-color: #d0453b; }
+  .callout-title { margin: 0 0 4px; font-weight: 650; }
+  p:last-child { margin-bottom: 0; }
+</style>

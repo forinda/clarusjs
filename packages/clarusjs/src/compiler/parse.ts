@@ -27,6 +27,7 @@ export type ParsedFile = {
   typeImports: TypeImport[]
   dataImports: DataImport[]
   script?: { code: string; start: number } // start = offset of the first char inside <script>
+  styles: { css: string; global: boolean; start: number }[] // top-level <style> blocks; `global` ones aren't scoped
   nodes: TemplateNode[]
 }
 
@@ -37,7 +38,7 @@ const IMPORT_TYPE_RE = /^@import\s+type\s+(\{[^}]*\}|[A-Za-z_$][\w$]*)\s+from\s+
 const IMPORT_RE = /^@import\s+([A-Za-z_$][\w-]*)\s+from\s+(['"])(.+?)\2\s*$/
 
 export function parse(source: string, file: string): ParsedFile {
-  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], dataImports: [], nodes: [] }
+  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], dataImports: [], styles: [], nodes: [] }
   let i = 0
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
@@ -310,6 +311,14 @@ export function parse(source: string, file: string): ParsedFile {
           if (end === -1) fail('unclosed <script>', start)
           out.script = { code: source.slice(i, end), start: i }
           i = end + '</script>'.length
+        } else if (tag === 'style' && !parent) {
+          // A top-level <style> is the component's stylesheet. One inside markup (a layout's <head>) stays HTML.
+          const end = source.indexOf('</style>', i)
+          if (end === -1) fail('unclosed <style>', start)
+          const hole = source.slice(i, end).indexOf('{{')
+          if (hole !== -1) fail('{{ }} holes are not supported in a component <style>: set a CSS custom property from the template instead (style="--x: {{ x }}")', i + hole)
+          out.styles.push({ css: source.slice(i, end), global: list.some((a) => a.name === 'global'), start: i })
+          i = end + '</style>'.length
         } else if (list.some((a) => a.name === 'verbatim')) {
           // Everything up to </tag> is text: no holes, tags or directives.
           const attr = list.find((a) => a.name === 'verbatim')!

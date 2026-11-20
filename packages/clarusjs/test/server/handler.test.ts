@@ -104,3 +104,11 @@ test('</head> inside a comment does not capture the island style', async () => {
   const out = await (await h.fetch(new Request('http://x/'))).text()
   expect(out).toContain('<title>t</title><style>cl-island{display:contents}</style></head>')
 })
+
+test('#39: with a stylesheet, every page links it in <head>', async () => {
+  const h = createHandler({ '/src/pages/index.tscl': async () => ({ render: () => '<html><head><title>t</title></head><body><p>x</p></body></html>' }), '/src/pages/bare.tscl': async () => ({ render: () => '<p>x</p>' }) }, { stylesUrl: '/s.css' })
+  for (const path of ['/', '/bare']) {
+    const html = await (await h.fetch(new Request(`http://x${path}`))).text()
+    expect(html).toMatch(/<head>.*<link rel="stylesheet" href="\/s\.css">.*<\/head>/)
+  }
+})

@@ -1,0 +1,44 @@
+@import copy from '../../components/copy.tscl'
+@import docs from '../../layouts/docs.tscl'
+@import callout from '../../components/callout.tscl'
+
+<docs [title]="'Styles'" [path]="'/guide/styles'" [description]="'Give components their own CSS with a style block, scoped to the component with native @scope.'">
+  <h1>Styles</h1>
+  <p class="lead">A component can bring its own CSS in a <code>&lt;style&gt;</code> block. It is scoped to the component, so its rules don't reach the rest of the page.</p>
+  <div class="sample"><pre><code verbatim>{{-- components/card.tscl --}}
+<section class="card">
+  <h2><slot name="title" /></h2>
+  <slot />
+</section>
+
+<style>
+  :scope { border: 1px solid var(--rule); border-radius: 8px; }
+  h2 { margin-top: 0; }
+</style></code></pre><copy attach="interaction" /></div>
+
+  <h2>How scoping works</h2>
+  <p>clarusjs uses the browser's own <code>@scope</code>: the component's top-level elements are marked with <code>data-cl-c</code>, and its rules apply inside them, stopping at other components.</p>
+  <ul>
+    <li><strong>The top-level element itself</strong> is <code>:scope</code>. A rule like <code>section {}</code> matches elements <em>inside</em> the component, not the top-level one.</li>
+    <li><strong>Slot content</strong> sits inside the component, so the component's rules apply to it too.</li>
+    <li><strong>Child components</strong> are left alone: their own top-level elements stop the scope.</li>
+  </ul>
+
+  <h2>Global styles</h2>
+  <p>Add <code>global</code> to write CSS that isn't scoped, such as custom properties for the whole site.</p>
+  <div class="sample"><pre><code verbatim><style global>
+  :root { --accent: #0b6e70; }
+</style></code></pre><copy attach="interaction" /></div>
+
+  <h2>Values from the template</h2>
+  <p>A <code>&lt;style&gt;</code> block is plain CSS: <code verbatim>{{ }}</code> holes aren't allowed in it. Pass values as CSS custom properties instead.</p>
+  <div class="sample"><pre><code verbatim><div class="bar" style="--width: {{ percent }}%"></div>
+
+<style>
+  .bar { width: var(--width); }
+</style></code></pre><copy attach="interaction" /></div>
+
+  <h2>How styles reach the page</h2>
+  <p>Every component's styles are bundled into one stylesheet that each page links: it is cached once and stays valid as you move between pages. This site's <a href="/guide/components">callouts</a> are styled that way.</p>
+  <callout [type]="'info'"><p><code>@scope</code> is supported in all current major browsers. In older ones, scoped rules are ignored.</p></callout>
+</docs>
