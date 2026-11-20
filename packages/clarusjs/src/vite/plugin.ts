@@ -25,6 +25,7 @@ export function clientUrlFor(root: string, file: string): string {
 
 const LOADER_ENTRY = 'cl-loader'
 const ROUTER_ENTRY = 'cl-router'
+const NAV_ENTRY = 'cl-nav'
 // Client entry name of a client-mode page's browser render module.
 const renderEntry = (name: string) => `render/${name}`
 const CLIENT_OUT = 'dist/client'
@@ -38,6 +39,8 @@ export type ClarusOptions = {
   routes?: ModeTable
   /** Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. */
   adapter?: 'netlify'
+  /** Fragment navigation: each static and server page also answers at <path>/index.frag.html. */
+  fragments?: boolean
 }
 
 /** Client-mode pages: route (as the file names it) → absolute file. */
@@ -107,6 +110,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       // Client routes: the router, and each page's render function for the browser.
       const client = clientPages(appRoot, modes)
       if (client.size) input[ROUTER_ENTRY] = here('../runtime/router')
+      if (options.fragments) input[NAV_ENTRY] = here('../runtime/fragments')
       for (const file of client.values()) input[renderEntry(entryName(appRoot, file))] = `${file}?render`
       config.builder = {}
       config.environments = {
@@ -162,11 +166,12 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         await prerender(entry, out, manifestFile, readers)
         writeManifest(dist, routes, builder.config.base, loaded, server)
       }
-      if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route))
+      if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
     },
     resolveId(id) {
       if (id === '/cl-loader.js') return here('../runtime/loader')
       if (id === '/cl-router.js') return here('../runtime/router')
+      if (id === '/cl-nav.js') return here('../runtime/fragments')
       if (id === ENTRY) return '\0' + ENTRY
     },
     load(id) {
@@ -174,6 +179,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const urls = builtUrls()
       const loaderUrl = urls?.get(LOADER_ENTRY) ?? '/cl-loader.js'
       const routerUrl = urls?.get(ROUTER_ENTRY) ?? '/cl-router.js'
+      const navUrl = urls?.get(NAV_ENTRY) ?? '/cl-nav.js'
       // Built: hashed chunk URLs. Dev: the source, served as JS by Vite.
       const client: Record<string, string> = {}
       for (const [route, file] of clientPages(root, modes)) {
@@ -194,6 +200,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  routerUrl: ${JSON.stringify(routerUrl)},\n` +
         `  client: ${JSON.stringify(client)},\n` +
         `  base: ${JSON.stringify(base)},\n` +
+        `  fragments: ${options.fragments === true},\n` +
+        `  navUrl: ${JSON.stringify(navUrl)},\n` +
         `})\n`
     },
     transform: {

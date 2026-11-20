@@ -2,6 +2,7 @@ import { modeFor, type ModeTable } from './modes.ts'
 import { stringify } from '../runtime/serialize.ts'
 
 const DATA = '__data.json'
+const FRAG = 'index.frag.html'
 /** JSON that is safe inside a <script> element and in any HTML context: '<' never appears raw. */
 const safeJson = (json: string) => json.replace(/</g, '\\u003c')
 
@@ -52,6 +53,10 @@ export function createHandler(
     routerUrl?: string
     /** Vite's base ('/' or '/docs/'): client routes are listed at their browser paths, under it. */
     base?: string
+    /** Fragment navigation: every static and server page also answers at <path>/index.frag.html. */
+    fragments?: boolean
+    /** URL of the fragment navigation script (with fragments on, every static and server page loads it). */
+    navUrl?: string
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -101,7 +106,10 @@ export function createHandler(
     serverRoutes: routes.filter((r) => modeFor(r.path, modes) === 'server').map((r) => r.path).sort(),
     /** Whether a URL path belongs to a server route (what a host must send to this handler instead of a file). */
     isServerPath(pathname) {
-      const found = match(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
+      const trim = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') : path)
+      // <page>/index.frag.html belongs to that page when it exists; otherwise it is an ordinary path.
+      const owner = options.fragments && pathname.endsWith(`/${FRAG}`) ? match(trim(pathname.slice(0, -FRAG.length - 1) || '/')) : null
+      const found = owner ?? match(trim(pathname))
       return Boolean(found && modeFor(found.route.path, modes) === 'server')
     },
     /** Whether a route (as its file names it) has a load(). */
@@ -120,6 +128,8 @@ export function createHandler(
           out.push(path)
           // A client page's data, fetched by the router: written next to its shell.
           if (mode === 'client') out.push(path === '/' ? `/${DATA}` : `${path}/${DATA}`)
+          // A static page's fragment, for fragment navigation.
+          else if (options.fragments) out.push(path === '/' ? `/${FRAG}` : `${path}/${FRAG}`)
         }
         if (!route.keys.length) { add(route.path); continue }
         const dataFile = route.file.replace(/\.tscl$/, '.load.ts')
@@ -132,9 +142,9 @@ export function createHandler(
             const value = (params as Record<string, unknown>)[key]
             // Each value fills one path segment and names a folder in the build: never empty, '.' or '..'.
             // Path separators on any OS ('/', '\\') and NUL could step out of that folder once the segment is decoded.
-            // __data.json is a client route's data file, so it can't also name a page.
-            if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || value === DATA || /[/\\\0]/.test(value)) {
-              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/" or "\\", and not ".", ".." or "${DATA}"`)
+            // __data.json and index.frag.html are a page's data and fragment files, so they can't also name a page.
+            if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || value === DATA || value === FRAG || /[/\\\0]/.test(value)) {
+              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/" or "\\", and not ".", "..", "${DATA}" or "${FRAG}"`)
             }
             return encodeURIComponent(value)
           }).join('/'))
@@ -156,6 +166,15 @@ export function createHandler(
         if (owner && modeFor(owner.route.path, modes) === 'client') {
           found = owner
           wantsData = true
+        }
+      }
+      // <static or server route>/index.frag.html: that page's fragment, for fragment navigation.
+      let wantsFrag = false
+      if (options.fragments && !wantsData && pathname.endsWith(`/${FRAG}`)) {
+        const owner = match(trim(pathname.slice(0, -FRAG.length - 1) || '/'))
+        if (owner && modeFor(owner.route.path, modes) !== 'client') {
+          found = owner
+          wantsFrag = true
         }
       }
       const head = request.method === 'HEAD'
@@ -195,11 +214,16 @@ export function createHandler(
         return new Response(head ? null : safeJson(stringify(props)), { headers: { 'content-type': 'application/json; charset=utf-8' } })
       }
       const html = (await found.route.load()).render(props)
+      if (wantsFrag) return new Response(head ? null : toFragment(html), { headers: { 'content-type': 'text/html; charset=utf-8' } })
       const visible = maskComments(html)
       const hasIslands = visible.includes('<cl-island ')
-      // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
-      const style = hasIslands ? '<style>cl-island{display:contents}</style>' : '' // islands never affect layout
-      const script = hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''
+      // Only pages with islands get a script, and only the loader; it fetches each island's own chunk. With fragment
+      // navigation every page gets the navigation script instead, which brings the loader for islands that arrive.
+      const nav = options.fragments === true
+      const style = hasIslands || nav ? '<style>cl-island{display:contents}</style>' : '' // islands never affect layout
+      const script = nav
+        ? `<script type="module" src="${options.navUrl ?? '/cl-nav.js'}"></script>`
+        : hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''
       const body = /<html[\s>]/i.test(visible)
         ? fullDocument(html, style, script)
         : `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title>${style}</head><body>${html}${script}</body></html>`
@@ -212,6 +236,38 @@ export function createHandler(
 function failure(message: string): Response {
   console.error(`[clarusjs] ${message}`)
   return new Response('Internal Server Error', { status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+}
+
+/**
+ * A page's fragment: its <title>, then the element marked data-cl-swap (the region fragment navigation replaces), or
+ * its <body> when nothing is marked. Comments are ignored when looking; nested tags of the same name are balanced.
+ */
+export function toFragment(html: string): string {
+  // Comments and raw-text contents (scripts, styles, textareas, the title) can hold tag-shaped text: blank them out.
+  const masked = maskComments(html).replace(/(<(script|style|textarea|title)\b[^>]*>)([\s\S]*?)(<\/\2\s*>)/gi, (_, open: string, _tag, body: string, close: string) => open + ' '.repeat(body.length) + close)
+  const title = /<title\b[^>]*>[\s\S]*?<\/title\s*>/i.exec(masked)
+  const titleHtml = title ? html.slice(title.index, title.index + title[0].length) : '<title>clarusjs</title>'
+  // The first start tag that carries a data-cl-swap attribute (boolean or with a value), attributes parsed properly.
+  const tags = /<([a-zA-Z][\w-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/g
+  let marked: RegExpExecArray | null = null
+  for (let m = tags.exec(masked); m; m = tags.exec(masked)) {
+    const names = [...m[2]!.matchAll(/\s+([^\s"'>/=]+)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?/g)].map((a) => a[1]!.toLowerCase())
+    if (names.includes('data-cl-swap')) { marked = m; break }
+  }
+  if (marked) {
+    const tag = marked[1]!.toLowerCase()
+    const same = new RegExp(`<(/?)${tag}(?=[\\s>/])`, 'gi')
+    same.lastIndex = marked.index
+    let depth = 0
+    for (let m = same.exec(masked); m; m = same.exec(masked)) {
+      depth += m[1] ? -1 : 1
+      if (depth === 0) return titleHtml + html.slice(marked.index, masked.indexOf('>', m.index) + 1)
+    }
+  }
+  const open = /<body\b[^>]*>/i.exec(masked)
+  const close = masked.lastIndexOf('</body>')
+  if (!open || close === -1) return `${titleHtml}<body>${html}</body>`
+  return titleHtml + html.slice(open.index, close) + '</body>'
 }
 
 /** Same length as `html`, with every HTML comment blanked out, so positions found in it are valid in `html`. */

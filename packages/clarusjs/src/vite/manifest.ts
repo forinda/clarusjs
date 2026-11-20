@@ -90,7 +90,7 @@ export function writeManifest(distDir: string, routes: string[], base: string, l
   const manifest: Manifest = { version: 1, routes: {} }
   const dataFile = (route: string) => (route === '/' ? '/__data.json' : `${route}/__data.json`)
   for (const route of routes) {
-    if (route.endsWith('/__data.json')) continue // a client route's data, not a page
+    if (route.endsWith('/__data.json') || route.endsWith('/index.frag.html')) continue // data and fragments, not pages
     const isClient = routes.includes(dataFile(route))
     // A client route's loader runs when its data file is written.
     const ran = loaded.includes(route) || (isClient && loaded.includes(dataFile(route)))

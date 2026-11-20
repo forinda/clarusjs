@@ -57,6 +57,7 @@ export async function show(
   for (const { name, value } of [...doc.documentElement.attributes]) root.setAttribute(name, value)
   document.head.replaceWith(doc.head)
   document.body.replaceWith(doc.body)
+  // Attaches the new page's islands; the loader also releases the old page's.
   ;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach?.(document.body)
   return true
 }
@@ -95,7 +96,7 @@ if (routes) {
       handler: () => show(url, table, undefined, undefined, isCurrent).then(() => {}, () => {
         if (!isCurrent()) return
         fallback = url.href
-        location.assign(url.href)
+        location.reload() // the URL is already committed; assign() would stay in the page with a #hash
       }),
     })
   })

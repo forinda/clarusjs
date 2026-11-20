@@ -25,6 +25,8 @@ export function routeToFile(route: string): string {
   }).join('/')
   // A client page's data file is written as itself, next to the page's shell.
   if (path === '__data.json' || path.endsWith('/__data.json')) return path
+  // A page's fragment, likewise.
+  if (path === 'index.frag.html' || path.endsWith('/index.frag.html')) return path
   return path ? `${path}/index.html` : 'index.html'
 }
 
