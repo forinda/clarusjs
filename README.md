@@ -1,20 +1,23 @@
-# clarusjs
+<p align="center">
+  <img src="docs/assets/logo.svg" width="120" height="120" alt="clarusjs logo: a clear cut crystal with one bright facet">
+</p>
 
-**Clear, compiled views.** Write components once in a familiar template language. clarusjs compiles them to plain
-server HTML, and ships JavaScript only for the parts that are actually interactive. Static sites, server rendering and
-client apps share one component model, and you can always see where each line runs.
+<h1 align="center">clarusjs</h1>
+
+<p align="center"><strong>Clear, compiled views.</strong></p>
+
+Write components once in a familiar template language. clarusjs compiles them to plain server HTML, and ships
+JavaScript only for the parts that are actually interactive. Static sites, server rendering and client apps share one
+component model, and you can always see where each line runs.
 
 > Status: proof of concept. The design lives in [docs/architecture.md](docs/architecture.md).
 
 ## The name
 
-<p align="center">
-  <img src="docs/assets/clarusjs-origin.svg" alt="clārus (Latin: clear, bright, plain to see) becomes clarus.js. It draws on KickJS views, Vue and Angular, Svelte, Astro, and htmx with Turbo." width="880">
-</p>
-
 **clarus** is Latin for *clear, bright, plain to see* (***clārus***). Clarity is the promise: templates that are clear
 to read, output that is clear to follow, and no guessing about whether code runs on the server, at build time or in
-the browser. **.js** because it is, in the end, just JavaScript you can open and read.
+the browser. The logo is a clear cut stone with one bright facet: pages that are plain HTML all the way through, with
+a small live core where they are interactive. **.js** because it is, in the end, just JavaScript you can open and read.
 
 clarusjs borrows openly from projects that got one thing very right:
 
