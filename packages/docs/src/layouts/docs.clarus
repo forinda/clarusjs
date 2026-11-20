@@ -26,6 +26,7 @@
     <main class="content">
       @if (section !== '') {<p class="eyebrow">Guide</p>}
       <slot />
+      <nav class="next" aria-label="Next page"><slot name="next"><a href="/guide/getting-started">Start with the guide →</a></slot></nav>
     </main>
     <footer class="site-footer">
       <p>MIT licensed. This site is built with clarusjs: every page is static HTML, and only the counter on the home page ships JavaScript.</p>

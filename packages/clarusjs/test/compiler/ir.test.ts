@@ -33,7 +33,7 @@ test('stateless component has only non-reactive holes', () => {
 
 test('imported tags become component nodes', () => {
   const ir = lowerSource(`@import counter from '../components/counter.clarus'\n<counter [start]="3" />`)
-  expect(ir.nodes).toEqual([{ kind: 'component', name: 'counter', props: [{ name: 'start', expr: '3' }], children: [] }])
+  expect(ir.nodes).toEqual([{ kind: 'component', name: 'counter', props: [{ name: 'start', expr: '3' }], children: [], fills: [] }])
 })
 
 test('static attributes are copied and adjacent statics merged', () => {
@@ -62,7 +62,7 @@ test('[attr] on an HTML element lowers to a dynamic attribute', () => {
 
 test('component children are lowered in the parent scope', () => {
   const ir = lowerSource(`@import card from './card.clarus'\n<card>hi</card>`)
-  expect(ir.nodes).toEqual([{ kind: 'component', name: 'card', props: [], children: [{ kind: 'static', html: 'hi' }] }])
+  expect(ir.nodes).toEqual([{ kind: 'component', name: 'card', props: [], children: [{ kind: 'static', html: 'hi' }], fills: [] }])
 })
 
 test('component inside a stateful component is an error', () => {

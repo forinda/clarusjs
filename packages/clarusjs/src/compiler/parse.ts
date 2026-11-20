@@ -12,6 +12,7 @@ export type TemplateNode =
   | { type: 'expr'; expr: string; start: number } // {{ expr }}
   | { type: 'raw'; value: string; start: number } // content of a `verbatim` element, shown as text
   | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
+  | { type: 'fill'; name: string; children: TemplateNode[]; start: number } // @slot('name') { … } inside a component tag
   | { type: 'for'; item: string; list: string; track: string | null; headStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
 export type InputDecl = { name: string; type: string; default?: string; start: number }
 export type ImportDecl = { name: string; from: string; start: number }
@@ -204,6 +205,19 @@ export function parse(source: string, file: string): ParsedFile {
     return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, children: body, empty, start }
   }
 
+  // @slot('name') { … }: content for a component's named slot.
+  function fillBlock(): TemplateNode {
+    const start = i
+    i += 5
+    const { cond } = condition('@slot')
+    const m = /^(['"])([\w-]+)\1$/.exec(cond)
+    if (!m) fail(`@slot needs a quoted name, like @slot('aside')`, start)
+    while (/\s/.test(source[i] ?? '')) i++
+    if (source[i] !== '{') fail('expected { to open the block', i)
+    i++
+    return { type: 'fill', name: m![2]!, children: children({ tag: '@slot', start, block: true }), start }
+  }
+
   function children(parent?: { tag: string; start: number; block?: boolean }): TemplateNode[] {
     const nodes: TemplateNode[] = []
     let text = ''
@@ -226,6 +240,8 @@ export function parse(source: string, file: string): ParsedFile {
         flush(); nodes.push(ifBlock()); textStart = i
       } else if (/^@for[\s(]/.test(source.slice(i, i + 5))) {
         flush(); nodes.push(forBlock()); textStart = i
+      } else if (/^@slot[\s(]/.test(source.slice(i, i + 6))) {
+        flush(); nodes.push(fillBlock()); textStart = i
       } else if (parent?.block && source[i] === '}') {
         flush(); i++
         return nodes

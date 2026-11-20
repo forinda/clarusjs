@@ -14,7 +14,7 @@ export const asWritten: Rewriter = { expr: (e) => e, without: () => asWritten }
 export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
   const parts = nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
-    if (n.kind === 'slot') return '(__cl_slot ?? "")'
+    if (n.kind === 'slot') return `(__cl_slots?.[${JSON.stringify(n.name)}] ?? ${n.fallback.length ? `(${htmlExpr(n.fallback, rw)})` : '""'})`
     if (n.kind === 'attr') return `__cl_attrHtml(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, rw.expr)}${tagArg(n)})`
     if (n.kind === 'if') {
       if (n.block === -1) {
@@ -38,7 +38,11 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
     }
     if (n.kind === 'component') {
       const props = n.props.map((p) => `${p.name}: ${wrapExpr(p.expr)}`).join(', ')
-      return n.children.length ? `${renderName(n.name)}({ ${props} }, ${htmlExpr(n.children, rw)})` : `${renderName(n.name)}({ ${props} })`
+      const slots = [
+        ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw)}`] : []),
+        ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw)}`),
+      ]
+      return slots.length ? `${renderName(n.name)}({ ${props} }, { ${slots.join(', ')} })` : `${renderName(n.name)}({ ${props} })`
     }
     const value = `__cl_escape(${wrapExpr(rw.expr(n.expr))})`
     return n.reactive ? `"<!--[${n.index}-->" + ${value} + "<!--]-->"` : value
@@ -73,7 +77,8 @@ export function walk(nodes: IRNode[]): IRNode[] {
     n,
     ...(n.kind === 'if' ? n.branches.flatMap((b) => walk(b.nodes))
       : n.kind === 'for' ? [...walk(n.nodes), ...walk(n.empty ?? [])]
-      : n.kind === 'component' ? walk(n.children)
+      : n.kind === 'component' ? [...walk(n.children), ...n.fills.flatMap((f) => walk(f.nodes))]
+      : n.kind === 'slot' ? walk(n.fallback)
       : []),
   ])
 }
