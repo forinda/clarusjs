@@ -1,6 +1,5 @@
 {
-  // The browser runtime, compiled again with its comments: apps bundle (and minify) it, and Vite reads magic
-  // comments such as /* @vite-ignore */ in it. The rest of dist/ is built without comments (tsconfig.build.json).
+  // The browser runtime, built again with its comments (see scripts/build-package.mjs).
   "extends": "./tsconfig.build.json",
   "compilerOptions": { "declaration": false },
   "include": ["src/runtime"]

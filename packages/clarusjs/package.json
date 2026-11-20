@@ -49,7 +49,7 @@
     "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
   },
   "scripts": {
-    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json --emitDeclarationOnly && tsc -p tsconfig.build.json --declaration false --removeComments && tsc -p tsconfig.runtime.json",
+    "build": "node ../../scripts/build-package.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm build"
