@@ -54,7 +54,7 @@ test('#32: adapter netlify writes a function that serves the server routes with 
   expect(existsSync(file)).toBe(true)
   const fn = await import(`${pathToFileURL(file).href}?t=${Date.now()}`)
   // Static routes stay files: Netlify serves them first, and only the server routes reach the function.
-  expect(fn.config).toEqual({ path: ['/account/:id', '/account/:id/'], preferStatic: true })
+  expect(fn.config).toEqual({ path: ['/account/:id', '/account/:id/', '/account/:id/index.frag.html'], preferStatic: true })
   const res = await fn.default(new Request('https://site.example/account/3', { headers: { 'user-agent': 'netlify/1' } }))
   expect(res.status).toBe(200)
   expect(await res.text()).toContain('<p>netlify/1</p>')
@@ -136,3 +136,14 @@ test('review: client routes under a base list their browser paths', async () => 
   expect(table.every((t) => t.r.startsWith('/docs/assets/'))).toBe(true)
   expect(existsSync(resolve(dir, 'dist/client/app/one/__data.json'))).toBe(true)
 }, 120_000)
+
+test('#35: with fragments on, static pages get index.frag.html; the manifest leaves fragments out', async () => {
+  expect(readFileSync(resolve(root, 'dist/client/index.frag.html'), 'utf8')).toBe('<title>clarusjs</title><body><h1>Home</h1></body>')
+  expect(readFileSync(resolve(root, 'dist/client/blog/hello/index.frag.html'), 'utf8')).toContain('<h1>Post hello</h1>')
+  expect(existsSync(resolve(root, 'dist/client/app/one/index.frag.html'))).toBe(false) // client routes render in the browser
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  expect(Object.keys(manifest.routes).filter((r) => r.includes('frag'))).toEqual([])
+  // A server route's fragment comes from the handler.
+  const { default: handler } = await import(`${pathToFileURL(resolve(root, 'dist/server/index.mjs')).href}?t=${Date.now()}`)
+  expect(await (await handler.fetch(new Request('http://x/account/7/index.frag.html'))).text()).toContain('<h1>Account 7</h1>')
+})

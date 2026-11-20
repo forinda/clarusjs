@@ -38,6 +38,8 @@ export type ClarusOptions = {
   routes?: ModeTable
   /** Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. */
   adapter?: 'netlify'
+  /** Fragment navigation: each static and server page also answers at <path>/index.frag.html. */
+  fragments?: boolean
 }
 
 /** Client-mode pages: route (as the file names it) → absolute file. */
@@ -162,7 +164,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         await prerender(entry, out, manifestFile, readers)
         writeManifest(dist, routes, builder.config.base, loaded, server)
       }
-      if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route))
+      if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
     },
     resolveId(id) {
       if (id === '/cl-loader.js') return here('../runtime/loader')
@@ -194,6 +196,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  routerUrl: ${JSON.stringify(routerUrl)},\n` +
         `  client: ${JSON.stringify(client)},\n` +
         `  base: ${JSON.stringify(base)},\n` +
+        `  fragments: ${options.fragments === true},\n` +
         `})\n`
     },
     transform: {

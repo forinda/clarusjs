@@ -2,6 +2,7 @@ import { modeFor, type ModeTable } from './modes.ts'
 import { stringify } from '../runtime/serialize.ts'
 
 const DATA = '__data.json'
+const FRAG = 'index.frag.html'
 /** JSON that is safe inside a <script> element and in any HTML context: '<' never appears raw. */
 const safeJson = (json: string) => json.replace(/</g, '\\u003c')
 
@@ -52,6 +53,8 @@ export function createHandler(
     routerUrl?: string
     /** Vite's base ('/' or '/docs/'): client routes are listed at their browser paths, under it. */
     base?: string
+    /** Fragment navigation: every static and server page also answers at <path>/index.frag.html. */
+    fragments?: boolean
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -101,6 +104,7 @@ export function createHandler(
     serverRoutes: routes.filter((r) => modeFor(r.path, modes) === 'server').map((r) => r.path).sort(),
     /** Whether a URL path belongs to a server route (what a host must send to this handler instead of a file). */
     isServerPath(pathname) {
+      if (options.fragments && pathname.endsWith(`/${FRAG}`)) pathname = pathname.slice(0, -FRAG.length - 1) || '/'
       const found = match(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
       return Boolean(found && modeFor(found.route.path, modes) === 'server')
     },
@@ -120,6 +124,8 @@ export function createHandler(
           out.push(path)
           // A client page's data, fetched by the router: written next to its shell.
           if (mode === 'client') out.push(path === '/' ? `/${DATA}` : `${path}/${DATA}`)
+          // A static page's fragment, for fragment navigation.
+          else if (options.fragments) out.push(path === '/' ? `/${FRAG}` : `${path}/${FRAG}`)
         }
         if (!route.keys.length) { add(route.path); continue }
         const dataFile = route.file.replace(/\.tscl$/, '.load.ts')
@@ -156,6 +162,15 @@ export function createHandler(
         if (owner && modeFor(owner.route.path, modes) === 'client') {
           found = owner
           wantsData = true
+        }
+      }
+      // <static or server route>/index.frag.html: that page's fragment, for fragment navigation.
+      let wantsFrag = false
+      if (options.fragments && !wantsData && pathname.endsWith(`/${FRAG}`)) {
+        const owner = match(trim(pathname.slice(0, -FRAG.length - 1) || '/'))
+        if (owner && modeFor(owner.route.path, modes) !== 'client') {
+          found = owner
+          wantsFrag = true
         }
       }
       const head = request.method === 'HEAD'
@@ -195,6 +210,7 @@ export function createHandler(
         return new Response(head ? null : safeJson(stringify(props)), { headers: { 'content-type': 'application/json; charset=utf-8' } })
       }
       const html = (await found.route.load()).render(props)
+      if (wantsFrag) return new Response(head ? null : toFragment(html), { headers: { 'content-type': 'text/html; charset=utf-8' } })
       const visible = maskComments(html)
       const hasIslands = visible.includes('<cl-island ')
       // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
@@ -212,6 +228,34 @@ export function createHandler(
 function failure(message: string): Response {
   console.error(`[clarusjs] ${message}`)
   return new Response('Internal Server Error', { status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+}
+
+/**
+ * A page's fragment: its <title>, then the element marked data-cl-swap (the region fragment navigation replaces), or
+ * its <body> when nothing is marked. Comments are ignored when looking; nested tags of the same name are balanced.
+ */
+export function toFragment(html: string): string {
+  const masked = maskComments(html)
+  const title = /<title>[\s\S]*?<\/title>/i.exec(masked)
+  const titleHtml = title ? html.slice(title.index, title.index + title[0].length) : '<title>clarusjs</title>'
+  const marked = /<([a-zA-Z][\w-]*)\b[^>]*?\sdata-cl-swap(?=[\s=>/])/.exec(masked)
+  if (marked) {
+    const tag = marked[1]!.toLowerCase()
+    const tags = new RegExp(`<(/?)${tag}(?=[\\s>/])`, 'gi')
+    tags.lastIndex = marked.index
+    let depth = 0
+    for (let m = tags.exec(masked); m; m = tags.exec(masked)) {
+      depth += m[1] ? -1 : 1
+      if (depth === 0) {
+        const end = masked.indexOf('>', m.index) + 1
+        return titleHtml + html.slice(marked.index, end)
+      }
+    }
+  }
+  const open = /<body\b[^>]*>/i.exec(masked)
+  const close = masked.lastIndexOf('</body>')
+  if (!open || close === -1) return `${titleHtml}<body>${html}</body>`
+  return titleHtml + html.slice(open.index, close) + '</body>'
 }
 
 /** Same length as `html`, with every HTML comment blanked out, so positions found in it are valid in `html`. */

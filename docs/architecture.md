@@ -242,6 +242,20 @@ page in the browser:
 The router swaps `<head>` and `<body>` for the rendered page and calls the
 loader's attach hook, so islands on a client page work as anywhere else.
 
+### Fragments
+
+With `fragments: true`, every static and server page also answers at
+`<path>/index.frag.html` (a file next to `index.html` for static pages; the
+handler for server routes): the page's `<title>` followed by its swap region,
+the element marked `data-cl-swap`, or its `<body>` when nothing is marked.
+Fragment navigation replaces only that region. The URL, not a request header,
+selects a fragment, so it works on static hosts and caches like any file.
+
+| Part | Meaning |
+|---|---|
+| `data-cl-swap` | the region a fragment replaces (one per page); without it, the body |
+| `<path>/index.frag.html` | `<title>…</title>` + the swap region's HTML |
+
 ## 6. The runtime
 
 Target under 5 KB total; the POC aims at about 1–2 KB.

@@ -6,7 +6,7 @@ import { dirname, relative, resolve, sep } from 'node:path'
 const FUNCTION = '.netlify/v1/functions/clarusjs-server.mjs'
 
 /** '/account/[id]' → ['/account/:id', '/account/:id/'] (Netlify paths use URLPattern syntax). */
-export function netlifyPaths(route: string): string[] {
+export function netlifyPaths(route: string, fragments = false): string[] {
   const segments = route.split('/')
   const keyOf = (seg: string) => /^\[([A-Za-z_$][\w$]*)\]$/.exec(seg)?.[1]
   const valid = (key: string) => /^[A-Za-z_]\w*$/.test(key)
@@ -23,11 +23,14 @@ export function netlifyPaths(route: string): string[] {
     if (key !== undefined) return `:${valid(key) ? key : fresh()}`
     return seg.replace(/[:*?+(){}\\]/g, '\\$&') // literal text, not pattern syntax
   }).join('/')
-  return path === '/' || path === '' ? ['/'] : [path, `${path}/`]
+  const paths = path === '/' || path === '' ? ['/'] : [path, `${path}/`]
+  // The page's fragment, for fragment navigation, comes from the same function.
+  if (fragments) paths.push(path === '/' || path === '' ? '/index.frag.html' : `${path}/index.frag.html`)
+  return paths
 }
 
 /** Write (or, without server routes, remove) the function in `<root>/.netlify/v1/functions`. */
-export function writeNetlifyFunction(root: string, serverEntry: string, serverRoutes: string[]): void {
+export function writeNetlifyFunction(root: string, serverEntry: string, serverRoutes: string[], fragments = false): void {
   const file = resolve(root, FUNCTION)
   if (!serverRoutes.length) {
     rmSync(file, { force: true })
@@ -41,7 +44,7 @@ export function writeNetlifyFunction(root: string, serverEntry: string, serverRo
     '',
     'export default (request) => handler.fetch(request)',
     '',
-    `export const config = ${JSON.stringify({ path: serverRoutes.flatMap(netlifyPaths), preferStatic: true })}`,
+    `export const config = ${JSON.stringify({ path: serverRoutes.flatMap((r) => netlifyPaths(r, fragments)), preferStatic: true })}`,
     '',
   ].join('\n'))
 }
