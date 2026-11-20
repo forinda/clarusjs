@@ -10,7 +10,11 @@ import { splitImports } from '../compiler/script.ts'
  */
 export type Mapping = [number, number, number, boolean]
 
-export function generateTs(source: string, file: string): { code: string; mappings: Mapping[] } {
+/**
+ * `loader`: the module specifier of the page's .load.ts when it exports load(); what it returns is checked against
+ * the page's inputs. `loaderSpan` is where that check sits in the generated code, so its errors can say so.
+ */
+export function generateTs(source: string, file: string, options: { loader?: string } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
   const parsed = parse(source, file)
   const mappings: Mapping[] = []
   let code = ''
@@ -39,6 +43,7 @@ export function generateTs(source: string, file: string): { code: string; mappin
     copy(d.clause, d.clauseStart)
     emit(` from ${JSON.stringify(d.from)}\n`)
   }
+  if (options.loader) emit(`import { load as __cl_load } from ${JSON.stringify(options.loader)}\n`)
   const script = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : null
   if (parsed.script && script) {
     for (const imp of script.imports) {
@@ -55,7 +60,17 @@ export function generateTs(source: string, file: string): { code: string; mappin
     copy(input.type, input.typeStart)
     emit('\n')
   }
-  emit('}\n\nexport default function __cl_check(__cl_props: Inputs) {\n')
+  emit('}\n')
+  let loaderSpan: [number, number] | undefined
+  if (options.loader) {
+    // Params and defaults fill the rest, so load() may return any subset of the inputs, each with the right type.
+    emit('declare const __cl_loaded: Awaited<ReturnType<typeof __cl_load>>\n')
+    const start = code.length
+    point('const __cl_from_load: Partial<Inputs> = __cl_loaded', 0)
+    loaderSpan = [start, code.length]
+    emit('\n')
+  }
+  emit('\nexport default function __cl_check(__cl_props: Inputs) {\n')
   if (parsed.inputs.length) {
     emit('  const { ')
     parsed.inputs.forEach((input, i) => {
@@ -154,7 +169,7 @@ export function generateTs(source: string, file: string): { code: string; mappin
   }
   parsed.nodes.forEach(visit)
   emit('}\n')
-  return { code, mappings }
+  return { code, mappings, loaderSpan }
 }
 
 /** The template offset for an offset in the virtual file, or null when it falls in generated scaffolding. */

@@ -15,6 +15,8 @@ export const sections: Section[] = [
         { title: 'What is clarusjs?', href: '/guide/what-is-clarusjs' },
         { title: 'Getting started', href: '/guide/getting-started' },
         { title: 'Project structure', href: '/guide/project-structure' },
+        { title: 'Pages and routes', href: '/guide/routing' },
+        { title: 'Rendering modes', href: '/guide/rendering-modes' },
       ] },
       { title: 'Templates', items: [
         { title: 'Components', href: '/guide/components' },
@@ -56,6 +58,9 @@ export const sections: Section[] = [
         { title: 'Runtime', href: '/reference/runtime' },
         { title: 'Vite plugin', href: '/reference/vite-plugin' },
         { title: 'CLI', href: '/reference/cli' },
+      ] },
+      { title: 'Project', items: [
+        { title: 'Release notes', href: '/releases' },
       ] },
     ],
   },

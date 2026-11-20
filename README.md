@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" width="120" height="120" alt="clarusjs logo: a cut crystal flat along a T, struck by an S-shaped lightning bolt, with C and L down the stem">
+  <img src="docs/assets/logo.svg" width="120" height="120" alt="clarusjs logo">
 </p>
 
 <h1 align="center">clarusjs</h1>

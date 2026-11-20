@@ -1,5 +1,6 @@
 // `vite build` on an app using the plugin: client build, server build, then every page prerendered to static HTML.
-import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { createBuilder } from 'vite'
@@ -60,6 +61,10 @@ test('no server code or template source reaches the client assets', () => {
 test('routeToFile maps routes to index.html files', () => {
   expect(routeToFile('/')).toBe('index.html')
   expect(routeToFile('/about/team')).toBe('about/team/index.html')
+  // Static hosts look files up by the decoded path: /users/a%20b is served from users/a b/index.html.
+  expect(routeToFile('/users/a%20b')).toBe('users/a b/index.html')
+  expect(routeToFile('/caf%C3%A9')).toBe('café/index.html')
+  expect(routeToFile('/100%')).toBe('100%/index.html') // not an escape: kept as written
 })
 
 test('a page that throws while prerendering fails the build, naming the route', async () => {
@@ -120,7 +125,7 @@ test('no compiler or command-line code reaches the browser', () => {
 test('#25: writes dist/clarusjs-manifest.json describing every route', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
   const gz = expect.any(Number)
-  expect(Object.keys(manifest.routes)).toEqual(['/', '/about/team', '/explain'])
+  expect(Object.keys(manifest.routes)).toEqual(['/', '/about/team', '/explain', '/users/ada', '/users/grace%20hopper', '/users/linus'])
   expect(manifest.routes['/about/team']).toEqual({ mode: 'static', html: 'about/team/index.html', loader: null, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] })
   const home = manifest.routes['/']
   expect(home.islands.map((i: { component: string; attach: string; count: number }) => [i.component, i.attach, i.count])).toEqual([['counter', 'load', 1], ['panel', 'load', 1]])
@@ -132,4 +137,40 @@ test('#25: writes dist/clarusjs-manifest.json describing every route', () => {
 
 test('#27: a page that reads the manifest is rendered again once it is written', () => {
   expect(read('explain/index.html')).toContain('<p id="home-islands">counter, panel</p>')
+})
+
+test('#30: a dynamic route is prerendered once per entry', () => {
+  expect(read('users/ada/index.html')).toContain('<h1>User Ada</h1>')
+  expect(read('users/linus/index.html')).toContain('<h1>User Linus</h1>')
+  // A value with a space is written to the folder a static host will look in.
+  expect(read('users/grace hopper/index.html')).toContain('<p>grace hopper</p>')
+})
+
+test('#30: a dynamic route without entries() fails the build, naming the file', async () => {
+  const dir = mkdtempSync(resolve(tmpdir(), 'clarusjs-noentries-'))
+  cpSync(root, dir, { recursive: true, filter: (src) => !src.includes('/dist') })
+  rmSync(resolve(dir, 'src/pages/users/[id].load.ts'))
+  mkdirSync(resolve(dir, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'dir')
+  const plugin = resolve(import.meta.dirname, '../src/vite/plugin.ts')
+  // No bare 'vite' import: a temp folder outside the workspace has no node_modules to resolve it from.
+  writeFileSync(resolve(dir, 'vite.config.ts'), `import clarusjs from ${JSON.stringify(plugin)}\nexport default { plugins: [clarusjs()] }\n`)
+  await expect(build(dir)).rejects.toThrow('/users/[id] is a dynamic route: export entries() from src/pages/users/[id].load.ts')
+}, 60_000)
+
+test('#31: load() runs at build for each page, and the manifest says so', () => {
+  expect(read('users/ada/index.html')).toContain('<p>ada</p>')
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  expect(manifest.routes['/users/ada'].loader).toBe('build')
+  expect(manifest.routes['/'].loader).toBeNull()
+})
+
+test('security: prerender never writes outside the output folder', async () => {
+  const { prerender } = await import('../src/vite/build.ts')
+  const dir = mkdtempSync(resolve(tmpdir(), 'clarusjs-escape-'))
+  const entry = resolve(dir, 'server.mjs')
+  // A handler that claims a route escaping the output folder (as a decoded "..%5C.." segment could on Windows).
+  writeFileSync(entry, `export default { routes: [], async paths() { return ['/ok', '/a/../../escape'] }, async fetch() { return new Response('x') } }`)
+  await expect(prerender(entry, resolve(dir, 'out'), resolve(dir, 'm.json'))).rejects.toThrow(/prerender \/a\/\.\.\/\.\.\/escape: outside the output folder/)
+  expect(existsSync(resolve(dir, 'escape'))).toBe(false)
 })

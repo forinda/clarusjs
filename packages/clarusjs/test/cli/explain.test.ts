@@ -84,3 +84,23 @@ test('the command line runs explain', () => {
   const json = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, 'explain', '/', '--root', root, '--json'], { encoding: 'utf8' })
   expect(JSON.parse(json.stdout).islands).toHaveLength(2)
 })
+
+test('#31: a route whose load() ran at build says so', () => {
+  const root = project()
+  const withLoader = { ...manifest, routes: { '/about': { ...manifest.routes['/about']!, loader: 'build' as const } } }
+  writeFileSync(resolve(root, 'dist/clarusjs-manifest.json'), JSON.stringify(withLoader))
+  expect(explain({ root, route: '/about' }).text).toContain('  Data        load() ran once, at build time')
+})
+
+test('#29: a server route is explained as rendered per request', () => {
+  const root = project()
+  const server = { mode: 'server' as const, html: null, loader: 'request' as const, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] }
+  writeFileSync(resolve(root, 'dist/clarusjs-manifest.json'), JSON.stringify({ version: 1, routes: { '/account/[id]': server } }))
+  expect(explain({ root, route: '/account/[id]' }).text).toBe([
+    '/account/[id]',
+    '  Rendered    on every request, by dist/server/index.mjs',
+    '  Data        load() runs on every request',
+    '  Islands     decided per request',
+  ].join('\n'))
+  expect(explain({ root }).text).toContain('/account/[id]  -        per request')
+})

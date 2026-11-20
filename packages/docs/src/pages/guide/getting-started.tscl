@@ -1,13 +1,13 @@
 @import copy from '../../components/copy.tscl'
 @import docs from '../../layouts/docs.tscl'
+@import pm from '../../components/pm.tscl'
 
 <docs [title]="'Getting started'" [path]="'/guide/getting-started'" [description]="'Install clarusjs, configure Vite and write your first page.'">
   <h1>Getting started</h1>
   <p class="lead">clarusjs is a Vite plugin plus a small runtime. You need Node 22.12 or later.</p>
 
   <h2>Install</h2>
-  <div class="sample"><pre><code verbatim>pnpm add clarusjs
-pnpm add -D vite</code></pre><copy attach="interaction" /></div>
+  <pm [commands]="['add clarusjs', 'add -D vite']" />
 
   <h2>Configure Vite</h2>
   <div class="sample"><pre><code verbatim>// vite.config.ts
@@ -23,6 +23,5 @@ export default defineConfig({ plugins: [clarusjs()] })</code></pre><copy attach=
 <p>This page is plain HTML.</p></code></pre><copy attach="interaction" /></div>
 
   <h2>Run it</h2>
-  <div class="sample"><pre><code verbatim>pnpm vite          # dev server, pages rendered on each request
-pnpm vite build    # static site in dist/client/</code></pre><copy attach="interaction" /></div>
+  <pm [commands]="['exec vite        # dev server, pages rendered on each request', 'exec vite build  # static site in dist/client/']" />
 </docs>

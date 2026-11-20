@@ -1,0 +1,2 @@
+@input slug: string
+<h1>Post {{ slug }}</h1>
