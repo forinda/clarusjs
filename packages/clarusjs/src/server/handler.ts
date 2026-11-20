@@ -8,9 +8,14 @@ export function routeFromFile(file: string): string {
   return path || '/'
 }
 
-export function createHandler(pages: Record<string, () => Promise<PageModule>>): { fetch(request: Request): Promise<Response> } {
+export function createHandler(
+  pages: Record<string, () => Promise<PageModule>>,
+  options: { loaderUrl?: string } = {},
+): { fetch(request: Request): Promise<Response>; routes: string[] } {
   const routes = new Map(Object.entries(pages).map(([file, load]) => [routeFromFile(file), load]))
+  const loaderUrl = options.loaderUrl ?? '/cl-loader.js'
   return {
+    routes: [...routes.keys()].sort(),
     async fetch(request) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 })
       const load = routes.get(new URL(request.url).pathname)
@@ -19,7 +24,7 @@ export function createHandler(pages: Record<string, () => Promise<PageModule>>):
       const html = (await load()).render({})
       // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
       const hasIslands = html.replace(/<!--[\s\S]*?-->/g, '').includes('<cl-island ')
-      const scripts = hasIslands ? '<script type="module" src="/cl-loader.js"></script>' : ''
+      const scripts = hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''
       const style = hasIslands ? '<style>cl-island{display:contents}</style>' : '' // islands never affect layout
       const body = `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title>${style}</head><body>${html}${scripts}</body></html>`
       return new Response(head ? null : body, { headers: { 'content-type': 'text/html; charset=utf-8' } })

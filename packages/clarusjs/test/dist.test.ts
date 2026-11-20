@@ -36,7 +36,7 @@ test('built compiler compiles a component', async () => {
 test('built Vite plugin points at built runtime files that exist', async () => {
   const { default: clarusjs } = await import(`${dist}/vite/plugin.js`)
   const plugin = clarusjs()
-  const aliases = plugin.config().resolve.alias as { find: string; replacement: string }[]
+  const aliases = plugin.config({}, { command: 'serve', mode: 'development' }).resolve.alias as { find: string; replacement: string }[]
   for (const a of aliases) {
     expect(a.replacement.startsWith(dist)).toBe(true)
     expect(existsSync(a.replacement)).toBe(true)
