@@ -1,5 +1,25 @@
 # clarusjs
 
+## 0.7.0
+
+### Minor Changes
+
+- [#130](https://github.com/forinda/clarusjs/pull/130) [`85095f8`](https://github.com/forinda/clarusjs/commit/85095f8a693527363d079b18c70eeb6cadf91110) Thanks [@forinda](https://github.com/forinda)! - Stylesheet imports and per-page CSS: `@import './x.css'` (no name) in a page or component declares a stylesheet it needs. Each goes through Vite's CSS pipeline (PostCSS or Lightning CSS, minified and hashed), and each page links exactly the stylesheets it imports directly or through its components, dependencies first, before the component styles. Client-route shells link every client page's stylesheets; fragments carry their page's links, and fragment navigation adds and waits for any that are missing. The client router now keeps the head across navigations (it updates the title and `<html>` attributes and runs the new page's inline head scripts), so linked stylesheets stay.
+
+- [#130](https://github.com/forinda/clarusjs/pull/130) [`d049888`](https://github.com/forinda/clarusjs/commit/d0498884f0bdb226fd1643ef6ceb8bfbdba36ba6) Thanks [@forinda](https://github.com/forinda)! - `<script inline>`: a script written into the page as is (static attributes only; its content is never a template) and run where it stands, such as at the top of `<head>` to apply a saved theme before the first paint. The client router now runs the rendered page's inline head scripts, as a normal load would, and the island style is installed on the document by the loader so it survives head swaps.
+
+- [#139](https://github.com/forinda/clarusjs/pull/139) [`ea27476`](https://github.com/forinda/clarusjs/commit/ea274768707c611d1c321ca6e70e3fd1c776deb7) Thanks [@forinda](https://github.com/forinda)! - Build-time link checking: once every page is built, links to pages and files that don't exist fail the build, and links to a missing `#anchor` warn, each with the source file and line and a "did you mean" suggestion. Configure with `links: { pages, anchors, strict }` (`error`, `warn` or `off`).
+
+- [#135](https://github.com/forinda/clarusjs/pull/135) [`0aafac8`](https://github.com/forinda/clarusjs/commit/0aafac86777c10e645e401728b880f4ac6db74cf) Thanks [@forinda](https://github.com/forinda)! - Page sources: `clarusjs({ sources: [...] })` lets a plugin turn files with another extension (such as `.md` from `@clarusjs/content`) into `.tscl` text, compiled like any page: routes, layouts, components, styles, islands and the manifest all apply. Only files under `src/` are claimed, never `?raw`/`?url` imports.
+
+- [#130](https://github.com/forinda/clarusjs/pull/130) [`a3992c0`](https://github.com/forinda/clarusjs/commit/a3992c0edb63add64b6f4227b14fd2de604ab31d) Thanks [@forinda](https://github.com/forinda)! - `<style>` in `.tscl` files. A top-level `<style>` is the component's stylesheet, scoped with native `@scope`: the component's top-level elements get `data-cl-c="<id>"`, rules apply inside them (style the top-level element itself with `:scope`) and stop at other components. `<style global>` is left unscoped. Every component's styles are bundled into one stylesheet (minified and hashed by Vite) that every page links; in dev it is regenerated when a `.tscl` file changes. `{{ }}` holes in a component `<style>` are a located build error: pass values as CSS custom properties.
+
+### Patch Changes
+
+- [#140](https://github.com/forinda/clarusjs/pull/140) [`67ab0b2`](https://github.com/forinda/clarusjs/commit/67ab0b2fe87e52153453433132990f7fdc653b97) Thanks [@forinda](https://github.com/forinda)! - The documentation lives at https://clarusjs.com: package homepages and READMEs point there.
+
+- [#138](https://github.com/forinda/clarusjs/pull/138) [`6429743`](https://github.com/forinda/clarusjs/commit/64297432255bf4cbf614bda08318bdaf1ae44e5d) Thanks [@forinda](https://github.com/forinda)! - Page sources get `root` and `addDependency(file)` in their context (files they read are watched in dev), and only apply under `src/pages`: a source-extension file elsewhere (such as a Markdown part to include) is not a page or a component.
+
 ## 0.6.0
 
 ### Minor Changes
