@@ -15,7 +15,7 @@ export type ViewProps<N> = N extends keyof Views ? Views[N] : Record<string, unk
 
 /** '/src/components/pill.tscl' → 'components/pill' */
 export function viewName(file: string): string {
-  return file.replace(/^.*?\/src\//, '').replace(/\.tscl$/, '')
+  return file.replace(/^.*?\/src\//, '').replace(/\.[^./]+$/, '')
 }
 
 // On globalThis: the bundled server and an app's own `import 'clarusjs/views'` may be two copies of this module.

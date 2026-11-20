@@ -28,6 +28,7 @@ export const sections: Section[] = [
         { title: 'Slots', href: '/guide/slots' },
         { title: 'Verbatim', href: '/guide/verbatim' },
         { title: 'Styles', href: '/guide/styles' },
+        { title: 'Markdown pages', href: '/guide/markdown' },
       ] },
       { title: 'Interactivity', items: [
         { title: 'Islands', href: '/guide/islands' },
@@ -98,8 +99,11 @@ export function pager(path: string): { prev: Item; next: Item } {
   return { prev: items[i - 1] ?? none, next: items[i + 1] ?? none }
 }
 
+// Pages written in Markdown (src/pages/**/*.md): their source file has that extension.
+const MARKDOWN = new Set(['/guide/what-is-clarusjs', '/guide/markdown'])
+
 /** "Edit this page" link for a route. */
 export function sourceOf(path: string): string {
   const file = path === '/' ? 'index' : path.replace(/^\//, '')
-  return `https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/${file}.tscl`
+  return `https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/${file}${MARKDOWN.has(path) ? '.md' : '.tscl'}`
 }

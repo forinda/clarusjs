@@ -37,16 +37,20 @@ const scopeFor = (root: string, file: string) => scopeId(relative(root, file).sp
  * Each page's stylesheets (absolute paths), from its own `@import './x.css'` and its components', transitively.
  * Dependencies come first, so a layout's base CSS is linked before what the page adds.
  */
-function pageStylesheets(root: string): Map<string, string[]> {
+function pageStylesheets(root: string, files: Files): Map<string, string[]> {
   const deps = new Map<string, { css: string[]; components: string[] }>()
   const read = (file: string) => {
     if (!deps.has(file)) {
       let parsed
-      try { parsed = parse(readFileSync(file, 'utf8'), file) } catch { parsed = null } // errors surface on compile
-      const near = (from: string) => resolve(dirname(file), from.replace(/\?.*$/, ''))
+      try { parsed = parse(files.read(file, root), file) } catch { parsed = null } // errors surface on compile
+      // Relative to the file, or root-relative ('/src/layouts/docs.tscl', as Vite resolves it).
+      const near = (from: string) => {
+        const path = from.replace(/\?.*$/, '')
+        return path.startsWith('/') ? resolve(root, `.${path}`) : resolve(dirname(file), path)
+      }
       deps.set(file, {
         css: parsed?.cssImports.map((c) => near(c.from)) ?? [],
-        components: parsed?.imports.filter((imp) => imp.from.startsWith('.')).map((imp) => near(imp.from)) ?? [],
+        components: parsed?.imports.filter((imp) => /^[./]/.test(imp.from)).map((imp) => near(imp.from)) ?? [],
       })
     }
     return deps.get(file)!
@@ -59,7 +63,7 @@ function pageStylesheets(root: string): Map<string, string[]> {
     for (const sheet of css) if (!out.includes(sheet)) out.push(sheet)
   }
   const pages = new Map<string, string[]>()
-  for (const file of findClarusFiles(resolve(root, 'src/pages'))) {
+  for (const file of files.find(resolve(root, 'src/pages'))) {
     const out: string[] = []
     collect(file, out, new Set())
     pages.set(routeFromFile(`/${relative(root, file).split(sep).join('/')}`), out)
@@ -68,11 +72,11 @@ function pageStylesheets(root: string): Map<string, string[]> {
 }
 
 /** Write .clarusjs/styles.css from every component under src/; false when no component has a <style>. */
-function writeStyles(root: string): boolean {
+function writeStyles(root: string, files: Files): boolean {
   let css = ''
-  for (const file of findClarusFiles(resolve(root, 'src'))) {
+  for (const file of files.find(resolve(root, 'src'))) {
     try {
-      const out = compile(readFileSync(file, 'utf8'), { file, target: 'client', scope: scopeFor(root, file) }).css
+      const out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file) }).css
       if (out) css += `/* ${relative(root, file).split(sep).join('/')} */\n${out}`
     } catch {} // compile errors are reported when the component itself is compiled
   }
@@ -86,7 +90,7 @@ const CLIENT_OUT = 'dist/client'
 // Placeholder for a nested island's chunk URL in the client build, replaced once the bundle's file names are known.
 const CHUNK_TOKEN = '__CLARUS_CHUNK__'
 const SERVER_OUT = 'dist/server'
-const entryName = (root: string, file: string) => relative(root, file).replace(/\.tscl$/, '')
+const entryName = (root: string, file: string) => relative(root, file).replace(/\.[^./\\]+$/, '')
 
 export type ClarusOptions = {
   /** When each route renders: { '/account/*': 'server' }. Routes default to 'static' (prerendered at build). */
@@ -95,12 +99,23 @@ export type ClarusOptions = {
   adapter?: 'netlify'
   /** Fragment navigation: each static and server page also answers at <path>/index.frag.html. */
   fragments?: boolean
+  /** Page sources for other file types, such as Markdown from @clarusjs/content: `sources: [markdown()]`. */
+  sources?: Source[]
 }
 
+/**
+ * A page source: files with another extension (such as Markdown) turned into .tscl text, then compiled like any
+ * page. `route` is the page's route when the file is under src/pages.
+ */
+export type Source = { extension: string; toTscl(code: string, file: string, context: { route: string }): string }
+
+/** How the plugin finds and reads component files: .tscl, plus the extensions of its page sources. */
+type Files = { find(dir: string): string[]; read(file: string, root: string): string }
+
 /** Client-mode pages: route (as the file names it) → absolute file. */
-function clientPages(appRoot: string, modes: ModeTable): Map<string, string> {
+function clientPages(appRoot: string, modes: ModeTable, files: Files): Map<string, string> {
   const pages = new Map<string, string>()
-  for (const file of findClarusFiles(resolve(appRoot, 'src/pages'))) {
+  for (const file of files.find(resolve(appRoot, 'src/pages'))) {
     const route = routeFromFile(`/${relative(appRoot, file).split(sep).join('/')}`)
     if (modeFor(route, modes) === 'client') pages.set(route, file)
   }
@@ -110,6 +125,25 @@ function clientPages(appRoot: string, modes: ModeTable): Map<string, string> {
 export default function clarusjs(options: ClarusOptions = {}): Plugin {
   const modes = options.routes ?? {}
   checkModes(modes)
+  const sources = options.sources ?? []
+  for (const src of sources) {
+    if (!/^\.[\w-]+$/.test(src.extension)) throw new Error(`clarusjs: a source extension must look like ".md", got "${src.extension}"`)
+    if (src.extension === '.tscl') throw new Error('clarusjs: .tscl files are compiled directly; a source needs its own extension')
+  }
+  const extensions = ['.tscl', ...sources.map((src) => src.extension)]
+  // Component files of every kind, read as .tscl text (a source's output, or the file itself).
+  const files: Files = {
+    find: (dir) => findClarusFiles(dir, extensions),
+    read: (file, appRoot) => {
+      const code = readFileSync(file, 'utf8')
+      const src = sources.find((x) => file.endsWith(x.extension))
+      if (!src) return code
+      const rel = relative(appRoot, file).split(sep).join('/')
+      return src.toTscl(code, file, { route: rel.startsWith('src/pages/') ? routeFromFile(`/${rel}`) : '' })
+    },
+  }
+  const fileRe = new RegExp(`\\.(${extensions.map((e) => e.slice(1)).join('|')})(\\?|$)`)
+  const glob = (dir: string) => JSON.stringify(extensions.map((e) => `${dir}/**/*${e}`))
   if (options.adapter !== undefined && options.adapter !== 'netlify') {
     throw new Error(`clarusjs: adapter "${options.adapter}" is not supported; use 'netlify'`)
   }
@@ -158,16 +192,16 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       // Client entries: the island loader plus every stateful component. Stateless components never reach the client.
       const appRoot = resolve(userConfig.root ?? process.cwd())
       const input: Record<string, string> = { [LOADER_ENTRY]: here('../runtime/loader') }
-      for (const file of findClarusFiles(resolve(appRoot, 'src'))) {
-        if (compile(readFileSync(file, 'utf8'), { file, target: 'client' }).stateful) input[entryName(appRoot, file)] = file
+      for (const file of files.find(resolve(appRoot, 'src'))) {
+        if (compile(files.read(file, appRoot), { file, target: 'client' }).stateful) input[entryName(appRoot, file)] = file
       }
       // Client routes: the router, and each page's render function for the browser.
-      const client = clientPages(appRoot, modes)
+      const client = clientPages(appRoot, modes, files)
       if (client.size) input[ROUTER_ENTRY] = here('../runtime/router')
       if (options.fragments) input[NAV_ENTRY] = here('../runtime/fragments')
-      if (writeStyles(appRoot)) input[STYLES_ENTRY] = resolve(appRoot, STYLES_FILE)
+      if (writeStyles(appRoot, files)) input[STYLES_ENTRY] = resolve(appRoot, STYLES_FILE)
       // Stylesheets imported by pages and components: each goes through Vite's CSS pipeline as its own entry.
-      for (const sheet of new Set([...pageStylesheets(appRoot).values()].flat())) {
+      for (const sheet of new Set([...pageStylesheets(appRoot, files).values()].flat())) {
         if (!existsSync(sheet)) throw new Error(`clarusjs: imported stylesheet not found: ${relative(appRoot, sheet)}`)
         input[`css/${relative(appRoot, sheet).split(sep).join('/').replace(/\.css$/, '')}`] = sheet
       }
@@ -242,7 +276,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const navUrl = urls?.get(NAV_ENTRY) ?? '/cl-nav.js'
       // Each page's imported stylesheets: built URLs (by source key), or the source served by Vite in dev.
       const css: Record<string, string[]> = {}
-      for (const [route, sheets] of pageStylesheets(root)) {
+      for (const [route, sheets] of pageStylesheets(root, files)) {
         if (!sheets.length) continue
         css[route] = sheets.map((sheet) => {
           const key = relative(root, sheet).split(sep).join('/')
@@ -252,10 +286,10 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         })
       }
       // Built: the hashed stylesheet, if any component has styles. Dev: the generated file, served by Vite.
-      const stylesUrl = urls ? urls.get(STYLES_ENTRY) : writeStyles(root) ? `/${STYLES_FILE}` : undefined
+      const stylesUrl = urls ? urls.get(STYLES_ENTRY) : writeStyles(root, files) ? `/${STYLES_FILE}` : undefined
       // Built: hashed chunk URLs. Dev: the source, served as JS by Vite.
       const client: Record<string, string> = {}
-      for (const [route, file] of clientPages(root, modes)) {
+      for (const [route, file] of clientPages(root, modes, files)) {
         const key = `${relative(root, file).split(sep).join('/')}?render`
         const url = urls ? urls.get(key) : `${clientUrlFor(root, file).replace(/\?.*$/, '')}?render&import`
         if (!url) throw new Error(`clarusjs: no client chunk for ${key}`)
@@ -264,9 +298,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       return `import { createHandler } from ${JSON.stringify(here('../server/handler'))}\n` +
         `import { registerViews, render } from ${JSON.stringify(here('../server/views'))}\n` +
         // Every view under src/, for render(name, props) in server code. Also exported for apps that import the build.
-        `registerViews(import.meta.glob('/src/**/*.tscl'))\n` +
+        `registerViews(import.meta.glob(${glob('/src')}))\n` +
         `export { render }\n` +
-        `export default createHandler(import.meta.glob('/src/pages/**/*.tscl'), {\n` +
+        `export default createHandler(import.meta.glob(${glob('/src/pages')}), {\n` +
         `  loaderUrl: ${JSON.stringify(loaderUrl)},\n` +
         `  data: import.meta.glob('/src/pages/**/*.load.ts'),\n` +
         `  modes: ${JSON.stringify(modes)},\n` +
@@ -280,9 +314,15 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `})\n`
     },
     transform: {
-      filter: { id: /\.tscl(\?|$)/ },
-      handler(code, id) {
+      filter: { id: fileRe },
+      handler(raw, id) {
         const file = id.replace(/\?.*$/, '')
+        // A page source's file is compiled from the .tscl text it produces: only under src/, and never when it is
+        // imported as text or a URL (CHANGELOG.md?raw stays a string).
+        const src = sources.find((x) => file.endsWith(x.extension))
+        if (src && (/[?&](raw|url|inline)\b/.test(id) || !file.startsWith(resolve(root, 'src') + sep))) return null
+        const rel = relative(root, file).split(sep).join('/')
+        const code = src ? src.toTscl(raw, file, { route: rel.startsWith('src/pages/') ? routeFromFile(`/${rel}`) : '' }) : raw
         // ?render: a component's server render function, used in the browser to render children of islands.
         const renderQuery = /[?&]render\b/.test(id)
         const target = this.environment.config.consumer === 'server' || renderQuery ? 'server' : 'client'
@@ -346,7 +386,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     },
     configureServer(server) {
       // Component styles change with their .tscl files: regenerate the stylesheet (Vite then updates the page's CSS).
-      const restyle = (file: string) => { if (file.endsWith('.tscl')) writeStyles(server.config.root) }
+      const restyle = (file: string) => { if (fileRe.test(file)) writeStyles(server.config.root, files) }
       server.watcher.on('change', restyle)
       server.watcher.on('add', restyle)
       server.watcher.on('unlink', restyle)

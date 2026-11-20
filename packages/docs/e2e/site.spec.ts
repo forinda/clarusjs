@@ -558,3 +558,14 @@ test('the site stylesheet goes through Vite: imported by the layout, hashed, lin
   expect((await page.request.get('/docs.css')).status()).toBe(404) // no longer a raw public file
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.site-header')!).borderBottomStyle)).toBe('solid')
 })
+
+test('a Markdown page renders in the layout, with anchors, a component and the right edit link', async ({ page }) => {
+  await page.goto('/guide/what-is-clarusjs')
+  await expect(page.locator('h1')).toHaveText(/What is clarusjs\?/)
+  await expect(page).toHaveTitle('What is clarusjs? · clarusjs')
+  await expect(page.locator('h2#what-makes-it-different a.header-anchor')).toHaveAttribute('href', '#what-makes-it-different')
+  await expect(page.locator('.sidebar a[aria-current="page"]')).toHaveText('What is clarusjs?')
+  await expect(page.locator('aside.callout.info')).toContainText('This page is written in Markdown.')
+  await expect(page.locator('main li code').first()).toHaveText('<script>')
+  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/src\/pages\/guide\/what-is-clarusjs\.md$/)
+})

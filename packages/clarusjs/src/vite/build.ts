@@ -3,15 +3,15 @@ import { spawnSync } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-/** Absolute paths of every `.tscl` file under `srcDir` (empty if it doesn't exist). */
-export function findClarusFiles(srcDir: string): string[] {
+/** Absolute paths of every component file under `srcDir` (`.tscl`, or any page source extension given). */
+export function findClarusFiles(srcDir: string, extensions: string[] = ['.tscl']): string[] {
   let entries: string[]
   try {
     entries = readdirSync(srcDir, { recursive: true }) as string[]
   } catch {
     return []
   }
-  return entries.filter((f) => f.endsWith('.tscl')).map((f) => resolve(srcDir, f)).sort()
+  return entries.filter((f) => extensions.some((ext) => f.endsWith(ext))).map((f) => resolve(srcDir, f)).sort()
 }
 
 /**

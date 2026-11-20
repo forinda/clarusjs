@@ -1,0 +1,65 @@
+{
+  "name": "@clarusjs/content",
+  "version": "0.0.0",
+  "description": "Markdown pages for clarusjs: frontmatter, layouts, components in Markdown, rendered to static HTML at build time.",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "clarusjs": "workspace:^"
+  },
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forinda/clarusjs.git",
+    "directory": "packages/content"
+  },
+  "keywords": [
+    "clarusjs",
+    "markdown",
+    "content",
+    "docs",
+    "ssg",
+    "vite"
+  ],
+  "homepage": "https://github.com/forinda/clarusjs#readme",
+  "bugs": {
+    "url": "https://github.com/forinda/clarusjs/issues"
+  },
+  "dependencies": {
+    "markdown-it": "^15.0.3",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.2.0",
+    "@types/node": "^26.6.6",
+    "clarusjs": "workspace:^",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}

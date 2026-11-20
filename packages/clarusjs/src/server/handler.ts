@@ -36,9 +36,9 @@ function compile(path: string): { keys: string[]; regex: RegExp } {
   return { keys, regex: new RegExp(`^${source}$`) }
 }
 
-/** '/src/pages/index.tscl' → '/', '/src/pages/blog/index.tscl' → '/blog', '/src/pages/about.tscl' → '/about' */
+/** '/src/pages/index.tscl' → '/', '/src/pages/blog/index.tscl' → '/blog', '/src/pages/about.md' → '/about' (any page source) */
 export function routeFromFile(file: string): string {
-  const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.tscl$/, '').replace(/\/index$/, '')
+  const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.[^./]+$/, '').replace(/\/index$/, '')
   return path || '/'
 }
 
@@ -94,7 +94,7 @@ export function createHandler(
   const entriesCache = new Map<Route, Promise<Params[] | null>>()
   function entriesOf(route: Route): Promise<Params[] | null> {
     if (!entriesCache.has(route)) {
-      const file = `/${route.file.replace(/\.tscl$/, '.load.ts')}`
+      const file = `/${route.file.replace(/\.[^./]+$/, '.load.ts')}`
       entriesCache.set(route, (async () => {
         const mod = data[file] ? await data[file]!() : undefined
         return mod?.entries ? await mod.entries() : null
@@ -123,7 +123,7 @@ export function createHandler(
     /** Whether a route (as its file names it) has a load(). */
     async hasLoader(path) {
       const route = routes.find((r) => r.path === path)
-      const file = route && `/${route.file.replace(/\.tscl$/, '.load.ts')}`
+      const file = route && `/${route.file.replace(/\.[^./]+$/, '.load.ts')}`
       return Boolean(file && data[file] && typeof (await data[file]!()).load === 'function')
     },
     /** Every concrete path to prerender: static routes as they are, dynamic ones from their entries(). */
@@ -140,7 +140,7 @@ export function createHandler(
           else if (options.fragments) out.push(path === '/' ? `/${FRAG}` : `${path}/${FRAG}`)
         }
         if (!route.keys.length) { add(route.path); continue }
-        const dataFile = route.file.replace(/\.tscl$/, '.load.ts')
+        const dataFile = route.file.replace(/\.[^./]+$/, '.load.ts')
         const list = await entriesOf(route)
         if (!list) throw new Error(`${route.path} is a dynamic route: export entries() from ${dataFile} to list the pages to prerender`)
         for (const params of list) {
@@ -205,7 +205,7 @@ export function createHandler(
         return new Response(head ? null : shell, { headers: { 'content-type': 'text/html; charset=utf-8' } })
       }
       let props: object = found.params
-      const dataFile = found.route.file.replace(/\.tscl$/, '.load.ts')
+      const dataFile = found.route.file.replace(/\.[^./]+$/, '.load.ts')
       const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
       if (mod?.load) {
         let loaded: unknown
