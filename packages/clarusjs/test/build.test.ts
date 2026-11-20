@@ -116,3 +116,20 @@ test('no compiler or command-line code reaches the browser', () => {
     expect(js, f).not.toMatch(/acorn|commander|parseExpressionAt|ClarusError/)
   }
 })
+
+test('#25: writes dist/clarusjs-manifest.json describing every route', () => {
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  const gz = expect.any(Number)
+  expect(Object.keys(manifest.routes)).toEqual(['/', '/about/team', '/explain'])
+  expect(manifest.routes['/about/team']).toEqual({ mode: 'static', html: 'about/team/index.html', loader: null, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] })
+  const home = manifest.routes['/']
+  expect(home.islands.map((i: { component: string; attach: string; count: number }) => [i.component, i.attach, i.count])).toEqual([['counter', 'load', 1], ['panel', 'load', 1]])
+  expect(home.islands.every((i: { gzip: number; src: string }) => i.gzip > 0 && existsSync(resolve(client, i.src)))).toBe(true)
+  expect(home.js).toEqual({ files: expect.any(Array), gzip: gz, initialGzip: gz })
+  expect(home.js.gzip).toBeGreaterThan(home.islands[0].gzip)
+  for (const f of home.js.files) expect(existsSync(resolve(client, f)), f).toBe(true)
+})
+
+test('#27: a page that reads the manifest is rendered again once it is written', () => {
+  expect(read('explain/index.html')).toContain('<p id="home-islands">counter, panel</p>')
+})

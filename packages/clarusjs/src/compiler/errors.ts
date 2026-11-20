@@ -1,4 +1,4 @@
-/** A compile error pointing at a place in a .clarus file. Message format: `file:line:column text` (1-based). */
+/** A compile error pointing at a place in a .tscl file. Message format: `file:line:column text` (1-based). */
 export class ClarusError extends Error {
   file: string
   line: number

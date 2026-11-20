@@ -1,0 +1,4 @@
+@import greeting from '../../components/greeting.tscl'
+
+<h1>Team</h1>
+<greeting [name]="'team'" />

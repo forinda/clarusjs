@@ -1,0 +1,8 @@
+{{-- Rendered on the server. Only the counters ship JS. --}}
+@import counter from '../components/counter.tscl'
+@import greeting from '../components/greeting.tscl'
+
+<h1>clarusjs POC</h1>
+<greeting [name]="'world'" />
+<counter [start]="3" />
+<counter [start]="10" />
