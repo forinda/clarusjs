@@ -2,14 +2,14 @@ import { describe, expect, test } from 'vitest'
 import { createHandler, routeFromFile } from '../../src/server/handler.ts'
 
 test('routeFromFile maps page files to paths', () => {
-  expect(routeFromFile('/src/pages/index.clarus')).toBe('/')
-  expect(routeFromFile('/src/pages/about.clarus')).toBe('/about')
-  expect(routeFromFile('/src/pages/blog/index.clarus')).toBe('/blog')
+  expect(routeFromFile('/src/pages/index.tscl')).toBe('/')
+  expect(routeFromFile('/src/pages/about.tscl')).toBe('/about')
+  expect(routeFromFile('/src/pages/blog/index.tscl')).toBe('/blog')
 })
 
 const handler = createHandler({
-  '/src/pages/index.clarus': async () => ({ render: () => '<h1>x</h1>' }),
-  '/src/pages/app.clarus': async () => ({ render: () => '<cl-island c="c" src="/c" p="{}"></cl-island>' }),
+  '/src/pages/index.tscl': async () => ({ render: () => '<h1>x</h1>' }),
+  '/src/pages/app.tscl': async () => ({ render: () => '<cl-island c="c" src="/c" p="{}"></cl-island>' }),
 })
 
 test('static page ships no script', async () => {
@@ -43,7 +43,7 @@ test('pages with islands make cl-island layout-neutral (display: contents)', asy
 describe('full-document pages', () => {
   const island = '<cl-island c="c" src="/c" p="{}"></cl-island>'
   const doc = (head: string, body: string) => `<html><head>${head}</head><body>${body}</body></html>`
-  const page = (html: string) => createHandler({ '/src/pages/index.clarus': async () => ({ render: () => html }) }, { loaderUrl: '/assets/loader.js' })
+  const page = (html: string) => createHandler({ '/src/pages/index.tscl': async () => ({ render: () => html }) }, { loaderUrl: '/assets/loader.js' })
   const get = async (html: string) => (await page(html).fetch(new Request('http://x/'))).text()
 
   test('a page that renders <html> gets one doctype and no default shell', async () => {
@@ -93,14 +93,14 @@ test('a trailing slash reaches the same page in dev as in the built site', async
 
 test('a </body> inside a trailing comment does not capture the loader', async () => {
   const island = '<cl-island c="c" src="/c" p="{}"></cl-island>'
-  const h = createHandler({ '/src/pages/index.clarus': async () => ({ render: () => `<html><head></head><body>${island}</body></html><!-- old </body> -->` }) })
+  const h = createHandler({ '/src/pages/index.tscl': async () => ({ render: () => `<html><head></head><body>${island}</body></html><!-- old </body> -->` }) })
   const out = await (await h.fetch(new Request('http://x/'))).text()
   expect(out).toContain(`${island}<script type="module" src="/cl-loader.js"></script></body></html><!-- old </body> -->`)
 })
 
 test('</head> inside a comment does not capture the island style', async () => {
   const island = '<cl-island c="c" src="/c" p="{}"></cl-island>'
-  const h = createHandler({ '/src/pages/index.clarus': async () => ({ render: () => `<html><head><!-- </head> --><title>t</title></head><body>${island}</body></html>` }) })
+  const h = createHandler({ '/src/pages/index.tscl': async () => ({ render: () => `<html><head><!-- </head> --><title>t</title></head><body>${island}</body></html>` }) })
   const out = await (await h.fetch(new Request('http://x/'))).text()
   expect(out).toContain('<title>t</title><style>cl-island{display:contents}</style></head>')
 })

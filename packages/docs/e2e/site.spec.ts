@@ -112,7 +112,7 @@ test('every sidebar link lands on a page, and the edit link points at its source
     expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
   }
   await page.goto('/guide/lists')
-  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.clarus$/)
+  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.tscl$/)
   await expect(page.locator('.crumb')).toHaveText('Guide › Templates')
 })
 

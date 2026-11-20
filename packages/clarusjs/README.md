@@ -30,7 +30,7 @@ export default defineConfig({ plugins: [clarusjs()] })
 ```
 
 ```clarus
-{{-- src/components/counter.clarus --}}
+{{-- src/components/counter.tscl --}}
 @input start: number = 0
 
 <script>
@@ -42,14 +42,14 @@ export default defineConfig({ plugins: [clarusjs()] })
 ```
 
 ```clarus
-{{-- src/pages/index.clarus --}}
-@import counter from '../components/counter.clarus'
+{{-- src/pages/index.tscl --}}
+@import counter from '../components/counter.tscl'
 
 <h1>Hello</h1>
 <counter [start]="1" />
 ```
 
-- `vite` serves `src/pages/**/*.clarus` as routes, rendered on the server.
+- `vite` serves `src/pages/**/*.tscl` as routes, rendered on the server.
 - `vite build` writes a static site to `dist/client/`: one HTML file per page, plus JavaScript only for components
   with a `<script>` (the counter above). The `<h1>` ships no JavaScript at all.
 

@@ -1,0 +1,8 @@
+@import counter from '../components/counter.tscl'
+@import greeting from '../components/greeting.tscl'
+@import panel from '../components/panel.tscl'
+
+<h1>Home</h1>
+<greeting [name]="'site'" />
+<counter [start]="1" />
+<panel />

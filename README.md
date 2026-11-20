@@ -32,7 +32,7 @@ clarusjs borrows openly from projects that got one thing very right:
 ## What it looks like
 
 ```kick
-{{-- components/counter.clarus --}}
+{{-- components/counter.tscl --}}
 @input start: number = 0
 
 <script>

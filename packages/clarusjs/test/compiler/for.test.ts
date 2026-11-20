@@ -6,17 +6,17 @@ import { ClarusError } from '../../src/compiler/errors.ts'
 import { parse } from '../../src/compiler/parse.ts'
 import { importCode } from '../helpers.ts'
 
-const server = (source: string) => compile(source, { file: 'x.clarus', target: 'server', clientUrl: '/x' }).code
+const server = (source: string) => compile(source, { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code
 async function render(source: string, props = {}) {
   return (await importCode(server(source), 'for-s')).render(props) as string
 }
 function compileError(source: string): ClarusError {
-  try { compile(source, { file: 'x.clarus', target: 'server', clientUrl: '/x' }) } catch (e) { return e as ClarusError }
+  try { compile(source, { file: 'x.tscl', target: 'server', clientUrl: '/x' }) } catch (e) { return e as ClarusError }
   throw new Error('expected compile to throw')
 }
 async function mount(source: string) {
   const s = await importCode(server(source), 'for-ms')
-  const c = await importCode(compile(source, { file: 'x.clarus', target: 'client' }).code, 'for-mc')
+  const c = await importCode(compile(source, { file: 'x.tscl', target: 'client' }).code, 'for-mc')
   document.body.innerHTML = s.render({})
   const island = document.querySelector('cl-island')!
   c.attach(island, {})
@@ -28,7 +28,7 @@ const texts = (island: Element, sel: string) => [...island.querySelectorAll(sel)
 // --- parsing ---
 
 test('parses item, list, track and @empty', () => {
-  const f = parse('<ul>@for (post of posts; track post.id) {<li>{{ post.title }}</li>} @empty {<li>none</li>}</ul>', 'x.clarus')
+  const f = parse('<ul>@for (post of posts; track post.id) {<li>{{ post.title }}</li>} @empty {<li>none</li>}</ul>', 'x.tscl')
   expect((f.nodes[0] as any).children[0]).toMatchObject({
     type: 'for', item: 'post', list: 'posts', track: 'post.id',
     children: [{ type: 'element', tag: 'li' }], empty: [{ type: 'element', tag: 'li' }],
@@ -36,14 +36,14 @@ test('parses item, list, track and @empty', () => {
 })
 
 test('track is optional', () => {
-  const f = parse('@for (n of [1, 2]) {{{ n }}}', 'x.clarus')
+  const f = parse('@for (n of [1, 2]) {{{ n }}}', 'x.tscl')
   expect(f.nodes[0]).toMatchObject({ type: 'for', item: 'n', list: '[1, 2]', track: null, empty: null })
 })
 
 test('@for errors are located', () => {
-  expect(compileError('@for (posts) {x}').message).toMatch(/^x\.clarus:1:7 .*expected "item of list"/)
-  expect(compileError('@for ({ a } of xs) {x}').message).toMatch(/^x\.clarus:1:7 .*a simple name/)
-  expect(compileError('@for (x of xs; sort x) {x}').message).toMatch(/^x\.clarus:1:7 .*unknown @for clause "sort x"/)
+  expect(compileError('@for (posts) {x}').message).toMatch(/^x\.tscl:1:7 .*expected "item of list"/)
+  expect(compileError('@for ({ a } of xs) {x}').message).toMatch(/^x\.tscl:1:7 .*a simple name/)
+  expect(compileError('@for (x of xs; sort x) {x}').message).toMatch(/^x\.tscl:1:7 .*unknown @for clause "sort x"/)
 })
 
 // --- server rendering outside islands ---
