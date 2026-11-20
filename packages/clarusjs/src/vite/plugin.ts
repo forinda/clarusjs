@@ -78,13 +78,27 @@ function pageStylesheets(root: string, files: Files): Map<string, string[]> {
 /** Write .clarusjs/styles.css from every component under src/; false when no component has a <style>. */
 function writeStyles(root: string, files: Files): boolean {
   let css = ''
+  // @reference and @import statements (the compiler puts them first) gather at the top of the file, once each, with
+  // relative paths rewritten from the component's folder to .clarusjs/ ("tailwindcss" and URLs stay as written).
+  const head = new Set<string>()
+  const outDir = resolve(root, '.clarusjs')
   for (const file of files.find(resolve(root, 'src'))) {
     try {
-      const out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file) }).css
+      let out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file) }).css
+      out = out.replace(/^(?:[ \t]*@(?:reference|import)\b[^;{]*;[ \t]*\n?)+/, (statements) => {
+        for (const statement of statements.split(';').map((x) => x.trim()).filter(Boolean)) {
+          head.add(statement.replace(/(["'])(\.{1,2}\/[^"']*)\1/, (_, q: string, spec: string) => {
+            const target = relative(outDir, resolve(file, '..', spec)).split(sep).join('/')
+            return q + (target.startsWith('.') ? target : `./${target}`) + q
+          }) + ';')
+        }
+        return ''
+      })
       if (out) css += `/* ${relative(root, file).split(sep).join('/')} */\n${out}`
     } catch {} // compile errors are reported when the component itself is compiled
   }
-  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  css = [...head].map((x) => `${x}\n`).join('') + css
+  mkdirSync(outDir, { recursive: true })
   writeFileSync(resolve(root, STYLES_FILE), css)
   return css !== ''
 }

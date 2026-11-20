@@ -40,3 +40,9 @@ test('the scope defaults to one derived from the file name', () => {
   expect(a.css).toMatch(/^@scope \(\[data-cl-c="card-[a-z0-9]+"\]\)/)
   expect(compile(card, { file: 'src/components/card.tscl', target: 'server' }).css).toBe(a.css)
 })
+
+test('#146: @reference and @import at the start of a scoped style stay outside @scope (they are not valid in it)', () => {
+  const src = '<div>x</div>\n<style>\n  @reference "../styles/app.css";\n  @import "./extra.css";\n  :scope { @apply p-4; }\n</style>'
+  const { css } = compile(src, { file: '/a/src/components/x.tscl', target: 'client', scope: 'x-1' })
+  expect(css).toBe('@reference "../styles/app.css";\n@import "./extra.css";\n@scope ([data-cl-c="x-1"]) to ([data-cl-c]) {\n  :scope { @apply p-4; }\n}\n')
+})

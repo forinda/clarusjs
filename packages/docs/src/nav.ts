@@ -28,6 +28,7 @@ export const sections: Section[] = [
         { title: 'Slots', href: '/guide/slots' },
         { title: 'Verbatim', href: '/guide/verbatim' },
         { title: 'Styles', href: '/guide/styles' },
+        { title: 'Tailwind CSS', href: '/guide/tailwind' },
         { title: 'Markdown pages', href: '/guide/markdown' },
       ] },
       { title: 'Interactivity', items: [
@@ -129,6 +130,7 @@ const MARKDOWN = new Set([
   '/guide/state',
   '/guide/stores',
   '/guide/styles',
+  '/guide/tailwind',
   '/guide/type-checking',
   '/guide/what-is-clarusjs',
   '/reference/cli',
