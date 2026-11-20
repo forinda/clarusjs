@@ -1,6 +1,6 @@
 // #117: sitemap.xml with last-updated dates from git.
 import { execSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { createBuilder } from 'vite'
@@ -89,4 +89,24 @@ test('vite build: exclude patterns and a page opt-out (its marker is stripped fr
   const locs = [...readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8').matchAll(/<loc>https:\/\/example\.com([^<]*)<\/loc>/g)].map((m) => m[1])
   expect(locs.sort()).toEqual(['/', '/tags/x/y'])
   for (const page of ['private', 'drafts/deep/b']) expect(readFileSync(resolve(root, `dist/client/${page}/index.html`), 'utf8')).not.toContain('name="sitemap"')
+}, 120_000)
+
+test('vite build: 404.html with root links; /404 not in the sitemap; robots.txt points at the sitemap unless public/ has one', async () => {
+  const { root, w } = repo()
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  w('src/pages/404.tscl', '<html><head><title>Not found</title></head><body><a href="guide">guide</a></body></html>')
+  w('src/pages/guide.tscl', '<h1>Guide</h1>')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  const build = async (options: Parameters<typeof clarusjs>[0]) => (await createBuilder({ root, configFile: false, logLevel: 'silent', base: '/docs/', plugins: [clarusjs(options)] })).buildApp()
+  await build({ site: { url: 'https://example.com' } })
+  expect(readFileSync(resolve(root, 'dist/client/404.html'), 'utf8')).toContain('<a href="/docs/guide">guide</a>')
+  expect(readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')).not.toContain('/404')
+  expect(readFileSync(resolve(root, 'dist/client/robots.txt'), 'utf8')).toBe('User-agent: *\nAllow: /\n\nSitemap: https://example.com/docs/sitemap.xml\n')
+  w('public/robots.txt', 'User-agent: *\nDisallow: /private\n')
+  await build({ site: { url: 'https://example.com' } })
+  expect(readFileSync(resolve(root, 'dist/client/robots.txt'), 'utf8')).toBe('User-agent: *\nDisallow: /private\n')
+  rmSync(resolve(root, 'public'), { recursive: true })
+  await build({ site: { url: 'https://example.com' }, robots: false })
+  expect(existsSync(resolve(root, 'dist/client/robots.txt'))).toBe(false)
 }, 120_000)

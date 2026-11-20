@@ -19,7 +19,7 @@
   <p>Everything on this page is static HTML, rendered at build time. The button below is a component with a <code>&lt;script&gt;</code>, so it is the only thing that ships JavaScript. Click it.</p>
   <div class="demo"><counter [start]="0" /></div>
   <whatShips attach="interaction" />
-  <div class="sample"><pre><code verbatim>@input start: number = 0
+  <div class="sample"><pre tabindex="0"><code verbatim>@input start: number = 0
 
 <script>
   let count = state(start)
