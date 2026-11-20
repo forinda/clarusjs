@@ -1,10 +1,9 @@
 # The docs site (packages/docs), built with clarusjs. Static pages are files; server routes run as a Netlify
 # Function that clarusjs writes to packages/docs/.netlify/v1/functions (Netlify's Frameworks API reads it from the
-# base directory).
+# site's package directory, packages/docs).
 [build]
-  base = "packages/docs"
-  command = "pnpm install --frozen-lockfile && pnpm build"
-  publish = "dist/client"
+  command = "pnpm install --frozen-lockfile && pnpm --filter @clarusjs/docs build"
+  publish = "packages/docs/dist/client"
 
 [build.environment]
   NODE_VERSION = "24"
