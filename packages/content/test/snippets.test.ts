@@ -70,3 +70,32 @@ test('missing files, missing regions, include cycles and paths outside the proje
   expect(() => render('src/pages/c.md')).toThrow(/include cycle: .*c\.md → .*d\.md → .*c\.md/)
   expect(() => render('src/pages/e.md')).toThrow(/outside the project/)
 })
+
+// Review of #135: region and fence edge cases.
+test('regions: exact names, comment-wrapped endings, nested regions, marker text in code', () => {
+  const file = [
+    '// #region setup-client', 'client()', '// #endregion setup-client',
+    '/* #region setup */', 'a()', '// #region inner', 'b()', '// #endregion', 'c()', '/* #endregion */',
+    'const marker = "#region demo"', 'z()',
+  ].join('\n')
+  const { render } = app({ 'src/lib/x.ts': file, 'src/pages/a.md': '<<< @/src/lib/x.ts#setup\n', 'src/pages/b.md': '<<< @/src/lib/x.ts\n' })
+  const a = render('src/pages/a.md').replace(/<[^>]+>/g, '')
+  expect(a).toMatch(/a\(\)\nb\(\)\nc\(\)/)
+  expect(a).not.toMatch(/client\(\)|z\(\)|endregion/)
+  expect(render('src/pages/b.md').replace(/<[^>]+>/g, '')).toContain('const marker = "#region demo"')
+})
+
+test('fences: a closing marker indented four spaces is code; fences in list items are recognised', () => {
+  const { render } = app({ 'src/pages/x.md': '```md\n    ```\n<<< ./missing.ts\n```\n\n- ```md\n  <<< ./missing.ts\n  ```\n' })
+  expect(() => render('src/pages/x.md')).not.toThrow()
+})
+
+test('includes: reference definitions are rebased; links in fenced examples are not', () => {
+  const { render } = app({
+    'src/parts/intro.md': 'See [demo][ref].\n\n[ref]: ./target.md\n\n```md\n[Link](./target.md)\n```\n',
+    'src/pages/guide/x.md': '<!-- @include: ../../parts/intro.md -->\n',
+  })
+  const out = render('src/pages/guide/x.md')
+  expect(out).toContain('href="../../parts/target.md"')
+  expect(out.replace(/<[^>]+>/g, '')).toContain('[Link](./target.md)')
+})

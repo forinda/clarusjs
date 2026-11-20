@@ -64,8 +64,8 @@ export async function load({ params }) {
 <h1>{{ user.name }}</h1>
 ```
 
-- **Server only.** `load()` runs at build time for static pages (once per page), never in the browser, so it can read files, query a database or use secrets. Only what the page renders reaches the browser.
-- **Typed.** `clarusjs check` checks what `load()` returns against the page's inputs.
+- **Server only.** `load()` runs at build time for static pages (once per page), never in the browser, so it can read files, query a database or use secrets. Only what the page renders reaches the browser, and that includes props passed to an island: they are written into the page and public, so never pass secrets to islands.
+- **Typed.** `clarusjs check` checks what `load()` returns against a `.tscl` page's inputs (Markdown pages aren't checked yet, [#142](https://github.com/forinda/clarusjs/issues/142)).
 - **Failures are safe.** If `load()` throws, the build fails naming the loader; a page rendered on request answers 500 with no internal details, and the error goes to the server log.
 
 `clarusjs explain` shows which pages ran a loader.

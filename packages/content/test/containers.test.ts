@@ -30,9 +30,14 @@ test('with a container component, blocks render through it; a title fills its ti
   const opts = { layout: false as const, container: { tag: 'callout', from: '/src/components/callout.tscl' } }
   const out = markdown(opts).toTscl('::: tip\nUse it.\n:::\n\n::: danger Watch {{ out }} @here\nx\n:::\n', '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })
   expect(out.split('\n')[0]).toBe("@import callout from '/src/components/callout.tscl'")
-  expect(out).toContain('<callout [type]="\'tip\'">\n<p>Use it.</p>\n</callout>')
+  // Every block passes its resolved title (the type's default, a configured title or an alert's name).
+  expect(out).toContain('<callout [type]="\'tip\'">@slot(\'title\') {Tip}\n<p>Use it.</p>\n</callout>')
   expect(out).toContain("<callout [type]=\"'danger'\">@slot('title') {Watch &#123;&#123; out &#125;&#125; &#64;here}")
   expect(() => compile(out, { file: 'x.tscl', target: 'server' })).not.toThrow()
   // details stays a native <details> even with a component.
   expect(markdown(opts).toTscl('::: details\nx\n:::\n', '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })).toContain('<details class="custom-block details"><summary>Details</summary>')
+})
+
+test('a ::: inside a fenced example does not close the container', () => {
+  expect(html('::: tip\n```text\n:::\n```\n\nStill inside.\n:::\n')).toMatch(/<div class="custom-block tip">[\s\S]*<p>Still inside\.<\/p>\n<\/div>\n$/)
 })

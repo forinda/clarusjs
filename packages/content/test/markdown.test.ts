@@ -85,3 +85,8 @@ test('#113: relative links to page source files become their routes (anchors kep
   expect(out).toContain('<a href="./notes.txt">f</a>')
   expect(out).toContain('<a href="../../outside.md">g</a>') // not a page: left for the link checker to report
 })
+
+test('CRLF: a closing fence with \\r\\n still ends the code, so later component tags are protected', () => {
+  const out = page("@import note from '../../components/note.tscl'\r\n\r\n```html\r\n<b>x</b>\r\n```\r\n\r\n<note [kind]=\"'tip'\">Hi</note>\r\n")
+  expect(out).toContain(`<note [kind]="'tip'">Hi</note>`)
+})

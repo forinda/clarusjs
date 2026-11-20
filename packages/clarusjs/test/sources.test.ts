@@ -10,7 +10,7 @@ import { routeFromFile } from '../src/server/handler.ts'
 // A toy source: the file's text becomes a paragraph inside the layout, with its route passed along.
 const note: Source = {
   extension: '.note',
-  toTscl: (code, file, { route }) => `@import layout from '${'../'.repeat(file.split('/src/pages/')[1]!.split('/').length)}layouts/main.tscl'\n<layout [path]="'${route}'"><p>${code.trim()}</p></layout>\n`,
+  toTscl: (code, file, { route }) => `@import layout from '${'../'.repeat(file.replace(/\\/g, '/').split('/src/pages/')[1]!.split('/').length)}layouts/main.tscl'\n<layout [path]="'${route}'"><p>${code.trim()}</p></layout>\n`,
 }
 
 test('routes come from any page source extension', () => {

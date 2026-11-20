@@ -1,6 +1,6 @@
 // Build-time link checking: once every page is built, links between pages and to #anchors are checked against
 // what was actually written. Reads dist/client only; reporting and failing are up to the caller.
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { routeToFile } from './build.ts'
 
@@ -17,6 +17,9 @@ type Options = {
   base: string
 }
 
+// A stray % is kept as written, as routeToFile does, instead of failing the build with a URIError.
+const decode = (s: string) => { try { return decodeURIComponent(s) } catch { return s } }
+const isFile = (path: string) => { try { return statSync(path).isFile() } catch { return false } }
 const trim = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') : path)
 
 /** Edit distance, for "did you mean". */
@@ -49,7 +52,9 @@ const ids = (html: string) => new Set([...html.matchAll(/\s(?:id|name)="([^"]+)"
 const hrefs = (html: string) => [...html.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<a\b[^>]*?\shref="([^"]*)"/g)].map((m) => m[1]!.replace(/&amp;/g, '&'))
 
 export function checkLinks(options: Options): LinkIssue[] {
-  const { outDir, base } = options
+  const { outDir } = options
+  // An absolute base (https://cdn.example.com/docs/) is compared by its path.
+  const base = /^https?:\/\//.test(options.base) ? new URL(options.base).pathname : options.base
   const routes = new Set(options.routes.map(trim))
   const client = new Set(options.clientRoutes.map(trim))
   const serverPatterns = options.serverRoutes.map((r) => new RegExp(`^${r.split('/').map((seg) => (/^\[[^\]]+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/')}$`))
@@ -67,11 +72,11 @@ export function checkLinks(options: Options): LinkIssue[] {
       if (/^[a-z][\w+.-]*:|^\/\//i.test(href) || href === '') continue // external, mailto:, tel:, …
       const url = new URL(href, `http://site${base}${page === '/' ? '' : page.slice(1) + '/'}`)
       if (!url.pathname.startsWith(base) && `${url.pathname}/` !== base) continue // outside this site
-      let path = trim(decodeURIComponent(url.pathname.slice(base.length - 1)) || '/')
+      let path = trim(decode(url.pathname.slice(base.length - 1)) || '/')
       if (path.endsWith('/index.html')) path = trim(path.slice(0, -'index.html'.length))
-      const anchor = decodeURIComponent(url.hash.slice(1))
+      const anchor = decode(url.hash.slice(1))
       const isPage = routes.has(path)
-      const exists = isPage || serverPatterns.some((re) => re.test(path)) || existsSync(resolve(outDir, `.${path}`))
+      const exists = isPage || serverPatterns.some((re) => re.test(path)) || isFile(resolve(outDir, `.${path}`)) // a directory without a page is a 404
       if (!exists) {
         const guess = closest(path, routes)
         issues.push({ kind: 'pages', page, href, message: `no page at ${path}${guess ? ` (did you mean ${guess}?)` : ''}` })

@@ -21,4 +21,4 @@ description: "Load an island's code when the browser is idle, when it is visible
 <comments attach="visible" [post]="post.id" />
 ```
 
-Nothing the visitor does is lost while the code loads: clicks, key presses, input and form submissions inside the island are held and replayed once it attaches, and a form doesn't post in the meantime. The copy buttons on this site use `attach="interaction"`.
+Nothing the visitor does is lost while the code loads: clicks, key presses, input and form submissions inside the island are held and replayed once it attaches (a replayed key press carries its `key` only, not modifiers such as Ctrl), and a form doesn't post in the meantime. The copy buttons on this site use `attach="interaction"`.

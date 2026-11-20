@@ -3,7 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { isRunnableDevEnvironment, type Plugin, type UserConfig } from 'vite'
+import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
 import { findClarusFiles, prerender } from './build.ts'
@@ -312,7 +312,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (id !== '\0' + ENTRY) {
         if (/[?&](raw|url|inline)\b/.test(id) || id.startsWith('\0')) return null
         const file = id.replace(/\?.*$/, '')
-        if (!sources.some((x) => file.endsWith(x.extension)) || !file.startsWith(resolve(root, 'src') + sep)) return null
+        if (!sources.some((x) => file.endsWith(x.extension)) || !normalizePath(file).startsWith(normalizePath(resolve(root, 'src/pages')) + '/')) return null
         return readFileSync(file, 'utf8')
       }
       const urls = builtUrls()
@@ -365,7 +365,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         // A page source's file is compiled from the .tscl text it produces: only under src/pages, and never when it is
         // imported as text or a URL (CHANGELOG.md?raw stays a string).
         const src = sources.find((x) => file.endsWith(x.extension))
-        if (src && (/[?&](raw|url|inline)\b/.test(id) || !file.startsWith(resolve(root, 'src/pages') + sep))) return null
+        if (src && (/[?&](raw|url|inline)\b/.test(id) || !normalizePath(file).startsWith(normalizePath(resolve(root, 'src/pages')) + '/'))) return null
         const rel = relative(root, file).split(sep).join('/')
         const code = src
           ? src.toTscl(raw, file, { route: rel.startsWith('src/pages/') ? routeFromFile(`/${rel}`) : '', root, addDependency: (dep) => this.addWatchFile(dep) })

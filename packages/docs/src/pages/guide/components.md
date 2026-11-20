@@ -26,7 +26,7 @@ Import a component by name, then use it as a tag. Pass inputs with `[name]="expr
 
 ## Importing data
 
-Import values a template needs with `@import { … } from '…'`, or `@import data from './data.json'`. In a component without a script the import only runs on the server, so it can even read files at build time; in an interactive component it is sent to the browser with the component's code.
+Import values a template needs with `@import { … } from '…'`, or `@import data from './data.json'`. In a server-rendered component without a script the import only runs on the server, so it can even read files at build time. In an interactive component, or a page on a client route (rendered in the browser), it is sent to the browser with the component's code: there, read files in `load()` and return only public data.
 
 ```tscl
 @import { posts } from '../data/posts.ts'

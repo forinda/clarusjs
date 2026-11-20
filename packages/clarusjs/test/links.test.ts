@@ -16,7 +16,7 @@ function site(pages: Record<string, string>, extra: Record<string, string> = {})
 test('links to existing pages, anchors, files, server routes and external URLs are fine', () => {
   const out = site({
     '/': '<a href="/guide/intro">a</a><a href="/guide/intro#install">b</a><a href="guide/intro/">c</a><a href="#top">d</a><h1 id="top">x</h1><a href="/logo.svg">e</a><a href="/account/7">f</a><a href="https://example.com/x">g</a><a href="mailto:a@b.c">h</a><a href="/guide/intro?x=1#install">i</a>',
-    '/guide/intro': '<h2 id="install">Install</h2><a href="../">up</a><a href="./">self</a>',
+    '/guide/intro': '<h2 id="install">Install</h2><a href="../../">up</a><a href="./">self</a>',
   }, { 'logo.svg': '<svg/>' })
   expect(checkLinks({ outDir: out, routes: ['/', '/guide/intro'], serverRoutes: ['/account/[id]'], clientRoutes: [], base: '/' })).toEqual([])
 })
@@ -65,3 +65,11 @@ test('vite build: a missing anchor is a warning; strict makes it an error; level
   await expect(build(pages, { links: { strict: true } })).rejects.toThrow(/no #tpo on \/guide/)
   expect((await build(pages, { links: { anchors: 'off' } })).join('\n')).not.toContain('#tpo')
 }, 60_000)
+
+test('malformed escapes, directories and an absolute base', () => {
+  const out = site({ '/': '<a href="/bad%zz">a</a><a href="#x%">b</a><a href="/guide">c</a>', '/guide/intro': '<p>i</p>' })
+  const issues = checkLinks({ outDir: out, routes: ['/', '/guide/intro'], serverRoutes: [], clientRoutes: [], base: '/' })
+  expect(issues.map((i) => i.message)).toEqual(['no page at /bad%zz', 'no #x% on /', 'no page at /guide'])
+  const docs = site({ '/': '<a href="/docs/nope">a</a>' })
+  expect(checkLinks({ outDir: docs, routes: ['/'], serverRoutes: [], clientRoutes: [], base: 'https://cdn.example.com/docs/' })).toHaveLength(1)
+})

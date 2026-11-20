@@ -236,7 +236,7 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
 .code-block { position: relative; margin: 0 0 20px; }
 .code-block pre { margin: 0; padding-right: 72px; }
 .code-block .lang { position: absolute; top: 8px; right: 64px; font: 12px var(--mono); color: var(--muted); pointer-events: none; }
-.code-block .code-title { margin: 0; padding: 6px 12px; font: 600 13px var(--mono); border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--code-bg); }
+.code-block .code-title { margin: 0; padding: 6px 12px; font: 600 13px/20px var(--mono); border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--code-bg); }
 .code-block .code-title + .lang + pre { border-top-left-radius: 0; border-top-right-radius: 0; }
 .shiki span { color: var(--shiki-light); }
 .shiki { background: var(--code-bg); }
@@ -253,6 +253,8 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
 .shiki.has-focused:hover .line { opacity: 1; filter: none; }
 .code-block.line-numbers pre { padding-left: 44px; }
 .line-numbers-column { position: absolute; top: 14px; left: 0; width: 32px; display: flex; flex-direction: column; text-align: right; font: 14px/1.55 var(--mono); color: var(--muted); }
+/* Below a title (6 + 20 + 6 px, and its 1px top border) the code, and so the numbers, start lower. */
+.code-block .code-title ~ .line-numbers-column { top: calc(14px + 33px); }
 
 /* ::: code-group: radio tabs, no JavaScript. The checked tab's label is followed by its block. */
 .code-group { display: flex; flex-wrap: wrap; margin: 0 0 20px; }

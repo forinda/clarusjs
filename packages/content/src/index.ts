@@ -50,11 +50,19 @@ function renderer(options: MarkdownOptions): Md {
     const m = /^(:{3,})\s*([a-z-]+)(?:\s+(.*))?$/.exec(line)
     if (!m || !(TYPES as readonly string[]).includes(m[2]!)) return false
     if (silent) return true
+    // The closing ::: is the first one outside fenced code (an example may show ::: itself).
     let close = startLine + 1
-    while (close < endLine && state.src.slice(state.bMarks[close]! + state.tShift[close]!, state.eMarks[close]).trim() !== m[1]) close++
+    let fence = ''
+    for (; close < endLine; close++) {
+      const text = state.src.slice(state.bMarks[close]! + state.tShift[close]!, state.eMarks[close]).trim()
+      const marker = /^(`{3,}|~{3,})/.exec(text)?.[1]
+      if (fence) { if (marker && marker[0] === fence[0] && marker.length >= fence.length && text === marker) fence = ''; continue }
+      if (marker) { fence = marker; continue }
+      if (text === m[1]) break
+    }
     const open = state.push(m[2] === 'code-group' ? 'cl_group_open' : 'cl_container_open', 'div', 1)
     open.info = m[2]!
-    open.meta = { title: m[3]?.trim() || titles[m[2]!]!, custom: Boolean(m[3]?.trim()) }
+    open.meta = { title: m[3]?.trim() || titles[m[2]!]! }
     const oldMax = state.lineMax
     state.lineMax = close
     state.md.block.tokenize(state, startLine + 1, close)
@@ -81,7 +89,7 @@ function renderer(options: MarkdownOptions): Md {
           break
         }
       }
-      Object.assign(t[i]!, { type: 'cl_container_open', tag: 'div', info: ALERTS[name], meta: { title: titles[name]!, custom: false } })
+      Object.assign(t[i]!, { type: 'cl_container_open', tag: 'div', info: ALERTS[name], meta: { title: titles[name]! } })
       // The marker's own paragraph is gone if nothing else was on its line.
       if (!t[i + 2]!.content.trim()) t.splice(i + 1, 3)
     }
@@ -91,10 +99,10 @@ function renderer(options: MarkdownOptions): Md {
   md.renderer.rules.cl_container_open = (tokens, i, _o, env) => {
     const tags = (env as { tags: string[] }).tags
     const { info: type, meta } = tokens[i]!
-    const { title, custom } = meta as { title: string; custom: boolean }
+    const { title } = meta as { title: string }
     if (type === 'details') return `<details class="custom-block details"><summary>${escapeHtml(title)}</summary>\n`
     if (options.container) {
-      tags.push(`<${options.container.tag} [type]="'${type}'">${custom ? `@slot('title') {${inert(title)}}` : ''}`)
+      tags.push(`<${options.container.tag} [type]="'${type}'">@slot('title') {${inert(title)}}`)
       return `<!--cl-tag-${tags.length - 1}-->\n`
     }
     return `<div class="custom-block ${type}"><p class="custom-block-title">${escapeHtml(title)}</p>\n`
@@ -201,7 +209,7 @@ function staticHtml(html: string): string {
 function protectTags(body: string, components: Set<string>, saved: string[]): { body: string; restore(html: string): string } {
   // Code (fences, then inline spans) is matched first and kept as written: a tag in an example stays text.
   // ponytail: indented code blocks aren't recognised; use a fence to show a component tag in code.
-  const code = /(?:^|\n)[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:\n[ \t]*\1[`~]*[ \t]*(?=\n|$)|$)|(`+)[\s\S]*?[^`]\2(?!`)/
+  const code = /(?:^|\n)[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:\n[ \t]*\1[`~]*[ \t\r]*(?=\n|$)|$)|(`+)[\s\S]*?[^`]\2(?!`)/
   const tag = /<\/?([A-Za-z][\w-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/
   const out = body.replace(new RegExp(`${code.source}|${tag.source}`, 'g'), (match, _fence, _ticks, name: string | undefined, attrs: string) => {
     if (name === undefined) return match

@@ -5,7 +5,7 @@ description: "Print values in templates with {{ }} holes; they are always escape
 
 # Holes
 
-<p class="lead"><code verbatim>{ }</code> holes print the value of a JavaScript expression, always escaped.</p>
+<p class="lead"><code verbatim>{{ }}</code> holes print the value of a JavaScript expression, always escaped.</p>
 
 ```tscl
 <p>{{ user.name }} has {{ items.length }} items.</p>
