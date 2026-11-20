@@ -1,0 +1,10 @@
+{{-- components/counter.kvw --}}
+@input start: number = 0
+
+<script>
+  let count = state(start)
+  const double = derived(() => count * 2)
+  function add() { count++ }
+</script>
+
+<button (click)="add()">Clicked {{ count }} times (double: {{ double }})</button>
