@@ -1,5 +1,27 @@
 # clarusjs
 
+## 0.4.0
+
+### Minor Changes
+
+- [#76](https://github.com/forinda/clarusjs/pull/76) [`c95cf7e`](https://github.com/forinda/clarusjs/commit/c95cf7e45564487990d414ed6677d971d5ff510b) Thanks [@forinda](https://github.com/forinda)! - `clarusjs check [--json] [dir]`: type-checks every `.tscl` file under `src/` (and the TypeScript they use) with the project's TypeScript and reports each error at `file.tscl:line:col`, including template syntax errors. Extends the project's `tsconfig.json`; exits with 1 when there are errors. The command line is built on `commander` (zero dependencies, Node only, never in browser bundles).
+
+- [#79](https://github.com/forinda/clarusjs/pull/79) [`422aef1`](https://github.com/forinda/clarusjs/commit/422aef1139bcf44a4f8f77d000a26d7f1994ca00) Thanks [@forinda](https://github.com/forinda)! - Data imports in templates: `@import { a, b } from './data.ts'` or `@import data from './data.json'` (a default import of anything that isn't a `.tscl` file). In components without a script the import is server-only, so build-time data and even `node:` modules stay off the browser; in islands it is bundled for the browser like a script import, and `node:` imports are a build error. `clarusjs check` types the imported values.
+
+- [#83](https://github.com/forinda/clarusjs/pull/83) [`ac68e3b`](https://github.com/forinda/clarusjs/commit/ac68e3bd4e2af1496ab74f65f124395a0b6e77a0) Thanks [@forinda](https://github.com/forinda)! - `clarusjs explain [route]`: where each part of a built route runs, in plain words (rendered at build time, its data, each island with its size and when it attaches, JavaScript on page load and in all, CSS), read from `dist/clarusjs-manifest.json`. Without a route it lists every route; `--json` prints the manifest entry.
+
+- [#84](https://github.com/forinda/clarusjs/pull/84) [`2a34788`](https://github.com/forinda/clarusjs/commit/2a3478813eee74f61030ecf0281481933c9f6d8e) Thanks [@forinda](https://github.com/forinda)! - `readManifest()` from `clarusjs/manifest`: a page can read the route manifest while the site is built. Pages that call it are rendered again once the manifest is written, so they show the final build; outside a build it returns `null`.
+
+- [#82](https://github.com/forinda/clarusjs/pull/82) [`ce4f6d0`](https://github.com/forinda/clarusjs/commit/ce4f6d0ffbb4a7105e6b9f9a8608748520d201e6) Thanks [@forinda](https://github.com/forinda)! - `vite build` writes `dist/clarusjs-manifest.json`: for every route, its mode, its loader, the islands it renders (component, attach mode, count, gzip size) and the JavaScript and CSS it ships, with the gzip bytes that load with the page and in all. Read from the prerendered HTML and Vite's client manifest; kept outside `dist/client` so it isn't published.
+
+- [#85](https://github.com/forinda/clarusjs/pull/85) [`2d27d2f`](https://github.com/forinda/clarusjs/commit/2d27d2fdf2b990a5a88239770e3ddd90e428d8d9) Thanks [@forinda](https://github.com/forinda)! - **Breaking:** component files use the `.tscl` extension instead of `.clarus`. Plain JavaScript works out of the box; types stay optional. Rename your files (`for f in $(git ls-files '*.clarus'); do git mv "$f" "${f%.clarus}.tscl"; done`) and the imports that name them. The Vite plugin, `clarusjs check` and error locations (`file.tscl:line:col`) all use the new extension.
+
+- [#75](https://github.com/forinda/clarusjs/pull/75) [`90ecef5`](https://github.com/forinda/clarusjs/commit/90ecef52604fac3784a2cfca7a73b91f38a47416) Thanks [@forinda](https://github.com/forinda)! - Type-checking groundwork: `@import type { User } from '…'` brings types into a component for its `@input` declarations (erased from compiled output), and a generator turns each `.tscl` file into virtual TypeScript (`@if` → `if` with narrowing, `@for` → `for…of`, components → objects typed as the child's `Inputs`, typed `$event`) with mappings back to the template, so `tsc` errors can be reported at `file.tscl:line:col`.
+
+### Patch Changes
+
+- [#86](https://github.com/forinda/clarusjs/pull/86) [`477b4e5`](https://github.com/forinda/clarusjs/commit/477b4e5430a3dd6646558877d36ea3141073af72) Thanks [@forinda](https://github.com/forinda)! - New logo: the TSCL mark (a cut crystal flat along a T, an S-shaped lightning bolt, C and L down the stem).
+
 ## 0.3.0
 
 ### Minor Changes
