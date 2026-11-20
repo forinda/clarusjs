@@ -98,3 +98,28 @@ test('the nav marks the current page, and each page has its own description', as
   await page.goto('/')
   await expect(page.locator('header nav a[aria-current]')).toHaveCount(0)
 })
+
+test('home: the "what ships" island switches @if branches in the browser', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (err) => errors.push(err.message))
+  await page.goto('/')
+  const island = page.locator('cl-island[c="what-ships"]')
+  await expect(island).toHaveAttribute('data-cl-ready', '')
+  const toggle = island.locator('button.toggle')
+  await expect(island.locator('ul.ships')).toHaveCount(0)
+  await toggle.click()
+  await expect(island.locator('ul.ships li')).toHaveCount(3)
+  await expect(toggle).toHaveText('Hide')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await toggle.click()
+  await expect(island.locator('ul.ships')).toHaveCount(0)
+  await expect(toggle).toHaveText('What ships to the browser?')
+  expect(errors).toEqual([])
+})
+
+test('a server-side @if in the layout: guide pages show the eyebrow, home does not', async ({ page }) => {
+  await page.goto('/guide/islands')
+  await expect(page.locator('.eyebrow')).toHaveText('Guide')
+  await page.goto('/')
+  await expect(page.locator('.eyebrow')).toHaveCount(0)
+})

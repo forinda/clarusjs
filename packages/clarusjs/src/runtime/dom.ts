@@ -1,13 +1,19 @@
 // Attach helpers: find hole markers in server HTML and keep them updated. Browser only. Never re-renders.
 import { attrValue } from './attrs.ts'
-import { effect } from './signals.ts'
+import { effect, onDispose, scope, untrack } from './signals.ts'
 
 export type Hole = { start: Comment; end: Comment }
 
-/** Find `<!--[N-->…<!--]-->` pairs inside `root`, skipping nested islands. Returns holes indexed by N. */
-export function holes(root: Element): Hole[] {
-  const found: Hole[] = []
-  const open: { index: number; start: Comment }[] = []
+export type Block = { start: Comment; end: Comment; k: number }
+
+/**
+ * Find hole markers `<!--[N-->…<!--]-->` and block markers `<!--[bN:K-->…<!--]-->` inside `root`, skipping nested
+ * islands. Indexes are unique per component, so markers inside a rendered branch keep their own numbers.
+ */
+function scan(root: Element): { holes: Hole[]; blocks: Block[] } {
+  const holes: Hole[] = []
+  const blocks: Block[] = []
+  const open: { kind: 'hole' | 'block'; index: number; k: number; start: Comment }[] = []
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, {
     acceptNode: (n) =>
       n.nodeType === 8 ? NodeFilter.FILTER_ACCEPT
@@ -16,13 +22,57 @@ export function holes(root: Element): Hole[] {
   })
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     const data = (n as Comment).data
-    if (/^\[\d+$/.test(data)) open.push({ index: Number(data.slice(1)), start: n as Comment })
+    let m: RegExpExecArray | null
+    if ((m = /^\[(\d+)$/.exec(data))) open.push({ kind: 'hole', index: Number(m[1]), k: 0, start: n as Comment })
+    else if ((m = /^\[b(\d+):(-?\d+)$/.exec(data))) open.push({ kind: 'block', index: Number(m[1]), k: Number(m[2]), start: n as Comment })
     else if (data === ']' && open.length) {
-      const { index, start } = open.pop()!
-      found[index] = { start, end: n as Comment }
+      const o = open.pop()!
+      if (o.kind === 'hole') holes[o.index] = { start: o.start, end: n as Comment }
+      else blocks[o.index] = { start: o.start, end: n as Comment, k: o.k }
     }
   }
-  return found
+  return { holes, blocks }
+}
+
+/** Hole markers of this island, by index. */
+export function holes(root: Element): Hole[] {
+  return scan(root).holes
+}
+
+/** Block markers of this island, by index. */
+export function blocks(root: Element): Block[] {
+  return scan(root).blocks
+}
+
+/**
+ * An @if block. `which()` picks the branch (-1 for none). The server-rendered branch is wired in place; a change
+ * removes the old branch (disposing its effects and handlers), inserts the new branch's HTML and wires it.
+ */
+export function block(root: Element, index: number, which: () => number, branches: { html: () => string; wire: () => void }[]): void {
+  const b = blocks(root)[index]
+  if (!b) return
+  let current = b.k
+  let dispose: (() => void) | null = null
+  let first = true
+  onDispose(() => dispose?.()) // removing the enclosing branch removes this one's too
+  effect(() => {
+    const k = which()
+    untrack(() => {
+      if (!first && k === current) return
+      if (k !== current) {
+        dispose?.()
+        while (b.start.nextSibling && b.start.nextSibling !== b.end) b.start.nextSibling.remove()
+        if (k >= 0) {
+          const t = document.createElement('template')
+          t.innerHTML = branches[k]!.html()
+          b.end.before(t.content)
+        }
+        current = k
+      }
+      first = false
+      dispose = k >= 0 ? scope(() => branches[k]!.wire()) : null
+    })
+  })
 }
 
 /** Keep exactly one text node between the hole's markers, set to `fn()`. */
@@ -67,7 +117,9 @@ export function on(root: Element, index: number, type: string, fn: (e: Event) =>
     }, CAPTURE.has(type))
   }
   if (!handlers.has(index)) handlers.set(index, [])
-  handlers.get(index)!.push(fn)
+  const list = handlers.get(index)!
+  list.push(fn)
+  onDispose(() => { const at = list.indexOf(fn); if (at !== -1) list.splice(at, 1) }) // a removed branch stops listening
 }
 
 /** Keep attribute `name` of this island's element marked `data-cl-a="index"` in sync with `fn()`. */

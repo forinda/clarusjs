@@ -10,7 +10,10 @@ export type IRNode =
   | { kind: 'slot' } // where a stateless component renders the content it wraps
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
   | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number }
-export type IREvent = { index: number; type: string; handler: string }
+  // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
+  | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
+// scope: which @if branch the element is in ("block.branch"); undefined at the top level.
+export type IREvent = { index: number; type: string; handler: string; scope?: string }
 export type ComponentIR = {
   file: string
   name: string // basename without .clarus
@@ -40,6 +43,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   let holeCount = 0
   let eventElementCount = 0
   let attrElementCount = 0
+  let blockCount = 0
+  let scopeKey: string | undefined // the @if branch being lowered, for events
 
   const emitStatic = (html: string) => {
     const last = out[out.length - 1]
@@ -54,6 +59,23 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
 
   function visit(node: TemplateNode, rawText?: string): void {
     if (node.type === 'text') return emitStatic(node.value)
+    if (node.type === 'if') {
+      const block = stateful ? blockCount++ : -1
+      const parent = out
+      const parentScope = scopeKey
+      const branches = node.branches.map((b, i) => {
+        if (b.cond !== null) checkExpr(b.cond, file, source, b.condStart)
+        const branchNodes: IRNode[] = []
+        out = branchNodes
+        if (stateful) scopeKey = `${block}.${i}`
+        b.children.forEach((child) => visit(child, rawText))
+        return { cond: b.cond, nodes: branchNodes }
+      })
+      out = parent
+      scopeKey = parentScope
+      out.push({ kind: 'if', branches, block })
+      return
+    }
     if (node.type === 'raw') return emitStatic(node.value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
     if (node.type === 'expr') {
       checkExpr(node.expr, file, source, node.start)
@@ -116,7 +138,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     if (elementEvents.length) {
       const index = eventElementCount++
       emitStatic(` data-cl-e="${index}"`)
-      for (const a of elementEvents) events.push({ index, type: a.name, handler: a.kind === 'event' ? a.expr : '' })
+      for (const a of elementEvents) events.push({ index, type: a.name, handler: a.kind === 'event' ? a.expr : '', scope: scopeKey })
     }
     emitStatic('>')
     node.children.forEach((child) => visit(child, RAW_TEXT.has(node.tag) ? node.tag : rawText))

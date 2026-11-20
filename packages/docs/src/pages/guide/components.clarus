@@ -24,6 +24,17 @@
 <button [disabled]="saving">Save</button></code></pre>
   <p>Inside an interactive component, attributes that read state update when it changes. For events, use <code verbatim>(click)="…"</code>, not <code>onclick</code>.</p>
 
+  <h2>Control flow</h2>
+  <p>Show one of several branches with <code>@if</code>, <code>@else if</code> and <code>@else</code>. Outside an interactive component the choice is made on the server and costs nothing in the browser. Inside one, the branch switches when the state it reads changes: the old branch's handlers are removed and the new branch is inserted and wired.</p>
+  <pre><code verbatim>@if (user.isAdmin) {
+  <a href="/admin">Admin</a>
+} @else if (user.isEditor) {
+  <a href="/edit">Edit</a>
+} @else {
+  <span>Read only</span>
+}</code></pre>
+  <p>Inside a block, a bare <code>}</code> closes it; write <code>&amp;#125;</code> for a literal one.</p>
+
   <h2>Slots</h2>
   <p>A component without a script can wrap content: whatever you put between its tags renders at its <code>&lt;slot /&gt;</code>. The content belongs to the page that writes it, so its holes read the page's inputs. This is how layouts work: this site's layout is a component, and every page wraps its content in it.</p>
   <pre><code verbatim>{{-- layouts/docs.clarus --}}

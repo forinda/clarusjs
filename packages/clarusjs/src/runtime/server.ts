@@ -1,13 +1,8 @@
 // Server-side helpers used by compiled render() functions. Runs at build time or per request, never in the browser.
-import { attrValue } from './attrs.ts'
+import { attrHtml, escape } from './html.ts'
 
-const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
+export { escape, blockHtml } from './html.ts'
 
-/** Escape a value for HTML text or a double-quoted attribute. null/undefined render as ''. */
-export function escape(value: unknown): string {
-  if (value == null) return ''
-  return String(value).replace(/[&<>"']/g, (ch) => ENTITIES[ch]!)
-}
 
 function assertSerializable(value: unknown, path: string): void {
   const t = typeof value
@@ -29,7 +24,4 @@ export function island(name: string, src: string, props: Record<string, unknown>
 }
 
 /** ` name="value"`, ` name` (true) or '' (false/null/undefined), escaped and URL-checked. */
-export function attr(name: string, value: unknown): string {
-  const v = attrValue(name, value)
-  return v === null ? '' : v === true ? ` ${name}` : ` ${name}="${escape(v)}"`
-}
+export const attr = attrHtml

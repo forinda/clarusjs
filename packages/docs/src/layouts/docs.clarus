@@ -24,6 +24,7 @@
       </nav>
     </header>
     <main class="content">
+      @if (section !== '') {<p class="eyebrow">Guide</p>}
       <slot />
     </main>
     <footer class="site-footer">
