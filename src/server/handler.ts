@@ -17,8 +17,10 @@ export function createHandler(pages: Record<string, () => Promise<PageModule>>):
       if (!load) return new Response('Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
       const html = (await load()).render({})
       // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
-      const scripts = html.includes('<kv-island') ? '<script type="module" src="/kv-loader.js"></script>' : ''
-      const body = `<!doctype html><html><head><meta charset="utf-8"><title>kview</title></head><body>${html}${scripts}</body></html>`
+      const hasIslands = html.includes('<kv-island')
+      const scripts = hasIslands ? '<script type="module" src="/kv-loader.js"></script>' : ''
+      const style = hasIslands ? '<style>kv-island{display:contents}</style>' : '' // islands never affect layout
+      const body = `<!doctype html><html><head><meta charset="utf-8"><title>kview</title>${style}</head><body>${html}${scripts}</body></html>`
       return new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     },
   }

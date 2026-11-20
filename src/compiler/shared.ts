@@ -5,7 +5,7 @@ import type { ComponentIR } from './ir.ts'
 export function inputsLine(ir: ComponentIR): string {
   if (!ir.inputs.length) return ''
   const parts = ir.inputs.map((i) => (i.default !== undefined ? `${i.name} = ${i.default}` : i.name))
-  return `  const { ${parts.join(', ')} } = props\n`
+  return `  const { ${parts.join(', ')} } = __kv_props\n`
 }
 
 /** Dedent a script block and indent it by two spaces, one statement line per line. */
@@ -15,4 +15,5 @@ export function indentScript(code: string): string {
   return lines.map((l) => '  ' + l.slice(indent)).join('\n') + '\n'
 }
 
-export const renderName = (name: string) => 'render_' + name.replace(/[^\w$]/g, '_')
+// Generated names carry a __kv_ prefix so they can't collide with names in the author's <script>.
+export const renderName = (name: string) => '__kv_render_' + name.replace(/[^\w$]/g, '_')

@@ -19,18 +19,18 @@ beforeEach(() => { document.body.innerHTML = '' })
 
 test('counter client output is readable and exact', () => {
   expect(compile(fixture('counter.kvw'), { file: 'counter.kvw', target: 'client' }).code).toBe(
-`import { state, derived, holes, text, on } from 'kview/runtime'
+`import { state, derived, holes as __kv_holes, text as __kv_text, on as __kv_on } from 'kview/runtime'
 
-export function attach(root, props = {}) {
-  const { start = 0 } = props
+export function attach(__kv_root, __kv_props = {}) {
+  const { start = 0 } = __kv_props
   const count = state(start)
   const double = derived(() => count.get() * 2)
   function add() { count.set(count.get() + 1) }
 
-  const h = holes(root)
-  text(h[0], () => count.get())
-  text(h[1], () => double.get())
-  on(root, 0, "click", ($event) => { add() })
+  const __kv_h = __kv_holes(__kv_root)
+  __kv_text(__kv_h[0], () => count.get())
+  __kv_text(__kv_h[1], () => double.get())
+  __kv_on(__kv_root, 0, "click", ($event) => { add() })
 }
 `)
 })

@@ -1,7 +1,7 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
 import { KviewError } from './errors.ts'
 import type { ImportDecl, InputDecl, ParsedFile, TemplateNode } from './parse.ts'
-import { analyzeScript, referencesSignal, type Signals } from './script.ts'
+import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, type Signals } from './script.ts'
 
 export type IRNode =
   | { kind: 'static'; html: string }
@@ -26,6 +26,9 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   const fail = (text: string, at: number): never => { throw new KviewError(text, file, source, at) }
   const stateful = !!parsed.script
   const signals: Signals = parsed.script ? analyzeScript(parsed.script.code, file, source, parsed.script.start) : new Map()
+  // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.
+  // text()'s effect tracks the real dependencies, so over-marking only costs a pair of comment markers.
+  const scriptScope = parsed.script ? new Set([...signals.keys(), ...scriptNames(parsed.script.code)]) : new Set<string>()
   const components = new Set(parsed.imports.map((i) => i.name))
   const nodes: IRNode[] = []
   const events: IREvent[] = []
@@ -41,7 +44,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   function visit(node: TemplateNode): void {
     if (node.type === 'text') return emitStatic(node.value)
     if (node.type === 'expr') {
-      const reactive = referencesSignal(node.expr, signals)
+      checkExpr(node.expr, file, source, node.start)
+      const reactive = referencesNames(node.expr, scriptScope)
       nodes.push({ kind: 'hole', expr: node.expr, reactive, index: reactive ? holeCount++ : -1 })
       return
     }
@@ -50,7 +54,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       if (node.children.length) fail('slots are not supported yet', node.start)
       const props: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
-        if (a.kind === 'prop') props.push({ name: a.name, expr: a.expr })
+        if (a.kind === 'prop') { checkExpr(a.expr, file, source, a.start); props.push({ name: a.name, expr: a.expr }) }
         else fail(`component <${node.tag}> only takes [prop] bindings`, a.start)
       }
       nodes.push({ kind: 'component', name: node.tag, props })
@@ -62,6 +66,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       if (a.kind === 'static') open += a.value === true ? ` ${a.name}` : ` ${a.name}="${a.value}"`
       else if (a.kind === 'prop') fail('[prop] bindings on HTML elements are not supported yet', a.start)
       else if (!stateful) fail('event bindings need a <script> with state; this component is static', a.start)
+      else checkHandler(a.expr, file, source, a.start)
     }
     if (elementEvents.length) {
       const index = eventElementCount++

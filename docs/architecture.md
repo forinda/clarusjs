@@ -155,36 +155,38 @@ Source:
 Server output (readable, roughly what you'll see in `dist/`):
 
 ```js
-import { escape, island } from 'kview/runtime/server'
+import { escape as __kv_escape, island as __kv_island } from 'kview/runtime/server'
 
-export function render({ start = 0 } = {}) {
-  let count = start
-  const double = count * 2
-  return island('counter', { start },
-    `<button data-kv-e="0">Clicked <!--[0-->${escape(count)}<!--]--> times ` +
-    `(double: <!--[1-->${escape(double)}<!--]-->)</button>`)
+export function render(__kv_props = {}) {
+  const { start = 0 } = __kv_props
+  let count = (start)
+  const double = (() => count * 2)()
+  function add() { count++ }
+  return __kv_island("counter", "/src/components/counter.kvw?import", { start }, "<button data-kv-e=\"0\">Clicked " + "<!--[0-->" + __kv_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __kv_escape(double) + "<!--]-->" + ")</button>")
 }
 ```
 
 Client output:
 
 ```js
-import { state, derived, holes, text, on } from 'kview/runtime'
+import { state, derived, holes as __kv_holes, text as __kv_text, on as __kv_on } from 'kview/runtime'
 
-export function attach(root, { start = 0 } = {}) {
+export function attach(__kv_root, __kv_props = {}) {
+  const { start = 0 } = __kv_props
   const count = state(start)
   const double = derived(() => count.get() * 2)
   function add() { count.set(count.get() + 1) }
 
-  const h = holes(root)              // finds <!--[n--> markers, once
-  text(h[0], () => count.get())      // updates only that text node
-  text(h[1], () => double.get())
-  on(root, 0, 'click', () => add())  // delegated, matched by data-kv-e="0"
+  const __kv_h = __kv_holes(__kv_root)                   // finds <!--[n--> markers, once
+  __kv_text(__kv_h[0], () => count.get())               // updates only that text node
+  __kv_text(__kv_h[1], () => double.get())
+  __kv_on(__kv_root, 0, "click", ($event) => { add() }) // delegated, matched by data-kv-e="0"
 }
 ```
 
 `count++` became `count.set(count.get() + 1)`. That rewrite is the only
-"magic", and it's visible in the output.
+"magic", and it's visible in the output. Names kview generates start with
+`__kv_`, so they never collide with names in your `<script>`.
 
 ## 5. The HTML contract
 

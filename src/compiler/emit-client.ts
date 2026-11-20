@@ -10,23 +10,23 @@ export function emitClient(ir: ComponentIR): string {
   const used = [
     kinds.has('state') && 'state',
     kinds.has('derived') && 'derived',
-    reactive.length > 0 && 'holes',
-    reactive.length > 0 && 'text',
-    ir.events.length > 0 && 'on',
+    reactive.length > 0 && 'holes as __kv_holes',
+    reactive.length > 0 && 'text as __kv_text',
+    ir.events.length > 0 && 'on as __kv_on',
   ].filter(Boolean)
 
   let out = used.length ? `import { ${used.join(', ')} } from 'kview/runtime'\n` : ''
-  out += `\nexport function attach(root, props = {}) {\n`
+  out += `\nexport function attach(__kv_root, __kv_props = {}) {\n`
   out += inputsLine(ir)
   if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals))
 
   const wiring: string[] = []
-  if (reactive.length) wiring.push('const h = holes(root)')
+  if (reactive.length) wiring.push('const __kv_h = __kv_holes(__kv_root)')
   for (const h of [...reactive].sort((a, b) => a.index - b.index)) {
-    wiring.push(`text(h[${h.index}], () => ${rewriteClientExpr(h.expr, ir.signals)})`)
+    wiring.push(`__kv_text(__kv_h[${h.index}], () => ${rewriteClientExpr(h.expr, ir.signals)})`)
   }
   for (const e of ir.events) {
-    wiring.push(`on(root, ${e.index}, ${JSON.stringify(e.type)}, ($event) => { ${rewriteClientExpr(e.handler, ir.signals)} })`)
+    wiring.push(`__kv_on(__kv_root, ${e.index}, ${JSON.stringify(e.type)}, ($event) => { ${rewriteClient(e.handler, ir.signals).trim()} })`)
   }
   if (wiring.length) out += '\n' + wiring.map((l) => `  ${l}\n`).join('')
   return out + '}\n'

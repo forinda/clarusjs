@@ -32,3 +32,10 @@ test('non-GET is 405 and unknown path is 404', async () => {
   expect(missing.status).toBe(404)
   expect(missing.headers.get('content-type')).toContain('text/plain')
 })
+
+test('pages with islands make kv-island layout-neutral (display: contents)', async () => {
+  const html = await (await handler.fetch(new Request('http://x/app'))).text()
+  expect(html).toContain('<style>kv-island{display:contents}</style>')
+  const plain = await (await handler.fetch(new Request('http://x/'))).text()
+  expect(plain).not.toContain('<style>')
+})

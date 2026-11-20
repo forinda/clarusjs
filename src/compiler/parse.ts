@@ -82,6 +82,11 @@ export function parse(source: string, file: string): ParsedFile {
         const end = source.indexOf('--}}', i)
         if (end === -1) fail('unclosed {{-- comment', i)
         flush(); i = end + 4; textStart = i
+      } else if (source.startsWith('<!--', i)) {
+        const end = source.indexOf('-->', i + 4)
+        if (end === -1) fail('unclosed <!-- comment', i)
+        text += source.slice(i, end + 3) // kept verbatim as static text: no tags, no holes inside
+        i = end + 3
       } else if (!parent && source[i] === '@' && atLineStart(i)) {
         flush(); directive(); textStart = i
       } else if (source.startsWith('{{', i)) {

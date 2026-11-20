@@ -9,14 +9,14 @@ const server = (source: string, file: string) => compile(source, { file, target:
 
 test('counter server output is readable and exact', () => {
   expect(server(fixture('counter.kvw'), 'src/components/counter.kvw').code).toBe(
-`import { escape, island } from 'kview/runtime/server'
+`import { escape as __kv_escape, island as __kv_island } from 'kview/runtime/server'
 
-export function render(props = {}) {
-  const { start = 0 } = props
+export function render(__kv_props = {}) {
+  const { start = 0 } = __kv_props
   let count = (start)
   const double = (() => count * 2)()
   function add() { count++ }
-  return island("counter", "/src/components/counter.kvw?import", { start }, "<button data-kv-e=\\"0\\">Clicked " + "<!--[0-->" + escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + escape(double) + "<!--]-->" + ")</button>")
+  return __kv_island("counter", "/src/components/counter.kvw?import", { start }, "<button data-kv-e=\\"0\\">Clicked " + "<!--[0-->" + __kv_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __kv_escape(double) + "<!--]-->" + ")</button>")
 }
 `)
 })

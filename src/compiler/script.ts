@@ -58,7 +58,45 @@ function parseScript(code: string, file = '<script>', source = code, offset = 0)
 }
 
 function parseExpr(expr: string): N {
-  return parseExpressionAt(expr, 0, OPTS) as unknown as N
+  const ast = parseExpressionAt(expr, 0, OPTS) as unknown as N
+  // acorn drops wrapping parens from the node range: `({ a })` gives a node ending before `)`. Allow exactly those.
+  const open = (expr.slice(0, ast.start).match(/\(/g) ?? []).length
+  if (!/^[\s(]*$/.test(expr.slice(0, ast.start)) || expr.slice(ast.end).replace(/\s/g, '') !== ')'.repeat(open)) {
+    throw Object.assign(new SyntaxError('expected a single expression'), { pos: ast.end })
+  }
+  return ast
+}
+
+function located<T>(fn: () => T, what: string, file: string, source: string, offset: number): T {
+  try {
+    return fn()
+  } catch (e) {
+    if (e instanceof KviewError) throw e
+    throw new KviewError(`${what}: ${(e as Error).message.replace(/ \(\d+:\d+\)$/, '')}`, file, source, offset)
+  }
+}
+
+/** Throw a located KviewError unless `expr` is exactly one JS expression. */
+export function checkExpr(expr: string, file: string, source: string, offset: number): void {
+  located(() => parseExpr(expr), 'invalid expression', file, source, offset)
+}
+
+/** Throw a located KviewError unless `code` parses as statements (event handlers may hold several). */
+export function checkHandler(code: string, file: string, source: string, offset: number): void {
+  located(() => acornParse(code, OPTS), 'invalid event handler', file, source, offset)
+}
+
+/** Names declared at the top level of <script>: variables, functions, classes. */
+export function scriptNames(code: string): Set<string> {
+  const names = new Set<string>()
+  for (const stmt of parseScript(code).body as N[]) {
+    if (stmt.type === 'VariableDeclaration') {
+      for (const d of stmt.declarations as N[]) if (d.id.type === 'Identifier') names.add(d.id.name)
+    } else if ((stmt.type === 'FunctionDeclaration' || stmt.type === 'ClassDeclaration') && stmt.id) {
+      names.add(stmt.id.name)
+    }
+  }
+  return names
 }
 
 function signalCall(init: N | null | undefined): 'state' | 'derived' | undefined {
@@ -69,6 +107,9 @@ function signalCall(init: N | null | undefined): 'state' | 'derived' | undefined
 export function analyzeScript(code: string, file: string, source: string, offset: number): Signals {
   const signals: Signals = new Map()
   for (const stmt of parseScript(code, file, source, offset).body as N[]) {
+    if (stmt.type === 'ImportDeclaration' || stmt.type.startsWith('Export')) {
+      throw new KviewError('imports in <script> are not supported yet', file, source, offset + stmt.start)
+    }
     if (stmt.type !== 'VariableDeclaration') continue
     for (const d of stmt.declarations as N[]) {
       const kind = signalCall(d.init)
@@ -130,10 +171,15 @@ export function rewriteServer(code: string): string {
 }
 
 export function referencesSignal(expr: string, signals: Signals): boolean {
+  return referencesNames(expr, new Set(signals.keys()))
+}
+
+/** Does `expr` read any of `names`? */
+export function referencesNames(expr: string, names: Set<string>): boolean {
   let found = false
   print(parseExpr(expr), expr, (node, parent, key) => {
-    if (node.type === 'Identifier' && signals.has(node.name) && !isBinding(parent, key)) found = true
-    if (node.type === 'Property' && node.shorthand && signals.has(node.value?.name)) found = true
+    if (node.type === 'Identifier' && names.has(node.name) && !isBinding(parent, key)) found = true
+    if (node.type === 'Property' && node.shorthand && names.has(node.value?.name)) found = true
     return undefined
   })
   return found
