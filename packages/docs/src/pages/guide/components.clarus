@@ -33,6 +33,15 @@
 } @else {
   <span>Read only</span>
 }</code></pre>
+  <p>Repeat content with <code>@for</code>. <code>track</code> gives each row a key (without it, rows are keyed by position), <code>$index</code> is the row's position, and <code>@empty</code> shows when the list is empty.</p>
+  <pre><code verbatim><ul>
+  @for (post of posts; track post.id) {
+    <li>{{ $index + 1 }}. {{ post.title }}</li>
+  } @empty {
+    <li>No posts yet.</li>
+  }
+</ul></code></pre>
+  <p>Inside an interactive component, rows with the same key keep their elements when the list changes; new rows are rendered and removed rows are cleaned up.</p>
   <p>Inside a block, a bare <code>}</code> closes it; write <code>&amp;#125;</code> for a literal one.</p>
 
   <h2>Slots</h2>

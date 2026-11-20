@@ -2,6 +2,7 @@
 @import counter from '../components/counter.clarus'
 @import callout from '../components/callout.clarus'
 @import whatShips from '../components/what-ships.clarus'
+@import todo from '../components/todo.clarus'
 
 <docs [title]="'Clear, compiled views'">
   <section class="hero">
@@ -25,6 +26,10 @@
 </script>
 
 <button (click)="add()">Clicked {{ count }} times (double: {{ double }})</button></code></pre>
+
+  <h2>Lists</h2>
+  <p>This list is an island too: <code>@for</code> renders it on the server, and in the browser rows are added and removed by key without touching the others.</p>
+  <todo />
 
   <h2>Why clarusjs</h2>
   <ul class="points">

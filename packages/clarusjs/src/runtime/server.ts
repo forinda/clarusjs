@@ -1,7 +1,7 @@
 // Server-side helpers used by compiled render() functions. Runs at build time or per request, never in the browser.
 import { attrHtml, escape } from './html.ts'
 
-export { escape, blockHtml } from './html.ts'
+export { escape, blockHtml, forHtml } from './html.ts'
 
 
 function assertSerializable(value: unknown, path: string): void {
