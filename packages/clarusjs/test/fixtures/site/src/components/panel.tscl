@@ -1,4 +1,4 @@
-@import counter from './counter.clarus'
+@import counter from './counter.tscl'
 
 <script>let open = state(false)</script>
 

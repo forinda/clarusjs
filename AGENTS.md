@@ -4,7 +4,7 @@ Guidance for AI agents (and humans) working in this repo.
 
 ## What this is
 
-clarusjs compiles `.clarus` components (Vue/Angular-style templates + an optional `<script>` with signals) into:
+clarusjs compiles `.tscl` components (Vue/Angular-style templates + an optional `<script>` with signals) into:
 
 - a **server module**: `render(props) → string`, HTML with markers around reactive holes only;
 - a **client module**, only for stateful components: `attach(root, props)`, which wires signals to the server's HTML without re-rendering it.
@@ -23,7 +23,7 @@ pnpm typecheck      # tsc --noEmit in every package
 pnpm dev            # serves examples/counter
 pnpm docs:dev       # the docs site (packages/docs), built with clarusjs
 pnpm docs:test      # builds the docs site and runs its Playwright tests (Chromium)
-pnpm docs:check     # clarusjs check on the docs site: type errors at file.clarus:line:col
+pnpm docs:check     # clarusjs check on the docs site: type errors at file.tscl:line:col
 pnpm changeset      # describe a change to a published package (commit the generated file)
 ```
 

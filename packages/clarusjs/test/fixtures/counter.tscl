@@ -1,4 +1,4 @@
-{{-- components/counter.clarus --}}
+{{-- components/counter.tscl --}}
 @input start: number = 0
 
 <script>

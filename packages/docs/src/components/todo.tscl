@@ -1,4 +1,4 @@
-@import pill from './pill.clarus'
+@import pill from './pill.tscl'
 
 <script>
   import { todos } from '../stores/todos.ts'

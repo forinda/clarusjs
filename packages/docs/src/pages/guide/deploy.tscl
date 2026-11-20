@@ -1,0 +1,15 @@
+@import copy from '../../components/copy.tscl'
+@import docs from '../../layouts/docs.tscl'
+@import callout from '../../components/callout.tscl'
+
+<docs [title]="'Deploying'" [path]="'/guide/deploy'" [description]="'Upload dist/client to any static host; this site deploys to Netlify.'">
+  <h1>Deploying</h1>
+  <p class="lead">Upload <code>dist/client/</code> to any static host.</p>
+  <h2>Netlify</h2>
+  <p>This site deploys to Netlify:</p>
+  <div class="sample"><pre><code verbatim># netlify.toml
+[build]
+  command = "pnpm install --frozen-lockfile && pnpm --filter @clarusjs/docs build"
+  publish = "packages/docs/dist/client"</code></pre><copy attach="interaction" /></div>
+  <callout [type]="'info'"><p>The same handler can also run on a server per request. Choosing between build time and request time per route is coming in a later release.</p></callout>
+</docs>

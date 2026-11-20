@@ -1,13 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
+import { sections } from '../src/nav.ts'
 
-const pages = [
-  { path: '/', title: 'clarusjs' },
-  { path: '/guide/getting-started', title: 'Getting started' },
-  { path: '/guide/components', title: 'Components' },
-  { path: '/guide/islands', title: 'Islands' },
-  { path: '/guide/build', title: 'Build' },
-]
-const guides = pages.filter((p) => p.path !== '/')
+// Every page in the sidebar, in sidebar order, plus the home page.
+const docs = sections.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => ({ path: i.href, title: i.title, section: s.key }))))
+const pages = [{ path: '/', title: 'clarusjs' }, ...docs]
+const guides = docs
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** Collect console errors and script requests while visiting a page. */
 async function visit(page: Page, path: string) {
@@ -25,7 +23,7 @@ for (const { path, title } of pages) {
   test(`${path} renders with its own title and no console errors`, async ({ page }) => {
     const { response, errors } = await visit(page, path)
     expect(response?.status()).toBe(200)
-    await expect(page).toHaveTitle(new RegExp(title))
+    await expect(page).toHaveTitle(new RegExp(esc(title)))
     await expect(page).toHaveTitle(/clarusjs/)
     await expect(page.locator('h1')).toHaveCount(1)
     expect(errors).toEqual([])
@@ -49,7 +47,7 @@ test('every header nav link, followed as written, lands on a page', async ({ pag
   await page.goto('/')
   const hrefs = (await page.locator('header nav a').evaluateAll((links) => links.map((a) => a.getAttribute('href')!)))
     .filter((href) => href.startsWith('/')) // the site's own pages; external links are not ours to test
-  expect(hrefs.length).toBe(guides.length)
+  expect(hrefs).toEqual(sections.map((s) => s.href))
   for (const href of hrefs) {
     const response = await page.goto(href)
     expect(response?.status(), href).toBe(200)
@@ -86,22 +84,36 @@ test('code samples show template syntax literally (verbatim)', async ({ page }) 
   await expect(sample).toContainText('{{ count }}')
   await expect(sample).toContainText('<script>')
   await expect(sample).toContainText('@input start: number = 0')
-  await page.goto('/guide/components')
+  await page.goto('/guide/verbatim')
   await expect(page.locator('pre').filter({ hasText: '<code verbatim>' })).toContainText('<p>Hello, {{ name }}!</p>')
 })
 
-test('the nav marks the current page, and each page has its own description', async ({ page }) => {
+test('the sidebar marks the current page, the header its section, and each page has its own description', async ({ page }) => {
   const descriptions = new Set<string>()
-  for (const { path } of guides) {
+  for (const { path, section } of docs) {
     await page.goto(path)
-    const current = page.locator('header nav a[aria-current="page"]')
-    await expect(current).toHaveCount(1)
-    await expect(current).toHaveAttribute('href', path)
+    const current = page.locator('.sidebar a[aria-current="page"]')
+    await expect(current, path).toHaveCount(1)
+    await expect(current, path).toHaveAttribute('href', path)
+    await expect(page.locator('header nav a[aria-current]'), path).toHaveAttribute('href', sections.find((s) => s.key === section)!.href)
     descriptions.add((await page.locator('meta[name="description"]').getAttribute('content'))!)
   }
-  expect(descriptions.size).toBe(guides.length)
+  expect(descriptions.size).toBe(docs.length)
   await page.goto('/')
   await expect(page.locator('header nav a[aria-current]')).toHaveCount(0)
+  await expect(page.locator('.sidebar')).toHaveCount(0)
+})
+
+test('every sidebar link lands on a page, and the edit link points at its source', async ({ page }) => {
+  await page.goto('/guide/what-is-clarusjs')
+  for (const section of sections) {
+    await page.goto(section.href)
+    const hrefs = await page.locator('.sidebar a').evaluateAll((links) => links.map((a) => a.getAttribute('href')!))
+    expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
+  }
+  await page.goto('/guide/lists')
+  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.tscl$/)
+  await expect(page.locator('.crumb')).toHaveText('Guide › Templates')
 })
 
 test('home: the "what ships" island switches @if branches in the browser', async ({ page }) => {
@@ -128,11 +140,12 @@ test('home: the "what ships" island switches @if branches in the browser', async
   expect(errors).toEqual([])
 })
 
-test('a server-side @if in the layout: guide pages show the eyebrow, home does not', async ({ page }) => {
+test('a server-side @if in the layout: docs pages get the sidebar and breadcrumb, home does not', async ({ page }) => {
   await page.goto('/guide/islands')
-  await expect(page.locator('.eyebrow')).toHaveText('Guide')
+  await expect(page.locator('.crumb')).toHaveText('Guide › Interactivity')
   await page.goto('/')
-  await expect(page.locator('.eyebrow')).toHaveCount(0)
+  await expect(page.locator('.crumb')).toHaveCount(0)
+  await expect(page.locator('main.home')).toHaveCount(1)
 })
 
 test('home: the list island adds and removes rows by key, with @empty', async ({ page }) => {
@@ -162,20 +175,39 @@ test('home: the list island adds and removes rows by key, with @empty', async ({
   expect(errors).toEqual([])
 })
 
-test('named slot: each guide page fills "next", other pages get the fallback', async ({ page }) => {
-  const expected: Record<string, string> = {
-    '/': '/guide/getting-started',
-    '/guide/getting-started': '/guide/components',
-    '/guide/components': '/guide/islands',
-    '/guide/islands': '/guide/build',
-    '/guide/build': '/',
+test('previous and next follow sidebar order within each section', async ({ page }) => {
+  for (const section of sections) {
+    const items = section.groups.flatMap((g) => g.items)
+    for (const [i, item] of items.entries()) {
+      await page.goto(item.href)
+      const prev = page.locator('.pager a.prev')
+      const next = page.locator('.pager a.next')
+      if (i === 0) await expect(prev, item.href).toHaveCount(0)
+      else await expect(prev, item.href).toHaveAttribute('href', items[i - 1]!.href)
+      if (i === items.length - 1) await expect(next, item.href).toHaveCount(0)
+      else await expect(next, item.href).toHaveAttribute('href', items[i + 1]!.href)
+    }
   }
-  for (const [path, href] of Object.entries(expected)) {
-    await page.goto(path)
-    const link = page.locator('nav.next a')
-    await expect(link, path).toHaveCount(1)
-    await expect(link, path).toHaveAttribute('href', href)
-  }
+})
+
+test('named slot: a callout shows its filled title, or the fallback from its type', async ({ page }) => {
+  await page.goto('/guide/state')
+  await expect(page.locator('.callout.warning .callout-title')).toHaveText('Island props and state are public')
+  await page.goto('/guide/attributes')
+  await expect(page.locator('.callout.tip .callout-title')).toHaveText('Tip')
+})
+
+test('phone width: the page list opens from the Menu button without JavaScript', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 800 }, javaScriptEnabled: false })
+  const page = await context.newPage()
+  await page.goto('/guide/lists')
+  const sidebar = page.locator('.sidebar')
+  await expect(sidebar).toBeHidden()
+  await page.getByText('Menu', { exact: true }).click()
+  await expect(sidebar).toBeVisible()
+  await expect(sidebar.locator('a[aria-current="page"]')).toHaveText('Lists')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await context.close()
 })
 
 test('home: two islands share the to-do store', async ({ page }) => {
@@ -224,4 +256,44 @@ test('copy buttons load on first click and copy their sample', async ({ page, co
   expect(chunks).toHaveLength(1)
   const copied = await page.evaluate(() => navigator.clipboard.readText())
   expect(copied).toBe(await sample.locator('code').textContent())
+})
+
+test('the route manifest matches what the browser loads', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
+  expect(Object.keys(manifest.routes).sort()).toEqual(pages.map((p) => p.path).sort())
+  for (const path of ['/', '/guide/state']) {
+    const route = manifest.routes[path]
+    const { scripts } = await visit(page, path)
+    const loaded = [...new Set(scripts.map((s) => new URL(s).pathname.slice(1)))].sort()
+    const initial = route.js.files.filter((f: string) => !route.islands.some((i: { src: string; attach: string }) => i.src === f && i.attach !== 'load'))
+    expect(loaded, path).toEqual([...initial].sort())
+    page.removeAllListeners()
+  }
+})
+
+test('clarusjs explain names the islands the page really has', async ({ page }) => {
+  const { spawnSync } = await import('node:child_process')
+  const { fileURLToPath } = await import('node:url')
+  const cli = fileURLToPath(new URL('../../clarusjs/src/cli/index.ts', import.meta.url))
+  const root = fileURLToPath(new URL('..', import.meta.url))
+  const run = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, 'explain', '/guide/state', '--root', root, '--json'], { encoding: 'utf8' })
+  expect(run.status, run.stderr).toBe(0)
+  const explained = JSON.parse(run.stdout).islands.map((i: { component: string; count: number }) => [i.component, i.count])
+  await page.goto('/guide/state')
+  const names = await page.locator('cl-island').evaluateAll((els) => els.map((e) => e.getAttribute('c')!))
+  const found = [...new Set(names)].map((n) => [n, names.filter((x) => x === n).length])
+  expect(explained).toEqual(found)
+})
+
+test('this site, explained: the table is generated from the manifest at build time', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
+  await page.goto('/guide/explained')
+  const rows = page.locator('table.explained tbody tr')
+  await expect(rows).toHaveCount(pages.length)
+  const home = rows.filter({ has: page.locator('a[href="/"]') })
+  for (const island of manifest.routes['/'].islands) await expect(home).toContainText(island.component)
+  // The page lists itself, so it was rendered after the manifest existed.
+  await expect(rows.filter({ has: page.locator('a[href="/guide/explained"]') })).toContainText('copy (interaction)')
 })
