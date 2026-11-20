@@ -1,0 +1,25 @@
+{
+  "name": "kview",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Compiled .kvw views: server HTML, attach-only islands, Vite-hosted",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "dev": "vite examples/counter"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "happy-dom": "^21.0.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  },
+  "dependencies": {
+    "acorn": "^8.19.0"
+  }
+}
