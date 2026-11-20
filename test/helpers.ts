@@ -1,7 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 
-const TMP = fileURLToPath(new URL('./.tmp/', import.meta.url))
+const TMP = `${import.meta.dirname}/.tmp/`
 let counter = 0
 
 /**
