@@ -61,6 +61,10 @@ test('no server code or template source reaches the client assets', () => {
 test('routeToFile maps routes to index.html files', () => {
   expect(routeToFile('/')).toBe('index.html')
   expect(routeToFile('/about/team')).toBe('about/team/index.html')
+  // Static hosts look files up by the decoded path: /users/a%20b is served from users/a b/index.html.
+  expect(routeToFile('/users/a%20b')).toBe('users/a b/index.html')
+  expect(routeToFile('/caf%C3%A9')).toBe('café/index.html')
+  expect(routeToFile('/100%')).toBe('100%/index.html') // not an escape: kept as written
 })
 
 test('a page that throws while prerendering fails the build, naming the route', async () => {
@@ -121,7 +125,7 @@ test('no compiler or command-line code reaches the browser', () => {
 test('#25: writes dist/clarusjs-manifest.json describing every route', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
   const gz = expect.any(Number)
-  expect(Object.keys(manifest.routes)).toEqual(['/', '/about/team', '/explain', '/users/ada', '/users/linus'])
+  expect(Object.keys(manifest.routes)).toEqual(['/', '/about/team', '/explain', '/users/ada', '/users/grace%20hopper', '/users/linus'])
   expect(manifest.routes['/about/team']).toEqual({ mode: 'static', html: 'about/team/index.html', loader: null, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] })
   const home = manifest.routes['/']
   expect(home.islands.map((i: { component: string; attach: string; count: number }) => [i.component, i.attach, i.count])).toEqual([['counter', 'load', 1], ['panel', 'load', 1]])
@@ -138,6 +142,8 @@ test('#27: a page that reads the manifest is rendered again once it is written',
 test('#30: a dynamic route is prerendered once per entry', () => {
   expect(read('users/ada/index.html')).toContain('<h1>User Ada</h1>')
   expect(read('users/linus/index.html')).toContain('<h1>User Linus</h1>')
+  // A value with a space is written to the folder a static host will look in.
+  expect(read('users/grace hopper/index.html')).toContain('<p>grace hopper</p>')
 })
 
 test('#30: a dynamic route without entries() fails the build, naming the file', async () => {
@@ -147,7 +153,8 @@ test('#30: a dynamic route without entries() fails the build, naming the file', 
   mkdirSync(resolve(dir, 'node_modules'))
   symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'dir')
   const plugin = resolve(import.meta.dirname, '../src/vite/plugin.ts')
-  writeFileSync(resolve(dir, 'vite.config.ts'), `import { defineConfig } from 'vite'\nimport clarusjs from ${JSON.stringify(plugin)}\nexport default defineConfig({ plugins: [clarusjs()] })\n`)
+  // No bare 'vite' import: a temp folder outside the workspace has no node_modules to resolve it from.
+  writeFileSync(resolve(dir, 'vite.config.ts'), `import clarusjs from ${JSON.stringify(plugin)}\nexport default { plugins: [clarusjs()] }\n`)
   await expect(build(dir)).rejects.toThrow('/users/[id] is a dynamic route: export entries() from src/pages/users/[id].load.ts')
 }, 60_000)
 

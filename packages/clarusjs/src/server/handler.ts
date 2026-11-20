@@ -15,11 +15,14 @@ type DataModule = {
 
 type Route = { path: string; file: string; keys: string[]; regex: RegExp; load: () => Promise<PageModule> }
 
+/** A whole path segment that is a parameter: [id], [$id]. Anything else, like v[2], is literal text. */
+const PARAM = /^\[([A-Za-z_$][\w$]*)\]$/
+
 /** '/users/[id]' → keys ['id'] and a RegExp that captures each segment. */
 function compile(path: string): { keys: string[]; regex: RegExp } {
   const keys: string[] = []
   const source = path.split('/').map((seg) => {
-    const m = /^\[([A-Za-z_$][\w$]*)\]$/.exec(seg)
+    const m = PARAM.exec(seg)
     if (!m) return seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     keys.push(m[1]!)
     return '([^/]+)'
@@ -85,14 +88,16 @@ export function createHandler(
         const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
         if (!mod?.entries) throw new Error(`${route.path} is a dynamic route: export entries() from ${dataFile} to list the pages to prerender`)
         for (const params of await mod.entries()) {
-          out.push(route.path.replace(/\[(\w+)\]/g, (_, key: string) => {
+          out.push(route.path.split('/').map((seg) => {
+            const key = PARAM.exec(seg)?.[1]
+            if (key === undefined) return seg
             const value = (params as Record<string, unknown>)[key]
             // Each value fills one path segment and names a folder in the build: never empty, '.', '..' or with a '/'.
             if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || value.includes('/')) {
-              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/"`)
+              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/", and not "." or ".."`)
             }
             return encodeURIComponent(value)
-          }))
+          }).join('/'))
         }
       }
       return out.sort()

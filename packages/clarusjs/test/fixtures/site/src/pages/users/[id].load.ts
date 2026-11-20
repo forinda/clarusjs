@@ -1,5 +1,5 @@
 export function entries() {
-  return [{ id: 'ada' }, { id: 'linus' }]
+  return [{ id: 'ada' }, { id: 'linus' }, { id: 'grace hopper' }]
 }
 
 export async function load({ params }: { params: Record<string, string> }) {

@@ -32,7 +32,7 @@ import { users } from '../../data/users.ts'
 export function entries() {
   return users.map((user) => ({ id: user.slug }))
 }</code></pre><copy attach="interaction" /></div>
-  <p>A dynamic route without <code>entries()</code> fails the build and names the file to add. Each value must be a non-empty string without <code>/</code>, so a page can never be written outside its folder.</p>
+  <p>A dynamic route without <code>entries()</code> fails the build and names the file to add. Each value must be a non-empty string without <code>/</code>, and not <code>.</code> or <code>..</code>, so a page can never be written outside its folder. Other characters are fine: <code>{ id: 'grace hopper' }</code> becomes <code>/users/grace%20hopper</code>.</p>
   <h2>Loading data</h2>
   <p>The same <code>.load.ts</code> file can export <code>load()</code>. It gets the route's <code>params</code> and the <code>request</code>, and what it returns becomes the page's inputs, next to the params.</p>
   <div class="sample"><pre><code verbatim>// src/pages/users/[id].load.ts

@@ -317,6 +317,8 @@ test('release notes: one prerendered page per version in the changelog (a dynami
   await page.goto(`/releases/${versions[0]}`)
   await expect(page.locator('.changes code').first()).toBeVisible()
   await expect(page.locator('.changes a[href*="/pull/"]').first()).toBeVisible()
+  // Its edit link opens the version page's own source, not the index's.
+  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/src\/pages\/releases\/\[version\]\.tscl$/)
   expect((await page.goto('/releases/9.9.9'))?.status()).toBe(404)
 })
 

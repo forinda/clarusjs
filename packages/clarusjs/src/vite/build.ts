@@ -14,9 +14,15 @@ export function findClarusFiles(srcDir: string): string[] {
   return entries.filter((f) => f.endsWith('.tscl')).map((f) => resolve(srcDir, f)).sort()
 }
 
-/** '/' → 'index.html', '/about/team' → 'about/team/index.html' */
+/**
+ * '/' → 'index.html', '/about/team' → 'about/team/index.html', '/users/a%20b' → 'users/a b/index.html'.
+ * Segments are decoded because static hosts look files up by the decoded path. A decoded segment can't add a level:
+ * entries() values never contain '/' (and a page file's own name has none).
+ */
 export function routeToFile(route: string): string {
-  const path = route.replace(/^\/+|\/+$/g, '')
+  const path = route.replace(/^\/+|\/+$/g, '').split('/').map((seg) => {
+    try { return decodeURIComponent(seg) } catch { return seg } // '100%' is a name, not an escape
+  }).join('/')
   return path ? `${path}/index.html` : 'index.html'
 }
 

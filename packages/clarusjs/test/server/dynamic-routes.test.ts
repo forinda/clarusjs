@@ -46,3 +46,15 @@ test('a dynamic route without entries(), or with unsafe values, is an error that
     await expect(h.paths(), JSON.stringify(bad)).rejects.toThrow(/^src\/pages\/users\/\[id\]\.load\.ts: entries\(\) gave .* for "id"/)
   }
 })
+
+test('review: matching and expansion share one parameter grammar ([$id] works; v[2] is literal)', async () => {
+  const h = createHandler(
+    { '/src/pages/users/[$id].tscl': echo('user'), '/src/pages/v[2]/x.tscl': echo('lit') },
+    { data: { '/src/pages/users/[$id].load.ts': async () => ({ entries: () => [{ $id: 'ada' }] }) } },
+  )
+  expect(await text(h, '/users/ada')).toBe('<p>user {"$id":"ada"}</p>')
+  expect(await text(h, '/v[2]/x')).toBe('<p>lit {}</p>')
+  expect(await h.paths()).toEqual(['/users/ada', '/v[2]/x'])
+  const empty = createHandler({ '/src/pages/users/[$id].tscl': echo('user') }, { data: { '/src/pages/users/[$id].load.ts': async () => ({ entries: () => [{ $id: '' }] }) } })
+  await expect(empty.paths()).rejects.toThrow(/entries\(\) gave "" for "\$id"/)
+})

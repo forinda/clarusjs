@@ -3,6 +3,8 @@
 @import { sections, sectionKey, groupsOf, crumb, pager, sourceOf } from '../nav.ts'
 @input title: string
 @input path: string = '/'
+{{-- The page's own route, when it differs from the sidebar entry it belongs to (e.g. /releases/[version]). --}}
+@input source: string = ''
 @input description: string = 'clarusjs: clear, compiled views. Server HTML with JavaScript only where it is interactive.'
 
 <html lang="en">
@@ -39,7 +41,7 @@
           <p class="crumb">{{ crumb(path) }}</p>
           <slot />
           <footer class="page-footer">
-            <a class="edit" [href]="sourceOf(path)">Edit this page on GitHub</a>
+            <a class="edit" [href]="sourceOf(source || path)">Edit this page on GitHub</a>
             <nav class="pager" aria-label="Previous and next">
               @if (pager(path).prev.href) {<a class="prev" [href]="pager(path).prev.href"><small>Previous</small>{{ pager(path).prev.title }}</a>}
               @if (pager(path).next.href) {<a class="next" [href]="pager(path).next.href"><small>Next</small>{{ pager(path).next.title }}</a>}
