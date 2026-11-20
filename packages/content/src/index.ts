@@ -82,21 +82,24 @@ function renderer(options: MarkdownOptions): Md {
     }
   })
 
-  md.renderer.rules.cl_container_open = (tokens, i, _o, env: { tags: string[] }) => {
+  // env carries the page's placeholder list (see protectTags).
+  md.renderer.rules.cl_container_open = (tokens, i, _o, env) => {
+    const tags = (env as { tags: string[] }).tags
     const { info: type, meta } = tokens[i]!
     const { title, custom } = meta as { title: string; custom: boolean }
     if (type === 'details') return `<details class="custom-block details"><summary>${escapeHtml(title)}</summary>\n`
     if (options.container) {
-      env.tags.push(`<${options.container.tag} [type]="'${type}'">${custom ? `@slot('title') {${inert(title)}}` : ''}`)
-      return `<!--cl-tag-${env.tags.length - 1}-->\n`
+      tags.push(`<${options.container.tag} [type]="'${type}'">${custom ? `@slot('title') {${inert(title)}}` : ''}`)
+      return `<!--cl-tag-${tags.length - 1}-->\n`
     }
     return `<div class="custom-block ${type}"><p class="custom-block-title">${escapeHtml(title)}</p>\n`
   }
-  md.renderer.rules.cl_container_close = (tokens, i, _o, env: { tags: string[] }) => {
+  md.renderer.rules.cl_container_close = (tokens, i, _o, env) => {
+    const tags = (env as { tags: string[] }).tags
     if (tokens[i]!.info === 'details') return '</details>\n'
     if (options.container) {
-      env.tags.push(`</${options.container.tag}>`)
-      return `<!--cl-tag-${env.tags.length - 1}-->\n`
+      tags.push(`</${options.container.tag}>`)
+      return `<!--cl-tag-${tags.length - 1}-->\n`
     }
     return '</div>\n'
   }
