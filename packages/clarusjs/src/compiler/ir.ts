@@ -96,6 +96,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
         checkHandler(a.expr, file, source, a.start)
       } else {
         if (/^on/i.test(a.name)) fail(`use (${a.name.slice(2).toLowerCase()}) for events, not an ${a.name} attribute`, a.start)
+        // srcdoc is a whole HTML document: binding data into it is HTML injection, so it stays static.
+        if (a.name.toLowerCase() === 'srcdoc') fail('srcdoc cannot be bound; write it as a static attribute', a.start)
         const exprs = a.kind === 'prop' ? [{ expr: a.expr, start: a.start }] : a.parts.filter((p) => typeof p !== 'string')
         for (const e of exprs) checkExpr(e.expr, file, source, e.start)
         const reactive = stateful && exprs.some((e) => referencesNames(e.expr, scriptScope))
