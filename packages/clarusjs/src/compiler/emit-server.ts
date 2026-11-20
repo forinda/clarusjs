@@ -16,6 +16,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
   ].filter(Boolean).join(', ')
   let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
   for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}'\n`
+  for (const line of ir.scriptImports) out += `${line}\n`
 
   const html = htmlExpr(ir.nodes)
   const props = `{ ${ir.inputs.map((i) => i.name).join(', ')} }`.replace('{  }', '{}')

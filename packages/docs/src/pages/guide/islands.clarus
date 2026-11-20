@@ -18,6 +18,20 @@
   <p>An island's state is rendered on the server first. Its values travel with the HTML, so the browser picks up exactly where the server left off: an initial value like <code>Date.now()</code> isn't computed a second time. Values can be plain JSON, <code>Date</code>, <code>Map</code>, <code>Set</code>, <code>BigInt</code> and <code>undefined</code>; functions and class instances can't be sent.</p>
   <callout><p><strong>Island props and state are public.</strong> They are written into the page so the browser can continue from them. Never put secrets in them. Reading server-only globals such as <code>process</code> in an island's script is a build error for this reason.</p></callout>
 
+  <h2>Shared state</h2>
+  <p>Put state that several islands use in a store: a module that exports <code>state()</code> values. Each island takes a local name for it with <code>shared()</code> and reads and writes it like its own state.</p>
+  <pre><code verbatim>// stores/cart.ts
+import { state } from 'clarusjs/runtime'
+export const cart = state([])
+
+// components/cart-count.clarus
+<script>
+  import { cart } from '../stores/cart.ts'
+  let items = shared(cart)
+</script>
+<span>{{ items.length }} in cart</span></code></pre>
+  <p>On the server, a shared value is rendered from the store's initial value, never its current one: a server keeps modules alive across requests, so anything else could show one visitor's data to another.</p>
+
   <h2>Components inside islands</h2>
   <p>An island can use other components. A component without a script is rendered in the browser too when the props or content it gets from the island change; one with a script becomes its own island and keeps its own state, starting from the props it was first given.</p>
 

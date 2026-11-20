@@ -53,8 +53,8 @@ test('script names do not collide with generated names', async () => {
   expect(island.querySelector('b')!.textContent).toBe('1<i>')
 })
 
-test('import inside <script> is a located build error', () => {
-  expect(compileError("<script>\nimport { x } from './x'\n</script>\n<p>x</p>").message).toMatch(/^x\.clarus:2:1 .*imports in <script> are not supported yet/)
+test('export inside <script> is a located build error', () => {
+  expect(compileError("<script>\nexport const x = 1\n</script>\n<p>x</p>").message).toMatch(/^x\.clarus:2:1 .*cannot export/)
 })
 
 test('HTML comments are static text, not markup or holes', () => {

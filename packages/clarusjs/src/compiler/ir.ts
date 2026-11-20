@@ -1,7 +1,7 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
 import { ClarusError } from './errors.ts'
 import type { ImportDecl, InputDecl, ParsedFile, TemplateNode } from './parse.ts'
-import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, type Signals } from './script.ts'
+import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
   | { kind: 'static'; html: string }
@@ -26,7 +26,8 @@ export type ComponentIR = {
   name: string // basename without .clarus
   inputs: InputDecl[]
   imports: ImportDecl[]
-  script?: string
+  script?: string // without its import statements, which are in scriptImports
+  scriptImports: string[]
   signals: Signals
   stateful: boolean
   nodes: IRNode[]
@@ -38,7 +39,8 @@ const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input'
 export function lower(parsed: ParsedFile, file: string, source: string): ComponentIR {
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const stateful = !!parsed.script
-  const signals: Signals = parsed.script ? analyzeScript(parsed.script.code, file, source, parsed.script.start) : new Map()
+  const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
+  const signals: Signals = parsed.script ? analyzeScript(split.body, file, source, parsed.script.start) : new Map()
   // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.
   // text()'s effect tracks the real dependencies, so over-marking only costs a pair of comment markers.
   const scriptScope = parsed.script ? new Set([...signals.keys(), ...scriptNames(parsed.script.code)]) : new Set<string>()
@@ -209,7 +211,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     name: file.split('/').pop()!.replace(/\.clarus$/, ''),
     inputs: parsed.inputs,
     imports: parsed.imports,
-    script: parsed.script?.code,
+    script: parsed.script ? split.body : undefined,
+    scriptImports: split.imports,
     signals,
     stateful,
     nodes,

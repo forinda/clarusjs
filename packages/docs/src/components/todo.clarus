@@ -1,8 +1,9 @@
 @import pill from './pill.clarus'
 
 <script>
+  import { todos } from '../stores/todos.ts'
   let draft = state('')
-  let items = state([{ id: 1, text: 'Read the islands guide' }])
+  let items = shared(todos)
   let next = state(2)
   function add() {
     const text = draft.trim()

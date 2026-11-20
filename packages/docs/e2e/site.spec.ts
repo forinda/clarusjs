@@ -167,3 +167,16 @@ test('named slot: each guide page fills "next", other pages get the fallback', a
     await expect(link, path).toHaveAttribute('href', href)
   }
 })
+
+test('home: two islands share the to-do store', async ({ page }) => {
+  await page.goto('/')
+  const summary = page.locator('cl-island[c="todo-summary"]')
+  await expect(summary).toHaveAttribute('data-cl-ready', '')
+  await expect(summary.locator('strong')).toHaveText('1')
+  const todo = page.locator('cl-island[c="todo"]')
+  await expect(todo).toHaveAttribute('data-cl-ready', '')
+  await todo.locator('input[name="item"]').fill('Shared')
+  await todo.locator('input[name="item"]').press('Enter')
+  await expect(summary.locator('strong')).toHaveText('2')
+  await expect(summary).toContainText('2 items')
+})

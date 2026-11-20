@@ -1,6 +1,6 @@
 // Fine-grained reactivity used by compiled attach() functions. Browser only.
 
-export type Signal<T> = { get(): T; set(v: T): void }
+export type Signal<T> = { get(): T; set(v: T): void; readonly initial: T }
 export type ReadSignal<T> = { get(): T }
 
 type Effect = { run(): void; deps: Set<Set<Effect>>; active: boolean }
@@ -36,6 +36,7 @@ export function state<T>(initial: T): Signal<T> {
   let value = initial
   const subs = new Set<Effect>()
   return {
+    initial, // what the server renders for a shared store: never a value another request set
     get() {
       if (current?.active) { subs.add(current); current.deps.add(subs) }
       return value
@@ -72,4 +73,12 @@ export function derived<T>(fn: () => T): ReadSignal<T> {
   const s = state<T>(undefined as T)
   effect(() => s.set(fn()))
   return { get: s.get }
+}
+
+/**
+ * Use a store (a module-level `state()`) in an island: `let items = shared(todos)` makes `items` read and write the
+ * store, so every island using it stays in sync. On the server it renders the store's initial value.
+ */
+export function shared<T>(store: Signal<T>): Signal<T> {
+  return store
 }

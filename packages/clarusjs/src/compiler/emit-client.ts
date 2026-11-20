@@ -16,6 +16,7 @@ export function emitClient(ir: ComponentIR): string {
   const used = [
     kinds.has('state') && 'state',
     kinds.has('derived') && 'derived',
+    kinds.has('shared') && 'shared',
     hasHoles && 'holes as __cl_holes',
     hasHoles && 'text as __cl_text',
     ir.events.length > 0 && 'on as __cl_on',
@@ -38,6 +39,7 @@ export function emitClient(ir: ComponentIR): string {
   for (const imp of ir.imports) {
     if (usedComponents.has(imp.name)) out += `import { render as ${renderName(imp.name)} } from '${imp.from}?render'\n`
   }
+  for (const line of ir.scriptImports) out += `${line}\n`
   out += `\nexport function attach(__cl_root, __cl_props = {}, __cl_state) {\n`
   out += inputsLine(ir)
   if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals, { stateFromServer: true }))

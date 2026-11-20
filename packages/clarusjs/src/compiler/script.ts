@@ -2,7 +2,8 @@
 import { parse as acornParse, parseExpressionAt } from 'acorn'
 import { ClarusError } from './errors.ts'
 
-export type Signals = Map<string, 'state' | 'derived'>
+// state(): local state; derived(): computed; shared(store): a local name for a store's signal (see runtime/signals.ts).
+export type Signals = Map<string, 'state' | 'derived' | 'shared'>
 
 // Minimal ESTree node view; acorn produces ESTree with start/end offsets.
 type N = { type: string; start: number; end: number; [key: string]: any }
@@ -147,14 +148,37 @@ export function scriptNames(code: string): Set<string> {
       for (const d of stmt.declarations as N[]) patternNames(d.id, names)
     } else if ((stmt.type === 'FunctionDeclaration' || stmt.type === 'ClassDeclaration') && stmt.id) {
       names.add(stmt.id.name)
+    } else if (stmt.type === 'ImportDeclaration') {
+      for (const spec of stmt.specifiers as N[]) names.add(spec.local.name)
     }
   }
   return names
 }
 
-function signalCall(init: N | null | undefined): 'state' | 'derived' | undefined {
+function signalCall(init: N | null | undefined): 'state' | 'derived' | 'shared' | undefined {
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') return undefined
-  return init.callee.name === 'state' || init.callee.name === 'derived' ? init.callee.name : undefined
+  const name = init.callee.name
+  return name === 'state' || name === 'derived' || name === 'shared' ? name : undefined
+}
+
+/**
+ * Take the `import` statements out of a <script> so they can go at the top of the compiled modules. Their text is
+ * blanked in the body (same length, newlines kept), so positions in the rest of the script don't move.
+ * Island scripts are bundled for the browser, so `node:` imports are a build error.
+ */
+export function splitImports(code: string, file: string, source: string, offset: number): { imports: string[]; body: string } {
+  const imports: string[] = []
+  let body = code
+  for (const stmt of parseScript(code, file, source, offset).body as N[]) {
+    if (stmt.type !== 'ImportDeclaration') continue
+    const from = String(stmt.source.value)
+    if (from.startsWith('node:')) {
+      throw new ClarusError(`\`${from}\` can't be imported in an island script: the script is bundled for the browser`, file, source, offset + stmt.start)
+    }
+    imports.push(code.slice(stmt.start, stmt.end))
+    body = body.slice(0, stmt.start) + code.slice(stmt.start, stmt.end).replace(/[^\n]/g, ' ') + body.slice(stmt.end)
+  }
+  return { imports, body }
 }
 
 // Globals that only exist on a server runtime. An island's script also runs in the browser and its state() values
@@ -174,8 +198,8 @@ export function analyzeScript(code: string, file: string, source: string, offset
     return undefined
   })
   for (const stmt of ast.body as N[]) {
-    if (stmt.type === 'ImportDeclaration' || stmt.type.startsWith('Export')) {
-      throw new ClarusError('imports in <script> are not supported yet', file, source, offset + stmt.start)
+    if (stmt.type.startsWith('Export')) {
+      throw new ClarusError('a <script> cannot export anything', file, source, offset + stmt.start)
     }
     if (stmt.type !== 'VariableDeclaration') continue
     for (const d of stmt.declarations as N[]) {
@@ -264,6 +288,8 @@ export function rewriteServer(code: string): string {
     const inner = arg ? print(arg, code, hook) : 'undefined'
     if (node.callee.name === 'state') return `(${inner})`
     if (node.callee.name === 'derived') return `(${inner})()`
+    // A store's current value lives across requests on the server; render from its initial value instead.
+    if (node.callee.name === 'shared') return `(${inner}).initial`
     return undefined
   }
   return code.slice(0, ast.start) + print(ast, code, hook) + code.slice(ast.end)
