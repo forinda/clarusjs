@@ -2,5 +2,11 @@ import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
 
 export default defineConfig({
-  plugins: [clarusjs()],
+  plugins: [
+    clarusjs({
+      // Rendered on every request; on Netlify, by a function (see the Server playground page).
+      routes: { '/playground': 'server', '/tour/*': 'client' },
+      adapter: 'netlify',
+    }),
+  ],
 })

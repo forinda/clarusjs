@@ -26,8 +26,8 @@ function describe(path: string, r: RouteInfo): string {
   const islands = r.islands.map((i) => `${i.component}${i.count > 1 ? ` ×${i.count}` : ''} (${kb(i.gzip)}, ${WHEN[i.attach]})`)
   return [
     path,
-    ...row('Rendered', [`at build time, to dist/client/${r.html}`]),
-    ...row('Data', [r.loader === 'build' ? 'load() ran once, at build time' : 'no loader']),
+    ...row('Rendered', [r.mode === 'client' ? `in the browser, by the router (shell: dist/client/${r.html})` : `at build time, to dist/client/${r.html}`]),
+    ...row('Data', [r.loader === 'build' ? (r.mode === 'client' ? 'load() ran once, at build time; fetched as __data.json' : 'load() ran once, at build time') : 'no loader']),
     ...row('Islands', islands.length ? islands : ['none']),
     ...row('JavaScript', [r.js.files.length ? `${kb(r.js.initialGzip)} on page load, ${kb(r.js.gzip)} in all (gzip, ${r.js.files.length} files)` : 'none']),
     ...row('CSS', [r.css.length ? r.css.join(', ') : 'none']),

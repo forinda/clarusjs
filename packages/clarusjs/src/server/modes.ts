@@ -1,9 +1,10 @@
-// Per-route rendering modes: when each route renders. 'static' at build (the default), 'server' per request.
+// Per-route rendering modes: when each route renders. 'static' at build (the default), 'server' per request,
+// 'client' in the browser (the server sends a shell; the router renders the page from its data).
 
-export type Mode = 'static' | 'server'
+export type Mode = 'static' | 'server' | 'client'
 export type ModeTable = Record<string, string>
 
-const MODES = ['static', 'server']
+const MODES = ['static', 'server', 'client']
 
 /** Throws on an unknown mode or a malformed pattern, naming it. */
 export function checkModes(table: ModeTable): void {
@@ -12,9 +13,7 @@ export function checkModes(table: ModeTable): void {
     if (pattern.slice(0, -1).includes('*') || (pattern.endsWith('*') && !pattern.endsWith('/*'))) {
       throw new Error(`clarusjs: route pattern "${pattern}" may only use * as its last segment`)
     }
-    // ponytail: 'client' (rendered in the browser) needs the client router; until then it is rejected by name.
-    if (mode === 'client') throw new Error(`clarusjs: routes['${pattern}'] is "client", which isn't available yet; use 'static' or 'server'`)
-    if (!MODES.includes(mode)) throw new Error(`clarusjs: routes['${pattern}'] is "${mode}"; use 'static' or 'server'`)
+    if (!MODES.includes(mode)) throw new Error(`clarusjs: routes['${pattern}'] is "${mode}"; use 'static', 'server' or 'client'`)
   }
 }
 

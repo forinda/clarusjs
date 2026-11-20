@@ -34,11 +34,13 @@ export const sections: Section[] = [
         { title: 'Shared stores', href: '/guide/stores' },
         { title: 'Components inside islands', href: '/guide/components-in-islands' },
         { title: 'Lazy attach', href: '/guide/lazy-attach' },
+        { title: 'Client routes', href: '/guide/client-routes' },
       ] },
       { title: 'Build & deploy', items: [
         { title: 'Static build', href: '/guide/build' },
         { title: 'Deploying', href: '/guide/deploy' },
         { title: 'This site, explained', href: '/guide/explained' },
+        { title: 'Server playground', href: '/playground' },
       ] },
       { title: 'Tooling', items: [
         { title: 'Type checking', href: '/guide/type-checking' },

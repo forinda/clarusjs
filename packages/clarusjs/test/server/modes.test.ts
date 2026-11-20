@@ -14,10 +14,9 @@ test('the most specific pattern wins; routes default to static', () => {
 
 test('the mode table is checked: known modes and absolute patterns only', () => {
   expect(() => checkModes({ '/a/*': 'server', '/b': 'static' })).not.toThrow()
-  expect(() => checkModes({ '/a': 'ssr' })).toThrow(`clarusjs: routes['/a'] is "ssr"; use 'static' or 'server'`)
+  expect(() => checkModes({ '/a': 'ssr' })).toThrow(`clarusjs: routes['/a'] is "ssr"; use 'static', 'server' or 'client'`)
   expect(() => checkModes({ 'a/*': 'server' })).toThrow(`clarusjs: route pattern "a/*" must start with /`)
   expect(() => checkModes({ '/a/*/b': 'server' })).toThrow(`clarusjs: route pattern "/a/*/b" may only use * as its last segment`)
-  expect(() => checkModes({ '/app/*': 'client' })).toThrow(`clarusjs: routes['/app/*'] is "client", which isn't available yet; use 'static' or 'server'`)
 })
 
 test('server routes are left out of prerendering, even dynamic ones without entries()', async () => {

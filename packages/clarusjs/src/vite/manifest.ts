@@ -4,13 +4,17 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { routeToFile } from './build.ts'
+import { matchRoute } from '../runtime/router.ts'
 
 export type Attach = 'load' | 'idle' | 'visible' | 'interaction'
 export type IslandInfo = { component: string; src: string; attach: Attach; count: number; gzip: number }
 export type RouteInfo = {
-  /** 'static': prerendered at build. 'server': rendered per request by dist/server/index.mjs (its key is the route as its file names it). */
-  mode: 'static' | 'server'
-  /** The prerendered file in dist/client, or null for a server route. */
+  /**
+   * 'static': prerendered at build. 'server': rendered per request by dist/server/index.mjs (its key is the route as
+   * its file names it). 'client': a prerendered shell; the router renders it in the browser from its __data.json.
+   */
+  mode: 'static' | 'server' | 'client'
+  /** The prerendered file in dist/client (a client route's shell), or null for a server route. */
   html: string | null
   /** 'build': load() ran once, when the page was prerendered. 'request': it runs on every request. */
   loader: 'build' | 'request' | null
@@ -30,7 +34,7 @@ const attrsOf = (tag: string) => {
 }
 
 /** What one prerendered page ships. `size` returns a built file's gzip size. */
-export function describeRoute(route: string, html: string, opts: { base: string; chunks: ChunkGraph; size(file: string): number; loaded?: boolean }): RouteInfo {
+export function describeRoute(route: string, html: string, opts: { base: string; chunks: ChunkGraph; size(file: string): number; loaded?: boolean; client?: boolean }): RouteInfo {
   const local = (url: string) => (url.startsWith(opts.base) ? url.slice(opts.base.length) : url.replace(/^\//, ''))
   const byFile = new Map(Object.values(opts.chunks).map((c) => [c.file, c]))
   const keyFile = new Map(Object.entries(opts.chunks).map(([k, c]) => [k, c.file]))
@@ -57,6 +61,13 @@ export function describeRoute(route: string, html: string, opts: { base: string;
     closure(local(m[1]!), all)
     closure(local(m[1]!), initial)
   }
+  // A client route also loads its page's render module, named in the shell's route table.
+  const table = /<script type="application\/json" id="cl-routes">(.*?)<\/script>/.exec(html)?.[1]
+  const render = opts.client && table ? matchRoute(JSON.parse(table), route)?.r : undefined
+  if (render) {
+    closure(local(render), all)
+    closure(local(render), initial)
+  }
   for (const island of islands) {
     closure(island.src, all)
     if (island.attach === 'load') closure(island.src, initial)
@@ -64,7 +75,7 @@ export function describeRoute(route: string, html: string, opts: { base: string;
   const sum = (files: string[]) => files.reduce((n, f) => n + opts.size(f), 0)
   const css = [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/g)].map((m) => attrsOf(m[0]).href!).filter(Boolean)
 
-  return { mode: 'static', html: routeToFile(route), loader: opts.loaded ? 'build' : null, islands, js: { files: all, gzip: sum(all), initialGzip: sum(initial) }, css }
+  return { mode: opts.client ? 'client' : 'static', html: routeToFile(route), loader: opts.loaded ? 'build' : null, islands, js: { files: all, gzip: sum(all), initialGzip: sum(initial) }, css }
 }
 
 /** Describe every prerendered route and write `<distDir>/clarusjs-manifest.json`. */
@@ -77,8 +88,13 @@ export function writeManifest(distDir: string, routes: string[], base: string, l
     return sizes.get(file)!
   }
   const manifest: Manifest = { version: 1, routes: {} }
+  const dataFile = (route: string) => (route === '/' ? '/__data.json' : `${route}/__data.json`)
   for (const route of routes) {
-    manifest.routes[route] = describeRoute(route, readFileSync(resolve(client, routeToFile(route)), 'utf8'), { base, chunks, size, loaded: loaded.includes(route) })
+    if (route.endsWith('/__data.json')) continue // a client route's data, not a page
+    const isClient = routes.includes(dataFile(route))
+    // A client route's loader runs when its data file is written.
+    const ran = loaded.includes(route) || (isClient && loaded.includes(dataFile(route)))
+    manifest.routes[route] = describeRoute(route, readFileSync(resolve(client, routeToFile(route)), 'utf8'), { base, chunks, size, loaded: ran, client: isClient })
   }
   // Server routes have no HTML at build time: what they ship is decided per request.
   for (const { route, loader } of server) {

@@ -104,3 +104,12 @@ test('#29: a server route is explained as rendered per request', () => {
   ].join('\n'))
   expect(explain({ root }).text).toContain('/account/[id]  -        per request')
 })
+
+test('#33: a client route is explained as rendered in the browser', () => {
+  const root = project()
+  const app = { mode: 'client' as const, html: 'app/index.html', loader: 'build' as const, islands: [], js: { files: ['assets/r.js'], gzip: 900, initialGzip: 900 }, css: [] }
+  writeFileSync(resolve(root, 'dist/clarusjs-manifest.json'), JSON.stringify({ version: 1, routes: { '/app': app } }))
+  const text = explain({ root, route: '/app' }).text
+  expect(text).toContain('  Rendered    in the browser, by the router (shell: dist/client/app/index.html)')
+  expect(text).toContain('  Data        load() ran once, at build time; fetched as __data.json')
+})

@@ -223,6 +223,25 @@ islands that arrive later (fragment navigation).
 Props are serialized with an XSS-safe serializer. Functions and class
 instances as island props are a **compile error**.
 
+### Client routes
+
+A route in `'client'` mode is answered with a shell; the router renders the
+page in the browser:
+
+```html
+<script type="application/json" id="cl-routes">[{"p":"/tour/[step]","r":"/assets/render/…/_step_-a1b2.js"}]</script>
+<script type="module" src="/assets/cl-loader-9c1e.js"></script>
+<script type="module" src="/assets/cl-router-4d5e.js"></script>
+```
+
+| Part | Meaning |
+|---|---|
+| `#cl-routes` | the client routes in matching order: `p` is the route as its file names it (`[param]` segments), `r` the URL of the page's browser render module (`render(props)`). `<` is escaped, so the JSON can't close the script |
+| `<path>/__data.json` | the page's props (params plus `load()`), in the island serializer's format. Written next to the shell at build; served by the handler in dev and on a server |
+
+The router swaps `<head>` and `<body>` for the rendered page and calls the
+loader's attach hook, so islands on a client page work as anywhere else.
+
 ## 6. The runtime
 
 Target under 5 KB total; the POC aims at about 1–2 KB.

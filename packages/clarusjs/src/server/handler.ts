@@ -1,4 +1,9 @@
 import { modeFor, type ModeTable } from './modes.ts'
+import { stringify } from '../runtime/serialize.ts'
+
+const DATA = '__data.json'
+/** JSON that is safe inside a <script> element and in any HTML context: '<' never appears raw. */
+const safeJson = (json: string) => json.replace(/</g, '\\u003c')
 
 // The fetch handler: Request → Response. Same function for dev, per-request SSR and (later) build-time prerender.
 
@@ -38,7 +43,16 @@ export function routeFromFile(file: string): string {
 
 export function createHandler(
   pages: Record<string, () => Promise<PageModule>>,
-  options: { loaderUrl?: string; data?: Record<string, () => Promise<DataModule>>; modes?: ModeTable } = {},
+  options: {
+    loaderUrl?: string
+    data?: Record<string, () => Promise<DataModule>>
+    modes?: ModeTable
+    /** Client routes (as their files name them) → URL of the page's browser render module. */
+    client?: Record<string, string>
+    routerUrl?: string
+    /** Vite's base ('/' or '/docs/'): client routes are listed at their browser paths, under it. */
+    base?: string
+  } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
   const routes: Route[] = Object.entries(pages)
@@ -63,6 +77,24 @@ export function createHandler(
     return null
   }
 
+  // entries() per route, asked once: prerendering and requests see the same list. null when there is none.
+  const entriesCache = new Map<Route, Promise<Params[] | null>>()
+  function entriesOf(route: Route): Promise<Params[] | null> {
+    if (!entriesCache.has(route)) {
+      const file = `/${route.file.replace(/\.tscl$/, '.load.ts')}`
+      entriesCache.set(route, (async () => {
+        const mod = data[file] ? await data[file]!() : undefined
+        return mod?.entries ? await mod.entries() : null
+      })())
+    }
+    return entriesCache.get(route)!
+  }
+  // Without entries() a route isn't restricted here (the build reports it).
+  async function listed(route: Route, params: Params): Promise<boolean> {
+    const list = await entriesOf(route)
+    return !list || list.some((entry) => route.keys.every((key) => entry[key] === params[key]))
+  }
+
   return {
     routes: routes.map((r) => r.path).sort(),
     /** Routes rendered per request ('server' mode), as their files name them. */
@@ -82,20 +114,27 @@ export function createHandler(
     async paths() {
       const out: string[] = []
       for (const route of routes) {
-        if (modeFor(route.path, modes) !== 'static') continue
-        if (!route.keys.length) { out.push(route.path); continue }
+        const mode = modeFor(route.path, modes)
+        if (mode === 'server') continue
+        const add = (path: string) => {
+          out.push(path)
+          // A client page's data, fetched by the router: written next to its shell.
+          if (mode === 'client') out.push(path === '/' ? `/${DATA}` : `${path}/${DATA}`)
+        }
+        if (!route.keys.length) { add(route.path); continue }
         const dataFile = route.file.replace(/\.tscl$/, '.load.ts')
-        const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
-        if (!mod?.entries) throw new Error(`${route.path} is a dynamic route: export entries() from ${dataFile} to list the pages to prerender`)
-        for (const params of await mod.entries()) {
-          out.push(route.path.split('/').map((seg) => {
+        const list = await entriesOf(route)
+        if (!list) throw new Error(`${route.path} is a dynamic route: export entries() from ${dataFile} to list the pages to prerender`)
+        for (const params of list) {
+          add(route.path.split('/').map((seg) => {
             const key = PARAM.exec(seg)?.[1]
             if (key === undefined) return seg
             const value = (params as Record<string, unknown>)[key]
             // Each value fills one path segment and names a folder in the build: never empty, '.' or '..'.
             // Path separators on any OS ('/', '\\') and NUL could step out of that folder once the segment is decoded.
-            if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || /[/\\\0]/.test(value)) {
-              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/" or "\\", and not "." or ".."`)
+            // __data.json is a client route's data file, so it can't also name a page.
+            if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || value === DATA || /[/\\\0]/.test(value)) {
+              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/" or "\\", and not ".", ".." or "${DATA}"`)
             }
             return encodeURIComponent(value)
           }).join('/'))
@@ -107,9 +146,35 @@ export function createHandler(
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 })
       const pathname = new URL(request.url).pathname
       // '/guide/x/' is the same page as '/guide/x', in dev as on a static host.
-      const found = match(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
+      const trim = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') : path)
+      // <client route>/__data.json is that page's props, for the router. Only for a client route: anywhere else the
+      // path is an ordinary page path (a server route may well have an [id] of "__data.json").
+      let found = match(trim(pathname))
+      let wantsData = false
+      if (pathname.endsWith(`/${DATA}`)) {
+        const owner = match(trim(pathname.slice(0, -DATA.length - 1) || '/'))
+        if (owner && modeFor(owner.route.path, modes) === 'client') {
+          found = owner
+          wantsData = true
+        }
+      }
       const head = request.method === 'HEAD'
-      if (!found) return new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+      const notFound = () => new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+      const mode = found && modeFor(found.route.path, modes)
+      if (!found) return notFound()
+      // A prerendered dynamic route only has the pages its entries() lists, as on a static host.
+      if (mode !== 'server' && found.route.keys.length && !(await listed(found.route, found.params))) return notFound()
+      if (mode === 'client' && !wantsData) {
+        // In matching order (static before dynamic, as on the server): the router takes the first match.
+        const client = options.client ?? {}
+        const prefix = (options.base ?? '/').replace(/\/$/, '')
+        const table = routes.filter((r) => client[r.path]).map((r) => ({ p: (prefix + r.path).replace(/(.)\/$/, '$1'), r: client[r.path]! }))
+        const shell = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
+          `<style>cl-island{display:contents}</style><script type="application/json" id="cl-routes">${safeJson(JSON.stringify(table))}</script>` +
+          `<script type="module" src="${loaderUrl}"></script><script type="module" src="${options.routerUrl ?? '/cl-router.js'}"></script>` +
+          '</head><body><noscript>This page is rendered in the browser and needs JavaScript.</noscript></body></html>'
+        return new Response(head ? null : shell, { headers: { 'content-type': 'text/html; charset=utf-8' } })
+      }
       let props: object = found.params
       const dataFile = found.route.file.replace(/\.tscl$/, '.load.ts')
       const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
@@ -125,6 +190,9 @@ export function createHandler(
         }
         ;(globalThis as { __clLoaderRan?: boolean }).__clLoaderRan = true // recorded by prerender for the manifest
         props = { ...found.params, ...loaded }
+      }
+      if (wantsData) {
+        return new Response(head ? null : safeJson(stringify(props)), { headers: { 'content-type': 'application/json; charset=utf-8' } })
       }
       const html = (await found.route.load()).render(props)
       const visible = maskComments(html)

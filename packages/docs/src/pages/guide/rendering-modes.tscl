@@ -11,6 +11,7 @@
     <tbody>
       <tr><td><code>static</code></td><td>once, at build, to an HTML file</td><td>once per page, at build</td><td>docs, blogs, marketing pages</td></tr>
       <tr><td><code>server</code></td><td>on every request, by the server</td><td>on every request, with the request</td><td>accounts, search, anything per visitor</td></tr>
+      <tr><td><code>client</code></td><td>in the browser, by the router</td><td>once per page, at build (served as <code>__data.json</code>)</td><td>app-like sections where moving between pages shouldn't reload; see <a href="/guide/client-routes">Client routes</a></td></tr>
     </tbody>
   </table>
 
@@ -32,5 +33,12 @@ export async function load({ params, request }) {
   return { account: await findAccount(params.id, session) }
 }</code></pre><copy attach="interaction" /></div>
   <p><code>vite build</code> writes static routes to <code>dist/client</code> and leaves server routes to the handler in <code>dist/server/index.mjs</code>, a <code>fetch(Request)</code> function. <code>vite preview</code> serves both, and <code>clarusjs explain</code> shows each route's mode.</p>
-  <callout [type]="'info'"><p>Every route on this site is static. Deploying server routes to Netlify Functions, and a client mode rendered in the browser, are the next steps on the roadmap.</p></callout>
+  <h2>Deploying server routes</h2>
+  <p>On Netlify, add <code>adapter: 'netlify'</code>. The build then writes a Netlify Function that runs the same handler for the server routes only; static routes stay files and are served first.</p>
+  <div class="sample"><pre><code verbatim>clarusjs({
+  routes: { '/account/*': 'server' },
+  adapter: 'netlify',
+})</code></pre><copy attach="interaction" /></div>
+  <p>Anywhere else, serve <code>dist/client</code> as static files and send the server routes to <code>dist/server/index.mjs</code>: its default export has <code>fetch(request)</code>, and <code>isServerPath(pathname)</code> says which requests are its own.</p>
+  <callout [type]="'tip'"><p>This site's <a href="/playground">server playground</a> is a server route on a Netlify Function; every other page is a static file.</p></callout>
 </docs>
