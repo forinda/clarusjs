@@ -33,7 +33,7 @@ test('stateless component has only non-reactive holes', () => {
 
 test('imported tags become component nodes', () => {
   const ir = lowerSource(`@import counter from '../components/counter.clarus'\n<counter [start]="3" />`)
-  expect(ir.nodes).toEqual([{ kind: 'component', name: 'counter', props: [{ name: 'start', expr: '3' }] }])
+  expect(ir.nodes).toEqual([{ kind: 'component', name: 'counter', props: [{ name: 'start', expr: '3' }], children: [] }])
 })
 
 test('static attributes are copied and adjacent statics merged', () => {
@@ -55,8 +55,9 @@ test('[prop] on a plain HTML element is an error', () => {
   expect(lowerError('<div [title]="t">x</div>').message).toContain('[prop] bindings on HTML elements are not supported yet')
 })
 
-test('component with children is an error', () => {
-  expect(lowerError(`@import card from './card.clarus'\n<card>hi</card>`).message).toContain('slots are not supported yet')
+test('component children are lowered in the parent scope', () => {
+  const ir = lowerSource(`@import card from './card.clarus'\n<card>hi</card>`)
+  expect(ir.nodes).toEqual([{ kind: 'component', name: 'card', props: [], children: [{ kind: 'static', html: 'hi' }] }])
 })
 
 test('component inside a stateful component is an error', () => {

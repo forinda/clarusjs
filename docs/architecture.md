@@ -157,7 +157,8 @@ Server output (readable, roughly what you'll see in `dist/`):
 ```js
 import { escape as __cl_escape, island as __cl_island } from 'clarusjs/runtime/server'
 
-export function render(__cl_props = {}) {
+export function render(__cl_props = {}, __cl_slot) {
+  if (__cl_slot !== undefined) throw new Error("[clarusjs] <counter> does not accept children yet")
   const { start = 0 } = __cl_props
   let count = (start)
   const double = (() => count * 2)()
