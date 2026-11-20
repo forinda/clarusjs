@@ -5,12 +5,12 @@ import { compile } from '../../src/compiler/index.ts'
 import { importCode } from '../helpers.ts'
 
 const fixture = (name: string) => readFileSync(`${import.meta.dirname}/../fixtures/${name}`, 'utf8')
-const URL_ = '/src/components/counter.clarus?import'
+const URL_ = '/src/components/counter.tscl?import'
 
 async function load(name: string) {
-  const source = fixture(`${name}.clarus`)
-  const server = await importCode(compile(source, { file: `${name}.clarus`, target: 'server', clientUrl: URL_ }).code, `${name}-s`)
-  const client = await importCode(compile(source, { file: `${name}.clarus`, target: 'client' }).code, `${name}-c`)
+  const source = fixture(`${name}.tscl`)
+  const server = await importCode(compile(source, { file: `${name}.tscl`, target: 'server', clientUrl: URL_ }).code, `${name}-s`)
+  const client = await importCode(compile(source, { file: `${name}.tscl`, target: 'client' }).code, `${name}-c`)
   return { render: server.render, attach: client.attach }
 }
 const islands = () => [...document.querySelectorAll('cl-island')]
@@ -18,7 +18,7 @@ const islands = () => [...document.querySelectorAll('cl-island')]
 beforeEach(() => { document.body.innerHTML = '' })
 
 test('counter client output is readable and exact', () => {
-  expect(compile(fixture('counter.clarus'), { file: 'counter.clarus', target: 'client' }).code).toBe(
+  expect(compile(fixture('counter.tscl'), { file: 'counter.tscl', target: 'client' }).code).toBe(
 `import { state, derived, holes as __cl_holes, text as __cl_text, on as __cl_on } from 'clarusjs/runtime'
 
 export function attach(__cl_root, __cl_props = {}, __cl_state) {
@@ -36,7 +36,7 @@ export function attach(__cl_root, __cl_props = {}, __cl_state) {
 })
 
 test('stateless component compiles to an empty client module', () => {
-  expect(compile(fixture('greeting.clarus'), { file: 'greeting.clarus', target: 'client' })).toEqual({ code: 'export {}\n', stateful: false })
+  expect(compile(fixture('greeting.tscl'), { file: 'greeting.tscl', target: 'client' })).toEqual({ code: 'export {}\n', stateful: false })
 })
 
 test('attach wires server HTML without re-rendering it', async () => {
@@ -83,8 +83,8 @@ test('#14: attach uses the state the server rendered instead of re-running initi
   const later = derived(() => started + n)
 </script>
 <b (click)="n++">{{ started }}|{{ later }}</b>`
-  const server = await importCode(compile(source, { file: 'clock.clarus', target: 'server', clientUrl: '/c' }).code, 'clock-s')
-  const client = await importCode(compile(source, { file: 'clock.clarus', target: 'client' }).code, 'clock-c')
+  const server = await importCode(compile(source, { file: 'clock.tscl', target: 'server', clientUrl: '/c' }).code, 'clock-s')
+  const client = await importCode(compile(source, { file: 'clock.tscl', target: 'client' }).code, 'clock-c')
   const realNow = Date.now
   Date.now = () => 1000
   document.body.innerHTML = server.render()

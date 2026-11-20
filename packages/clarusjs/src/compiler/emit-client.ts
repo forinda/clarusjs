@@ -39,6 +39,7 @@ export function emitClient(ir: ComponentIR): string {
   for (const imp of ir.imports) {
     if (usedComponents.has(imp.name)) out += `import { render as ${renderName(imp.name)} } from '${imp.from}?render'\n`
   }
+  for (const d of ir.dataImports) out += `import ${d.clause} from '${d.from}'\n`
   for (const line of ir.scriptImports) out += `${line}\n`
   out += `\nexport function attach(__cl_root, __cl_props = {}, __cl_state) {\n`
   out += inputsLine(ir)

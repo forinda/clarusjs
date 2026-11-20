@@ -1,10 +1,10 @@
-@import copy from '../components/copy.clarus'
-@import docs from '../layouts/docs.clarus'
-@import counter from '../components/counter.clarus'
-@import callout from '../components/callout.clarus'
-@import whatShips from '../components/what-ships.clarus'
-@import todo from '../components/todo.clarus'
-@import todoSummary from '../components/todo-summary.clarus'
+@import copy from '../components/copy.tscl'
+@import docs from '../layouts/docs.tscl'
+@import counter from '../components/counter.tscl'
+@import callout from '../components/callout.tscl'
+@import whatShips from '../components/what-ships.tscl'
+@import todo from '../components/todo.tscl'
+@import todoSummary from '../components/todo-summary.tscl'
 
 <docs [title]="'Clear, compiled views'">
   <section class="hero">

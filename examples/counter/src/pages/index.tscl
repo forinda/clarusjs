@@ -1,6 +1,6 @@
 {{-- Rendered on the server. Only the counters ship JS. --}}
-@import counter from '../components/counter.clarus'
-@import greeting from '../components/greeting.clarus'
+@import counter from '../components/counter.tscl'
+@import greeting from '../components/greeting.tscl'
 
 <h1>clarusjs POC</h1>
 <greeting [name]="'world'" />

@@ -1,4 +1,4 @@
-// .clarus source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
+// .tscl source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
 import { ClarusError } from './errors.ts'
 
 export type Attr =
@@ -17,22 +17,27 @@ export type TemplateNode =
 export type InputDecl = { name: string; type: string; default?: string; start: number; nameStart: number; typeStart: number; defaultStart?: number }
 // @import type { A, B } from '…': types for @input declarations (erased from compiled output, used by type checking).
 export type TypeImport = { clause: string; from: string; start: number; clauseStart: number }
+// @import { a, b } from '…' or @import data from './x.json': values a template uses. Server-only in components
+// without a script; bundled for the browser in islands.
+export type DataImport = { clause: string; from: string; start: number; clauseStart: number }
 export type ImportDecl = { name: string; from: string; start: number }
 export type ParsedFile = {
   inputs: InputDecl[]
   imports: ImportDecl[]
   typeImports: TypeImport[]
+  dataImports: DataImport[]
   script?: { code: string; start: number } // start = offset of the first char inside <script>
   nodes: TemplateNode[]
 }
 
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 const INPUT_RE = /^@input\s+([A-Za-z_$][\w$]*)\s*:\s*([^=\n]+?)\s*(?:=\s*(.+?))?\s*$/d
+const DATA_IMPORT_RE = /^@import\s+(\{[^}]*\})\s+from\s+(['"])(.+?)\2\s*$/d
 const IMPORT_TYPE_RE = /^@import\s+type\s+(\{[^}]*\}|[A-Za-z_$][\w$]*)\s+from\s+(['"])(.+?)\2\s*$/d
 const IMPORT_RE = /^@import\s+([A-Za-z_$][\w-]*)\s+from\s+(['"])(.+?)\2\s*$/
 
 export function parse(source: string, file: string): ParsedFile {
-  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], nodes: [] }
+  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], dataImports: [], nodes: [] }
   let i = 0
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
@@ -47,7 +52,13 @@ export function parse(source: string, file: string): ParsedFile {
       out.inputs.push({ name: m[1]!, type: m[2]!.trim(), default: m[3], start: i, nameStart: at(1), typeStart: at(2), ...(m[3] ? { defaultStart: at(3) } : {}) })
     } else if ((m = IMPORT_TYPE_RE.exec(line))) {
       out.typeImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + (m as RegExpExecArray).indices![1]![0] })
-    } else if ((m = line.match(IMPORT_RE))) out.imports.push({ name: m[1]!, from: m[3]!, start: i })
+    } else if ((m = DATA_IMPORT_RE.exec(line))) {
+      out.dataImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + (m as RegExpExecArray).indices![1]![0] })
+    } else if ((m = line.match(IMPORT_RE))) {
+      // A default import of a .tscl file is a component; of anything else, data.
+      if (m[3]!.endsWith('.tscl')) out.imports.push({ name: m[1]!, from: m[3]!, start: i })
+      else out.dataImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + line.indexOf(m[1]!, 7) })
+    }
     else fail(`unknown or malformed directive "${line.split(/\s/)[0]}"`, i)
     i = end
   }
@@ -315,4 +326,11 @@ export function parse(source: string, file: string): ParsedFile {
 
   out.nodes = children()
   return out
+}
+
+/** Local names an import clause binds: `{ a, b as c, type T }` → a, c; `x` → x. */
+export function importNames(clause: string): string[] {
+  if (!clause.startsWith('{')) return [clause]
+  return clause.slice(1, -1).split(',').map((p) => p.trim()).filter((p) => p && !p.startsWith('type '))
+    .map((p) => p.split(/\s+as\s+/).pop()!.trim())
 }

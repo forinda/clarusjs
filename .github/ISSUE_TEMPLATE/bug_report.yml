@@ -23,7 +23,7 @@ body:
     id: reproduction
     attributes:
       label: Reproduction
-      description: The smallest `.clarus` file (or page and steps) that shows the problem. A link to a repo is fine too.
+      description: The smallest `.tscl` file (or page and steps) that shows the problem. A link to a repo is fine too.
       render: html
     validations:
       required: true

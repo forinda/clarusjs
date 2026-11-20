@@ -1,4 +1,4 @@
-// #20: templates → virtual TypeScript that tsc checks, with errors mapped back to file.clarus:line:col.
+// #20: templates → virtual TypeScript that tsc checks, with errors mapped back to file.tscl:line:col.
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -8,7 +8,7 @@ import { generateTs, toSourceOffset } from '../../src/check/generate.ts'
 
 const tsc = resolve(import.meta.dirname, '../../node_modules/.bin/tsc')
 
-/** Write sources and their virtual files into a temp project, run tsc, map each error back to its .clarus position. */
+/** Write sources and their virtual files into a temp project, run tsc, map each error back to its .tscl position. */
 function check(files: Record<string, string>): string[] {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-check-'))
   const virtualRoot = resolve(root, '.clarusjs/virtual')
@@ -17,7 +17,7 @@ function check(files: Record<string, string>): string[] {
     const path = resolve(root, file)
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, source)
-    if (!file.endsWith('.clarus')) continue
+    if (!file.endsWith('.tscl')) continue
     const out = generateTs(source, file)
     const vpath = resolve(virtualRoot, `${file}.ts`)
     mkdirSync(dirname(vpath), { recursive: true })
@@ -47,10 +47,10 @@ function check(files: Record<string, string>): string[] {
 }
 
 const user = { 'src/domain/user.ts': 'export interface User { name: string; admin: boolean }\n' }
-const badge = { 'src/components/badge.clarus': '@input label: string\n@input tone: string = "info"\n<span>{{ label }}</span>\n' }
+const badge = { 'src/components/badge.tscl': '@input label: string\n@input tone: string = "info"\n<span>{{ label }}</span>\n' }
 
 test('inputs become an exported Inputs interface; defaults are optional', () => {
-  const { code } = generateTs('@input label: string\n@input tone: string = "info"\n<b>{{ label }}</b>', 'b.clarus')
+  const { code } = generateTs('@input label: string\n@input tone: string = "info"\n<b>{{ label }}</b>', 'b.tscl')
   expect(code).toContain('export interface Inputs {')
   expect(code).toMatch(/label: string/)
   expect(code).toMatch(/tone\?: string/)
@@ -58,8 +58,8 @@ test('inputs become an exported Inputs interface; defaults are optional', () => 
 
 test('a correct page type-checks cleanly', () => {
   expect(check({ ...user, ...badge,
-    'src/pages/index.clarus': `@import type { User } from '../domain/user'
-@import badge from '../components/badge.clarus'
+    'src/pages/index.tscl': `@import type { User } from '../domain/user'
+@import badge from '../components/badge.tscl'
 @input user: User | null
 
 @if (user) {<h1>{{ user.name }}</h1><badge [label]="user.name" />} @else {<p>anonymous</p>}
@@ -69,54 +69,61 @@ test('a correct page type-checks cleanly', () => {
 })
 
 test('a misspelled property is reported at its place in the template', () => {
-  expect(check({ ...user, 'src/pages/index.clarus': `@import type { User } from '../domain/user'
+  expect(check({ ...user, 'src/pages/index.tscl': `@import type { User } from '../domain/user'
 @input user: User
 <h1>{{ user.nmae }}</h1>
-` })).toEqual([expect.stringMatching(/^src\/pages\/index\.clarus:3:13 Property 'nmae' does not exist/)])
+` })).toEqual([expect.stringMatching(/^src\/pages\/index\.tscl:3:13 Property 'nmae' does not exist/)])
 })
 
 test('component props are checked: unknown and missing props', () => {
-  const errors = check({ ...badge, 'src/pages/index.clarus': `@import badge from '../components/badge.clarus'
+  const errors = check({ ...badge, 'src/pages/index.tscl': `@import badge from '../components/badge.tscl'
 <badge [lable]="'x'" />
 <badge />
 ` })
   expect(errors).toEqual(expect.arrayContaining([
-    expect.stringMatching(/^src\/pages\/index\.clarus:2:9 .*'lable'/),
-    expect.stringMatching(/^src\/pages\/index\.clarus:3:1 .*'label' is missing/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:2:9 .*'lable'/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:3:1 .*'label' is missing/),
   ]))
   expect(errors).toHaveLength(2)
 })
 
 test('@if narrows: reading through a possibly-null value is an error outside the block only', () => {
-  const errors = check({ ...user, 'src/pages/index.clarus': `@import type { User } from '../domain/user'
+  const errors = check({ ...user, 'src/pages/index.tscl': `@import type { User } from '../domain/user'
 @input user: User | null
 <p>{{ user.name }}</p>
 @if (user) {<p>{{ user.name }}</p>}
 ` })
-  expect(errors).toEqual([expect.stringMatching(/^src\/pages\/index\.clarus:3:7 .*possibly 'null'/)])
+  expect(errors).toEqual([expect.stringMatching(/^src\/pages\/index\.tscl:3:7 .*possibly 'null'/)])
 })
 
 test('island scripts are typed: state() keeps its value type, handlers are checked', () => {
-  const errors = check({ 'src/components/c.clarus': `<script>
+  const errors = check({ 'src/components/c.tscl': `<script>
   let n = state(0)
   const double = derived(() => n * 2)
 </script>
 <b (click)="n = 'x'">{{ n.toFixed(1) }} {{ double.toFixed(0) }} {{ n.foo }}</b>
 ` })
   expect(errors).toEqual(expect.arrayContaining([
-    expect.stringMatching(/^src\/components\/c\.clarus:5:13 Type 'string' is not assignable to type 'number'/),
-    expect.stringMatching(/^src\/components\/c\.clarus:5:70 Property 'foo' does not exist on type 'number'/),
+    expect.stringMatching(/^src\/components\/c\.tscl:5:13 Type 'string' is not assignable to type 'number'/),
+    expect.stringMatching(/^src\/components\/c\.tscl:5:70 Property 'foo' does not exist on type 'number'/),
   ]))
   expect(errors).toHaveLength(2)
 })
 
 test('@for needs something iterable', () => {
-  expect(check({ 'src/pages/index.clarus': '@input n: number\n@for (x of n) {{{ x }}}\n' }))
-    .toEqual([expect.stringMatching(/^src\/pages\/index\.clarus:2:12 .*(iterator|iterable)/i)])
+  expect(check({ 'src/pages/index.tscl': '@input n: number\n@for (x of n) {{{ x }}}\n' }))
+    .toEqual([expect.stringMatching(/^src\/pages\/index\.tscl:2:12 .*(iterator|iterable)/i)])
 })
 
 test('$event is typed by event name, its target is left open', () => {
-  expect(check({ 'src/components/f.clarus': `<script>let v = state('')</script>
+  expect(check({ 'src/components/f.tscl': `<script>let v = state('')</script>
 <input (input)="v = $event.target.value; $event.data?.length"><b (click)="$event.clientX.toFixed()">x</b>
 ` })).toEqual([])
+})
+
+test('#77: imported data is typed', () => {
+  expect(check({
+    'src/nav.ts': `export const nav = [{ title: 'Intro', href: '/intro' }]\n`,
+    'src/pages/index.tscl': `@import { nav } from '../nav'\n@for (item of nav) {<a [href]="item.hrfe">{{ item.title }}</a>}\n`,
+  })).toEqual([expect.stringMatching(/^src\/pages\/index\.tscl:2:37 Property 'hrfe' does not exist/)])
 })
