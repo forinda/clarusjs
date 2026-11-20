@@ -13,5 +13,5 @@
       <tr><td><code>--json</code></td><td>print diagnostics as JSON: file, line, column, code, message</td></tr>
     </tbody>
   </table>
-  <p>Exits with 1 when there are errors.</p>
+  <p>Exits with 1 when there are errors. See <a href="/guide/type-checking">Type checking</a> for what it checks and how to run it in CI.</p>
 </docs>

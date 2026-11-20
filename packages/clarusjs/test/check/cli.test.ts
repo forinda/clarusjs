@@ -1,5 +1,5 @@
 // #21: `clarusjs check` type-checks a project's .clarus files and reports file.clarus:line:col.
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { expect, test } from 'vitest'
@@ -79,4 +79,13 @@ test('the command line runs check, with --json and an exit code', async () => {
   expect(JSON.parse(run.stdout)).toEqual([expect.objectContaining({ file: 'src/pages/index.clarus', line: 2, column: 9, code: 'TS2339' })])
   const help = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, '--help'], { encoding: 'utf8' })
   expect(help.stdout).toMatch(/check \[options\] \[dir\]/)
+})
+
+test('#23: the type-checking guide shows the real output for its example', () => {
+  const guide = readFileSync(resolve(import.meta.dirname, '../../../docs/src/pages/guide/type-checking.clarus'), 'utf8')
+  const sample = guide.match(/\{\{-- src\/pages\/index\.clarus --\}\}\n([\s\S]*?)<\/code>/)![1]!
+  const shown = guide.match(/\$ pnpm check\n([\s\S]*?)<\/code>/)![1]!
+  const root = project({ 'src/nav.ts': `export const nav = [{ title: 'Intro', href: '/intro' }]\n`, 'src/pages/index.clarus': `${sample}\n` })
+  const result = check({ root, typescript })
+  expect(shown).toBe(`${result.text}\n\n${result.diagnostics.length} error`)
 })
