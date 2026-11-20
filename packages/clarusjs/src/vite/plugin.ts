@@ -1,14 +1,15 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
 import { existsSync, readFileSync, rmSync } from 'node:fs'
-import { dirname, isAbsolute, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, type Plugin, type UserConfig } from 'vite'
 import { compile, ClarusError } from '../compiler/index.ts'
 import { findClarusFiles, prerender } from './build.ts'
 import { writeManifest } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
-import { checkModes, type ModeTable } from '../server/modes.ts'
+import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
+import { routeFromFile } from '../server/handler.ts'
 import { sendResponse, toRequest } from './node.ts'
 
 // From src/ (workspace, tests) our siblings are .ts files; from the published dist/ they are .js.
@@ -23,6 +24,9 @@ export function clientUrlFor(root: string, file: string): string {
 }
 
 const LOADER_ENTRY = 'cl-loader'
+const ROUTER_ENTRY = 'cl-router'
+// Client entry name of a client-mode page's browser render module.
+const renderEntry = (name: string) => `render/${name}`
 const CLIENT_OUT = 'dist/client'
 // Placeholder for a nested island's chunk URL in the client build, replaced once the bundle's file names are known.
 const CHUNK_TOKEN = '__CLARUS_CHUNK__'
@@ -34,6 +38,16 @@ export type ClarusOptions = {
   routes?: ModeTable
   /** Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. */
   adapter?: 'netlify'
+}
+
+/** Client-mode pages: route (as the file names it) → absolute file. */
+function clientPages(appRoot: string, modes: ModeTable): Map<string, string> {
+  const pages = new Map<string, string>()
+  for (const file of findClarusFiles(resolve(appRoot, 'src/pages'))) {
+    const route = routeFromFile(`/${relative(appRoot, file).split(sep).join('/')}`)
+    if (modeFor(route, modes) === 'client') pages.set(route, file)
+  }
+  return pages
 }
 
 export default function clarusjs(options: ClarusOptions = {}): Plugin {
@@ -58,7 +72,12 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     }
     const manifest = JSON.parse(readFileSync(manifestFile, 'utf8')) as Record<string, { file: string; name?: string; isEntry?: boolean }>
     built = new Map()
-    for (const chunk of Object.values(manifest)) if (chunk.isEntry && chunk.name) built.set(chunk.name, base + chunk.file)
+    // By entry name, and by source key: names are sanitized ([id] → _id_), keys keep the real path.
+    for (const [key, chunk] of Object.entries(manifest)) {
+      if (!chunk.isEntry) continue
+      if (chunk.name) built.set(chunk.name, base + chunk.file)
+      built.set(key, base + chunk.file)
+    }
     return built
   }
   return {
@@ -85,6 +104,10 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       for (const file of findClarusFiles(resolve(appRoot, 'src'))) {
         if (compile(readFileSync(file, 'utf8'), { file, target: 'client' }).stateful) input[entryName(appRoot, file)] = file
       }
+      // Client routes: the router, and each page's render function for the browser.
+      const client = clientPages(appRoot, modes)
+      if (client.size) input[ROUTER_ENTRY] = here('../runtime/router')
+      for (const file of client.values()) input[renderEntry(entryName(appRoot, file))] = `${file}?render`
       config.builder = {}
       config.environments = {
         // Island chunks are loaded with import() and must keep their `attach` export.
@@ -137,16 +160,29 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     },
     resolveId(id) {
       if (id === '/cl-loader.js') return here('../runtime/loader')
+      if (id === '/cl-router.js') return here('../runtime/router')
       if (id === ENTRY) return '\0' + ENTRY
     },
     load(id) {
       if (id !== '\0' + ENTRY) return
-      const loaderUrl = builtUrls()?.get(LOADER_ENTRY) ?? '/cl-loader.js'
+      const urls = builtUrls()
+      const loaderUrl = urls?.get(LOADER_ENTRY) ?? '/cl-loader.js'
+      const routerUrl = urls?.get(ROUTER_ENTRY) ?? '/cl-router.js'
+      // Built: hashed chunk URLs. Dev: the source, served as JS by Vite.
+      const client: Record<string, string> = {}
+      for (const [route, file] of clientPages(root, modes)) {
+        const key = `${relative(root, file).split(sep).join('/')}?render`
+        const url = urls ? urls.get(key) : `${clientUrlFor(root, file).replace(/\?.*$/, '')}?render&import`
+        if (!url) throw new Error(`clarusjs: no client chunk for ${key}`)
+        client[route] = url
+      }
       return `import { createHandler } from ${JSON.stringify(here('../server/handler'))}\n` +
         `export default createHandler(import.meta.glob('/src/pages/**/*.tscl'), {\n` +
         `  loaderUrl: ${JSON.stringify(loaderUrl)},\n` +
         `  data: import.meta.glob('/src/pages/**/*.load.ts'),\n` +
         `  modes: ${JSON.stringify(modes)},\n` +
+        `  routerUrl: ${JSON.stringify(routerUrl)},\n` +
+        `  client: ${JSON.stringify(client)},\n` +
         `})\n`
     },
     transform: {
@@ -154,7 +190,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       handler(code, id) {
         const file = id.replace(/\?.*$/, '')
         // ?render: a component's server render function, used in the browser to render children of islands.
-        const target = this.environment.config.consumer === 'server' || /[?&]render\b/.test(id) ? 'server' : 'client'
+        const renderQuery = /[?&]render\b/.test(id)
+        const target = this.environment.config.consumer === 'server' || renderQuery ? 'server' : 'client'
         // ponytail: ?import makes Vite's dev transform middleware serve .tscl as JS for the loader's dynamic import; build output uses hashed chunk URLs from the client manifest (stage 3)
         const consumer = this.environment.config.consumer
         // Server build: chunk URLs come from the client manifest. Client build (a ?render child): the chunk doesn't
@@ -167,7 +204,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           this.error(`${file}: stateful component is not under src/, so it has no client chunk`)
         }
         try {
-          return { code: compile(code, { file, target, clientUrl }).code, map: null }
+          // A ?render module runs in the browser: its child components must be render modules too.
+          const renderImports = renderQuery && this.environment.config.consumer !== 'server'
+          return { code: compile(code, { file, target, clientUrl, renderImports }).code, map: null }
         } catch (err) {
           if (err instanceof ClarusError) this.error(err.message)
           throw err

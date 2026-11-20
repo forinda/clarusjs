@@ -261,9 +261,10 @@ test('copy buttons load on first click and copy their sample', async ({ page, co
 test('the route manifest matches what the browser loads', async ({ page }) => {
   const { readFileSync } = await import('node:fs')
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
-  // Every sidebar page, plus the pages dynamic routes generate (release notes per version).
+  // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour).
   const routes = Object.keys(manifest.routes)
-  expect(routes.filter((r) => !r.startsWith('/releases/')).sort()).toEqual(pages.map((p) => p.path).sort())
+  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/')
+  expect(routes.filter((r) => !generated(r)).sort()).toEqual(pages.map((p) => p.path).sort())
   for (const path of ['/', '/guide/state']) {
     const route = manifest.routes[path]
     const { scripts } = await visit(page, path)
@@ -400,4 +401,39 @@ test('the generated Netlify function serves only the server routes', async () =>
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
   expect(fn).toContain('export const config = {"path":["/playground","/playground/"],"preferStatic":true}')
+})
+
+test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
+  const documents: string[] = []
+  page.on('request', (req) => { if (req.resourceType() === 'document') documents.push(new URL(req.url()).pathname) })
+  await page.goto('/tour/1')
+  await expect(page.locator('h1')).toHaveText('A shell arrives')
+  await expect(page).toHaveTitle('Client tour, step 1 · clarusjs')
+  await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
+  await page.evaluate(() => { (window as { __tour?: boolean }).__tour = true })
+
+  await page.click('nav.tour a.next')
+  await expect(page).toHaveURL(/\/tour\/2$/)
+  await expect(page.locator('h1')).toHaveText('The router renders')
+  await page.click('nav.tour a.next')
+  await expect(page.locator('h1')).toHaveText('No reload')
+  await page.goBack()
+  await expect(page.locator('h1')).toHaveText('The router renders')
+  expect(await page.evaluate(() => (window as { __tour?: boolean }).__tour)).toBe(true) // same document all along
+  expect(documents).toEqual(['/tour/1']) // one document request: the first shell
+  await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
+
+  // Leaving the client routes is a normal page load.
+  await page.click('nav.tour a.prev')
+  await page.goto('/tour/3')
+  await expect(page.locator('h1')).toHaveText('No reload')
+})
+
+test('client tour without JavaScript shows the shell message', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false })
+  const page = await context.newPage()
+  await page.goto('/tour/1')
+  // Playwright's text locators skip <noscript>; innerText is what the visitor sees with scripting off.
+  expect(await page.evaluate(() => document.body.innerText)).toContain('This page is rendered in the browser and needs JavaScript.')
+  await context.close()
 })

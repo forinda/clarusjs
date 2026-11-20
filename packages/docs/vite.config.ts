@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [
     clarusjs({
       // Rendered on every request; on Netlify, by a function (see the Server playground page).
-      routes: { '/playground': 'server' },
+      routes: { '/playground': 'server', '/tour/*': 'client' },
       adapter: 'netlify',
     }),
   ],

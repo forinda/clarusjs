@@ -72,3 +72,34 @@ test('#32: Netlify paths use URLPattern syntax, with literal text escaped', asyn
   expect(netlifyPaths('/x/[$id]')).toEqual(['/x/:p0', '/x/:p0/'])
   expect(netlifyPaths('/v(2)*')).toEqual(['/v\\(2\\)\\*', '/v\\(2\\)\\*/'])
 })
+
+test('#33: client routes are prerendered as shells, with their data files and render modules', async () => {
+  const shell = readFileSync(resolve(root, 'dist/client/app/one/index.html'), 'utf8')
+  expect(shell).not.toContain('<h1>')
+  const table = JSON.parse(/<script type="application\/json" id="cl-routes">(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
+  expect(table.map((t) => t.p)).toEqual(['/app', '/app/[id]'])
+  const router = /<script type="module" src="([^"]+)"><\/script><\/head>/.exec(shell)![1]!
+  expect(existsSync(resolve(root, 'dist/client', router.slice(1)))).toBe(true)
+  // The render module renders the page in the browser from the data file.
+  const { parse } = await import('../src/runtime/serialize.ts')
+  const props = parse(readFileSync(resolve(root, 'dist/client/app/one/__data.json'), 'utf8')) as object
+  expect(props).toEqual({ id: 'one', label: 'Item one' })
+  const mod = await import(pathToFileURL(resolve(root, 'dist/client', table[1]!.r.slice(1))).href)
+  expect(mod.render(props)).toContain('<h1>Item one</h1>')
+  expect(JSON.parse(readFileSync(resolve(root, 'dist/client/app/__data.json'), 'utf8'))).toEqual({})
+})
+
+test('#33: the manifest marks client routes and leaves data files out', () => {
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  expect(Object.keys(manifest.routes).filter((r) => r.includes('__data'))).toEqual([])
+  expect(manifest.routes['/app/one']).toMatchObject({ mode: 'client', html: 'app/one/index.html', loader: 'build' })
+  expect(manifest.routes['/app/one'].js.files.some((f: string) => f.includes('render/'))).toBe(true)
+})
+
+test('size budget: the client router stays within 1 KB gzip', async () => {
+  const { gzipSync } = await import('node:zlib')
+  const shell = readFileSync(resolve(root, 'dist/client/app/index.html'), 'utf8')
+  const router = /<script type="module" src="([^"]+)"><\/script><\/head>/.exec(shell)![1]!
+  const size = gzipSync(readFileSync(resolve(root, 'dist/client', router.slice(1))), { level: 9 }).length
+  expect(size).toBeLessThanOrEqual(1024)
+})
