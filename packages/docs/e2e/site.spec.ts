@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { sections } from '../src/nav.ts'
+import AxeBuilder from '@axe-core/playwright'
 
 // Every page in the sidebar, in sidebar order, plus the home page.
 const docs = sections.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => ({ path: i.href, title: i.title, section: s.key }))))
@@ -678,4 +679,84 @@ test('an unknown address gets the 404 page with status 404, and its links work a
   await expect(page).toHaveURL(/\/guide\/getting-started$/)
   expect(await (await request.get('/robots.txt')).text()).toBe('User-agent: *\nAllow: /\n\nSitemap: https://clarusjs.com/sitemap.xml\n')
   expect(await (await request.get('/sitemap.xml')).text()).not.toContain('/404')
+})
+
+test('a11y: skip link first, landmarks, and the current page marked', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  await page.keyboard.press('Tab')
+  const skip = page.getByRole('link', { name: 'Skip to content' })
+  await expect(skip).toBeFocused()
+  await expect(skip).toBeVisible() // shown once focused
+  await page.keyboard.press('Enter')
+  await expect(page.locator('main#content')).toBeFocused()
+  await expect(page.getByRole('banner')).toHaveCount(1)
+  await expect(page.getByRole('main')).toHaveCount(1)
+  await expect(page.getByRole('contentinfo')).toHaveCount(1)
+  await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: 'Markdown pages' })).toHaveAttribute('aria-current', 'page')
+})
+
+test('a11y: axe finds no violations (landmarks, names, ARIA) on representative pages', async ({ page }) => {
+  for (const path of ['/', '/guide/markdown', '/guide/state', '/reference/vite-plugin', '/no/such/page', '/tour/1']) {
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+    const { violations } = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze() // contrast: #122
+    expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`), path).toEqual([])
+  }
+})
+
+test('a11y: after fragment navigation, focus is on the new heading and the title is announced', async ({ page }) => {
+  await page.goto('/guide/holes')
+  await expect(page.locator('[data-cl-persist="theme"] cl-island')).toHaveAttribute('data-cl-ready', '')
+  await page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: 'Lists' }).click()
+  await expect(page.locator('h1')).toHaveText('Lists')
+  await expect(page.locator('h1')).toBeFocused()
+  await expect(page.locator('#cl-live')).toHaveAttribute('aria-live', 'polite')
+  await expect(page.locator('#cl-live')).toHaveText('Lists · clarusjs')
+  // A link to a #hash on another page focuses its target.
+  await page.goto('/guide/holes')
+  await expect(page.locator('[data-cl-persist="theme"] cl-island')).toHaveAttribute('data-cl-ready', '')
+  await page.evaluate(() => { (globalThis as { navigation?: { navigate(u: string): unknown } }).navigation!.navigate('/guide/markdown#links') })
+  await expect(page.locator('h2#links')).toBeFocused()
+})
+
+test('a11y: after a client route render, focus is on the new heading and the title is announced', async ({ page }) => {
+  await page.goto('/tour/1')
+  await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
+  await page.click('nav.tour a.next')
+  await expect(page.locator('h1')).toHaveText('The router renders')
+  await expect(page.locator('h1')).toBeFocused()
+  await expect(page.locator('#cl-live')).toHaveText('Client tour, step 2 · clarusjs')
+})
+
+test('a11y: text and code highlighting meet WCAG AA contrast, in light and dark', async ({ page }) => {
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme })
+    for (const path of ['/', '/guide/markdown', '/guide/state', '/reference/vite-plugin', '/no/such/page']) {
+      await page.goto(path)
+      await page.waitForLoadState('networkidle')
+      const { violations } = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze()
+      const found = violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.any[0]?.message.split(' (')[0] ?? ''} ${JSON.stringify(n.any[0]?.data ?? {})}`))
+      expect(found, `${scheme} ${path}`).toEqual([])
+    }
+  }
+})
+
+test('a11y: reduced motion turns transitions off; the mobile page list opens in place and leaves the page usable', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  const counter = page.locator('.counter').first()
+  expect(await counter.evaluate((el) => getComputedStyle(el).transitionDuration)).toMatch(/^(0s|1e-05s|0\.00001s)(, (0s|1e-05s|0\.00001s))*$/)
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  expect(await counter.evaluate((el) => getComputedStyle(el).transitionDuration)).toContain('0.12s')
+
+  await page.setViewportSize({ width: 375, height: 800 })
+  await page.goto('/guide/markdown')
+  await page.getByText('Menu', { exact: true }).click()
+  const list = page.getByRole('navigation', { name: 'Pages' })
+  await expect(list).toBeVisible()
+  expect(await list.evaluate((el) => getComputedStyle(el).position)).toBe('static') // in the flow, covering nothing
+  await expect(page.locator('main h1')).toBeVisible()
+  await page.locator('main a').first().focus()
+  await expect(page.locator('main a').first()).toBeFocused() // nothing behind it needs to be inert
 })

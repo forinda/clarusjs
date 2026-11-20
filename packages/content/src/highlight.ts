@@ -21,15 +21,20 @@ import toml from 'shiki/langs/toml.mjs'
 import tsx from 'shiki/langs/tsx.mjs'
 import typescript from 'shiki/langs/typescript.mjs'
 import yaml from 'shiki/langs/yaml.mjs'
-import githubDark from 'shiki/themes/github-dark.mjs'
-import githubLight from 'shiki/themes/github-light.mjs'
+// The *-default GitHub themes: their token colours meet WCAG AA contrast (the classic github-light/dark don't).
+import githubDark from 'shiki/themes/github-dark-default.mjs'
+import githubLight from 'shiki/themes/github-light-default.mjs'
 
 // .tscl templates read like Angular's: {{ }}, [prop], (event) and @if/@for, so they borrow its grammar.
 const ALIASES: Record<string, string> = { tscl: 'angular-html', ts: 'typescript', js: 'javascript', sh: 'bash', shell: 'bash', zsh: 'bash', md: 'markdown', yml: 'yaml' }
 
+// One change for WCAG AA: the light theme's comments (#6e7781, 4.55:1 on white, less on any tinted line) use GitHub's
+// newer muted grey (#59636e, 5.9:1). Every other token in both themes already passes on its theme's background.
+const light = JSON.parse(JSON.stringify(githubLight).replace(/#6e7781/gi, '#59636e'))
+
 let highlighter: HighlighterCore | undefined
 const get = () => (highlighter ??= createHighlighterCoreSync({
-  themes: [githubLight, githubDark],
+  themes: [light, githubDark],
   langs: [angularHtml, bash, css, diff, html, javascript, json, markdown, toml, tsx, typescript, yaml],
   engine: createJavaScriptRegexEngine(),
 }))
@@ -49,7 +54,7 @@ export function highlight(code: string, lang: string, meta: string): string {
   const known = hl.getLoadedLanguages().includes(id)
   return hl.codeToHtml(code, {
     lang: known ? id : 'text',
-    themes: { light: 'github-light', dark: 'github-dark' },
+    themes: { light: 'github-light-default', dark: 'github-dark-default' },
     defaultColor: false, // colours only as --shiki-light/--shiki-dark: the page's theme picks one with CSS
     meta: { __raw: meta },
     transformers,
