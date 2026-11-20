@@ -1,0 +1,17 @@
+# Dependabot keeps npm dependencies current across the pnpm workspace (pnpm-lock.yaml is supported).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build(deps)"
+      prefix-development: "build(deps-dev)"
+    groups:
+      # One PR for routine bumps; majors arrive one by one so each can be reviewed.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    labels: ["dependencies"]
