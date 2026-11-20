@@ -1,2 +1,4 @@
 @input id: string
-<h1>User {{ id }}</h1>
+@input name: string = ''
+<h1>User {{ name }}</h1>
+<p>{{ id }}</p>

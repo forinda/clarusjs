@@ -319,3 +319,55 @@ test('release notes: one prerendered page per version in the changelog (a dynami
   await expect(page.locator('.changes a[href*="/pull/"]').first()).toBeVisible()
   expect((await page.goto('/releases/9.9.9'))?.status()).toBe(404)
 })
+
+test('release pages get their data from load() at build, and the manifest records it', async () => {
+  const { readFileSync } = await import('node:fs')
+  const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
+  const releasePages = Object.keys(manifest.routes).filter((r) => r.startsWith('/releases/'))
+  expect(releasePages.length).toBeGreaterThan(0)
+  for (const r of releasePages) expect(manifest.routes[r].loader, r).toBe('build')
+  expect(manifest.routes['/releases'].loader).toBeNull()
+})
+
+test('package-manager commands are spelled the way each manager spells them', async () => {
+  const { command } = await import('../src/pm.ts')
+  const table: Record<string, Record<string, string>> = {
+    'add clarusjs': { pnpm: 'pnpm add clarusjs', npm: 'npm install clarusjs', yarn: 'yarn add clarusjs', bun: 'bun add clarusjs' },
+    'add -D vite': { pnpm: 'pnpm add -D vite', npm: 'npm install -D vite', yarn: 'yarn add -D vite', bun: 'bun add -d vite' },
+    'run check': { pnpm: 'pnpm run check', npm: 'npm run check', yarn: 'yarn check', bun: 'bun run check' },
+    'exec vite build  # out': { pnpm: 'pnpm exec vite build  # out', npm: 'npx vite build  # out', yarn: 'yarn vite build  # out', bun: 'bunx vite build  # out' },
+  }
+  for (const [neutral, want] of Object.entries(table)) {
+    for (const [manager, line] of Object.entries(want)) expect(command(manager as 'pnpm', neutral), `${manager}: ${neutral}`).toBe(line)
+  }
+})
+
+test('package-manager tabs: one choice switches every group and is remembered across pages', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.goto('/guide/getting-started')
+  const groups = page.locator('cl-island[c="pm"]')
+  await expect(groups).toHaveCount(2)
+  await expect(groups.first()).toHaveAttribute('data-cl-ready', '')
+  await expect(groups.first().locator('code')).toHaveText('pnpm add clarusjs\npnpm add -D vite')
+  await groups.first().getByRole('tab', { name: 'npm', exact: true }).click()
+  await expect(groups.first().locator('code')).toHaveText('npm install clarusjs\nnpm install -D vite')
+  await expect(groups.nth(1).locator('code')).toHaveText(/^npx vite /) // the other group followed
+  await expect(groups.nth(1).getByRole('tab', { name: 'npm', exact: true })).toHaveAttribute('aria-selected', 'true')
+  // The copy button copies what is shown.
+  await groups.first().locator('button.copy').click()
+  await expect(groups.first().locator('button.copy')).toHaveText('Copied')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('npm install clarusjs\nnpm install -D vite')
+  // Remembered on the next page.
+  await page.goto('/guide/type-checking')
+  const next = page.locator('cl-island[c="pm"]').first()
+  await expect(next).toHaveAttribute('data-cl-ready', '')
+  await expect(next.locator('code')).toHaveText('npm install -D typescript')
+})
+
+test('package-manager tabs without JavaScript show the pnpm commands', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false })
+  const page = await context.newPage()
+  await page.goto('/guide/getting-started')
+  await expect(page.locator('cl-island[c="pm"] code').first()).toHaveText('pnpm add clarusjs\npnpm add -D vite')
+  await context.close()
+})

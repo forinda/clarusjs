@@ -15,11 +15,19 @@ const kb = (bytes: number) => (bytes ? `${(bytes / 1024).toFixed(1)} KB` : '0 KB
 const row = (label: string, lines: string[]) => lines.map((l, i) => `  ${(i ? '' : label).padEnd(12)}${l}`)
 
 function describe(path: string, r: RouteInfo): string {
+  if (r.mode === 'server') {
+    return [
+      path,
+      ...row('Rendered', ['on every request, by dist/server/index.mjs']),
+      ...row('Data', [r.loader === 'request' ? 'load() runs on every request' : 'no loader']),
+      ...row('Islands', ['decided per request']),
+    ].join('\n')
+  }
   const islands = r.islands.map((i) => `${i.component}${i.count > 1 ? ` ×${i.count}` : ''} (${kb(i.gzip)}, ${WHEN[i.attach]})`)
   return [
     path,
     ...row('Rendered', [`at build time, to dist/client/${r.html}`]),
-    ...row('Data', [r.loader ?? 'no loader']),
+    ...row('Data', [r.loader === 'build' ? 'load() ran once, at build time' : 'no loader']),
     ...row('Islands', islands.length ? islands : ['none']),
     ...row('JavaScript', [r.js.files.length ? `${kb(r.js.initialGzip)} on page load, ${kb(r.js.gzip)} in all (gzip, ${r.js.files.length} files)` : 'none']),
     ...row('CSS', [r.css.length ? r.css.join(', ') : 'none']),
@@ -31,7 +39,9 @@ function table(routes: Record<string, RouteInfo>): string {
   const line = (cells: string[]) => cells[0]!.padEnd(width) + cells[1]!.padEnd(9) + cells[2]!.padEnd(12) + cells[3]
   return [
     line(['Route', 'Islands', 'JS on load', 'JS in all']),
-    ...Object.entries(routes).map(([path, r]) => line([path, String(r.islands.reduce((n, i) => n + i.count, 0)), kb(r.js.initialGzip), kb(r.js.gzip)])),
+    ...Object.entries(routes).map(([path, r]) => r.mode === 'server'
+      ? line([path, '-', 'per request', ''])
+      : line([path, String(r.islands.reduce((n, i) => n + i.count, 0)), kb(r.js.initialGzip), kb(r.js.gzip)])),
   ].join('\n')
 }
 

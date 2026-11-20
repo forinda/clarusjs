@@ -1,9 +1,17 @@
+import { modeFor, type ModeTable } from './modes.ts'
+
 // The fetch handler: Request → Response. Same function for dev, per-request SSR and (later) build-time prerender.
 
 type PageModule = { render(props?: object): string }
 type Params = Record<string, string>
-/** `[page].load.ts`: data for a route. entries() lists a dynamic route's pages to prerender. */
-type DataModule = { entries?(): Params[] | Promise<Params[]> }
+/**
+ * `[page].load.ts`: data for a route, server only. entries() lists a dynamic route's pages to prerender; load()
+ * returns the page's inputs and runs per request on the server, or once per page at build.
+ */
+type DataModule = {
+  entries?(): Params[] | Promise<Params[]>
+  load?(context: { params: Params; request: Request }): object | Promise<object>
+}
 
 type Route = { path: string; file: string; keys: string[]; regex: RegExp; load: () => Promise<PageModule> }
 
@@ -27,13 +35,14 @@ export function routeFromFile(file: string): string {
 
 export function createHandler(
   pages: Record<string, () => Promise<PageModule>>,
-  options: { loaderUrl?: string; data?: Record<string, () => Promise<DataModule>> } = {},
-): { fetch(request: Request): Promise<Response>; routes: string[]; paths(): Promise<string[]> } {
+  options: { loaderUrl?: string; data?: Record<string, () => Promise<DataModule>>; modes?: ModeTable } = {},
+): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
   const routes: Route[] = Object.entries(pages)
     .map(([file, load]) => ({ path: routeFromFile(file), file: file.replace(/^\//, ''), load, ...compile(routeFromFile(file)) }))
     .sort((a, b) => a.keys.length - b.keys.length || b.path.split('/').length - a.path.split('/').length)
   const data = options.data ?? {}
+  const modes = options.modes ?? {}
   const loaderUrl = options.loaderUrl ?? '/cl-loader.js'
 
   function match(pathname: string): { route: Route; params: Params } | null {
@@ -53,10 +62,24 @@ export function createHandler(
 
   return {
     routes: routes.map((r) => r.path).sort(),
+    /** Routes rendered per request ('server' mode), as their files name them. */
+    serverRoutes: routes.filter((r) => modeFor(r.path, modes) === 'server').map((r) => r.path).sort(),
+    /** Whether a URL path belongs to a server route (what a host must send to this handler instead of a file). */
+    isServerPath(pathname) {
+      const found = match(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
+      return Boolean(found && modeFor(found.route.path, modes) === 'server')
+    },
+    /** Whether a route (as its file names it) has a load(). */
+    async hasLoader(path) {
+      const route = routes.find((r) => r.path === path)
+      const file = route && `/${route.file.replace(/\.tscl$/, '.load.ts')}`
+      return Boolean(file && data[file] && typeof (await data[file]!()).load === 'function')
+    },
     /** Every concrete path to prerender: static routes as they are, dynamic ones from their entries(). */
     async paths() {
       const out: string[] = []
       for (const route of routes) {
+        if (modeFor(route.path, modes) !== 'static') continue
         if (!route.keys.length) { out.push(route.path); continue }
         const dataFile = route.file.replace(/\.tscl$/, '.load.ts')
         const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
@@ -81,7 +104,23 @@ export function createHandler(
       const found = match(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
       const head = request.method === 'HEAD'
       if (!found) return new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
-      const html = (await found.route.load()).render(found.params)
+      let props: object = found.params
+      const dataFile = found.route.file.replace(/\.tscl$/, '.load.ts')
+      const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
+      if (mod?.load) {
+        let loaded: unknown
+        try {
+          loaded = await mod.load({ params: found.params, request })
+        } catch (err) {
+          return failure(`${dataFile}: load() failed: ${(err as Error)?.message ?? err}`)
+        }
+        if (loaded === null || typeof loaded !== 'object' || Array.isArray(loaded)) {
+          return failure(`${dataFile}: load() must return an object of page inputs, got ${Array.isArray(loaded) ? 'an array' : loaded === null ? 'null' : typeof loaded}`)
+        }
+        ;(globalThis as { __clLoaderRan?: boolean }).__clLoaderRan = true // recorded by prerender for the manifest
+        props = { ...found.params, ...loaded }
+      }
+      const html = (await found.route.load()).render(props)
       const visible = maskComments(html)
       const hasIslands = visible.includes('<cl-island ')
       // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
@@ -93,6 +132,12 @@ export function createHandler(
       return new Response(head ? null : body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     },
   }
+}
+
+/** A 500 that tells the visitor nothing internal; the details go to the server log (and the build's output). */
+function failure(message: string): Response {
+  console.error(`[clarusjs] ${message}`)
+  return new Response('Internal Server Error', { status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' } })
 }
 
 /** Same length as `html`, with every HTML comment blanked out, so positions found in it are valid in `html`. */

@@ -1,11 +1,12 @@
 @import docs from '../../layouts/docs.tscl'
-@import { release } from '../../releases.ts'
+@import type { Release } from '../../releases.ts'
 @input version: string
+@input release: Release
 
 <docs [title]="'clarusjs ' + version" [path]="'/releases'" [description]="'What changed in clarusjs ' + version + '.'">
   <h1>clarusjs {{ version }}</h1>
   <p class="lead"><a href="/releases">All releases</a> · <a href="https://www.npmjs.com/package/clarusjs/v/{{ version }}">clarusjs@{{ version }} on npm</a></p>
-  @for (group of release(version).groups; track group.title) {
+  @for (group of release.groups; track group.title) {
     <h2>{{ group.title }}</h2>
     <ul class="changes">
       @for (change of group.changes; track change.url) {

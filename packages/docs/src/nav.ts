@@ -16,6 +16,7 @@ export const sections: Section[] = [
         { title: 'Getting started', href: '/guide/getting-started' },
         { title: 'Project structure', href: '/guide/project-structure' },
         { title: 'Pages and routes', href: '/guide/routing' },
+        { title: 'Rendering modes', href: '/guide/rendering-modes' },
       ] },
       { title: 'Templates', items: [
         { title: 'Components', href: '/guide/components' },

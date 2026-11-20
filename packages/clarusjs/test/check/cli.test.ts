@@ -89,3 +89,19 @@ test('#23: the type-checking guide shows the real output for its example', () =>
   const result = check({ root, typescript })
   expect(shown).toBe(`${result.text}\n\n${result.diagnostics.length} error`)
 })
+
+test('#31: what load() returns is checked against the page inputs', () => {
+  const page = '@input name: string\n@input count: number = 0\n<p>{{ name }} {{ count }}</p>\n'
+  const ok = project({
+    'src/pages/users/[id].tscl': page,
+    'src/pages/users/[id].load.ts': 'export async function load({ params }: { params: Record<string, string> }) {\n  return { name: params.id ?? "" }\n}\n',
+  })
+  expect(check({ root: ok, typescript }).diagnostics).toEqual([])
+  const bad = project({
+    'src/pages/users/[id].tscl': page,
+    'src/pages/users/[id].load.ts': 'export function load() {\n  return { name: 42 }\n}\n',
+  })
+  expect(check({ root: bad, typescript }).diagnostics).toEqual([
+    { file: 'src/pages/users/[id].tscl', line: 1, column: 1, code: 'TS2322', message: expect.stringMatching(/^load\(\) returns a value that doesn.t fit this page.s inputs: .*not assignable/s) },
+  ])
+})

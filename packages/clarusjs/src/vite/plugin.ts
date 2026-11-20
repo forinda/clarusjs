@@ -2,11 +2,12 @@
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
 import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, type Plugin, type UserConfig } from 'vite'
 import { compile, ClarusError } from '../compiler/index.ts'
 import { findClarusFiles, prerender } from './build.ts'
 import { writeManifest } from './manifest.ts'
+import { checkModes, type ModeTable } from '../server/modes.ts'
 import { sendResponse, toRequest } from './node.ts'
 
 // From src/ (workspace, tests) our siblings are .ts files; from the published dist/ they are .js.
@@ -27,7 +28,14 @@ const CHUNK_TOKEN = '__CLARUS_CHUNK__'
 const SERVER_OUT = 'dist/server'
 const entryName = (root: string, file: string) => relative(root, file).replace(/\.tscl$/, '')
 
-export default function clarusjs(): Plugin {
+export type ClarusOptions = {
+  /** When each route renders: { '/account/*': 'server' }. Routes default to 'static' (prerendered at build). */
+  routes?: ModeTable
+}
+
+export default function clarusjs(options: ClarusOptions = {}): Plugin {
+  const modes = options.routes ?? {}
+  checkModes(modes)
   let root = process.cwd()
   let command: 'build' | 'serve' = 'serve'
   let base = '/'
@@ -112,12 +120,12 @@ export default function clarusjs(): Plugin {
       const dist = dirname(out)
       const manifestFile = resolve(dist, 'clarusjs-manifest.json')
       rmSync(manifestFile, { force: true }) // a page reading the manifest must never see the previous build's
-      const { routes, readers } = await prerender(entry, out, manifestFile)
-      writeManifest(dist, routes, builder.config.base)
+      const { routes, readers, loaded, server } = await prerender(entry, out, manifestFile)
+      writeManifest(dist, routes, builder.config.base, loaded, server)
       // Pages that read the manifest saw none on the first pass: render them again now that it exists.
       if (readers.length) {
         await prerender(entry, out, manifestFile, readers)
-        writeManifest(dist, routes, builder.config.base)
+        writeManifest(dist, routes, builder.config.base, loaded, server)
       }
     },
     resolveId(id) {
@@ -131,6 +139,7 @@ export default function clarusjs(): Plugin {
         `export default createHandler(import.meta.glob('/src/pages/**/*.tscl'), {\n` +
         `  loaderUrl: ${JSON.stringify(loaderUrl)},\n` +
         `  data: import.meta.glob('/src/pages/**/*.load.ts'),\n` +
+        `  modes: ${JSON.stringify(modes)},\n` +
         `})\n`
     },
     transform: {
@@ -163,7 +172,12 @@ export default function clarusjs(): Plugin {
       const outDir = resolve(server.config.root, server.config.build.outDir)
       const base = server.config.base // e.g. '/' or '/docs/'; Vite strips it after this middleware
       server.middlewares.use((req, _res, next) => {
-        const url = decodeURIComponent((req.url ?? '/').split('?')[0]!)
+        let url: string
+        try {
+          url = decodeURIComponent((req.url ?? '/').split('?')[0]!)
+        } catch {
+          return next() // a malformed %-escape names no built page
+        }
         const inBase = url === base.slice(0, -1) ? '/' : url.startsWith(base) ? '/' + url.slice(base.length) : undefined
         if (inBase !== undefined) {
           // A built page wins; anything else (assets, /x.css) falls through to Vite's static files.
@@ -172,6 +186,22 @@ export default function clarusjs(): Plugin {
         }
         next()
       })
+      // Server routes go to the built handler, as they would in production; anything else that isn't a file is a 404.
+      return () => {
+        server.middlewares.use(async (req, res, next) => {
+          try {
+            const entry = resolve(server.config.root, SERVER_OUT, 'index.mjs')
+            if (!existsSync(entry)) return next()
+            const app = (await import(pathToFileURL(entry).href)) as { default: { fetch(r: Request): Promise<Response>; isServerPath(p: string): boolean } }
+            if (!app.default.isServerPath((req.url ?? '/').split('?')[0]!)) return next()
+            const response = await app.default.fetch(toRequest(req))
+            if (response.status === 404) return next()
+            await sendResponse(res, response)
+          } catch (err) {
+            next(err)
+          }
+        })
+      }
     },
     configureServer(server) {
       return () => {
