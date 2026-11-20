@@ -22,7 +22,8 @@
       <nav class="top-nav" aria-label="Main">
         @for (s of sections; track s.key) {<a [href]="s.href" [aria-current]="sectionKey(path) === s.key ? 'true' : false">{{ s.title }}</a>}
         <a href="https://github.com/forinda/clarusjs">GitHub</a>
-        <themeToggle />
+        {{-- Kept across fragment navigations: the same element, with its state. --}}
+        <span class="persist" data-cl-persist="theme"><themeToggle /></span>
       </nav>
     </header>
     @if (sectionKey(path)) {

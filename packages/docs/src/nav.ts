@@ -34,6 +34,7 @@ export const sections: Section[] = [
         { title: 'Shared stores', href: '/guide/stores' },
         { title: 'Components inside islands', href: '/guide/components-in-islands' },
         { title: 'Lazy attach', href: '/guide/lazy-attach' },
+        { title: 'Fragment navigation', href: '/guide/fragment-navigation' },
         { title: 'Client routes', href: '/guide/client-routes' },
       ] },
       { title: 'Build & deploy', items: [

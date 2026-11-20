@@ -402,7 +402,8 @@ test('the generated Netlify function serves only the server routes', async () =>
   const { readFileSync } = await import('node:fs')
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
-  expect(fn).toContain('export const config = {"path":["/playground","/playground/"],"preferStatic":true}')
+  // The page, and its fragment for fragment navigation.
+  expect(fn).toContain('export const config = {"path":["/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -443,4 +444,50 @@ test('client tour without JavaScript shows the shell message', async ({ browser 
   // Playwright's text locators skip <noscript>; innerText is what the visitor sees with scripting off.
   expect(await page.evaluate(() => document.body.innerText)).toContain('This page is rendered in the browser and needs JavaScript.')
   await context.close()
+})
+
+test('fragment navigation: no reloads, title and sidebar follow, the theme toggle is kept, back works', async ({ page }) => {
+  const documents: string[] = []
+  page.on('request', (req) => { if (req.resourceType() === 'document') documents.push(new URL(req.url()).pathname) })
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/guide/holes')
+  const toggle = page.locator('[data-cl-persist="theme"] cl-island')
+  await expect(toggle).toHaveAttribute('data-cl-ready', '')
+  await toggle.locator('button').click() // system → light
+  await page.evaluate(() => { (window as { __kept?: Element | null }).__kept = document.querySelector('[data-cl-persist="theme"] cl-island') })
+
+  await page.locator('.sidebar a[href="/guide/lists"]').click()
+  await expect(page).toHaveURL(/\/guide\/lists$/)
+  await expect(page.locator('h1')).toHaveText('Lists')
+  await expect(page).toHaveTitle('Lists · clarusjs')
+  await expect(page.locator('.sidebar a[aria-current="page"]')).toHaveText('Lists')
+  // The same toggle element, still on "light".
+  expect(await page.evaluate(() => (window as { __kept?: Element | null }).__kept === document.querySelector('[data-cl-persist="theme"] cl-island'))).toBe(true)
+  await expect(toggle.locator('button')).toHaveAttribute('aria-label', /light/)
+
+  // Islands on the new page attach: the package-manager tabs on Getting started.
+  await page.locator('.sidebar a[href="/guide/getting-started"]').click()
+  await expect(page.locator('h1')).toHaveText('Getting started')
+  await expect(page.locator('cl-island[c="pm"]').first()).toHaveAttribute('data-cl-ready', '')
+
+  await page.goBack()
+  await expect(page.locator('h1')).toHaveText('Lists')
+  await page.goForward()
+  await expect(page.locator('h1')).toHaveText('Getting started')
+  expect(documents).toEqual(['/guide/holes']) // one document for the whole visit
+})
+
+test('fragment navigation reaches server routes; client routes and failures load normally', async ({ page }) => {
+  const documents: string[] = []
+  page.on('request', (req) => { if (req.resourceType() === 'document') documents.push(new URL(req.url()).pathname) })
+  await page.goto('/guide/rendering-modes')
+  await page.locator('a[href="/playground"]').first().click()
+  await expect(page.locator('h1')).toHaveText('Server playground')
+  await expect(page.locator('#pill-html')).toHaveText('<span class="pill">guest</span>') // rendered by the server for this request
+  expect(documents).toEqual(['/guide/rendering-modes'])
+  // A client route has no fragment: the browser loads it normally, then the router renders it.
+  await page.goto('/guide/client-routes')
+  await page.locator('a[href="/tour/1"]').click()
+  await expect(page.locator('h1')).toHaveText('A shell arrives')
+  expect(documents).toContain('/tour/1')
 })
