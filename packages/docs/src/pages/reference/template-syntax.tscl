@@ -1,0 +1,25 @@
+@import docs from '../../layouts/docs.tscl'
+
+<docs [title]="'Template syntax'" [path]="'/reference/template-syntax'" [description]="'Every directive and binding in .tscl templates, on one page.'">
+  <h1>Template syntax</h1>
+  <p class="lead">Everything you can write in a <code>.tscl</code> file, with links to the guide.</p>
+  <table>
+    <thead><tr><th>Syntax</th><th>What it does</th><th>Guide</th></tr></thead>
+    <tbody>
+      <tr><td><code verbatim>@input name: Type = default</code></td><td>a typed input</td><td><a href="/guide/inputs">Inputs</a></td></tr>
+      <tr><td><code verbatim>@import name from './x.tscl'</code></td><td>use a component</td><td><a href="/guide/components">Components</a></td></tr>
+      <tr><td><code verbatim>@import { a } from './x.ts'</code></td><td>import data</td><td><a href="/guide/components">Components</a></td></tr>
+      <tr><td><code verbatim>@import type { T } from './x'</code></td><td>import types for inputs</td><td><a href="/guide/inputs">Inputs</a></td></tr>
+      <tr><td><code verbatim>{{ expr }}</code></td><td>print a value, escaped</td><td><a href="/guide/holes">Holes</a></td></tr>
+      <tr><td><code verbatim>[name]="expr"</code>, <code verbatim>name="a {{ b }}"</code></td><td>bind an attribute or a component input</td><td><a href="/guide/attributes">Attributes</a></td></tr>
+      <tr><td><code verbatim>(event)="handler"</code></td><td>handle an event (islands)</td><td><a href="/guide/islands">Islands</a></td></tr>
+      <tr><td><code verbatim>@if (a) { } @else if (b) { } @else { }</code></td><td>conditional branches</td><td><a href="/guide/conditionals">Conditionals</a></td></tr>
+      <tr><td><code verbatim>@for (x of xs; track x.id) { } @empty { }</code></td><td>repeat content</td><td><a href="/guide/lists">Lists</a></td></tr>
+      <tr><td><code verbatim><slot />, <slot name="x">fallback</slot></code></td><td>where wrapped content goes</td><td><a href="/guide/slots">Slots</a></td></tr>
+      <tr><td><code verbatim>@slot('x') { }</code></td><td>fill a named slot</td><td><a href="/guide/slots">Slots</a></td></tr>
+      <tr><td><code verbatim>verbatim</code> attribute</td><td>show content as text</td><td><a href="/guide/verbatim">Verbatim</a></td></tr>
+      <tr><td><code verbatim><script> … </script></code></td><td>make a component interactive</td><td><a href="/guide/state">State</a></td></tr>
+      <tr><td><code verbatim>{{-- comment --}}</code></td><td>a template comment, removed from the output</td><td></td></tr>
+    </tbody>
+  </table>
+</docs>

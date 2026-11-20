@@ -29,7 +29,7 @@ test('built JS has no .ts import specifiers', () => {
 
 test('built compiler compiles a component', async () => {
   const { compile } = await import(`${dist}/compiler/index.js`)
-  const out = compile('<script>let n = state(0)</script>\n<b (click)="n++">{{ n }}</b>', { file: 'c.clarus', target: 'client' })
+  const out = compile('<script>let n = state(0)</script>\n<b (click)="n++">{{ n }}</b>', { file: 'c.tscl', target: 'client' })
   expect(out.code).toContain('export function attach')
 })
 
@@ -52,4 +52,22 @@ test('every path in "files" exists, including README and LICENSE (npm shows the 
   const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))
   expect(pkg.files).toEqual(expect.arrayContaining(['dist', 'LICENSE', 'README.md']))
   for (const f of pkg.files as string[]) expect(existsSync(`${pkgDir}/${f}`), f).toBe(true)
+})
+
+test('the clarusjs command is built, with a shebang', () => {
+  const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))
+  const bin = resolve(pkgDir, pkg.bin.clarusjs)
+  expect(bin.startsWith(dist)).toBe(true)
+  expect(readFileSync(bin, 'utf8').startsWith('#!/usr/bin/env node')).toBe(true)
+})
+
+test('size budget: the published package stays small (tarball 60 KB, unpacked 250 KB)', () => {
+  const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
+  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(60 * 1024)
+  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(250 * 1024)
+})
+
+test('dependencies are exactly acorn (compiler) and commander (CLI): adding one is a deliberate change', () => {
+  const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))
+  expect(Object.keys(pkg.dependencies).sort()).toEqual(['acorn', 'commander'])
 })

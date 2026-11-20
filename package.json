@@ -15,6 +15,7 @@
     "docs:dev": "pnpm --filter @clarusjs/docs dev",
     "docs:build": "pnpm --filter @clarusjs/docs build",
     "docs:test": "pnpm --filter @clarusjs/docs test:e2e",
+    "docs:check": "pnpm --filter @clarusjs/docs check",
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "changeset:version": "changeset version && pnpm install --no-frozen-lockfile",

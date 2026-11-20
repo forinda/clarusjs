@@ -6,16 +6,16 @@ import { ClarusError } from '../../src/compiler/errors.ts'
 import { importCode } from '../helpers.ts'
 
 async function render(source: string, props = {}) {
-  const { render } = await importCode(compile(source, { file: 'x.clarus', target: 'server', clientUrl: '/x' }).code, 'attrs')
+  const { render } = await importCode(compile(source, { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code, 'attrs')
   return render(props) as string
 }
 function compileError(source: string): ClarusError {
-  try { compile(source, { file: 'x.clarus', target: 'server', clientUrl: '/x' }) } catch (e) { return e as ClarusError }
+  try { compile(source, { file: 'x.tscl', target: 'server', clientUrl: '/x' }) } catch (e) { return e as ClarusError }
   throw new Error('expected compile to throw')
 }
 async function mount(source: string, props = {}) {
-  const server = await importCode(compile(source, { file: 'x.clarus', target: 'server', clientUrl: '/x' }).code, 'attrs-s')
-  const client = await importCode(compile(source, { file: 'x.clarus', target: 'client' }).code, 'attrs-c')
+  const server = await importCode(compile(source, { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code, 'attrs-s')
+  const client = await importCode(compile(source, { file: 'x.tscl', target: 'client' }).code, 'attrs-c')
   document.body.innerHTML = server.render(props)
   const island = document.querySelector('cl-island')!
   client.attach(island, props)
@@ -59,8 +59,8 @@ test('an interpolated URL attribute is checked as a whole', async () => {
 })
 
 test('on* attributes are a located build error', () => {
-  expect(compileError('@input f: string\n<b [onclick]="f">x</b>').message).toMatch(/^x\.clarus:2:4 .*use \(click\)/)
-  expect(compileError('@input f: string\n<b onclick="{{ f }}">x</b>').message).toMatch(/^x\.clarus:2:4 .*use \(click\)/)
+  expect(compileError('@input f: string\n<b [onclick]="f">x</b>').message).toMatch(/^x\.tscl:2:4 .*use \(click\)/)
+  expect(compileError('@input f: string\n<b onclick="{{ f }}">x</b>').message).toMatch(/^x\.tscl:2:4 .*use \(click\)/)
 })
 
 test('non-reactive attributes in a stateful component get no marker', async () => {
@@ -133,8 +133,8 @@ test('srcset checks every candidate', async () => {
 })
 
 test('binding srcdoc is a located build error', () => {
-  expect(compileError('@input h: string\n<iframe [srcdoc]="h"></iframe>').message).toMatch(/^x\.clarus:2:9 .*srcdoc/)
-  expect(compileError('@input h: string\n<iframe srcdoc="{{ h }}"></iframe>').message).toMatch(/^x\.clarus:2:9 .*srcdoc/)
+  expect(compileError('@input h: string\n<iframe [srcdoc]="h"></iframe>').message).toMatch(/^x\.tscl:2:9 .*srcdoc/)
+  expect(compileError('@input h: string\n<iframe srcdoc="{{ h }}"></iframe>').message).toMatch(/^x\.tscl:2:9 .*srcdoc/)
 })
 
 test('list-valued URL attributes check every entry (values by ";", ping by whitespace)', async () => {
