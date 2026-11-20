@@ -157,7 +157,8 @@ Server output (readable, roughly what you'll see in `dist/`):
 ```js
 import { escape as __cl_escape, island as __cl_island } from 'clarusjs/runtime/server'
 
-export function render(__cl_props = {}) {
+export function render(__cl_props = {}, __cl_slot) {
+  if (__cl_slot !== undefined) throw new Error("[clarusjs] <counter> does not accept children yet")
   const { start = 0 } = __cl_props
   let count = (start)
   const double = (() => count * 2)()
@@ -412,7 +413,7 @@ sequenceDiagram
   V->>CB: entries = stateful components + loader + router (if client routes)
   CB-->>V: .vite/manifest.json (chunks, css, imports)
   V->>SB: server entry, manifest inlined
-  SB-->>V: dist/server/index.js  (export default { fetch })
+  SB-->>V: dist/server/index.mjs  (export default { fetch, routes })
   V->>P: for each static route: fetch(new Request(url))
   P-->>V: dist/client/**/index.html
   V->>V: write dist/clarusjs-manifest.json
@@ -439,7 +440,7 @@ Plain JSON, one entry per route. This is what `clarusjs explain` reads.
 The server build exports one standard handler:
 
 ```ts
-// dist/server/index.js
+// dist/server/index.mjs
 export default { fetch(request: Request): Promise<Response> }
 ```
 
@@ -450,7 +451,7 @@ mount it:
 ```ts
 // Node, no framework
 import { serve } from 'srvx'
-import app from './dist/server/index.js'
+import app from './dist/server/index.mjs'
 serve({ fetch: app.fetch, port: 3000 })
 ```
 

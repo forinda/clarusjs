@@ -1,0 +1,6 @@
+@import counter from '../components/counter.clarus'
+@import greeting from '../components/greeting.clarus'
+
+<h1>Home</h1>
+<greeting [name]="'site'" />
+<counter [start]="1" />

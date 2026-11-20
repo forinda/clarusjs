@@ -1,0 +1,7 @@
+# The docs site (packages/docs) is a static site built with clarusjs.
+[build]
+  command = "pnpm install --frozen-lockfile && pnpm --filter @clarusjs/docs build"
+  publish = "packages/docs/dist/client"
+
+[build.environment]
+  NODE_VERSION = "24"

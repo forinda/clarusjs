@@ -1,0 +1,31 @@
+{{-- The whole page: every docs page wraps its content in <docs [title]="…">. --}}
+@input title: string
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="clarusjs: clear, compiled views. Server HTML with JavaScript only where it is interactive.">
+    <title>{{ title }} · clarusjs</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/docs.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/"><img src="/logo.svg" alt="" width="28" height="28"><span>clarus<span class="js">.js</span></span></a>
+      <nav aria-label="Guide">
+        <a href="/guide/getting-started">Getting started</a>
+        <a href="/guide/components">Components</a>
+        <a href="/guide/islands">Islands</a>
+        <a href="/guide/build">Build</a>
+        <a href="https://github.com/forinda/clarusjs">GitHub</a>
+      </nav>
+    </header>
+    <main class="content">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <p>MIT licensed. This site is built with clarusjs: every page is static HTML, and only the counter on the home page ships JavaScript.</p>
+    </footer>
+  </body>
+</html>

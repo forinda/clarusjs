@@ -65,6 +65,11 @@ pnpm dev        # serves examples/counter
 - **Compiled output**: `GET /src/components/counter.clarus?import` in the dev server shows the client module.
   The server module has the same shape with `render()`; see `packages/clarusjs/test/compiler/emit-server.test.ts`.
 
+## Docs
+
+The docs site lives in [`packages/docs`](packages/docs) and is built with clarusjs itself. Run it with `pnpm docs:dev`.
+It doubles as the end-to-end test of the framework: `pnpm docs:test` builds it and checks it in a real browser.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and changesets, and [AGENTS.md](AGENTS.md) for the layout and

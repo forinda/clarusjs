@@ -6,7 +6,8 @@ import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, t
 export type IRNode =
   | { kind: 'static'; html: string }
   | { kind: 'hole'; expr: string; reactive: boolean; index: number } // index = -1 when not reactive
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[] }
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[] }
+  | { kind: 'slot' } // where a stateless component renders the content it wraps
 export type IREvent = { index: number; type: string; handler: string }
 export type ComponentIR = {
   file: string
@@ -31,14 +32,16 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   const scriptScope = parsed.script ? new Set([...signals.keys(), ...scriptNames(parsed.script.code)]) : new Set<string>()
   const components = new Set(parsed.imports.map((i) => i.name))
   const nodes: IRNode[] = []
+  let out = nodes // where lowering writes; switched while lowering a component's children
+  let slotCount = 0
   const events: IREvent[] = []
   let holeCount = 0
   let eventElementCount = 0
 
   const emitStatic = (html: string) => {
-    const last = nodes[nodes.length - 1]
+    const last = out[out.length - 1]
     if (last?.kind === 'static') last.html += html
-    else nodes.push({ kind: 'static', html })
+    else out.push({ kind: 'static', html })
   }
 
   for (const input of parsed.inputs) if (input.default !== undefined) checkExpr(input.default, file, source, input.start)
@@ -52,18 +55,31 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       checkExpr(node.expr, file, source, node.start)
       const reactive = referencesNames(node.expr, scriptScope)
       if (reactive && rawText) fail(`reactive {{ }} inside <${rawText}> is not supported yet (it cannot hold update markers)`, node.start)
-      nodes.push({ kind: 'hole', expr: node.expr, reactive, index: reactive ? holeCount++ : -1 })
+      out.push({ kind: 'hole', expr: node.expr, reactive, index: reactive ? holeCount++ : -1 })
       return
     }
     if (components.has(node.tag)) {
       if (stateful) fail('components inside a stateful component are not supported yet', node.start)
-      if (node.children.length) fail('slots are not supported yet', node.start)
       const props: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
         if (a.kind === 'prop') { checkExpr(a.expr, file, source, a.start); props.push({ name: a.name, expr: a.expr }) }
         else fail(`component <${node.tag}> only takes [prop] bindings`, a.start)
       }
-      nodes.push({ kind: 'component', name: node.tag, props })
+      // The wrapped content is rendered here, in this component's scope, and handed to the child as its slot.
+      const children: IRNode[] = []
+      const parent = out
+      out = children
+      node.children.forEach((child) => visit(child, rawText))
+      out = parent
+      out.push({ kind: 'component', name: node.tag, props, children })
+      return
+    }
+    if (node.tag === 'slot') {
+      if (stateful) fail('<slot /> is only supported in components without <script>', node.start)
+      if (node.attrs.some((a) => a.name === 'name')) fail('named slots are not supported yet', node.start)
+      if (node.children.length) fail('<slot /> takes no children', node.start)
+      if (slotCount++) fail('only one <slot /> per component', node.start)
+      out.push({ kind: 'slot' })
       return
     }
     let open = `<${node.tag}`
