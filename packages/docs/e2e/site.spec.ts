@@ -112,7 +112,7 @@ test('every sidebar link lands on a page, and the edit link points at its source
     expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
   }
   await page.goto('/guide/lists')
-  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.tscl$/)
+  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.md$/) // a Markdown page
   await expect(page.locator('.crumb')).toHaveText('Guide › Templates')
 })
 
@@ -587,6 +587,8 @@ test('highlighted code: colours follow the theme, code groups switch without Jav
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/guide/markdown')
+  // The theme toggle applies the saved or system theme when it attaches: let it, then switch to dark.
+  await expect(page.locator('[data-cl-persist="theme"] cl-island')).toHaveAttribute('data-cl-ready', '')
   // A token whose light and dark colours differ (comments are the same grey in both GitHub themes).
   const colour = () => page.evaluate(() => {
     const span = [...document.querySelectorAll<HTMLElement>('.code-block .shiki span[style]')]

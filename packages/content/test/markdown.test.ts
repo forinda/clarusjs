@@ -19,7 +19,7 @@ test('frontmatter title and description go to the layout, with the route as path
 test('without a title in frontmatter, the first heading is the title; headings get ids and anchor links', () => {
   const out = page('# Getting started\n\n## Install it\n')
   expect(out).toContain('[title]="\'Getting started\'"')
-  expect(out).toContain('<h1 id="getting-started" tabindex="-1">Getting started <a class="header-anchor" href="#getting-started" aria-label="Permalink to Getting started">#</a></h1>')
+  expect(out).toContain('<h1 id="getting-started" tabindex="-1">Getting started</h1>') // the title has no anchor link
   expect(out).toContain('<h2 id="install-it" tabindex="-1">Install it <a class="header-anchor" href="#install-it" aria-label="Permalink to Install it">#</a></h2>')
 })
 
