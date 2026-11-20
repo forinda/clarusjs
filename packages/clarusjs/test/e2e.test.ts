@@ -40,7 +40,7 @@ test('island chunk is the client attach module, with no server code', async () =
 })
 
 test('stateless component ships no code to the client', async () => {
-  const res = await fetch(`${base}/src/components/greeting.clarus?import`)
+  const res = await fetch(`${base}/src/components/greeting.tscl?import`)
   expect(res.status).toBe(200)
   expect(res.headers.get('content-type')).toContain('javascript')
   const js = await res.text()

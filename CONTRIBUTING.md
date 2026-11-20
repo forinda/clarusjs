@@ -5,7 +5,7 @@ small reproduction, fixes with tests, and feedback on the design in [docs/archit
 
 ## Before you start
 
-- **Bugs:** open an issue with the `.clarus` file (or page) that shows the problem, what you expected, and what happened.
+- **Bugs:** open an issue with the `.tscl` file (or page) that shows the problem, what you expected, and what happened.
 - **Features and design changes:** open an issue first. Some things are fixed on purpose (the HTML markers, the rule
   that server code never reaches the client), and it's better to talk before you write code.
 - **Security problems:** don't open an issue; follow [SECURITY.md](SECURITY.md).

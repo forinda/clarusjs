@@ -5,8 +5,8 @@ import { describeRoute } from '../../src/vite/manifest.ts'
 const chunks = {
   'src/runtime/loader.ts': { file: 'assets/cl-loader-a.js' },
   '_dom-b.js': { file: 'assets/dom-b.js' },
-  'src/components/counter.clarus': { file: 'assets/counter-c.js', imports: ['_dom-b.js'] },
-  'src/components/copy.clarus': { file: 'assets/copy-d.js', imports: ['_dom-b.js'] },
+  'src/components/counter.tscl': { file: 'assets/counter-c.js', imports: ['_dom-b.js'] },
+  'src/components/copy.tscl': { file: 'assets/copy-d.js', imports: ['_dom-b.js'] },
 }
 const sizes: Record<string, number> = { 'assets/cl-loader-a.js': 1000, 'assets/dom-b.js': 2000, 'assets/counter-c.js': 300, 'assets/copy-d.js': 200 }
 const opts = { base: '/', chunks, size: (file: string) => sizes[file]! }

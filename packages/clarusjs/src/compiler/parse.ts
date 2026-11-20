@@ -1,4 +1,4 @@
-// .clarus source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
+// .tscl source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
 import { ClarusError } from './errors.ts'
 
 export type Attr =
@@ -55,8 +55,8 @@ export function parse(source: string, file: string): ParsedFile {
     } else if ((m = DATA_IMPORT_RE.exec(line))) {
       out.dataImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + (m as RegExpExecArray).indices![1]![0] })
     } else if ((m = line.match(IMPORT_RE))) {
-      // A default import of a .clarus file is a component; of anything else, data.
-      if (m[3]!.endsWith('.clarus')) out.imports.push({ name: m[1]!, from: m[3]!, start: i })
+      // A default import of a .tscl file is a component; of anything else, data.
+      if (m[3]!.endsWith('.tscl')) out.imports.push({ name: m[1]!, from: m[3]!, start: i })
       else out.dataImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + line.indexOf(m[1]!, 7) })
     }
     else fail(`unknown or malformed directive "${line.split(/\s/)[0]}"`, i)

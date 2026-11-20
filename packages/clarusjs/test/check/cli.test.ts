@@ -1,4 +1,4 @@
-// #21: `clarusjs check` type-checks a project's .clarus files and reports file.clarus:line:col.
+// #21: `clarusjs check` type-checks a project's .tscl files and reports file.tscl:line:col.
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
@@ -17,8 +17,8 @@ const typescript = resolve(import.meta.dirname, '../../node_modules/typescript')
 
 test('a clean project passes', () => {
   const root = project({
-    'src/components/badge.clarus': '@input label: string\n<b>{{ label }}</b>\n',
-    'src/pages/index.clarus': `@import badge from '../components/badge.clarus'\n<badge [label]="'hi'" />\n`,
+    'src/components/badge.tscl': '@input label: string\n<b>{{ label }}</b>\n',
+    'src/pages/index.tscl': `@import badge from '../components/badge.tscl'\n<badge [label]="'hi'" />\n`,
   })
   const result = check({ root, typescript })
   expect(result.diagnostics).toEqual([])
@@ -28,28 +28,28 @@ test('a clean project passes', () => {
 test('errors are reported per template position, with a text and a JSON form', () => {
   const root = project({
     'src/domain/user.ts': 'export interface User { name: string }\n',
-    'src/pages/index.clarus': `@import type { User } from '../domain/user'\n@input user: User\n<h1>{{ user.nmae }}</h1>\n`,
+    'src/pages/index.tscl': `@import type { User } from '../domain/user'\n@input user: User\n<h1>{{ user.nmae }}</h1>\n`,
   })
   const result = check({ root, typescript })
   expect(result.exitCode).toBe(1)
   expect(result.diagnostics).toEqual([
-    { file: 'src/pages/index.clarus', line: 3, column: 13, code: 'TS2339', message: expect.stringContaining("Property 'nmae' does not exist") },
+    { file: 'src/pages/index.tscl', line: 3, column: 13, code: 'TS2339', message: expect.stringContaining("Property 'nmae' does not exist") },
   ])
-  expect(result.text).toMatch(/^src\/pages\/index\.clarus:3:13 error TS2339: Property 'nmae' does not exist/m)
+  expect(result.text).toMatch(/^src\/pages\/index\.tscl:3:13 error TS2339: Property 'nmae' does not exist/m)
   expect(JSON.parse(result.json)).toEqual(result.diagnostics)
 })
 
 test('template syntax errors are reported the same way', () => {
-  const root = project({ 'src/pages/index.clarus': '<p>a</p>\n<div>\n  <span>\n' })
+  const root = project({ 'src/pages/index.tscl': '<p>a</p>\n<div>\n  <span>\n' })
   const result = check({ root, typescript })
   expect(result.exitCode).toBe(1)
-  expect(result.diagnostics).toEqual([expect.objectContaining({ file: 'src/pages/index.clarus', line: 3, column: 3, code: 'clarus', message: expect.stringContaining('unclosed <span>') })])
+  expect(result.diagnostics).toEqual([expect.objectContaining({ file: 'src/pages/index.tscl', line: 3, column: 3, code: 'clarus', message: expect.stringContaining('unclosed <span>') })])
 })
 
 test('errors in plain .ts files of the project are reported too', () => {
   const root = project({
     'src/stores/n.ts': 'export const n: number = "x"\n',
-    'src/pages/index.clarus': '<p>ok</p>\n',
+    'src/pages/index.tscl': '<p>ok</p>\n',
   })
   const result = check({ root, typescript })
   expect(result.diagnostics).toEqual([expect.objectContaining({ file: 'src/stores/n.ts', line: 1, column: 14, code: 'TS2322' })])
@@ -57,7 +57,7 @@ test('errors in plain .ts files of the project are reported too', () => {
 
 test('untyped parameters in island scripts are fine (scripts are JavaScript)', () => {
   const root = project({
-    'src/components/c.clarus': `<script>\n  let xs = state([1])\n  function remove(x) { xs = xs.filter((i) => i !== x) }\n</script>\n<b (click)="remove(1)">{{ xs.length }}</b>\n`,
+    'src/components/c.tscl': `<script>\n  let xs = state([1])\n  function remove(x) { xs = xs.filter((i) => i !== x) }\n</script>\n<b (click)="remove(1)">{{ xs.length }}</b>\n`,
   })
   expect(check({ root, typescript }).diagnostics).toEqual([])
 })
@@ -65,27 +65,27 @@ test('untyped parameters in island scripts are fine (scripts are JavaScript)', (
 test('a project tsconfig is extended', () => {
   const root = project({
     'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true, noUncheckedIndexedAccess: true } }),
-    'src/pages/index.clarus': '@input xs: string[]\n<p>{{ xs[0].length }}</p>\n',
+    'src/pages/index.tscl': '@input xs: string[]\n<p>{{ xs[0].length }}</p>\n',
   })
-  expect(check({ root, typescript }).diagnostics).toEqual([expect.objectContaining({ file: 'src/pages/index.clarus', line: 2, column: 7 })])
+  expect(check({ root, typescript }).diagnostics).toEqual([expect.objectContaining({ file: 'src/pages/index.tscl', line: 2, column: 7 })])
 })
 
 test('the command line runs check, with --json and an exit code', async () => {
   const { spawnSync } = await import('node:child_process')
-  const root = project({ 'src/pages/index.clarus': '@input n: number\n<p>{{ n.foo }}</p>\n' })
+  const root = project({ 'src/pages/index.tscl': '@input n: number\n<p>{{ n.foo }}</p>\n' })
   const cli = resolve(import.meta.dirname, '../../src/cli/index.ts')
   const run = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, 'check', root, '--json'], { encoding: 'utf8' })
   expect(run.status).toBe(1)
-  expect(JSON.parse(run.stdout)).toEqual([expect.objectContaining({ file: 'src/pages/index.clarus', line: 2, column: 9, code: 'TS2339' })])
+  expect(JSON.parse(run.stdout)).toEqual([expect.objectContaining({ file: 'src/pages/index.tscl', line: 2, column: 9, code: 'TS2339' })])
   const help = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, '--help'], { encoding: 'utf8' })
   expect(help.stdout).toMatch(/check \[options\] \[dir\]/)
 })
 
 test('#23: the type-checking guide shows the real output for its example', () => {
-  const guide = readFileSync(resolve(import.meta.dirname, '../../../docs/src/pages/guide/type-checking.clarus'), 'utf8')
-  const sample = guide.match(/\{\{-- src\/pages\/index\.clarus --\}\}\n([\s\S]*?)<\/code>/)![1]!
+  const guide = readFileSync(resolve(import.meta.dirname, '../../../docs/src/pages/guide/type-checking.tscl'), 'utf8')
+  const sample = guide.match(/\{\{-- src\/pages\/index\.tscl --\}\}\n([\s\S]*?)<\/code>/)![1]!
   const shown = guide.match(/\$ pnpm check\n([\s\S]*?)<\/code>/)![1]!
-  const root = project({ 'src/nav.ts': `export const nav = [{ title: 'Intro', href: '/intro' }]\n`, 'src/pages/index.clarus': `${sample}\n` })
+  const root = project({ 'src/nav.ts': `export const nav = [{ title: 'Intro', href: '/intro' }]\n`, 'src/pages/index.tscl': `${sample}\n` })
   const result = check({ root, typescript })
   expect(shown).toBe(`${result.text}\n\n${result.diagnostics.length} error`)
 })

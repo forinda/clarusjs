@@ -1,5 +1,5 @@
 // The docs site's one page list. The header, sidebar, breadcrumb, previous/next links and edit links are all
-// generated from it (src/layouts/docs.clarus), so they can't drift apart. Add a page here to put it in the docs.
+// generated from it (src/layouts/docs.tscl), so they can't drift apart. Add a page here to put it in the docs.
 
 export type Item = { title: string; href: string }
 export type Group = { title: string; items: Item[] }
@@ -36,6 +36,7 @@ export const sections: Section[] = [
       { title: 'Build & deploy', items: [
         { title: 'Static build', href: '/guide/build' },
         { title: 'Deploying', href: '/guide/deploy' },
+        { title: 'This site, explained', href: '/guide/explained' },
       ] },
       { title: 'Tooling', items: [
         { title: 'Type checking', href: '/guide/type-checking' },
@@ -91,5 +92,5 @@ export function pager(path: string): { prev: Item; next: Item } {
 /** "Edit this page" link for a route. */
 export function sourceOf(path: string): string {
   const file = path === '/' ? 'index' : path.replace(/^\//, '')
-  return `https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/${file}.clarus`
+  return `https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/${file}.tscl`
 }

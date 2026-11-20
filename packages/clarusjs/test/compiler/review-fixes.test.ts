@@ -7,14 +7,14 @@ import { lower } from '../../src/compiler/ir.ts'
 import { parse } from '../../src/compiler/parse.ts'
 import { importCode } from '../helpers.ts'
 
-const lowerSource = (source: string, file = 'x.clarus') => lower(parse(source, file), file, source)
+const lowerSource = (source: string, file = 'x.tscl') => lower(parse(source, file), file, source)
 function compileError(source: string): ClarusError {
-  try { compile(source, { file: 'x.clarus', target: 'client' }) } catch (e) { return e as ClarusError }
+  try { compile(source, { file: 'x.tscl', target: 'client' }) } catch (e) { return e as ClarusError }
   throw new Error('expected compile to throw')
 }
 async function mount(source: string, props = {}) {
-  const server = await importCode(compile(source, { file: 'x.clarus', target: 'server', clientUrl: '/x' }).code, 'fix-s')
-  const client = await importCode(compile(source, { file: 'x.clarus', target: 'client' }).code, 'fix-c')
+  const server = await importCode(compile(source, { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code, 'fix-s')
+  const client = await importCode(compile(source, { file: 'x.tscl', target: 'client' }).code, 'fix-c')
   document.body.innerHTML = server.render(props)
   const island = document.querySelector('cl-island')!
   client.attach(island, props)
@@ -24,7 +24,7 @@ async function mount(source: string, props = {}) {
 test('a hole that is not a single expression is a located build error', () => {
   const e = compileError('<p>a</p>\n<p>{{ a) + (b }}</p>')
   expect(e).toBeInstanceOf(ClarusError)
-  expect(e.message.startsWith('x.clarus:2:4 ')).toBe(true)
+  expect(e.message.startsWith('x.tscl:2:4 ')).toBe(true)
 })
 
 test('an event handler may contain several statements, all rewritten', async () => {
@@ -34,7 +34,7 @@ test('an event handler may contain several statements, all rewritten', async () 
 })
 
 test('an event handler with a syntax error is a located build error', () => {
-  expect(compileError('<script>let n = state(0)</script>\n<b (click)="n +">x</b>').message).toMatch(/^x\.clarus:2:4 /)
+  expect(compileError('<script>let n = state(0)</script>\n<b (click)="n +">x</b>').message).toMatch(/^x\.tscl:2:4 /)
 })
 
 test('a hole calling a script function that reads state is reactive', async () => {
@@ -54,7 +54,7 @@ test('script names do not collide with generated names', async () => {
 })
 
 test('export inside <script> is a located build error', () => {
-  expect(compileError("<script>\nexport const x = 1\n</script>\n<p>x</p>").message).toMatch(/^x\.clarus:2:1 .*cannot export/)
+  expect(compileError("<script>\nexport const x = 1\n</script>\n<p>x</p>").message).toMatch(/^x\.tscl:2:1 .*cannot export/)
 })
 
 test('HTML comments are static text, not markup or holes', () => {
@@ -65,10 +65,10 @@ test('HTML comments are static text, not markup or holes', () => {
 test('an island script reading server-only globals is a located build error (its state is sent to the browser)', () => {
   for (const global of ['process.env.API_KEY', 'Deno.env.get("K")', 'Bun.env.K', 'require("fs")']) {
     const src = `<script>\n  let key = state(${global})\n</script>\n<b (click)="key = ''">{{ key }}</b>`
-    expect(compileError(src).message, global).toMatch(/^x\.clarus:2:19 .*server-only.*sent to the browser/)
+    expect(compileError(src).message, global).toMatch(/^x\.tscl:2:19 .*server-only.*sent to the browser/)
   }
 })
 
 test('a local named like a server global is fine', () => {
-  expect(() => compile('<script>\n  const process = (x) => x\n  let n = state(process(1))\n</script>\n<b (click)="n++">{{ n }}</b>', { file: 'x.clarus', target: 'client' })).not.toThrow()
+  expect(() => compile('<script>\n  const process = (x) => x\n  let n = state(process(1))\n</script>\n<b (click)="n++">{{ n }}</b>', { file: 'x.tscl', target: 'client' })).not.toThrow()
 })

@@ -7,20 +7,20 @@ import { ClarusError } from '../../src/compiler/errors.ts'
 import { attachAll } from '../../src/runtime/loader.ts'
 import { importCode } from '../helpers.ts'
 
-const counterSrc = readFileSync(`${import.meta.dirname}/../fixtures/counter.clarus`, 'utf8')
+const counterSrc = readFileSync(`${import.meta.dirname}/../fixtures/counter.tscl`, 'utf8')
 const formSrc = `<script>let sent = state(0)</script>
 <form (submit)="$event.preventDefault(); sent++"><input name="q"><button type="submit">go</button></form><p class="sent">{{ sent }}</p>`
 
 async function page(pageSrc: string) {
   const deps = {
-    './counter.clarus': compile(counterSrc, { file: 'counter.clarus', target: 'server', clientUrl: '/counter.js' }).code,
-    './form.clarus': compile(formSrc, { file: 'form.clarus', target: 'server', clientUrl: '/form.js' }).code,
+    './counter.tscl': compile(counterSrc, { file: 'counter.tscl', target: 'server', clientUrl: '/counter.js' }).code,
+    './form.tscl': compile(formSrc, { file: 'form.tscl', target: 'server', clientUrl: '/form.js' }).code,
   }
-  const { render } = await importCode(compile(pageSrc, { file: 'page.clarus', target: 'server' }).code, 'lazy-page', deps)
+  const { render } = await importCode(compile(pageSrc, { file: 'page.tscl', target: 'server' }).code, 'lazy-page', deps)
   document.body.innerHTML = render()
   return {
-    counter: await importCode(compile(counterSrc, { file: 'counter.clarus', target: 'client' }).code, 'lazy-counter'),
-    form: await importCode(compile(formSrc, { file: 'form.clarus', target: 'client' }).code, 'lazy-form'),
+    counter: await importCode(compile(counterSrc, { file: 'counter.tscl', target: 'client' }).code, 'lazy-counter'),
+    form: await importCode(compile(formSrc, { file: 'form.tscl', target: 'client' }).code, 'lazy-form'),
   }
 }
 const flush = () => new Promise((r) => setTimeout(r, 0))
@@ -30,7 +30,7 @@ beforeEach(() => { document.body.innerHTML = '' })
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
 test('attach="…" is written to the island as a; load is the default and writes nothing', async () => {
-  await page(`@import counter from './counter.clarus'\n<counter attach="visible" /><counter />`)
+  await page(`@import counter from './counter.tscl'\n<counter attach="visible" /><counter />`)
   const [lazy, eager] = document.querySelectorAll('cl-island')
   expect(lazy!.getAttribute('a')).toBe('visible')
   expect(eager!.hasAttribute('a')).toBe(false)
@@ -38,18 +38,18 @@ test('attach="…" is written to the island as a; load is the default and writes
 
 test('an invalid attach value is a located build error', () => {
   let err: ClarusError | undefined
-  try { compile(`@import counter from './counter.clarus'\n<counter attach="soon" />`, { file: 'x.clarus', target: 'server' }) } catch (e) { err = e as ClarusError }
-  expect(err?.message).toMatch(/^x\.clarus:2:10 .*attach must be one of load, idle, visible, interaction/)
+  try { compile(`@import counter from './counter.tscl'\n<counter attach="soon" />`, { file: 'x.tscl', target: 'server' }) } catch (e) { err = e as ClarusError }
+  expect(err?.message).toMatch(/^x\.tscl:2:10 .*attach must be one of load, idle, visible, interaction/)
 })
 
 test('attach on a component without a script fails when rendering', async () => {
-  const plain = compile('<p>static</p>', { file: 'plain.clarus', target: 'server' }).code
-  const { render } = await importCode(compile(`@import plain from './plain.clarus'\n<plain attach="idle" />`, { file: 'page.clarus', target: 'server' }).code, 'lazy-plain', { './plain.clarus': plain })
+  const plain = compile('<p>static</p>', { file: 'plain.tscl', target: 'server' }).code
+  const { render } = await importCode(compile(`@import plain from './plain.tscl'\n<plain attach="idle" />`, { file: 'page.tscl', target: 'server' }).code, 'lazy-plain', { './plain.tscl': plain })
   expect(() => render()).toThrow(/<plain> has no <script>, so attach="idle" does nothing/)
 })
 
 test('interaction: nothing loads until the island is used, then the first click is replayed once', async () => {
-  const mods = await page(`@import counter from './counter.clarus'\n<counter attach="interaction" />`)
+  const mods = await page(`@import counter from './counter.tscl'\n<counter attach="interaction" />`)
   const load = vi.fn(async () => mods.counter)
   await attachAll(document, load)
   expect(load).not.toHaveBeenCalled()
@@ -60,7 +60,7 @@ test('interaction: nothing loads until the island is used, then the first click 
 })
 
 test('a click while the chunk is still loading is replayed after attach (load mode)', async () => {
-  const mods = await page(`@import counter from './counter.clarus'\n<counter />`)
+  const mods = await page(`@import counter from './counter.tscl'\n<counter />`)
   let release!: () => void
   const pending = attachAll(document, () => new Promise((r) => { release = () => r(mods.counter) }))
   button().click()
@@ -72,7 +72,7 @@ test('a click while the chunk is still loading is replayed after attach (load mo
 })
 
 test('a form submitted before attach does not navigate, and its submit handler runs once after attach', async () => {
-  const mods = await page(`@import form from './form.clarus'\n<form attach="interaction" />`)
+  const mods = await page(`@import form from './form.tscl'\n<form attach="interaction" />`)
   await attachAll(document, async () => mods.form)
   const formEl = document.querySelector('form')!
   const submit = new Event('submit', { bubbles: true, cancelable: true })
@@ -85,7 +85,7 @@ test('a form submitted before attach does not navigate, and its submit handler r
 test('idle: attaches once the browser is idle', async () => {
   let idle!: () => void
   vi.stubGlobal('requestIdleCallback', (cb: () => void) => { idle = cb; return 1 })
-  const mods = await page(`@import counter from './counter.clarus'\n<counter attach="idle" />`)
+  const mods = await page(`@import counter from './counter.tscl'\n<counter attach="idle" />`)
   const load = vi.fn(async () => mods.counter)
   void attachAll(document, load)
   await flush()
@@ -102,7 +102,7 @@ test('visible: attaches when the island scrolls into view', async () => {
     observe() {}
     disconnect() {}
   })
-  const mods = await page(`@import counter from './counter.clarus'\n<counter attach="visible" />`)
+  const mods = await page(`@import counter from './counter.tscl'\n<counter attach="visible" />`)
   const load = vi.fn(async () => mods.counter)
   void attachAll(document, load)
   await flush()
