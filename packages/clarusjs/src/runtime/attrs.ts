@@ -1,10 +1,13 @@
 // Attribute values, shared by server rendering and browser updates so both apply the same rules.
 
-// Attributes whose value is a URL (or, for SVG animation, may set one).
+// Attributes whose value is a URL.
 const URL_ATTRS = new Set([
   'href', 'src', 'action', 'formaction', 'poster', 'cite', 'background', 'xlink:href',
-  'data', 'codebase', 'ping', 'manifest', 'longdesc', 'to', 'from', 'values', 'by',
+  'data', 'codebase', 'ping', 'manifest', 'longdesc',
 ])
+// SVG animation values can set an href, but only on animation elements; elsewhere these are ordinary data.
+const ANIMATION_ATTRS = new Set(['to', 'from', 'values', 'by'])
+const ANIMATION_ELEMENTS = new Set(['animate', 'set', 'animatemotion', 'animatetransform'])
 // Attributes that load an image, where a raster data: URL is fine.
 const IMAGE_ATTRS = new Set(['src', 'srcset', 'poster'])
 const SAFE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel'])
@@ -26,16 +29,24 @@ function safeUrl(url: string, image: boolean): boolean {
 /**
  * What an attribute should become: `null` removes it, `true` makes it a bare boolean attribute, a string is its value.
  */
-export function attrValue(name: string, value: unknown): string | true | null {
+export function attrValue(name: string, value: unknown, tag?: string): string | true | null {
   if (value === false || value == null) return null
   if (value === true) return true
   const s = String(value)
   const n = name.toLowerCase()
+  // List-valued URL attributes: every entry must be safe, not just the first.
   if (n === 'srcset') {
-    // "url 1x, url 2x": every candidate's URL must be safe.
+    // "url 1x, url 2x"
     const ok = s.split(',').every((candidate) => safeUrl(candidate.trim().split(/\s+/)[0] ?? '', true))
     return ok ? s : UNSAFE_URL
   }
+  if (ANIMATION_ATTRS.has(n)) {
+    // The compiler passes the tag for these; without one, check them to stay on the safe side.
+    if (tag !== undefined && !ANIMATION_ELEMENTS.has(tag.toLowerCase())) return s
+    const entries = n === 'values' ? s.split(';') : [s]
+    return entries.every((entry) => safeUrl(entry.trim(), false)) ? s : UNSAFE_URL
+  }
+  if (n === 'ping') return s.split(/\s+/).filter(Boolean).every((url) => safeUrl(url, false)) ? s : UNSAFE_URL
   if (URL_ATTRS.has(n) && !safeUrl(s, IMAGE_ATTRS.has(n))) return UNSAFE_URL
   return s
 }

@@ -1,6 +1,6 @@
 // IR → client module: `attach(root, props)`. Runs in the browser, only for stateful components.
 import type { ComponentIR, IRNode } from './ir.ts'
-import { attrValueExpr, htmlExpr, walk, whichExpr, type Rewriter } from './html-expr.ts'
+import { attrValueExpr, htmlExpr, tagArg, walk, whichExpr, type Rewriter } from './html-expr.ts'
 import { rewriteClient, rewriteClientExpr, wrapExpr, type Signals } from './script.ts'
 import { indentScript, inputsLine } from './shared.ts'
 
@@ -57,7 +57,7 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
   if (holes.length) lines.push(`const __cl_h = __cl_holes(${ctx})`)
   for (const h of [...holes].sort((a, b) => a.index - b.index)) lines.push(`__cl_text(__cl_h[${h.index}], () => ${wrapExpr(rw.expr(h.expr))})`)
   for (const a of nodes) {
-    if (a.kind === 'attr' && a.reactive) lines.push(`__cl_attr(${ctx}, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, rw.expr)})`)
+    if (a.kind === 'attr' && a.reactive) lines.push(`__cl_attr(${ctx}, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, rw.expr)}${tagArg(a)})`)
   }
   for (const e of ir.events.filter((ev) => ev.scope === scope)) {
     const body = rewriteClient(e.handler, signals).trim()

@@ -10,8 +10,8 @@ export function escape(value: unknown): string {
 }
 
 /** ` name="value"`, ` name` (true) or '' (false/null/undefined), escaped and URL-checked. */
-export function attrHtml(name: string, value: unknown): string {
-  const v = attrValue(name, value)
+export function attrHtml(name: string, value: unknown, tag?: string): string {
+  const v = attrValue(name, value, tag)
   return v === null ? '' : v === true ? ` ${name}` : ` ${name}="${escape(v)}"`
 }
 

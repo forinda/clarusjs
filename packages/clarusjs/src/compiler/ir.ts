@@ -9,7 +9,7 @@ export type IRNode =
   | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[] }
   | { kind: 'slot' } // where a stateless component renders the content it wraps
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
-  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number }
+  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
   | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
   // @for / @empty. block = -1 outside islands; inside an island, the list's marker index. `item` and `$index` are in
@@ -152,7 +152,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
         for (const e of exprs) checkExpr(e.expr, file, source, e.start)
         const reactive = stateful && exprs.some((e) => referencesNames(e.expr, scriptScope) || referencesNames(e.expr, loopNames))
         const value = a.kind === 'prop' ? { expr: a.expr } : { parts: a.parts.map((p) => (typeof p === 'string' ? p : { expr: p.expr })) }
-        const node_ = { kind: 'attr' as const, name: a.name, value, reactive, index: -1 }
+        const node_ = { kind: 'attr' as const, name: a.name, value, reactive, index: -1, tag: node.tag }
         if (reactive) dynamic.push(node_)
         out.push(node_)
       }

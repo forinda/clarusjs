@@ -15,7 +15,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
   const parts = nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
     if (n.kind === 'slot') return '(__cl_slot ?? "")'
-    if (n.kind === 'attr') return `__cl_attrHtml(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, rw.expr)})`
+    if (n.kind === 'attr') return `__cl_attrHtml(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, rw.expr)}${tagArg(n)})`
     if (n.kind === 'if') {
       if (n.block === -1) {
         // Outside islands: a plain choice, no markers.
@@ -60,6 +60,11 @@ export function whichExpr(n: Extract<IRNode, { kind: 'if' }>, rw: Rewriter): str
 export function attrValueExpr(value: Extract<IRNode, { kind: 'attr' }>['value'], rewrite: (e: string) => string): string {
   if ('expr' in value) return `(${rewrite(value.expr)})`
   return `[${value.parts.map((p) => (typeof p === 'string' ? JSON.stringify(p) : `(${rewrite(p.expr)})`)).join(', ')}].join("")`
+}
+
+/** The element's tag, passed only for attributes whose meaning depends on it (SVG animation values). */
+export function tagArg(n: Extract<IRNode, { kind: 'attr' }>): string {
+  return ['to', 'from', 'values', 'by'].includes(n.name.toLowerCase()) ? `, ${JSON.stringify(n.tag)}` : ''
 }
 
 /** Every node, including those inside @if branches, @for bodies and component children. */

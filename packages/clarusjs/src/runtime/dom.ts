@@ -269,12 +269,12 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void
 }
 
 /** Keep attribute `name` of the element marked `data-cl-a="index"` in `ctx` in sync with `fn()`. */
-export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown): void {
+export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, tag?: string): void {
   const root = rootOf(ctx)
   const el = [...root.querySelectorAll(`[data-cl-a="${index}"]`)].find((e) => e.closest('cl-island') === root && inside(ctx, e))
   if (!el) return
   effect(() => {
-    const v = attrValue(name, fn())
+    const v = attrValue(name, fn(), tag)
     if (v === null) el.removeAttribute(name)
     else el.setAttribute(name, v === true ? '' : v)
   })

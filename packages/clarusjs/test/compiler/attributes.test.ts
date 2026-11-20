@@ -110,9 +110,20 @@ test('raster data: images are allowed for image attributes only', async () => {
 })
 
 test('more URL-bearing attributes are checked', async () => {
-  for (const name of ['data', 'codebase', 'ping', 'manifest', 'longdesc', 'to', 'from', 'values', 'by']) {
+  for (const name of ['data', 'codebase', 'ping', 'manifest', 'longdesc']) {
     expect(await render(`@input u: string\n<x-el [${name}]="u"></x-el>`, { u: 'javascript:alert(1)' }), name).toContain(`${name}="about:invalid#unsafe"`)
   }
+})
+
+test('SVG animation attributes are URL-checked on animation elements only', async () => {
+  for (const tag of ['animate', 'set', 'animateMotion', 'animateTransform']) {
+    for (const name of ['to', 'from', 'values', 'by']) {
+      expect(await render(`@input u: string\n<${tag} [${name}]="u" />`, { u: 'javascript:alert(1)' }), `${tag} ${name}`).toContain(`${name}="about:invalid#unsafe"`)
+    }
+  }
+  // Elsewhere they are ordinary data, even when they look like a scheme.
+  const out = await render(`<x-slider [values]="'ready;status:active'" [from]="'status:active'" [to]="10" [by]="2"></x-slider>`)
+  expect(out).toBe('<x-slider values="ready;status:active" from="status:active" to="10" by="2"></x-slider>')
 })
 
 test('srcset checks every candidate', async () => {
@@ -124,4 +135,22 @@ test('srcset checks every candidate', async () => {
 test('binding srcdoc is a located build error', () => {
   expect(compileError('@input h: string\n<iframe [srcdoc]="h"></iframe>').message).toMatch(/^x\.clarus:2:9 .*srcdoc/)
   expect(compileError('@input h: string\n<iframe srcdoc="{{ h }}"></iframe>').message).toMatch(/^x\.clarus:2:9 .*srcdoc/)
+})
+
+test('list-valued URL attributes check every entry (values by ";", ping by whitespace)', async () => {
+  expect(await render('@input v: string\n<animate [values]="v" />', { v: '/a;/b' })).toContain('values="/a;/b"')
+  expect(await render('@input v: string\n<animate [values]="v" />', { v: '/ok;javascript:alert(1)' })).toContain('values="about:invalid#unsafe"')
+  expect(await render('@input p: string\n<a [ping]="p">x</a>', { p: '/track https://x.example/t' })).toContain('ping="/track https://x.example/t"')
+  expect(await render('@input p: string\n<a [ping]="p">x</a>', { p: '/track javascript:alert(1)' })).toContain('ping="about:invalid#unsafe"')
+})
+
+test('in the browser, SVG animation attributes are also checked only on animation elements', async () => {
+  const island = await mount(`<script>
+  let v = state('ready;status:active')
+  let u = state('/ok')
+</script>
+<x-slider [values]="v"></x-slider><animate [values]="u" /><b (click)="v = 'next;status:done'; u = '/ok;javascript:alert(1)'">go</b>`)
+  ;(island.querySelector('b') as HTMLElement).click()
+  expect(island.querySelector('x-slider')!.getAttribute('values')).toBe('next;status:done')
+  expect(island.querySelector('animate')!.getAttribute('values')).toBe('about:invalid#unsafe')
 })

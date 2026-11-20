@@ -55,7 +55,7 @@ test('[attr] on an HTML element lowers to a dynamic attribute', () => {
   const ir = lowerSource('@input t: string\n<div [title]="t">x</div>')
   expect(ir.nodes).toEqual([
     { kind: 'static', html: '<div' },
-    { kind: 'attr', name: 'title', value: { expr: 't' }, reactive: false, index: -1 },
+    { kind: 'attr', name: 'title', value: { expr: 't' }, reactive: false, index: -1, tag: 'div' },
     { kind: 'static', html: '>x</div>' },
   ])
 })
