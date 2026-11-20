@@ -183,6 +183,10 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         client[route] = url
       }
       return `import { createHandler } from ${JSON.stringify(here('../server/handler'))}\n` +
+        `import { registerViews, render } from ${JSON.stringify(here('../server/views'))}\n` +
+        // Every view under src/, for render(name, props) in server code. Also exported for apps that import the build.
+        `registerViews(import.meta.glob('/src/**/*.tscl'))\n` +
+        `export { render }\n` +
         `export default createHandler(import.meta.glob('/src/pages/**/*.tscl'), {\n` +
         `  loaderUrl: ${JSON.stringify(loaderUrl)},\n` +
         `  data: import.meta.glob('/src/pages/**/*.load.ts'),\n` +

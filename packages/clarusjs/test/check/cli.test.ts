@@ -1,5 +1,5 @@
 // #21: `clarusjs check` type-checks a project's .tscl files and reports file.tscl:line:col.
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { expect, test } from 'vitest'
@@ -104,4 +104,23 @@ test('#31: what load() returns is checked against the page inputs', () => {
   expect(check({ root: bad, typescript }).diagnostics).toEqual([
     { file: 'src/pages/users/[id].tscl', line: 1, column: 1, code: 'TS2322', message: expect.stringMatching(/^load\(\) returns a value that doesn.t fit this page.s inputs: .*not assignable/s) },
   ])
+})
+
+test('#22: render() is typed against each view\'s inputs through the generated views.d.ts', () => {
+  const root = project({
+    'src/components/pill.tscl': '@input text: string\n@input tone: "info" | "tip" = "info"\n<b>{{ text }}</b>\n',
+    'src/server/mail.ts': [
+      "import { render } from 'clarusjs/views'",
+      "export const ok = render('components/pill', { text: 'hi', tone: 'tip' })",
+      "export const wrongProp = render('components/pill', { text: 1 })",
+      "export const unknown = render('components/pil', {})",
+      '',
+    ].join('\n'),
+  })
+  // Like an app that installed clarusjs.
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  const result = check({ root, typescript })
+  expect(existsSync(resolve(root, '.clarusjs/views.d.ts'))).toBe(true)
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/server/mail.ts:3 TS2322', 'src/server/mail.ts:4 TS2345'])
 })

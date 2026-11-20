@@ -174,3 +174,12 @@ test('security: prerender never writes outside the output folder', async () => {
   await expect(prerender(entry, resolve(dir, 'out'), resolve(dir, 'm.json'))).rejects.toThrow(/prerender \/a\/\.\.\/\.\.\/escape: outside the output folder/)
   expect(existsSync(resolve(dir, 'escape'))).toBe(false)
 })
+
+test('#22: the built server exports render(), which renders any view by name', async () => {
+  const { pathToFileURL } = await import('node:url')
+  const server = await import(`${pathToFileURL(resolve(root, 'dist/server/index.mjs')).href}?t=${Date.now()}`)
+  expect(await server.render('components/greeting', { name: 'views' })).toContain('Hello, views!')
+  // The same registry is reachable through clarusjs/views from the app's own server code.
+  const { render } = await import('../src/server/views.ts')
+  expect(await render('components/greeting', { name: 'again' })).toContain('Hello, again!')
+})

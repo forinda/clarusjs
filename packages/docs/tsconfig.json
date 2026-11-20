@@ -10,5 +10,5 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["src", "e2e"]
+  "include": ["src", "e2e", ".clarusjs/views.d.ts"]
 }
