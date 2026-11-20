@@ -6,10 +6,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
-import { findClarusFiles, prerender } from './build.ts'
+import { findClarusFiles, prerender, routeToFile } from './build.ts'
 import { writeManifest } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
+import { gitDates, sitemapXml } from './sitemap.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { routeFromFile } from '../server/handler.ts'
 import type { HeadTag, SiteOptions } from '../server/head.ts'
@@ -118,6 +119,8 @@ export type ClarusOptions = {
    * description and an image (the page's og:image, or `image`); absolute links to the site are link-checked.
    */
   site?: SiteOptions
+  /** With site.url, vite build writes sitemap.xml (static pages, dated from git). false: no sitemap. */
+  sitemap?: boolean
 }
 export type { HeadTag }
 export type LinkLevel = 'error' | 'warn' | 'off'
@@ -285,19 +288,21 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       }
       // Links between pages and to anchors, checked against what was written.
       const pageRoutes = routes.filter((r) => !/\/(__data\.json|index\.frag\.html)$/.test(r))
+      const clientRoutes = pageRoutes.filter((r) => routes.includes(r === '/' ? '/__data.json' : `${r}/__data.json`))
       const issues = checkLinks({
         outDir: out,
         routes: pageRoutes,
         serverRoutes: server.map((x) => x.route),
-        clientRoutes: pageRoutes.filter((r) => routes.includes(r === '/' ? '/__data.json' : `${r}/__data.json`)),
+        clientRoutes,
         base: builder.config.base,
         site: options.site?.url,
       })
       const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn' }
       // Each problem names the page's source file, and the line where the link is written literally.
       const sourceOf = new Map(files.find(resolve(builder.config.root, 'src/pages')).map((f) => [routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`), f]))
+      const fileOf = (page: string) => sourceOf.get(page) ?? [...sourceOf].find(([route]) => new RegExp(`^${route.replace(/\[[^\]]+\]/g, '[^/]+')}$`).test(page))?.[1]
       const locate = (page: string, href: string) => {
-        const file = sourceOf.get(page) ?? [...sourceOf].find(([route]) => new RegExp(`^${route.replace(/\[[^\]]+\]/g, '[^/]+')}$`).test(page))?.[1]
+        const file = fileOf(page)
         if (!file) return page
         const rel = relative(builder.config.root, file).split(sep).join('/')
         const line = readFileSync(file, 'utf8').split('\n').findIndex((l) => l.includes(href))
@@ -312,6 +317,16 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         else builder.config.logger.warn(`clarusjs: ${text}`)
       }
       if (errors.length) throw new Error(`clarusjs: broken links:\n  ${errors.join('\n  ')}`)
+      // sitemap.xml: static pages (not client shells, not noindex), dated by their source file's last commit.
+      if (options.site && options.sitemap !== false) {
+        const dates = gitDates(builder.config.root, 'src/pages')
+        const epoch = process.env.SOURCE_DATE_EPOCH ? Number(process.env.SOURCE_DATE_EPOCH) : undefined
+        const noindex = (page: string) => [...readFileSync(resolve(out, routeToFile(page)), 'utf8').matchAll(/<meta\b[^>]*>/gi)]
+          .some(([tag]) => /\sname\s*=\s*"robots"/i.test(tag) && /\scontent\s*=\s*"[^"]*\bnoindex\b/i.test(tag))
+        const pages = pageRoutes.filter((page) => !clientRoutes.includes(page) && !noindex(page))
+          .map((path) => ({ path, lastmod: dates.get(fileOf(path) ?? '') ?? epoch }))
+        writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
+      }
       if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
     },
     resolveId(id) {

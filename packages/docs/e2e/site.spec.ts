@@ -662,3 +662,10 @@ test('canonical URL and social cards from site.url; the card image exists', asyn
   const png = await request.get('/og.png')
   expect(png.headers()['content-type']).toBe('image/png')
 })
+
+test('sitemap.xml lists static pages with dates, but not client routes', async ({ request }) => {
+  const xml = await (await request.get('/sitemap.xml')).text()
+  expect(xml).toMatch(/<url><loc>https:\/\/clarusjs\.com\/guide\/markdown<\/loc><lastmod>\d{4}-\d{2}-\d{2}<\/lastmod><\/url>/)
+  expect(xml).toContain('<loc>https://clarusjs.com/</loc>')
+  expect(xml).not.toContain('/tour/')
+})
