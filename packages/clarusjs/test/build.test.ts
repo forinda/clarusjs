@@ -29,6 +29,7 @@ test('a page with an island loads the hashed loader, and the island points at it
   const html = read('index.html')
   const scripts = [...html.matchAll(/<script type="module" src="([^"]+)"><\/script>/g)].map((m) => m[1]!)
   expect(scripts).toHaveLength(1)
+  expect(html.match(/<cl-island c="panel"/g)).toHaveLength(1)
   expect(scripts[0]).toMatch(/^\/assets\/.+\.js$/)
   expect(existsSync(resolve(client, scripts[0]!.slice(1)))).toBe(true)
   const src = html.match(/<cl-island c="counter" src="([^"]+)"/)![1]!
@@ -81,4 +82,13 @@ test('vite preview serves the built pages at their routes, with or without a tra
   } finally {
     await server.close()
   }
+})
+
+test('an island that renders a nested island in the browser points it at the nested chunk\'s real URL', () => {
+  const files = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
+  const panel = files.find((f) => /panel-.+\.js$/.test(f))!
+  const counter = files.find((f) => /counter-.+\.js$/.test(f))!
+  const code = read(`assets/${panel}`)
+  expect(code).toContain(`/assets/${counter.replace(/\\/g, '/')}`)
+  expect(code).not.toContain('__CLARUS_CHUNK__')
 })
