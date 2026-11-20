@@ -14,31 +14,40 @@ export type TemplateNode =
   | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
   | { type: 'fill'; name: string; children: TemplateNode[]; start: number } // @slot('name') { … } inside a component tag
   | { type: 'for'; item: string; list: string; track: string | null; headStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
-export type InputDecl = { name: string; type: string; default?: string; start: number }
+export type InputDecl = { name: string; type: string; default?: string; start: number; nameStart: number; typeStart: number; defaultStart?: number }
+// @import type { A, B } from '…': types for @input declarations (erased from compiled output, used by type checking).
+export type TypeImport = { clause: string; from: string; start: number; clauseStart: number }
 export type ImportDecl = { name: string; from: string; start: number }
 export type ParsedFile = {
   inputs: InputDecl[]
   imports: ImportDecl[]
+  typeImports: TypeImport[]
   script?: { code: string; start: number } // start = offset of the first char inside <script>
   nodes: TemplateNode[]
 }
 
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
-const INPUT_RE = /^@input\s+([A-Za-z_$][\w$]*)\s*:\s*([^=\n]+?)\s*(?:=\s*(.+?))?\s*$/
+const INPUT_RE = /^@input\s+([A-Za-z_$][\w$]*)\s*:\s*([^=\n]+?)\s*(?:=\s*(.+?))?\s*$/d
+const IMPORT_TYPE_RE = /^@import\s+type\s+(\{[^}]*\}|[A-Za-z_$][\w$]*)\s+from\s+(['"])(.+?)\2\s*$/d
 const IMPORT_RE = /^@import\s+([A-Za-z_$][\w-]*)\s+from\s+(['"])(.+?)\2\s*$/
 
 export function parse(source: string, file: string): ParsedFile {
-  const out: ParsedFile = { inputs: [], imports: [], nodes: [] }
+  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], nodes: [] }
   let i = 0
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
 
   function directive(): void {
     const end = source.indexOf('\n', i) === -1 ? source.length : source.indexOf('\n', i)
+    const lineStart = i + (source.slice(i, end).length - source.slice(i, end).trimStart().length)
     const line = source.slice(i, end).trim()
-    let m: RegExpMatchArray | null
-    if ((m = line.match(INPUT_RE))) out.inputs.push({ name: m[1]!, type: m[2]!.trim(), default: m[3], start: i })
-    else if ((m = line.match(IMPORT_RE))) out.imports.push({ name: m[1]!, from: m[3]!, start: i })
+    let m: RegExpExecArray | RegExpMatchArray | null
+    if ((m = INPUT_RE.exec(line))) {
+      const at = (group: number) => lineStart + (m as RegExpExecArray).indices![group]![0]
+      out.inputs.push({ name: m[1]!, type: m[2]!.trim(), default: m[3], start: i, nameStart: at(1), typeStart: at(2), ...(m[3] ? { defaultStart: at(3) } : {}) })
+    } else if ((m = IMPORT_TYPE_RE.exec(line))) {
+      out.typeImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + (m as RegExpExecArray).indices![1]![0] })
+    } else if ((m = line.match(IMPORT_RE))) out.imports.push({ name: m[1]!, from: m[3]!, start: i })
     else fail(`unknown or malformed directive "${line.split(/\s/)[0]}"`, i)
     i = end
   }
