@@ -110,9 +110,20 @@ test('raster data: images are allowed for image attributes only', async () => {
 })
 
 test('more URL-bearing attributes are checked', async () => {
-  for (const name of ['data', 'codebase', 'ping', 'manifest', 'longdesc', 'to', 'from', 'values', 'by']) {
+  for (const name of ['data', 'codebase', 'ping', 'manifest', 'longdesc']) {
     expect(await render(`@input u: string\n<x-el [${name}]="u"></x-el>`, { u: 'javascript:alert(1)' }), name).toContain(`${name}="about:invalid#unsafe"`)
   }
+})
+
+test('SVG animation attributes are URL-checked on animation elements only', async () => {
+  for (const tag of ['animate', 'set', 'animateMotion', 'animateTransform']) {
+    for (const name of ['to', 'from', 'values', 'by']) {
+      expect(await render(`@input u: string\n<${tag} [${name}]="u" />`, { u: 'javascript:alert(1)' }), `${tag} ${name}`).toContain(`${name}="about:invalid#unsafe"`)
+    }
+  }
+  // Elsewhere they are ordinary data, even when they look like a scheme.
+  const out = await render(`<x-slider [values]="'ready;status:active'" [from]="'status:active'" [to]="10" [by]="2"></x-slider>`)
+  expect(out).toBe('<x-slider values="ready;status:active" from="status:active" to="10" by="2"></x-slider>')
 })
 
 test('srcset checks every candidate', async () => {

@@ -29,7 +29,7 @@ export function island(name: string, src: string, props: Record<string, unknown>
 }
 
 /** ` name="value"`, ` name` (true) or '' (false/null/undefined), escaped and URL-checked. */
-export function attr(name: string, value: unknown): string {
-  const v = attrValue(name, value)
+export function attr(name: string, value: unknown, tag?: string): string {
+  const v = attrValue(name, value, tag)
   return v === null ? '' : v === true ? ` ${name}` : ` ${name}="${escape(v)}"`
 }

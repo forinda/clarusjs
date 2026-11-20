@@ -27,7 +27,7 @@ function htmlExpr(nodes: IRNode[]): string {
   const parts = nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
     if (n.kind === 'slot') return '(__cl_slot ?? "")'
-    if (n.kind === 'attr') return `__cl_attr(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, (e) => e)})`
+    if (n.kind === 'attr') return `__cl_attr(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, (e) => e)}${tagArg(n)})`
     if (n.kind === 'component') {
       const props = n.props.map((p) => `${p.name}: ${wrapExpr(p.expr)}`).join(', ')
       return n.children.length ? `${renderName(n.name)}({ ${props} }, ${htmlExpr(n.children)})` : `${renderName(n.name)}({ ${props} })`
@@ -50,4 +50,9 @@ function usesAttr(nodes: IRNode[]): boolean {
 export function attrValueExpr(value: Extract<IRNode, { kind: 'attr' }>['value'], rewrite: (expr: string) => string): string {
   if ('expr' in value) return `(${rewrite(value.expr)})`
   return `[${value.parts.map((p) => (typeof p === 'string' ? JSON.stringify(p) : `(${rewrite(p.expr)})`)).join(', ')}].join("")`
+}
+
+/** The element's tag, passed only for attributes whose meaning depends on it (SVG animation values). */
+export function tagArg(n: Extract<IRNode, { kind: 'attr' }>): string {
+  return ['to', 'from', 'values', 'by'].includes(n.name.toLowerCase()) ? `, ${JSON.stringify(n.tag)}` : ''
 }

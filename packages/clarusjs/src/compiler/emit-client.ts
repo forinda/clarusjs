@@ -1,6 +1,6 @@
 // IR → client module: `attach(root, props)`. Runs in the browser, only for stateful components.
 import type { ComponentIR, IRNode } from './ir.ts'
-import { attrValueExpr } from './emit-server.ts'
+import { attrValueExpr, tagArg } from './emit-server.ts'
 import { rewriteClient, rewriteClientExpr, wrapExpr } from './script.ts'
 import { indentScript, inputsLine } from './shared.ts'
 
@@ -29,7 +29,7 @@ export function emitClient(ir: ComponentIR): string {
     wiring.push(`__cl_text(__cl_h[${h.index}], () => ${wrapExpr(rewriteClientExpr(h.expr, ir.signals))})`)
   }
   for (const a of attrs) {
-    wiring.push(`__cl_attr(__cl_root, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, (e) => rewriteClientExpr(e, ir.signals))})`)
+    wiring.push(`__cl_attr(__cl_root, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, (e) => rewriteClientExpr(e, ir.signals))}${tagArg(a)})`)
   }
   for (const e of ir.events) {
     const body = rewriteClient(e.handler, ir.signals).trim()
