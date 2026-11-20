@@ -29,9 +29,9 @@ export function emitClient(ir: ComponentIR): string {
   ].filter(Boolean)
 
   let out = used.length ? `import { ${used.join(', ')} } from 'clarusjs/runtime'\n` : ''
-  out += `\nexport function attach(__cl_root, __cl_props = {}) {\n`
+  out += `\nexport function attach(__cl_root, __cl_props = {}, __cl_state) {\n`
   out += inputsLine(ir)
-  if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals))
+  if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals, { stateFromServer: true }))
   const lines = wiring(ir, ir.nodes, undefined, '__cl_root', ir.signals, 0)
   if (lines.length) out += '\n' + lines.map((l) => `  ${l}\n`).join('')
   return out + '}\n'

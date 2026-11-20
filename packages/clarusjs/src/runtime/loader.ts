@@ -1,6 +1,8 @@
 // Island loader: finds <cl-island> elements, loads each one's chunk, calls attach(). Browser only, ~20 lines.
 
-type IslandModule = { attach(root: Element, props: Record<string, unknown>): void }
+import { parse } from './serialize.ts'
+
+type IslandModule = { attach(root: Element, props: Record<string, unknown>, state?: Record<string, unknown>): void }
 
 // Islands whose chunk is being fetched. `data-cl-ready` is set only after attach() succeeds.
 const loading = new WeakSet<Element>()
@@ -14,16 +16,19 @@ export async function attachAll(
     loading.add(el)
     let mod: IslandModule
     let props: Record<string, unknown>
+    let state: Record<string, unknown> | undefined
     try {
       mod = await load(el.getAttribute('src')!)
-      props = JSON.parse(el.getAttribute('p') ?? '{}')
+      props = parse(el.getAttribute('p') ?? '{}') as Record<string, unknown>
+      const s = el.getAttribute('s')
+      state = s === null ? undefined : (parse(s) as Record<string, unknown>)
     } catch (err) {
       loading.delete(el) // network or parse failure: the next attachAll() retries
       console.error(`[clarusjs] island "${el.getAttribute('c')}" failed to load`, err)
       return
     }
     try {
-      mod.attach(el, props)
+      mod.attach(el, props, state)
       el.setAttribute('data-cl-ready', '')
     } catch (err) {
       el.setAttribute('data-cl-error', '') // attach may have wired some listeners already: never retry

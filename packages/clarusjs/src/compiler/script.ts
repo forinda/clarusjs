@@ -213,9 +213,28 @@ function clientHook(code: string, signals: Signals, entered: WeakSet<N> = new We
   return hook
 }
 
-export function rewriteClient(code: string, signals: Signals): string {
+/**
+ * Rewrite a script (or event handler) for the browser. With `stateFromServer`, each top-level `let x = state(init)`
+ * starts from the value the server rendered with (`__cl_state.x`) when there is one, so `init` isn't re-run.
+ */
+export function rewriteClient(code: string, signals: Signals, options: { stateFromServer?: boolean } = {}): string {
   const ast = parseScript(code)
-  return code.slice(0, ast.start) + print(ast, code, clientHook(code, signals)) + code.slice(ast.end)
+  const hook = clientHook(code, signals)
+  if (!options.stateFromServer) return code.slice(0, ast.start) + print(ast, code, hook) + code.slice(ast.end)
+  const topLevel = new Set((ast.body as N[]).filter((n) => n.type === 'VariableDeclaration').flatMap((n) => n.declarations as N[]))
+  const withState: Hook = (node, parent, key) => {
+    // `let x = state()` becomes `const x = …`; re-print with this hook so the declarators below still see it.
+    if (node.type === 'VariableDeclaration' && node.kind === 'let' && (node.declarations as N[]).every((d) => signalCall(d.init))) {
+      return 'const' + print({ ...node, kind: 'const', start: node.start + 3 }, code, withState, parent, key)
+    }
+    if (topLevel.has(node) && node.id.type === 'Identifier' && signals.get(node.id.name) === 'state' && node.init?.arguments?.length) {
+      const name = node.id.name
+      const init = print(node.init.arguments[0] as N, code, hook)
+      return `${name} = state(__cl_state && ${JSON.stringify(name)} in __cl_state ? __cl_state.${name} : ${init})`
+    }
+    return hook(node, parent, key)
+  }
+  return code.slice(0, ast.start) + print(ast, code, withState) + code.slice(ast.end)
 }
 
 export function rewriteClientExpr(expr: string, signals: Signals): string {

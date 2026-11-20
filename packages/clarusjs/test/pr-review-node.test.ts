@@ -4,9 +4,12 @@ import { island } from '../src/runtime/server.ts'
 import { createHandler } from '../src/server/handler.ts'
 import { clientUrlFor } from '../src/vite/plugin.ts'
 
-test('non-finite numbers are rejected as island props', () => {
-  expect(() => island('c', '/c', { n: Infinity }, '')).toThrow(/n/)
-  expect(() => island('c', '/c', { a: [1, NaN] }, '')).toThrow(TypeError)
+test('non-finite numbers in island props round-trip (#14), instead of silently becoming null', async () => {
+  const { parse } = await import('../src/runtime/serialize.ts')
+  const p = island('c', '/c', { n: Infinity, a: [1, NaN] }, '').match(/ p="([^"]*)"/)![1]!.replace(/&quot;/g, '"')
+  const back = parse(p) as { n: number; a: number[] }
+  expect(back.n).toBe(Infinity)
+  expect(back.a[1]).toBeNaN()
 })
 
 const handler = createHandler({

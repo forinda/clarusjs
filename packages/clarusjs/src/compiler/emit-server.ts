@@ -25,7 +25,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
   out += inputsLine(ir)
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   out += ir.stateful
-    ? `  return __cl_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html})\n`
+    ? `  return __cl_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html}${stateArg(ir)})\n`
     : `  return ${html}\n`
   return out + '}\n'
 }
@@ -36,4 +36,10 @@ function unknownSlotCheck(ir: ComponentIR): string {
   const noDefault = JSON.stringify(`[clarusjs] <${ir.name}> has no <slot /> for the content passed to it`)
   const noNamed = JSON.stringify(`[clarusjs] <${ir.name}> has no slot "`)
   return `  for (const __cl_k in __cl_slots) if (!${JSON.stringify(known)}.includes(__cl_k)) throw new Error(__cl_k === "default" ? ${noDefault} : ${noNamed} + __cl_k + '"')\n`
+}
+
+/** The component's state() values after its script ran: the island's starting point in the browser. */
+function stateArg(ir: ComponentIR): string {
+  const names = [...ir.signals].filter(([, kind]) => kind === 'state').map(([name]) => name)
+  return names.length ? `, { ${names.join(', ')} }` : ''
 }

@@ -65,6 +65,7 @@ test('home: only the loader and island code load, and the counter island works',
   expect(scripts.every((s) => /\/assets\//.test(s))).toBe(true)
   const islands = page.locator('cl-island[c="counter"]')
   await expect(islands).toHaveCount(1)
+  await expect(islands).toHaveAttribute('s', '{"count":0}') // the state the server rendered with
   await expect(islands).toHaveAttribute('data-cl-ready', '')
   const button = islands.locator('button')
   const before = await page.locator('main').textContent()

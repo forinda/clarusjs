@@ -14,6 +14,9 @@
 
 <button (click)="count++">{{ count }} × 2 = {{ double }}</button></code></pre>
 
+  <h2>Starting from the server's values</h2>
+  <p>An island's state is rendered on the server first. Its values travel with the HTML, so the browser picks up exactly where the server left off: an initial value like <code>Date.now()</code> isn't computed a second time. Values can be plain JSON, <code>Date</code>, <code>Map</code>, <code>Set</code>, <code>BigInt</code> and <code>undefined</code>; functions and class instances can't be sent.</p>
+
   <h2>What ships to the browser</h2>
   <ul>
     <li>A small loader, only on pages that have islands.</li>
