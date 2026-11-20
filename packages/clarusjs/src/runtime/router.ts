@@ -42,25 +42,25 @@ export async function show(
   const [page, props] = await Promise.all([
     load(found.r),
     get(data).then(async (res) => {
-      if (!res.ok) throw new Error(`${res.status === 404 ? 'not found' : res.status}: ${data}`)
+      if (!res.ok) throw new Error(`${res.status} ${data}`)
       return parse(await res.text()) as object
     }),
   ])
   if (!isCurrent()) return false
   const doc = new DOMParser().parseFromString(page.render(props), 'text/html')
-  // The page's <title> comes with its head; its own <html> attributes (lang, dir, …) replace the previous page's.
-  // (The island style lives on the document, installed by the loader, so it survives the head swap.)
+  // The head stays (its stylesheets are every client page's, linked by the shell); the title and the page's own
+  // <html> attributes (lang, dir, …) are the new page's.
+  document.title = doc.title
   const root = document.documentElement
   for (const { name } of [...root.attributes]) root.removeAttribute(name)
   for (const { name, value } of [...doc.documentElement.attributes]) root.setAttribute(name, value)
-  document.head.replaceWith(doc.head)
   document.body.replaceWith(doc.body)
-  // Scripts parsed by DOMParser never run: the page's inline head scripts (such as setting the theme before paint)
-  // run now, re-created in the live document, as they would on a normal load.
-  for (const old of document.head.querySelectorAll('script:not([src])')) {
+  // The page's inline head scripts (such as setting the theme before paint) run once, as on a normal load.
+  for (const old of doc.head.querySelectorAll('script:not([src])')) {
     const script = document.createElement('script')
     script.textContent = old.textContent
-    old.replaceWith(script)
+    document.head.append(script)
+    script.remove()
   }
   // Attaches the new page's islands; the loader also releases the old page's.
   ;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach?.(document.body)
@@ -84,7 +84,7 @@ if (routes) {
   let latest = 1 // the first render is navigation 1
   show(new URL(location.href), table, undefined, undefined, () => latest === 1).catch((err: Error) => {
     if (latest !== 1) return
-    document.body.textContent = err.message.startsWith('not found') ? 'Page not found.' : 'Could not load page.'
+    document.body.textContent = err.message.startsWith('404') ? 'Page not found.' : 'Could not load page.'
   })
   // A URL that failed to render is loaded normally, never intercepted again (no retry loop). canIntercept is
   // only true for same-origin navigations, so no origin check is needed.

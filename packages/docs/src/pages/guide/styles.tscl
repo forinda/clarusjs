@@ -2,7 +2,7 @@
 @import docs from '../../layouts/docs.tscl'
 @import callout from '../../components/callout.tscl'
 
-<docs [title]="'Styles'" [path]="'/guide/styles'" [description]="'Give components their own CSS with a style block, scoped to the component with native @scope.'">
+<docs [title]="'Styles'" [path]="'/guide/styles'" [description]="'Give components their own CSS with a style block scoped with native @scope, and import stylesheets that go through Vite.'">
   <h1>Styles</h1>
   <p class="lead">A component can bring its own CSS in a <code>&lt;style&gt;</code> block. It is scoped to the component, so its rules don't reach the rest of the page.</p>
   <div class="sample"><pre><code verbatim>{{-- components/card.tscl --}}
@@ -51,7 +51,13 @@
 </head></code></pre><copy attach="interaction" /></div>
   <p>Inline scripts take static attributes only and their content is never treated as a template. On client routes, the router runs the new page's inline head scripts, as a normal page load would.</p>
 
+  <h2>Stylesheets</h2>
+  <p>Import a CSS file with <code>@import</code> and no name. It goes through Vite's CSS pipeline (PostCSS or Lightning CSS, minified and hashed), and every page that uses the component links it.</p>
+  <div class="sample"><pre><code verbatim>{{-- layouts/docs.tscl --}}
+@import '../styles/docs.css'</code></pre><copy attach="interaction" /></div>
+  <p>Each page links exactly the stylesheets it imports, directly or through its components, in import order with a layout's before the page's own. This site's whole stylesheet is imported that way, by its layout.</p>
+
   <h2>How styles reach the page</h2>
-  <p>Every component's styles are bundled into one stylesheet that each page links: it is cached once and stays valid as you move between pages. This site's <a href="/guide/components">callouts</a> are styled that way.</p>
+  <p>A page links its imported stylesheets, then one stylesheet with every component's <code>&lt;style&gt;</code>. With fragment navigation, a page that needs a stylesheet the current page doesn't have gets it before the swap.</p>
   <callout [type]="'info'"><p><code>@scope</code> is supported in all current major browsers. In older ones, scoped rules are ignored.</p></callout>
 </docs>

@@ -223,6 +223,13 @@ the component's elements (the top-level element itself is `:scope`) and stop
 at other components. All component styles are bundled into one stylesheet that
 every page links. `<style global>` is left as written and marks nothing.
 
+`@import './x.css'` declares a stylesheet a component needs. Each page links
+the stylesheets it imports, directly or through its components (dependencies
+first), before the component stylesheet. Client-route shells link every client
+page's stylesheets, and the router keeps the head across navigations. A
+fragment carries its page's links right after its `<title>`; fragment
+navigation adds and waits for any that are missing before the swap.
+
 Static parts of the page carry **no markers at all** (apart from `data-cl-c` on styled components). Islands are
 self-describing, so the loader needs no manifest at runtime and can attach to
 islands that arrive later (fragment navigation).

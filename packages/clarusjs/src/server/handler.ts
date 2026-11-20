@@ -59,6 +59,8 @@ export function createHandler(
     navUrl?: string
     /** URL of the stylesheet with every component's <style>, linked from every page. */
     stylesUrl?: string
+    /** Stylesheets each page imports (directly or through its components), by route as its file names it. */
+    css?: Record<string, string[]>
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -83,6 +85,10 @@ export function createHandler(
     }
     return null
   }
+
+  // A page's stylesheet links: what it imports, then the component styles (so components can build on the base).
+  const links = (urls: string[]) => [...new Set([...urls, ...(options.stylesUrl ? [options.stylesUrl] : [])])].map((u) => `<link rel="stylesheet" href="${u}">`).join('')
+  const pageLinks = (route: Route) => links(options.css?.[route.path] ?? [])
 
   // entries() per route, asked once: prerendering and requests see the same list. null when there is none.
   const entriesCache = new Map<Route, Promise<Params[] | null>>()
@@ -191,7 +197,8 @@ export function createHandler(
         const prefix = (options.base ?? '/').replace(/\/$/, '')
         const table = routes.filter((r) => client[r.path]).map((r) => ({ p: (prefix + r.path).replace(/(.)\/$/, '$1'), r: client[r.path]! }))
         const shell = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
-          (options.stylesUrl ? `<link rel="stylesheet" href="${options.stylesUrl}">` : '') +
+          // Every client page's stylesheets: the router keeps the head, so this is all they get.
+          links(routes.filter((r) => client[r.path]).flatMap((r) => options.css?.[r.path] ?? [])) +
           `<style>cl-island{display:contents}</style><script type="application/json" id="cl-routes">${safeJson(JSON.stringify(table))}</script>` +
           `<script type="module" src="${loaderUrl}"></script><script type="module" src="${options.routerUrl ?? '/cl-router.js'}"></script>` +
           '</head><body><noscript>This page is rendered in the browser and needs JavaScript.</noscript></body></html>'
@@ -217,13 +224,17 @@ export function createHandler(
         return new Response(head ? null : safeJson(stringify(props)), { headers: { 'content-type': 'application/json; charset=utf-8' } })
       }
       const html = (await found.route.load()).render(props)
-      if (wantsFrag) return new Response(head ? null : toFragment(html), { headers: { 'content-type': 'text/html; charset=utf-8' } })
+      if (wantsFrag) {
+        // The page's stylesheet links go right after its title, so fragment navigation can load any that are missing.
+        const fragment = toFragment(html).replace(/^(<title\b[^>]*>[\s\S]*?<\/title\s*>)/i, (t) => t + pageLinks(found.route))
+        return new Response(head ? null : fragment, { headers: { 'content-type': 'text/html; charset=utf-8' } })
+      }
       const visible = maskComments(html)
       const hasIslands = visible.includes('<cl-island ')
       // Only pages with islands get a script, and only the loader; it fetches each island's own chunk. With fragment
       // navigation every page gets the navigation script instead, which brings the loader for islands that arrive.
       const nav = options.fragments === true
-      const sheet = options.stylesUrl ? `<link rel="stylesheet" href="${options.stylesUrl}">` : ''
+      const sheet = pageLinks(found.route)
       const style = sheet + (hasIslands || nav ? '<style>cl-island{display:contents}</style>' : '') // islands never affect layout
       const script = nav
         ? `<script type="module" src="${options.navUrl ?? '/cl-nav.js'}"></script>`

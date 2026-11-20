@@ -1,6 +1,7 @@
 {{-- The whole page. Header, sidebar, breadcrumb and previous/next all come from src/nav.ts. --}}
 @import themeToggle from '../components/theme-toggle.tscl'
 @import { sections, sectionKey, groupsOf, crumb, pager, sourceOf } from '../nav.ts'
+@import '../styles/docs.css'
 @input title: string
 @input path: string = '/'
 {{-- The page's own route, when it differs from the sidebar entry it belongs to (e.g. /releases/[version]). --}}
@@ -16,7 +17,6 @@
     <meta name="description" content="{{ description }}">
     <title>{{ title }} · clarusjs</title>
     <link rel="icon" href="/logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/docs.css">
   </head>
   <body>
     <header class="site-header">

@@ -126,7 +126,7 @@ test('#25: writes dist/clarusjs-manifest.json describing every route', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
   const gz = expect.any(Number)
   expect(Object.keys(manifest.routes)).toEqual(['/', '/about/team', '/explain', '/users/ada', '/users/grace%20hopper', '/users/linus'])
-  expect(manifest.routes['/about/team']).toEqual({ mode: 'static', html: 'about/team/index.html', loader: null, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [expect.stringMatching(/^\/assets\/cl-styles-.+\.css$/)] })
+  expect(manifest.routes['/about/team']).toEqual({ mode: 'static', html: 'about/team/index.html', loader: null, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [expect.stringMatching(/base-.+\.css$/), expect.stringMatching(/team-.+\.css$/), expect.stringMatching(/^\/assets\/cl-styles-.+\.css$/)] })
   const home = manifest.routes['/']
   expect(home.islands.map((i: { component: string; attach: string; count: number }) => [i.component, i.attach, i.count])).toEqual([['counter', 'load', 1], ['panel', 'load', 1]])
   expect(home.islands.every((i: { gzip: number; src: string }) => i.gzip > 0 && existsSync(resolve(client, i.src)))).toBe(true)
@@ -195,4 +195,16 @@ test('#39: component styles are bundled into one stylesheet that every page link
   const id = /data-cl-c="?(greeting-[a-z0-9]+)/.exec(css)![1]
   expect(html).toContain(`<p data-cl-c="${id}">Hello, site!</p>`)
   expect(read('about/team/index.html')).toContain(href!)
+})
+
+test('#40: a page links the stylesheets it imports, processed and hashed by Vite, before the component styles', () => {
+  const team = read('about/team/index.html')
+  const hrefs = [...team.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((m) => m[1]!)
+  expect(hrefs).toHaveLength(3)
+  expect(hrefs[0]).toMatch(/^\/assets\/.*base-[\w-]+\.css$/)
+  expect(hrefs[1]).toMatch(/^\/assets\/.*team-[\w-]+\.css$/)
+  expect(hrefs[2]).toMatch(/^\/assets\/cl-styles-/)
+  expect(read(hrefs[0]!.slice(1))).toMatch(/\.team\{color:(rgb\(1,\s?2,\s?3\)|#010203)\}/) // minified by Vite
+  // The home page doesn't import them.
+  expect(read('index.html')).not.toContain('base-')
 })

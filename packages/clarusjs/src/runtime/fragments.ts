@@ -27,6 +27,19 @@ export async function swap(
   // A body can only replace a body, and a marked region a marked region: otherwise load the page normally.
   if ((next === doc.body) !== (old === document.body)) throw new Error('different swap regions')
   for (const title of next.querySelectorAll('title')) title.remove() // some parsers leave the leading <title> in the body
+  // The page's stylesheets: add the ones not loaded yet to <head>, and wait for them, so nothing shows unstyled.
+  const loading: Promise<unknown>[] = []
+  for (const link of doc.querySelectorAll('link[rel="stylesheet"]')) {
+    link.remove()
+    if (document.head.querySelector(`link[rel="stylesheet"][href="${CSS.escape(link.getAttribute('href')!)}"]`)) continue
+    const added = document.createElement('link')
+    added.rel = 'stylesheet'
+    added.href = link.getAttribute('href')!
+    loading.push(new Promise((done) => { added.onload = added.onerror = done }))
+    document.head.append(added)
+  }
+  await Promise.all(loading)
+  if (!isCurrent()) return
   // Persisted elements move into the new page as they are, with their state and attached islands.
   for (const old of document.querySelectorAll('[data-cl-persist]')) {
     next.querySelector(`[data-cl-persist="${CSS.escape(old.getAttribute('data-cl-persist')!)}"]`)?.replaceWith(old)

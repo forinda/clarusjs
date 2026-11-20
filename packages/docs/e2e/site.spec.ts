@@ -548,3 +548,13 @@ test('the saved theme survives fragment navigation and client routes (the router
   await expect(page.locator('h1')).toHaveText('A shell arrives')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
 })
+
+test('the site stylesheet goes through Vite: imported by the layout, hashed, linked before the component styles', async ({ page }) => {
+  const response = await page.goto('/guide/styles')
+  expect(response?.status()).toBe(200)
+  const hrefs = await page.locator('head link[rel="stylesheet"]').evaluateAll((links) => links.map((l) => l.getAttribute('href')!))
+  expect(hrefs[0]).toMatch(/^\/assets\/.*docs-[\w-]+\.css$/)
+  expect(hrefs[1]).toMatch(/^\/assets\/cl-styles-[\w-]+\.css$/)
+  expect((await page.request.get('/docs.css')).status()).toBe(404) // no longer a raw public file
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.site-header')!).borderBottomStyle)).toBe('solid')
+})
