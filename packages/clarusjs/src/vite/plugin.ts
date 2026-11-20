@@ -77,6 +77,8 @@ export default function clarusjs(): Plugin {
       }
       return config
     },
+    // Each build re-reads the client manifest: a builder can run buildApp() more than once.
+    buildStart() { built = undefined },
     configResolved(config) {
       root = config.root
       command = config.command
@@ -126,7 +128,8 @@ export default function clarusjs(): Plugin {
       server.middlewares.use((req, _res, next) => {
         const url = decodeURIComponent((req.url ?? '/').split('?')[0]!)
         const inBase = url === base.slice(0, -1) ? '/' : url.startsWith(base) ? '/' + url.slice(base.length) : undefined
-        if (inBase !== undefined && !/\.[a-z0-9]+$/i.test(inBase)) {
+        if (inBase !== undefined) {
+          // A built page wins; anything else (assets, /x.css) falls through to Vite's static files.
           const file = resolve(outDir, `.${inBase.replace(/\/?$/, '/')}index.html`)
           if (file.startsWith(outDir) && existsSync(file)) req.url = base + file.slice(outDir.length + 1).replace(/\\/g, '/')
         }

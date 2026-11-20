@@ -90,3 +90,17 @@ test('a trailing slash reaches the same page in dev as in the built site', async
   expect(res.status).toBe(200)
   expect(await res.text()).toContain('<cl-island')
 })
+
+test('a </body> inside a trailing comment does not capture the loader', async () => {
+  const island = '<cl-island c="c" src="/c" p="{}"></cl-island>'
+  const h = createHandler({ '/src/pages/index.clarus': async () => ({ render: () => `<html><head></head><body>${island}</body></html><!-- old </body> -->` }) })
+  const out = await (await h.fetch(new Request('http://x/'))).text()
+  expect(out).toContain(`${island}<script type="module" src="/cl-loader.js"></script></body></html><!-- old </body> -->`)
+})
+
+test('</head> inside a comment does not capture the island style', async () => {
+  const island = '<cl-island c="c" src="/c" p="{}"></cl-island>'
+  const h = createHandler({ '/src/pages/index.clarus': async () => ({ render: () => `<html><head><!-- </head> --><title>t</title></head><body>${island}</body></html>` }) })
+  const out = await (await h.fetch(new Request('http://x/'))).text()
+  expect(out).toContain('<title>t</title><style>cl-island{display:contents}</style></head>')
+})
