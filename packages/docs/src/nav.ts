@@ -91,6 +91,7 @@ export function crumb(path: string): string {
   return section && group ? `${section.title} › ${group.title}` : ''
 }
 
+// #region pager
 /** Previous and next pages in sidebar order; an empty item (href '') when there is none. */
 export function pager(path: string): { prev: Item; next: Item } {
   const section = sections.find((s) => s.key === sectionKey(path))
@@ -98,9 +99,34 @@ export function pager(path: string): { prev: Item; next: Item } {
   const i = items.findIndex((item) => item.href === path)
   return { prev: items[i - 1] ?? none, next: items[i + 1] ?? none }
 }
+// #endregion pager
 
 // Pages written in Markdown (src/pages/**/*.md): their source file has that extension.
-const MARKDOWN = new Set(['/guide/what-is-clarusjs', '/guide/markdown'])
+const MARKDOWN = new Set([
+  '/guide/attributes',
+  '/guide/build',
+  '/guide/client-routes',
+  '/guide/components',
+  '/guide/components-in-islands',
+  '/guide/conditionals',
+  '/guide/deploy',
+  '/guide/fragment-navigation',
+  '/guide/getting-started',
+  '/guide/holes',
+  '/guide/inputs',
+  '/guide/islands',
+  '/guide/lazy-attach',
+  '/guide/lists',
+  '/guide/markdown',
+  '/guide/project-structure',
+  '/guide/rendering-modes',
+  '/guide/routing',
+  '/guide/slots',
+  '/guide/state',
+  '/guide/stores',
+  '/guide/type-checking',
+  '/guide/what-is-clarusjs',
+])
 
 /** "Edit this page" link for a route. */
 export function sourceOf(path: string): string {

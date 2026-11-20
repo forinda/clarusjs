@@ -6,6 +6,8 @@
 
 <p align="center"><strong>Clear, compiled views.</strong></p>
 
+<p align="center"><a href="https://clarusjs.com">Documentation</a> · <a href="https://clarusjs.com/guide/getting-started">Getting started</a> · <a href="https://www.npmjs.com/package/clarusjs">npm</a></p>
+
 Write components once in a familiar template language. clarusjs compiles them to plain server HTML, and ships
 JavaScript only for the parts that are actually interactive. Static sites, server rendering and client apps share one
 component model, and you can always see where each line runs.
@@ -58,7 +60,7 @@ pnpm dev        # serves examples/counter
 
 ## Docs
 
-The docs site lives in [`packages/docs`](packages/docs) and is built with clarusjs itself. Run it with `pnpm docs:dev`.
+The docs site, [clarusjs.com](https://clarusjs.com), lives in [`packages/docs`](packages/docs) and is built with clarusjs itself. Run it with `pnpm docs:dev`.
 It doubles as the end-to-end test of the framework: `pnpm docs:test` builds it and checks it in a real browser.
 
 ## Contributing
