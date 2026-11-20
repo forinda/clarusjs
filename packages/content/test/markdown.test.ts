@@ -4,7 +4,7 @@ import { compile } from 'clarusjs/compiler'
 import markdown, { slugify } from '../src/index.ts'
 
 const md = markdown({ layout: '/src/layouts/docs.tscl' })
-const page = (code: string, route = '/guide/intro') => md.toTscl(code, '/app/src/pages/guide/intro.md', { route })
+const page = (code: string, route = '/guide/intro') => md.toTscl(code, '/app/src/pages/guide/intro.md', { route, root: '/a', addDependency: () => {} })
 
 test('frontmatter title and description go to the layout, with the route as path', () => {
   const out = page('---\ntitle: Intro\ndescription: "What it is, and why"\n---\n\nHello *world*.\n')
@@ -19,7 +19,7 @@ test('frontmatter title and description go to the layout, with the route as path
 test('without a title in frontmatter, the first heading is the title; headings get ids and anchor links', () => {
   const out = page('# Getting started\n\n## Install it\n')
   expect(out).toContain('[title]="\'Getting started\'"')
-  expect(out).toContain('<h1 id="getting-started" tabindex="-1">Getting started <a class="header-anchor" href="#getting-started" aria-label="Permalink to Getting started">#</a></h1>')
+  expect(out).toContain('<h1 id="getting-started" tabindex="-1">Getting started</h1>') // the title has no anchor link
   expect(out).toContain('<h2 id="install-it" tabindex="-1">Install it <a class="header-anchor" href="#install-it" aria-label="Permalink to Install it">#</a></h2>')
 })
 
@@ -40,7 +40,7 @@ test('@import lines at the top pass through, so components can be used in the Ma
 })
 
 test('layout: false in frontmatter (or no layout) renders the bare HTML; strings are quoted safely', () => {
-  expect(markdown().toTscl('Plain.\n', '/a/src/pages/x.md', { route: '/x' })).toBe('<p>Plain.</p>\n')
+  expect(markdown().toTscl('Plain.\n', '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })).toBe('<p>Plain.</p>\n')
   expect(page('---\nlayout: false\n---\nPlain.\n')).toBe('<p>Plain.</p>\n')
   const tricky = page('---\ntitle: "It\'s a \\"quote\\" \\\\ here"\n---\nx\n')
   expect(tricky).toContain('[title]="\'It\\\'s a \\u0022quote\\u0022 \\\\ here\'"')
@@ -62,11 +62,26 @@ test('heading ids never collide, even with a heading that looks like a numbered 
 test('component tags inside code spans and fences stay literal text', () => {
   const out = page("@import note from '../../components/note.tscl'\n\nUse `<note>` like this:\n\n```html\n<note [kind]=\"'tip'\">Hi</note>\n```\n\n<note>Real</note>\n")
   expect(out).toContain('<code>&lt;note&gt;</code>')
-  expect(out).toContain('&lt;note [kind]=&quot;\'tip\'&quot;&gt;Hi&lt;/note&gt;')
+  // The fence is highlighted: its text (tags stripped) is the example as written.
+  expect(out.replace(/<[^>]+>/g, '')).toContain('&#x3C;note [kind]="\'tip\'">Hi&#x3C;/note>')
   expect(out).toContain('<note>Real</note>')
   expect(out).not.toContain('cl-tag')
 })
 
 test('cl-layout is reserved for the generated layout import', () => {
   expect(() => page("@import cl-layout from '../../components/x.tscl'\n\nHi\n")).toThrow(/cl-layout is reserved/)
+})
+
+test('#113: relative links to page source files become their routes (anchors kept); others are left alone', () => {
+  const out = markdown().toTscl(
+    '[a](./setup.md) [b](../index.md#top) [c](./api/index.tscl) [d](/guide/x) [e](https://x.dev/y.md) [f](./notes.txt) [g](../../outside.md)',
+    '/app/src/pages/guide/intro.md', { route: '/guide/intro', root: '/app', addDependency: () => {} },
+  )
+  expect(out).toContain('<a href="/guide/setup">a</a>')
+  expect(out).toContain('<a href="/#top">b</a>')
+  expect(out).toContain('<a href="/guide/api">c</a>')
+  expect(out).toContain('<a href="/guide/x">d</a>')
+  expect(out).toContain('<a href="https://x.dev/y.md">e</a>')
+  expect(out).toContain('<a href="./notes.txt">f</a>')
+  expect(out).toContain('<a href="../../outside.md">g</a>') // not a page: left for the link checker to report
 })

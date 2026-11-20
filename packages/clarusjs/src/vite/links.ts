@@ -1,0 +1,88 @@
+// Build-time link checking: once every page is built, links between pages and to #anchors are checked against
+// what was actually written. Reads dist/client only; reporting and failing are up to the caller.
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { routeToFile } from './build.ts'
+
+export type LinkIssue = { kind: 'pages' | 'anchors'; page: string; href: string; message: string }
+
+type Options = {
+  outDir: string
+  /** Every built route (static pages and client shells), as URLs without the base. */
+  routes: string[]
+  /** Server routes as their files name them ('/account/[id]'): rendered per request, so any match counts. */
+  serverRoutes: string[]
+  /** Client routes render in the browser: their pages exist, but their anchors can't be checked at build. */
+  clientRoutes: string[]
+  base: string
+}
+
+const trim = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') : path)
+
+/** Edit distance, for "did you mean". */
+function distance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0]!
+    row[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const next = Math.min(row[j]! + 1, row[j - 1]! + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1))
+      prev = row[j]!
+      row[j] = next
+    }
+  }
+  return row[b.length]!
+}
+
+/** The closest candidate, if it is close enough to be a likely typo. */
+function closest(target: string, candidates: Iterable<string>): string | undefined {
+  let best: string | undefined
+  let score = Infinity
+  for (const c of candidates) {
+    const d = distance(target, c)
+    if (d < score) { best = c; score = d }
+  }
+  return best !== undefined && score <= Math.max(2, Math.floor(target.length / 3)) ? best : undefined
+}
+
+const ids = (html: string) => new Set([...html.matchAll(/\s(?:id|name)="([^"]+)"/g)].map((m) => m[1]!))
+const hrefs = (html: string) => [...html.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<a\b[^>]*?\shref="([^"]*)"/g)].map((m) => m[1]!.replace(/&amp;/g, '&'))
+
+export function checkLinks(options: Options): LinkIssue[] {
+  const { outDir, base } = options
+  const routes = new Set(options.routes.map(trim))
+  const client = new Set(options.clientRoutes.map(trim))
+  const serverPatterns = options.serverRoutes.map((r) => new RegExp(`^${r.split('/').map((seg) => (/^\[[^\]]+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/')}$`))
+  const html = new Map<string, string>()
+  const read = (route: string) => {
+    if (!html.has(route)) {
+      const file = resolve(outDir, routeToFile(route))
+      html.set(route, existsSync(file) ? readFileSync(file, 'utf8') : '')
+    }
+    return html.get(route)!
+  }
+  const issues: LinkIssue[] = []
+  for (const page of [...routes].filter((r) => !client.has(r))) {
+    for (const href of hrefs(read(page))) {
+      if (/^[a-z][\w+.-]*:|^\/\//i.test(href) || href === '') continue // external, mailto:, tel:, …
+      const url = new URL(href, `http://site${base}${page === '/' ? '' : page.slice(1) + '/'}`)
+      if (!url.pathname.startsWith(base) && `${url.pathname}/` !== base) continue // outside this site
+      let path = trim(decodeURIComponent(url.pathname.slice(base.length - 1)) || '/')
+      if (path.endsWith('/index.html')) path = trim(path.slice(0, -'index.html'.length))
+      const anchor = decodeURIComponent(url.hash.slice(1))
+      const isPage = routes.has(path)
+      const exists = isPage || serverPatterns.some((re) => re.test(path)) || existsSync(resolve(outDir, `.${path}`))
+      if (!exists) {
+        const guess = closest(path, routes)
+        issues.push({ kind: 'pages', page, href, message: `no page at ${path}${guess ? ` (did you mean ${guess}?)` : ''}` })
+        continue
+      }
+      if (!anchor || !isPage || client.has(path)) continue
+      const targets = ids(read(path))
+      if (targets.has(anchor)) continue
+      const guess = closest(anchor, targets)
+      issues.push({ kind: 'anchors', page, href, message: `no #${anchor} on ${path}${guess ? ` (did you mean #${guess}?)` : ''}` })
+    }
+  }
+  return issues
+}

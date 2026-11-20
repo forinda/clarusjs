@@ -18,7 +18,7 @@
     "html-first",
     "typescript"
   ],
-  "homepage": "https://github.com/forinda/clarusjs#readme",
+  "homepage": "https://clarusjs.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/forinda/clarusjs.git",

@@ -112,7 +112,7 @@ test('every sidebar link lands on a page, and the edit link points at its source
     expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
   }
   await page.goto('/guide/lists')
-  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.tscl$/)
+  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.md$/) // a Markdown page
   await expect(page.locator('.crumb')).toHaveText('Guide › Templates')
 })
 
@@ -565,7 +565,67 @@ test('a Markdown page renders in the layout, with anchors, a component and the r
   await expect(page).toHaveTitle('What is clarusjs? · clarusjs')
   await expect(page.locator('h2#what-makes-it-different a.header-anchor')).toHaveAttribute('href', '#what-makes-it-different')
   await expect(page.locator('.sidebar a[aria-current="page"]')).toHaveText('What is clarusjs?')
-  await expect(page.locator('aside.callout.info')).toContainText('This page is written in Markdown.')
+  await expect(page.locator('aside.callout.info').filter({ hasText: 'proving ground' })).toContainText('This page is written in Markdown.')
   await expect(page.locator('main li code').first()).toHaveText('<script>')
   await expect(page.locator('a.edit')).toHaveAttribute('href', /\/src\/pages\/guide\/what-is-clarusjs\.md$/)
+})
+
+test('Markdown containers and alerts render as the site callouts; details is native', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  const warning = page.locator('aside.callout.warning').filter({ hasText: 'This block was written as' })
+  await expect(warning.locator('.callout-title')).toHaveText('A title from the Markdown')
+  expect(await warning.evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe('rgb(201, 138, 18)') // the component's own styles
+  await expect(page.locator('aside.callout.tip').filter({ hasText: 'GitHub alert' }).locator('.callout-title')).toHaveText('Tip')
+  const details = page.locator('details.custom-block')
+  await expect(details.locator('summary')).toHaveText('What does a container compile to?')
+  await expect(details.locator('p')).toBeHidden()
+  await details.locator('summary').click()
+  await expect(details.locator('p')).toBeVisible()
+})
+
+test('highlighted code: colours follow the theme, code groups switch without JavaScript, copy skips removed lines', async ({ page, browser, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/guide/markdown')
+  // The theme toggle applies the saved or system theme when it attaches: let it, then switch to dark.
+  await expect(page.locator('[data-cl-persist="theme"] cl-island')).toHaveAttribute('data-cl-ready', '')
+  // A token whose light and dark colours differ (comments are the same grey in both GitHub themes).
+  const colour = () => page.evaluate(() => {
+    const span = [...document.querySelectorAll<HTMLElement>('.code-block .shiki span[style]')]
+      .find((el) => el.style.getPropertyValue('--shiki-light') !== el.style.getPropertyValue('--shiki-dark'))!
+    return getComputedStyle(span).color
+  })
+  const light = await colour()
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
+  expect(await colour()).not.toBe(light)
+  await expect(page.locator('.code-block.language-ts .line.highlighted')).toHaveCount(1)
+  // Copy: the diff block without its removed line.
+  const diffBlock = page.locator('.code-block').filter({ has: page.locator('.diff.remove') })
+  await diffBlock.locator('button.copy').click()
+  await expect(diffBlock.locator('button.copy')).toHaveText('Copied')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('const site = clarusjs({ sources: [markdown()] }) ')
+
+  const noJs = await browser.newContext({ javaScriptEnabled: false })
+  const p2 = await noJs.newPage()
+  await p2.goto('/guide/markdown')
+  const group = p2.locator('.code-group')
+  await expect(group.locator('.code-block').nth(0)).toBeVisible()
+  await expect(group.locator('.code-block').nth(1)).toBeHidden()
+  await group.locator('label', { hasText: 'npm' }).filter({ hasNotText: 'pnpm' }).click()
+  await expect(group.locator('.code-block').nth(1)).toBeVisible()
+  await expect(group.locator('.code-block').nth(0)).toBeHidden()
+  await noJs.close()
+})
+
+test('snippets show real source files; includes share Markdown between pages', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  const snippet = page.locator('.code-block').filter({ has: page.locator('.code-title', { hasText: 'src/nav.ts' }) })
+  await expect(snippet.locator('code')).toContainText('export function pager(path: string)')
+  await expect(snippet.locator('code')).not.toContainText('#region')
+  for (const path of ['/guide/markdown', '/guide/what-is-clarusjs']) {
+    await page.goto(path)
+    const box = page.locator('aside.callout.info').filter({ hasText: 'Node 22.12' })
+    await expect(box.locator('.callout-title'), path).toHaveText('Requirements')
+    await expect(box.locator('a'), path).toHaveAttribute('href', '/guide/getting-started')
+  }
 })
