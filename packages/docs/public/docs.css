@@ -232,3 +232,8 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin: 0 0 20px; }
 .facts dt { font-weight: 600; }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
+
+/* Client tour */
+.eyebrow-step { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent); }
+.tour { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
+.tour .next { margin-left: auto; }

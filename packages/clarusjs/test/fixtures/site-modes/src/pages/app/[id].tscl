@@ -1,0 +1,3 @@
+@input id: string
+@input label: string = ''
+<html><head><title>App {{ id }}</title></head><body><h1>{{ label }}</h1><a href="/app">Back</a></body></html>

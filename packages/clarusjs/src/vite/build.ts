@@ -23,6 +23,8 @@ export function routeToFile(route: string): string {
   const path = route.replace(/^\/+|\/+$/g, '').split('/').map((seg) => {
     try { return decodeURIComponent(seg) } catch { return seg } // '100%' is a name, not an escape
   }).join('/')
+  // A client page's data file is written as itself, next to the page's shell.
+  if (path === '__data.json' || path.endsWith('/__data.json')) return path
   return path ? `${path}/index.html` : 'index.html'
 }
 

@@ -4,7 +4,7 @@ import { htmlExpr, walk } from './html-expr.ts'
 import { rewriteServer } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
 
-export function emitServer(ir: ComponentIR, clientUrl: string): string {
+export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = false): string {
   const all = walk(ir.nodes)
   const runtime = [
     'escape as __cl_escape',
@@ -15,7 +15,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
     all.some((n) => n.kind === 'component' && n.region >= 0) && 'regionHtml as __cl_regionHtml',
   ].filter(Boolean).join(', ')
   let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
-  for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}'\n`
+  for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}${renderImports ? '?render' : ''}'\n`
   for (const d of ir.dataImports) out += `import ${d.clause} from '${d.from}'\n`
   for (const line of ir.scriptImports) out += `${line}\n`
 

@@ -11,6 +11,7 @@
     <tbody>
       <tr><td><code>static</code></td><td>once, at build, to an HTML file</td><td>once per page, at build</td><td>docs, blogs, marketing pages</td></tr>
       <tr><td><code>server</code></td><td>on every request, by the server</td><td>on every request, with the request</td><td>accounts, search, anything per visitor</td></tr>
+      <tr><td><code>client</code></td><td>in the browser, by the router</td><td>once per page, at build (served as <code>__data.json</code>)</td><td>app-like sections where moving between pages shouldn't reload; see <a href="/guide/client-routes">Client routes</a></td></tr>
     </tbody>
   </table>
 

@@ -50,3 +50,9 @@ test('page renders imported stateless components in place', async () => {
 test('stateful server compile requires clientUrl', () => {
   expect(() => compile(fixture('counter.tscl'), { file: 'counter.tscl', target: 'server' })).toThrow(/clientUrl/)
 })
+
+test('renderImports: a browser render module imports its child components as render modules too', () => {
+  const src = `@import badge from './badge.tscl'\n<p><badge /></p>`
+  expect(compile(src, { file: 'x.tscl', target: 'server' }).code).toContain(`import { render as __cl_render_badge } from './badge.tscl'\n`)
+  expect(compile(src, { file: 'x.tscl', target: 'server', renderImports: true }).code).toContain(`import { render as __cl_render_badge } from './badge.tscl?render'\n`)
+})

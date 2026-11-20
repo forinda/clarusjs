@@ -1,0 +1,21 @@
+@import copy from '../../components/copy.tscl'
+@import docs from '../../layouts/docs.tscl'
+@import callout from '../../components/callout.tscl'
+
+<docs [title]="'Client routes'" [path]="'/guide/client-routes'" [description]="'Routes rendered in the browser by a small router, with data from load() and navigation without reloads.'">
+  <h1>Client routes</h1>
+  <p class="lead">A client route is rendered in the browser. Moving between client routes doesn't reload the page.</p>
+  <div class="sample"><pre><code verbatim>clarusjs({ routes: { '/app/*': 'client' } })</code></pre><copy attach="interaction" /></div>
+
+  <h2>How it works</h2>
+  <ol>
+    <li>The first request returns a shell: the island loader, the router, and a table of the client routes.</li>
+    <li>The router loads the page's render module and its data, <code>&lt;path&gt;/__data.json</code>, and renders the page.</li>
+    <li>Clicks to other client routes are handled by the router through the Navigation API, without a reload. Browsers without it load each page normally.</li>
+  </ol>
+  <p>Islands on a client page attach as usual. A client route's data comes from its <code>load()</code>, run at build time like a static route's, so client routes work on any static host.</p>
+
+  <h2>What ships</h2>
+  <p>A client page sends its template, and the data it imports, to the browser: that's how it renders there. Keep secrets in <code>load()</code>, which never ships, and prefer static routes for content pages: they ship no JavaScript at all.</p>
+  <callout [type]="'tip'">@slot('title') {Try it}<p>The <a href="/tour/1">client tour</a> is three client routes on this site. Click through it: the page never reloads.</p></callout>
+</docs>
