@@ -108,7 +108,8 @@ function social(head: string, title: string, options: HeadOptions, page: { path:
   }
   const base = options.base ?? '/'
   const root = new URL(base, options.site.url.replace(/\/?$/, '/'))
-  const url = new URL(page.path === '/' ? '' : page.path.slice(1), root).href
+  // './' keeps the request path a path under the root: '/https:/evil.com' must not become another site.
+  const url = new URL(`./${page.path.slice(1)}`, root).href
   const absolute = (u: string) => (u.startsWith('/') && !u.startsWith('//') ? new URL(u.slice(1), root).href : new URL(u, url.endsWith('/') ? url : `${url}/`).href)
   const pageImage = content('meta:property:og:image')
   const image = pageImage || options.site.image || ''

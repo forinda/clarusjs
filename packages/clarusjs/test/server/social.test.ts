@@ -48,3 +48,12 @@ test('the canonical URL is the same with or without a trailing slash', async () 
   const h = createHandler({ '/src/pages/a.tscl': async () => ({ render: () => doc('<title>A</title>') }) }, { site: { url: 'https://example.com' } })
   expect(await headOf(h, '/a/')).toContain('<link rel="canonical" href="https://example.com/a">')
 })
+
+test('a request path that looks like a URL stays a path on the site (no canonical poisoning)', async () => {
+  const h = createHandler({ '/src/pages/[a]/[b].tscl': async () => ({ render: () => doc('<title>T</title>') }) }, {
+    modes: { '/[a]/[b]': 'server' }, site: { url: 'https://example.com' },
+  })
+  const head = await headOf(h, '/https:/evil.com')
+  expect(head).toContain('<link rel="canonical" href="https://example.com/https:/evil.com">')
+  expect(head).not.toContain('https://evil.com')
+})
