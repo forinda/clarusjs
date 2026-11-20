@@ -82,9 +82,9 @@ test('the command line runs check, with --json and an exit code', async () => {
 })
 
 test('#23: the type-checking guide shows the real output for its example', () => {
-  const guide = readFileSync(resolve(import.meta.dirname, '../../../docs/src/pages/guide/type-checking.tscl'), 'utf8')
-  const sample = guide.match(/\{\{-- src\/pages\/index\.tscl --\}\}\n([\s\S]*?)<\/code>/)![1]!
-  const shown = guide.match(/\$ pnpm check\n([\s\S]*?)<\/code>/)![1]!
+  const guide = readFileSync(resolve(import.meta.dirname, '../../../docs/src/pages/guide/type-checking.md'), 'utf8')
+  const sample = guide.match(/\{\{-- src\/pages\/index\.tscl --\}\}\n([\s\S]*?)\n```/)![1]!
+  const shown = guide.match(/\$ pnpm check\n([\s\S]*?)\n```/)![1]!
   const root = project({ 'src/nav.ts': `export const nav = [{ title: 'Intro', href: '/intro' }]\n`, 'src/pages/index.tscl': `${sample}\n` })
   const result = check({ root, typescript })
   expect(shown).toBe(`${result.text}\n\n${result.diagnostics.length} error`)
