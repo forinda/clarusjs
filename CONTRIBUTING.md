@@ -46,7 +46,8 @@ pnpm dev         # serves examples/counter at http://localhost:5173
    ```
    Pick the bump (patch for fixes, minor for features while we're on `0.x`) and write one or two sentences for the
    changelog. Commit the generated file in `.changeset/`. Dependabot PRs that bump a runtime dependency of
-   `clarusjs` (like `acorn`) need one too; dev-dependency bumps don't.
+   `clarusjs` (like `acorn`) need one too; dev-dependency bumps don't. Releases are automated from `main`; see
+   [RELEASE.md](RELEASE.md).
 6. Commit with [Conventional Commits](https://www.conventionalcommits.org): `feat:`, `fix:`, `docs:`, `test:`,
    `build:`, `chore:`.
 7. Open a pull request that says what changed, why, and how you tested it.

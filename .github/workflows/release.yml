@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  # Manual re-run if a publish failed part-way; packages already at the target version are skipped.
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Version packages or publish
+    runs-on: ubuntu-latest
+    # contents + pull-requests: open the "Version Packages" PR and push tags.
+    # id-token: npm trusted publishing (OIDC), so there is no NPM_TOKEN secret.
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          # Node 24 ships npm >= 11.5.1, which trusted publishing needs.
+          node-version: 24
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      - name: Open the Version Packages PR, or publish
+        uses: changesets/action@v2
+        with:
+          # Pending changesets on main → open/update a PR that bumps versions and writes CHANGELOGs.
+          # That PR merged (no pending changesets) → build and publish to npm, tag, create GitHub releases.
+          version-script: pnpm changeset:version
+          publish-script: pnpm changeset:publish
+          pr-title: 'chore: version packages'
+          commit-message: 'chore: version packages'
+          create-github-releases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signed provenance on every tarball: the "Verified" badge on npm.
+          NPM_CONFIG_PROVENANCE: 'true'
