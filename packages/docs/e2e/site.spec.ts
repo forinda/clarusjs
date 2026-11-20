@@ -319,3 +319,12 @@ test('release notes: one prerendered page per version in the changelog (a dynami
   await expect(page.locator('.changes a[href*="/pull/"]').first()).toBeVisible()
   expect((await page.goto('/releases/9.9.9'))?.status()).toBe(404)
 })
+
+test('release pages get their data from load() at build, and the manifest records it', async () => {
+  const { readFileSync } = await import('node:fs')
+  const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
+  const releasePages = Object.keys(manifest.routes).filter((r) => r.startsWith('/releases/'))
+  expect(releasePages.length).toBeGreaterThan(0)
+  for (const r of releasePages) expect(manifest.routes[r].loader, r).toBe('build')
+  expect(manifest.routes['/releases'].loader).toBeNull()
+})

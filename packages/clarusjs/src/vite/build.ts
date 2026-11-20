@@ -25,7 +25,7 @@ export function routeToFile(route: string): string {
  * build. Runs in a fresh Node process so a rebuilt server bundle is never served from a module cache. Returns the
  * routes rendered and those that read the route manifest (readManifest() from `manifestFile`).
  */
-export async function prerender(serverEntry: string, outDir: string, manifestFile: string, only?: string[]): Promise<{ routes: string[]; readers: string[] }> {
+export async function prerender(serverEntry: string, outDir: string, manifestFile: string, only?: string[]): Promise<{ routes: string[]; readers: string[]; loaded: string[] }> {
   const script = `
     import { mkdirSync, writeFileSync } from 'node:fs'
     import { dirname, resolve } from 'node:path'
@@ -41,8 +41,10 @@ export async function prerender(serverEntry: string, outDir: string, manifestFil
       process.exit(1)
     }
     const readers = []
+    const loaded = []
     for (const route of routes) {
       globalThis.__clManifestRead = false
+      globalThis.__clLoaderRan = false
       let response
       try {
         response = await handler.fetch(new Request('http://localhost' + route))
@@ -58,12 +60,13 @@ export async function prerender(serverEntry: string, outDir: string, manifestFil
       mkdirSync(dirname(file), { recursive: true })
       writeFileSync(file, await response.text())
       if (globalThis.__clManifestRead) readers.push(route)
+      if (globalThis.__clLoaderRan) loaded.push(route)
     }
-    process.stdout.write(JSON.stringify({ routes, readers }))
+    process.stdout.write(JSON.stringify({ routes, readers, loaded }))
   `
   const args = ['--input-type=module', '-e', script, serverEntry, outDir, ...(only ? [JSON.stringify(only)] : [])]
   const env = { ...process.env, CLARUS_MANIFEST: manifestFile }
   const result = spawnSync(process.execPath, args, { encoding: 'utf8', env })
   if (result.status !== 0) throw new Error(result.stderr.trim() || `prerender failed (exit ${result.status})`)
-  return JSON.parse(result.stdout) as { routes: string[]; readers: string[] }
+  return JSON.parse(result.stdout) as { routes: string[]; readers: string[]; loaded: string[] }
 }

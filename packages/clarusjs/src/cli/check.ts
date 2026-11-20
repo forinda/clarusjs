@@ -3,7 +3,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { dirname, relative, resolve, sep } from 'node:path'
+import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { ClarusError } from '../compiler/errors.ts'
 import { generateTs, toSourceOffset, type Mapping } from '../check/generate.ts'
 import { findClarusFiles } from '../vite/build.ts'
@@ -31,17 +31,20 @@ export function check(options: { root: string; typescript?: string }): CheckResu
   const virtualRoot = resolve(root, VIRTUAL)
   rmSync(virtualRoot, { recursive: true, force: true })
   const diagnostics: Diagnostic[] = []
-  const generated = new Map<string, { file: string; source: string; code: string; mappings: Mapping[] }>()
+  const generated = new Map<string, { file: string; source: string; code: string; mappings: Mapping[]; loaderSpan?: [number, number] }>()
 
   for (const path of findClarusFiles(resolve(root, 'src'))) {
     const file = posix(relative(root, path))
     const source = readFileSync(path, 'utf8')
     try {
-      const { code, mappings } = generateTs(source, file)
+      // A page's .load.ts that exports load(): what it returns is checked against the page's inputs.
+      const loaderPath = path.replace(/\.tscl$/, '.load.ts')
+      const hasLoad = existsSync(loaderPath) && /export\s+(async\s+)?function\s+load\b|export\s+(const|let)\s+load\b/.test(readFileSync(loaderPath, 'utf8'))
+      const { code, mappings, loaderSpan } = generateTs(source, file, hasLoad ? { loader: `./${basename(loaderPath)}` } : {})
       const vpath = resolve(virtualRoot, `${file}.ts`)
       mkdirSync(dirname(vpath), { recursive: true })
       writeFileSync(vpath, code)
-      generated.set(vpath, { file, source, code, mappings })
+      generated.set(vpath, { file, source, code, mappings, loaderSpan })
     } catch (err) {
       if (!(err instanceof ClarusError)) throw err
       const message = err.message.slice(`${err.file}:${err.line}:${err.column} `.length)
@@ -86,7 +89,9 @@ export function check(options: { root: string; typescript?: string }): CheckResu
     const offset = lines.slice(0, Number(m[2]) - 1).reduce((n, l) => n + l.length + 1, 0) + Number(m[3]) - 1
     const source = toSourceOffset(g.mappings, offset)
     const at = source === null ? { line: 1, column: 1 } : position(g.source, source)
-    diagnostics.push({ file: g.file, ...at, code: m[4]!, message: source === null ? `${m[5]} (in generated code)` : m[5]! })
+    const fromLoader = g.loaderSpan && offset >= g.loaderSpan[0] && offset < g.loaderSpan[1]
+    const message = fromLoader ? `load() returns a value that doesn't fit this page's inputs: ${m[5]}` : source === null ? `${m[5]} (in generated code)` : m[5]!
+    diagnostics.push({ file: g.file, ...at, code: m[4]!, message })
   }
 
   diagnostics.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column)

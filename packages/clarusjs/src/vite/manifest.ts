@@ -10,7 +10,8 @@ export type IslandInfo = { component: string; src: string; attach: Attach; count
 export type RouteInfo = {
   mode: 'static'
   html: string
-  loader: null
+  /** 'build': the page's load() ran once, when the page was prerendered. */
+  loader: 'build' | null
   islands: IslandInfo[]
   /** Files relative to dist/client; gzip sizes in bytes. initialGzip is what loads with the page (attach="load"). */
   js: { files: string[]; gzip: number; initialGzip: number }
@@ -27,7 +28,7 @@ const attrsOf = (tag: string) => {
 }
 
 /** What one prerendered page ships. `size` returns a built file's gzip size. */
-export function describeRoute(route: string, html: string, opts: { base: string; chunks: ChunkGraph; size(file: string): number }): RouteInfo {
+export function describeRoute(route: string, html: string, opts: { base: string; chunks: ChunkGraph; size(file: string): number; loaded?: boolean }): RouteInfo {
   const local = (url: string) => (url.startsWith(opts.base) ? url.slice(opts.base.length) : url.replace(/^\//, ''))
   const byFile = new Map(Object.values(opts.chunks).map((c) => [c.file, c]))
   const keyFile = new Map(Object.entries(opts.chunks).map(([k, c]) => [k, c.file]))
@@ -61,12 +62,12 @@ export function describeRoute(route: string, html: string, opts: { base: string;
   const sum = (files: string[]) => files.reduce((n, f) => n + opts.size(f), 0)
   const css = [...html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*>/g)].map((m) => attrsOf(m[0]).href!).filter(Boolean)
 
-  // ponytail: every route is prerendered with no data loader; mode and loader become real with routing (#28).
-  return { mode: 'static', html: routeToFile(route), loader: null, islands, js: { files: all, gzip: sum(all), initialGzip: sum(initial) }, css }
+  // ponytail: every route is prerendered; mode becomes real with the per-route mode table (#29).
+  return { mode: 'static', html: routeToFile(route), loader: opts.loaded ? 'build' : null, islands, js: { files: all, gzip: sum(all), initialGzip: sum(initial) }, css }
 }
 
 /** Describe every prerendered route and write `<distDir>/clarusjs-manifest.json`. */
-export function writeManifest(distDir: string, routes: string[], base: string): Manifest {
+export function writeManifest(distDir: string, routes: string[], base: string, loaded: string[] = []): Manifest {
   const client = resolve(distDir, 'client')
   const chunks = JSON.parse(readFileSync(resolve(client, '.vite/manifest.json'), 'utf8')) as ChunkGraph
   const sizes = new Map<string, number>()
@@ -76,7 +77,7 @@ export function writeManifest(distDir: string, routes: string[], base: string): 
   }
   const manifest: Manifest = { version: 1, routes: {} }
   for (const route of routes) {
-    manifest.routes[route] = describeRoute(route, readFileSync(resolve(client, routeToFile(route)), 'utf8'), { base, chunks, size })
+    manifest.routes[route] = describeRoute(route, readFileSync(resolve(client, routeToFile(route)), 'utf8'), { base, chunks, size, loaded: loaded.includes(route) })
   }
   writeFileSync(resolve(distDir, 'clarusjs-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
   return manifest

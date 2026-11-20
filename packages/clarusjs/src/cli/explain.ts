@@ -19,7 +19,7 @@ function describe(path: string, r: RouteInfo): string {
   return [
     path,
     ...row('Rendered', [`at build time, to dist/client/${r.html}`]),
-    ...row('Data', [r.loader ?? 'no loader']),
+    ...row('Data', [r.loader === 'build' ? 'load() ran once, at build time' : 'no loader']),
     ...row('Islands', islands.length ? islands : ['none']),
     ...row('JavaScript', [r.js.files.length ? `${kb(r.js.initialGzip)} on page load, ${kb(r.js.gzip)} in all (gzip, ${r.js.files.length} files)` : 'none']),
     ...row('CSS', [r.css.length ? r.css.join(', ') : 'none']),

@@ -112,12 +112,12 @@ export default function clarusjs(): Plugin {
       const dist = dirname(out)
       const manifestFile = resolve(dist, 'clarusjs-manifest.json')
       rmSync(manifestFile, { force: true }) // a page reading the manifest must never see the previous build's
-      const { routes, readers } = await prerender(entry, out, manifestFile)
-      writeManifest(dist, routes, builder.config.base)
+      const { routes, readers, loaded } = await prerender(entry, out, manifestFile)
+      writeManifest(dist, routes, builder.config.base, loaded)
       // Pages that read the manifest saw none on the first pass: render them again now that it exists.
       if (readers.length) {
         await prerender(entry, out, manifestFile, readers)
-        writeManifest(dist, routes, builder.config.base)
+        writeManifest(dist, routes, builder.config.base, loaded)
       }
     },
     resolveId(id) {

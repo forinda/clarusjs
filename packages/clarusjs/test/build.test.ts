@@ -136,8 +136,8 @@ test('#27: a page that reads the manifest is rendered again once it is written',
 })
 
 test('#30: a dynamic route is prerendered once per entry', () => {
-  expect(read('users/ada/index.html')).toContain('<h1>User ada</h1>')
-  expect(read('users/linus/index.html')).toContain('<h1>User linus</h1>')
+  expect(read('users/ada/index.html')).toContain('<h1>User Ada</h1>')
+  expect(read('users/linus/index.html')).toContain('<h1>User Linus</h1>')
 })
 
 test('#30: a dynamic route without entries() fails the build, naming the file', async () => {
@@ -150,3 +150,10 @@ test('#30: a dynamic route without entries() fails the build, naming the file', 
   writeFileSync(resolve(dir, 'vite.config.ts'), `import { defineConfig } from 'vite'\nimport clarusjs from ${JSON.stringify(plugin)}\nexport default defineConfig({ plugins: [clarusjs()] })\n`)
   await expect(build(dir)).rejects.toThrow('/users/[id] is a dynamic route: export entries() from src/pages/users/[id].load.ts')
 }, 60_000)
+
+test('#31: load() runs at build for each page, and the manifest says so', () => {
+  expect(read('users/ada/index.html')).toContain('<p>ada</p>')
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  expect(manifest.routes['/users/ada'].loader).toBe('build')
+  expect(manifest.routes['/'].loader).toBeNull()
+})
