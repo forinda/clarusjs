@@ -212,6 +212,8 @@ to change later, so it's fixed now.
 | `<!--[n-->…<!--]-->` | reactive hole `n`; the client replaces what's between |
 | `data-cl-e="n"` | element with event binding `n` |
 | `data-cl-a="n"` | element whose attributes read state; the client keeps them in sync |
+| `<!--[bn:k-->…<!--]-->` | `@if` block `n` inside an island; `k` is the branch the server rendered (`-1` for none) |
+| `<!--[fn-->…<!--]-->` | `@for` list `n` inside an island; each row is wrapped in `<!--[r-->…<!--]-->`, `@empty` content in `<!--[e-->…<!--]-->`. Markers inside a row repeat per row and are looked up within that row |
 
 Static parts of the page carry **no markers at all**. Islands are
 self-describing, so the loader needs no manifest at runtime and can attach to

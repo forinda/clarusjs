@@ -143,3 +143,14 @@ test('list-valued URL attributes check every entry (values by ";", ping by white
   expect(await render('@input p: string\n<a [ping]="p">x</a>', { p: '/track https://x.example/t' })).toContain('ping="/track https://x.example/t"')
   expect(await render('@input p: string\n<a [ping]="p">x</a>', { p: '/track javascript:alert(1)' })).toContain('ping="about:invalid#unsafe"')
 })
+
+test('in the browser, SVG animation attributes are also checked only on animation elements', async () => {
+  const island = await mount(`<script>
+  let v = state('ready;status:active')
+  let u = state('/ok')
+</script>
+<x-slider [values]="v"></x-slider><animate [values]="u" /><b (click)="v = 'next;status:done'; u = '/ok;javascript:alert(1)'">go</b>`)
+  ;(island.querySelector('b') as HTMLElement).click()
+  expect(island.querySelector('x-slider')!.getAttribute('values')).toBe('next;status:done')
+  expect(island.querySelector('animate')!.getAttribute('values')).toBe('about:invalid#unsafe')
+})

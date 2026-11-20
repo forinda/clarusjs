@@ -53,3 +53,42 @@ test('dependencies are dynamic', () => {
   a.set(1)
   expect(runs).toBe(before)
 })
+
+test('scope() disposes every effect and cleanup created inside it', async () => {
+  const { scope, onDispose } = await import('../../src/runtime/signals.ts')
+  const s = state(0)
+  let runs = 0
+  let cleaned = 0
+  const dispose = scope(() => {
+    effect(() => { s.get(); runs++ })
+    onDispose(() => cleaned++)
+  })
+  s.set(1)
+  expect(runs).toBe(2)
+  dispose()
+  s.set(2)
+  expect(runs).toBe(2)
+  expect(cleaned).toBe(1)
+})
+
+test('nested scopes are disposed with their parent', async () => {
+  const { scope } = await import('../../src/runtime/signals.ts')
+  const s = state(0)
+  let inner = 0
+  const dispose = scope(() => { scope(() => { effect(() => { s.get(); inner++ }) }) })
+  dispose()
+  s.set(1)
+  expect(inner).toBe(1)
+})
+
+test('untrack() reads without subscribing', async () => {
+  const { untrack } = await import('../../src/runtime/signals.ts')
+  const a = state(0)
+  const b = state(0)
+  let runs = 0
+  effect(() => { a.get(); untrack(() => b.get()); runs++ })
+  b.set(1)
+  expect(runs).toBe(1)
+  a.set(1)
+  expect(runs).toBe(2)
+})

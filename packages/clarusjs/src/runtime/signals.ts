@@ -6,6 +6,31 @@ export type ReadSignal<T> = { get(): T }
 type Effect = { run(): void; deps: Set<Set<Effect>>; active: boolean }
 
 let current: Effect | null = null
+// Cleanups registered while a scope() is running: effect stops, event listener removals, child scopes.
+let currentScope: (() => void)[] | null = null
+
+/** Run `fn`; everything it creates (effects, onDispose cleanups, nested scopes) is undone by the returned dispose. */
+export function scope(fn: () => void): () => void {
+  const prev = currentScope
+  const cleanups: (() => void)[] = []
+  currentScope = cleanups
+  try { fn() } finally { currentScope = prev }
+  const dispose = () => { for (const c of cleanups.splice(0).reverse()) c() }
+  onDispose(dispose)
+  return dispose
+}
+
+/** Register a cleanup with the enclosing scope (no-op outside one). */
+export function onDispose(fn: () => void): void {
+  currentScope?.push(fn)
+}
+
+/** Read signals without subscribing the running effect to them. */
+export function untrack<T>(fn: () => T): T {
+  const prev = current
+  current = null
+  try { return fn() } finally { current = prev }
+}
 
 export function state<T>(initial: T): Signal<T> {
   let value = initial
@@ -37,7 +62,9 @@ export function effect(fn: () => void): () => void {
     },
   }
   e.run()
-  return () => { e.active = false; for (const subs of e.deps) subs.delete(e); e.deps.clear() }
+  const stop = () => { e.active = false; for (const subs of e.deps) subs.delete(e); e.deps.clear() }
+  onDispose(stop)
+  return stop
 }
 
 // ponytail: eager derived, may compute twice on diamond graphs; switch to push-pull (alien-signals style) when nested derived lands
