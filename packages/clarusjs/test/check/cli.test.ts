@@ -69,3 +69,14 @@ test('a project tsconfig is extended', () => {
   })
   expect(check({ root, typescript }).diagnostics).toEqual([expect.objectContaining({ file: 'src/pages/index.clarus', line: 2, column: 7 })])
 })
+
+test('the command line runs check, with --json and an exit code', async () => {
+  const { spawnSync } = await import('node:child_process')
+  const root = project({ 'src/pages/index.clarus': '@input n: number\n<p>{{ n.foo }}</p>\n' })
+  const cli = resolve(import.meta.dirname, '../../src/cli/index.ts')
+  const run = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, 'check', root, '--json'], { encoding: 'utf8' })
+  expect(run.status).toBe(1)
+  expect(JSON.parse(run.stdout)).toEqual([expect.objectContaining({ file: 'src/pages/index.clarus', line: 2, column: 9, code: 'TS2339' })])
+  const help = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, '--help'], { encoding: 'utf8' })
+  expect(help.stdout).toMatch(/check \[options\] \[dir\]/)
+})

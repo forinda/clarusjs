@@ -1,20 +1,23 @@
 #!/usr/bin/env node
-// The clarusjs command line. `clarusjs check [--json] [dir]` type-checks a project's templates.
+// The clarusjs command line. Node only: nothing here is reachable from a browser bundle.
+import { Command } from 'commander'
 import { check } from './check.ts'
 
-const [command, ...args] = process.argv.slice(2)
-const json = args.includes('--json')
-const root = args.find((a) => !a.startsWith('--')) ?? process.cwd()
+const program = new Command('clarusjs').description('clarusjs: clear, compiled views')
 
-if (command === 'check') {
-  const result = check({ root })
-  if (json) console.log(result.json)
-  else if (result.diagnostics.length) {
-    console.log(result.text)
-    console.log(`\n${result.diagnostics.length} error${result.diagnostics.length === 1 ? '' : 's'}`)
-  } else console.log('No errors.')
-  process.exitCode = result.exitCode
-} else {
-  console.log('Usage: clarusjs check [--json] [dir]')
-  process.exitCode = command ? 1 : 0
-}
+program
+  .command('check')
+  .description('type-check every .clarus file under src/ and report errors at file.clarus:line:col')
+  .argument('[dir]', 'project folder', '.')
+  .option('--json', 'print diagnostics as JSON')
+  .action((dir: string, options: { json?: boolean }) => {
+    const result = check({ root: dir })
+    if (options.json) console.log(result.json)
+    else if (result.diagnostics.length) {
+      console.log(result.text)
+      console.log(`\n${result.diagnostics.length} error${result.diagnostics.length === 1 ? '' : 's'}`)
+    } else console.log('No errors.')
+    process.exitCode = result.exitCode
+  })
+
+program.parse()
