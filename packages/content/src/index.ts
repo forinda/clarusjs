@@ -204,6 +204,7 @@ function renderer(options: MarkdownOptions): Md {
 function pageHead(data: Record<string, unknown>, title: string | undefined): string {
   const tags: string[] = []
   if (data.titleTemplate === false && title !== undefined) tags.push(`<title>${escapeHtml(title)}</title>`)
+  if (data.sitemap === false) tags.push('<meta name="sitemap" content="false">')
   if (typeof data.image === 'string') tags.push(`<meta property="og:image" content="${escapeHtml(data.image)}">`)
   for (const entry of Array.isArray(data.head) ? data.head : []) {
     const [tag, attrs = {}, content] = entry as [string, Record<string, unknown>, string?]

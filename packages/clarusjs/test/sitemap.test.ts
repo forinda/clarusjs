@@ -73,3 +73,20 @@ test('vite build: no site.url or sitemap: false writes no sitemap', async () => 
     expect(() => readFileSync(resolve(root, 'dist/client/sitemap.xml'))).toThrow()
   }
 }, 120_000)
+
+test('vite build: exclude patterns and a page opt-out (its marker is stripped from the built page)', async () => {
+  const { root, w } = repo()
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  w('src/pages/drafts/a.tscl', '<p>a</p>')
+  w('src/pages/drafts/deep/b.tscl', '<cl-head><meta name="sitemap" content="false"></cl-head><p>b</p>')
+  w('src/pages/tags/x.tscl', '<p>x</p>')
+  w('src/pages/tags/x/y.tscl', '<p>y</p>')
+  w('src/pages/private.tscl', '<html><head><title>P</title></head><body><cl-head><meta name="sitemap" content="false"></cl-head><p>p</p></body></html>')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  const plugin = clarusjs({ site: { url: 'https://example.com' }, sitemap: { exclude: ['/drafts/**', '/tags/*'] } })
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [plugin] })).buildApp()
+  const locs = [...readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8').matchAll(/<loc>https:\/\/example\.com([^<]*)<\/loc>/g)].map((m) => m[1])
+  expect(locs.sort()).toEqual(['/', '/tags/x/y'])
+  for (const page of ['private', 'drafts/deep/b']) expect(readFileSync(resolve(root, `dist/client/${page}/index.html`), 'utf8')).not.toContain('name="sitemap"')
+}, 120_000)

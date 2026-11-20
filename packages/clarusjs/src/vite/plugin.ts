@@ -119,8 +119,12 @@ export type ClarusOptions = {
    * description and an image (the page's og:image, or `image`); absolute links to the site are link-checked.
    */
   site?: SiteOptions
-  /** With site.url, vite build writes sitemap.xml (static pages, dated from git). false: no sitemap. */
-  sitemap?: boolean
+  /**
+   * With site.url, vite build writes sitemap.xml (static pages, dated from git). false: no sitemap. `exclude`: paths
+   * left out ('/legal', '/tags/*' one segment, '/drafts/**' any depth). A page opts out itself with
+   * <cl-head><meta name="sitemap" content="false"></cl-head> (removed from the built page) or noindex.
+   */
+  sitemap?: boolean | { exclude?: string[] }
 }
 export type { HeadTag }
 export type LinkLevel = 'error' | 'warn' | 'off'
@@ -321,9 +325,18 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (options.site && options.sitemap !== false) {
         const dates = gitDates(builder.config.root, 'src/pages')
         const epoch = process.env.SOURCE_DATE_EPOCH ? Number(process.env.SOURCE_DATE_EPOCH) : undefined
-        const noindex = (page: string) => [...readFileSync(resolve(out, routeToFile(page)), 'utf8').matchAll(/<meta\b[^>]*>/gi)]
-          .some(([tag]) => /\sname\s*=\s*"robots"/i.test(tag) && /\scontent\s*=\s*"[^"]*\bnoindex\b/i.test(tag))
-        const pages = pageRoutes.filter((page) => !clientRoutes.includes(page) && !noindex(page))
+        const exclude = (typeof options.sitemap === 'object' ? options.sitemap.exclude ?? [] : [])
+          .map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*|\*/g, (s) => (s === '**' ? '.*' : '[^/]+'))}$`))
+        // A page's own opt-out marker is read, then removed from the built page; noindex pages aren't listed either.
+        const optedOut = (page: string) => {
+          const file = resolve(out, routeToFile(page))
+          const html = readFileSync(file, 'utf8')
+          const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
+          const marker = tags.find((tag) => /\sname\s*=\s*"sitemap"/i.test(tag) && /\scontent\s*=\s*"false"/i.test(tag))
+          if (marker) writeFileSync(file, html.replace(marker, ''))
+          return !!marker || tags.some((tag) => /\sname\s*=\s*"robots"/i.test(tag) && /\scontent\s*=\s*"[^"]*\bnoindex\b/i.test(tag))
+        }
+        const pages = pageRoutes.filter((page) => !clientRoutes.includes(page) && !optedOut(page) && !exclude.some((re) => re.test(page)))
           .map((path) => ({ path, lastmod: dates.get(fileOf(path) ?? '') ?? epoch }))
         writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
       }
