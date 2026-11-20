@@ -47,3 +47,9 @@ test('built Vite plugin points at built runtime files that exist', async () => {
   const entry = plugin.load('\0virtual:clarusjs/server-entry') as string
   expect(entry).toContain(`${dist}/server/handler.js`)
 })
+
+test('every path in "files" exists, including README and LICENSE (npm shows the package README)', () => {
+  const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))
+  expect(pkg.files).toEqual(expect.arrayContaining(['dist', 'LICENSE', 'README.md']))
+  for (const f of pkg.files as string[]) expect(existsSync(`${pkgDir}/${f}`), f).toBe(true)
+})
