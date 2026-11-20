@@ -8,14 +8,14 @@ import { state } from '../../src/runtime/signals.ts'
 import { importCode } from '../helpers.ts'
 
 function compileError(source: string): ClarusError {
-  try { compile(source, { file: 'x.clarus', target: 'client' }) } catch (e) { return e as ClarusError }
+  try { compile(source, { file: 'x.tscl', target: 'client' }) } catch (e) { return e as ClarusError }
   throw new Error('expected compile to throw')
 }
 
 test('imports in <script> are hoisted to the top of both modules', () => {
   const src = `<script>\n  import { fmt } from './fmt.ts'\n  let n = state(1)\n</script>\n<b (click)="n++">{{ fmt(n) }}</b>`
-  const server = compile(src, { file: 'x.clarus', target: 'server', clientUrl: '/x' }).code
-  const client = compile(src, { file: 'x.clarus', target: 'client' }).code
+  const server = compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code
+  const client = compile(src, { file: 'x.tscl', target: 'client' }).code
   for (const code of [server, client]) {
     expect(code).toMatch(/^import .*\nimport \{ fmt \} from '\.\/fmt\.ts'\n/)
     expect(code.split("import { fmt } from './fmt.ts'").length - 1).toBe(1)
@@ -23,7 +23,7 @@ test('imports in <script> are hoisted to the top of both modules', () => {
 })
 
 test('node: imports in an island script are a located build error', () => {
-  expect(compileError(`<script>\n  import { readFileSync } from 'node:fs'\n</script>\n<p>x</p>`).message).toMatch(/^x\.clarus:2:3 .*node:fs.*browser/)
+  expect(compileError(`<script>\n  import { readFileSync } from 'node:fs'\n</script>\n<p>x</p>`).message).toMatch(/^x\.tscl:2:3 .*node:fs.*browser/)
 })
 
 const storeSrc = (name: string) => `<script>
@@ -35,10 +35,10 @@ const storeSrc = (name: string) => `<script>
 async function mountTwo(store: unknown) {
   ;(globalThis as any).__testStore = store
   const deps = { '/store.js': 'export const todos = globalThis.__testStore' }
-  const a = { s: await importCode(compile(storeSrc('a'), { file: 'a.clarus', target: 'server', clientUrl: '/a.js' }).code, 'st-as', deps),
-    c: await importCode(compile(storeSrc('a'), { file: 'a.clarus', target: 'client' }).code, 'st-ac', deps) }
-  const b = { s: await importCode(compile(storeSrc('b'), { file: 'b.clarus', target: 'server', clientUrl: '/b.js' }).code, 'st-bs', deps),
-    c: await importCode(compile(storeSrc('b'), { file: 'b.clarus', target: 'client' }).code, 'st-bc', deps) }
+  const a = { s: await importCode(compile(storeSrc('a'), { file: 'a.tscl', target: 'server', clientUrl: '/a.js' }).code, 'st-as', deps),
+    c: await importCode(compile(storeSrc('a'), { file: 'a.tscl', target: 'client' }).code, 'st-ac', deps) }
+  const b = { s: await importCode(compile(storeSrc('b'), { file: 'b.tscl', target: 'server', clientUrl: '/b.js' }).code, 'st-bs', deps),
+    c: await importCode(compile(storeSrc('b'), { file: 'b.tscl', target: 'client' }).code, 'st-bc', deps) }
   return { a, b }
 }
 
@@ -73,7 +73,7 @@ test('each server render gets its own copy of a store\'s initial value', async (
   items.push('added during render')
 </script>
 <p>{{ items.length }}</p><b (click)="items = []">x</b>`
-  const { render } = await importCode(compile(src, { file: 'm.clarus', target: 'server', clientUrl: '/m.js' }).code, 'st-mut', { '/store.js': 'export const todos = globalThis.__testStore' })
+  const { render } = await importCode(compile(src, { file: 'm.tscl', target: 'server', clientUrl: '/m.js' }).code, 'st-mut', { '/store.js': 'export const todos = globalThis.__testStore' })
   expect(render()).toContain('<!--[0-->2<!--]-->')
   expect(render()).toContain('<!--[0-->2<!--]-->')
   expect(todos.initial).toEqual(['seed'])

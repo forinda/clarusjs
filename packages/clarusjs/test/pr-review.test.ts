@@ -11,15 +11,15 @@ import { attachAll } from '../src/runtime/loader.ts'
 import { importCode } from './helpers.ts'
 
 async function mount(source: string, props = {}) {
-  const server = await importCode(compile(source, { file: 'x.clarus', target: 'server', clientUrl: '/x' }).code, 'pr-s')
-  const client = await importCode(compile(source, { file: 'x.clarus', target: 'client' }).code, 'pr-c')
+  const server = await importCode(compile(source, { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code, 'pr-s')
+  const client = await importCode(compile(source, { file: 'x.tscl', target: 'client' }).code, 'pr-c')
   document.body.innerHTML = server.render(props)
   const island = document.querySelector('cl-island')!
   client.attach(island, props)
   return island
 }
 function compileError(source: string): ClarusError {
-  try { compile(source, { file: 'x.clarus', target: 'client' }) } catch (e) { return e as ClarusError }
+  try { compile(source, { file: 'x.tscl', target: 'client' }) } catch (e) { return e as ClarusError }
   throw new Error('expected compile to throw')
 }
 
@@ -33,23 +33,23 @@ describe('major', () => {
   test('reactive holes inside textarea, title or style are a build error', () => {
     for (const tag of ['textarea', 'title', 'style']) {
       const e = compileError(`<script>let n = state(0)</script>\n<${tag}>{{ n }}</${tag}>`)
-      expect(e.message).toMatch(new RegExp(`^x\\.clarus:2:${tag.length + 3} .*<${tag}>`))
+      expect(e.message).toMatch(new RegExp(`^x\\.tscl:2:${tag.length + 3} .*<${tag}>`))
     }
   })
 
   test('non-reactive holes inside title are fine', () => {
-    expect(() => compile('@input t: string\n<title>{{ t }}</title>', { file: 'x.clarus', target: 'server' })).not.toThrow()
+    expect(() => compile('@input t: string\n<title>{{ t }}</title>', { file: 'x.tscl', target: 'server' })).not.toThrow()
   })
 
   test('}} inside strings and nested objects does not end a hole', () => {
-    const f = parse('<p>{{ "}}" }}|{{ ({a:{b:1}}).a.b }}</p>', 'x.clarus')
+    const f = parse('<p>{{ "}}" }}|{{ ({a:{b:1}}).a.b }}</p>', 'x.tscl')
     const p = f.nodes[0] as { children: { type: string; expr?: string }[] }
     expect(p.children.filter((c) => c.type === 'expr').map((c) => c.expr)).toEqual(['"}}"', '({a:{b:1}}).a.b'])
   })
 
   test('import/export in an event handler is a located build error', () => {
     expect(compileError("<script>let n = state(0)</script>\n<b (click)=\"import x from 'y'\">x</b>").message)
-      .toMatch(/^x\.clarus:2:4 .*imports .*not supported/)
+      .toMatch(/^x\.tscl:2:4 .*imports .*not supported/)
   })
 
   test('destructured script names make holes reactive', async () => {
@@ -72,10 +72,10 @@ describe('major', () => {
   })
 
   test('components with names that differ only by - and _ get distinct aliases', async () => {
-    const a = compile('<i>dash</i>', { file: 'foo-bar.clarus', target: 'server' }).code
-    const b = compile('<i>under</i>', { file: 'foo_bar.clarus', target: 'server' }).code
-    const page = compile(`@import foo-bar from './foo-bar.clarus'\n@import foo_bar from './foo_bar.clarus'\n<foo-bar /><foo_bar />`, { file: 'p.clarus', target: 'server' }).code
-    const { render } = await importCode(page, 'pr-names', { './foo-bar.clarus': a, './foo_bar.clarus': b })
+    const a = compile('<i>dash</i>', { file: 'foo-bar.tscl', target: 'server' }).code
+    const b = compile('<i>under</i>', { file: 'foo_bar.tscl', target: 'server' }).code
+    const page = compile(`@import foo-bar from './foo-bar.tscl'\n@import foo_bar from './foo_bar.tscl'\n<foo-bar /><foo_bar />`, { file: 'p.tscl', target: 'server' }).code
+    const { render } = await importCode(page, 'pr-names', { './foo-bar.tscl': a, './foo_bar.tscl': b })
     expect(render()).toBe('<i>dash</i><i>under</i>')
   })
 })
@@ -101,7 +101,7 @@ describe('minor', () => {
   })
 
   test('an invalid @input default is a located build error', () => {
-    expect(compileError('@input start: number = )\n<p>x</p>').message).toMatch(/^x\.clarus:1:1 /)
+    expect(compileError('@input start: number = )\n<p>x</p>').message).toMatch(/^x\.tscl:1:1 /)
   })
 
   test('multiline template literals in <script> keep their content', async () => {

@@ -29,7 +29,7 @@ test('built JS has no .ts import specifiers', () => {
 
 test('built compiler compiles a component', async () => {
   const { compile } = await import(`${dist}/compiler/index.js`)
-  const out = compile('<script>let n = state(0)</script>\n<b (click)="n++">{{ n }}</b>', { file: 'c.clarus', target: 'client' })
+  const out = compile('<script>let n = state(0)</script>\n<b (click)="n++">{{ n }}</b>', { file: 'c.tscl', target: 'client' })
   expect(out.code).toContain('export function attach')
 })
 

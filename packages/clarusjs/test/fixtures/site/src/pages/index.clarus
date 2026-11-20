@@ -1,8 +1,0 @@
-@import counter from '../components/counter.clarus'
-@import greeting from '../components/greeting.clarus'
-@import panel from '../components/panel.clarus'
-
-<h1>Home</h1>
-<greeting [name]="'site'" />
-<counter [start]="1" />
-<panel />

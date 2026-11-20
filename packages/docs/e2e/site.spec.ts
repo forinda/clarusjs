@@ -112,7 +112,7 @@ test('every sidebar link lands on a page, and the edit link points at its source
     expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
   }
   await page.goto('/guide/lists')
-  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.clarus$/)
+  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.tscl$/)
   await expect(page.locator('.crumb')).toHaveText('Guide › Templates')
 })
 
@@ -256,4 +256,44 @@ test('copy buttons load on first click and copy their sample', async ({ page, co
   expect(chunks).toHaveLength(1)
   const copied = await page.evaluate(() => navigator.clipboard.readText())
   expect(copied).toBe(await sample.locator('code').textContent())
+})
+
+test('the route manifest matches what the browser loads', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
+  expect(Object.keys(manifest.routes).sort()).toEqual(pages.map((p) => p.path).sort())
+  for (const path of ['/', '/guide/state']) {
+    const route = manifest.routes[path]
+    const { scripts } = await visit(page, path)
+    const loaded = [...new Set(scripts.map((s) => new URL(s).pathname.slice(1)))].sort()
+    const initial = route.js.files.filter((f: string) => !route.islands.some((i: { src: string; attach: string }) => i.src === f && i.attach !== 'load'))
+    expect(loaded, path).toEqual([...initial].sort())
+    page.removeAllListeners()
+  }
+})
+
+test('clarusjs explain names the islands the page really has', async ({ page }) => {
+  const { spawnSync } = await import('node:child_process')
+  const { fileURLToPath } = await import('node:url')
+  const cli = fileURLToPath(new URL('../../clarusjs/src/cli/index.ts', import.meta.url))
+  const root = fileURLToPath(new URL('..', import.meta.url))
+  const run = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, 'explain', '/guide/state', '--root', root, '--json'], { encoding: 'utf8' })
+  expect(run.status, run.stderr).toBe(0)
+  const explained = JSON.parse(run.stdout).islands.map((i: { component: string; count: number }) => [i.component, i.count])
+  await page.goto('/guide/state')
+  const names = await page.locator('cl-island').evaluateAll((els) => els.map((e) => e.getAttribute('c')!))
+  const found = [...new Set(names)].map((n) => [n, names.filter((x) => x === n).length])
+  expect(explained).toEqual(found)
+})
+
+test('this site, explained: the table is generated from the manifest at build time', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
+  await page.goto('/guide/explained')
+  const rows = page.locator('table.explained tbody tr')
+  await expect(rows).toHaveCount(pages.length)
+  const home = rows.filter({ has: page.locator('a[href="/"]') })
+  for (const island of manifest.routes['/'].islands) await expect(home).toContainText(island.component)
+  // The page lists itself, so it was rendered after the manifest existed.
+  await expect(rows.filter({ has: page.locator('a[href="/guide/explained"]') })).toContainText('copy (interaction)')
 })

@@ -1,5 +1,5 @@
 // Regressions from the slice-1 branch review: non-ESM apps, base paths, a missing client manifest.
-import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { createBuilder, preview } from 'vite'
@@ -22,6 +22,9 @@ function tempApp() {
   const root = mkdtempSync(resolve(tmpdir(), 'clarusjs-base-'))
   cpSync(resolve(fixtures, 'site/src'), resolve(root, 'src'), { recursive: true })
   cpSync(resolve(fixtures, 'site/public'), resolve(root, 'public'), { recursive: true })
+  // Like an app that installed clarusjs, so pages can import 'clarusjs/manifest'.
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
   return root
 }
 
@@ -64,13 +67,13 @@ test('a server build without the client manifest fails instead of shipping dev U
 
 test('building twice with the same builder uses the new island chunk and the new page HTML', async () => {
   const root = tempApp()
-  const counterFile = resolve(root, 'src/components/counter.clarus')
+  const counterFile = resolve(root, 'src/components/counter.tscl')
   const builder = await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })
   await builder.buildApp()
   const first = readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')
   // Change both the script (lands in the island chunk) and the static text (lands only in the page HTML).
   writeFileSync(counterFile, readFileSync(counterFile, 'utf8').replace('count * 2', 'count * 3').replace('Clicked', 'Pressed'))
-  writeFileSync(resolve(root, 'src/pages/index.clarus'), readFileSync(resolve(root, 'src/pages/index.clarus'), 'utf8').replace('<h1>Home</h1>', '<h1>Home v2</h1>'))
+  writeFileSync(resolve(root, 'src/pages/index.tscl'), readFileSync(resolve(root, 'src/pages/index.tscl'), 'utf8').replace('<h1>Home</h1>', '<h1>Home v2</h1>'))
   await builder.buildApp()
   const second = readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')
   const src = (html: string) => html.match(/<cl-island c="counter" src="([^"]+)"/)![1]
@@ -82,7 +85,7 @@ test('building twice with the same builder uses the new island chunk and the new
 
 test('vite preview resolves a page route that contains a dot', async () => {
   const root = tempApp()
-  writeFileSync(resolve(root, 'src/pages/release.v1.clarus'), '<h1>Release 1</h1>')
+  writeFileSync(resolve(root, 'src/pages/release.v1.tscl'), '<h1>Release 1</h1>')
   const config = { root, configFile: false as const, logLevel: 'silent' as const, plugins: [clarusjs()] }
   await (await createBuilder(config)).buildApp()
   const server = await preview({ ...config, preview: { port: 0 } })

@@ -1,0 +1,40 @@
+@import copy from '../../components/copy.tscl'
+@import docs from '../../layouts/docs.tscl'
+@import callout from '../../components/callout.tscl'
+
+<docs [title]="'Type checking'" [path]="'/guide/type-checking'" [description]="'Type-check templates with clarusjs check: inputs, holes, events and imported data, reported at file.tscl:line:col.'">
+  <h1>Type checking</h1>
+  <p class="lead"><code>clarusjs check</code> type-checks your templates with your project's own TypeScript, and reports errors where you wrote them: <code>file.tscl:line:col</code>.</p>
+
+  <h2>Set up</h2>
+  <p>Install TypeScript in your project (clarusjs uses whichever version you have), then add a script:</p>
+  <div class="sample"><pre><code verbatim>pnpm add -D typescript
+
+// package.json
+"scripts": { "check": "clarusjs check" }</code></pre><copy attach="interaction" /></div>
+  <p>If your project has a <code>tsconfig.json</code>, its settings are used; otherwise strict defaults with browser types.</p>
+
+  <h2>What it checks</h2>
+  <ul>
+    <li><strong>Inputs.</strong> Using a component checks the values you pass against its <code>@input</code> types: a missing input, an unknown one, or a wrong type is an error on the tag.</li>
+    <li><strong>Holes and attributes.</strong> Every <code verbatim>{{ }}</code> and <code>[attr]</code> expression is type-checked against the inputs, script variables and imports it can see.</li>
+    <li><strong>Control flow.</strong> <code>@if</code> narrows types like <code>if</code>, and <code>@for</code> types the row variable from the list.</li>
+    <li><strong>Events.</strong> In <code>(click)="…"</code>, <code>$event</code> has the right event type, such as <code>MouseEvent</code>.</li>
+    <li><strong>Scripts and data.</strong> An island's script, and data brought in with <code>@import</code>, are ordinary TypeScript.</li>
+  </ul>
+  <div class="sample"><pre><code verbatim>{{-- src/pages/index.tscl --}}
+@import { nav } from '../nav'
+@for (item of nav) { <a [href]="item.hrfe">{{ item.title }}</a> }</code></pre><copy attach="interaction" /></div>
+  <pre verbatim><code>$ pnpm check
+src/pages/index.tscl:2:38 error TS2339: Property 'hrfe' does not exist on type '{ title: string; href: string; }'.
+
+1 error</code></pre>
+
+  <h2>In CI</h2>
+  <p>The command exits with 1 when there are errors, so it fails a CI job on its own. Add <code>--json</code> to get the diagnostics (file, line, column, code, message) for other tools. This site checks itself in CI the same way.</p>
+  <div class="sample"><pre><code verbatim>- run: pnpm check</code></pre><copy attach="interaction" /></div>
+
+  <h2>How it works</h2>
+  <p>Each <code>.tscl</code> file is turned into a TypeScript file that means the same thing (<code>@if</code> becomes <code>if</code>, a component tag becomes an object typed as its inputs) and is never run. TypeScript checks those files, and each error is mapped back to the template. They are written to <code>.clarusjs/</code>: keep that folder out of version control.</p>
+  <callout [type]="'info'">@slot('title') {Editor support}<p>Errors in the editor, as you type, are planned. Until then, run <code>clarusjs check</code>; build errors also point at the exact line and column.</p></callout>
+</docs>
