@@ -27,4 +27,5 @@ export default defineConfig({ plugins: [clarusjs()] })</code></pre>
 pnpm vite build    # static site in dist/client/</code></pre>
 
   <callout><p>Next: <a href="/guide/components">components</a>, then <a href="/guide/islands">islands</a> for the interactive parts.</p></callout>
+  @slot('next') {<a href="/guide/components">Next: Components →</a>}
 </docs>

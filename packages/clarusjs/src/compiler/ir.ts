@@ -6,8 +6,10 @@ import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, t
 export type IRNode =
   | { kind: 'static'; html: string }
   | { kind: 'hole'; expr: string; reactive: boolean; index: number } // index = -1 when not reactive
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[] }
-  | { kind: 'slot' } // where a stateless component renders the content it wraps
+  // children: content for the default slot; fills: content for named slots (@slot('name') { … }).
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[] }
+  // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
+  | { kind: 'slot'; name: string; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
   | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
@@ -41,7 +43,6 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   const components = new Set(parsed.imports.map((i) => i.name))
   const nodes: IRNode[] = []
   let out = nodes // where lowering writes; switched while lowering a component's children
-  let slotCount = 0
   const events: IREvent[] = []
   let holeCount = 0
   let eventElementCount = 0
@@ -64,6 +65,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
 
   function visit(node: TemplateNode, rawText?: string): void {
     if (node.type === 'text') return emitStatic(node.value)
+    if (node.type === 'fill') return fail('@slot only works directly inside a component tag', node.start)
     if (node.type === 'if') {
       const block = stateful ? blockCount++ : -1
       const parent = out
@@ -119,21 +121,41 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
         if (a.kind === 'prop') { checkExpr(a.expr, file, source, a.start); props.push({ name: a.name, expr: a.expr }) }
         else fail(`component <${node.tag}> only takes [prop] bindings`, a.start)
       }
-      // The wrapped content is rendered here, in this component's scope, and handed to the child as its slot.
-      const children: IRNode[] = []
-      const parent = out
-      out = children
-      node.children.forEach((child) => visit(child, rawText))
-      out = parent
-      out.push({ kind: 'component', name: node.tag, props, children })
+      // Content is rendered here, in this component's scope, and handed to the child for its slots.
+      const lowerList = (list: TemplateNode[]) => {
+        const nodes_: IRNode[] = []
+        const parent = out
+        out = nodes_
+        list.forEach((child) => visit(child, rawText))
+        out = parent
+        return nodes_
+      }
+      const fills: { name: string; nodes: IRNode[] }[] = []
+      for (const child of node.children) {
+        if (child.type !== 'fill') continue
+        if (fills.some((f) => f.name === child.name)) fail(`slot "${child.name}" is filled twice`, child.start)
+        fills.push({ name: child.name, nodes: lowerList(child.children) })
+      }
+      const rest = node.children.filter((c) => c.type !== 'fill')
+      // Whitespace around @slot blocks is not content for the default slot.
+      const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
+      out.push({ kind: 'component', name: node.tag, props, children, fills })
       return
     }
     if (node.tag === 'slot') {
       if (stateful) fail('<slot /> is only supported in components without <script>', node.start)
-      if (node.attrs.some((a) => a.name === 'name')) fail('named slots are not supported yet', node.start)
-      if (node.children.length) fail('<slot /> takes no children', node.start)
-      if (slotCount++) fail('only one <slot /> per component', node.start)
-      out.push({ kind: 'slot' })
+      let name = 'default'
+      for (const a of node.attrs) {
+        if (a.kind === 'static' && a.name === 'name' && typeof a.value === 'string' && a.value) name = a.value
+        else fail('<slot> only takes name="…"', a.start)
+      }
+      // Fallback content belongs to this component: its holes read this component's inputs.
+      const fallback: IRNode[] = []
+      const parent = out
+      out = fallback
+      node.children.forEach((child) => visit(child, rawText))
+      out = parent
+      out.push({ kind: 'slot', name, fallback })
       return
     }
     emitStatic(`<${node.tag}`)

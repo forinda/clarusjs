@@ -59,6 +59,21 @@
   <h1>Components</h1>
 </docs></code></pre>
 
+  <h2>Named slots</h2>
+  <p>A component can have several slots. Give them names, and fill them from the parent with <code verbatim>@slot('name') { … }</code>; everything else goes to the default slot. Content inside a <code>&lt;slot&gt;</code> is the fallback, shown when nothing fills it.</p>
+  <pre><code verbatim>{{-- components/panel.clarus --}}
+<section>
+  <header><slot name="head">Untitled</slot></header>
+  <slot />
+</section>
+
+{{-- a page --}}
+<panel>
+  @slot('head') { <h2>Settings</h2> }
+  <p>Everything else is the default slot.</p>
+</panel></code></pre>
+  <p>This site's layout has a <code>next</code> slot: each guide page fills it with the link at the bottom, and other pages get the fallback.</p>
+
   <h2>Showing code</h2>
   <p>Add <code>verbatim</code> to an element and everything inside it is shown as text: no holes, tags or directives. That's how every code sample on this site is written.</p>
   <pre verbatim><code verbatim>
@@ -67,4 +82,5 @@
   <p>The content can't contain the element's own closing tag. This sample contains <code>&lt;/code&gt;</code>, so it sits in a <code>&lt;pre verbatim&gt;</code> instead.</p>
 
   <callout><p>Mistakes are build errors with a location, for example <code>components.clarus:3:9 [prop] bindings on HTML elements are not supported yet</code>.</p></callout>
+  @slot('next') {<a href="/guide/islands">Next: Islands →</a>}
 </docs>

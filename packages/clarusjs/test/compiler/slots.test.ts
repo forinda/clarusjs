@@ -50,16 +50,53 @@ test('<slot /> in a stateful component is a located build error', () => {
   expect(compileError('<script>let n = state(0)</script>\n<p><slot /></p>').message).toMatch(/^x\.clarus:2:4 .*only supported in components without <script>/)
 })
 
-test('only one <slot /> per component', () => {
-  expect(compileError('<slot /><slot />').message).toMatch(/^x\.clarus:1:9 .*only one <slot \/>/)
+// --- named slots (#12) ---
+
+const panel = server(`@input title: string
+<section><header><slot name="head">{{ title }}</slot></header><main><slot>Nothing here</slot></main><footer><slot name="foot" /></footer></section>`, 'panel.clarus')
+
+async function renderWith(source: string, props = {}) {
+  const { render } = await importCode(server(source, 'page.clarus'), 'named-page', { './panel.clarus': panel, './card.clarus': card })
+  return render(props) as string
+}
+
+test('@slot fills named slots; other content goes to the default slot', async () => {
+  const html = await renderWith(`@import panel from './panel.clarus'
+<panel [title]="'T'">@slot('head') {<h2>Custom</h2>} body text @slot('foot') {<small>f</small>}</panel>`)
+  expect(html).toBe('<section><header><h2>Custom</h2></header><main> body text </main><footer><small>f</small></footer></section>')
 })
 
-test('named slots are not supported yet', () => {
-  expect(compileError('<slot name="aside" />').message).toMatch(/^x\.clarus:1:1 .*named slots are not supported yet/)
+test('unfilled slots show their fallback, which reads the component\'s inputs', async () => {
+  expect(await renderWith(`@import panel from './panel.clarus'\n<panel [title]="'T'" />`))
+    .toBe('<section><header>T</header><main>Nothing here</main><footer></footer></section>')
 })
 
-test('<slot> takes no children', () => {
-  expect(compileError('<slot>fallback</slot>').message).toMatch(/^x\.clarus:1:1 .*<slot \/> takes no children/)
+test('whitespace alone does not fill the default slot', async () => {
+  const html = await renderWith(`@import panel from './panel.clarus'\n<panel [title]="'T'">\n  @slot('foot') {x}\n</panel>`)
+  expect(html).toContain('<main>Nothing here</main>')
+})
+
+test('fill content is rendered in the page scope and escaped once', async () => {
+  const html = await renderWith(`@import panel from './panel.clarus'\n@input who: string\n<panel [title]="'T'">@slot('head') {{{ who }}}</panel>`, { who: '<b>' })
+  expect(html).toContain('<header>&lt;b&gt;</header>')
+})
+
+test('a fill for a slot the component does not have fails when rendering, naming it', async () => {
+  await expect(renderWith(`@import card from './card.clarus'\n<card>@slot('aside') {x}</card>`)).rejects.toThrow(/<card> has no slot "aside"/)
+})
+
+test('a slot name may repeat; both places get the content', async () => {
+  const twice = server('<p><slot name="x" /></p><p><slot name="x" /></p>', 'twice.clarus')
+  const page = server(`@import twice from './twice.clarus'\n<twice>@slot('x') {hi}</twice>`, 'page.clarus')
+  const { render } = await importCode(page, 'twice', { './twice.clarus': twice })
+  expect(render()).toBe('<p>hi</p><p>hi</p>')
+})
+
+test('slot and @slot errors are located', () => {
+  expect(compileError('<slot class="x" />').message).toMatch(/^x\.clarus:1:7 .*<slot> only takes name=/)
+  expect(compileError(`@import card from './card.clarus'\n<card>@slot('a') {1} @slot('a') {2}</card>`).message).toMatch(/^x\.clarus:2:22 .*filled twice/)
+  expect(compileError(`<div>@slot('a') {1}</div>`).message).toMatch(/^x\.clarus:1:6 .*@slot only works directly inside a component tag/)
+  expect(compileError(`@import card from './card.clarus'\n<card>@slot(name) {1}</card>`).message).toMatch(/^x\.clarus:2:7 .*@slot needs a quoted name/)
 })
 
 test('content given to a component without <slot /> fails when rendering instead of vanishing', async () => {

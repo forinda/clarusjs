@@ -1,5 +1,5 @@
 // IR → server module: `render(props) → string`. Runs at build time or per request.
-import type { ComponentIR, IRNode } from './ir.ts'
+import type { ComponentIR } from './ir.ts'
 import { htmlExpr, walk } from './html-expr.ts'
 import { rewriteServer } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
@@ -19,9 +19,9 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
   const html = htmlExpr(ir.nodes)
   const props = `{ ${ir.inputs.map((i) => i.name).join(', ')} }`.replace('{  }', '{}')
 
-  out += `\nexport function render(__cl_props = {}, __cl_slot) {\n`
-  if (ir.stateful) out += `  if (__cl_slot !== undefined) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> does not accept children yet`)})\n`
-  else if (!hasSlot(ir.nodes)) out += `  if (__cl_slot !== undefined) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> has no <slot /> for the content passed to it`)})\n`
+  out += `\nexport function render(__cl_props = {}, __cl_slots) {\n`
+  if (ir.stateful) out += `  if (__cl_slots !== undefined) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> does not accept children yet`)})\n`
+  else out += unknownSlotCheck(ir)
   out += inputsLine(ir)
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   out += ir.stateful
@@ -30,6 +30,10 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
   return out + '}\n'
 }
 
-function hasSlot(nodes: IRNode[]): boolean {
-  return walk(nodes).some((n) => n.kind === 'slot')
+/** Content for a slot this component doesn't have is an error (at render, so a build fails naming it). */
+function unknownSlotCheck(ir: ComponentIR): string {
+  const known = [...new Set(walk(ir.nodes).flatMap((n) => (n.kind === 'slot' ? [n.name] : [])))]
+  const noDefault = JSON.stringify(`[clarusjs] <${ir.name}> has no <slot /> for the content passed to it`)
+  const noNamed = JSON.stringify(`[clarusjs] <${ir.name}> has no slot "`)
+  return `  for (const __cl_k in __cl_slots) if (!${JSON.stringify(known)}.includes(__cl_k)) throw new Error(__cl_k === "default" ? ${noDefault} : ${noNamed} + __cl_k + '"')\n`
 }

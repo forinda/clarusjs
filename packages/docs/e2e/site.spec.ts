@@ -148,3 +148,19 @@ test('home: the list island adds and removes rows by key, with @empty', async ({
   await expect(todo.locator('.todo-list .empty')).toHaveText('Nothing yet.')
   expect(errors).toEqual([])
 })
+
+test('named slot: each guide page fills "next", other pages get the fallback', async ({ page }) => {
+  const expected: Record<string, string> = {
+    '/': '/guide/getting-started',
+    '/guide/getting-started': '/guide/components',
+    '/guide/components': '/guide/islands',
+    '/guide/islands': '/guide/build',
+    '/guide/build': '/',
+  }
+  for (const [path, href] of Object.entries(expected)) {
+    await page.goto(path)
+    const link = page.locator('nav.next a')
+    await expect(link, path).toHaveCount(1)
+    await expect(link, path).toHaveAttribute('href', href)
+  }
+})

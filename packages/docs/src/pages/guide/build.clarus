@@ -19,4 +19,5 @@
   publish = "packages/docs/dist/client"</code></pre>
 
   <callout><p>The same handler can also run on a server per request. Choosing between build time and request time per route is coming in a later release.</p></callout>
+  @slot('next') {<a href="/">Back to the start →</a>}
 </docs>
