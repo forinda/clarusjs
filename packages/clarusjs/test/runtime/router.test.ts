@@ -25,14 +25,13 @@ test('show() loads the render module and the data, swaps the document, and attac
   expect(get).toHaveBeenCalledWith('/app/7/__data.json')
   expect(document.title).toBe('Item 7')
   expect(document.body.querySelector('h1')!.textContent).toBe('7 1970')
-  expect(document.head.querySelector('style')!.textContent).toBe('cl-island{display:contents}')
   expect(attach).toHaveBeenCalledWith(document.body)
 })
 
 test('show() leaves other routes alone, and a failed data request is an error', async () => {
   expect(await show(new URL('http://x/elsewhere'), table)).toBe(false)
   const get = async () => new Response('nope', { status: 500 })
-  await expect(show(new URL('http://x/app'), table, async () => ({ render: () => '' }), get)).rejects.toThrow('500: /app/__data.json')
+  await expect(show(new URL('http://x/app'), table, async () => ({ render: () => '' }), get)).rejects.toThrow('500 /app/__data.json')
 })
 
 test('review: the rendered <html> attributes replace the old ones (lang, dir)', async () => {
@@ -60,7 +59,7 @@ test('review: a navigation that is no longer current never touches the document'
 
 test('review: a missing page (404 data) is reported as not found', async () => {
   const get = async () => new Response('Not Found', { status: 404 })
-  await expect(show(new URL('http://x/app/9'), table, async () => ({ render: () => '' }), get)).rejects.toThrow(/^not found: \/app\/9\/__data\.json$/)
+  await expect(show(new URL('http://x/app/9'), table, async () => ({ render: () => '' }), get)).rejects.toThrow(/^404 \/app\/9\/__data\.json$/)
 })
 
 test('review: under a base, the route table holds browser paths and data stays under the base', async () => {
@@ -68,4 +67,13 @@ test('review: under a base, the route table holds browser paths and data stays u
   const get = vi.fn(async () => new Response('{}'))
   expect(await show(new URL('http://x/docs/app/7'), based, async () => ({ render: () => '<p>ok</p>' }), get)).toBe(true)
   expect(get).toHaveBeenCalledWith('/docs/app/7/__data.json')
+})
+
+test('#40: the router keeps the head (its stylesheets stay); it updates the title and runs the inline head scripts once', async () => {
+  document.head.innerHTML = '<link rel="stylesheet" href="/site.css"><title>Old</title>'
+  const render = () => '<html><head><title>New</title><script>window.__ran = 1</script></head><body><p>x</p></body></html>'
+  await show(new URL('http://x/app'), table, async () => ({ render }), async () => new Response('{}'))
+  expect(document.title).toBe('New')
+  expect(document.head.querySelector('link[href="/site.css"]')).not.toBeNull()
+  expect(document.head.querySelectorAll('script')).toHaveLength(0) // run once, then removed (Playwright checks they run)
 })

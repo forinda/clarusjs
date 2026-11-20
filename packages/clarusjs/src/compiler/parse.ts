@@ -27,6 +27,8 @@ export type ParsedFile = {
   typeImports: TypeImport[]
   dataImports: DataImport[]
   script?: { code: string; start: number } // start = offset of the first char inside <script>
+  styles: { css: string; global: boolean; start: number }[] // top-level <style> blocks; `global` ones aren't scoped
+  cssImports: { from: string; start: number }[] // @import './x.css': stylesheets the component needs
   nodes: TemplateNode[]
 }
 
@@ -35,9 +37,10 @@ const INPUT_RE = /^@input\s+([A-Za-z_$][\w$]*)\s*:\s*([^=\n]+?)\s*(?:=\s*(.+?))?
 const DATA_IMPORT_RE = /^@import\s+(\{[^}]*\})\s+from\s+(['"])(.+?)\2\s*$/d
 const IMPORT_TYPE_RE = /^@import\s+type\s+(\{[^}]*\}|[A-Za-z_$][\w$]*)\s+from\s+(['"])(.+?)\2\s*$/d
 const IMPORT_RE = /^@import\s+([A-Za-z_$][\w-]*)\s+from\s+(['"])(.+?)\2\s*$/
+const CSS_IMPORT_RE = /^@import\s+(['"])(.+?)\1\s*$/
 
 export function parse(source: string, file: string): ParsedFile {
-  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], dataImports: [], nodes: [] }
+  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
   let i = 0
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
@@ -58,6 +61,10 @@ export function parse(source: string, file: string): ParsedFile {
       // A default import of a .tscl file is a component; of anything else, data.
       if (m[3]!.endsWith('.tscl')) out.imports.push({ name: m[1]!, from: m[3]!, start: i })
       else out.dataImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + line.indexOf(m[1]!, 7) })
+    }
+    else if ((m = CSS_IMPORT_RE.exec(line))) {
+      if (!/\.css(\?|$)/.test(m[2]!)) fail(`@import without a name only takes a stylesheet (.css): "${m[2]}"`, i)
+      out.cssImports.push({ from: m[2]!, start: i })
     }
     else fail(`unknown or malformed directive "${line.split(/\s/)[0]}"`, i)
     i = end
@@ -303,13 +310,30 @@ export function parse(source: string, file: string): ParsedFile {
         if (i >= source.length) fail(`unclosed <${tag}>`, start)
         const selfClosing = source.startsWith('/>', i)
         i += selfClosing ? 2 : 1
-        if (tag === 'script') {
-          if (parent) fail('<script> must be at the top level', start)
+        if (tag === 'script' && list.some((a) => a.name === 'inline')) {
+          // <script inline>: written out as is and run where it stands (e.g. in <head>, before the first paint).
+          const bound = list.find((a) => a.kind !== 'static')
+          if (bound) fail('an inline script takes static attributes only', bound.start)
+          const end = source.indexOf('</script>', i)
+          if (end === -1) fail('unclosed <script inline>', start)
+          const kids: TemplateNode[] = selfClosing ? [] : [{ type: 'text', value: source.slice(i, end), start: i }]
+          nodes.push({ type: 'element', tag, attrs: list.filter((a) => a.name !== 'inline'), children: kids, start })
+          i = selfClosing ? i : end + '</script>'.length
+        } else if (tag === 'script') {
+          if (parent) fail('<script> must be at the top level (a component script); add `inline` for a script that runs where it stands', start)
           if (out.script) fail('only one <script> block is allowed', start)
           const end = source.indexOf('</script>', i)
           if (end === -1) fail('unclosed <script>', start)
           out.script = { code: source.slice(i, end), start: i }
           i = end + '</script>'.length
+        } else if (tag === 'style' && !parent) {
+          // A top-level <style> is the component's stylesheet. One inside markup (a layout's <head>) stays HTML.
+          const end = source.indexOf('</style>', i)
+          if (end === -1) fail('unclosed <style>', start)
+          const hole = source.slice(i, end).indexOf('{{')
+          if (hole !== -1) fail('{{ }} holes are not supported in a component <style>: set a CSS custom property from the template instead (style="--x: {{ x }}")', i + hole)
+          out.styles.push({ css: source.slice(i, end), global: list.some((a) => a.name === 'global'), start: i })
+          i = end + '</style>'.length
         } else if (list.some((a) => a.name === 'verbatim')) {
           // Everything up to </tag> is text: no holes, tags or directives.
           const attr = list.find((a) => a.name === 'verbatim')!

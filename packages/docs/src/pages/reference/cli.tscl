@@ -33,6 +33,6 @@
   Islands     theme-toggle (0.4 KB, on page load)
               copy (0.3 KB, on first interaction)
   JavaScript  4.3 KB on page load, 4.6 KB in all (gzip, 4 files)
-  CSS         /docs.css</code></pre>
+  CSS         /assets/src/styles/docs-C2a9Lf0q.css, /assets/cl-styles-D3qK0wPz.css</code></pre>
   <p>Exits with 1 when the route doesn't exist or the site hasn't been built.</p>
 </docs>

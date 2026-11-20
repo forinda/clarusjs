@@ -127,4 +127,11 @@ export async function attachAll(root: ParentNode = document, load: Load = lastLo
 ;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach = (root) => void attachAll(root)
 
 
-if (typeof document !== 'undefined') attachAll()
+if (typeof document !== 'undefined') {
+  // Islands never affect layout. Installed on the document (not in <head>), so it survives head swaps by the client
+  // router; the server also writes it as a <style> for the first paint.
+  const sheet = new CSSStyleSheet()
+  sheet.replaceSync('cl-island{display:contents}')
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
+  attachAll()
+}

@@ -19,6 +19,8 @@
       <tr><td><code verbatim>@slot('x') { }</code></td><td>fill a named slot</td><td><a href="/guide/slots">Slots</a></td></tr>
       <tr><td><code verbatim>verbatim</code> attribute</td><td>show content as text</td><td><a href="/guide/verbatim">Verbatim</a></td></tr>
       <tr><td><code verbatim><script> … </script></code></td><td>make a component interactive</td><td><a href="/guide/state">State</a></td></tr>
+      <tr><td><code verbatim><script inline> … </script></code></td><td>a script written out as is, run where it stands</td><td><a href="/guide/styles">Styles</a></td></tr>
+      <tr><td><code verbatim><style> … </style></code>, <code verbatim><style global></code></td><td>the component's CSS, scoped (or global)</td><td><a href="/guide/styles">Styles</a></td></tr>
       <tr><td><code verbatim>{{-- comment --}}</code></td><td>a template comment, removed from the output</td><td></td></tr>
     </tbody>
   </table>

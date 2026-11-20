@@ -27,6 +27,7 @@ export const sections: Section[] = [
         { title: 'Lists', href: '/guide/lists' },
         { title: 'Slots', href: '/guide/slots' },
         { title: 'Verbatim', href: '/guide/verbatim' },
+        { title: 'Styles', href: '/guide/styles' },
       ] },
       { title: 'Interactivity', items: [
         { title: 'Islands', href: '/guide/islands' },

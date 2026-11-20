@@ -46,3 +46,18 @@ test('review: when one page swaps its body and the other a marked region, swap()
   await expect(swap(new URL('http://x/m'), async () => new Response('<title>M</title><main data-cl-swap>M</main>'))).rejects.toThrow('different swap regions')
   expect(document.body.innerHTML).toBe('<h1>Body page</h1>')
 })
+
+test('#40: stylesheets the new page needs are added once to <head> before the swap; links never stay in the region', async () => {
+  document.head.innerHTML = '<link rel="stylesheet" href="/base.css">'
+  document.body.innerHTML = '<main data-cl-swap>old</main>'
+  const swapping = swap(new URL('http://x/n'), async () => new Response('<title>N</title><link rel="stylesheet" href="/base.css"><link rel="stylesheet" href="/page.css"><main data-cl-swap>new</main>'))
+  // The new stylesheet must load before the swap: fire its load event.
+  await new Promise((r) => setTimeout(r, 0))
+  const added = document.head.querySelector('link[href="/page.css"]')
+  expect(added).not.toBeNull()
+  added!.dispatchEvent(new Event('load'))
+  await swapping
+  expect([...document.head.querySelectorAll('link')].map((l) => l.getAttribute('href'))).toEqual(['/base.css', '/page.css'])
+  expect(document.querySelector('main')!.textContent).toBe('new')
+  expect(document.querySelector('main link')).toBeNull()
+})

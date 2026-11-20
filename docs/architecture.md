@@ -216,7 +216,21 @@ to change later, so it's fixed now.
 | `<!--[cn-->…<!--]-->` | a child component inside an island whose props or slot content read state; the browser re-renders it |
 | `<!--[fn-->…<!--]-->` | `@for` list `n` inside an island; each row is wrapped in `<!--[r-->…<!--]-->`, `@empty` content in `<!--[e-->…<!--]-->`. Markers inside a row repeat per row and are looked up within that row |
 
-Static parts of the page carry **no markers at all**. Islands are
+A component with a scoped `<style>` marks its top-level elements with
+`data-cl-c="<scope id>"` (from its file path). Its CSS is wrapped in
+`@scope ([data-cl-c="<id>"]) to ([data-cl-c]) { … }`, so rules apply inside
+the component's elements (the top-level element itself is `:scope`) and stop
+at other components. All component styles are bundled into one stylesheet that
+every page links. `<style global>` is left as written and marks nothing.
+
+`@import './x.css'` declares a stylesheet a component needs. Each page links
+the stylesheets it imports, directly or through its components (dependencies
+first), before the component stylesheet. Client-route shells link every client
+page's stylesheets, and the router keeps the head across navigations. A
+fragment carries its page's links right after its `<title>`; fragment
+navigation adds and waits for any that are missing before the swap.
+
+Static parts of the page carry **no markers at all** (apart from `data-cl-c` on styled components). Islands are
 self-describing, so the loader needs no manifest at runtime and can attach to
 islands that arrive later (fragment navigation).
 
