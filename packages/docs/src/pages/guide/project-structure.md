@@ -17,7 +17,8 @@ my-site/
     │   └── guide/intro.tscl    /guide/intro
     ├── layouts/          components that render the whole page
     ├── components/       everything else you import
-    └── stores/           shared state for islands (.ts)
+    ├── stores/           shared state for islands (.ts)
+    └── head.ts           optional: transformHead(head, page) for every page's <head>
 ```
 
 ## Generated folders

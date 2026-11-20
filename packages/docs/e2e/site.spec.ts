@@ -629,3 +629,24 @@ test('snippets show real source files; includes share Markdown between pages', a
     await expect(box.locator('a'), path).toHaveAttribute('href', '/guide/getting-started')
   }
 })
+
+test('head: title template, site tags, transformHead, and Markdown frontmatter tags', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  await expect(page).toHaveTitle('Markdown pages · clarusjs')
+  const head = page.locator('head')
+  await expect(head.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#0b6e70')
+  await expect(head.locator('link[rel="icon"]')).toHaveAttribute('href', '/logo.svg')
+  await expect(head.locator('meta[name="generator"]')).toHaveAttribute('content', 'clarusjs')
+  await expect(head.locator('meta[name="keywords"]')).toHaveAttribute('content', /markdown/)
+  await expect(page.locator('body cl-head')).toHaveCount(0)
+  await page.goto('/')
+  await expect(page).toHaveTitle('Clear, compiled views · clarusjs')
+  await expect(page.locator('head meta[name="keywords"]')).toHaveCount(0)
+})
+
+test('JSON-LD: the site WebSite entry and a TechArticle per page, as valid JSON', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  const data = await page.locator('script[type="application/ld+json"]').evaluateAll((els) => els.map((e) => JSON.parse(e.textContent!)))
+  expect(data).toContainEqual(expect.objectContaining({ '@type': 'WebSite', name: 'clarusjs' }))
+  expect(data).toContainEqual(expect.objectContaining({ '@type': 'TechArticle', headline: 'Markdown pages', url: 'https://clarusjs.com/guide/markdown' }))
+})

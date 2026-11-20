@@ -40,6 +40,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
       const call = componentCall(n, rw)
       return n.region >= 0 ? `__cl_regionHtml(${n.region}, () => ${call})` : call
     }
+    if (n.json) return `__cl_json(${wrapExpr(rw.expr(n.expr))})`
     const value = `__cl_escape(${wrapExpr(rw.expr(n.expr))})`
     return n.reactive ? `"<!--[${n.index}-->" + ${value} + "<!--]-->"` : value
   })

@@ -5,7 +5,7 @@ import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, s
 
 export type IRNode =
   | { kind: 'static'; html: string }
-  | { kind: 'hole'; expr: string; reactive: boolean; index: number } // index = -1 when not reactive
+  | { kind: 'hole'; expr: string; reactive: boolean; index: number; json?: true } // index = -1 when not reactive; json: JSON-LD
   // children: content for the default slot; fills: content for named slots (@slot('name') { … }).
   // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
   // can re-render it (-1 otherwise).
@@ -121,6 +121,11 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     if (node.type === 'raw') return emitStatic(node.value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
     if (node.type === 'expr') {
       checkExpr(node.expr, file, source, node.start)
+      if (node.json) {
+        if (stateful) fail('JSON-LD is rendered on the server: put it in a component without a <script> (a layout or page)', node.start)
+        out.push({ kind: 'hole', expr: node.expr, reactive: false, index: -1, json: true })
+        return
+      }
       const reactive = stateful && (referencesNames(node.expr, scriptScope) || referencesNames(node.expr, loopNames))
       if (reactive && rawText) fail(`reactive {{ }} inside <${rawText}> is not supported yet (it cannot hold update markers)`, node.start)
       out.push({ kind: 'hole', expr: node.expr, reactive, index: reactive ? holeCount++ : -1 })

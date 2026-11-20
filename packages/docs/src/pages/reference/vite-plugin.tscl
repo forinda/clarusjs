@@ -19,6 +19,21 @@ export default defineConfig({ plugins: [clarusjs()] })</code></pre><copy attach=
   <h2>links</h2>
   <p><strong>Type:</strong> <code>{{ '{' }} pages?: 'error' | 'warn' | 'off'; anchors?: 'error' | 'warn' | 'off'; strict?: boolean {{ '}' }}</code> · <strong>Default:</strong> <code>{{ '{' }} pages: 'error', anchors: 'warn' {{ '}' }}</code></p>
   <p>Link checking after <code>vite build</code> has written every page. <code>pages</code>: links to a page or file that doesn't exist. <code>anchors</code>: links to a <code>#id</code> the target page doesn't have (pages rendered in the browser are skipped). Each problem names the source file and line, with the closest match suggested. <code>strict: true</code> makes warnings fail the build too.</p>
+  <h2>head</h2>
+  <p><strong>Type:</strong> <code>{{ '{' }} titleTemplate?: string; tags?: [tag, attrs, content?][] {{ '}' }}</code></p>
+  <p>Every page's <code>&lt;head&gt;</code>. <code>titleTemplate</code> (<code>'%s · Site'</code>) wraps the document's <code>&lt;title&gt;</code>. <code>tags</code> (<code>['meta', {{ '{' }} name: 'theme-color', content: '#fff' {{ '}' }}]</code>) go on every page, unless the page has its own tag with the same key: <code>title</code>, <code>meta</code> by <code>name</code>, <code>property</code>, <code>charset</code> or <code>http-equiv</code>, the canonical <code>link</code>, <code>base</code>.</p>
+  <p>A page adds its own tags anywhere in its template with <code>&lt;cl-head&gt;…&lt;/cl-head&gt;</code>: they move into the <code>&lt;head&gt;</code> and win over the site's. A <code>&lt;title&gt;</code> there is used as written, without the template. For anything else, export <code>transformHead(head, page)</code> from <code>src/head.ts</code>: it gets the head's HTML and <code>{{ '{' }} route, path {{ '}' }}</code>, and returns the new HTML.</p>
+  <p><code>jsonLd</code> (an object or a list) adds schema.org structured data to every page, one <code>&lt;script type="application/ld+json"&gt;</code> each. In a template, a JSON-LD script takes one <code>{{ '{{' }} {{ '}}' }}</code> hole with the whole value, written as JSON (safe inside the script, never HTML-escaped): <code>&lt;script type="application/ld+json"&gt;{{ '{{' }} {{ '{' }} '@type': 'Article', headline: title {{ '}' }} {{ '}}' }}&lt;/script&gt;</code>. Components with a <code>&lt;script&gt;</code> can't have one: JSON-LD is rendered on the server.</p>
+  <p>Analytics such as Google's gtag are site tags too. A script's content is written as given, and boolean attributes are <code>true</code>:</p>
+  <pre verbatim><code verbatim>clarusjs({
+  head: {
+    tags: [
+      ['script', { async: true, src: 'https://www.googletagmanager.com/gtag/js?id=G-XXXX' }, ''],
+      ['script', {}, "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-XXXX')"],
+    ],
+  },
+})</code></pre>
+  <p>Head scripts run once per full page load: with fragment navigation or client routes, later pages don't reload them. Analytics that count page views from history changes (gtag's enhanced measurement does) keep counting.</p>
   <h2>What it does</h2>
   <ul>
     <li><strong>vite</strong>: renders <code>src/pages/**/*.tscl</code> on each request.</li>

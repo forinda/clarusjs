@@ -10,6 +10,16 @@ export default defineConfig({
       adapter: 'netlify',
       // Moving between pages swaps the page instead of reloading it (see the Fragment navigation guide).
       fragments: true,
+      // Every page's <head>: the title template and tags all pages share (src/head.ts adds the rest).
+      head: {
+        titleTemplate: '%s · clarusjs',
+        tags: [
+          ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
+          ['meta', { name: 'theme-color', content: '#0b6e70' }],
+        ],
+        // Structured data for search engines; each page adds its own TechArticle in the layout.
+        jsonLd: { '@context': 'https://schema.org', '@type': 'WebSite', name: 'clarusjs', url: 'https://clarusjs.com' },
+      },
       // Markdown pages (src/pages/**/*.md), rendered in the docs layout.
       sources: [markdown({
         layout: '/src/layouts/docs.tscl',

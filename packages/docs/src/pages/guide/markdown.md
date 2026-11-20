@@ -1,6 +1,8 @@
 ---
 title: Markdown pages
 description: Write pages in Markdown with @clarusjs/content - frontmatter, a layout, components inside Markdown, and heading anchors.
+head:
+  - [meta, { name: keywords, content: "clarusjs, markdown, static site" }]
 ---
 # Markdown pages
 
@@ -102,6 +104,32 @@ The code above is this site's real `src/nav.ts`, read when the site is built. In
 <!-- @include: ../../parts/requirements.md -->
 
 In development, editing a snippet's file or an included file updates the page.
+
+## Head tags
+
+Frontmatter `head` adds tags to the page's `<head>`, and `titleTemplate: false` uses the title as written instead of the site's template:
+
+```md
+---
+title: Release notes
+titleTemplate: false
+head:
+  - [meta, { name: robots, content: noindex }]
+---
+```
+
+Structured data goes in `jsonLd` (an object, or a list of them), written as JSON-LD:
+
+```md
+---
+jsonLd:
+  "@context": https://schema.org
+  "@type": HowTo
+  name: Write a Markdown page
+---
+```
+
+They become a `<cl-head>` block, which works in any `.tscl` page too (see the plugin's `head` option).
 
 ## Links
 

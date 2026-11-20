@@ -15,8 +15,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{ description }}">
-    <title>{{ title }} · clarusjs</title>
-    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <title>{{ title }}</title>
+    <script type="application/ld+json">{{ { '@context': 'https://schema.org', '@type': 'TechArticle', headline: title, description, url: `https://clarusjs.com${path === '/' ? '' : path}` } }}</script>
   </head>
   <body>
     <header class="site-header">

@@ -32,7 +32,7 @@ test('a client route answers with a shell: the loader, the router and the client
   const html = await res.text()
   expect(html).toContain('<script type="module" src="/l.js"></script><script type="module" src="/r.js"></script>')
   expect(html).not.toContain('<p>')
-  const table = JSON.parse(/<script type="application\/json" id="cl-routes">(.*?)<\/script>/.exec(html)![1]!)
+  const table = JSON.parse(/<script type="application\/json" id="cl-routes"[^>]*>(.*?)<\/script>/.exec(html)![1]!)
   expect(table).toEqual([{ p: '/app', r: '/render/app.js' }, { p: '/app/[id]', r: '/render/app-id.js' }])
 })
 
@@ -76,7 +76,7 @@ test('review: with a base, the shell lists client routes at their browser paths'
     base: '/docs/', modes: { '/*': 'client' }, client: { '/': '/docs/r/i.js', '/app/[id]': '/docs/r/a.js' },
   })
   const html = await (await h.fetch(new Request('http://x/app/1'))).text()
-  const table = JSON.parse(/id="cl-routes">(.*?)<\/script>/.exec(html)![1]!)
+  const table = JSON.parse(/id="cl-routes"[^>]*>(.*?)<\/script>/.exec(html)![1]!)
   expect(table).toEqual([{ p: '/docs', r: '/docs/r/i.js' }, { p: '/docs/app/[id]', r: '/docs/r/a.js' }])
 })
 

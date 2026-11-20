@@ -12,6 +12,7 @@ import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { routeFromFile } from '../server/handler.ts'
+import type { HeadTag } from '../server/head.ts'
 import { sendResponse, toRequest } from './node.ts'
 
 // From src/ (workspace, tests) our siblings are .ts files; from the published dist/ they are .js.
@@ -107,7 +108,13 @@ export type ClarusOptions = {
    * 'error'). `anchors`: links to a #id the target page doesn't have (default 'warn'). `strict`: warnings fail too.
    */
   links?: { pages?: LinkLevel; anchors?: LinkLevel; strict?: boolean }
+  /**
+   * Every page's <head>: `titleTemplate` ('%s · Site') wraps the document title, `tags` are added unless the page has
+   * its own with the same key. Anything else: export `transformHead(head, page)` from src/head.ts.
+   */
+  head?: { titleTemplate?: string; tags?: HeadTag[]; jsonLd?: object | object[] }
 }
+export type { HeadTag }
 export type LinkLevel = 'error' | 'warn' | 'off'
 
 /**
@@ -356,6 +363,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  navUrl: ${JSON.stringify(navUrl)},\n` +
         `  stylesUrl: ${JSON.stringify(stylesUrl)},\n` +
         `  css: ${JSON.stringify(css)},\n` +
+        // src/head.ts is optional: its transformHead (a function, so not a plugin option) runs on every page's head.
+        `  head: { ...${JSON.stringify(options.head ?? {})}, transform: Object.values(import.meta.glob('/src/head.ts', { eager: true }))[0]?.transformHead },\n` +
         `})\n`
     } },
     transform: {

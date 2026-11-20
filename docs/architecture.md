@@ -230,6 +230,19 @@ page's stylesheets, and the router keeps the head across navigations. A
 fragment carries its page's links right after its `<title>`; fragment
 navigation adds and waits for any that are missing before the swap.
 
+`<cl-head>…</cl-head>`, anywhere in a server-rendered page, holds tags for the
+page's `<head>`. The server moves them there before anything else sees the page
+(fragments included): a tag with the same key as one already in the head
+(`title`, `meta` by `name`/`property`/`charset`/`http-equiv`, the canonical
+`link`, `base`) replaces it, others are added. Then the plugin's `head` option
+applies: `titleTemplate` wraps the document title unless `<cl-head>` set one,
+and site `tags` fill only keys the page left unset. `transformHead(head, page)`
+from `src/head.ts` runs last. Pages without their own document get a minimal one
+first, so every page goes through the same steps. It is not applied inside
+islands or to pages on client routes, which render in the browser: their shell
+gets the site tags, and `#cl-routes` carries the template as `data-title` for the
+router to apply to each page's title.
+
 Static parts of the page carry **no markers at all** (apart from `data-cl-c` on styled components). Islands are
 self-describing, so the loader needs no manifest at runtime and can attach to
 islands that arrive later (fragment navigation).
