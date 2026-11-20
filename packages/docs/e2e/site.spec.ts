@@ -271,3 +271,17 @@ test('the route manifest matches what the browser loads', async ({ page }) => {
     page.removeAllListeners()
   }
 })
+
+test('clarusjs explain names the islands the page really has', async ({ page }) => {
+  const { spawnSync } = await import('node:child_process')
+  const { fileURLToPath } = await import('node:url')
+  const cli = fileURLToPath(new URL('../../clarusjs/src/cli/index.ts', import.meta.url))
+  const root = fileURLToPath(new URL('..', import.meta.url))
+  const run = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, 'explain', '/guide/state', '--root', root, '--json'], { encoding: 'utf8' })
+  expect(run.status, run.stderr).toBe(0)
+  const explained = JSON.parse(run.stdout).islands.map((i: { component: string; count: number }) => [i.component, i.count])
+  await page.goto('/guide/state')
+  const names = await page.locator('cl-island').evaluateAll((els) => els.map((e) => e.getAttribute('c')!))
+  const found = [...new Set(names)].map((n) => [n, names.filter((x) => x === n).length])
+  expect(explained).toEqual(found)
+})
