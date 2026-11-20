@@ -3,6 +3,7 @@
 import MarkdownIt from 'markdown-it'
 import { parse as parseYaml } from 'yaml'
 import type { Source } from 'clarusjs/vite'
+import { highlight } from './highlight.ts'
 
 export type MarkdownOptions = {
   /** The layout every page renders in, root-relative (`/src/layouts/docs.tscl`). Frontmatter `layout` overrides it; `false` means none. */
@@ -14,9 +15,11 @@ export type MarkdownOptions = {
   container?: { tag: string; from: string }
   /** Block titles, to localize them: { tip: 'Astuce', note: 'Remarque', … }. */
   titles?: Partial<Record<string, string>>
+  /** Put your copy component in every code block: `<tag attach="interaction" />` (it finds the code itself). */
+  copy?: { tag: string; from: string }
 }
 
-const TYPES = ['tip', 'info', 'warning', 'danger', 'details'] as const
+const TYPES = ['tip', 'info', 'warning', 'danger', 'details', 'code-group'] as const
 const TITLES: Record<string, string> = { tip: 'Tip', info: 'Info', warning: 'Warning', danger: 'Danger', details: 'Details', note: 'Note', important: 'Important', caution: 'Caution' }
 // GitHub alerts → container type (the alert's name stays its title).
 const ALERTS: Record<string, string> = { note: 'info', tip: 'tip', important: 'info', warning: 'warning', caution: 'danger' }
@@ -42,19 +45,19 @@ function renderer(options: MarkdownOptions): Md {
   // ::: type [title] … ::: (a longer fence, such as ::::, nests around a shorter one).
   md.block.ruler.before('fence', 'cl_container', (state, startLine, endLine, silent) => {
     const line = state.src.slice(state.bMarks[startLine]! + state.tShift[startLine]!, state.eMarks[startLine]).trim()
-    const m = /^(:{3,})\s*([a-z]+)(?:\s+(.*))?$/.exec(line)
+    const m = /^(:{3,})\s*([a-z-]+)(?:\s+(.*))?$/.exec(line)
     if (!m || !(TYPES as readonly string[]).includes(m[2]!)) return false
     if (silent) return true
     let close = startLine + 1
     while (close < endLine && state.src.slice(state.bMarks[close]! + state.tShift[close]!, state.eMarks[close]).trim() !== m[1]) close++
-    const open = state.push('cl_container_open', 'div', 1)
+    const open = state.push(m[2] === 'code-group' ? 'cl_group_open' : 'cl_container_open', 'div', 1)
     open.info = m[2]!
     open.meta = { title: m[3]?.trim() || titles[m[2]!]!, custom: Boolean(m[3]?.trim()) }
     const oldMax = state.lineMax
     state.lineMax = close
     state.md.block.tokenize(state, startLine + 1, close)
     state.lineMax = oldMax
-    state.push('cl_container_close', 'div', -1).info = m[2]!
+    state.push(m[2] === 'code-group' ? 'cl_group_close' : 'cl_container_close', 'div', -1).info = m[2]!
     state.line = Math.min(close + 1, endLine)
     return true
   })
@@ -94,6 +97,46 @@ function renderer(options: MarkdownOptions): Md {
     }
     return `<div class="custom-block ${type}"><p class="custom-block-title">${escapeHtml(title)}</p>\n`
   }
+  // ::: code-group: radio inputs and labels, each followed by its block. CSS shows the checked one's block, so the
+  // tabs work without JavaScript.
+  md.renderer.rules.cl_group_open = (_t, _i, _o, env) => {
+    const e = env as { groups: number; group?: { id: number; n: number } }
+    e.group = { id: e.groups++, n: 0 }
+    return '<div class="code-group">'
+  }
+  md.renderer.rules.cl_group_close = (_t, _i, _o, env) => {
+    delete (env as { group?: unknown }).group
+    return '</div>\n'
+  }
+
+  // ```lang {1,3} [title] :line-numbers
+  md.renderer.rules.fence = (tokens, i, _o, env) => {
+    const e = env as { tags: string[]; group?: { id: number; n: number } }
+    const info = tokens[i]!.info.trim()
+    const lang = /^[^\s{[:]+/.exec(info)?.[0] ?? 'text'
+    const title = /\[([^\]]+)\]/.exec(info)?.[1]
+    const lineNumbers = /(^|\s):line-numbers\b/.test(info)
+    const code = tokens[i]!.content
+    let out = ''
+    if (e.group) {
+      const id = `cl-group-${e.group.id}-${e.group.n}`
+      out += `<input type="radio" name="cl-group-${e.group.id}" id="${id}"${e.group.n === 0 ? ' checked' : ''}><label for="${id}">${escapeHtml(title ?? lang)}</label>`
+      e.group.n++
+    }
+    out += `<div class="code-block language-${escapeHtml(lang)}${lineNumbers ? ' line-numbers' : ''}">`
+    if (title && !e.group) out += `<p class="code-title">${escapeHtml(title)}</p>`
+    out += `<span class="lang">${escapeHtml(lang)}</span>${highlight(code.replace(/\n$/, ''), lang, info.slice(lang.length))}`
+    if (lineNumbers) {
+      const count = code.replace(/\n$/, '').split('\n').length
+      out += `<div class="line-numbers-column" aria-hidden="true">${Array.from({ length: count }, (_, n) => `<span>${n + 1}</span>`).join('')}</div>`
+    }
+    if (options.copy) {
+      e.tags.push(`<${options.copy.tag} attach="interaction" />`)
+      out += `<!--cl-tag-${e.tags.length - 1}-->`
+    }
+    return `${out}</div>${e.group ? '' : '\n'}`
+  }
+
   md.renderer.rules.cl_container_close = (tokens, i, _o, env) => {
     const tags = (env as { tags: string[] }).tags
     if (tokens[i]!.info === 'details') return '</details>\n'
@@ -164,7 +207,10 @@ export default function markdown(options: MarkdownOptions = {}): Source {
         imports.unshift(`@import ${options.container.tag} from '${options.container.from}'`)
       }
       const components = new Set(imports.map((line) => /^@import\s+([A-Za-z_$][\w-]*)\s+from/.exec(line)?.[1]).filter((n): n is string => !!n))
-      const env = { tags: [] as string[] }
+      if (options.copy && !imports.some((line) => new RegExp(`^@import\\s+${options.copy!.tag}\\s+from`).test(line))) {
+        imports.unshift(`@import ${options.copy.tag} from '${options.copy.from}'`)
+      }
+      const env = { tags: [] as string[], groups: 0 }
       const tags = protectTags(body, components, env.tags)
       const tokens = md.parse(tags.body, env)
       const h1 = tokens.findIndex((t: Tok & { tag: string }) => t.type === 'heading_open' && t.tag === 'h1')

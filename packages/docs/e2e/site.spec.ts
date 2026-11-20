@@ -582,3 +582,35 @@ test('Markdown containers and alerts render as the site callouts; details is nat
   await details.locator('summary').click()
   await expect(details.locator('p')).toBeVisible()
 })
+
+test('highlighted code: colours follow the theme, code groups switch without JavaScript, copy skips removed lines', async ({ page, browser, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/guide/markdown')
+  // A token whose light and dark colours differ (comments are the same grey in both GitHub themes).
+  const colour = () => page.evaluate(() => {
+    const span = [...document.querySelectorAll<HTMLElement>('.code-block .shiki span[style]')]
+      .find((el) => el.style.getPropertyValue('--shiki-light') !== el.style.getPropertyValue('--shiki-dark'))!
+    return getComputedStyle(span).color
+  })
+  const light = await colour()
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
+  expect(await colour()).not.toBe(light)
+  await expect(page.locator('.code-block.language-ts .line.highlighted')).toHaveCount(1)
+  // Copy: the diff block without its removed line.
+  const diffBlock = page.locator('.code-block').filter({ has: page.locator('.diff.remove') })
+  await diffBlock.locator('button.copy').click()
+  await expect(diffBlock.locator('button.copy')).toHaveText('Copied')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('const site = clarusjs({ sources: [markdown()] }) ')
+
+  const noJs = await browser.newContext({ javaScriptEnabled: false })
+  const p2 = await noJs.newPage()
+  await p2.goto('/guide/markdown')
+  const group = p2.locator('.code-group')
+  await expect(group.locator('.code-block').nth(0)).toBeVisible()
+  await expect(group.locator('.code-block').nth(1)).toBeHidden()
+  await group.locator('label', { hasText: 'npm' }).filter({ hasNotText: 'pnpm' }).click()
+  await expect(group.locator('.code-block').nth(1)).toBeVisible()
+  await expect(group.locator('.code-block').nth(0)).toBeHidden()
+  await noJs.close()
+})

@@ -15,6 +15,8 @@ export default defineConfig({
         layout: '/src/layouts/docs.tscl',
         // ::: tip blocks and > [!NOTE] alerts render through the site's callout component.
         container: { tag: 'callout', from: '/src/components/callout.tscl' },
+        // Every highlighted code block gets the site's copy button (an island that loads on first use).
+        copy: { tag: 'copy', from: '/src/components/copy.tscl' },
       })],
     }),
   ],

@@ -54,6 +54,34 @@ Markdown **inside** a component.
 - Every heading gets an `id` and an anchor link, so `#install` links straight to it.
 - Markdown is static: `{{ value }}` and `@if` in your prose are shown as written, never run as template code.
 
+## Code
+
+Fenced code is highlighted at build time with Shiki, in light and dark at once: the page's theme picks the colours with CSS, so no highlighter ships to the browser. `tscl` blocks are highlighted as templates.
+
+```ts [vite.config.ts] {3}
+import { defineConfig } from 'vite'
+import clarusjs from 'clarusjs/vite'
+export default defineConfig({ plugins: [clarusjs()] })
+```
+
+Mark lines with comments: `// [!code ++]`, `// [!code --]`, `// [!code focus]`, `// [!code highlight]`, `// [!code error]`. Add `:line-numbers` after the language for line numbers, and `{1,3-5}` to highlight lines.
+
+```ts
+const site = clarusjs() // [!code --]
+const site = clarusjs({ sources: [markdown()] }) // [!code ++]
+```
+
+Group blocks as tabs with `::: code-group`; the tabs work without JavaScript:
+
+::: code-group
+```sh [pnpm]
+pnpm add @clarusjs/content
+```
+```sh [npm]
+npm install @clarusjs/content
+```
+:::
+
 ## Containers and alerts
 
 `::: tip`, `::: info`, `::: warning` and `::: danger` blocks, with an optional title, and `::: details` (a native `<details>`):
