@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, test } from 'vitest'
 import { createServer, type ViteDevServer } from 'vite'
 
-const root = `${import.meta.dirname}/../examples/counter`
+const root = `${import.meta.dirname}/../../../examples/counter`
 let server: ViteDevServer
 let base: string
 

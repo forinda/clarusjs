@@ -47,20 +47,20 @@ the server and then *attached* in the browser: no re-render and no hydration mis
 ## Quickstart
 
 ```sh
-npm install
-npm test        # compiler, runtime and an end-to-end test against a real Vite dev server
-npm run dev     # serves examples/counter
+pnpm install
+pnpm test       # compiler, runtime and an end-to-end test against a real Vite dev server
+pnpm dev        # serves examples/counter
 ```
 
 ## What to look at
 
-- **`examples/counter/src`**: one page, one stateless component (`greeting`), one stateful component (`counter`).
+- **`packages/clarusjs`**: the framework (compiler, runtime, Vite plugin). **`examples/counter/src`**: one page, one stateless component (`greeting`), one stateful component (`counter`).
 - **View source** in the browser: the `<h1>` and greeting are plain HTML with no markers. Each counter is a
   `<cl-island c src p>` with `<!--[n-->…<!--]-->` around its reactive text only.
 - **Network tab**: the page loads `cl-loader.js`, which fetches `counter.clarus?import` (the counter's `attach` function)
   and the clarusjs runtime. No JS for the page or the greeting. (`/@vite/client` is Vite's dev-only HMR client.)
 - **Compiled output**: `GET /src/components/counter.clarus?import` in the dev server shows the client module.
-  The server module has the same shape with `render()`; see `test/compiler/emit-server.test.ts`.
+  The server module has the same shape with `render()`; see `packages/clarusjs/test/compiler/emit-server.test.ts`.
 
 ## Contributing
 

@@ -10,5 +10,5 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["src", "test", "vitest.config.ts", "examples/*/vite.config.ts"]
+  "include": ["src", "test", "vitest.config.ts"]
 }

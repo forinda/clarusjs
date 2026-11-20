@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite'
-import clarusjs from '../../src/vite/plugin.ts'
+import clarusjs from 'clarusjs/vite'
 
 export default defineConfig({
   plugins: [clarusjs()],

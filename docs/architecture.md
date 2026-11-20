@@ -518,18 +518,21 @@ $ clarusjs explain /users/42
 
 ## 14. Package layout
 
-One npm package to start, with subpath exports. Split later if needed.
+A pnpm workspace, versioned and published with changesets. One framework package to start, with subpath exports;
+it splits into `@clarusjs/*` packages (compiler, runtime, vite) by moving folders under `packages/` once there's a reason.
 
 ```
-clarusjs/
-  src/
-    compiler/   parse.ts check.ts ir.ts emit-server.ts emit-client.ts emit-types.ts
-    runtime/    signals.ts dom.ts loader.ts server.ts
-    vite/       plugin.ts dev.ts build.ts
-    cli/        check.ts explain.ts
-  examples/
-    counter/    the POC app
-  test/
+packages/
+  clarusjs/
+    src/
+      compiler/   parse.ts ir.ts script.ts emit-server.ts emit-client.ts shared.ts
+      runtime/    signals.ts dom.ts loader.ts server.ts
+      server/     handler.ts
+      vite/       plugin.ts node.ts
+    test/
+examples/
+  counter/        private app, depends on clarusjs: workspace:*
+.changeset/
 ```
 
 | Export | Contents |
@@ -537,11 +540,11 @@ clarusjs/
 | `clarusjs/compiler` | `compile()` |
 | `clarusjs/runtime` | signals + DOM attach (browser) |
 | `clarusjs/runtime/server` | escape, island |
+| `clarusjs/server` | `createHandler()` |
 | `clarusjs/vite` | the plugin |
-| `clarusjs` | types (`Load`, `ViewRegistry`) and `state` for shared stores |
 
-Runtime dependencies: `acorn` (compiler only). Nothing ships to the browser
-except clarusjs's own runtime.
+Runtime dependencies: `acorn` (compiler only); `vite` is a peer dependency. Nothing ships to the browser
+except clarusjs's own runtime. Publishing needs a build step (compile to JS + `.d.ts`), planned with SSG in stage 2–3.
 
 ## 15. Decisions so far
 

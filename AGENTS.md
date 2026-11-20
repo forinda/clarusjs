@@ -14,23 +14,30 @@ Design: [docs/architecture.md](docs/architecture.md). Current status: proof of c
 
 ## Commands
 
+pnpm workspace (pnpm only; never npm or yarn).
+
 ```sh
-npm test            # vitest: unit tests + e2e against a real Vite dev server
-npm run typecheck   # tsc --noEmit
-npm run dev         # serves examples/counter
+pnpm install
+pnpm test           # every package: unit tests + e2e against a real Vite dev server
+pnpm typecheck      # tsc --noEmit in every package
+pnpm dev            # serves examples/counter
+pnpm changeset      # describe a change to a published package (commit the generated file)
 ```
 
-Run both `npm test` and `npm run typecheck` before calling work done.
+Run both `pnpm test` and `pnpm typecheck` before calling work done. Any change to a published package needs a changeset.
+Releases: `pnpm version-packages`, then `pnpm release`. Publishing is blocked until the package has a build step.
 
 ## Layout
 
 | Path | What |
 |---|---|
+| `packages/clarusjs/` | the published `clarusjs` package; paths below are inside it |
 | `src/compiler/` | `parse.ts` (source → syntax tree) → `ir.ts` (checks + IR) → `emit-server.ts` / `emit-client.ts`. `script.ts` does signal analysis and rewrites. `index.ts` exports `compile()` |
 | `src/runtime/` | `server.ts` (escape, island), `signals.ts`, `dom.ts` (holes/text/on), `loader.ts` (finds islands, calls attach) |
 | `src/server/handler.ts` | `createHandler(pages)` → `{ fetch }` |
 | `src/vite/` | `plugin.ts`, `node.ts` (Node http ⇄ fetch) |
-| `examples/counter/` | the POC app |
+| `examples/counter/` | the POC app (private workspace package, depends on `clarusjs: workspace:*`) |
+| `.changeset/` | pending changesets and config |
 | `test/` | mirrors `src/`; `test/fixtures/*.clarus`; `test/helpers.ts` (`importCode`) |
 | `docs/` | architecture and plans (committed) |
 | `.scratch/` | local notes and research (gitignored, never commit) |
