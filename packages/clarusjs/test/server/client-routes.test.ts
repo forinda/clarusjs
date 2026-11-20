@@ -69,3 +69,25 @@ test('review: a prerendered dynamic route only answers for the pages its entries
   expect((await h.fetch(new Request('http://x/app/9'))).status).toBe(404)
   expect((await h.fetch(new Request('http://x/app/9/__data.json'))).status).toBe(404)
 })
+
+test('review: with a base, the shell lists client routes at their browser paths', async () => {
+  const echo = async () => ({ render: () => '<p>x</p>' })
+  const h = createHandler({ '/src/pages/index.tscl': echo, '/src/pages/app/[id].tscl': echo }, {
+    base: '/docs/', modes: { '/*': 'client' }, client: { '/': '/docs/r/i.js', '/app/[id]': '/docs/r/a.js' },
+  })
+  const html = await (await h.fetch(new Request('http://x/app/1'))).text()
+  const table = JSON.parse(/id="cl-routes">(.*?)<\/script>/.exec(html)![1]!)
+  expect(table).toEqual([{ p: '/docs', r: '/docs/r/i.js' }, { p: '/docs/app/[id]', r: '/docs/r/a.js' }])
+})
+
+test('review: entries() is asked once, and prerendering and requests use the same answer', async () => {
+  let calls = 0
+  const echo = async () => ({ render: () => '<p>x</p>' })
+  const h = createHandler({ '/src/pages/app/[id].tscl': echo }, {
+    modes: { '/app/*': 'client' }, client: { '/app/[id]': '/r.js' },
+    data: { '/src/pages/app/[id].load.ts': async () => ({ entries: () => [{ id: String(++calls) }] }) },
+  })
+  expect(await h.paths()).toEqual(['/app/1', '/app/1/__data.json'])
+  expect((await h.fetch(new Request('http://x/app/1'))).status).toBe(200)
+  expect(calls).toBe(1)
+})

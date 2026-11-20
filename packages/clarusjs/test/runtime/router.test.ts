@@ -62,3 +62,10 @@ test('review: a missing page (404 data) is reported as not found', async () => {
   const get = async () => new Response('Not Found', { status: 404 })
   await expect(show(new URL('http://x/app/9'), table, async () => ({ render: () => '' }), get)).rejects.toThrow(/^not found: \/app\/9\/__data\.json$/)
 })
+
+test('review: under a base, the route table holds browser paths and data stays under the base', async () => {
+  const based = [{ p: '/docs/app/[id]', r: '/docs/r.js' }]
+  const get = vi.fn(async () => new Response('{}'))
+  expect(await show(new URL('http://x/docs/app/7'), based, async () => ({ render: () => '<p>ok</p>' }), get)).toBe(true)
+  expect(get).toHaveBeenCalledWith('/docs/app/7/__data.json')
+})

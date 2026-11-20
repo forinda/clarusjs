@@ -50,6 +50,8 @@ export function createHandler(
     /** Client routes (as their files name them) → URL of the page's browser render module. */
     client?: Record<string, string>
     routerUrl?: string
+    /** Vite's base ('/' or '/docs/'): client routes are listed at their browser paths, under it. */
+    base?: string
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -75,17 +77,21 @@ export function createHandler(
     return null
   }
 
-  // entries() per route, asked once. Without entries() a route isn't restricted here (the build reports it).
-  const listedCache = new Map<Route, Promise<Params[] | null>>()
-  async function listed(route: Route, params: Params): Promise<boolean> {
-    if (!listedCache.has(route)) {
+  // entries() per route, asked once: prerendering and requests see the same list. null when there is none.
+  const entriesCache = new Map<Route, Promise<Params[] | null>>()
+  function entriesOf(route: Route): Promise<Params[] | null> {
+    if (!entriesCache.has(route)) {
       const file = `/${route.file.replace(/\.tscl$/, '.load.ts')}`
-      listedCache.set(route, (async () => {
+      entriesCache.set(route, (async () => {
         const mod = data[file] ? await data[file]!() : undefined
         return mod?.entries ? await mod.entries() : null
       })())
     }
-    const list = await listedCache.get(route)!
+    return entriesCache.get(route)!
+  }
+  // Without entries() a route isn't restricted here (the build reports it).
+  async function listed(route: Route, params: Params): Promise<boolean> {
+    const list = await entriesOf(route)
     return !list || list.some((entry) => route.keys.every((key) => entry[key] === params[key]))
   }
 
@@ -117,9 +123,9 @@ export function createHandler(
         }
         if (!route.keys.length) { add(route.path); continue }
         const dataFile = route.file.replace(/\.tscl$/, '.load.ts')
-        const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
-        if (!mod?.entries) throw new Error(`${route.path} is a dynamic route: export entries() from ${dataFile} to list the pages to prerender`)
-        for (const params of await mod.entries()) {
+        const list = await entriesOf(route)
+        if (!list) throw new Error(`${route.path} is a dynamic route: export entries() from ${dataFile} to list the pages to prerender`)
+        for (const params of list) {
           add(route.path.split('/').map((seg) => {
             const key = PARAM.exec(seg)?.[1]
             if (key === undefined) return seg
@@ -161,7 +167,8 @@ export function createHandler(
       if (mode === 'client' && !wantsData) {
         // In matching order (static before dynamic, as on the server): the router takes the first match.
         const client = options.client ?? {}
-        const table = routes.filter((r) => client[r.path]).map((r) => ({ p: r.path, r: client[r.path]! }))
+        const prefix = (options.base ?? '/').replace(/\/$/, '')
+        const table = routes.filter((r) => client[r.path]).map((r) => ({ p: (prefix + r.path).replace(/(.)\/$/, '$1'), r: client[r.path]! }))
         const shell = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
           `<style>cl-island{display:contents}</style><script type="application/json" id="cl-routes">${safeJson(JSON.stringify(table))}</script>` +
           `<script type="module" src="${loaderUrl}"></script><script type="module" src="${options.routerUrl ?? '/cl-router.js'}"></script>` +

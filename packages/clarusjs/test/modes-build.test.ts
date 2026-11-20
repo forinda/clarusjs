@@ -119,3 +119,20 @@ test('review: an island with a bracketed file name inside a client page points a
   expect(src).not.toContain('__CLARUS_CHUNK__')
   expect(existsSync(resolve(root, 'dist/client', src.slice(1)))).toBe(true)
 })
+
+test('review: client routes under a base list their browser paths', async () => {
+  const { cpSync, mkdirSync, mkdtempSync, symlinkSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { default: clarusjs } = await import('../src/vite/plugin.ts')
+  const dir = mkdtempSync(resolve(tmpdir(), 'clarusjs-client-base-'))
+  cpSync(resolve(root, 'src'), resolve(dir, 'src'), { recursive: true })
+  mkdirSync(resolve(dir, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'dir')
+  const config = { root: dir, configFile: false as const, base: '/docs/', logLevel: 'silent' as const, plugins: [clarusjs({ routes: { '/account/*': 'server', '/app/*': 'client' } })] }
+  await (await createBuilder(config)).buildApp()
+  const shell = readFileSync(resolve(dir, 'dist/client/app/one/index.html'), 'utf8')
+  const table = JSON.parse(/id="cl-routes">(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
+  expect(table.map((t) => t.p)).toEqual(['/docs/app', '/docs/app/[id]'])
+  expect(table.every((t) => t.r.startsWith('/docs/assets/'))).toBe(true)
+  expect(existsSync(resolve(dir, 'dist/client/app/one/__data.json'))).toBe(true)
+}, 120_000)

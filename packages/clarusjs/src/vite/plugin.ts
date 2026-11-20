@@ -127,7 +127,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       for (const out of Object.values(bundle)) {
         if (out.type !== 'chunk' || !out.isEntry) continue
         byName.set(out.name, base + out.fileName)
-        if (out.facadeModuleId) byName.set(entryName(root, out.facadeModuleId.replace(/\?.*$/, '')), base + out.fileName)
+        // Only island chunks: a client page's ?render chunk would otherwise take its island's place.
+        if (out.facadeModuleId && !/[?&]render\b/.test(out.facadeModuleId)) byName.set(entryName(root, out.facadeModuleId.replace(/\?.*$/, '')), base + out.fileName)
       }
       for (const out of Object.values(bundle)) {
         if (out.type !== 'chunk' || !out.code.includes(CHUNK_TOKEN)) continue
@@ -188,6 +189,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  modes: ${JSON.stringify(modes)},\n` +
         `  routerUrl: ${JSON.stringify(routerUrl)},\n` +
         `  client: ${JSON.stringify(client)},\n` +
+        `  base: ${JSON.stringify(base)},\n` +
         `})\n`
     },
     transform: {
