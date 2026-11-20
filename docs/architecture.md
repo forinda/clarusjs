@@ -1,6 +1,6 @@
 # clarusjs architecture
 
-> How clarusjs turns `.kvw` files into HTML and JS, where every piece runs, and
+> How clarusjs turns `.clarus` files into HTML and JS, where every piece runs, and
 > how it plugs into Vite, servers, TypeScript and AI agents.
 >
 > Status: draft for the first proof of concept (POC). Background research
@@ -11,7 +11,7 @@
 
 ## 1. One sentence
 
-**A `.kvw` file is compiled into a server function that writes HTML, and, only
+**A `.clarus` file is compiled into a server function that writes HTML, and, only
 if it has state, a client function that attaches to that HTML. A route table
 says when the server function runs: at build, per request, or in the
 browser.**
@@ -23,7 +23,7 @@ Everything below expands that sentence.
 ```mermaid
 flowchart LR
   subgraph Author["You write"]
-    KVW[".kvw components<br/>template + optional &lt;script&gt;"]
+    SRC[".clarus components<br/>template + optional &lt;script&gt;"]
     LOAD["*.load.ts<br/>one loader per route"]
     CFG["vite.config.ts<br/>clarusjs({ routes })"]
   end
@@ -47,7 +47,7 @@ flowchart LR
     M["clarusjs-manifest.json"]
   end
 
-  KVW --> P
+  SRC --> P
   LOAD --> ENV_S
   CFG --> Vite
   ES --> ENV_S --> H
@@ -60,7 +60,7 @@ flowchart LR
 Three rules make the whole system explainable:
 
 1. **Server code is never in the client module graph.** The client compile
-   of a `.kvw` file contains no `render`, no loader, no template strings. This
+   of a `.clarus` file contains no `render`, no loader, no template strings. This
    is by construction, not by tree shaking.
 2. **Only stateful components produce client code.** A component without a
    `<script>` has no client module at all. Zero bytes, always.
@@ -89,7 +89,7 @@ access inside the compiler.
 
 ```mermaid
 flowchart TD
-  SRC[".kvw source"] --> PARSE["parse<br/>hand-written template parser<br/>acorn for &lt;script&gt; and {{ expressions }}"]
+  SRC[".clarus source"] --> PARSE["parse<br/>hand-written template parser<br/>acorn for &lt;script&gt; and {{ expressions }}"]
   PARSE --> AST["AST<br/>elements, text, holes, directives<br/>ESTree for JS parts"]
   AST --> CHECK["check<br/>• unknown components / names<br/>• (event) outside stateful component<br/>• escaping context per hole<br/>• malformed @if / @for"]
   CHECK --> IR["IR<br/>static parts · holes · reactive holes · child components · events"]
@@ -140,7 +140,7 @@ touched again.
 Source:
 
 ```kick
-{{-- components/counter.kvw --}}
+{{-- components/counter.clarus --}}
 @input start: number = 0
 
 <script>
@@ -155,38 +155,38 @@ Source:
 Server output (readable, roughly what you'll see in `dist/`):
 
 ```js
-import { escape as __kv_escape, island as __kv_island } from 'clarusjs/runtime/server'
+import { escape as __cl_escape, island as __cl_island } from 'clarusjs/runtime/server'
 
-export function render(__kv_props = {}) {
-  const { start = 0 } = __kv_props
+export function render(__cl_props = {}) {
+  const { start = 0 } = __cl_props
   let count = (start)
   const double = (() => count * 2)()
   function add() { count++ }
-  return __kv_island("counter", "/src/components/counter.kvw?import", { start }, "<button data-kv-e=\"0\">Clicked " + "<!--[0-->" + __kv_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __kv_escape(double) + "<!--]-->" + ")</button>")
+  return __cl_island("counter", "/src/components/counter.clarus?import", { start }, "<button data-cl-e=\"0\">Clicked " + "<!--[0-->" + __cl_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __cl_escape(double) + "<!--]-->" + ")</button>")
 }
 ```
 
 Client output:
 
 ```js
-import { state, derived, holes as __kv_holes, text as __kv_text, on as __kv_on } from 'clarusjs/runtime'
+import { state, derived, holes as __cl_holes, text as __cl_text, on as __cl_on } from 'clarusjs/runtime'
 
-export function attach(__kv_root, __kv_props = {}) {
-  const { start = 0 } = __kv_props
+export function attach(__cl_root, __cl_props = {}) {
+  const { start = 0 } = __cl_props
   const count = state(start)
   const double = derived(() => count.get() * 2)
   function add() { count.set(count.get() + 1) }
 
-  const __kv_h = __kv_holes(__kv_root)                   // finds <!--[n--> markers, once
-  __kv_text(__kv_h[0], () => count.get())               // updates only that text node
-  __kv_text(__kv_h[1], () => double.get())
-  __kv_on(__kv_root, 0, "click", ($event) => { add() }) // delegated, matched by data-kv-e="0"
+  const __cl_h = __cl_holes(__cl_root)                   // finds <!--[n--> markers, once
+  __cl_text(__cl_h[0], () => count.get())               // updates only that text node
+  __cl_text(__cl_h[1], () => double.get())
+  __cl_on(__cl_root, 0, "click", ($event) => { add() }) // delegated, matched by data-cl-e="0"
 }
 ```
 
 `count++` became `count.set(count.get() + 1)`. That rewrite is the only
 "magic", and it's visible in the output. Names clarusjs generates start with
-`__kv_`, so they never collide with names in your `<script>`.
+`__cl_`, so they never collide with names in your `<script>`.
 
 ## 5. The HTML contract
 
@@ -196,20 +196,20 @@ to change later, so it's fixed now.
 ```html
 <h1>Ada Lovelace</h1>                         <!-- static: no markers, no JS -->
 
-<kv-island c="counter" src="/assets/counter-3f2a.js" p='{"start":3}'>
-  <button data-kv-e="0">
+<cl-island c="counter" src="/assets/counter-3f2a.js" p='{"start":3}'>
+  <button data-cl-e="0">
     Clicked <!--[0-->3<!--]--> times (double: <!--[1-->6<!--]-->)
   </button>
-</kv-island>
+</cl-island>
 
-<script type="module" src="/assets/kv-loader-9c1e.js"></script>  <!-- only if page has islands -->
+<script type="module" src="/assets/cl-loader-9c1e.js"></script>  <!-- only if page has islands -->
 ```
 
 | Marker | Meaning |
 |---|---|
-| `<kv-island c src p>` | stateful component boundary: name, its JS chunk, its serialized props. `display: contents`, so it doesn't affect layout |
+| `<cl-island c src p>` | stateful component boundary: name, its JS chunk, its serialized props. `display: contents`, so it doesn't affect layout |
 | `<!--[n-->…<!--]-->` | reactive hole `n`; the client replaces what's between |
-| `data-kv-e="n"` | element with event binding `n` |
+| `data-cl-e="n"` | element with event binding `n` |
 
 Static parts of the page carry **no markers at all**. Islands are
 self-describing, so the loader needs no manifest at runtime and can attach to
@@ -227,16 +227,16 @@ Target under 5 KB total; the POC aims at about 1–2 KB.
 | `clarusjs/runtime/server` | `escape`, `escapeAttr`, `island()` | server/build |
 | `clarusjs/runtime` signals | `state`, `derived`, `effect` (push-pull, alien-signals-style) | browser |
 | `clarusjs/runtime` DOM | `holes`, `text`, `attr`, `on` (one delegated listener per event type) | browser |
-| `clarusjs/runtime/loader` | find `<kv-island>`, `import(src)`, call `attach` | browser |
+| `clarusjs/runtime/loader` | find `<cl-island>`, `import(src)`, call `attach` | browser |
 
 ```mermaid
 sequenceDiagram
   participant B as Browser
-  participant L as kv-loader (≈20 lines)
+  participant L as cl-loader (≈20 lines)
   participant C as counter chunk
   B->>B: parse HTML, page visible (no JS needed yet)
   B->>L: load module script
-  L->>L: querySelectorAll('kv-island')
+  L->>L: querySelectorAll('cl-island')
   L->>C: import(island.src)
   C-->>L: { attach }
   L->>C: attach(island, JSON.parse(island.p))
@@ -269,7 +269,7 @@ export default defineConfig({
 })
 ```
 
-Pages are files: `src/pages/users/[id].kvw`. The route's loader, if any, is
+Pages are files: `src/pages/users/[id].clarus`. The route's loader, if any, is
 the sibling `src/pages/users/[id].load.ts`. A separate file makes "this runs
 outside the template" visible from the file tree.
 
@@ -361,7 +361,7 @@ flowchart LR
   A[link click] --> Q{target route mode}
   Q -- static / server --> F["fetch page with header<br/>clarusjs-fragment: main"]
   F --> SW["swap &lt;main&gt; contents"]
-  SW --> AT["loader sees new &lt;kv-island&gt;<br/>(MutationObserver) → attach"]
+  SW --> AT["loader sees new &lt;cl-island&gt;<br/>(MutationObserver) → attach"]
   Q -- client --> RT["client router<br/>(Navigation API, routes compiled to RegExp)"]
   RT --> LD["fetch loader data"] --> MT["mount page"]
 ```
@@ -370,7 +370,7 @@ flowchart LR
   fragment when it sees the `clarusjs-fragment` header (`Vary` set). Static
   routes get a prebuilt `index.frag.html` beside `index.html` **(later)**.
 - Islands re-attach on their own after a swap. You never write an `onLoad`
-  hook. Mark an element `kv-persist` to keep it across swaps **(later)**.
+  hook. Mark an element `cl-persist` to keep it across swaps **(later)**.
 - `client` routes: a few-hundred-byte router ships only for them.
 
 ## 10. Vite integration
@@ -380,7 +380,7 @@ One plugin. It's a thin adapter around the compiler.
 ```mermaid
 flowchart TD
   subgraph Plugin["clarusjs/vite"]
-    T["transform (filter: id /\.kvw$/)<br/>this.environment.config.consumer"]
+    T["transform (filter: id /\.clarus$/)<br/>this.environment.config.consumer"]
     V["virtual modules<br/>virtual:clarusjs/server-entry<br/>virtual:clarusjs/routes"]
     D["configureServer<br/>dev middleware → runner.import(server-entry)"]
     B["buildApp<br/>client → server → prerender → manifest"]
@@ -392,7 +392,7 @@ flowchart TD
 
 | Hook | What clarusjs does |
 |---|---|
-| `transform` | Compile `.kvw`. Server environment gets `render`, client environment gets `attach`. Hook filter means Rolldown never calls into JS for other files |
+| `transform` | Compile `.clarus`. Server environment gets `render`, client environment gets `attach`. Hook filter means Rolldown never calls into JS for other files |
 | `resolveId`/`load` | Virtual modules: the server entry (route table + handler) and the route list |
 | `configureServer` | Dev: turn the Node request into a `Request`, call the handler loaded via `runner.import()`, so server code gets HMR |
 | `buildApp` | Build client (with `build.manifest`), build server, call the handler for every `static` route, write `clarusjs-manifest.json` |
@@ -428,7 +428,7 @@ Plain JSON, one entry per route. This is what `clarusjs explain` reads.
     "mode": "server",
     "loader": { "file": "src/pages/users/[id].load.ts", "runs": "per request" },
     "islands": [{ "name": "counter", "chunk": "assets/counter-3f2a.js", "bytes": 612 }],
-    "js": { "total": 1840, "files": ["assets/kv-loader-9c1e.js", "assets/counter-3f2a.js"] },
+    "js": { "total": 1840, "files": ["assets/cl-loader-9c1e.js", "assets/counter-3f2a.js"] },
     "css": ["assets/users-1b2c.css"]
   }
 }
@@ -467,8 +467,8 @@ One code generator, three hosts.
 
 ```mermaid
 flowchart LR
-  KVW[".kvw"] --> GEN["type emitter<br/>(pure: kvw → virtual TS + span mappings)"]
-  GEN --> CLI["clarusjs check<br/>writes .clarusjs/virtual/*.ts<br/>runs tsc --noEmit<br/>maps errors → file.kvw:line:col"]
+  SRC[".clarus"] --> GEN["type emitter<br/>(pure: .clarus → virtual TS + span mappings)"]
+  GEN --> CLI["clarusjs check<br/>writes .clarusjs/virtual/*.ts<br/>runs tsc --noEmit<br/>maps errors → file.clarus:line:col"]
   GEN --> CM["TS 7.1 content mapper<br/>editor hover / completion / errors<br/>(later)"]
   GEN --> VOL["Volar plugin for TS 6 editors<br/>(only if asked)"]
 ```
@@ -481,7 +481,7 @@ Template → virtual TS, Angular-style:
 | `{{ user.name }}` | `'' + (user.name);` |
 | `@if (user.admin) { … }` | `if (user.admin) { … }` (narrowing works) |
 | `@for (u of users) { … }` | `for (const u of users) { … }` |
-| `<badge [label]="x" />` | `__kv_component(Badge, { label: x });` |
+| `<badge [label]="x" />` | `__cl_component(Badge, { label: x });` |
 | `(click)="add()"` | `($event: MouseEvent) => { add() };` |
 | `let count = state(0)` | `let count = state(0)` with `state<T>(v: T): T` |
 
@@ -510,7 +510,7 @@ Example:
 $ clarusjs explain /users/42
 /users/[id]  mode: server
   loader     src/pages/users/[id].load.ts — runs per request on the server
-  render     src/pages/users/[id].kvw     — runs per request on the server
+  render     src/pages/users/[id].clarus     — runs per request on the server
   islands    counter (612 B) — attaches in the browser at load
   static     h1, layout — HTML only, 0 B JS
   total JS   1.8 KB (loader 0.4 KB + counter 0.6 KB + runtime 0.8 KB)
@@ -573,7 +573,7 @@ reload, content mapper, MCP.
 
 1. `@if`/`@for` with block markers, nested islands, state serialization, `clarusjs check` + `views.d.ts`.
 2. Route modes, loaders with type contracts, `buildApp` prerender, `clarusjs-manifest.json`, `clarusjs explain`.
-3. Fragment navigation, auto re-attach, `kv-persist`, client router, lazy attach with event replay.
+3. Fragment navigation, auto re-attach, `cl-persist`, client router, lazy attach with event replay.
 4. TS 7.1 content mapper (editor support), `llms.txt`, MCP server.
 5. Only if profiling demands: `oxc-parser` or a Rust compiler core.
 

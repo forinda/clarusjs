@@ -21,5 +21,5 @@ function assertSerializable(value: unknown, path: string): void {
 /** Wrap a stateful component's HTML in its island boundary: name, client chunk URL, serialized props. */
 export function island(name: string, src: string, props: Record<string, unknown>, html: string): string {
   assertSerializable(props, '')
-  return `<kv-island c="${escape(name)}" src="${escape(src)}" p="${escape(JSON.stringify(props))}">${html}</kv-island>`
+  return `<cl-island c="${escape(name)}" src="${escape(src)}" p="${escape(JSON.stringify(props))}">${html}</cl-island>`
 }

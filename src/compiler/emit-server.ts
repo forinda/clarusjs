@@ -4,7 +4,7 @@ import { rewriteServer } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitServer(ir: ComponentIR, clientUrl: string): string {
-  const runtime = ir.stateful ? 'escape as __kv_escape, island as __kv_island' : 'escape as __kv_escape'
+  const runtime = ir.stateful ? 'escape as __cl_escape, island as __cl_island' : 'escape as __cl_escape'
   let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
   for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}'\n`
 
@@ -14,17 +14,17 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
       const props = n.props.map((p) => `${p.name}: ${p.expr}`).join(', ')
       return `${renderName(n.name)}({ ${props} })`
     }
-    const value = `__kv_escape(${n.expr})`
+    const value = `__cl_escape(${n.expr})`
     return n.reactive ? `"<!--[${n.index}-->" + ${value} + "<!--]-->"` : value
   })
   const html = parts.length ? parts.join(' + ') : '""'
   const props = `{ ${ir.inputs.map((i) => i.name).join(', ')} }`.replace('{  }', '{}')
 
-  out += `\nexport function render(__kv_props = {}) {\n`
+  out += `\nexport function render(__cl_props = {}) {\n`
   out += inputsLine(ir)
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   out += ir.stateful
-    ? `  return __kv_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html})\n`
+    ? `  return __cl_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html})\n`
     : `  return ${html}\n`
   return out + '}\n'
 }

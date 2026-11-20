@@ -6,7 +6,7 @@ const signals: Signals = new Map([['count', 'state'], ['double', 'derived']])
 
 test('finds state and derived declarations', () => {
   const code = 'let count = state(0)\nconst double = derived(() => count * 2)\nconst plain = 1'
-  expect(analyzeScript(code, 'x.kvw', code, 0)).toEqual(new Map([['count', 'state'], ['double', 'derived']]))
+  expect(analyzeScript(code, 'x.clarus', code, 0)).toEqual(new Map([['count', 'state'], ['double', 'derived']]))
 })
 
 test('client rewrite: declarations become const, ++ becomes set(get()+1)', () => {
@@ -42,10 +42,10 @@ test('referencesSignal', () => {
   expect(referencesSignal('obj.count', signals)).toBe(false)
 })
 
-test('script syntax errors point into the .kvw file', () => {
+test('script syntax errors point into the .clarus file', () => {
   const source = '<script>\nlet = </script>'
   try {
-    analyzeScript('\nlet = ', 'x.kvw', source, 8)
+    analyzeScript('\nlet = ', 'x.clarus', source, 8)
     throw new Error('expected throw')
   } catch (e) {
     expect(e).toBeInstanceOf(ClarusError)

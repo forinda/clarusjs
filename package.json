@@ -19,13 +19,13 @@
     "html-first",
     "typescript"
   ],
-  "homepage": "https://github.com/forinda/kview#readme",
+  "homepage": "https://github.com/forinda/clarusjs#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/forinda/kview.git"
+    "url": "git+https://github.com/forinda/clarusjs.git"
   },
   "bugs": {
-    "url": "https://github.com/forinda/kview/issues"
+    "url": "https://github.com/forinda/clarusjs/issues"
   },
   "engines": {
     "node": ">=22"

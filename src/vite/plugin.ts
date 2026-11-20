@@ -24,20 +24,20 @@ export default function clarusjs(): Plugin {
     }),
     configResolved(config) { root = config.root },
     resolveId(id) {
-      if (id === '/kv-loader.js') return here('../runtime/loader.ts')
+      if (id === '/cl-loader.js') return here('../runtime/loader.ts')
       if (id === ENTRY) return '\0' + ENTRY
     },
     load(id) {
       if (id !== '\0' + ENTRY) return
       return `import { createHandler } from ${JSON.stringify(here('../server/handler.ts'))}\n` +
-        `export default createHandler(import.meta.glob('/src/pages/**/*.kvw'))\n`
+        `export default createHandler(import.meta.glob('/src/pages/**/*.clarus'))\n`
     },
     transform: {
-      filter: { id: /\.kvw(\?|$)/ },
+      filter: { id: /\.clarus(\?|$)/ },
       handler(code, id) {
         const file = id.replace(/\?.*$/, '')
         const target = this.environment.config.consumer === 'server' ? 'server' : 'client'
-        // ponytail: ?import makes Vite's dev transform middleware serve .kvw as JS for the loader's dynamic import; build output uses hashed chunk URLs from the client manifest (stage 3)
+        // ponytail: ?import makes Vite's dev transform middleware serve .clarus as JS for the loader's dynamic import; build output uses hashed chunk URLs from the client manifest (stage 3)
         const clientUrl = '/' + relative(root, file) + '?import'
         try {
           return { code: compile(code, { file, target, clientUrl }).code, map: null }

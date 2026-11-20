@@ -10,7 +10,7 @@ export type IRNode =
 export type IREvent = { index: number; type: string; handler: string }
 export type ComponentIR = {
   file: string
-  name: string // basename without .kvw
+  name: string // basename without .clarus
   inputs: InputDecl[]
   imports: ImportDecl[]
   script?: string
@@ -70,7 +70,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     }
     if (elementEvents.length) {
       const index = eventElementCount++
-      open += ` data-kv-e="${index}"`
+      open += ` data-cl-e="${index}"`
       for (const a of elementEvents) events.push({ index, type: a.name, handler: a.kind === 'event' ? a.expr : '' })
     }
     emitStatic(open + '>')
@@ -81,7 +81,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   parsed.nodes.forEach(visit)
   return {
     file,
-    name: file.split('/').pop()!.replace(/\.kvw$/, ''),
+    name: file.split('/').pop()!.replace(/\.clarus$/, ''),
     inputs: parsed.inputs,
     imports: parsed.imports,
     script: parsed.script?.code,

@@ -2,14 +2,14 @@ import { expect, test } from 'vitest'
 import { createHandler, routeFromFile } from '../../src/server/handler.ts'
 
 test('routeFromFile maps page files to paths', () => {
-  expect(routeFromFile('/src/pages/index.kvw')).toBe('/')
-  expect(routeFromFile('/src/pages/about.kvw')).toBe('/about')
-  expect(routeFromFile('/src/pages/blog/index.kvw')).toBe('/blog')
+  expect(routeFromFile('/src/pages/index.clarus')).toBe('/')
+  expect(routeFromFile('/src/pages/about.clarus')).toBe('/about')
+  expect(routeFromFile('/src/pages/blog/index.clarus')).toBe('/blog')
 })
 
 const handler = createHandler({
-  '/src/pages/index.kvw': async () => ({ render: () => '<h1>x</h1>' }),
-  '/src/pages/app.kvw': async () => ({ render: () => '<kv-island c="c" src="/c" p="{}"></kv-island>' }),
+  '/src/pages/index.clarus': async () => ({ render: () => '<h1>x</h1>' }),
+  '/src/pages/app.clarus': async () => ({ render: () => '<cl-island c="c" src="/c" p="{}"></cl-island>' }),
 })
 
 test('static page ships no script', async () => {
@@ -23,7 +23,7 @@ test('static page ships no script', async () => {
 test('page with islands ships exactly the loader script', async () => {
   const html = await (await handler.fetch(new Request('http://x/app'))).text()
   expect(html.match(/<script/g)).toHaveLength(1)
-  expect(html).toContain('<script type="module" src="/kv-loader.js"></script>')
+  expect(html).toContain('<script type="module" src="/cl-loader.js"></script>')
 })
 
 test('non-GET is 405 and unknown path is 404', async () => {
@@ -33,9 +33,9 @@ test('non-GET is 405 and unknown path is 404', async () => {
   expect(missing.headers.get('content-type')).toContain('text/plain')
 })
 
-test('pages with islands make kv-island layout-neutral (display: contents)', async () => {
+test('pages with islands make cl-island layout-neutral (display: contents)', async () => {
   const html = await (await handler.fetch(new Request('http://x/app'))).text()
-  expect(html).toContain('<style>kv-island{display:contents}</style>')
+  expect(html).toContain('<style>cl-island{display:contents}</style>')
   const plain = await (await handler.fetch(new Request('http://x/'))).text()
   expect(plain).not.toContain('<style>')
 })

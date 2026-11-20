@@ -7,16 +7,16 @@ import { lower } from '../../src/compiler/ir.ts'
 import { parse } from '../../src/compiler/parse.ts'
 import { importCode } from '../helpers.ts'
 
-const lowerSource = (source: string, file = 'x.kvw') => lower(parse(source, file), file, source)
+const lowerSource = (source: string, file = 'x.clarus') => lower(parse(source, file), file, source)
 function compileError(source: string): ClarusError {
-  try { compile(source, { file: 'x.kvw', target: 'client' }) } catch (e) { return e as ClarusError }
+  try { compile(source, { file: 'x.clarus', target: 'client' }) } catch (e) { return e as ClarusError }
   throw new Error('expected compile to throw')
 }
 async function mount(source: string, props = {}) {
-  const server = await importCode(compile(source, { file: 'x.kvw', target: 'server', clientUrl: '/x' }).code, 'fix-s')
-  const client = await importCode(compile(source, { file: 'x.kvw', target: 'client' }).code, 'fix-c')
+  const server = await importCode(compile(source, { file: 'x.clarus', target: 'server', clientUrl: '/x' }).code, 'fix-s')
+  const client = await importCode(compile(source, { file: 'x.clarus', target: 'client' }).code, 'fix-c')
   document.body.innerHTML = server.render(props)
-  const island = document.querySelector('kv-island')!
+  const island = document.querySelector('cl-island')!
   client.attach(island, props)
   return island
 }
@@ -24,7 +24,7 @@ async function mount(source: string, props = {}) {
 test('a hole that is not a single expression is a located build error', () => {
   const e = compileError('<p>a</p>\n<p>{{ a) + (b }}</p>')
   expect(e).toBeInstanceOf(ClarusError)
-  expect(e.message.startsWith('x.kvw:2:4 ')).toBe(true)
+  expect(e.message.startsWith('x.clarus:2:4 ')).toBe(true)
 })
 
 test('an event handler may contain several statements, all rewritten', async () => {
@@ -34,7 +34,7 @@ test('an event handler may contain several statements, all rewritten', async () 
 })
 
 test('an event handler with a syntax error is a located build error', () => {
-  expect(compileError('<script>let n = state(0)</script>\n<b (click)="n +">x</b>').message).toMatch(/^x\.kvw:2:4 /)
+  expect(compileError('<script>let n = state(0)</script>\n<b (click)="n +">x</b>').message).toMatch(/^x\.clarus:2:4 /)
 })
 
 test('a hole calling a script function that reads state is reactive', async () => {
@@ -54,7 +54,7 @@ test('script names do not collide with generated names', async () => {
 })
 
 test('import inside <script> is a located build error', () => {
-  expect(compileError("<script>\nimport { x } from './x'\n</script>\n<p>x</p>").message).toMatch(/^x\.kvw:2:1 .*imports in <script> are not supported yet/)
+  expect(compileError("<script>\nimport { x } from './x'\n</script>\n<p>x</p>").message).toMatch(/^x\.clarus:2:1 .*imports in <script> are not supported yet/)
 })
 
 test('HTML comments are static text, not markup or holes', () => {

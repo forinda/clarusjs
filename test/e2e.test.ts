@@ -19,19 +19,19 @@ test('page is server-rendered with the counters as the only islands', async () =
   const html = await res.text()
   expect(html).toContain('<h1>clarusjs POC</h1>')
   expect(html).toContain('<p>Hello, world!</p>')
-  expect(html.match(/<kv-island c="counter"/g)).toHaveLength(2)
+  expect(html.match(/<cl-island c="counter"/g)).toHaveLength(2)
   expect(html.match(/<script/g)).toHaveLength(1)
 })
 
 test('loader is served as JS', async () => {
-  const res = await fetch(`${base}/kv-loader.js`)
+  const res = await fetch(`${base}/cl-loader.js`)
   expect(res.status).toBe(200)
   expect(res.headers.get('content-type')).toContain('javascript')
 })
 
 test('island chunk is the client attach module, with no server code', async () => {
   const html = await (await fetch(`${base}/`)).text()
-  const src = html.match(/<kv-island c="counter" src="([^"]+)"/)![1]!
+  const src = html.match(/<cl-island c="counter" src="([^"]+)"/)![1]!
   const res = await fetch(base + src)
   expect(res.status).toBe(200)
   const js = await res.text()
@@ -40,7 +40,7 @@ test('island chunk is the client attach module, with no server code', async () =
 })
 
 test('stateless component ships no code to the client', async () => {
-  const js = await (await fetch(`${base}/src/components/greeting.kvw?import`)).text()
+  const js = await (await fetch(`${base}/src/components/greeting.clarus?import`)).text()
   expect(js).not.toContain('Hello')
   expect(js).not.toContain('render')
 })

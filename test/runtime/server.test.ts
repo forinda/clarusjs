@@ -13,16 +13,16 @@ describe('escape', () => {
 })
 
 describe('island', () => {
-  test('wraps html in a self-describing kv-island element', () => {
-    expect(island('counter', '/c.kvw?import', { start: 3 }, '<b>x</b>')).toBe(
-      '<kv-island c="counter" src="/c.kvw?import" p="{&quot;start&quot;:3}"><b>x</b></kv-island>',
+  test('wraps html in a self-describing cl-island element', () => {
+    expect(island('counter', '/c.clarus?import', { start: 3 }, '<b>x</b>')).toBe(
+      '<cl-island c="counter" src="/c.clarus?import" p="{&quot;start&quot;:3}"><b>x</b></cl-island>',
     )
   })
   test('cannot break out of the props attribute', () => {
-    const out = island('c', '/c', { label: '</kv-island><script>' }, '')
-    expect(out).toContain('&lt;/kv-island&gt;&lt;script&gt;')
-    expect(out.split('<kv-island').length - 1).toBe(1)
-    expect(out.split('</kv-island>').length - 1).toBe(1)
+    const out = island('c', '/c', { label: '</cl-island><script>' }, '')
+    expect(out).toContain('&lt;/cl-island&gt;&lt;script&gt;')
+    expect(out.split('<cl-island').length - 1).toBe(1)
+    expect(out.split('</cl-island>').length - 1).toBe(1)
   })
   test('rejects props that cannot be serialized, naming the path', () => {
     expect(() => island('c', '/c', { cb: () => 1 }, '')).toThrow(TypeError)

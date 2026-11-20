@@ -1,4 +1,4 @@
-// .kvw source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
+// .clarus source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
 import { ClarusError } from './errors.ts'
 
 export type Attr =

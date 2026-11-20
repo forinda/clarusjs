@@ -2,9 +2,9 @@
 
 type PageModule = { render(props?: object): string }
 
-/** '/src/pages/index.kvw' → '/', '/src/pages/blog/index.kvw' → '/blog', '/src/pages/about.kvw' → '/about' */
+/** '/src/pages/index.clarus' → '/', '/src/pages/blog/index.clarus' → '/blog', '/src/pages/about.clarus' → '/about' */
 export function routeFromFile(file: string): string {
-  const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.kvw$/, '').replace(/\/index$/, '')
+  const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.clarus$/, '').replace(/\/index$/, '')
   return path || '/'
 }
 
@@ -17,9 +17,9 @@ export function createHandler(pages: Record<string, () => Promise<PageModule>>):
       if (!load) return new Response('Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
       const html = (await load()).render({})
       // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
-      const hasIslands = html.includes('<kv-island')
-      const scripts = hasIslands ? '<script type="module" src="/kv-loader.js"></script>' : ''
-      const style = hasIslands ? '<style>kv-island{display:contents}</style>' : '' // islands never affect layout
+      const hasIslands = html.includes('<cl-island')
+      const scripts = hasIslands ? '<script type="module" src="/cl-loader.js"></script>' : ''
+      const style = hasIslands ? '<style>cl-island{display:contents}</style>' : '' // islands never affect layout
       const body = `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title>${style}</head><body>${html}${scripts}</body></html>`
       return new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     },

@@ -5,38 +5,38 @@ import { compile } from '../../src/compiler/index.ts'
 import { importCode } from '../helpers.ts'
 
 const fixture = (name: string) => readFileSync(`${import.meta.dirname}/../fixtures/${name}`, 'utf8')
-const URL_ = '/src/components/counter.kvw?import'
+const URL_ = '/src/components/counter.clarus?import'
 
 async function load(name: string) {
-  const source = fixture(`${name}.kvw`)
-  const server = await importCode(compile(source, { file: `${name}.kvw`, target: 'server', clientUrl: URL_ }).code, `${name}-s`)
-  const client = await importCode(compile(source, { file: `${name}.kvw`, target: 'client' }).code, `${name}-c`)
+  const source = fixture(`${name}.clarus`)
+  const server = await importCode(compile(source, { file: `${name}.clarus`, target: 'server', clientUrl: URL_ }).code, `${name}-s`)
+  const client = await importCode(compile(source, { file: `${name}.clarus`, target: 'client' }).code, `${name}-c`)
   return { render: server.render, attach: client.attach }
 }
-const islands = () => [...document.querySelectorAll('kv-island')]
+const islands = () => [...document.querySelectorAll('cl-island')]
 
 beforeEach(() => { document.body.innerHTML = '' })
 
 test('counter client output is readable and exact', () => {
-  expect(compile(fixture('counter.kvw'), { file: 'counter.kvw', target: 'client' }).code).toBe(
-`import { state, derived, holes as __kv_holes, text as __kv_text, on as __kv_on } from 'clarusjs/runtime'
+  expect(compile(fixture('counter.clarus'), { file: 'counter.clarus', target: 'client' }).code).toBe(
+`import { state, derived, holes as __cl_holes, text as __cl_text, on as __cl_on } from 'clarusjs/runtime'
 
-export function attach(__kv_root, __kv_props = {}) {
-  const { start = 0 } = __kv_props
+export function attach(__cl_root, __cl_props = {}) {
+  const { start = 0 } = __cl_props
   const count = state(start)
   const double = derived(() => count.get() * 2)
   function add() { count.set(count.get() + 1) }
 
-  const __kv_h = __kv_holes(__kv_root)
-  __kv_text(__kv_h[0], () => count.get())
-  __kv_text(__kv_h[1], () => double.get())
-  __kv_on(__kv_root, 0, "click", ($event) => { add() })
+  const __cl_h = __cl_holes(__cl_root)
+  __cl_text(__cl_h[0], () => count.get())
+  __cl_text(__cl_h[1], () => double.get())
+  __cl_on(__cl_root, 0, "click", ($event) => { add() })
 }
 `)
 })
 
 test('stateless component compiles to an empty client module', () => {
-  expect(compile(fixture('greeting.kvw'), { file: 'greeting.kvw', target: 'client' })).toEqual({ code: 'export {}\n', stateful: false })
+  expect(compile(fixture('greeting.clarus'), { file: 'greeting.clarus', target: 'client' })).toEqual({ code: 'export {}\n', stateful: false })
 })
 
 test('attach wires server HTML without re-rendering it', async () => {

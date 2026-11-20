@@ -10,7 +10,7 @@ export function holes(root: Element): Hole[] {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, {
     acceptNode: (n) =>
       n.nodeType === 8 ? NodeFilter.FILTER_ACCEPT
-      : n !== root && (n as Element).localName === 'kv-island' ? NodeFilter.FILTER_REJECT
+      : n !== root && (n as Element).localName === 'cl-island' ? NodeFilter.FILTER_REJECT
       : NodeFilter.FILTER_SKIP,
   })
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -39,10 +39,10 @@ export function text(hole: Hole, fn: () => unknown): void {
   })
 }
 
-/** Delegated listener on the island root for elements marked `data-kv-e="index"` that belong to this island. */
+/** Delegated listener on the island root for elements marked `data-cl-e="index"` that belong to this island. */
 export function on(root: Element, index: number, type: string, fn: (e: Event) => void): void {
   root.addEventListener(type, (e) => {
-    const el = (e.target as Element | null)?.closest?.(`[data-kv-e="${index}"]`)
-    if (el && el.closest('kv-island') === root) fn(e)
+    const el = (e.target as Element | null)?.closest?.(`[data-cl-e="${index}"]`)
+    if (el && el.closest('cl-island') === root) fn(e)
   })
 }

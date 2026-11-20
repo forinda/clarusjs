@@ -1,4 +1,4 @@
-{{-- components/counter.kvw --}}
+{{-- components/counter.clarus --}}
 @input start: number = 0
 
 <script>

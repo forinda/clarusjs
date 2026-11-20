@@ -4,7 +4,7 @@ Guidance for AI agents (and humans) working in this repo.
 
 ## What this is
 
-clarusjs compiles `.kvw` components (Vue/Angular-style templates + an optional `<script>` with signals) into:
+clarusjs compiles `.clarus` components (Vue/Angular-style templates + an optional `<script>` with signals) into:
 
 - a **server module**: `render(props) → string`, HTML with markers around reactive holes only;
 - a **client module**, only for stateful components: `attach(root, props)`, which wires signals to the server's HTML without re-rendering it.
@@ -31,7 +31,7 @@ Run both `npm test` and `npm run typecheck` before calling work done.
 | `src/server/handler.ts` | `createHandler(pages)` → `{ fetch }` |
 | `src/vite/` | `plugin.ts`, `node.ts` (Node http ⇄ fetch) |
 | `examples/counter/` | the POC app |
-| `test/` | mirrors `src/`; `test/fixtures/*.kvw`; `test/helpers.ts` (`importCode`) |
+| `test/` | mirrors `src/`; `test/fixtures/*.clarus`; `test/helpers.ts` (`importCode`) |
 | `docs/` | architecture and plans (committed) |
 | `.scratch/` | local notes and research (gitignored, never commit) |
 
@@ -42,9 +42,9 @@ Run both `npm test` and `npm run typecheck` before calling work done.
 - **Server code never reaches the client.** Client modules must not import `render`, `clarusjs/runtime/server` or loaders.
 - **Stateless components ship nothing.** No `<script>` → client compile is `export {}`.
 - **HTML contract is fixed** (changing it is a design change; update `docs/architecture.md` §5 first):
-  `<kv-island c="NAME" src="URL" p="JSON">`, `<!--[N-->…<!--]-->`, `data-kv-e="N"`. Static parts carry no markers.
+  `<cl-island c="NAME" src="URL" p="JSON">`, `<!--[N-->…<!--]-->`, `data-cl-e="N"`. Static parts carry no markers.
 - **Escape everything dynamic.** Server holes go through `escape()`; island props through `island()`; the client writes text nodes only.
-- **Generated names start with `__kv_`** so they never collide with author code.
+- **Generated names start with `__cl_`** so they never collide with author code.
 - **Errors are located.** Compile errors are `ClarusError` with `file:line:col message`. Never let a raw acorn error escape.
 - **Compiled output stays readable.** Exact-output tests in `test/compiler/emit-*.test.ts` pin it; update them deliberately.
 - **Tests first.** Write the failing test, watch it fail, then implement. Bug fixes start with a reproducing test.
