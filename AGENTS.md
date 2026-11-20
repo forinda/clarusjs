@@ -25,7 +25,8 @@ pnpm changeset      # describe a change to a published package (commit the gener
 ```
 
 Run both `pnpm test` and `pnpm typecheck` before calling work done. Any change to a published package needs a changeset.
-Releases: `pnpm version-packages`, then `pnpm release`. Publishing is blocked until the package has a build step.
+Releases are automated from `main` (see RELEASE.md): never run `npm publish` or `changeset publish` yourself.
+`pnpm build` compiles each package to `dist/`; the published `exports` come from `publishConfig.exports`.
 
 ## Layout
 

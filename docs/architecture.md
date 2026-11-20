@@ -544,7 +544,8 @@ examples/
 | `clarusjs/vite` | the plugin |
 
 Runtime dependencies: `acorn` (compiler only); `vite` is a peer dependency. Nothing ships to the browser
-except clarusjs's own runtime. Publishing needs a build step (compile to JS + `.d.ts`), planned with SSG in stage 2–3.
+except clarusjs's own runtime. In the repo, `exports` point at `src/*.ts`; the published package is the compiled
+`dist/` (JS + `.d.ts`), swapped in from `publishConfig.exports` when packing. Releases: see RELEASE.md.
 
 ## 15. Decisions so far
 

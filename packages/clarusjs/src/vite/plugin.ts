@@ -6,7 +6,9 @@ import { isRunnableDevEnvironment, type Plugin } from 'vite'
 import { compile, ClarusError } from '../compiler/index.ts'
 import { sendResponse, toRequest } from './node.ts'
 
-const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
+// From src/ (workspace, tests) our siblings are .ts files; from the published dist/ they are .js.
+const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js'
+const here = (path: string) => fileURLToPath(new URL(path + ext, import.meta.url))
 const ENTRY = 'virtual:clarusjs/server-entry'
 
 /** Dev URL of a component's client module: root-relative, or Vite's /@fs/ form for files outside the root. */
@@ -23,19 +25,19 @@ export default function clarusjs(): Plugin {
       appType: 'custom',
       resolve: {
         alias: [
-          { find: 'clarusjs/runtime/server', replacement: here('../runtime/server.ts') },
-          { find: 'clarusjs/runtime', replacement: here('../runtime/index.ts') },
+          { find: 'clarusjs/runtime/server', replacement: here('../runtime/server') },
+          { find: 'clarusjs/runtime', replacement: here('../runtime/index') },
         ],
       },
     }),
     configResolved(config) { root = config.root },
     resolveId(id) {
-      if (id === '/cl-loader.js') return here('../runtime/loader.ts')
+      if (id === '/cl-loader.js') return here('../runtime/loader')
       if (id === ENTRY) return '\0' + ENTRY
     },
     load(id) {
       if (id !== '\0' + ENTRY) return
-      return `import { createHandler } from ${JSON.stringify(here('../server/handler.ts'))}\n` +
+      return `import { createHandler } from ${JSON.stringify(here('../server/handler'))}\n` +
         `export default createHandler(import.meta.glob('/src/pages/**/*.clarus'))\n`
     },
     transform: {
