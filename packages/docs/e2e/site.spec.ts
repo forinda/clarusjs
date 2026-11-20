@@ -373,3 +373,31 @@ test('package-manager tabs without JavaScript show the pnpm commands', async ({ 
   await expect(page.locator('cl-island[c="pm"] code').first()).toHaveText('pnpm add clarusjs\npnpm add -D vite')
   await context.close()
 })
+
+test('server playground: rendered on every request, reading the request; escaped; not a static file', async ({ page }) => {
+  const { existsSync, readFileSync } = await import('node:fs')
+  expect(existsSync(new URL('../dist/client/playground', import.meta.url))).toBe(false)
+  const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
+  expect(manifest.routes['/playground']).toMatchObject({ mode: 'server', html: null, loader: 'request' })
+
+  await page.goto('/playground')
+  const first = await page.locator('#rendered-at time').getAttribute('datetime')
+  await page.waitForTimeout(20)
+  await page.reload()
+  expect(await page.locator('#rendered-at time').getAttribute('datetime')).not.toBe(first) // a new render
+  await expect(page.locator('#agent')).toContainText(await page.evaluate(() => navigator.userAgent.slice(0, 20)))
+
+  // The form is a plain GET: the server renders the name, escaped.
+  await page.fill('#name', '<img src=x onerror=alert(1)>')
+  await page.click('form.playground button')
+  await expect(page).toHaveURL(/\?name=/)
+  await expect(page.locator('#greeting')).toHaveText('Hello, <img src=x onerror=alert(1)>!')
+  await expect(page.locator('#greeting img')).toHaveCount(0)
+})
+
+test('the generated Netlify function serves only the server routes', async () => {
+  const { readFileSync } = await import('node:fs')
+  const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
+  expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
+  expect(fn).toContain('export const config = {"path":["/playground","/playground/"],"preferStatic":true}')
+})

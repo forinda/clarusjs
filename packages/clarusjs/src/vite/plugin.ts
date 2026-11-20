@@ -7,6 +7,7 @@ import { isRunnableDevEnvironment, type Plugin, type UserConfig } from 'vite'
 import { compile, ClarusError } from '../compiler/index.ts'
 import { findClarusFiles, prerender } from './build.ts'
 import { writeManifest } from './manifest.ts'
+import { writeNetlifyFunction } from './netlify.ts'
 import { checkModes, type ModeTable } from '../server/modes.ts'
 import { sendResponse, toRequest } from './node.ts'
 
@@ -31,11 +32,16 @@ const entryName = (root: string, file: string) => relative(root, file).replace(/
 export type ClarusOptions = {
   /** When each route renders: { '/account/*': 'server' }. Routes default to 'static' (prerendered at build). */
   routes?: ModeTable
+  /** Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. */
+  adapter?: 'netlify'
 }
 
 export default function clarusjs(options: ClarusOptions = {}): Plugin {
   const modes = options.routes ?? {}
   checkModes(modes)
+  if (options.adapter !== undefined && options.adapter !== 'netlify') {
+    throw new Error(`clarusjs: adapter "${options.adapter}" is not supported; use 'netlify'`)
+  }
   let root = process.cwd()
   let command: 'build' | 'serve' = 'serve'
   let base = '/'
@@ -127,6 +133,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         await prerender(entry, out, manifestFile, readers)
         writeManifest(dist, routes, builder.config.base, loaded, server)
       }
+      if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route))
     },
     resolveId(id) {
       if (id === '/cl-loader.js') return here('../runtime/loader')

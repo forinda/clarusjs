@@ -48,3 +48,27 @@ test('vite preview serves server routes through the built handler', async () => 
     await server.close()
   }
 })
+
+test('#32: adapter netlify writes a function that serves the server routes with the same handler', async () => {
+  const file = resolve(root, '.netlify/v1/functions/clarusjs-server.mjs')
+  expect(existsSync(file)).toBe(true)
+  const fn = await import(`${pathToFileURL(file).href}?t=${Date.now()}`)
+  // Static routes stay files: Netlify serves them first, and only the server routes reach the function.
+  expect(fn.config).toEqual({ path: ['/account/:id', '/account/:id/'], preferStatic: true })
+  const res = await fn.default(new Request('https://site.example/account/3', { headers: { 'user-agent': 'netlify/1' } }))
+  expect(res.status).toBe(200)
+  expect(await res.text()).toContain('<p>netlify/1</p>')
+})
+
+test('#32: the adapter config is checked', async () => {
+  const { default: clarusjs } = await import('../src/vite/plugin.ts')
+  expect(() => clarusjs({ adapter: 'vercel' as 'netlify' })).toThrow(`clarusjs: adapter "vercel" is not supported; use 'netlify'`)
+})
+
+test('#32: Netlify paths use URLPattern syntax, with literal text escaped', async () => {
+  const { netlifyPaths } = await import('../src/vite/netlify.ts')
+  expect(netlifyPaths('/')).toEqual(['/'])
+  expect(netlifyPaths('/a/[id]/b')).toEqual(['/a/:id/b', '/a/:id/b/'])
+  expect(netlifyPaths('/x/[$id]')).toEqual(['/x/:p0', '/x/:p0/'])
+  expect(netlifyPaths('/v(2)*')).toEqual(['/v\\(2\\)\\*', '/v\\(2\\)\\*/'])
+})

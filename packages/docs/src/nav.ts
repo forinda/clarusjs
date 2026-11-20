@@ -39,6 +39,7 @@ export const sections: Section[] = [
         { title: 'Static build', href: '/guide/build' },
         { title: 'Deploying', href: '/guide/deploy' },
         { title: 'This site, explained', href: '/guide/explained' },
+        { title: 'Server playground', href: '/playground' },
       ] },
       { title: 'Tooling', items: [
         { title: 'Type checking', href: '/guide/type-checking' },
