@@ -5,6 +5,7 @@ export type Attr =
   | { kind: 'static'; name: string; value: string | true; start: number }
   | { kind: 'event'; name: string; expr: string; start: number } // (click)="..."
   | { kind: 'prop'; name: string; expr: string; start: number } // [start]="..."
+  | { kind: 'interp'; name: string; parts: (string | { expr: string; start: number })[]; start: number } // a="x {{ y }}"
 export type TemplateNode =
   | { type: 'element'; tag: string; attrs: Attr[]; children: TemplateNode[]; start: number }
   | { type: 'text'; value: string; start: number }
@@ -63,8 +64,24 @@ export function parse(source: string, file: string): ParsedFile {
         if (value === true) fail(`binding ${name} needs an expression`, start)
         list.push({ kind: 'prop', name: name.slice(1, -1), expr: (value as string).trim(), start })
       } else {
-        if (typeof value === 'string' && value.includes('{{')) fail('interpolation in attributes is not supported yet; use a literal value', start)
-        list.push({ kind: 'static', name, value, start })
+        if (typeof value === 'string' && value.includes('{{')) {
+          // Split into literal text and {{ expr }} parts; valueStart is the offset of the value's first character.
+          const valueStart = start + name.length + 2
+          const parts: (string | { expr: string; start: number })[] = []
+          let at = 0
+          while (at < value.length) {
+            const open = value.indexOf('{{', at)
+            if (open === -1) { parts.push(value.slice(at)); break }
+            if (open > at) parts.push(value.slice(at, open))
+            const close = value.indexOf('}}', open + 2)
+            if (close === -1) fail('unclosed {{ in attribute value', valueStart + open)
+            parts.push({ expr: value.slice(open + 2, close).trim(), start: valueStart + open })
+            at = close + 2
+          }
+          list.push({ kind: 'interp', name, parts, start })
+        } else {
+          list.push({ kind: 'static', name, value, start })
+        }
       }
     }
   }

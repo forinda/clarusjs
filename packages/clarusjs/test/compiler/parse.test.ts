@@ -71,8 +71,13 @@ test('unclosed {{ is an error', () => {
   expect(parseError('<p>{{ x </p>').message).toMatch(/x\.clarus:1:4 /)
 })
 
-test('interpolation inside attributes is rejected', () => {
-  expect(parseError('<a href="{{ url }}">x</a>').message).toContain('interpolation in attributes is not supported yet')
+test('interpolation inside attributes is parsed into parts', () => {
+  const f = parse('<a href="/u/{{ id }}/x">x</a>', 'x.clarus')
+  expect(f.nodes[0]).toMatchObject({ attrs: [{ kind: 'interp', name: 'href', parts: ['/u/', { expr: 'id', start: 12 }, '/x'] }] })
+})
+
+test('an unclosed {{ in an attribute value is a located error', () => {
+  expect(parseError('<a href="{{ url">x</a>').message).toMatch(/^x\.clarus:1:10 .*unclosed \{\{ in attribute value/)
 })
 
 test('unknown directive is an error', () => {

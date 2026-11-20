@@ -4,7 +4,7 @@ import { rewriteServer, wrapExpr } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitServer(ir: ComponentIR, clientUrl: string): string {
-  const runtime = ir.stateful ? 'escape as __cl_escape, island as __cl_island' : 'escape as __cl_escape'
+  const runtime = ['escape as __cl_escape', ir.stateful && 'island as __cl_island', usesAttr(ir.nodes) && 'attr as __cl_attr'].filter(Boolean).join(', ')
   let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
   for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}'\n`
 
@@ -27,6 +27,7 @@ function htmlExpr(nodes: IRNode[]): string {
   const parts = nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
     if (n.kind === 'slot') return '(__cl_slot ?? "")'
+    if (n.kind === 'attr') return `__cl_attr(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, (e) => e)})`
     if (n.kind === 'component') {
       const props = n.props.map((p) => `${p.name}: ${wrapExpr(p.expr)}`).join(', ')
       return n.children.length ? `${renderName(n.name)}({ ${props} }, ${htmlExpr(n.children)})` : `${renderName(n.name)}({ ${props} })`
@@ -39,4 +40,14 @@ function htmlExpr(nodes: IRNode[]): string {
 
 function hasSlot(nodes: IRNode[]): boolean {
   return nodes.some((n) => n.kind === 'slot' || (n.kind === 'component' && hasSlot(n.children)))
+}
+
+function usesAttr(nodes: IRNode[]): boolean {
+  return nodes.some((n) => n.kind === 'attr' || (n.kind === 'component' && usesAttr(n.children)))
+}
+
+/** JS expression for an attribute's value: the bound expression, or the parts joined (null/undefined join as ''). */
+export function attrValueExpr(value: Extract<IRNode, { kind: 'attr' }>['value'], rewrite: (expr: string) => string): string {
+  if ('expr' in value) return `(${rewrite(value.expr)})`
+  return `[${value.parts.map((p) => (typeof p === 'string' ? JSON.stringify(p) : `(${rewrite(p.expr)})`)).join(', ')}].join("")`
 }

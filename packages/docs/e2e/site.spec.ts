@@ -84,3 +84,17 @@ test('code samples show template syntax literally (verbatim)', async ({ page }) 
   await page.goto('/guide/components')
   await expect(page.locator('pre').filter({ hasText: '<code verbatim>' })).toContainText('<p>Hello, {{ name }}!</p>')
 })
+
+test('the nav marks the current page, and each page has its own description', async ({ page }) => {
+  const descriptions = new Set<string>()
+  for (const { path } of guides) {
+    await page.goto(path)
+    const current = page.locator('header nav a[aria-current="page"]')
+    await expect(current).toHaveCount(1)
+    await expect(current).toHaveAttribute('href', path)
+    descriptions.add((await page.locator('meta[name="description"]').getAttribute('content'))!)
+  }
+  expect(descriptions.size).toBe(guides.length)
+  await page.goto('/')
+  await expect(page.locator('header nav a[aria-current]')).toHaveCount(0)
+})

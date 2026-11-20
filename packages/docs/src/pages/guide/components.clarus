@@ -1,7 +1,7 @@
 @import docs from '../../layouts/docs.clarus'
 @import callout from '../../components/callout.clarus'
 
-<docs [title]="'Components'">
+<docs [title]="'Components'" [section]="'components'" [description]="'Templates, typed inputs, holes, attributes, slots and verbatim code in clarusjs components.'">
   <h1>Components</h1>
   <p>A component is a <code>.clarus</code> file: a template, optional typed inputs, and an optional <code>&lt;script&gt;</code>. Without a script it is HTML only.</p>
 
@@ -17,6 +17,12 @@
   <pre><code verbatim>@import greeting from '../components/greeting.clarus'
 
 <greeting [name]="'world'" /></code></pre>
+
+  <h2>Attributes</h2>
+  <p>Bind an attribute with <code verbatim>[name]="expression"</code>, or put <code verbatim>{{ }}</code> inside an attribute value. Values are escaped, and URL attributes such as <code>href</code> and <code>src</code> never get a <code>javascript:</code> URL. <code>true</code> adds a boolean attribute; <code>false</code>, <code>null</code> and <code>undefined</code> remove it.</p>
+  <pre><code verbatim><a href="/guide/{{ slug }}" [aria-current]="active ? 'page' : false">{{ label }}</a>
+<button [disabled]="saving">Save</button></code></pre>
+  <p>Inside an interactive component, attributes that read state update when it changes. For events, use <code verbatim>(click)="…"</code>, not <code>onclick</code>.</p>
 
   <h2>Slots</h2>
   <p>A component without a script can wrap content: whatever you put between its tags renders at its <code>&lt;slot /&gt;</code>. The content belongs to the page that writes it, so its holes read the page's inputs. This is how layouts work: this site's layout is a component, and every page wraps its content in it.</p>

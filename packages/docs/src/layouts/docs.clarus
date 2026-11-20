@@ -1,11 +1,13 @@
 {{-- The whole page: every docs page wraps its content in <docs [title]="…">. --}}
 @input title: string
+@input section: string = ''
+@input description: string = 'clarusjs: clear, compiled views. Server HTML with JavaScript only where it is interactive.'
 
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="clarusjs: clear, compiled views. Server HTML with JavaScript only where it is interactive.">
+    <meta name="description" content="{{ description }}">
     <title>{{ title }} · clarusjs</title>
     <link rel="icon" href="/logo.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/docs.css">
@@ -14,10 +16,10 @@
     <header class="site-header">
       <a class="brand" href="/"><img src="/logo.svg" alt="" width="28" height="28"><span>clarus<span class="js">.js</span></span></a>
       <nav aria-label="Guide">
-        <a href="/guide/getting-started">Getting started</a>
-        <a href="/guide/components">Components</a>
-        <a href="/guide/islands">Islands</a>
-        <a href="/guide/build">Build</a>
+        <a href="/guide/getting-started" [aria-current]="section === 'getting-started' ? 'page' : false">Getting started</a>
+        <a href="/guide/components" [aria-current]="section === 'components' ? 'page' : false">Components</a>
+        <a href="/guide/islands" [aria-current]="section === 'islands' ? 'page' : false">Islands</a>
+        <a href="/guide/build" [aria-current]="section === 'build' ? 'page' : false">Build</a>
         <a href="https://github.com/forinda/clarusjs">GitHub</a>
       </nav>
     </header>

@@ -1,5 +1,6 @@
 // IR → client module: `attach(root, props)`. Runs in the browser, only for stateful components.
-import type { ComponentIR } from './ir.ts'
+import type { ComponentIR, IRNode } from './ir.ts'
+import { attrValueExpr } from './emit-server.ts'
 import { rewriteClient, rewriteClientExpr, wrapExpr } from './script.ts'
 import { indentScript, inputsLine } from './shared.ts'
 
@@ -7,12 +8,14 @@ export function emitClient(ir: ComponentIR): string {
   if (!ir.stateful) return 'export {}\n'
   const kinds = new Set(ir.signals.values())
   const reactive = ir.nodes.filter((n) => n.kind === 'hole' && n.reactive) as { expr: string; index: number }[]
+  const attrs = ir.nodes.filter((n) => n.kind === 'attr' && n.reactive) as Extract<IRNode, { kind: 'attr' }>[]
   const used = [
     kinds.has('state') && 'state',
     kinds.has('derived') && 'derived',
     reactive.length > 0 && 'holes as __cl_holes',
     reactive.length > 0 && 'text as __cl_text',
     ir.events.length > 0 && 'on as __cl_on',
+    attrs.length > 0 && 'attr as __cl_attr',
   ].filter(Boolean)
 
   let out = used.length ? `import { ${used.join(', ')} } from 'clarusjs/runtime'\n` : ''
@@ -24,6 +27,9 @@ export function emitClient(ir: ComponentIR): string {
   if (reactive.length) wiring.push('const __cl_h = __cl_holes(__cl_root)')
   for (const h of [...reactive].sort((a, b) => a.index - b.index)) {
     wiring.push(`__cl_text(__cl_h[${h.index}], () => ${wrapExpr(rewriteClientExpr(h.expr, ir.signals))})`)
+  }
+  for (const a of attrs) {
+    wiring.push(`__cl_attr(__cl_root, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, (e) => rewriteClientExpr(e, ir.signals))})`)
   }
   for (const e of ir.events) {
     const body = rewriteClient(e.handler, ir.signals).trim()

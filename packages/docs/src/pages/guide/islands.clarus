@@ -1,7 +1,7 @@
 @import docs from '../../layouts/docs.clarus'
 @import callout from '../../components/callout.clarus'
 
-<docs [title]="'Islands'">
+<docs [title]="'Islands'" [section]="'islands'" [description]="'Interactive components that attach to server HTML: state, signals and what ships to the browser.'">
   <h1>Islands</h1>
   <p>A component with a <code>&lt;script&gt;</code> is interactive. It is rendered to HTML on the server like everything else, then <em>attached</em> in the browser: its event handlers and updates are wired to the HTML that is already there. Nothing re-renders.</p>
 
