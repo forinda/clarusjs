@@ -67,4 +67,9 @@ pnpm dev        # serves examples/counter
 
 ## Contributing
 
-See [AGENTS.md](AGENTS.md) for the layout, commands and the rules the code follows (they apply to people too).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and changesets, and [AGENTS.md](AGENTS.md) for the layout and
+the rules the code follows. Report security problems privately as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE)

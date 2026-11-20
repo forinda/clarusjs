@@ -2,6 +2,7 @@
   "name": "clarusjs",
   "version": "0.0.1",
   "description": "Clear, compiled views: templates compiled to server HTML, with JavaScript only for interactive islands. SSR, SSG and CSR from one component model, built on Vite.",
+  "license": "MIT",
   "keywords": [
     "clarusjs",
     "framework",
@@ -35,7 +36,8 @@
     "./vite": "./src/vite/plugin.ts"
   },
   "files": [
-    "src"
+    "src",
+    "LICENSE"
   ],
   "engines": {
     "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
