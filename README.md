@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" width="120" height="120" alt="clarusjs logo: a clear cut crystal with one bright facet">
+  <img src="docs/assets/logo.svg" width="120" height="120" alt="clarusjs logo: a cut crystal flat along a T, struck by an S-shaped lightning bolt, with C and L down the stem">
 </p>
 
 <h1 align="center">clarusjs</h1>
@@ -16,8 +16,9 @@ component model, and you can always see where each line runs.
 
 **clarus** is Latin for *clear, bright, plain to see* (***clārus***). Clarity is the promise: templates that are clear
 to read, output that is clear to follow, and no guessing about whether code runs on the server, at build time or in
-the browser. The logo is a clear cut stone with one bright facet: pages that are plain HTML all the way through, with
-a small live core where they are interactive. **.js** because it is, in the end, just JavaScript you can open and read.
+the browser. The logo spells **TSCL**, the `.tscl` file extension: a clear cut stone, flat along a **T**, struck by an
+**S**-shaped lightning bolt, with **C** and **L** down the stem. Clear HTML all the way through, and a spark of
+interactivity only where a page needs one. **.js** because it is, in the end, just JavaScript you can open and read.
 
 clarusjs borrows openly from projects that got one thing very right:
 
