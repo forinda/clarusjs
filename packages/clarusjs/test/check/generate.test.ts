@@ -1,12 +1,16 @@
 // #20: templates → virtual TypeScript that tsc checks, with errors mapped back to file.tscl:line:col.
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, relative, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { generateTs, toSourceOffset } from '../../src/check/generate.ts'
 
-const tsc = resolve(import.meta.dirname, '../../node_modules/.bin/tsc')
+// tsc from the typescript package itself, run with this Node: no dependency on how .bin links are laid out.
+const tsPackage = createRequire(import.meta.url).resolve('typescript/package.json')
+const tscBin = JSON.parse(readFileSync(tsPackage, 'utf8')).bin
+const tsc = resolve(dirname(tsPackage), typeof tscBin === 'string' ? tscBin : tscBin.tsc)
 
 /** Write sources and their virtual files into a temp project, run tsc, map each error back to its .tscl position. */
 function check(files: Record<string, string>): string[] {
@@ -29,7 +33,14 @@ function check(files: Record<string, string>): string[] {
     include: ['src', '.clarusjs/virtual'],
   }))
   let output = ''
-  try { execFileSync(tsc, ['-p', '.'], { cwd: root, encoding: 'utf8' }) } catch (e) { output = (e as { stdout: string }).stdout }
+  try {
+    output = execFileSync(process.execPath, [tsc, '-p', '.'], { cwd: root, encoding: 'utf8' })
+  } catch (e) {
+    // tsc exits non-zero when it reports errors; anything without that report is a real failure.
+    const stdout = (e as { stdout?: string }).stdout
+    if (!stdout) throw e
+    output = stdout
+  }
   const errors: string[] = []
   for (const line of output.split('\n')) {
     const m = /^(.+?)\((\d+),(\d+)\): error TS\d+: (.*)$/.exec(line.trim())
@@ -126,4 +137,17 @@ test('#77: imported data is typed', () => {
     'src/nav.ts': `export const nav = [{ title: 'Intro', href: '/intro' }]\n`,
     'src/pages/index.tscl': `@import { nav } from '../nav'\n@for (item of nav) {<a [href]="item.hrfe">{{ item.title }}</a>}\n`,
   })).toEqual([expect.stringMatching(/^src\/pages\/index\.tscl:2:37 Property 'hrfe' does not exist/)])
+})
+
+test('review: @for list and track errors map to their own position, not an earlier match', () => {
+  // "f" also occurs inside "of"; the error belongs to the list.
+  expect(check({ 'src/pages/index.tscl': `@for (x of f) {<b>{{ x }}</b>}\n` })).toEqual([expect.stringMatching(/^src\/pages\/index\.tscl:1:12 Cannot find name 'f'/)])
+  // "n" also occurs as the item; the error belongs to the track expression.
+  expect(check({ 'src/pages/index.tscl': `@for (n of [1]; track n.id) {<b>{{ n }}</b>}\n` })).toEqual([expect.stringMatching(/^src\/pages\/index\.tscl:1:25 Property 'id' does not exist/)])
+})
+
+test('review: identical script imports each map to their own line', () => {
+  const errors = check({ 'src/pages/index.tscl': `<script>\nimport './missing.ts'\nimport './missing.ts'\nlet n = state(0)\n</script>\n<b (click)="n++">{{ n }}</b>\n` })
+  const lines = errors.filter((e) => e.includes('missing')).map((e) => e.split(':')[1])
+  expect(lines).toEqual(['2', '3'])
 })

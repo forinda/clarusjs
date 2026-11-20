@@ -166,8 +166,9 @@ function signalCall(init: N | null | undefined): 'state' | 'derived' | 'shared' 
  * blanked in the body (same length, newlines kept), so positions in the rest of the script don't move.
  * Island scripts are bundled for the browser, so `node:` imports are a build error.
  */
-export function splitImports(code: string, file: string, source: string, offset: number): { imports: string[]; body: string } {
-  const imports: string[] = []
+/** Import statements (text and offset in `code`), and the body with them blanked out. */
+export function splitImports(code: string, file: string, source: string, offset: number): { imports: { text: string; start: number }[]; body: string } {
+  const imports: { text: string; start: number }[] = []
   let body = code
   for (const stmt of parseScript(code, file, source, offset).body as N[]) {
     if (stmt.type !== 'ImportDeclaration') continue
@@ -175,7 +176,7 @@ export function splitImports(code: string, file: string, source: string, offset:
     if (from.startsWith('node:')) {
       throw new ClarusError(`\`${from}\` can't be imported in an island script: the script is bundled for the browser`, file, source, offset + stmt.start)
     }
-    imports.push(code.slice(stmt.start, stmt.end))
+    imports.push({ text: code.slice(stmt.start, stmt.end), start: stmt.start })
     body = body.slice(0, stmt.start) + code.slice(stmt.start, stmt.end).replace(/[^\n]/g, ' ') + body.slice(stmt.end)
   }
   return { imports, body }

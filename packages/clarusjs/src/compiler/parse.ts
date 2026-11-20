@@ -13,7 +13,7 @@ export type TemplateNode =
   | { type: 'raw'; value: string; start: number } // content of a `verbatim` element, shown as text
   | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
   | { type: 'fill'; name: string; children: TemplateNode[]; start: number } // @slot('name') { … } inside a component tag
-  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
+  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; itemStart: number; listStart: number; trackStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
 export type InputDecl = { name: string; type: string; default?: string; start: number; nameStart: number; typeStart: number; defaultStart?: number }
 // @import type { A, B } from '…': types for @input declarations (erased from compiled output, used by type checking).
 export type TypeImport = { clause: string; from: string; start: number; clauseStart: number }
@@ -179,8 +179,13 @@ export function parse(source: string, file: string): ParsedFile {
   }
 
   // Split at top-level ';' (outside strings and brackets).
-  function splitClauses(text: string): string[] {
-    const parts: string[] = []
+  /** Top-level `;` clauses, trimmed, each with its offset in `text`. */
+  function splitClauses(text: string): { text: string; start: number }[] {
+    const parts: { text: string; start: number }[] = []
+    const push = (from: number, to: number) => {
+      const raw = text.slice(from, to)
+      if (raw.trim()) parts.push({ text: raw.trim(), start: from + raw.length - raw.trimStart().length })
+    }
     let depth = 0
     let from = 0
     for (let j = 0; j < text.length; j++) {
@@ -188,9 +193,10 @@ export function parse(source: string, file: string): ParsedFile {
       if (c === '"' || c === "'" || c === '`') { for (j++; j < text.length && text[j] !== c; j++) if (text[j] === '\\') j++ }
       else if ('([{'.includes(c)) depth++
       else if (')]}'.includes(c)) depth--
-      else if (c === ';' && depth === 0) { parts.push(text.slice(from, j)); from = j + 1 }
+      else if (c === ';' && depth === 0) { push(from, j); from = j + 1 }
     }
-    return [...parts, text.slice(from)].map((p) => p.trim()).filter(Boolean)
+    push(from, text.length)
+    return parts
   }
 
   // @for (item of list; track key) { … } @empty { … }
@@ -198,15 +204,22 @@ export function parse(source: string, file: string): ParsedFile {
     const start = i
     i += 4
     const { cond: head, condStart: headStart } = condition('@for')
-    const [first = '', ...rest] = splitClauses(head)
-    const m = /^([\s\S]+?)\s+of\s+([\s\S]+)$/.exec(first)
+    // Where `head` (trimmed) starts in the source, so every part below gets its exact offset.
+    let at = headStart
+    while (/\s/.test(source[at] ?? '')) at++
+    const [first = { text: '', start: 0 }, ...rest] = splitClauses(head)
+    const m = /^([\s\S]+?)\s+of\s+([\s\S]+)$/d.exec(first.text)
     if (!m) fail('expected "item of list" in @for', headStart)
     if (!/^[A-Za-z_$][\w$]*$/.test(m![1]!.trim())) fail('the @for item must be a simple name', headStart)
+    const itemStart = at + first.start + m!.indices![1]![0]
+    const listStart = at + first.start + m!.indices![2]![0]
     let track: string | null = null
+    let trackStart = -1
     for (const clause of rest) {
-      const t = /^track\s+([\s\S]+)$/.exec(clause)
-      if (!t) fail(`unknown @for clause "${clause}"`, headStart)
+      const t = /^track\s+([\s\S]+)$/d.exec(clause.text)
+      if (!t) fail(`unknown @for clause "${clause.text}"`, headStart)
       track = t![1]!.trim()
+      trackStart = at + clause.start + t!.indices![1]![0]
     }
     while (/\s/.test(source[i] ?? '')) i++
     if (source[i] !== '{') fail('expected { to open the block', i)
@@ -222,7 +235,7 @@ export function parse(source: string, file: string): ParsedFile {
       i++
       empty = children({ tag: '@empty', start, block: true })
     } else i = save
-    return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, children: body, empty, start }
+    return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, itemStart, listStart, trackStart, children: body, empty, start }
   }
 
   // @slot('name') { … }: content for a component's named slot.

@@ -96,8 +96,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       return
     }
     if (node.type === 'for') {
-      checkExpr(node.list, file, source, node.headStart)
-      if (node.track !== null) checkExpr(node.track, file, source, node.headStart)
+      checkExpr(node.list, file, source, node.listStart)
+      if (node.track !== null) checkExpr(node.track, file, source, node.trackStart)
       const block = stateful ? forCount++ : -1
       const parent = out
       const parentScope = scopeKey
@@ -224,7 +224,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     inputs: parsed.inputs,
     imports: parsed.imports,
     script: parsed.script ? split.body : undefined,
-    scriptImports: split.imports,
+    scriptImports: split.imports.map((imp) => imp.text),
     dataImports: parsed.dataImports,
     signals,
     stateful,

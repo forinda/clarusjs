@@ -41,8 +41,8 @@ export function generateTs(source: string, file: string): { code: string; mappin
   }
   const script = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : null
   if (parsed.script && script) {
-    for (const line of script.imports) {
-      copy(line, parsed.script.start + parsed.script.code.indexOf(line))
+    for (const imp of script.imports) {
+      copy(imp.text, parsed.script.start + imp.start)
       emit('\n')
     }
   }
@@ -104,11 +104,11 @@ export function generateTs(source: string, file: string): { code: string; mappin
         return
       case 'for': {
         emit('  for (const ')
-        copy(node.item, at(node.item, node.headStart))
+        copy(node.item, node.itemStart)
         emit(' of ')
-        copy(node.list, at(node.list, node.headStart + node.item.length))
+        copy(node.list, node.listStart)
         emit(') {\n    const $index: number = 0\n')
-        if (node.track !== null) use(node.track, at(node.track, node.headStart))
+        if (node.track !== null) use(node.track, node.trackStart)
         node.children.forEach(visit)
         emit('  }\n')
         if (node.empty) {
