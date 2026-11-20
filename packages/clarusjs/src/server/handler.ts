@@ -22,12 +22,29 @@ export function createHandler(
       const head = request.method === 'HEAD'
       if (!load) return new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
       const html = (await load()).render({})
-      // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
       const hasIslands = html.replace(/<!--[\s\S]*?-->/g, '').includes('<cl-island ')
-      const scripts = hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''
+      // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
       const style = hasIslands ? '<style>cl-island{display:contents}</style>' : '' // islands never affect layout
-      const body = `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title>${style}</head><body>${html}${scripts}</body></html>`
+      const script = hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''
+      const body = /<html[\s>]/i.test(html)
+        ? fullDocument(html, style, script)
+        : `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title>${style}</head><body>${html}${script}</body></html>`
       return new Response(head ? null : body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     },
   }
+}
+
+/** A page whose layout renders the whole document: add the doctype if missing, and put style/script in place. */
+function fullDocument(html: string, style: string, script: string): string {
+  let out = /^\s*<!doctype/i.test(html) ? html : `<!doctype html>${html}`
+  if (style) {
+    const head = out.search(/<\/head>/i)
+    out = head === -1 ? out + style : out.slice(0, head) + style + out.slice(head)
+  }
+  if (script) {
+    const bodies = [...out.matchAll(/<\/body>/gi)]
+    const body = bodies.length ? bodies[bodies.length - 1]!.index! : -1
+    out = body === -1 ? out + script : out.slice(0, body) + script + out.slice(body)
+  }
+  return out
 }
