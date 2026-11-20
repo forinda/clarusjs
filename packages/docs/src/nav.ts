@@ -1,0 +1,92 @@
+// The docs site's one page list. The header, sidebar, breadcrumb, previous/next links and edit links are all
+// generated from it (src/layouts/docs.clarus), so they can't drift apart. Add a page here to put it in the docs.
+
+export type Item = { title: string; href: string }
+export type Group = { title: string; items: Item[] }
+export type Section = { key: string; title: string; href: string; groups: Group[] }
+
+export const sections: Section[] = [
+  {
+    key: 'guide',
+    title: 'Guide',
+    href: '/guide/what-is-clarusjs',
+    groups: [
+      { title: 'Introduction', items: [
+        { title: 'What is clarusjs?', href: '/guide/what-is-clarusjs' },
+        { title: 'Getting started', href: '/guide/getting-started' },
+        { title: 'Project structure', href: '/guide/project-structure' },
+      ] },
+      { title: 'Templates', items: [
+        { title: 'Components', href: '/guide/components' },
+        { title: 'Inputs', href: '/guide/inputs' },
+        { title: 'Holes', href: '/guide/holes' },
+        { title: 'Attributes', href: '/guide/attributes' },
+        { title: 'Conditionals', href: '/guide/conditionals' },
+        { title: 'Lists', href: '/guide/lists' },
+        { title: 'Slots', href: '/guide/slots' },
+        { title: 'Verbatim', href: '/guide/verbatim' },
+      ] },
+      { title: 'Interactivity', items: [
+        { title: 'Islands', href: '/guide/islands' },
+        { title: 'State', href: '/guide/state' },
+        { title: 'Shared stores', href: '/guide/stores' },
+        { title: 'Components inside islands', href: '/guide/components-in-islands' },
+        { title: 'Lazy attach', href: '/guide/lazy-attach' },
+      ] },
+      { title: 'Build & deploy', items: [
+        { title: 'Static build', href: '/guide/build' },
+        { title: 'Deploying', href: '/guide/deploy' },
+      ] },
+    ],
+  },
+  {
+    key: 'reference',
+    title: 'Reference',
+    href: '/reference/template-syntax',
+    groups: [
+      { title: 'Templates', items: [
+        { title: 'Template syntax', href: '/reference/template-syntax' },
+        { title: 'Island attributes', href: '/reference/island-attributes' },
+      ] },
+      { title: 'APIs', items: [
+        { title: 'Runtime', href: '/reference/runtime' },
+        { title: 'Vite plugin', href: '/reference/vite-plugin' },
+        { title: 'CLI', href: '/reference/cli' },
+      ] },
+    ],
+  },
+]
+
+const none: Item = { title: '', href: '' }
+const flat = (s: Section) => s.groups.flatMap((g) => g.items)
+
+/** The section a page belongs to ('' for pages outside the docs sections, like the home page). */
+export function sectionKey(path: string): string {
+  return sections.find((s) => flat(s).some((i) => i.href === path))?.key ?? ''
+}
+
+/** Sidebar groups for the page's section (none outside the sections). */
+export function groupsOf(path: string): Group[] {
+  return sections.find((s) => s.key === sectionKey(path))?.groups ?? []
+}
+
+/** "Guide › Templates" */
+export function crumb(path: string): string {
+  const section = sections.find((s) => s.key === sectionKey(path))
+  const group = section?.groups.find((g) => g.items.some((i) => i.href === path))
+  return section && group ? `${section.title} › ${group.title}` : ''
+}
+
+/** Previous and next pages in sidebar order; an empty item (href '') when there is none. */
+export function pager(path: string): { prev: Item; next: Item } {
+  const section = sections.find((s) => s.key === sectionKey(path))
+  const items = section ? flat(section) : []
+  const i = items.findIndex((item) => item.href === path)
+  return { prev: items[i - 1] ?? none, next: items[i + 1] ?? none }
+}
+
+/** "Edit this page" link for a route. */
+export function sourceOf(path: string): string {
+  const file = path === '/' ? 'index' : path.replace(/^\//, '')
+  return `https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/${file}.clarus`
+}

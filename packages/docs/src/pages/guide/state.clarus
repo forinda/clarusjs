@@ -1,0 +1,18 @@
+@import copy from '../../components/copy.clarus'
+@import docs from '../../layouts/docs.clarus'
+@import callout from '../../components/callout.clarus'
+
+<docs [title]="'State'" [path]="'/guide/state'" [description]="'Reactive state and derived values in islands, starting from the server\'s values.'">
+  <h1>State</h1>
+  <p class="lead"><code>state()</code> makes a value reactive and <code>derived()</code> computes from it. You read and write them as plain variables; the compiler rewrites <code>count++</code> into a signal update.</p>
+  <div class="sample"><pre><code verbatim><script>
+  let count = state(0)
+  const double = derived(() => count * 2)
+</script>
+
+<button (click)="count++">{{ count }} × 2 = {{ double }}</button></code></pre><copy attach="interaction" /></div>
+
+  <h2>Starting from the server's values</h2>
+  <p>An island's state is rendered on the server first. Its values travel with the HTML, so the browser picks up exactly where the server left off: an initial value like <code>Date.now()</code> isn't computed a second time. Values can be plain JSON, <code>Date</code>, <code>Map</code>, <code>Set</code>, <code>BigInt</code> and <code>undefined</code>; functions and class instances can't be sent.</p>
+  <callout [type]="'warning'">@slot('title') {Island props and state are public}<p>They are written into the page so the browser can continue from them. Never put secrets in them. Reading server-only globals such as <code>process</code> in an island&#39;s script is a build error for this reason.</p></callout>
+</docs>

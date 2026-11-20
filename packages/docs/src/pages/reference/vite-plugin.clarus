@@ -1,0 +1,16 @@
+@import copy from '../../components/copy.clarus'
+@import docs from '../../layouts/docs.clarus'
+
+<docs [title]="'Vite plugin'" [path]="'/reference/vite-plugin'" [description]="'What the clarusjs Vite plugin does in dev, build and preview.'">
+  <h1>Vite plugin</h1>
+  <div class="sample"><pre><code verbatim>import clarusjs from 'clarusjs/vite'
+
+export default defineConfig({ plugins: [clarusjs()] })</code></pre><copy attach="interaction" /></div>
+  <p>The plugin takes no options yet.</p>
+  <h2>What it does</h2>
+  <ul>
+    <li><strong>vite</strong>: renders <code>src/pages/**/*.clarus</code> on each request.</li>
+    <li><strong>vite build</strong>: builds the client, then the server, then prerenders every page to <code>dist/client</code>.</li>
+    <li><strong>vite preview</strong>: serves the built pages at their routes.</li>
+  </ul>
+</docs>

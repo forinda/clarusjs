@@ -1,0 +1,10 @@
+@import copy from '../../components/copy.clarus'
+@import docs from '../../layouts/docs.clarus'
+
+<docs [title]="'Holes'" [path]="'/guide/holes'" [description]="'Print values in templates with {{ }} holes; they are always escaped.'">
+  <h1>Holes</h1>
+  <p class="lead"><code verbatim>{ }</code> holes print the value of a JavaScript expression, always escaped.</p>
+  <div class="sample"><pre><code verbatim><p>{{ user.name }} has {{ items.length }} items.</p>
+<p>{{ count > 1 ? 'many' : 'one' }}</p></code></pre><copy attach="interaction" /></div>
+  <p><code>null</code> and <code>undefined</code> print nothing. HTML in a value is shown as text, never as markup. To show the characters <code verbatim>{</code> and <code verbatim>}</code> themselves, see <a href="/guide/verbatim">Verbatim</a>.</p>
+</docs>

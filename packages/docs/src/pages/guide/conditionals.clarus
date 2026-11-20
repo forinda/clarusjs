@@ -1,0 +1,17 @@
+@import copy from '../../components/copy.clarus'
+@import docs from '../../layouts/docs.clarus'
+@import callout from '../../components/callout.clarus'
+
+<docs [title]="'Conditionals'" [path]="'/guide/conditionals'" [description]="'Show one of several branches with @if, @else if and @else.'">
+  <h1>Conditionals</h1>
+  <p class="lead">Show one of several branches with <code>@if</code>, <code>@else if</code> and <code>@else</code>.</p>
+  <div class="sample"><pre><code verbatim>@if (user.isAdmin) {
+  <a href="/admin">Admin</a>
+} @else if (user.isEditor) {
+  <a href="/edit">Edit</a>
+} @else {
+  <span>Read only</span>
+}</code></pre><copy attach="interaction" /></div>
+  <p>Outside an interactive component the choice is made on the server and costs nothing in the browser. Inside one, the branch switches when the state it reads changes: the old branch's handlers are removed and the new branch is inserted and wired.</p>
+  <callout [type]="'tip'"><p>Inside a block, a bare <code>}</code> closes it; write <code>&amp;#125;</code> for a literal one.</p></callout>
+</docs>
