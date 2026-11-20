@@ -12,7 +12,7 @@ export default defineConfig({ plugins: [clarusjs()] })</code></pre><copy attach=
   <div class="sample"><pre><code verbatim>clarusjs({ routes: { '/account/*': 'server' } })</code></pre><copy attach="interaction" /></div>
   <h2>adapter</h2>
   <p><strong>Type:</strong> <code>'netlify'</code> · <strong>Default:</strong> none</p>
-  <p>Where server routes deploy. With <code>'netlify'</code>, <code>vite build</code> writes <code>.netlify/v1/functions/clarusjs-server.mjs</code> (Netlify's Frameworks API, read from the site's base directory): a function that calls <code>dist/server/index.mjs</code> for the server routes' paths, with static files served first. With no server routes, no function is written.</p>
+  <p>Where server routes deploy. With <code>'netlify'</code>, <code>vite build</code> writes <code>.netlify/v1/functions/clarusjs-server.mjs</code> (Netlify's Frameworks API, read from the site's package directory: in a monorepo, set Netlify's package directory to the folder with <code>vite.config.ts</code>, and don't also set <code>base</code> to it): a function that calls <code>dist/server/index.mjs</code> for the server routes' paths, with static files served first. With no server routes, no function is written.</p>
   <h2>What it does</h2>
   <ul>
     <li><strong>vite</strong>: renders <code>src/pages/**/*.tscl</code> on each request.</li>
