@@ -1,0 +1,67 @@
+// The kview Vite plugin: a thin adapter around the compiler.
+// Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
+import { relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { isRunnableDevEnvironment, type Plugin } from 'vite'
+import { compile, KviewError } from '../compiler/index.ts'
+import { sendResponse, toRequest } from './node.ts'
+
+const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
+const ENTRY = 'virtual:kview/server-entry'
+
+export default function kview(): Plugin {
+  let root = process.cwd()
+  return {
+    name: 'kview',
+    config: () => ({
+      appType: 'custom',
+      resolve: {
+        alias: [
+          { find: 'kview/runtime/server', replacement: here('../runtime/server.ts') },
+          { find: 'kview/runtime', replacement: here('../runtime/index.ts') },
+        ],
+      },
+    }),
+    configResolved(config) { root = config.root },
+    resolveId(id) {
+      if (id === '/kv-loader.js') return here('../runtime/loader.ts')
+      if (id === ENTRY) return '\0' + ENTRY
+    },
+    load(id) {
+      if (id !== '\0' + ENTRY) return
+      return `import { createHandler } from ${JSON.stringify(here('../server/handler.ts'))}\n` +
+        `export default createHandler(import.meta.glob('/src/pages/**/*.kvw'))\n`
+    },
+    transform: {
+      filter: { id: /\.kvw(\?|$)/ },
+      handler(code, id) {
+        const file = id.replace(/\?.*$/, '')
+        const target = this.environment.config.consumer === 'server' ? 'server' : 'client'
+        // ponytail: ?import makes Vite's dev transform middleware serve .kvw as JS for the loader's dynamic import; build output uses hashed chunk URLs from the client manifest (stage 3)
+        const clientUrl = '/' + relative(root, file) + '?import'
+        try {
+          return { code: compile(code, { file, target, clientUrl }).code, map: null }
+        } catch (err) {
+          if (err instanceof KviewError) this.error(err.message)
+          throw err
+        }
+      },
+    },
+    configureServer(server) {
+      return () => {
+        server.middlewares.use(async (req, res, next) => {
+          try {
+            const env = server.environments.ssr
+            if (!isRunnableDevEnvironment(env)) return next()
+            const app = await env.runner.import<{ default: { fetch(r: Request): Promise<Response> } }>(ENTRY)
+            const response = await app.default.fetch(toRequest(req))
+            if (response.status === 404) return next()
+            await sendResponse(res, response)
+          } catch (err) {
+            next(err)
+          }
+        })
+      }
+    },
+  }
+}
