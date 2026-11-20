@@ -261,9 +261,9 @@ test('copy buttons load on first click and copy their sample', async ({ page, co
 test('the route manifest matches what the browser loads', async ({ page }) => {
   const { readFileSync } = await import('node:fs')
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
-  // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour).
+  // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour) and 404.
   const routes = Object.keys(manifest.routes)
-  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/')
+  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404'
   expect(routes.filter((r) => !generated(r)).sort()).toEqual(pages.map((p) => p.path).sort())
   for (const path of ['/', '/guide/state']) {
     const route = manifest.routes[path]
@@ -500,7 +500,7 @@ test('fragment navigation to a missing page with a #hash loads it normally (no s
   await page.evaluate(() => { (globalThis as { navigation?: { navigate(u: string): unknown } }).navigation!.navigate('/nope#details') })
   await expect(page).toHaveURL(/\/nope#details$/)
   await expect.poll(() => documents).toEqual(['/guide/holes', '/nope']) // the missing page was really loaded
-  await expect(page.locator('h1')).toHaveCount(0) // the Holes page is gone
+  await expect(page.locator('h1')).toHaveText('Page not found') // the Holes page is gone; the 404 page loaded
 })
 
 test('component styles: scoped with @scope, from one stylesheet, not leaking', async ({ page }) => {
@@ -668,4 +668,14 @@ test('sitemap.xml lists static pages with dates, but not client routes', async (
   expect(xml).toMatch(/<url><loc>https:\/\/clarusjs\.com\/guide\/markdown<\/loc><lastmod>\d{4}-\d{2}-\d{2}<\/lastmod><\/url>/)
   expect(xml).toContain('<loc>https://clarusjs.com/</loc>')
   expect(xml).not.toContain('/tour/')
+})
+
+test('an unknown address gets the 404 page with status 404, and its links work at any depth', async ({ page, request }) => {
+  const res = await page.goto('/no/such/page')
+  expect(res!.status()).toBe(404)
+  await expect(page.locator('h1')).toHaveText('Page not found')
+  await page.getByRole('link', { name: 'Get started' }).click()
+  await expect(page).toHaveURL(/\/guide\/getting-started$/)
+  expect(await (await request.get('/robots.txt')).text()).toBe('User-agent: *\nAllow: /\n\nSitemap: https://clarusjs.com/sitemap.xml\n')
+  expect(await (await request.get('/sitemap.xml')).text()).not.toContain('/404')
 })

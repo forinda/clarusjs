@@ -114,7 +114,7 @@ export function createHandler(
     return !list || list.some((entry) => route.keys.every((key) => entry[key] === params[key]))
   }
 
-  return {
+  const handler: ReturnType<typeof createHandler> = {
     routes: routes.map((r) => r.path).sort(),
     /** Routes rendered per request ('server' mode), as their files name them. */
     serverRoutes: routes.filter((r) => modeFor(r.path, modes) === 'server').map((r) => r.path).sort(),
@@ -192,7 +192,14 @@ export function createHandler(
         }
       }
       const head = request.method === 'HEAD'
-      const notFound = () => new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+      const plain = () => new Response(head ? null : 'Not Found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+      // An unknown page gets src/pages/404.tscl (when there is one) with status 404; data and fragment requests don't.
+      const notFound = async () => {
+        if (pathname.endsWith(`/${DATA}`) || pathname.endsWith(`/${FRAG}`) || trim(pathname) === '/404' || !routes.some((r) => r.path === '/404')) return plain()
+        const page = await handler.fetch(new Request(new URL('/404', request.url), { method: request.method }))
+        if (page.status !== 200) return plain()
+        return new Response(head ? null : rootLinks(await page.text(), options.base ?? '/'), { status: 404, headers: page.headers })
+      }
       const mode = found && modeFor(found.route.path, modes)
       if (!found) return notFound()
       // A prerendered dynamic route only has the pages its entries() lists, as on a static host.
@@ -259,6 +266,7 @@ export function createHandler(
       return new Response(head ? null : body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     },
   }
+  return handler
 }
 
 /** A 500 that tells the visitor nothing internal; the details go to the server log (and the build's output). */
@@ -323,4 +331,16 @@ function fullDocument(html: string, style: string, script: string): string {
     out = body === -1 ? out + script : out.slice(0, body) + script + out.slice(body)
   }
   return out
+}
+
+/**
+ * The 404 page is served at any depth (/a/b/c), so its relative links (href, src) are resolved from the site root:
+ * 'guide' means <base>guide wherever the visitor is.
+ */
+export function rootLinks(html: string, base: string): string {
+  return html.replace(/(\s(?:href|src)=")([^"]*)"/gi, (all, attr: string, url: string) => {
+    if (/^(?:[a-z][\w+.-]*:|\/|#|\?)/i.test(url)) return all
+    const resolved = new URL(url.replace(/&amp;/g, '&'), `http://x${base}`)
+    return `${attr}${(resolved.pathname + resolved.search + resolved.hash).replace(/&/g, '&amp;')}"`
+  })
 }
