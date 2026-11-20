@@ -30,7 +30,7 @@ export const cart = state([])
   let items = shared(cart)
 </script>
 <span>{{ items.length }} in cart</span></code></pre>
-  <p>On the server, a shared value is rendered from the store's initial value, never its current one: a server keeps modules alive across requests, so anything else could show one visitor's data to another.</p>
+  <p>On the server, a shared value is rendered from the store's initial value, never its current one, and each render gets its own copy: a server keeps modules alive across requests, so anything else could show one visitor's data to another. Store values must therefore be plain data that can be copied.</p>
 
   <h2>Components inside islands</h2>
   <p>An island can use other components. A component without a script is rendered in the browser too when the props or content it gets from the island change; one with a script becomes its own island and keeps its own state, starting from the props it was first given.</p>

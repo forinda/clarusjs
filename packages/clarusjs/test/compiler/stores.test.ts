@@ -63,3 +63,18 @@ test('on the server a shared value renders from the store\'s initial value, neve
   expect(html).toContain('<p class="a"><!--[0-->1<!--]--></p>')
   expect(html).not.toContain(' s="')
 })
+
+test('each server render gets its own copy of a store\'s initial value', async () => {
+  const todos = state<string[]>(['seed'])
+  ;(globalThis as any).__testStore = todos
+  const src = `<script>
+  import { todos } from '/store.js'
+  let items = shared(todos)
+  items.push('added during render')
+</script>
+<p>{{ items.length }}</p><b (click)="items = []">x</b>`
+  const { render } = await importCode(compile(src, { file: 'm.clarus', target: 'server', clientUrl: '/m.js' }).code, 'st-mut', { '/store.js': 'export const todos = globalThis.__testStore' })
+  expect(render()).toContain('<!--[0-->2<!--]-->')
+  expect(render()).toContain('<!--[0-->2<!--]-->')
+  expect(todos.initial).toEqual(['seed'])
+})

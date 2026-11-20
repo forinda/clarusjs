@@ -288,8 +288,9 @@ export function rewriteServer(code: string): string {
     const inner = arg ? print(arg, code, hook) : 'undefined'
     if (node.callee.name === 'state') return `(${inner})`
     if (node.callee.name === 'derived') return `(${inner})()`
-    // A store's current value lives across requests on the server; render from its initial value instead.
-    if (node.callee.name === 'shared') return `(${inner}).initial`
+    // A store's current value lives across requests on the server; render from its initial value instead, and from
+    // a copy, so a render that mutates it can't change what the next request sees.
+    if (node.callee.name === 'shared') return `structuredClone((${inner}).initial)`
     return undefined
   }
   return code.slice(0, ast.start) + print(ast, code, hook) + code.slice(ast.end)
