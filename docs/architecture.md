@@ -213,6 +213,7 @@ to change later, so it's fixed now.
 | `data-cl-e="n"` | element with event binding `n` |
 | `data-cl-a="n"` | element whose attributes read state; the client keeps them in sync |
 | `<!--[bn:k-->…<!--]-->` | `@if` block `n` inside an island; `k` is the branch the server rendered (`-1` for none) |
+| `<!--[cn-->…<!--]-->` | a child component inside an island whose props or slot content read state; the browser re-renders it |
 | `<!--[fn-->…<!--]-->` | `@for` list `n` inside an island; each row is wrapped in `<!--[r-->…<!--]-->`, `@empty` content in `<!--[e-->…<!--]-->`. Markers inside a row repeat per row and are looked up within that row |
 
 Static parts of the page carry **no markers at all**. Islands are
