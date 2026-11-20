@@ -491,3 +491,14 @@ test('fragment navigation reaches server routes; client routes and failures load
   await expect(page.locator('h1')).toHaveText('A shell arrives')
   expect(documents).toContain('/tour/1')
 })
+
+test('fragment navigation to a missing page with a #hash loads it normally (no stale page)', async ({ page }) => {
+  const documents: string[] = []
+  page.on('request', (req) => { if (req.resourceType() === 'document') documents.push(new URL(req.url()).pathname) })
+  await page.goto('/guide/holes')
+  await expect(page.locator('[data-cl-persist="theme"] cl-island')).toHaveAttribute('data-cl-ready', '')
+  await page.evaluate(() => { (globalThis as { navigation?: { navigate(u: string): unknown } }).navigation!.navigate('/nope#details') })
+  await expect(page).toHaveURL(/\/nope#details$/)
+  await expect.poll(() => documents).toEqual(['/guide/holes', '/nope']) // the missing page was really loaded
+  await expect(page.locator('h1')).toHaveCount(0) // the Holes page is gone
+})

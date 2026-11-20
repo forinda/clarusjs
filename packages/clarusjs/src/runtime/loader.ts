@@ -2,12 +2,15 @@
 // and replays what the visitor did before that. Browser only.
 
 import { parse } from './serialize.ts'
+import { scope } from './signals.ts'
 
 type IslandModule = { attach(root: Element, props: Record<string, unknown>, state?: Record<string, unknown>): void }
 type Load = (src: string) => Promise<IslandModule>
 
 // Islands scheduled or loading. `data-cl-ready` is set only after attach() succeeds.
 const loading = new WeakSet<Element>()
+// Each attached island's disposer: everything its attach() wired (effects, listeners) is released by it.
+const attached = new Map<Element, () => void>()
 
 let lastLoad: Load = (src) => import(/* @vite-ignore */ src)
 
@@ -83,7 +86,7 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
     return
   }
   try {
-    mod.attach(el, props, state)
+    attached.set(el, scope(() => mod.attach(el, props, state)))
     el.setAttribute('data-cl-ready', '')
   } catch (err) {
     el.setAttribute('data-cl-error', '') // attach may have wired some listeners already: never retry
@@ -101,6 +104,14 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
  */
 export async function attachAll(root: ParentNode = document, load: Load = lastLoad): Promise<void> {
   lastLoad = load
+  // Islands a navigation swap (or a re-render) took out of the document stop running: their effects and listeners
+  // are released. Islands kept across a swap stay connected, so they keep running.
+  for (const [el, dispose] of attached) {
+    if (!el.isConnected) {
+      dispose()
+      attached.delete(el)
+    }
+  }
   const islands = [...root.querySelectorAll('cl-island:not([data-cl-ready]):not([data-cl-error])')].filter((el) => !loading.has(el))
   const now: Promise<void>[] = []
   for (const el of islands) {
@@ -114,5 +125,6 @@ export async function attachAll(root: ParentNode = document, load: Load = lastLo
 
 // Islands inserted later (an @if branch, a @for row, a re-rendered child) are attached through this hook.
 ;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach = (root) => void attachAll(root)
+
 
 if (typeof document !== 'undefined') attachAll()

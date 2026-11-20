@@ -44,3 +44,18 @@ test('#36: with fragments on, every static and server page loads the navigation 
   const off = await (await createHandler({ '/src/pages/index.tscl': page(doc('<h1>Home</h1>')) }).fetch(new Request('http://x/'))).text()
   expect(off).not.toContain('<script')
 })
+
+test('review: data-cl-swap is found as an attribute, not inside another attribute value or raw text', () => {
+  expect(toFragment(doc('<aside title=" data-cl-swap ">X</aside><main data-cl-swap>Y</main>'))).toBe('<title>T</title><main data-cl-swap>Y</main>')
+  expect(toFragment(doc('<main data-cl-swap="page"><script type="application/json">["</main>"]</script><p>Keep</p></main><footer>f</footer>')))
+    .toBe('<title>T</title><main data-cl-swap="page"><script type="application/json">["</main>"]</script><p>Keep</p></main>')
+})
+
+test('review: index.frag.html is a page path when no page owns it as a fragment; reserved in entries()', async () => {
+  const echo = async () => ({ render: () => '<p>file</p>' })
+  const h = createHandler({ '/src/pages/files/[id].tscl': echo }, { fragments: true, modes: { '/files/*': 'server' } })
+  expect(h.isServerPath('/files/index.frag.html')).toBe(true) // the [id] page, there is no /files page
+  expect(await (await h.fetch(new Request('http://x/files/index.frag.html'))).text()).toContain('<p>file</p>')
+  const bad = createHandler({ '/src/pages/blog/[slug].tscl': echo }, { data: { '/src/pages/blog/[slug].load.ts': async () => ({ entries: () => [{ slug: 'index.frag.html' }] }) } })
+  await expect(bad.paths()).rejects.toThrow(/entries\(\) gave "index.frag.html" for "slug"/)
+})

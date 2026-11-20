@@ -24,3 +24,17 @@ test('one failing island does not stop the others, and is logged by name', async
   expect(attach).toHaveBeenCalledTimes(1)
   error.mockRestore()
 })
+
+test('review: islands no longer in the document are released the next time islands attach', async () => {
+  const { state, effect } = await import('../../src/runtime/signals.ts')
+  const store = state(0)
+  const runs: string[] = []
+  document.body.innerHTML = '<div id="gone"><cl-island c="a" src="/a.js" p="{}"></cl-island></div><cl-island c="b" src="/b.js" p="{}"></cl-island>'
+  const load = async (src: string) => ({ attach: () => { effect(() => { runs.push(`${src}:${store.get()}`) }) } })
+  await attachAll(document, load)
+  runs.length = 0
+  document.getElementById('gone')!.remove() // a navigation swap took it away
+  await attachAll(document, load) // what __clAttach does after a swap
+  store.set(1)
+  expect(runs).toEqual(['/b.js:1']) // the removed island no longer reacts; the other one does
+})

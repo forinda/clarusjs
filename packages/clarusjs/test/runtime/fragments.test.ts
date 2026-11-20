@@ -40,3 +40,9 @@ test('a failed fragment request is an error (the caller falls back to a normal l
   await swap(new URL('http://x/old'), async () => new Response('<title>Old</title><body><h1>Old</h1></body>'), () => false)
   expect(document.body.innerHTML).toBe('<h1>Current</h1>')
 })
+
+test('review: when one page swaps its body and the other a marked region, swap() refuses (a normal load follows)', async () => {
+  document.body.innerHTML = '<h1>Body page</h1>'
+  await expect(swap(new URL('http://x/m'), async () => new Response('<title>M</title><main data-cl-swap>M</main>'))).rejects.toThrow('different swap regions')
+  expect(document.body.innerHTML).toBe('<h1>Body page</h1>')
+})

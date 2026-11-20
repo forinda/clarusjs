@@ -23,13 +23,17 @@ export async function swap(
   const doc = new DOMParser().parseFromString(await res.text(), 'text/html')
   if (!isCurrent()) return
   const next = region(doc)
+  const old = region(document)
+  // A body can only replace a body, and a marked region a marked region: otherwise load the page normally.
+  if ((next === doc.body) !== (old === document.body)) throw new Error('different swap regions')
   for (const title of next.querySelectorAll('title')) title.remove() // some parsers leave the leading <title> in the body
   // Persisted elements move into the new page as they are, with their state and attached islands.
   for (const old of document.querySelectorAll('[data-cl-persist]')) {
     next.querySelector(`[data-cl-persist="${CSS.escape(old.getAttribute('data-cl-persist')!)}"]`)?.replaceWith(old)
   }
   document.title = doc.title
-  region(document).replaceWith(next)
+  old.replaceWith(next)
+  // Attaches the new islands; the loader also releases those that left with the old region.
   ;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach?.(next)
 }
 
@@ -44,7 +48,8 @@ type NavigateEvent = Event & {
 }
 
 const navigation = typeof document !== 'undefined' ? (globalThis as { navigation?: EventTarget }).navigation : undefined
-// Only the latest navigation may change the document; a URL that failed loads normally, never intercepted again.
+// Only the latest navigation may change the document; a URL that failed loads normally, never intercepted again
+// (the reload of a failed URL is itself a navigation to it, which the fallback check lets through).
 let latest = 0
 let fallback = ''
 navigation?.addEventListener('navigate', (event) => {
@@ -58,7 +63,8 @@ navigation?.addEventListener('navigate', (event) => {
     handler: () => swap(url, fetch, isCurrent).catch(() => {
       if (!isCurrent()) return
       fallback = url.href
-      location.assign(url.href)
+      // The URL is already committed: reload it (assign() would only move within the page when it has a #hash).
+      location.reload()
     }),
   })
 })
