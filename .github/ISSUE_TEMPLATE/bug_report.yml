@@ -1,0 +1,56 @@
+name: Bug report
+description: Something in clarusjs doesn't work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security problems go through private reporting instead (see SECURITY.md), not here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what went wrong. Include the full error message if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: The smallest `.clarus` file (or page and steps) that shows the problem. A link to a repo is fine too.
+      render: html
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it go wrong?
+      options:
+        - Compile time (build error or wrong compiled output)
+        - Server rendering (HTML)
+        - In the browser (islands, events, updates)
+        - Vite dev server or build
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: clarusjs, Node, Vite, browser and OS.
+      placeholder: "clarusjs 0.1.0, Node 24.2, Vite 8.3, Chrome 142, macOS 26"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
