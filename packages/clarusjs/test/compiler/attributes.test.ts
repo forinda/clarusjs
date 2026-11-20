@@ -91,3 +91,37 @@ test('a reactive URL attribute is still checked in the browser', async () => {
   a.click()
   expect(a.getAttribute('href')).toBe('about:invalid#unsafe')
 })
+
+test('URL attributes allow only safe schemes (allowlist)', async () => {
+  const src = '@input u: string\n<a [href]="u">x</a>'
+  for (const ok of ['/guide/x', '../x', '#top', '?q=1', 'https://example.com', 'http://example.com', 'mailto:a@b.c', 'tel:+123']) {
+    expect(await render(src, { u: ok }), ok).toContain(`href="${ok}"`)
+  }
+  for (const bad of ['data:text/html,<script>alert(1)</script>', 'ftp://x', 'file:///etc/passwd', 'blob:https://x/y', 'jav\tascript:alert(1)']) {
+    expect(await render(src, { u: bad }), bad).toContain('href="about:invalid#unsafe"')
+  }
+})
+
+test('raster data: images are allowed for image attributes only', async () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo='
+  expect(await render('@input u: string\n<img [src]="u">', { u: png })).toContain(`src="${png}"`)
+  expect(await render('@input u: string\n<img [src]="u">', { u: 'data:image/svg+xml,<svg onload=alert(1)>' })).toContain('src="about:invalid#unsafe"')
+  expect(await render('@input u: string\n<a [href]="u">x</a>', { u: png })).toContain('href="about:invalid#unsafe"')
+})
+
+test('more URL-bearing attributes are checked', async () => {
+  for (const name of ['data', 'codebase', 'ping', 'manifest', 'longdesc', 'to', 'from', 'values', 'by']) {
+    expect(await render(`@input u: string\n<x-el [${name}]="u"></x-el>`, { u: 'javascript:alert(1)' }), name).toContain(`${name}="about:invalid#unsafe"`)
+  }
+})
+
+test('srcset checks every candidate', async () => {
+  const src = '@input s: string\n<img [srcset]="s">'
+  expect(await render(src, { s: '/a.png 1x, /b.png 2x' })).toContain('srcset="/a.png 1x, /b.png 2x"')
+  expect(await render(src, { s: '/a.png 1x, javascript:alert(1) 2x' })).toContain('srcset="about:invalid#unsafe"')
+})
+
+test('binding srcdoc is a located build error', () => {
+  expect(compileError('@input h: string\n<iframe [srcdoc]="h"></iframe>').message).toMatch(/^x\.clarus:2:9 .*srcdoc/)
+  expect(compileError('@input h: string\n<iframe srcdoc="{{ h }}"></iframe>').message).toMatch(/^x\.clarus:2:9 .*srcdoc/)
+})

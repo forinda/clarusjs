@@ -19,7 +19,7 @@
 <greeting [name]="'world'" /></code></pre>
 
   <h2>Attributes</h2>
-  <p>Bind an attribute with <code verbatim>[name]="expression"</code>, or put <code verbatim>{{ }}</code> inside an attribute value. Values are escaped, and URL attributes such as <code>href</code> and <code>src</code> never get a <code>javascript:</code> URL. <code>true</code> adds a boolean attribute; <code>false</code>, <code>null</code> and <code>undefined</code> remove it.</p>
+  <p>Bind an attribute with <code verbatim>[name]="expression"</code>, or put <code verbatim>{{ }}</code> inside an attribute value. Values are escaped. URL attributes such as <code>href</code> and <code>src</code> only accept relative URLs and <code>http:</code>, <code>https:</code>, <code>mailto:</code> and <code>tel:</code> (plus raster <code>data:</code> images for image attributes); anything else becomes <code>about:invalid#unsafe</code>. <code>srcdoc</code> can't be bound. A bound <code>style</code> is escaped but not checked, so don't put untrusted data in it. <code>true</code> adds a boolean attribute; <code>false</code>, <code>null</code> and <code>undefined</code> remove it.</p>
   <pre><code verbatim><a href="/guide/{{ slug }}" [aria-current]="active ? 'page' : false">{{ label }}</a>
 <button [disabled]="saving">Save</button></code></pre>
   <p>Inside an interactive component, attributes that read state update when it changes. For events, use <code verbatim>(click)="…"</code>, not <code>onclick</code>.</p>
