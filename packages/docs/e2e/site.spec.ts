@@ -74,3 +74,13 @@ test('home: only the loader and island code load, and the counter island works',
   expect(after?.replace(/Clicked \d+ times? \(double: \d+\)/, '')).toBe(before?.replace(/Clicked \d+ times? \(double: \d+\)/, ''))
   expect(errors).toEqual([])
 })
+
+test('code samples show template syntax literally (verbatim)', async ({ page }) => {
+  await page.goto('/')
+  const sample = page.locator('pre code').first()
+  await expect(sample).toContainText('{{ count }}')
+  await expect(sample).toContainText('<script>')
+  await expect(sample).toContainText('@input start: number = 0')
+  await page.goto('/guide/components')
+  await expect(page.locator('pre').filter({ hasText: '<code verbatim>' })).toContainText('<p>Hello, {{ name }}!</p>')
+})

@@ -14,7 +14,7 @@
   <h2>This page has one island</h2>
   <p>Everything on this page is static HTML, rendered at build time. The button below is a component with a <code>&lt;script&gt;</code>, so it is the only thing that ships JavaScript. Click it.</p>
   <div class="demo"><counter [start]="0" /></div>
-  <pre><code>{{ `@input start: number = 0
+  <pre><code verbatim>@input start: number = 0
 
 <script>
   let count = state(start)
@@ -22,7 +22,7 @@
   function add() { count++ }
 </script>
 
-<button (click)="add()">Clicked {{ count }} times (double: {{ double }})</button>` }}</code></pre>
+<button (click)="add()">Clicked {{ count }} times (double: {{ double }})</button></code></pre>
 
   <h2>Why clarusjs</h2>
   <ul class="points">

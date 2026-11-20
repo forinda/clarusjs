@@ -51,6 +51,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
 
   function visit(node: TemplateNode, rawText?: string): void {
     if (node.type === 'text') return emitStatic(node.value)
+    if (node.type === 'raw') return emitStatic(node.value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
     if (node.type === 'expr') {
       checkExpr(node.expr, file, source, node.start)
       const reactive = referencesNames(node.expr, scriptScope)

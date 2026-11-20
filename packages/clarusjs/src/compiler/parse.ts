@@ -9,6 +9,7 @@ export type TemplateNode =
   | { type: 'element'; tag: string; attrs: Attr[]; children: TemplateNode[]; start: number }
   | { type: 'text'; value: string; start: number }
   | { type: 'expr'; expr: string; start: number } // {{ expr }}
+  | { type: 'raw'; value: string; start: number } // content of a `verbatim` element, shown as text
 export type InputDecl = { name: string; type: string; default?: string; start: number }
 export type ImportDecl = { name: string; from: string; start: number }
 export type ParsedFile = {
@@ -145,6 +146,19 @@ export function parse(source: string, file: string): ParsedFile {
           if (end === -1) fail('unclosed <script>', start)
           out.script = { code: source.slice(i, end), start: i }
           i = end + '</script>'.length
+        } else if (list.some((a) => a.name === 'verbatim')) {
+          // Everything up to </tag> is text: no holes, tags or directives.
+          const attr = list.find((a) => a.name === 'verbatim')!
+          if (attr.kind !== 'static' || attr.value !== true) fail('verbatim takes no value', attr.start)
+          if (out.imports.some((imp) => imp.name === tag)) fail('verbatim only works on HTML elements, not components', attr.start)
+          let kids: TemplateNode[] = []
+          if (!selfClosing && !VOID.has(tag)) {
+            const close = source.indexOf(`</${tag}>`, i)
+            if (close === -1) fail(`unclosed <${tag} verbatim>`, start)
+            kids = [{ type: 'raw', value: source.slice(i, close), start: i }]
+            i = close + `</${tag}>`.length
+          }
+          nodes.push({ type: 'element', tag, attrs: list.filter((a) => a !== attr), children: kids, start })
         } else {
           const kids = selfClosing || VOID.has(tag) ? [] : children({ tag, start })
           nodes.push({ type: 'element', tag, attrs: list, children: kids, start })

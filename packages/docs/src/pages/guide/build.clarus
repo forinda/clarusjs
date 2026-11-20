@@ -13,10 +13,10 @@
 
   <h2>Deploy</h2>
   <p>Upload <code>dist/client/</code> to any static host. This site deploys to Netlify:</p>
-  <pre><code>{{ `# netlify.toml
+  <pre><code verbatim># netlify.toml
 [build]
   command = "pnpm install --frozen-lockfile && pnpm --filter @clarusjs/docs build"
-  publish = "packages/docs/dist/client"` }}</code></pre>
+  publish = "packages/docs/dist/client"</code></pre>
 
   <callout><p>The same handler can also run on a server per request. Choosing between build time and request time per route is coming in a later release.</p></callout>
 </docs>
