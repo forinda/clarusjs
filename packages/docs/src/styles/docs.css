@@ -8,6 +8,11 @@
   --accent: #0b6e70;
   --accent-soft: rgba(11, 110, 112, 0.1);
   --code-bg: #f1f5f5;
+  /* Highlighted code: the theme's own background, and line tints light enough that every token keeps WCAG AA. */
+  --shiki-bg: #ffffff;
+  --line-highlight: rgba(11, 110, 112, 0.07);
+  --line-add: rgba(47, 158, 110, 0.1);
+  --line-remove: rgba(208, 69, 59, 0.08);
   --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light;
@@ -23,6 +28,10 @@
     --accent: #4cc9cb;
     --accent-soft: rgba(76, 201, 203, 0.12);
     --code-bg: #121b1c;
+  --shiki-bg: var(--code-bg);
+  --line-highlight: rgba(76, 201, 203, 0.12);
+  --line-add: rgba(47, 158, 110, 0.14);
+  --line-remove: rgba(208, 69, 59, 0.14);
     color-scheme: dark;
   }
 }
@@ -35,6 +44,10 @@
   --accent: #4cc9cb;
   --accent-soft: rgba(76, 201, 203, 0.12);
   --code-bg: #121b1c;
+  --shiki-bg: var(--code-bg);
+  --line-highlight: rgba(76, 201, 203, 0.12);
+  --line-add: rgba(47, 158, 110, 0.14);
+  --line-remove: rgba(208, 69, 59, 0.14);
   color-scheme: dark;
 }
 :root[data-theme='light'] { color-scheme: light; }
@@ -244,14 +257,14 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
 .code-block .code-title { margin: 0; padding: 6px 12px; font: 600 13px/20px var(--mono); border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--code-bg); }
 .code-block .code-title + .lang + pre { border-top-left-radius: 0; border-top-right-radius: 0; }
 .shiki span { color: var(--shiki-light); }
-.shiki { background: var(--code-bg); }
+.shiki { background: var(--shiki-bg); border: 1px solid var(--rule); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .shiki span { color: var(--shiki-dark); } }
 :root[data-theme='dark'] .shiki span { color: var(--shiki-dark); }
 .shiki code { display: block; }
 .shiki .line { display: inline-block; width: 100%; }
-.shiki .line.highlighted { background: var(--accent-soft); }
-.shiki .line.diff.add { background: rgba(47, 158, 110, 0.14); }
-.shiki .line.diff.remove { background: rgba(208, 69, 59, 0.14); opacity: 0.75; }
+.shiki .line.highlighted { background: var(--line-highlight); }
+.shiki .line.diff.add { background: var(--line-add); }
+.shiki .line.diff.remove { background: var(--line-remove); }
 .shiki .line.diff.add::before { content: '+ '; }
 .shiki .line.diff.remove::before { content: '- '; }
 .shiki.has-focused .line:not(.focused) { opacity: 0.45; filter: blur(0.5px); }
@@ -270,3 +283,13 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
 .code-group > .code-block { order: 1; width: 100%; display: none; margin: 0; }
 .code-group > input:checked + label + .code-block { display: block; }
 .code-group > .code-block pre { border-top-left-radius: 0; }
+
+/* Visitors who ask for less motion get none: transitions and animations end at once, scrolling jumps. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
