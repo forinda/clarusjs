@@ -112,7 +112,7 @@ test('every sidebar link lands on a page, and the edit link points at its source
     expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
   }
   await page.goto('/guide/lists')
-  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.clarus$/)
+  await expect(page.locator('a.edit')).toHaveAttribute('href', /\/packages\/docs\/src\/pages\/guide\/lists\.tscl$/)
   await expect(page.locator('.crumb')).toHaveText('Guide › Templates')
 })
 
@@ -284,4 +284,16 @@ test('clarusjs explain names the islands the page really has', async ({ page }) 
   const names = await page.locator('cl-island').evaluateAll((els) => els.map((e) => e.getAttribute('c')!))
   const found = [...new Set(names)].map((n) => [n, names.filter((x) => x === n).length])
   expect(explained).toEqual(found)
+})
+
+test('this site, explained: the table is generated from the manifest at build time', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
+  await page.goto('/guide/explained')
+  const rows = page.locator('table.explained tbody tr')
+  await expect(rows).toHaveCount(pages.length)
+  const home = rows.filter({ has: page.locator('a[href="/"]') })
+  for (const island of manifest.routes['/'].islands) await expect(home).toContainText(island.component)
+  // The page lists itself, so it was rendered after the manifest existed.
+  await expect(rows.filter({ has: page.locator('a[href="/guide/explained"]') })).toContainText('copy (interaction)')
 })

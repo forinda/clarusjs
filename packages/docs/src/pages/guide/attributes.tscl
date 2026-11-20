@@ -1,0 +1,19 @@
+@import copy from '../../components/copy.tscl'
+@import docs from '../../layouts/docs.tscl'
+@import callout from '../../components/callout.tscl'
+
+<docs [title]="'Attributes'" [path]="'/guide/attributes'" [description]="'Bind attributes with [name] or {{ }}; values are escaped and URLs are checked.'">
+  <h1>Attributes</h1>
+  <p class="lead">Bind an attribute with <code verbatim>[name]="expression"</code>, or put <code verbatim>{ }</code> inside an attribute value.</p>
+  <div class="sample"><pre><code verbatim><a href="/guide/{{ slug }}" [aria-current]="active ? 'page' : false">{{ label }}</a>
+<button [disabled]="saving">Save</button></code></pre><copy attach="interaction" /></div>
+  <h2>Values</h2>
+  <ul>
+    <li>Values are escaped.</li>
+    <li><code>true</code> adds a boolean attribute; <code>false</code>, <code>null</code> and <code>undefined</code> remove it.</li>
+    <li>Inside an interactive component, attributes that read state update when it changes.</li>
+  </ul>
+  <h2>Safety</h2>
+  <p>URL attributes such as <code>href</code> and <code>src</code> only accept relative URLs and <code>http:</code>, <code>https:</code>, <code>mailto:</code> and <code>tel:</code> (plus raster <code>data:</code> images for image attributes); anything else becomes <code>about:invalid#unsafe</code>. <code>srcdoc</code> can't be bound. A bound <code>style</code> is escaped but not checked, so don't put untrusted data in it.</p>
+  <callout [type]="'tip'"><p>For events, use <code verbatim>(click)="…"</code> inside an interactive component, not <code>onclick</code>.</p></callout>
+</docs>

@@ -1,6 +1,6 @@
 # clarusjs architecture
 
-> How clarusjs turns `.clarus` files into HTML and JS, where every piece runs, and
+> How clarusjs turns `.tscl` files into HTML and JS, where every piece runs, and
 > how it plugs into Vite, servers, TypeScript and AI agents.
 >
 > Status: draft for the first proof of concept (POC). Background research
@@ -11,7 +11,7 @@
 
 ## 1. One sentence
 
-**A `.clarus` file is compiled into a server function that writes HTML, and, only
+**A `.tscl` file is compiled into a server function that writes HTML, and, only
 if it has state, a client function that attaches to that HTML. A route table
 says when the server function runs: at build, per request, or in the
 browser.**
@@ -23,7 +23,7 @@ Everything below expands that sentence.
 ```mermaid
 flowchart LR
   subgraph Author["You write"]
-    SRC[".clarus components<br/>template + optional &lt;script&gt;"]
+    SRC[".tscl components<br/>template + optional &lt;script&gt;"]
     LOAD["*.load.ts<br/>one loader per route"]
     CFG["vite.config.ts<br/>clarusjs({ routes })"]
   end
@@ -60,7 +60,7 @@ flowchart LR
 Three rules make the whole system explainable:
 
 1. **Server code is never in the client module graph.** The client compile
-   of a `.clarus` file contains no `render`, no loader, no template strings. This
+   of a `.tscl` file contains no `render`, no loader, no template strings. This
    is by construction, not by tree shaking.
 2. **Only stateful components produce client code.** A component without a
    `<script>` has no client module at all. Zero bytes, always.
@@ -89,7 +89,7 @@ access inside the compiler.
 
 ```mermaid
 flowchart TD
-  SRC[".clarus source"] --> PARSE["parse<br/>hand-written template parser<br/>acorn for &lt;script&gt; and {{ expressions }}"]
+  SRC[".tscl source"] --> PARSE["parse<br/>hand-written template parser<br/>acorn for &lt;script&gt; and {{ expressions }}"]
   PARSE --> AST["AST<br/>elements, text, holes, directives<br/>ESTree for JS parts"]
   AST --> CHECK["check<br/>• unknown components / names<br/>• (event) outside stateful component<br/>• escaping context per hole<br/>• malformed @if / @for"]
   CHECK --> IR["IR<br/>static parts · holes · reactive holes · child components · events"]
@@ -140,7 +140,7 @@ touched again.
 Source:
 
 ```kick
-{{-- components/counter.clarus --}}
+{{-- components/counter.tscl --}}
 @input start: number = 0
 
 <script>
@@ -163,7 +163,7 @@ export function render(__cl_props = {}, __cl_slots, __cl_opts) {
   let count = (start)
   const double = (() => count * 2)()
   function add() { count++ }
-  return __cl_island("counter", "/src/components/counter.clarus?import", { start }, "<button data-cl-e=\"0\">Clicked " + "<!--[0-->" + __cl_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __cl_escape(double) + "<!--]-->" + ")</button>", { count }, __cl_opts?.attach)
+  return __cl_island("counter", "/src/components/counter.tscl?import", { start }, "<button data-cl-e=\"0\">Clicked " + "<!--[0-->" + __cl_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __cl_escape(double) + "<!--]-->" + ")</button>", { count }, __cl_opts?.attach)
 }
 ```
 
@@ -276,7 +276,7 @@ export default defineConfig({
 })
 ```
 
-Pages are files: `src/pages/users/[id].clarus`. The route's loader, if any, is
+Pages are files: `src/pages/users/[id].tscl`. The route's loader, if any, is
 the sibling `src/pages/users/[id].load.ts`. A separate file makes "this runs
 outside the template" visible from the file tree.
 
@@ -387,7 +387,7 @@ One plugin. It's a thin adapter around the compiler.
 ```mermaid
 flowchart TD
   subgraph Plugin["clarusjs/vite"]
-    T["transform (filter: id /\.clarus$/)<br/>this.environment.config.consumer"]
+    T["transform (filter: id /\.tscl$/)<br/>this.environment.config.consumer"]
     V["virtual modules<br/>virtual:clarusjs/server-entry<br/>virtual:clarusjs/routes"]
     D["configureServer<br/>dev middleware → runner.import(server-entry)"]
     B["buildApp<br/>client → server → prerender → manifest"]
@@ -399,7 +399,7 @@ flowchart TD
 
 | Hook | What clarusjs does |
 |---|---|
-| `transform` | Compile `.clarus`. Server environment gets `render`, client environment gets `attach`. Hook filter means Rolldown never calls into JS for other files |
+| `transform` | Compile `.tscl`. Server environment gets `render`, client environment gets `attach`. Hook filter means Rolldown never calls into JS for other files |
 | `resolveId`/`load` | Virtual modules: the server entry (route table + handler) and the route list |
 | `configureServer` | Dev: turn the Node request into a `Request`, call the handler loaded via `runner.import()`, so server code gets HMR |
 | `buildApp` | Build client (with `build.manifest`), build server, call the handler for every `static` route, write `clarusjs-manifest.json` |
@@ -474,8 +474,8 @@ One code generator, three hosts.
 
 ```mermaid
 flowchart LR
-  SRC[".clarus"] --> GEN["type emitter<br/>(pure: .clarus → virtual TS + span mappings)"]
-  GEN --> CLI["clarusjs check<br/>writes .clarusjs/virtual/*.ts<br/>runs tsc --noEmit<br/>maps errors → file.clarus:line:col"]
+  SRC[".tscl"] --> GEN["type emitter<br/>(pure: .tscl → virtual TS + span mappings)"]
+  GEN --> CLI["clarusjs check<br/>writes .clarusjs/virtual/*.ts<br/>runs tsc --noEmit<br/>maps errors → file.tscl:line:col"]
   GEN --> CM["TS 7.1 content mapper<br/>editor hover / completion / errors<br/>(later)"]
   GEN --> VOL["Volar plugin for TS 6 editors<br/>(only if asked)"]
 ```
@@ -517,7 +517,7 @@ Example:
 $ clarusjs explain /users/42
 /users/[id]  mode: server
   loader     src/pages/users/[id].load.ts — runs per request on the server
-  render     src/pages/users/[id].clarus     — runs per request on the server
+  render     src/pages/users/[id].tscl     — runs per request on the server
   islands    counter (612 B) — attaches in the browser at load
   static     h1, layout — HTML only, 0 B JS
   total JS   1.8 KB (loader 0.4 KB + counter 0.6 KB + runtime 0.8 KB)

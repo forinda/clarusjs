@@ -23,7 +23,7 @@ export type IRNode =
 export type IREvent = { index: number; type: string; handler: string; scope?: string }
 export type ComponentIR = {
   file: string
-  name: string // basename without .clarus
+  name: string // basename without .tscl
   inputs: InputDecl[]
   imports: ImportDecl[]
   script?: string // without its import statements, which are in scriptImports
@@ -220,7 +220,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   parsed.nodes.forEach((n) => visit(n))
   return {
     file,
-    name: file.split('/').pop()!.replace(/\.clarus$/, ''),
+    name: file.split('/').pop()!.replace(/\.tscl$/, ''),
     inputs: parsed.inputs,
     imports: parsed.imports,
     script: parsed.script ? split.body : undefined,

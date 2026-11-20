@@ -8,7 +8,7 @@ const program = new Command('clarusjs').description('clarusjs: clear, compiled v
 
 program
   .command('check')
-  .description('type-check every .clarus file under src/ and report errors at file.clarus:line:col')
+  .description('type-check every .tscl file under src/ and report errors at file.tscl:line:col')
   .argument('[dir]', 'project folder', '.')
   .option('--json', 'print diagnostics as JSON')
   .action((dir: string, options: { json?: boolean }) => {

@@ -2,9 +2,9 @@
 
 type PageModule = { render(props?: object): string }
 
-/** '/src/pages/index.clarus' → '/', '/src/pages/blog/index.clarus' → '/blog', '/src/pages/about.clarus' → '/about' */
+/** '/src/pages/index.tscl' → '/', '/src/pages/blog/index.tscl' → '/blog', '/src/pages/about.tscl' → '/about' */
 export function routeFromFile(file: string): string {
-  const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.clarus$/, '').replace(/\/index$/, '')
+  const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.tscl$/, '').replace(/\/index$/, '')
   return path || '/'
 }
 

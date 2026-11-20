@@ -1,6 +1,6 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isRunnableDevEnvironment, type Plugin, type UserConfig } from 'vite'
@@ -25,7 +25,7 @@ const CLIENT_OUT = 'dist/client'
 // Placeholder for a nested island's chunk URL in the client build, replaced once the bundle's file names are known.
 const CHUNK_TOKEN = '__CLARUS_CHUNK__'
 const SERVER_OUT = 'dist/server'
-const entryName = (root: string, file: string) => relative(root, file).replace(/\.clarus$/, '')
+const entryName = (root: string, file: string) => relative(root, file).replace(/\.tscl$/, '')
 
 export default function clarusjs(): Plugin {
   let root = process.cwd()
@@ -91,7 +91,7 @@ export default function clarusjs(): Plugin {
         if (out.type !== 'chunk' || !out.code.includes(CHUNK_TOKEN)) continue
         out.code = out.code.replace(/__CLARUS_CHUNK__\[(.+?)\]__/g, (_, name: string) => {
           const url = byName.get(name)
-          if (!url) this.error(`clarusjs: no client chunk for ${name}.clarus (stateful components must be under src/)`)
+          if (!url) this.error(`clarusjs: no client chunk for ${name}.tscl (stateful components must be under src/)`)
           return url!
         })
       }
@@ -107,8 +107,18 @@ export default function clarusjs(): Plugin {
       if (!client || !ssr) return
       await builder.build(client)
       await builder.build(ssr)
-      const routes = await prerender(resolve(builder.config.root, SERVER_OUT, 'index.mjs'), resolve(builder.config.root, CLIENT_OUT))
-      writeManifest(dirname(resolve(builder.config.root, CLIENT_OUT)), routes, builder.config.base)
+      const entry = resolve(builder.config.root, SERVER_OUT, 'index.mjs')
+      const out = resolve(builder.config.root, CLIENT_OUT)
+      const dist = dirname(out)
+      const manifestFile = resolve(dist, 'clarusjs-manifest.json')
+      rmSync(manifestFile, { force: true }) // a page reading the manifest must never see the previous build's
+      const { routes, readers } = await prerender(entry, out, manifestFile)
+      writeManifest(dist, routes, builder.config.base)
+      // Pages that read the manifest saw none on the first pass: render them again now that it exists.
+      if (readers.length) {
+        await prerender(entry, out, manifestFile, readers)
+        writeManifest(dist, routes, builder.config.base)
+      }
     },
     resolveId(id) {
       if (id === '/cl-loader.js') return here('../runtime/loader')
@@ -118,15 +128,15 @@ export default function clarusjs(): Plugin {
       if (id !== '\0' + ENTRY) return
       const loaderUrl = builtUrls()?.get(LOADER_ENTRY) ?? '/cl-loader.js'
       return `import { createHandler } from ${JSON.stringify(here('../server/handler'))}\n` +
-        `export default createHandler(import.meta.glob('/src/pages/**/*.clarus'), { loaderUrl: ${JSON.stringify(loaderUrl)} })\n`
+        `export default createHandler(import.meta.glob('/src/pages/**/*.tscl'), { loaderUrl: ${JSON.stringify(loaderUrl)} })\n`
     },
     transform: {
-      filter: { id: /\.clarus(\?|$)/ },
+      filter: { id: /\.tscl(\?|$)/ },
       handler(code, id) {
         const file = id.replace(/\?.*$/, '')
         // ?render: a component's server render function, used in the browser to render children of islands.
         const target = this.environment.config.consumer === 'server' || /[?&]render\b/.test(id) ? 'server' : 'client'
-        // ponytail: ?import makes Vite's dev transform middleware serve .clarus as JS for the loader's dynamic import; build output uses hashed chunk URLs from the client manifest (stage 3)
+        // ponytail: ?import makes Vite's dev transform middleware serve .tscl as JS for the loader's dynamic import; build output uses hashed chunk URLs from the client manifest (stage 3)
         const consumer = this.environment.config.consumer
         // Server build: chunk URLs come from the client manifest. Client build (a ?render child): the chunk doesn't
         // exist yet, so write a placeholder that generateBundle swaps for the real file name. Dev: the source URL.
