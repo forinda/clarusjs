@@ -131,9 +131,11 @@ export async function attachAll(root: ParentNode = document, load: Load = lastLo
 function arrive(): void {
   let id = ''
   try { id = decodeURIComponent(location.hash.slice(1)) } catch {}
-  const target = (id && document.getElementById(id)) || document.querySelector('main h1, h1') || document.querySelector('main')
+  // In this order: a selector list would return the first match in the document, such as a heading in the header.
+  const target = (id && document.getElementById(id)) || document.querySelector('main h1') || document.querySelector('h1') || document.querySelector('main')
   if (target instanceof HTMLElement) {
-    if (target.tabIndex < 0 && !target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1')
+    // Not natively focusable (a heading, <main>, an <a> without href, whose tabIndex still reads 0): tabindex -1.
+    if (!target.matches('a[href],area[href],button,input,select,textarea,iframe,summary,[tabindex],[contenteditable]')) target.setAttribute('tabindex', '-1')
     target.focus()
   }
   let live = document.getElementById('cl-live')

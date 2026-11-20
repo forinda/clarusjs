@@ -13,6 +13,7 @@ import { checkLinks } from './links.ts'
 import { gitDates, sitemapXml } from './sitemap.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { rootLinks, routeFromFile } from '../server/handler.ts'
+import { basePath } from '../server/head.ts'
 import type { HeadTag, SiteOptions } from '../server/head.ts'
 import { sendResponse, toRequest } from './node.ts'
 
@@ -298,7 +299,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       // 404.html, which static hosts serve for unknown paths at any depth: the 404 page with its relative links
       // resolved from the site root (also at /404 itself, so the link check sees what visitors get).
       if (pageRoutes.includes('/404') && !clientRoutes.includes('/404')) {
-        const html = rootLinks(readFileSync(resolve(out, routeToFile('/404')), 'utf8'), builder.config.base)
+        const html = rootLinks(readFileSync(resolve(out, routeToFile('/404')), 'utf8'), basePath(builder.config.base))
         writeFileSync(resolve(out, routeToFile('/404')), html)
         writeFileSync(resolve(out, '404.html'), html)
       }
@@ -313,7 +314,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn' }
       // Each problem names the page's source file, and the line where the link is written literally.
       const sourceOf = new Map(files.find(resolve(builder.config.root, 'src/pages')).map((f) => [routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`), f]))
-      const fileOf = (page: string) => sourceOf.get(page) ?? [...sourceOf].find(([route]) => new RegExp(`^${route.replace(/\[[^\]]+\]/g, '[^/]+')}$`).test(page))?.[1]
+      // Literal segments escaped; only whole [param] segments match any one segment (as the handler's routes do).
+      const pattern = (route: string) => new RegExp(`^${route.split('/').map((seg) => (/^\[[^\]]+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/')}$`)
+      const fileOf = (page: string) => sourceOf.get(page) ?? [...sourceOf].find(([route]) => pattern(route).test(page))?.[1]
       const locate = (page: string, href: string) => {
         const file = fileOf(page)
         if (!file) return page
@@ -341,9 +344,11 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const file = resolve(out, routeToFile(page))
           const html = readFileSync(file, 'utf8')
           const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
-          const marker = tags.find((tag) => /\sname\s*=\s*"sitemap"/i.test(tag) && /\scontent\s*=\s*"false"/i.test(tag))
+          // Attribute values in any valid form: "x", 'x' or unquoted (transformHead output isn't normalized).
+          const attr = (tag: string, name: string) => new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag)?.slice(1).find((v) => v !== undefined)
+          const marker = tags.find((tag) => attr(tag, 'name')?.toLowerCase() === 'sitemap' && attr(tag, 'content') === 'false')
           if (marker) writeFileSync(file, html.replace(marker, ''))
-          return !!marker || tags.some((tag) => /\sname\s*=\s*"robots"/i.test(tag) && /\scontent\s*=\s*"[^"]*\bnoindex\b/i.test(tag))
+          return !!marker || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? ''))
         }
         const pages = pageRoutes.filter((page) => page !== '/404' && !clientRoutes.includes(page) && !optedOut(page) && !exclude.some((re) => re.test(page)))
           .map((path) => ({ path, lastmod: dates.get(fileOf(path) ?? '') ?? epoch }))
@@ -512,7 +517,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             if (!isRunnableDevEnvironment(env)) return next()
             const app = await env.runner.import<{ default: { fetch(r: Request): Promise<Response> } }>(ENTRY)
             const response = await app.default.fetch(toRequest(req))
-            if (response.status === 404) return next()
+            // The 404 page (HTML) is the answer; a plain 404 falls through to Vite.
+            if (response.status === 404 && !response.headers.get('content-type')?.startsWith('text/html')) return next()
             await sendResponse(res, response)
           } catch (err) {
             next(err)

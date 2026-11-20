@@ -13,15 +13,16 @@ export function gitDates(root: string, dir: string): Map<string, number> {
   const dates = new Map<string, number>()
   let log: string
   try {
-    log = execFileSync('git', ['log', '--format=%x00%ct', '--name-only', '--relative', '--', dir], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 })
+    // -z: file names exactly as they are (git quotes non-ASCII names otherwise), each ended by NUL; \x01 starts a commit.
+    log = execFileSync('git', ['log', '--format=%x01%ct', '-z', '--name-only', '--relative', '--', dir], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 })
   } catch {
     return dates
   }
-  for (const commit of log.split('\0').slice(1)) {
-    const [time, ...files] = commit.trim().split('\n')
-    for (const file of files) {
-      const path = resolve(root, file.trim())
-      if (file.trim() && !dates.has(path)) dates.set(path, Number(time))
+  for (const commit of log.split('\x01').slice(1)) {
+    const [time, ...files] = commit.split('\0')
+    for (const file of files.map((f) => f.replace(/^\n/, '')).filter(Boolean)) {
+      const path = resolve(root, file)
+      if (!dates.has(path)) dates.set(path, Number(time))
     }
   }
   return dates
@@ -29,7 +30,8 @@ export function gitDates(root: string, dir: string): Map<string, number> {
 
 /** The sitemap: one <url> per page, under the site URL and base; lastmod (unix seconds) as a date when known. */
 export function sitemapXml(siteUrl: string, base: string, pages: { path: string; lastmod: number | undefined }[]): string {
-  const root = new URL(base, siteUrl.replace(/\/?$/, '/'))
+  // An absolute base (a CDN) counts by its path: the pages are on the site.
+  const root = new URL(/^https?:\/\//i.test(base) ? new URL(base).pathname : base, siteUrl.replace(/\/?$/, '/'))
   const urls = pages.map(({ path, lastmod }) => {
     const loc = new URL(`./${path.slice(1)}`, root).href
     const date = lastmod === undefined ? '' : `<lastmod>${new Date(lastmod * 1000).toISOString().slice(0, 10)}</lastmod>`

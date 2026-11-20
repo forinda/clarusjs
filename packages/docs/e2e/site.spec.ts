@@ -760,3 +760,19 @@ test('a11y: reduced motion turns transitions off; the mobile page list opens in 
   await page.locator('main a').first().focus()
   await expect(page.locator('main a').first()).toBeFocused() // nothing behind it needs to be inert
 })
+
+test('review: a release page\'s TechArticle points at that release, not the release index', async ({ page }) => {
+  const { readdirSync } = await import('node:fs')
+  const version = readdirSync(new URL('../dist/client/releases/', import.meta.url)).find((d) => /^\d/.test(d))!
+  await page.goto(`/releases/${version}`)
+  const data = await page.locator('script[type="application/ld+json"]').evaluateAll((els) => els.map((e) => JSON.parse(e.textContent!)))
+  expect(data).toContainEqual(expect.objectContaining({ '@type': 'TechArticle', url: `https://clarusjs.com/releases/${version}` }))
+})
+
+test('review: after the skip link, keyboard focus on <main> stays visible', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('main#content')).toBeFocused()
+  expect(await page.locator('main#content').evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none')
+})

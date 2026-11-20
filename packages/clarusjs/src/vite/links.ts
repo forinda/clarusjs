@@ -57,7 +57,7 @@ export function checkLinks(options: Options): LinkIssue[] {
   const { outDir } = options
   // An absolute base (https://cdn.example.com/docs/) is compared by its path.
   const base = /^https?:\/\//.test(options.base) ? new URL(options.base).pathname : options.base
-  const siteRoot = options.site ? new URL(base, options.site.replace(/\/?$/, '/')).href : undefined
+  const siteRoot = options.site ? new URL(base, options.site.replace(/\/?$/, '/')) : undefined
   const routes = new Set(options.routes.map(trim))
   const client = new Set(options.clientRoutes.map(trim))
   const serverPatterns = options.serverRoutes.map((r) => new RegExp(`^${r.split('/').map((seg) => (/^\[[^\]]+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/')}$`))
@@ -72,7 +72,13 @@ export function checkLinks(options: Options): LinkIssue[] {
   const issues: LinkIssue[] = []
   for (const page of [...routes].filter((r) => !client.has(r))) {
     for (let href of hrefs(read(page))) {
-      if (siteRoot && (href.startsWith(siteRoot) || `${href}/` === siteRoot)) href = base + href.slice(siteRoot.length)
+      // Absolute links to the site itself (compared parsed: host case, the base with or without its slash).
+      if (siteRoot && /^https?:/i.test(href)) {
+        const u = new URL(href)
+        if (u.origin === siteRoot.origin && (u.pathname.startsWith(siteRoot.pathname) || `${u.pathname}/` === siteRoot.pathname)) {
+          href = base + u.pathname.slice(Math.min(u.pathname.length, siteRoot.pathname.length)) + u.search + u.hash
+        }
+      }
       if (/^[a-z][\w+.-]*:|^\/\//i.test(href) || href === '') continue // external, mailto:, tel:, …
       const url = new URL(href, `http://site${base}${page === '/' ? '' : page.slice(1) + '/'}`)
       if (!url.pathname.startsWith(base) && `${url.pathname}/` !== base) continue // outside this site

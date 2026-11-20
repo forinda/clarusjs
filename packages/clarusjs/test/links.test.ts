@@ -79,3 +79,9 @@ test('absolute links to the site itself are checked like internal ones', () => {
   const issues = checkLinks({ outDir: out, routes: ['/', '/guide'], serverRoutes: [], clientRoutes: [], base: '/docs/', site: 'https://example.com' })
   expect(issues.map((i) => i.message)).toEqual(['no page at /nope'])
 })
+
+test('review: own-site links are compared as parsed URLs (host case, base without its slash plus a #hash)', () => {
+  const out = site({ '/': '<a href="https://EXAMPLE.com/docs/nope">a</a><a href="https://example.com/docs#missing">b</a><a href="https://example.com/other">c</a>', '/guide': '<p>g</p>' })
+  const issues = checkLinks({ outDir: out, routes: ['/', '/guide'], serverRoutes: [], clientRoutes: [], base: '/docs/', site: 'https://example.com' })
+  expect(issues.map((i) => i.message)).toEqual(['no page at /nope', 'no #missing on /'])
+})

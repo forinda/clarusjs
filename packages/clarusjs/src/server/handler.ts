@@ -217,7 +217,12 @@ export function createHandler(
           '</head><body><noscript>This page is rendered in the browser and needs JavaScript.</noscript></body></html>'
         // Site tags and transformHead apply to the shell; the router applies the title template to each page's title.
         const { titleTemplate: _, ...siteHead } = options.head ?? {}
-        const page = completeHead(shell, maskComments, siteHead, { route: found.route.path, path: pathname })
+        let page: string
+        try {
+          page = completeHead(shell, maskComments, { ...siteHead, site: options.site, base: options.base }, { route: found.route.path, path: pagePath(pathname, false) })
+        } catch (err) {
+          return failure(`${found.route.file}: ${(err as Error).message}`)
+        }
         return new Response(head ? null : page, { headers: { 'content-type': 'text/html; charset=utf-8' } })
       }
       let props: object = found.params

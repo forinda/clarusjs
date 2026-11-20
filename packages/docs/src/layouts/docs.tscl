@@ -6,6 +6,8 @@
 @input path: string = '/'
 {{-- The page's own route, when it differs from the sidebar entry it belongs to (e.g. /releases/[version]). --}}
 @input source: string = ''
+{{-- The page's own address, when path names its sidebar entry instead (e.g. /releases/0.7.0 under /releases). --}}
+@input url: string = ''
 @input description: string = 'clarusjs: clear, compiled views. Server HTML with JavaScript only where it is interactive.'
 
 <html lang="en">
@@ -16,7 +18,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{ description }}">
     <title>{{ title }}</title>
-    <script type="application/ld+json">{{ { '@context': 'https://schema.org', '@type': 'TechArticle', headline: title, description, url: `https://clarusjs.com${path === '/' ? '' : path}` } }}</script>
+    <script type="application/ld+json">{{ { '@context': 'https://schema.org', '@type': 'TechArticle', headline: title, description, url: `https://clarusjs.com${(url || path) === '/' ? '' : url || path}` } }}</script>
   </head>
   <body>
     {{-- First in the tab order: keyboard and screen reader users jump past the header and page list. --}}

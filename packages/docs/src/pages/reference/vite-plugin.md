@@ -6,6 +6,7 @@ description: "The clarusjs Vite plugin: its routes option, and what it does in d
 # Vite plugin
 
 ```ts
+import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
 
 export default defineConfig({ plugins: [clarusjs()] })

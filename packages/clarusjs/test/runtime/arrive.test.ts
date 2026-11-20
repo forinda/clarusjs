@@ -45,3 +45,25 @@ test('a plain attach (initial load, an @if branch) moves nothing and announces n
   expect(document.activeElement).not.toBe(document.querySelector('h1'))
   expect(document.querySelector('[aria-live]')).toBeNull()
 })
+
+test('review: the new page heading in <main> wins over a heading kept in the shell', () => {
+  document.body.innerHTML = '<header><h1>Brand</h1></header><main><h1>Page</h1></main>'
+  navigated(document.body)
+  expect(document.activeElement).toBe(document.querySelector('main h1'))
+})
+
+test('review: a #hash target that reports tabIndex 0 but cannot take focus (<a> without href) still gets focus', () => {
+  history.replaceState(null, '', '/page#install')
+  document.body.innerHTML = '<main><h1>T</h1><a id="install">Install</a></main>'
+  navigated(document.body)
+  expect(document.activeElement).toBe(document.getElementById('install'))
+  expect(document.getElementById('install')!.getAttribute('tabindex')).toBe('-1') // what makes it focusable in browsers
+})
+
+test('review: a natively focusable target keeps its tab order (no tabindex added)', () => {
+  history.replaceState(null, '', '/page#go')
+  document.body.innerHTML = '<main><h1>T</h1><a id="go" href="/x">Go</a></main>'
+  navigated(document.body)
+  expect(document.activeElement).toBe(document.getElementById('go'))
+  expect(document.getElementById('go')!.hasAttribute('tabindex')).toBe(false)
+})

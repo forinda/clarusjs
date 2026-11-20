@@ -68,10 +68,10 @@ describe('full-document pages', () => {
     expect(out).toContain('<script type="module" src="/assets/loader.js"></script></BODY>')
   })
 
-  test('missing </head> or </body>: the pieces are appended', async () => {
+  test('missing <head>: one is created for the style; missing </body>: the script is appended', async () => {
     const out = await get(`<html>${island}`)
-    expect(out.startsWith('<!doctype html><html>')).toBe(true)
-    expect(out.endsWith('<style>cl-island{display:contents}</style><script type="module" src="/assets/loader.js"></script>')).toBe(true)
+    expect(out.startsWith('<!doctype html><html><head><style>cl-island{display:contents}</style></head>')).toBe(true)
+    expect(out.endsWith('<script type="module" src="/assets/loader.js"></script>')).toBe(true)
   })
 
   test('no islands: nothing is injected', async () => {

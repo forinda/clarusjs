@@ -110,3 +110,32 @@ test('vite build: 404.html with root links; /404 not in the sitemap; robots.txt 
   await build({ site: { url: 'https://example.com' }, robots: false })
   expect(existsSync(resolve(root, 'dist/client/robots.txt'))).toBe(false)
 }, 120_000)
+
+test('review: gitDates reads non-ASCII file names exactly (git quotes them otherwise)', () => {
+  const { root, w } = repo()
+  w('src/pages/café.md', 'c')
+  git(root, 'add -A'); git(root, 'commit -qm one', '2024-02-03T00:00:00Z')
+  expect(gitDates(root, 'src/pages').get(resolve(root, 'src/pages/café.md'))).toBe(Date.parse('2024-02-03T00:00:00Z') / 1000)
+})
+
+test('review: an absolute base keeps sitemap URLs on the site and 404 links on the site path', () => {
+  expect(sitemapXml('https://example.com', 'https://cdn.example.com/docs/', [{ path: '/a', lastmod: undefined }])).toContain('<loc>https://example.com/docs/a</loc>')
+})
+
+test('review: route patterns with special characters, and noindex written any valid way', async () => {
+  const { root, w } = repo()
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  w('src/pages/v(.tscl', '<p>odd name</p>')
+  w('src/pages/blog/[slug].tscl', '@input slug: string\n<p>{{ slug }}</p>')
+  w('src/pages/blog/[slug].load.ts', 'export const entries = () => [{ slug: "a" }]\nexport const load = ({ params }: { params: { slug: string } }) => ({ slug: params.slug })\n')
+  w('src/pages/quiet.tscl', '<p>quiet</p>')
+  w('src/pages/404.tscl', '<html><head><title>Not found</title></head><body><a href="blog/a">a post</a></body></html>')
+  w('src/head.ts', "export const transformHead = (head: string, page: { route: string }) => page.route === '/quiet' ? head + \"<meta name='robots' content=noindex>\" : head\n")
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', base: 'https://cdn.example.com/docs/', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
+  const xml = readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  expect(xml).toContain('<loc>https://example.com/docs/blog/a</loc>')
+  expect(xml).not.toContain('quiet')
+  expect(readFileSync(resolve(root, 'dist/client/404.html'), 'utf8')).toContain('<a href="/docs/blog/a">a post</a>')
+}, 120_000)

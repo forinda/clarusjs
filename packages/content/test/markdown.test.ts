@@ -112,3 +112,18 @@ test('#116: frontmatter image is the page social card image', () => {
 test('frontmatter sitemap: false opts the page out of the sitemap', () => {
   expect(page('---\ntitle: T\nsitemap: false\n---\nx\n')).toContain('<cl-head><meta name="sitemap" content="false"></cl-head>')
 })
+
+test('review: frontmatter head scripts keep their content exactly (JSON-LD, inline code) and compile', async () => {
+  const out = page(`---\ntitle: T\nhead:\n  - [script, { type: application/ld+json }, '{"@type":"Article","name":"a {{ b }} @c"}']\n  - [script, { async: true, src: "https://x.dev/a.js" }]\n  - [script, {}, "window.x = 'a@b' && 1 < 2"]\n---\nx\n`)
+  const code = compile(out.replace(/^@import.*\n/, '').replace(/<\/?cl-layout[^>]*>/g, ''), { file: 'x.tscl', target: 'server' }).code
+  const { render } = await import(`data:text/javascript,${encodeURIComponent(code.replace(/from 'clarusjs\/runtime\/server'/, `from '${new URL('../../clarusjs/src/runtime/server.ts', import.meta.url).href}'`))}`)
+  const html = render({})
+  expect(html).toContain('<script type="application/ld+json">{"@type":"Article","name":"a {\\u007b b }} @c"}</script>')
+  expect(html).toContain('<script async src="https://x.dev/a.js"></script>')
+  expect(html).toContain("<script>window.x = 'a@b' && 1 < 2</script>")
+})
+
+test('review: a frontmatter title with {{ }} and @ stays text in <cl-head>', () => {
+  const out = page('---\ntitle: "Use {{ x }} @if"\ntitleTemplate: false\n---\nx\n')
+  expect(out).toContain('<cl-head><title>Use &#123;&#123; x }} &#64;if</title></cl-head>')
+})

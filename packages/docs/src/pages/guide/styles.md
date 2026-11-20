@@ -46,7 +46,7 @@ A `<style>` block is plain CSS: `{{ }}` holes aren't allowed in it. Pass values 
 <div class="bar" style="--width: {{ percent }}%"></div>
 
 <style>
-  .bar { width: var(--width); }
+  :scope { width: var(--width); } /* .bar is the component's top-level element: its :scope */
 </style>
 ```
 
