@@ -226,3 +226,8 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
 .tour .next { margin-left: auto; }
 
 .persist { display: contents; }
+
+/* ::: details blocks from Markdown: a native <details>. */
+details.custom-block { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px; margin: 20px 0; }
+details.custom-block > summary { cursor: pointer; font-weight: 600; }
+details.custom-block[open] > summary { margin-bottom: 8px; }

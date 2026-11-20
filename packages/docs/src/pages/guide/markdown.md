@@ -2,8 +2,6 @@
 title: Markdown pages
 description: Write pages in Markdown with @clarusjs/content - frontmatter, a layout, components inside Markdown, and heading anchors.
 ---
-@import callout from '../../components/callout.tscl'
-
 # Markdown pages
 
 <p class="lead">With <code>@clarusjs/content</code>, any <code>.md</code> file under <code>src/pages</code> is a page. Its Markdown becomes static HTML inside your layout, at build time.</p>
@@ -56,8 +54,35 @@ Markdown **inside** a component.
 - Every heading gets an `id` and an anchor link, so `#install` links straight to it.
 - Markdown is static: `{{ value }}` and `@if` in your prose are shown as written, never run as template code.
 
-<callout [type]="'tip'">
+## Containers and alerts
 
-This page is written in Markdown.
+`::: tip`, `::: info`, `::: warning` and `::: danger` blocks, with an optional title, and `::: details` (a native `<details>`):
 
-</callout>
+```md
+::: warning Before you upgrade
+Read the changelog.
+:::
+
+::: details Show the long version
+Hidden until opened.
+:::
+```
+
+GitHub alerts work too: `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]` and `> [!CAUTION]`.
+
+By default these are plain HTML (`<div class="custom-block tip">`). Pass `container: { tag, from }` to render them through your own component instead, with a custom title in its `title` slot. This site renders them as its callouts:
+
+```ts
+markdown({ container: { tag: 'callout', from: '/src/components/callout.tscl' } })
+```
+
+::: warning A title from the Markdown
+This block was written as `::: warning A title from the Markdown`.
+:::
+
+> [!TIP]
+> This page is written in Markdown, and this tip is a GitHub alert.
+
+::: details What does a container compile to?
+A `<callout>` with a `type`, and the title in its `title` slot. Containers nest with a longer fence (`::::` around `:::`).
+:::

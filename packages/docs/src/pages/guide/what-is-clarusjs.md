@@ -2,8 +2,6 @@
 title: What is clarusjs?
 description: clarusjs compiles templates to server HTML and ships JavaScript only for the interactive parts.
 ---
-@import callout from '../../components/callout.tscl'
-
 # What is clarusjs?
 
 <p class="lead">clarusjs is a compiled view framework built on Vite. You write components in a familiar template language; clarusjs turns them into plain server HTML and ships JavaScript only for the parts of a page that are interactive.</p>
@@ -19,8 +17,6 @@ description: clarusjs compiles templates to server HTML and ships JavaScript onl
 
 clarusjs fits sites that are mostly content with interactive parts: documentation, marketing sites, blogs, shops, dashboards with a few live widgets. If every part of every screen is interactive (a design tool, a spreadsheet), a client-side framework is a better fit.
 
-<callout [type]="'info'">
-
+::: info
 clarusjs is early (`0.x`). This site is its proving ground: every feature is built because the site needs it, and tested here in a real browser. This page is written in Markdown.
-
-</callout>
+:::

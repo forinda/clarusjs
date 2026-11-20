@@ -569,3 +569,16 @@ test('a Markdown page renders in the layout, with anchors, a component and the r
   await expect(page.locator('main li code').first()).toHaveText('<script>')
   await expect(page.locator('a.edit')).toHaveAttribute('href', /\/src\/pages\/guide\/what-is-clarusjs\.md$/)
 })
+
+test('Markdown containers and alerts render as the site callouts; details is native', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  const warning = page.locator('aside.callout.warning').filter({ hasText: 'This block was written as' })
+  await expect(warning.locator('.callout-title')).toHaveText('A title from the Markdown')
+  expect(await warning.evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe('rgb(201, 138, 18)') // the component's own styles
+  await expect(page.locator('aside.callout.tip').filter({ hasText: 'GitHub alert' }).locator('.callout-title')).toHaveText('Tip')
+  const details = page.locator('details.custom-block')
+  await expect(details.locator('summary')).toHaveText('What does a container compile to?')
+  await expect(details.locator('p')).toBeHidden()
+  await details.locator('summary').click()
+  await expect(details.locator('p')).toBeVisible()
+})
