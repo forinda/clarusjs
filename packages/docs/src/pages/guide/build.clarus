@@ -1,3 +1,4 @@
+@import copy from '../../components/copy.clarus'
 @import docs from '../../layouts/docs.clarus'
 @import callout from '../../components/callout.clarus'
 
@@ -13,10 +14,10 @@
 
   <h2>Deploy</h2>
   <p>Upload <code>dist/client/</code> to any static host. This site deploys to Netlify:</p>
-  <pre><code verbatim># netlify.toml
+  <div class="sample"><pre><code verbatim># netlify.toml
 [build]
   command = "pnpm install --frozen-lockfile && pnpm --filter @clarusjs/docs build"
-  publish = "packages/docs/dist/client"</code></pre>
+  publish = "packages/docs/dist/client"</code></pre><copy attach="interaction" /></div>
 
   <callout><p>The same handler can also run on a server per request. Choosing between build time and request time per route is coming in a later release.</p></callout>
   @slot('next') {<a href="/">Back to the start →</a>}

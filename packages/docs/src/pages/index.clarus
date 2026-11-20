@@ -1,3 +1,4 @@
+@import copy from '../components/copy.clarus'
 @import docs from '../layouts/docs.clarus'
 @import counter from '../components/counter.clarus'
 @import callout from '../components/callout.clarus'
@@ -18,7 +19,7 @@
   <p>Everything on this page is static HTML, rendered at build time. The button below is a component with a <code>&lt;script&gt;</code>, so it is the only thing that ships JavaScript. Click it.</p>
   <div class="demo"><counter [start]="0" /></div>
   <whatShips attach="interaction" />
-  <pre><code verbatim>@input start: number = 0
+  <div class="sample"><pre><code verbatim>@input start: number = 0
 
 <script>
   let count = state(start)
@@ -26,7 +27,7 @@
   function add() { count++ }
 </script>
 
-<button (click)="add()">Clicked {{ count }} times (double: {{ double }})</button></code></pre>
+<button (click)="add()">Clicked {{ count }} times (double: {{ double }})</button></code></pre><copy attach="interaction" /></div>
 
   <h2>Lists</h2>
   <p>This list is an island too: <code>@for</code> renders it on the server, and in the browser rows are added and removed by key without touching the others.</p>

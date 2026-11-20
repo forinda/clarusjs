@@ -1,0 +1,23 @@
+{{-- Light, dark or the system setting; remembered in localStorage and applied as data-theme on <html>. --}}
+<script>
+  const order = ['system', 'light', 'dark']
+  let mode = state('system')
+  function apply() {
+    if (mode === 'system') document.documentElement.removeAttribute('data-theme')
+    else document.documentElement.setAttribute('data-theme', mode)
+  }
+  function cycle() {
+    mode = order[(order.indexOf(mode) + 1) % order.length]
+    try { localStorage.setItem('clarusjs-theme', mode) } catch {}
+    apply()
+  }
+  // In the browser, start from the saved choice (the server always renders "system").
+  if (typeof document !== 'undefined') {
+    try { mode = localStorage.getItem('clarusjs-theme') || 'system' } catch {}
+    apply()
+  }
+</script>
+
+<button type="button" class="theme-toggle" (click)="cycle()" [aria-label]="'Theme: ' + mode + ' (change)'" [title]="'Theme: ' + mode">
+  @if (mode === 'dark') {☾} @else if (mode === 'light') {☀} @else {◐}
+</button>
