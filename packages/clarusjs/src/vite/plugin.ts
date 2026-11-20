@@ -9,6 +9,7 @@ import { parse } from '../compiler/parse.ts'
 import { findClarusFiles, prerender } from './build.ts'
 import { writeManifest } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
+import { checkLinks } from './links.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { routeFromFile } from '../server/handler.ts'
 import { sendResponse, toRequest } from './node.ts'
@@ -101,7 +102,13 @@ export type ClarusOptions = {
   fragments?: boolean
   /** Page sources for other file types, such as Markdown from @clarusjs/content: `sources: [markdown()]`. */
   sources?: Source[]
+  /**
+   * Build-time link checking, after every page is built. `pages`: links to pages or files that don't exist (default
+   * 'error'). `anchors`: links to a #id the target page doesn't have (default 'warn'). `strict`: warnings fail too.
+   */
+  links?: { pages?: LinkLevel; anchors?: LinkLevel; strict?: boolean }
 }
+export type LinkLevel = 'error' | 'warn' | 'off'
 
 /**
  * A page source: files with another extension (such as Markdown) turned into .tscl text, then compiled like any
@@ -263,6 +270,34 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         await prerender(entry, out, manifestFile, readers)
         writeManifest(dist, routes, builder.config.base, loaded, server)
       }
+      // Links between pages and to anchors, checked against what was written.
+      const pageRoutes = routes.filter((r) => !/\/(__data\.json|index\.frag\.html)$/.test(r))
+      const issues = checkLinks({
+        outDir: out,
+        routes: pageRoutes,
+        serverRoutes: server.map((x) => x.route),
+        clientRoutes: pageRoutes.filter((r) => routes.includes(r === '/' ? '/__data.json' : `${r}/__data.json`)),
+        base: builder.config.base,
+      })
+      const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn' }
+      // Each problem names the page's source file, and the line where the link is written literally.
+      const sourceOf = new Map(files.find(resolve(builder.config.root, 'src/pages')).map((f) => [routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`), f]))
+      const locate = (page: string, href: string) => {
+        const file = sourceOf.get(page) ?? [...sourceOf].find(([route]) => new RegExp(`^${route.replace(/\[[^\]]+\]/g, '[^/]+')}$`).test(page))?.[1]
+        if (!file) return page
+        const rel = relative(builder.config.root, file).split(sep).join('/')
+        const line = readFileSync(file, 'utf8').split('\n').findIndex((l) => l.includes(href))
+        return line === -1 ? `${rel} (${page})` : `${rel}:${line + 1}`
+      }
+      const errors: string[] = []
+      for (const issue of issues) {
+        const level = levels[issue.kind]
+        if (level === 'off') continue
+        const text = `${locate(issue.page, issue.href)}: ${issue.message}`
+        if (level === 'error' || options.links?.strict) errors.push(text)
+        else builder.config.logger.warn(`clarusjs: ${text}`)
+      }
+      if (errors.length) throw new Error(`clarusjs: broken links:\n  ${errors.join('\n  ')}`)
       if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
     },
     resolveId(id) {

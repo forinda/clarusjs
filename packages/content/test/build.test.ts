@@ -20,7 +20,7 @@ test('Markdown pages build to static HTML in their layout, with components, styl
   const html = readFileSync(resolve(root, 'dist/client/guide/intro/index.html'), 'utf8')
   expect(html).toContain('<title>Intro</title>')
   expect(html).toContain('<main data-path="/guide/intro">')
-  expect(html).toContain('<h1 id="hello" tabindex="-1">Hello <a class="header-anchor" href="#hello" aria-label="Permalink to Hello">#</a></h1>')
+  expect(html).toContain('<h1 id="hello" tabindex="-1">Hello</h1>')
   expect(html).toContain('<p>Use <code>&#123;&#123; x }}</code> in templates.</p>') // shown as text, not a hole
   expect(html).toMatch(/<aside class="note tip" data-cl-c="note-[a-z0-9]+">\s*<p>A <strong>tip<\/strong>\.<\/p>\s*<\/aside>/)
   // The layout's imported stylesheet and the component styles are linked.

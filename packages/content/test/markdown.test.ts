@@ -19,7 +19,7 @@ test('frontmatter title and description go to the layout, with the route as path
 test('without a title in frontmatter, the first heading is the title; headings get ids and anchor links', () => {
   const out = page('# Getting started\n\n## Install it\n')
   expect(out).toContain('[title]="\'Getting started\'"')
-  expect(out).toContain('<h1 id="getting-started" tabindex="-1">Getting started <a class="header-anchor" href="#getting-started" aria-label="Permalink to Getting started">#</a></h1>')
+  expect(out).toContain('<h1 id="getting-started" tabindex="-1">Getting started</h1>') // the title has no anchor link
   expect(out).toContain('<h2 id="install-it" tabindex="-1">Install it <a class="header-anchor" href="#install-it" aria-label="Permalink to Install it">#</a></h2>')
 })
 
@@ -52,4 +52,18 @@ test('slugify: lowercase words joined with dashes; duplicates numbered', () => {
   const out = page('## Same\n\n## Same\n')
   expect(out).toContain('id="same"')
   expect(out).toContain('id="same-1"')
+})
+
+test('#113: relative links to page source files become their routes (anchors kept); others are left alone', () => {
+  const out = markdown().toTscl(
+    '[a](./setup.md) [b](../index.md#top) [c](./api/index.tscl) [d](/guide/x) [e](https://x.dev/y.md) [f](./notes.txt) [g](../../outside.md)',
+    '/app/src/pages/guide/intro.md', { route: '/guide/intro', root: '/app', addDependency: () => {} },
+  )
+  expect(out).toContain('<a href="/guide/setup">a</a>')
+  expect(out).toContain('<a href="/#top">b</a>')
+  expect(out).toContain('<a href="/guide/api">c</a>')
+  expect(out).toContain('<a href="/guide/x">d</a>')
+  expect(out).toContain('<a href="https://x.dev/y.md">e</a>')
+  expect(out).toContain('<a href="./notes.txt">f</a>')
+  expect(out).toContain('<a href="../../outside.md">g</a>') // not a page: left for the link checker to report
 })
