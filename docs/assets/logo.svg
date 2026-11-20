@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="title">
+  <title id="title">clarusjs</title>
+  <!-- A clear, precisely cut stone with one bright facet: clear HTML all the way through, a small live core. -->
+  <style>
+    :root { --deep: #0b6e70; --bright: #16a6a8; --glass: rgba(11, 110, 112, 0.12); }
+    @media (prefers-color-scheme: dark) {
+      :root { --deep: #36b9bb; --bright: #7fe6e7; --glass: rgba(54, 185, 187, 0.16); }
+    }
+  </style>
+  <path d="M 38 20 H 90 L 114 48 L 64 114 L 14 48 Z" fill="var(--glass)"/>
+  <path d="M 48 48 H 80 L 64 114 Z" fill="var(--bright)"/>
+  <path d="M 38 20 H 90 L 114 48 L 64 114 L 14 48 Z M 14 48 H 114 M 38 20 L 48 48 L 64 20 L 80 48 L 90 20 M 48 48 L 64 114 L 80 48"
+    fill="none" stroke="var(--deep)" stroke-width="5" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,3 @@
+@input name: string
+
+<p>Hello, {{ name }}!</p>

@@ -1,0 +1,61 @@
+{
+  "name": "clarusjs",
+  "version": "0.0.1",
+  "description": "Clear, compiled views: templates compiled to server HTML, with JavaScript only for interactive islands. SSR, SSG and CSR from one component model, built on Vite.",
+  "keywords": [
+    "clarusjs",
+    "framework",
+    "compiler",
+    "templates",
+    "ssr",
+    "ssg",
+    "islands",
+    "partial-hydration",
+    "signals",
+    "vite",
+    "vite-plugin",
+    "html-first",
+    "typescript"
+  ],
+  "homepage": "https://github.com/forinda/clarusjs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forinda/clarusjs.git",
+    "directory": "packages/clarusjs"
+  },
+  "bugs": {
+    "url": "https://github.com/forinda/clarusjs/issues"
+  },
+  "type": "module",
+  "exports": {
+    "./compiler": "./src/compiler/index.ts",
+    "./runtime": "./src/runtime/index.ts",
+    "./runtime/server": "./src/runtime/server.ts",
+    "./server": "./src/server/handler.ts",
+    "./vite": "./src/vite/plugin.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "node -e \"console.error('clarusjs: add a build step (compile src to JS + .d.ts) before publishing'); process.exit(1)\""
+  },
+  "dependencies": {
+    "acorn": "^8.19.0"
+  },
+  "peerDependencies": {
+    "vite": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "happy-dom": "^21.0.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}

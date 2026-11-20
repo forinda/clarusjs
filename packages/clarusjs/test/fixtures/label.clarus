@@ -1,0 +1,5 @@
+<script>
+  let label = state('')
+</script>
+
+<span (click)="label = 'hi'">{{ label }}</span>
