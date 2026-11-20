@@ -16,6 +16,9 @@ export default defineConfig({ plugins: [clarusjs()] })</code></pre><copy attach=
   <h2>fragments</h2>
   <p><strong>Type:</strong> <code>boolean</code> · <strong>Default:</strong> <code>false</code></p>
   <p>Fragment navigation. Every static and server page also answers at <code>&lt;path&gt;/index.frag.html</code>: its <code>&lt;title&gt;</code> and the element marked <code>data-cl-swap</code> (or its <code>&lt;body&gt;</code>). <code>vite build</code> writes those files next to each static page; server routes serve them from the handler (and, with <code>adapter: 'netlify'</code>, from the function).</p>
+  <h2>links</h2>
+  <p><strong>Type:</strong> <code>{{ '{' }} pages?: 'error' | 'warn' | 'off'; anchors?: 'error' | 'warn' | 'off'; strict?: boolean {{ '}' }}</code> · <strong>Default:</strong> <code>{{ '{' }} pages: 'error', anchors: 'warn' {{ '}' }}</code></p>
+  <p>Link checking after <code>vite build</code> has written every page. <code>pages</code>: links to a page or file that doesn't exist. <code>anchors</code>: links to a <code>#id</code> the target page doesn't have (pages rendered in the browser are skipped). Each problem names the source file and line, with the closest match suggested. <code>strict: true</code> makes warnings fail the build too.</p>
   <h2>What it does</h2>
   <ul>
     <li><strong>vite</strong>: renders <code>src/pages/**/*.tscl</code> on each request.</li>

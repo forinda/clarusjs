@@ -53,3 +53,17 @@ test('slugify: lowercase words joined with dashes; duplicates numbered', () => {
   expect(out).toContain('id="same"')
   expect(out).toContain('id="same-1"')
 })
+
+test('#113: relative links to page source files become their routes (anchors kept); others are left alone', () => {
+  const out = markdown().toTscl(
+    '[a](./setup.md) [b](../index.md#top) [c](./api/index.tscl) [d](/guide/x) [e](https://x.dev/y.md) [f](./notes.txt) [g](../../outside.md)',
+    '/app/src/pages/guide/intro.md', { route: '/guide/intro', root: '/app', addDependency: () => {} },
+  )
+  expect(out).toContain('<a href="/guide/setup">a</a>')
+  expect(out).toContain('<a href="/#top">b</a>')
+  expect(out).toContain('<a href="/guide/api">c</a>')
+  expect(out).toContain('<a href="/guide/x">d</a>')
+  expect(out).toContain('<a href="https://x.dev/y.md">e</a>')
+  expect(out).toContain('<a href="./notes.txt">f</a>')
+  expect(out).toContain('<a href="../../outside.md">g</a>') // not a page: left for the link checker to report
+})

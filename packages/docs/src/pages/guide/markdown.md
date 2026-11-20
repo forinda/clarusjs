@@ -102,6 +102,12 @@ The code above is this site's real `src/nav.ts`, read when the site is built. In
 
 In development, editing a snippet's file or an included file updates the page.
 
+## Links
+
+Link to another page by its file: `[Setup](./getting-started.tscl)` or `[Intro](./what-is-clarusjs.md#when-to-use-it)` become the page's route, so links survive moving a page and match what your editor shows.
+
+Every build checks links once all pages are written: a link to a page or file that doesn't exist fails the build, and a link to a missing `#anchor` is a warning, each with the file and line and a "did you mean" suggestion. Set the levels with the plugin's `links` option.
+
 ## Containers and alerts
 
 `::: tip`, `::: info`, `::: warning` and `::: danger` blocks, with an optional title, and `::: details` (a native `<details>`):
