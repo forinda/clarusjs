@@ -1,6 +1,6 @@
 import { modeFor, type ModeTable } from './modes.ts'
 import { stringify } from '../runtime/serialize.ts'
-import { completeHead, type HeadOptions } from './head.ts'
+import { completeHead, type HeadOptions, type SiteOptions } from './head.ts'
 import { escape } from '../runtime/html.ts'
 
 const DATA = '__data.json'
@@ -65,6 +65,8 @@ export function createHandler(
     css?: Record<string, string[]>
     /** Title template, site-wide head tags and a transform (see head.ts). */
     head?: HeadOptions
+    /** The site's public address: canonical URLs and social cards (see head.ts). */
+    site?: SiteOptions
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -233,7 +235,11 @@ export function createHandler(
       let html = (await found.route.load()).render(props)
       // A page that isn't a whole document is put in a minimal one, so every page's head is completed the same way.
       if (!/<html[\s>]/i.test(maskComments(html))) html = `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title></head><body>${html}</body></html>`
-      html = completeHead(html, maskComments, options.head ?? {}, { route: found.route.path, path: pathname })
+      try {
+        html = completeHead(html, maskComments, { ...options.head, site: options.site, base: options.base }, { route: found.route.path, path: pagePath(pathname, wantsFrag) })
+      } catch (err) {
+        return failure(`${found.route.file}: ${(err as Error).message}`)
+      }
       if (wantsFrag) {
         // The page's stylesheet links go right after its title, so fragment navigation can load any that are missing.
         const fragment = toFragment(html).replace(/^(<title\b[^>]*>[\s\S]*?<\/title\s*>)/i, (t) => t + pageLinks(found.route))
@@ -256,6 +262,12 @@ export function createHandler(
 }
 
 /** A 500 that tells the visitor nothing internal; the details go to the server log (and the build's output). */
+/** The page's own path: no trailing slash (but '/'), and without index.frag.html for a fragment. */
+function pagePath(pathname: string, fragment: boolean): string {
+  const path = fragment ? pathname.slice(0, -FRAG.length) : pathname
+  return path.replace(/(.)\/+$/, '$1') || '/'
+}
+
 function failure(message: string): Response {
   console.error(`[clarusjs] ${message}`)
   return new Response('Internal Server Error', { status: 500, headers: { 'content-type': 'text/plain; charset=utf-8' } })

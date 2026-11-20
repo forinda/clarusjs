@@ -118,6 +118,8 @@ head:
 ---
 ```
 
+A page's own social card image goes in `image` (`image: /cards/release.png`); with the plugin's `site` option, every page gets a canonical URL and social cards anyway.
+
 Structured data goes in `jsonLd` (an object, or a list of them), written as JSON-LD:
 
 ```md

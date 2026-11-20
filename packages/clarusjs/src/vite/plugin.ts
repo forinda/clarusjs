@@ -12,7 +12,7 @@ import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { routeFromFile } from '../server/handler.ts'
-import type { HeadTag } from '../server/head.ts'
+import type { HeadTag, SiteOptions } from '../server/head.ts'
 import { sendResponse, toRequest } from './node.ts'
 
 // From src/ (workspace, tests) our siblings are .ts files; from the published dist/ they are .js.
@@ -113,6 +113,11 @@ export type ClarusOptions = {
    * its own with the same key. Anything else: export `transformHead(head, page)` from src/head.ts.
    */
   head?: { titleTemplate?: string; tags?: HeadTag[]; jsonLd?: object | object[] }
+  /**
+   * The site's public address. Every page gets a canonical URL and social cards (Open Graph, Twitter) from its title,
+   * description and an image (the page's og:image, or `image`); absolute links to the site are link-checked.
+   */
+  site?: SiteOptions
 }
 export type { HeadTag }
 export type LinkLevel = 'error' | 'warn' | 'off'
@@ -142,6 +147,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   const modes = options.routes ?? {}
   checkModes(modes)
   const sources = options.sources ?? []
+  if (options.site && !/^https?:\/\/[^/]/.test(options.site.url)) throw new Error(`clarusjs: site.url must be an absolute http(s) URL, got "${options.site.url}"`)
   for (const src of sources) {
     if (!/^\.[\w-]+$/.test(src.extension)) throw new Error(`clarusjs: a source extension must look like ".md", got "${src.extension}"`)
     if (src.extension === '.tscl') throw new Error('clarusjs: .tscl files are compiled directly; a source needs its own extension')
@@ -285,6 +291,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         serverRoutes: server.map((x) => x.route),
         clientRoutes: pageRoutes.filter((r) => routes.includes(r === '/' ? '/__data.json' : `${r}/__data.json`)),
         base: builder.config.base,
+        site: options.site?.url,
       })
       const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn' }
       // Each problem names the page's source file, and the line where the link is written literally.
@@ -364,6 +371,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  stylesUrl: ${JSON.stringify(stylesUrl)},\n` +
         `  css: ${JSON.stringify(css)},\n` +
         // src/head.ts is optional: its transformHead (a function, so not a plugin option) runs on every page's head.
+        `  site: ${JSON.stringify(options.site)},\n` +
         `  head: { ...${JSON.stringify(options.head ?? {})}, transform: Object.values(import.meta.glob('/src/head.ts', { eager: true }))[0]?.transformHead },\n` +
         `})\n`
     } },

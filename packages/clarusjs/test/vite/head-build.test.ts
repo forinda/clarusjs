@@ -19,3 +19,15 @@ test('head option and src/head.ts transformHead apply to built pages', async () 
   expect(html).toContain('<title>Home · Site</title><meta name="description" content="home"><meta name="theme-color" content="#123"><meta name="page" content="/">')
   expect(html).not.toContain('cl-head')
 }, 120_000)
+
+test('site: an invalid url is a config error; a valid one gives built pages canonical URLs', async () => {
+  expect(() => clarusjs({ site: { url: 'example.com' } })).toThrow(/site\.url must be an absolute http\(s\) URL/)
+  const root = mkdtempSync(resolve(tmpdir(), 'clarus-site-'))
+  const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
+  w('src/pages/about.tscl', '<html><head><title>About</title></head><body><a href="https://example.com/">home</a></body></html>')
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
+  expect(readFileSync(resolve(root, 'dist/client/about/index.html'), 'utf8')).toContain('<link rel="canonical" href="https://example.com/about">')
+}, 120_000)

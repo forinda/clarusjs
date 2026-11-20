@@ -650,3 +650,15 @@ test('JSON-LD: the site WebSite entry and a TechArticle per page, as valid JSON'
   expect(data).toContainEqual(expect.objectContaining({ '@type': 'WebSite', name: 'clarusjs' }))
   expect(data).toContainEqual(expect.objectContaining({ '@type': 'TechArticle', headline: 'Markdown pages', url: 'https://clarusjs.com/guide/markdown' }))
 })
+
+test('canonical URL and social cards from site.url; the card image exists', async ({ page, request }) => {
+  await page.goto('/guide/markdown')
+  const head = page.locator('head')
+  await expect(head.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://clarusjs.com/guide/markdown')
+  await expect(head.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Markdown pages')
+  await expect(head.locator('meta[property="og:description"]')).toHaveAttribute('content', /Write pages in Markdown/)
+  await expect(head.locator('meta[property="og:image"]')).toHaveAttribute('content', 'https://clarusjs.com/og.png')
+  await expect(head.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image')
+  const png = await request.get('/og.png')
+  expect(png.headers()['content-type']).toBe('image/png')
+})

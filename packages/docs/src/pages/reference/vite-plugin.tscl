@@ -34,6 +34,10 @@ export default defineConfig({ plugins: [clarusjs()] })</code></pre><copy attach=
   },
 })</code></pre>
   <p>Head scripts run once per full page load: with fragment navigation or client routes, later pages don't reload them. Analytics that count page views from history changes (gtag's enhanced measurement does) keep counting.</p>
+  <h2>site</h2>
+  <p><strong>Type:</strong> <code>{{ '{' }} url: string; name?: string; image?: string {{ '}' }}</code></p>
+  <p>The site's public address (an absolute <code>http(s)</code> URL, or the config is rejected). Every page gets a canonical link and social cards: Open Graph <code>og:title</code> (the page title, without the template), <code>og:description</code> (its description meta), <code>og:url</code>, <code>og:type</code>, <code>og:site_name</code> (<code>name</code>), <code>og:image</code> and a Twitter card (<code>summary_large_image</code> with an image). They fill in like site tags: a page's own tags win, so an article can set <code>og:type</code> or its own <code>og:image</code> in <code>&lt;cl-head&gt;</code> (in Markdown, frontmatter <code>image</code>).</p>
+  <p>Images are made absolute: <code>/og.png</code> is a public file under the base, <code>img/a.png</code> is relative to the page. Without <code>site</code>, a page with a relative <code>og:image</code> or <code>og:url</code> fails the build instead of shipping a card that silently breaks. Link checking also checks absolute links to the site itself.</p>
   <h2>What it does</h2>
   <ul>
     <li><strong>vite</strong>: renders <code>src/pages/**/*.tscl</code> on each request.</li>
