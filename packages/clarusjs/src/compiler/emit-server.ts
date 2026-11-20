@@ -21,13 +21,16 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
   const html = htmlExpr(ir.nodes)
   const props = `{ ${ir.inputs.map((i) => i.name).join(', ')} }`.replace('{  }', '{}')
 
-  out += `\nexport function render(__cl_props = {}, __cl_slots) {\n`
+  out += `\nexport function render(__cl_props = {}, __cl_slots, __cl_opts) {\n`
   if (ir.stateful) out += `  if (__cl_slots !== undefined) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> does not accept children yet`)})\n`
-  else out += unknownSlotCheck(ir)
+  else {
+    out += unknownSlotCheck(ir)
+    out += `  if (__cl_opts?.attach) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> has no <script>, so attach="`)} + __cl_opts.attach + '" does nothing')\n`
+  }
   out += inputsLine(ir)
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   out += ir.stateful
-    ? `  return __cl_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html}${stateArg(ir)})\n`
+    ? `  return __cl_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html}, ${stateArg(ir)}, __cl_opts?.attach)\n`
     : `  return ${html}\n`
   return out + '}\n'
 }
@@ -43,5 +46,5 @@ function unknownSlotCheck(ir: ComponentIR): string {
 /** The component's state() values after its script ran: the island's starting point in the browser. */
 function stateArg(ir: ComponentIR): string {
   const names = [...ir.signals].filter(([, kind]) => kind === 'state').map(([name]) => name)
-  return names.length ? `, { ${names.join(', ')} }` : ''
+  return names.length ? `{ ${names.join(', ')} }` : 'undefined'
 }

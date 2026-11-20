@@ -11,13 +11,13 @@ test('counter server output is readable and exact', () => {
   expect(server(fixture('counter.clarus'), 'src/components/counter.clarus').code).toBe(
 `import { escape as __cl_escape, island as __cl_island } from 'clarusjs/runtime/server'
 
-export function render(__cl_props = {}, __cl_slots) {
+export function render(__cl_props = {}, __cl_slots, __cl_opts) {
   if (__cl_slots !== undefined) throw new Error("[clarusjs] <counter> does not accept children yet")
   const { start = 0 } = __cl_props
   let count = (start)
   const double = (() => count * 2)()
   function add() { count++ }
-  return __cl_island("counter", "/src/components/counter.clarus?import", { start }, "<button data-cl-e=\\"0\\">Clicked " + "<!--[0-->" + __cl_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __cl_escape(double) + "<!--]-->" + ")</button>", { count })
+  return __cl_island("counter", "/src/components/counter.clarus?import", { start }, "<button data-cl-e=\\"0\\">Clicked " + "<!--[0-->" + __cl_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __cl_escape(double) + "<!--]-->" + ")</button>", { count }, __cl_opts?.attach)
 }
 `)
 })

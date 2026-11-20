@@ -53,7 +53,9 @@ export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rew
     ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw)}`] : []),
     ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw)}`),
   ]
-  return slots.length ? `${renderName(n.name)}({ ${props} }, { ${slots.join(', ')} })` : `${renderName(n.name)}({ ${props} })`
+  const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
+  if (n.attach) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { attach: ${JSON.stringify(n.attach)} })`
+  return slotsArg ? `${renderName(n.name)}({ ${props} }, ${slotsArg})` : `${renderName(n.name)}({ ${props} })`
 }
 
 /** Index of the branch an @if picks: `(a ? 0 : b ? 1 : 2)`, or -1 when nothing matches and there is no @else. */

@@ -103,12 +103,18 @@ test('the nav marks the current page, and each page has its own description', as
 test('home: the "what ships" island switches @if branches in the browser', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (err) => errors.push(err.message))
+  const chunks: string[] = []
+  page.on('request', (req) => { if (/what-ships-.+\.js$/.test(req.url())) chunks.push(req.url()) })
   await page.goto('/')
+  await page.waitForLoadState('networkidle')
   const island = page.locator('cl-island[c="what-ships"]')
-  await expect(island).toHaveAttribute('data-cl-ready', '')
+  await expect(island).toHaveAttribute('a', 'interaction')
+  expect(chunks).toEqual([]) // attach="interaction": no code until it's used
   const toggle = island.locator('button.toggle')
   await expect(island.locator('ul.ships')).toHaveCount(0)
-  await toggle.click()
+  await toggle.click() // loads the island, and this click is replayed once it attaches
+  await expect(island).toHaveAttribute('data-cl-ready', '')
+  expect(chunks).toHaveLength(1)
   await expect(island.locator('ul.ships li')).toHaveCount(3)
   await expect(toggle).toHaveText('Hide')
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')

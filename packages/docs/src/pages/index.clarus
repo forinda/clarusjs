@@ -17,7 +17,7 @@
   <h2>This page has one island</h2>
   <p>Everything on this page is static HTML, rendered at build time. The button below is a component with a <code>&lt;script&gt;</code>, so it is the only thing that ships JavaScript. Click it.</p>
   <div class="demo"><counter [start]="0" /></div>
-  <whatShips />
+  <whatShips attach="interaction" />
   <pre><code verbatim>@input start: number = 0
 
 <script>

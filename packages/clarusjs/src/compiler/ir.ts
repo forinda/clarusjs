@@ -9,7 +9,7 @@ export type IRNode =
   // children: content for the default slot; fills: content for named slots (@slot('name') { … }).
   // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
   // can re-render it (-1 otherwise).
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number }
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number; attach?: string }
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
   | { kind: 'slot'; name: string; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
@@ -34,6 +34,7 @@ export type ComponentIR = {
   events: IREvent[]
 }
 
+const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
 export function lower(parsed: ParsedFile, file: string, source: string): ComponentIR {
@@ -121,9 +122,14 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     }
     if (components.has(node.tag)) {
       const props: { name: string; expr: string }[] = []
+      let attach: string | undefined
       for (const a of node.attrs) {
         if (a.kind === 'prop') { checkExpr(a.expr, file, source, a.start); props.push({ name: a.name, expr: a.expr }) }
-        else fail(`component <${node.tag}> only takes [prop] bindings`, a.start)
+        else if (a.kind === 'static' && a.name === 'attach') {
+          // When the island's code loads in the browser (see runtime/loader.ts).
+          if (typeof a.value !== 'string' || !ATTACH_MODES.includes(a.value)) fail(`attach must be one of ${ATTACH_MODES.join(', ')}`, a.start)
+          attach = a.value as string
+        } else fail(`component <${node.tag}> only takes [prop] bindings and attach="…"`, a.start)
       }
       // Content is rendered here, in this component's scope, and handed to the child for its slots.
       const hasContent = node.children.some((c) => c.type !== 'text' || c.value.trim())
@@ -149,7 +155,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       // Whitespace around @slot blocks is not content for the default slot.
       const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
       scopeKey = parentScope
-      out.push({ kind: 'component', name: node.tag, props, children, fills, region })
+      out.push({ kind: 'component', name: node.tag, props, children, fills, region, ...(attach ? { attach } : {}) })
       return
     }
     if (node.tag === 'slot') {
