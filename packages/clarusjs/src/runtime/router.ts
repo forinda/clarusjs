@@ -64,7 +64,7 @@ export async function show(
     script.remove()
   }
   // Attaches the new page's islands; the loader also releases the old page's.
-  ;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach?.(document.body)
+  ;(globalThis as { __clAttach?: (root: ParentNode, navigated: 1) => void }).__clAttach?.(document.body, 1) // 1: navigated (bytes)
   return true
 }
 

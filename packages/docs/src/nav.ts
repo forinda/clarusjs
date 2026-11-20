@@ -106,6 +106,7 @@ export function pager(path: string): { prev: Item; next: Item } {
 
 // Pages written in Markdown (src/pages/**/*.md): their source file has that extension.
 const MARKDOWN = new Set([
+  '/guide/accessibility',
   '/guide/attributes',
   '/guide/build',
   '/guide/client-routes',
@@ -121,15 +122,20 @@ const MARKDOWN = new Set([
   '/guide/lazy-attach',
   '/guide/lists',
   '/guide/markdown',
-  '/guide/accessibility',
   '/guide/project-structure',
   '/guide/rendering-modes',
   '/guide/routing',
   '/guide/slots',
   '/guide/state',
   '/guide/stores',
+  '/guide/styles',
   '/guide/type-checking',
   '/guide/what-is-clarusjs',
+  '/reference/cli',
+  '/reference/island-attributes',
+  '/reference/runtime',
+  '/reference/template-syntax',
+  '/reference/vite-plugin',
 ])
 
 /** "Edit this page" link for a route. */

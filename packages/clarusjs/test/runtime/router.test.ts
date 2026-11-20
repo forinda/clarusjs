@@ -31,7 +31,7 @@ test('show() loads the render module and the data, swaps the document, and attac
   expect(get).toHaveBeenCalledWith('/app/7/__data.json')
   expect(document.title).toBe('Item 7')
   expect(document.body.querySelector('h1')!.textContent).toBe('7 1970')
-  expect(attach).toHaveBeenCalledWith(document.body)
+  expect(attach).toHaveBeenCalledWith(document.body, 1) // navigated: focus and announce (loader)
 })
 
 test('show() leaves other routes alone, and a failed data request is an error', async () => {
