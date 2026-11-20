@@ -38,6 +38,19 @@
   .bar { width: var(--width); }
 </style></code></pre><copy attach="interaction" /></div>
 
+  <h2>Dark mode without a flash</h2>
+  <p>A saved theme has to be on the page before it is first drawn, or visitors see the wrong colours for a moment. Put a small <code>&lt;script inline&gt;</code> at the top of your layout's <code>&lt;head&gt;</code>: it is written into the page as is and runs before anything is shown. This site does exactly that.</p>
+  <div class="sample"><pre><code verbatim><head>
+  <script inline>
+    try {
+      const t = localStorage.getItem('theme')
+      if (t) document.documentElement.setAttribute('data-theme', t)
+    } catch {}
+  </script>
+  <link rel="stylesheet" href="/site.css">
+</head></code></pre><copy attach="interaction" /></div>
+  <p>Inline scripts take static attributes only and their content is never treated as a template. On client routes, the router runs the new page's inline head scripts, as a normal page load would.</p>
+
   <h2>How styles reach the page</h2>
   <p>Every component's styles are bundled into one stylesheet that each page links: it is cached once and stays valid as you move between pages. This site's <a href="/guide/components">callouts</a> are styled that way.</p>
   <callout [type]="'info'"><p><code>@scope</code> is supported in all current major browsers. In older ones, scoped rules are ignored.</p></callout>

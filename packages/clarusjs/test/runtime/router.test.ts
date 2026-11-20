@@ -25,7 +25,6 @@ test('show() loads the render module and the data, swaps the document, and attac
   expect(get).toHaveBeenCalledWith('/app/7/__data.json')
   expect(document.title).toBe('Item 7')
   expect(document.body.querySelector('h1')!.textContent).toBe('7 1970')
-  expect(document.head.querySelector('style')!.textContent).toBe('cl-island{display:contents}')
   expect(attach).toHaveBeenCalledWith(document.body)
 })
 
@@ -68,4 +67,12 @@ test('review: under a base, the route table holds browser paths and data stays u
   const get = vi.fn(async () => new Response('{}'))
   expect(await show(new URL('http://x/docs/app/7'), based, async () => ({ render: () => '<p>ok</p>' }), get)).toBe(true)
   expect(get).toHaveBeenCalledWith('/docs/app/7/__data.json')
+})
+
+test('#110: the rendered page head keeps its inline scripts, re-created in the live document (Playwright checks they run)', async () => {
+  const render = () => '<html><head><script>window.__ran = 1</script></head><body><p>x</p></body></html>'
+  await show(new URL('http://x/app'), table, async () => ({ render }), async () => new Response('{}'))
+  const scripts = [...document.head.querySelectorAll('script')]
+  expect(scripts.map((s) => s.textContent)).toEqual(['window.__ran = 1'])
+  expect(scripts[0]!.ownerDocument).toBe(document)
 })

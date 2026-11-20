@@ -527,3 +527,24 @@ test('component styles reach components rendered inside islands', async ({ page 
   await expect(pill).toBeVisible()
   expect(await pill.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('999px')
 })
+
+test('no theme flash: the saved theme is on <html> before any module script runs', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('clarusjs-theme', 'dark') } catch {} })
+  await page.route('**/assets/**/*.js', (route) => route.abort()) // no island, loader or navigation code at all
+  await page.goto('/guide/holes')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).not.toBe('rgb(251, 252, 252)')
+})
+
+test('the saved theme survives fragment navigation and client routes (the router runs inline head scripts)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('clarusjs-theme', 'dark') } catch {} })
+  await page.goto('/guide/holes')
+  await page.locator('.sidebar a[href="/guide/lists"]').click()
+  await expect(page.locator('h1')).toHaveText('Lists')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  // On a client route, block the theme toggle's own code: only the page's inline head script can set the theme.
+  await page.route('**/theme-toggle-*.js', (route) => route.abort())
+  await page.goto('/tour/1')
+  await expect(page.locator('h1')).toHaveText('A shell arrives')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+})

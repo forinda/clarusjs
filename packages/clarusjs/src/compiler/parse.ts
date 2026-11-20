@@ -304,8 +304,17 @@ export function parse(source: string, file: string): ParsedFile {
         if (i >= source.length) fail(`unclosed <${tag}>`, start)
         const selfClosing = source.startsWith('/>', i)
         i += selfClosing ? 2 : 1
-        if (tag === 'script') {
-          if (parent) fail('<script> must be at the top level', start)
+        if (tag === 'script' && list.some((a) => a.name === 'inline')) {
+          // <script inline>: written out as is and run where it stands (e.g. in <head>, before the first paint).
+          const bound = list.find((a) => a.kind !== 'static')
+          if (bound) fail('an inline script takes static attributes only', bound.start)
+          const end = source.indexOf('</script>', i)
+          if (end === -1) fail('unclosed <script inline>', start)
+          const kids: TemplateNode[] = selfClosing ? [] : [{ type: 'text', value: source.slice(i, end), start: i }]
+          nodes.push({ type: 'element', tag, attrs: list.filter((a) => a.name !== 'inline'), children: kids, start })
+          i = selfClosing ? i : end + '</script>'.length
+        } else if (tag === 'script') {
+          if (parent) fail('<script> must be at the top level (a component script); add `inline` for a script that runs where it stands', start)
           if (out.script) fail('only one <script> block is allowed', start)
           const end = source.indexOf('</script>', i)
           if (end === -1) fail('unclosed <script>', start)

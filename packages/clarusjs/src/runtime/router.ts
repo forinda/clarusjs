@@ -48,15 +48,20 @@ export async function show(
   ])
   if (!isCurrent()) return false
   const doc = new DOMParser().parseFromString(page.render(props), 'text/html')
-  const style = doc.createElement('style')
-  style.textContent = 'cl-island{display:contents}' // islands never affect layout
-  doc.head.append(style)
   // The page's <title> comes with its head; its own <html> attributes (lang, dir, …) replace the previous page's.
+  // (The island style lives on the document, installed by the loader, so it survives the head swap.)
   const root = document.documentElement
   for (const { name } of [...root.attributes]) root.removeAttribute(name)
   for (const { name, value } of [...doc.documentElement.attributes]) root.setAttribute(name, value)
   document.head.replaceWith(doc.head)
   document.body.replaceWith(doc.body)
+  // Scripts parsed by DOMParser never run: the page's inline head scripts (such as setting the theme before paint)
+  // run now, re-created in the live document, as they would on a normal load.
+  for (const old of document.head.querySelectorAll('script:not([src])')) {
+    const script = document.createElement('script')
+    script.textContent = old.textContent
+    old.replaceWith(script)
+  }
   // Attaches the new page's islands; the loader also releases the old page's.
   ;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach?.(document.body)
   return true
@@ -79,7 +84,7 @@ if (routes) {
   let latest = 1 // the first render is navigation 1
   show(new URL(location.href), table, undefined, undefined, () => latest === 1).catch((err: Error) => {
     if (latest !== 1) return
-    document.body.textContent = err.message.startsWith('not found') ? 'Page not found.' : 'Could not load this page.'
+    document.body.textContent = err.message.startsWith('not found') ? 'Page not found.' : 'Could not load page.'
   })
   // A URL that failed to render is loaded normally, never intercepted again (no retry loop). canIntercept is
   // only true for same-origin navigations, so no origin check is needed.
@@ -87,7 +92,7 @@ if (routes) {
   const navigation = (globalThis as { navigation?: EventTarget }).navigation
   navigation?.addEventListener('navigate', (event) => {
     const e = event as NavigateEvent
-    if (!e.canIntercept || e.hashChange || e.downloadRequest !== null || e.formData) return
+    if (!e.canIntercept || e.hashChange || e.downloadRequest != null || e.formData) return
     const url = new URL(e.destination.url)
     if (url.href === fallback || !matchRoute(table, url.pathname)) return
     const id = ++latest
