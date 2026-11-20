@@ -1,16 +1,19 @@
 @import copy from '../../components/copy.tscl'
 @import docs from '../../layouts/docs.tscl'
 
-<docs [title]="'Vite plugin'" [path]="'/reference/vite-plugin'" [description]="'What the clarusjs Vite plugin does in dev, build and preview.'">
+<docs [title]="'Vite plugin'" [path]="'/reference/vite-plugin'" [description]="'The clarusjs Vite plugin: its routes option, and what it does in dev, build and preview.'">
   <h1>Vite plugin</h1>
   <div class="sample"><pre><code verbatim>import clarusjs from 'clarusjs/vite'
 
 export default defineConfig({ plugins: [clarusjs()] })</code></pre><copy attach="interaction" /></div>
-  <p>The plugin takes no options yet.</p>
+  <h2>routes</h2>
+  <p><strong>Type:</strong> <code>Record&lt;string, 'static' | 'server'&gt;</code> · <strong>Default:</strong> <code>{}</code> (every route is static)</p>
+  <p>When each route renders. Keys are paths (<code>/about</code>) or folders (<code>/account/*</code>, which also matches <code>/account</code>); the most specific one wins. An unknown mode, or a pattern that doesn't start with <code>/</code>, stops the build. See <a href="/guide/rendering-modes">Rendering modes</a>.</p>
+  <div class="sample"><pre><code verbatim>clarusjs({ routes: { '/account/*': 'server' } })</code></pre><copy attach="interaction" /></div>
   <h2>What it does</h2>
   <ul>
     <li><strong>vite</strong>: renders <code>src/pages/**/*.tscl</code> on each request.</li>
-    <li><strong>vite build</strong>: builds the client, then the server, then prerenders every page to <code>dist/client</code>.</li>
-    <li><strong>vite preview</strong>: serves the built pages at their routes.</li>
+    <li><strong>vite build</strong>: builds the client, then the server, then prerenders every static page to <code>dist/client</code>. Server routes are left to <code>dist/server/index.mjs</code>.</li>
+    <li><strong>vite preview</strong>: serves the built pages at their routes, and server routes through the built handler.</li>
   </ul>
 </docs>
