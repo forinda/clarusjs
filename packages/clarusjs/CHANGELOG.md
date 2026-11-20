@@ -1,5 +1,13 @@
 # clarusjs
 
+## 0.6.0
+
+### Minor Changes
+
+- [#106](https://github.com/forinda/clarusjs/pull/106) [`0d2a8bf`](https://github.com/forinda/clarusjs/commit/0d2a8bfbed364ada58ddac64e44f2703aff5d456) Thanks [@forinda](https://github.com/forinda)! - Fragment navigation: with `fragments: true`, every static and server page loads a navigation script (under 1 KB gzip) that intercepts same-site navigations with the Navigation API, fetches the page's `index.frag.html`, swaps its region (`data-cl-swap`, or the body), updates the title, and attaches the islands that arrive. Elements marked `data-cl-persist="key"` are kept across swaps with their state. Back and forward work; only the latest navigation may change the page; a failure falls back to a normal load. Browsers without the Navigation API load pages normally.
+
+- [#105](https://github.com/forinda/clarusjs/pull/105) [`8edebd6`](https://github.com/forinda/clarusjs/commit/8edebd69d434ab899940ba345e15619dabdfe081) Thanks [@forinda](https://github.com/forinda)! - Fragment responses: with `fragments: true`, every static and server page also answers at `<path>/index.frag.html` with its `<title>` and its swap region (the element marked `data-cl-swap`, or the `<body>`). `vite build` writes the files next to each static page; server routes serve them from the handler and, with `adapter: 'netlify'`, from the function. The URL selects the fragment (not a header), so it works on static hosts.
+
 ## 0.5.0
 
 ### Minor Changes
