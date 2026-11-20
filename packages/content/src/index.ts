@@ -25,15 +25,15 @@ function renderer(): Md {
   const md = new MarkdownIt({ html: true, linkify: true })
   // Headings get an id and an anchor link; ids are unique within the page.
   md.core.ruler.push('cl_anchors', (state) => {
-    const used = new Map<string, number>()
+    const used = new Set<string>()
     state.tokens.forEach((token, i) => {
       if (token.type !== 'heading_open') return
       const inline = state.tokens[i + 1]!
       const text = (inline.children ?? []).filter((t: Tok) => t.type === 'text' || t.type === 'code_inline').map((t: Tok) => t.content).join('')
       const base = slugify(text)
-      const n = used.get(base) ?? 0
-      used.set(base, n + 1)
-      const id = n ? `${base}-${n}` : base
+      let id = base
+      for (let n = 1; used.has(id); n++) id = `${base}-${n}`
+      used.add(id)
       token.attrSet('id', id)
       token.attrSet('tabindex', '-1')
       const anchor = new state.Token('html_inline', '', 0)
@@ -55,7 +55,13 @@ function staticHtml(html: string): string {
  */
 function protectTags(body: string, components: Set<string>): { body: string; restore(html: string): string } {
   const saved: string[] = []
-  const out = body.replace(/<\/?([A-Za-z][\w-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/g, (tag, name: string, attrs: string) => {
+  // Code (fences, then inline spans) is matched first and kept as written: a tag in an example stays text.
+  // ponytail: indented code blocks aren't recognised; use a fence to show a component tag in code.
+  const code = /(?:^|\n)[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:\n[ \t]*\1[`~]*[ \t]*(?=\n|$)|$)|(`+)[\s\S]*?[^`]\2(?!`)/
+  const tag = /<\/?([A-Za-z][\w-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/
+  const out = body.replace(new RegExp(`${code.source}|${tag.source}`, 'g'), (match, _fence, _ticks, name: string | undefined, attrs: string) => {
+    if (name === undefined) return match
+    const tag = match
     if (!components.has(name) && !/\s[[(]/.test(attrs)) return tag
     saved.push(tag)
     return `<!--cl-tag-${saved.length - 1}-->`
@@ -67,7 +73,7 @@ export default function markdown(options: MarkdownOptions = {}): Source {
   const md = renderer()
   return {
     extension: '.md',
-    toTscl(code, _file, { route }) {
+    toTscl(code, file, { route }) {
       // ---\nyaml\n---: the page's frontmatter.
       const front = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(code)
       const data = (front ? parseYaml(front[1]!) : null) ?? {}
@@ -81,6 +87,8 @@ export default function markdown(options: MarkdownOptions = {}): Source {
         body = body.slice(line[0].length)
       }
       const components = new Set(imports.map((line) => /^@import\s+([A-Za-z_$][\w-]*)\s+from/.exec(line)?.[1]).filter((n): n is string => !!n))
+      // cl-layout names the generated layout import (tag names must start with a letter, so not __cl_).
+      if (components.has('cl-layout')) throw new Error(`${file}: cl-layout is reserved for the page's layout; import the component under another name`)
       const tags = protectTags(body, components)
       const env: Record<string, unknown> = {}
       const tokens = md.parse(tags.body, env)

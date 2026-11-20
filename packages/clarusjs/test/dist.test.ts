@@ -44,7 +44,7 @@ test('built Vite plugin points at built runtime files that exist', async () => {
   const loader = plugin.resolveId('/cl-loader.js')
   expect(loader).toBe(`${dist}/runtime/loader.js`)
   expect(existsSync(loader)).toBe(true)
-  const entry = plugin.load('\0virtual:clarusjs/server-entry') as string
+  const entry = plugin.load.handler('\0virtual:clarusjs/server-entry') as string
   expect(entry).toContain(`${dist}/server/handler.js`)
 })
 

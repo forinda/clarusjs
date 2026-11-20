@@ -44,3 +44,14 @@ test('a source extension must start with a dot and not be .tscl', () => {
   expect(() => clarusjs({ sources: [{ extension: 'md', toTscl: () => '' }] })).toThrow(`clarusjs: a source extension must look like ".md", got "md"`)
   expect(() => clarusjs({ sources: [{ extension: '.tscl', toTscl: () => '' }] })).toThrow(/\.tscl/)
 })
+
+test('a source whose extension Vite treats as an asset (.txt) still gets the file text, not a URL module', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'clarusjs-sources-asset-'))
+  const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
+  w('src/pages/readme.txt', 'Plain text page.\n')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  const txt: Source = { extension: '.txt', toTscl: (code) => `<p>${code.trim()}</p>` }
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ sources: [txt] })] })).buildApp()
+  expect(readFileSync(resolve(root, 'dist/client/readme/index.html'), 'utf8')).toContain('<p>Plain text page.</p>')
+}, 120_000)

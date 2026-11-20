@@ -53,3 +53,20 @@ test('slugify: lowercase words joined with dashes; duplicates numbered', () => {
   expect(out).toContain('id="same"')
   expect(out).toContain('id="same-1"')
 })
+
+test('heading ids never collide, even with a heading that looks like a numbered duplicate', () => {
+  const ids = [...page('## Same\n\n## Same\n\n## Same-1\n').matchAll(/<h2 id="([^"]+)"/g)].map((m) => m[1])
+  expect(ids).toEqual(['same', 'same-1', 'same-1-1'])
+})
+
+test('component tags inside code spans and fences stay literal text', () => {
+  const out = page("@import note from '../../components/note.tscl'\n\nUse `<note>` like this:\n\n```html\n<note [kind]=\"'tip'\">Hi</note>\n```\n\n<note>Real</note>\n")
+  expect(out).toContain('<code>&lt;note&gt;</code>')
+  expect(out).toContain('&lt;note [kind]=&quot;\'tip\'&quot;&gt;Hi&lt;/note&gt;')
+  expect(out).toContain('<note>Real</note>')
+  expect(out).not.toContain('cl-tag')
+})
+
+test('cl-layout is reserved for the generated layout import', () => {
+  expect(() => page("@import cl-layout from '../../components/x.tscl'\n\nHi\n")).toThrow(/cl-layout is reserved/)
+})

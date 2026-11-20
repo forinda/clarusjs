@@ -268,8 +268,15 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (id === '/cl-nav.js') return here('../runtime/fragments')
       if (id === ENTRY) return '\0' + ENTRY
     },
-    load(id) {
-      if (id !== '\0' + ENTRY) return
+    // order 'pre': a page source's file is read as text before Vite's asset loader can claim it (.txt,
+    // assetsInclude), so the transform converts the original text, never a URL module.
+    load: { order: 'pre', handler(id) {
+      if (id !== '\0' + ENTRY) {
+        if (/[?&](raw|url|inline)\b/.test(id) || id.startsWith('\0')) return null
+        const file = id.replace(/\?.*$/, '')
+        if (!sources.some((x) => file.endsWith(x.extension)) || !file.startsWith(resolve(root, 'src') + sep)) return null
+        return readFileSync(file, 'utf8')
+      }
       const urls = builtUrls()
       const loaderUrl = urls?.get(LOADER_ENTRY) ?? '/cl-loader.js'
       const routerUrl = urls?.get(ROUTER_ENTRY) ?? '/cl-router.js'
@@ -312,7 +319,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  stylesUrl: ${JSON.stringify(stylesUrl)},\n` +
         `  css: ${JSON.stringify(css)},\n` +
         `})\n`
-    },
+    } },
     transform: {
       filter: { id: fileRe },
       handler(raw, id) {
@@ -341,7 +348,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         try {
           // A ?render module runs in the browser: its child components must be render modules too.
           const renderImports = renderQuery && this.environment.config.consumer !== 'server'
-          return { code: compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file) }).code, map: null }
+          // moduleType: a source extension may have its own built-in type in Rolldown (.txt is text); the output is JS.
+          return { code: compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file) }).code, map: null, moduleType: 'js' }
         } catch (err) {
           if (err instanceof ClarusError) this.error(err.message)
           throw err

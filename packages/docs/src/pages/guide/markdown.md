@@ -12,6 +12,7 @@ description: Write pages in Markdown with @clarusjs/content - frontmatter, a lay
 
 ```ts
 // vite.config.ts
+import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
 import markdown from '@clarusjs/content'
 
