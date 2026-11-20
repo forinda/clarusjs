@@ -704,3 +704,27 @@ test('a11y: axe finds no violations (landmarks, names, ARIA) on representative p
     expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`), path).toEqual([])
   }
 })
+
+test('a11y: after fragment navigation, focus is on the new heading and the title is announced', async ({ page }) => {
+  await page.goto('/guide/holes')
+  await expect(page.locator('[data-cl-persist="theme"] cl-island')).toHaveAttribute('data-cl-ready', '')
+  await page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: 'Lists' }).click()
+  await expect(page.locator('h1')).toHaveText('Lists')
+  await expect(page.locator('h1')).toBeFocused()
+  await expect(page.locator('#cl-live')).toHaveAttribute('aria-live', 'polite')
+  await expect(page.locator('#cl-live')).toHaveText('Lists · clarusjs')
+  // A link to a #hash on another page focuses its target.
+  await page.goto('/guide/holes')
+  await expect(page.locator('[data-cl-persist="theme"] cl-island')).toHaveAttribute('data-cl-ready', '')
+  await page.evaluate(() => { (globalThis as { navigation?: { navigate(u: string): unknown } }).navigation!.navigate('/guide/markdown#links') })
+  await expect(page.locator('h2#links')).toBeFocused()
+})
+
+test('a11y: after a client route render, focus is on the new heading and the title is announced', async ({ page }) => {
+  await page.goto('/tour/1')
+  await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
+  await page.click('nav.tour a.next')
+  await expect(page.locator('h1')).toHaveText('The router renders')
+  await expect(page.locator('h1')).toBeFocused()
+  await expect(page.locator('#cl-live')).toHaveText('Client tour, step 2 · clarusjs')
+})

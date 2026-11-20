@@ -36,3 +36,7 @@ A `false` attribute value leaves the attribute out.
 ## Controls
 
 Every control is a native one: the theme toggle and copy buttons are `<button>` elements with a name, the mobile page list is a checkbox (it works without JavaScript), and code-group tabs are radio buttons. Code blocks that can scroll sideways have `tabindex="0"`, so they can be scrolled from the keyboard.
+
+## After navigation
+
+With [fragment navigation](./fragment-navigation.md) or [client routes](./client-routes.md), the page changes without a reload, so a screen reader hears nothing and focus would stay on the link that was clicked. clarusjs handles it: after each swap or client render, focus moves to the new content (the `#hash` target if the URL has one, else the page's `<h1>`, else `<main>`), and the new page title is announced in a polite live region. A heading or `<main>` that gets focus this way gets `tabindex="-1"`, so it doesn't become a tab stop; hide its focus ring with `[tabindex="-1"]:focus { outline: none; }` if you like. Full page loads need none of this: the browser already does it.
