@@ -35,6 +35,9 @@
     "./server": "./src/server/handler.ts",
     "./vite": "./src/vite/plugin.ts"
   },
+  "bin": {
+    "clarusjs": "./dist/cli/index.js"
+  },
   "files": [
     "dist",
     "LICENSE",

@@ -7,13 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check": "node --experimental-strip-types ../clarusjs/src/cli/index.ts check"
   },
   "dependencies": {
     "clarusjs": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "1.65.1",
-    "vite": "^8.3.8"
+    "vite": "^8.3.8",
+    "typescript": "^7.0.2"
   }
 }

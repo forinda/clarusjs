@@ -23,6 +23,7 @@ pnpm typecheck      # tsc --noEmit in every package
 pnpm dev            # serves examples/counter
 pnpm docs:dev       # the docs site (packages/docs), built with clarusjs
 pnpm docs:test      # builds the docs site and runs its Playwright tests (Chromium)
+pnpm docs:check     # clarusjs check on the docs site: type errors at file.clarus:line:col
 pnpm changeset      # describe a change to a published package (commit the generated file)
 ```
 

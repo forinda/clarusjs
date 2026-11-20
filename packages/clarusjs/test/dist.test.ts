@@ -53,3 +53,10 @@ test('every path in "files" exists, including README and LICENSE (npm shows the 
   expect(pkg.files).toEqual(expect.arrayContaining(['dist', 'LICENSE', 'README.md']))
   for (const f of pkg.files as string[]) expect(existsSync(`${pkgDir}/${f}`), f).toBe(true)
 })
+
+test('the clarusjs command is built, with a shebang', () => {
+  const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))
+  const bin = resolve(pkgDir, pkg.bin.clarusjs)
+  expect(bin.startsWith(dist)).toBe(true)
+  expect(readFileSync(bin, 'utf8').startsWith('#!/usr/bin/env node')).toBe(true)
+})
