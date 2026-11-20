@@ -34,6 +34,11 @@ export function generateTs(source: string, file: string): { code: string; mappin
     emit(` from ${JSON.stringify(t.from)}\n`)
   }
   for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)} } from ${JSON.stringify(`${imp.from}.ts`)}\n`)
+  for (const d of parsed.dataImports) {
+    emit('import ')
+    copy(d.clause, d.clauseStart)
+    emit(` from ${JSON.stringify(d.from)}\n`)
+  }
   const script = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : null
   if (parsed.script && script) {
     for (const line of script.imports) {

@@ -1,6 +1,6 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
 import { ClarusError } from './errors.ts'
-import type { ImportDecl, InputDecl, ParsedFile, TemplateNode } from './parse.ts'
+import { importNames, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
 import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
@@ -28,6 +28,7 @@ export type ComponentIR = {
   imports: ImportDecl[]
   script?: string // without its import statements, which are in scriptImports
   scriptImports: string[]
+  dataImports: DataImport[]
   signals: Signals
   stateful: boolean
   nodes: IRNode[]
@@ -45,6 +46,11 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.
   // text()'s effect tracks the real dependencies, so over-marking only costs a pair of comment markers.
   const scriptScope = parsed.script ? new Set([...signals.keys(), ...scriptNames(parsed.script.code)]) : new Set<string>()
+  for (const d of parsed.dataImports) {
+    // In an island the import is bundled for the browser, like a script import.
+    if (stateful && d.from.startsWith('node:')) fail(`\`${d.from}\` can't be imported in an island: its imports are bundled for the browser`, d.start)
+    if (stateful) for (const name of importNames(d.clause)) scriptScope.add(name)
+  }
   const components = new Set(parsed.imports.map((i) => i.name))
   const nodes: IRNode[] = []
   let out = nodes // where lowering writes; switched while lowering a component's children
@@ -219,6 +225,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     imports: parsed.imports,
     script: parsed.script ? split.body : undefined,
     scriptImports: split.imports,
+    dataImports: parsed.dataImports,
     signals,
     stateful,
     nodes,

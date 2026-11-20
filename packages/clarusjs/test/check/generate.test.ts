@@ -120,3 +120,10 @@ test('$event is typed by event name, its target is left open', () => {
 <input (input)="v = $event.target.value; $event.data?.length"><b (click)="$event.clientX.toFixed()">x</b>
 ` })).toEqual([])
 })
+
+test('#77: imported data is typed', () => {
+  expect(check({
+    'src/nav.ts': `export const nav = [{ title: 'Intro', href: '/intro' }]\n`,
+    'src/pages/index.clarus': `@import { nav } from '../nav'\n@for (item of nav) {<a [href]="item.hrfe">{{ item.title }}</a>}\n`,
+  })).toEqual([expect.stringMatching(/^src\/pages\/index\.clarus:2:37 Property 'hrfe' does not exist/)])
+})
