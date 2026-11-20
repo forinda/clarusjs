@@ -108,3 +108,7 @@ test('frontmatter jsonLd becomes JSON-LD scripts in <cl-head>, as JSON the templ
 test('#116: frontmatter image is the page social card image', () => {
   expect(page('---\ntitle: T\nimage: /cards/t.png\n---\nx\n')).toContain('<cl-head><meta property="og:image" content="/cards/t.png"></cl-head>')
 })
+
+test('frontmatter sitemap: false opts the page out of the sitemap', () => {
+  expect(page('---\ntitle: T\nsitemap: false\n---\nx\n')).toContain('<cl-head><meta name="sitemap" content="false"></cl-head>')
+})

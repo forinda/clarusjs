@@ -7,7 +7,7 @@ const md = (code: string, options = {}) => markdown(options).toTscl(code, '/a/sr
 
 test('a fenced block is highlighted with light and dark colours as CSS variables, no inline colours', () => {
   const out = md('```ts\nconst a: number = 1\n```\n')
-  expect(out).toMatch(/^<div class="code-block language-ts"><span class="lang">ts<\/span><pre class="shiki shiki-themes github-light github-dark"/)
+  expect(out).toMatch(/^<div class="code-block language-ts"><span class="lang">ts<\/span><pre class="shiki shiki-themes github-light-default github-dark-default"/)
   expect(out).toContain('--shiki-light:')
   expect(out).toContain('--shiki-dark:')
   expect(out).not.toMatch(/style="color:/)
@@ -51,4 +51,10 @@ test('with copy: { tag, from }, each block gets your copy component', () => {
   expect(out.split('\n')[0]).toBe("@import copy from '/src/components/copy.tscl'")
   expect(out).toMatch(/<\/pre><copy attach="interaction" \/><\/div>/)
   expect(() => compile(out, { file: 'x.tscl', target: 'server' })).not.toThrow()
+})
+
+test('#122: the light theme\'s comments use an AA colour (#59636e), not #6e7781', () => {
+  const out = markdown({ layout: false }).toTscl('```ts\n// a comment\n```\n', '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })
+  expect(out.toLowerCase()).toContain('--shiki-light:#59636e')
+  expect(out.toLowerCase()).not.toContain('#6e7781')
 })

@@ -45,6 +45,9 @@ export const sections: Section[] = [
         { title: 'This site, explained', href: '/guide/explained' },
         { title: 'Server playground', href: '/playground' },
       ] },
+      { title: 'Site quality', items: [
+        { title: 'Accessibility', href: '/guide/accessibility' },
+      ] },
       { title: 'Tooling', items: [
         { title: 'Type checking', href: '/guide/type-checking' },
       ] },
@@ -103,6 +106,7 @@ export function pager(path: string): { prev: Item; next: Item } {
 
 // Pages written in Markdown (src/pages/**/*.md): their source file has that extension.
 const MARKDOWN = new Set([
+  '/guide/accessibility',
   '/guide/attributes',
   '/guide/build',
   '/guide/client-routes',
@@ -124,8 +128,14 @@ const MARKDOWN = new Set([
   '/guide/slots',
   '/guide/state',
   '/guide/stores',
+  '/guide/styles',
   '/guide/type-checking',
   '/guide/what-is-clarusjs',
+  '/reference/cli',
+  '/reference/island-attributes',
+  '/reference/runtime',
+  '/reference/template-syntax',
+  '/reference/vite-plugin',
 ])
 
 /** "Edit this page" link for a route. */

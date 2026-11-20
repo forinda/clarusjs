@@ -3,7 +3,7 @@
 <docs [title]="'Verbatim'" [path]="'/guide/verbatim'" [description]="'Show template code as text with the verbatim attribute.'">
   <h1>Verbatim</h1>
   <p class="lead">Add <code>verbatim</code> to an element and everything inside it is shown as text: no holes, tags or directives. That's how every code sample on this site is written.</p>
-  <pre verbatim><code verbatim>
+  <pre verbatim tabindex="0"><code verbatim>
   <p>Hello, {{ name }}!</p>
 </code></pre>
   <p>The content can't contain the element's own closing tag. This sample contains <code>&lt;/code&gt;</code>, so it sits in a <code>&lt;pre verbatim&gt;</code> instead.</p>
