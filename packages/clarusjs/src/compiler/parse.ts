@@ -12,6 +12,7 @@ export type TemplateNode =
   | { type: 'expr'; expr: string; start: number } // {{ expr }}
   | { type: 'raw'; value: string; start: number } // content of a `verbatim` element, shown as text
   | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
+  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
 export type InputDecl = { name: string; type: string; default?: string; start: number }
 export type ImportDecl = { name: string; from: string; start: number }
 export type ParsedFile = {
@@ -156,6 +157,53 @@ export function parse(source: string, file: string): ParsedFile {
     return { type: 'if', branches, start }
   }
 
+  // Split at top-level ';' (outside strings and brackets).
+  function splitClauses(text: string): string[] {
+    const parts: string[] = []
+    let depth = 0
+    let from = 0
+    for (let j = 0; j < text.length; j++) {
+      const c = text[j]!
+      if (c === '"' || c === "'" || c === '`') { for (j++; j < text.length && text[j] !== c; j++) if (text[j] === '\\') j++ }
+      else if ('([{'.includes(c)) depth++
+      else if (')]}'.includes(c)) depth--
+      else if (c === ';' && depth === 0) { parts.push(text.slice(from, j)); from = j + 1 }
+    }
+    return [...parts, text.slice(from)].map((p) => p.trim()).filter(Boolean)
+  }
+
+  // @for (item of list; track key) { … } @empty { … }
+  function forBlock(): TemplateNode {
+    const start = i
+    i += 4
+    const { cond: head, condStart: headStart } = condition('@for')
+    const [first = '', ...rest] = splitClauses(head)
+    const m = /^([\s\S]+?)\s+of\s+([\s\S]+)$/.exec(first)
+    if (!m) fail('expected "item of list" in @for', headStart)
+    if (!/^[A-Za-z_$][\w$]*$/.test(m![1]!.trim())) fail('the @for item must be a simple name', headStart)
+    let track: string | null = null
+    for (const clause of rest) {
+      const t = /^track\s+([\s\S]+)$/.exec(clause)
+      if (!t) fail(`unknown @for clause "${clause}"`, headStart)
+      track = t![1]!.trim()
+    }
+    while (/\s/.test(source[i] ?? '')) i++
+    if (source[i] !== '{') fail('expected { to open the block', i)
+    i++
+    const body = children({ tag: '@for', start, block: true })
+    let empty: TemplateNode[] | null = null
+    const save = i
+    while (/\s/.test(source[i] ?? '')) i++
+    if (/^@empty[\s{]/.test(source.slice(i, i + 7))) {
+      i += 6
+      while (/\s/.test(source[i] ?? '')) i++
+      if (source[i] !== '{') fail('expected { to open the block', i)
+      i++
+      empty = children({ tag: '@empty', start, block: true })
+    } else i = save
+    return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, children: body, empty, start }
+  }
+
   function children(parent?: { tag: string; start: number; block?: boolean }): TemplateNode[] {
     const nodes: TemplateNode[] = []
     let text = ''
@@ -176,6 +224,8 @@ export function parse(source: string, file: string): ParsedFile {
         i = end + 3
       } else if (/^@if[\s(]/.test(source.slice(i, i + 4))) {
         flush(); nodes.push(ifBlock()); textStart = i
+      } else if (/^@for[\s(]/.test(source.slice(i, i + 5))) {
+        flush(); nodes.push(forBlock()); textStart = i
       } else if (parent?.block && source[i] === '}') {
         flush(); i++
         return nodes

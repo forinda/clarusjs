@@ -19,3 +19,12 @@ export function attrHtml(name: string, value: unknown): string {
 export function blockHtml(index: number, k: number, branches: (() => string)[]): string {
   return `<!--[b${index}:${k}-->${k >= 0 ? branches[k]!() : ''}<!--]-->`
 }
+
+/** A @for list inside an island: one marker pair around the list, one per row, one around @empty content. */
+export function forHtml(index: number, list: unknown, row: (item: any, i: number) => string, empty: (() => string) | null): string {
+  const items = [...((list ?? []) as Iterable<unknown>)]
+  const body = items.length
+    ? items.map((item, i) => `<!--[r-->${row(item, i)}<!--]-->`).join('')
+    : empty ? `<!--[e-->${empty()}<!--]-->` : ''
+  return `<!--[f${index}-->${body}<!--]-->`
+}

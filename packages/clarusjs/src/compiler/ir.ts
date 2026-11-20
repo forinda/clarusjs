@@ -12,6 +12,9 @@ export type IRNode =
   | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
   | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
+  // @for / @empty. block = -1 outside islands; inside an island, the list's marker index. `item` and `$index` are in
+  // scope in `nodes`; `track` (or the index) keys rows.
+  | { kind: 'for'; item: string; list: string; track: string | null; nodes: IRNode[]; empty: IRNode[] | null; block: number }
 // scope: which @if branch the element is in ("block.branch"); undefined at the top level.
 export type IREvent = { index: number; type: string; handler: string; scope?: string }
 export type ComponentIR = {
@@ -44,6 +47,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   let eventElementCount = 0
   let attrElementCount = 0
   let blockCount = 0
+  let forCount = 0
+  let loopNames = new Set<string>() // @for item and $index names in scope: they make holes inside rows reactive
   let scopeKey: string | undefined // the @if branch being lowered, for events
 
   const emitStatic = (html: string) => {
@@ -76,10 +81,33 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       out.push({ kind: 'if', branches, block })
       return
     }
+    if (node.type === 'for') {
+      checkExpr(node.list, file, source, node.headStart)
+      if (node.track !== null) checkExpr(node.track, file, source, node.headStart)
+      const block = stateful ? forCount++ : -1
+      const parent = out
+      const parentScope = scopeKey
+      const parentLoop = loopNames
+      const lowerInto = (children: TemplateNode[], key: string, names: Set<string>) => {
+        const list: IRNode[] = []
+        out = list
+        loopNames = names
+        if (stateful) scopeKey = key
+        children.forEach((child) => visit(child, rawText))
+        return list
+      }
+      const nodes = lowerInto(node.children, `f${block}`, new Set([...parentLoop, node.item, '$index']))
+      const empty = node.empty ? lowerInto(node.empty, `f${block}e`, parentLoop) : null
+      out = parent
+      scopeKey = parentScope
+      loopNames = parentLoop
+      out.push({ kind: 'for', item: node.item, list: node.list, track: node.track, nodes, empty, block })
+      return
+    }
     if (node.type === 'raw') return emitStatic(node.value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
     if (node.type === 'expr') {
       checkExpr(node.expr, file, source, node.start)
-      const reactive = referencesNames(node.expr, scriptScope)
+      const reactive = stateful && (referencesNames(node.expr, scriptScope) || referencesNames(node.expr, loopNames))
       if (reactive && rawText) fail(`reactive {{ }} inside <${rawText}> is not supported yet (it cannot hold update markers)`, node.start)
       out.push({ kind: 'hole', expr: node.expr, reactive, index: reactive ? holeCount++ : -1 })
       return
@@ -122,7 +150,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
         if (a.name.toLowerCase() === 'srcdoc') fail('srcdoc cannot be bound; write it as a static attribute', a.start)
         const exprs = a.kind === 'prop' ? [{ expr: a.expr, start: a.start }] : a.parts.filter((p) => typeof p !== 'string')
         for (const e of exprs) checkExpr(e.expr, file, source, e.start)
-        const reactive = stateful && exprs.some((e) => referencesNames(e.expr, scriptScope))
+        const reactive = stateful && exprs.some((e) => referencesNames(e.expr, scriptScope) || referencesNames(e.expr, loopNames))
         const value = a.kind === 'prop' ? { expr: a.expr } : { parts: a.parts.map((p) => (typeof p === 'string' ? p : { expr: p.expr })) }
         const node_ = { kind: 'attr' as const, name: a.name, value, reactive, index: -1 }
         if (reactive) dynamic.push(node_)
