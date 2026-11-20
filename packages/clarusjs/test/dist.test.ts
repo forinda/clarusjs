@@ -21,6 +21,13 @@ test('every published export points at a built file with types', () => {
   }
 })
 
+test('built JS carries no comments (size); the declarations keep their docs (editor hovers)', () => {
+  expect(readFileSync(`${dist}/server/head.js`, 'utf8')).not.toMatch(/\/\*\*|^\s*\/\/ /m)
+  expect(readFileSync(`${dist}/server/head.d.ts`, 'utf8')).toContain('/** The site\'s public address')
+  // The browser runtime keeps its comments: Vite reads /* @vite-ignore */ in apps that bundle it (and minifies it).
+  for (const file of ['router', 'loader']) expect(readFileSync(`${dist}/runtime/${file}.js`, 'utf8')).toMatch(/import\([^\n]*\/\* @vite-ignore \*\/ src\)/)
+})
+
 test('built JS has no .ts import specifiers', () => {
   const plugin = readFileSync(`${dist}/vite/plugin.js`, 'utf8')
   const compiler = readFileSync(`${dist}/compiler/index.js`, 'utf8')

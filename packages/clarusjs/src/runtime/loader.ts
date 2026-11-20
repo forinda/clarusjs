@@ -123,8 +123,41 @@ export async function attachAll(root: ParentNode = document, load: Load = lastLo
   await Promise.all(now)
 }
 
-// Islands inserted later (an @if branch, a @for row, a re-rendered child) are attached through this hook.
-;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach = (root) => void attachAll(root)
+/**
+ * After a navigation (fragment swap or client render): focus moves to the new content, the #hash target, else the
+ * page's <h1>, else <main>, so keyboard and screen reader users start there; and the new title is announced in a
+ * polite live region. Done here rather than in the router and navigation scripts, which stay within 1 KB.
+ */
+function arrive(): void {
+  let id = ''
+  try { id = decodeURIComponent(location.hash.slice(1)) } catch {}
+  // In this order: a selector list would return the first match in the document, such as a heading in the header.
+  const target = (id && document.getElementById(id)) || document.querySelector('main h1') || document.querySelector('h1') || document.querySelector('main')
+  if (target instanceof HTMLElement) {
+    // Not natively focusable (a heading, <main>, an <a> without href, whose tabIndex still reads 0): tabindex -1.
+    if (!target.matches('a[href],area[href],button,input,select,textarea,iframe,summary,[tabindex],[contenteditable]')) target.setAttribute('tabindex', '-1')
+    target.focus()
+  }
+  let live = document.getElementById('cl-live')
+  if (!live) {
+    live = document.createElement('p')
+    live.id = 'cl-live'
+    live.setAttribute('aria-live', 'polite')
+    live.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap'
+    document.body.append(live)
+  }
+  // Set after a moment: a region that was just created (the router replaces <body>) must exist before it changes.
+  const region = live
+  region.textContent = ''
+  setTimeout(() => { region.textContent = document.title }, 50)
+}
+
+// Islands inserted later (an @if branch, a @for row, a re-rendered child) are attached through this hook. The router
+// and fragment navigation pass navigated = true after replacing the page.
+;(globalThis as { __clAttach?: (root: ParentNode, navigated?: 1) => void }).__clAttach = (root, navigated) => {
+  void attachAll(root)
+  if (navigated) arrive()
+}
 
 
 if (typeof document !== 'undefined') {

@@ -1,0 +1,6 @@
+{
+  // The browser runtime, built again with its comments (see scripts/build-package.mjs).
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": { "declaration": false },
+  "include": ["src/runtime"]
+}

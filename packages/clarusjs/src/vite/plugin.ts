@@ -6,12 +6,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
-import { findClarusFiles, prerender } from './build.ts'
+import { findClarusFiles, prerender, routeToFile } from './build.ts'
 import { writeManifest } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
+import { gitDates, sitemapXml } from './sitemap.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
-import { routeFromFile } from '../server/handler.ts'
+import { rootLinks, routeFromFile } from '../server/handler.ts'
+import { basePath } from '../server/head.ts'
+import type { HeadTag, SiteOptions } from '../server/head.ts'
 import { sendResponse, toRequest } from './node.ts'
 
 // From src/ (workspace, tests) our siblings are .ts files; from the published dist/ they are .js.
@@ -107,7 +110,26 @@ export type ClarusOptions = {
    * 'error'). `anchors`: links to a #id the target page doesn't have (default 'warn'). `strict`: warnings fail too.
    */
   links?: { pages?: LinkLevel; anchors?: LinkLevel; strict?: boolean }
+  /**
+   * Every page's <head>: `titleTemplate` ('%s · Site') wraps the document title, `tags` are added unless the page has
+   * its own with the same key. Anything else: export `transformHead(head, page)` from src/head.ts.
+   */
+  head?: { titleTemplate?: string; tags?: HeadTag[]; jsonLd?: object | object[] }
+  /**
+   * The site's public address. Every page gets a canonical URL and social cards (Open Graph, Twitter) from its title,
+   * description and an image (the page's og:image, or `image`); absolute links to the site are link-checked.
+   */
+  site?: SiteOptions
+  /**
+   * With site.url, vite build writes sitemap.xml (static pages, dated from git). false: no sitemap. `exclude`: paths
+   * left out ('/legal', '/tags/*' one segment, '/drafts/**' any depth). A page opts out itself with
+   * <cl-head><meta name="sitemap" content="false"></cl-head> (removed from the built page) or noindex.
+   */
+  sitemap?: boolean | { exclude?: string[] }
+  /** With site.url, vite build writes robots.txt (allow all, and the sitemap), unless public/robots.txt exists. */
+  robots?: boolean
 }
+export type { HeadTag }
 export type LinkLevel = 'error' | 'warn' | 'off'
 
 /**
@@ -135,6 +157,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   const modes = options.routes ?? {}
   checkModes(modes)
   const sources = options.sources ?? []
+  if (options.site && !/^https?:\/\/[^/]/.test(options.site.url)) throw new Error(`clarusjs: site.url must be an absolute http(s) URL, got "${options.site.url}"`)
   for (const src of sources) {
     if (!/^\.[\w-]+$/.test(src.extension)) throw new Error(`clarusjs: a source extension must look like ".md", got "${src.extension}"`)
     if (src.extension === '.tscl') throw new Error('clarusjs: .tscl files are compiled directly; a source needs its own extension')
@@ -272,18 +295,30 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       }
       // Links between pages and to anchors, checked against what was written.
       const pageRoutes = routes.filter((r) => !/\/(__data\.json|index\.frag\.html)$/.test(r))
+      const clientRoutes = pageRoutes.filter((r) => routes.includes(r === '/' ? '/__data.json' : `${r}/__data.json`))
+      // 404.html, which static hosts serve for unknown paths at any depth: the 404 page with its relative links
+      // resolved from the site root (also at /404 itself, so the link check sees what visitors get).
+      if (pageRoutes.includes('/404') && !clientRoutes.includes('/404')) {
+        const html = rootLinks(readFileSync(resolve(out, routeToFile('/404')), 'utf8'), basePath(builder.config.base))
+        writeFileSync(resolve(out, routeToFile('/404')), html)
+        writeFileSync(resolve(out, '404.html'), html)
+      }
       const issues = checkLinks({
         outDir: out,
         routes: pageRoutes,
         serverRoutes: server.map((x) => x.route),
-        clientRoutes: pageRoutes.filter((r) => routes.includes(r === '/' ? '/__data.json' : `${r}/__data.json`)),
+        clientRoutes,
         base: builder.config.base,
+        site: options.site?.url,
       })
       const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn' }
       // Each problem names the page's source file, and the line where the link is written literally.
       const sourceOf = new Map(files.find(resolve(builder.config.root, 'src/pages')).map((f) => [routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`), f]))
+      // Literal segments escaped; only whole [param] segments match any one segment (as the handler's routes do).
+      const pattern = (route: string) => new RegExp(`^${route.split('/').map((seg) => (/^\[[^\]]+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/')}$`)
+      const fileOf = (page: string) => sourceOf.get(page) ?? [...sourceOf].find(([route]) => pattern(route).test(page))?.[1]
       const locate = (page: string, href: string) => {
-        const file = sourceOf.get(page) ?? [...sourceOf].find(([route]) => new RegExp(`^${route.replace(/\[[^\]]+\]/g, '[^/]+')}$`).test(page))?.[1]
+        const file = fileOf(page)
         if (!file) return page
         const rel = relative(builder.config.root, file).split(sep).join('/')
         const line = readFileSync(file, 'utf8').split('\n').findIndex((l) => l.includes(href))
@@ -298,6 +333,32 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         else builder.config.logger.warn(`clarusjs: ${text}`)
       }
       if (errors.length) throw new Error(`clarusjs: broken links:\n  ${errors.join('\n  ')}`)
+      // sitemap.xml: static pages (not client shells, not noindex), dated by their source file's last commit.
+      if (options.site && options.sitemap !== false) {
+        const dates = gitDates(builder.config.root, 'src/pages')
+        const epoch = process.env.SOURCE_DATE_EPOCH ? Number(process.env.SOURCE_DATE_EPOCH) : undefined
+        const exclude = (typeof options.sitemap === 'object' ? options.sitemap.exclude ?? [] : [])
+          .map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*|\*/g, (s) => (s === '**' ? '.*' : '[^/]+'))}$`))
+        // A page's own opt-out marker is read, then removed from the built page; noindex pages aren't listed either.
+        const optedOut = (page: string) => {
+          const file = resolve(out, routeToFile(page))
+          const html = readFileSync(file, 'utf8')
+          const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
+          // Attribute values in any valid form: "x", 'x' or unquoted (transformHead output isn't normalized).
+          const attr = (tag: string, name: string) => new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag)?.slice(1).find((v) => v !== undefined)
+          const marker = tags.find((tag) => attr(tag, 'name')?.toLowerCase() === 'sitemap' && attr(tag, 'content') === 'false')
+          if (marker) writeFileSync(file, html.replace(marker, ''))
+          return !!marker || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? ''))
+        }
+        const pages = pageRoutes.filter((page) => page !== '/404' && !clientRoutes.includes(page) && !optedOut(page) && !exclude.some((re) => re.test(page)))
+          .map((path) => ({ path, lastmod: dates.get(fileOf(path) ?? '') ?? epoch }))
+        writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
+      }
+      // robots.txt: allow everything, and point at the sitemap. A robots.txt in public/ (already copied) wins.
+      if (options.site && options.robots !== false && !existsSync(resolve(out, 'robots.txt'))) {
+        const sitemap = options.sitemap !== false ? `\nSitemap: ${new URL('sitemap.xml', new URL(builder.config.base, options.site.url.replace(/\/?$/, '/'))).href}\n` : ''
+        writeFileSync(resolve(out, 'robots.txt'), `User-agent: *\nAllow: /\n${sitemap}`)
+      }
       if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
     },
     resolveId(id) {
@@ -356,6 +417,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  navUrl: ${JSON.stringify(navUrl)},\n` +
         `  stylesUrl: ${JSON.stringify(stylesUrl)},\n` +
         `  css: ${JSON.stringify(css)},\n` +
+        // src/head.ts is optional: its transformHead (a function, so not a plugin option) runs on every page's head.
+        `  site: ${JSON.stringify(options.site)},\n` +
+        `  head: { ...${JSON.stringify(options.head ?? {})}, transform: Object.values(import.meta.glob('/src/head.ts', { eager: true }))[0]?.transformHead },\n` +
         `})\n`
     } },
     transform: {
@@ -430,6 +494,14 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             next(err)
           }
         })
+        // Nothing else answered: 404.html with status 404, as a static host serves it.
+        server.middlewares.use((req, res, next) => {
+          const page = resolve(outDir, '404.html')
+          if ((req.method !== 'GET' && req.method !== 'HEAD') || !existsSync(page)) return next()
+          res.statusCode = 404
+          res.setHeader('content-type', 'text/html; charset=utf-8')
+          res.end(req.method === 'HEAD' ? undefined : readFileSync(page))
+        })
       }
     },
     configureServer(server) {
@@ -445,7 +517,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             if (!isRunnableDevEnvironment(env)) return next()
             const app = await env.runner.import<{ default: { fetch(r: Request): Promise<Response> } }>(ENTRY)
             const response = await app.default.fetch(toRequest(req))
-            if (response.status === 404) return next()
+            // The 404 page (HTML) is the answer; a plain 404 falls through to Vite.
+            if (response.status === 404 && !response.headers.get('content-type')?.startsWith('text/html')) return next()
             await sendResponse(res, response)
           } catch (err) {
             next(err)

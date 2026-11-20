@@ -197,6 +197,37 @@ function renderer(options: MarkdownOptions): Md {
   return md
 }
 
+/**
+ * Frontmatter `image` (the social card), `jsonLd` (an object or a list), `head: [[tag, attrs, content?]]` and `titleTemplate: false` (the title as written) as <cl-head>, which
+ * the server moves into the page's <head>.
+ */
+function pageHead(data: Record<string, unknown>, title: string | undefined): string {
+  const tags: string[] = []
+  if (data.titleTemplate === false && title !== undefined) tags.push(`<title>${escapeHtml(title)}</title>`)
+  if (data.sitemap === false) tags.push('<meta name="sitemap" content="false">')
+  if (typeof data.image === 'string') tags.push(`<meta property="og:image" content="${escapeHtml(data.image)}">`)
+  const raws: string[] = [] // scripts: raw text, kept out of staticHtml
+  for (const entry of Array.isArray(data.head) ? data.head : []) {
+    const [tag, attrs = {}, content] = entry as [string, Record<string, unknown>, string?]
+    if (typeof tag !== 'string' || !/^[a-z]+$/.test(tag)) continue
+    const a = staticHtml(Object.entries(attrs).map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${escapeHtml(String(v))}"`)).join(''))
+    if (tag === 'script') {
+      // A script's content is raw text: never HTML-escaped (browsers don't decode it). JSON-LD stays static JSON ({{
+      // only occurs inside its strings, where \u007b keeps it from reading as a hole); any other script is an inline
+      // script, which the template compiler writes out exactly.
+      const raw = content ?? ''
+      raws.push(attrs.type === 'application/ld+json' ? `<script${a}>${raw.replace(/\{\{/g, '{\\u007b')}</script>` : `<script inline${a}>${raw}</script>`)
+      continue
+    }
+    tags.push(['meta', 'link', 'base'].includes(tag) && content === undefined ? `<${tag}${a}>` : `<${tag}${a}>${escapeHtml(content ?? '')}</${tag}>`)
+  }
+  // JSON-LD isn't HTML: it skips staticHtml (entities aren't decoded in a script). {{ only occurs inside JSON strings,
+  // where \u007b keeps the template compiler from reading it as a hole.
+  const ld = [data.jsonLd ?? []].flat().map((value) => `<script type="application/ld+json">${JSON.stringify(value)
+    .replace(/[<>&\u2028\u2029]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`).replace(/\{\{/g, '{\\u007b')}</script>`)
+  return tags.length || raws.length || ld.length ? `<cl-head>${staticHtml(tags.join(''))}${raws.join('')}${ld.join('')}</cl-head>` : ''
+}
+
 /** Markdown output is static HTML: anything a .tscl template would read as syntax ({{ }}, @if …) is escaped. */
 function staticHtml(html: string): string {
   return html.replace(/\{\{/g, '&#123;&#123;').replace(/@/g, '&#64;')
@@ -255,11 +286,11 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       const tokens = md.parse(tags.body, env)
       const h1 = tokens.findIndex((t: Tok & { tag: string }) => t.type === 'heading_open' && t.tag === 'h1')
       const firstHeading = h1 === -1 ? undefined : (tokens[h1 + 1]!.children ?? []).filter((t: Tok) => t.type === 'text' || t.type === 'code_inline').map((t: Tok) => t.content).join('')
-      const html = tags.restore(staticHtml(md.renderer.render(tokens, md.options, env)))
+      const title = typeof data.title === 'string' ? data.title : firstHeading
+      const html = pageHead(data, title) + tags.restore(staticHtml(md.renderer.render(tokens, md.options, env)))
 
       const layout = data.layout === false ? undefined : (typeof data.layout === 'string' ? data.layout : options.layout)
       if (!layout) return [...imports, html].join('\n')
-      const title = typeof data.title === 'string' ? data.title : firstHeading
       const props = [
         title !== undefined ? `[title]="${quote(title)}"` : '',
         typeof data.description === 'string' ? `[description]="${quote(data.description)}"` : '',

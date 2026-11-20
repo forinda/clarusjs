@@ -62,7 +62,7 @@ export function describeRoute(route: string, html: string, opts: { base: string;
     closure(local(m[1]!), initial)
   }
   // A client route also loads its page's render module, named in the shell's route table.
-  const table = /<script type="application\/json" id="cl-routes">(.*?)<\/script>/.exec(html)?.[1]
+  const table = /<script type="application\/json" id="cl-routes"[^>]*>(.*?)<\/script>/.exec(html)?.[1]
   const render = opts.client && table ? matchRoute(JSON.parse(table), route)?.r : undefined
   if (render) {
     closure(local(render), all)

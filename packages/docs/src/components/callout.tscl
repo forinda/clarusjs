@@ -1,6 +1,6 @@
 @input type: 'tip' | 'info' | 'warning' | 'danger' = 'info'
 
-<aside class="callout {{ type }}"><p class="callout-title"><slot name="title">{{ type[0].toUpperCase() + type.slice(1) }}</slot></p><slot /></aside>
+<aside role="note" class="callout {{ type }}"><p class="callout-title"><slot name="title">{{ type[0].toUpperCase() + type.slice(1) }}</slot></p><slot /></aside>
 
 <style>
   /* Scoped to this component: :scope is the <aside>; slot content inside it is styled too. */

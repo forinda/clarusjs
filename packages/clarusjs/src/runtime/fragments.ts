@@ -47,7 +47,7 @@ export async function swap(
   document.title = doc.title
   old.replaceWith(next)
   // Attaches the new islands; the loader also releases those that left with the old region.
-  ;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach?.(next)
+  ;(globalThis as { __clAttach?: (root: ParentNode, navigated: 1) => void }).__clAttach?.(next, 1) // 1: navigated (bytes)
 }
 
 type NavigateEvent = Event & {

@@ -15,6 +15,8 @@ type Options = {
   /** Client routes render in the browser: their pages exist, but their anchors can't be checked at build. */
   clientRoutes: string[]
   base: string
+  /** site.url: absolute links to the site itself are checked like internal ones. */
+  site?: string
 }
 
 // A stray % is kept as written, as routeToFile does, instead of failing the build with a URIError.
@@ -55,6 +57,7 @@ export function checkLinks(options: Options): LinkIssue[] {
   const { outDir } = options
   // An absolute base (https://cdn.example.com/docs/) is compared by its path.
   const base = /^https?:\/\//.test(options.base) ? new URL(options.base).pathname : options.base
+  const siteRoot = options.site ? new URL(base, options.site.replace(/\/?$/, '/')) : undefined
   const routes = new Set(options.routes.map(trim))
   const client = new Set(options.clientRoutes.map(trim))
   const serverPatterns = options.serverRoutes.map((r) => new RegExp(`^${r.split('/').map((seg) => (/^\[[^\]]+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/')}$`))
@@ -68,7 +71,14 @@ export function checkLinks(options: Options): LinkIssue[] {
   }
   const issues: LinkIssue[] = []
   for (const page of [...routes].filter((r) => !client.has(r))) {
-    for (const href of hrefs(read(page))) {
+    for (let href of hrefs(read(page))) {
+      // Absolute links to the site itself (compared parsed: host case, the base with or without its slash).
+      if (siteRoot && /^https?:/i.test(href)) {
+        const u = new URL(href)
+        if (u.origin === siteRoot.origin && (u.pathname.startsWith(siteRoot.pathname) || `${u.pathname}/` === siteRoot.pathname)) {
+          href = base + u.pathname.slice(Math.min(u.pathname.length, siteRoot.pathname.length)) + u.search + u.hash
+        }
+      }
       if (/^[a-z][\w+.-]*:|^\/\//i.test(href) || href === '') continue // external, mailto:, tel:, …
       const url = new URL(href, `http://site${base}${page === '/' ? '' : page.slice(1) + '/'}`)
       if (!url.pathname.startsWith(base) && `${url.pathname}/` !== base) continue // outside this site

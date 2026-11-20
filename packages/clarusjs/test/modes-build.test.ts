@@ -76,7 +76,7 @@ test('#32: Netlify paths use URLPattern syntax, with literal text escaped', asyn
 test('#33: client routes are prerendered as shells, with their data files and render modules', async () => {
   const shell = readFileSync(resolve(root, 'dist/client/app/one/index.html'), 'utf8')
   expect(shell).not.toContain('<h1>')
-  const table = JSON.parse(/<script type="application\/json" id="cl-routes">(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
+  const table = JSON.parse(/<script type="application\/json" id="cl-routes"[^>]*>(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
   expect(table.map((t) => t.p)).toEqual(['/app', '/app/[id]'])
   const router = /<script type="module" src="([^"]+)"><\/script><\/head>/.exec(shell)![1]!
   expect(existsSync(resolve(root, 'dist/client', router.slice(1)))).toBe(true)
@@ -113,7 +113,7 @@ test('review: Netlify parameter names never collide', async () => {
 
 test('review: an island with a bracketed file name inside a client page points at its real chunk', async () => {
   const shell = readFileSync(resolve(root, 'dist/client/app/index.html'), 'utf8')
-  const table = JSON.parse(/<script type="application\/json" id="cl-routes">(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
+  const table = JSON.parse(/<script type="application\/json" id="cl-routes"[^>]*>(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
   const mod = await import(pathToFileURL(resolve(root, 'dist/client', table.find((t) => t.p === '/app')!.r.slice(1))).href)
   const src = /<cl-island c="\[tag\]" src="([^"]+)"/.exec(mod.render({}))![1]!
   expect(src).not.toContain('__CLARUS_CHUNK__')
@@ -131,7 +131,7 @@ test('review: client routes under a base list their browser paths', async () => 
   const config = { root: dir, configFile: false as const, base: '/docs/', logLevel: 'silent' as const, plugins: [clarusjs({ routes: { '/account/*': 'server', '/app/*': 'client' } })] }
   await (await createBuilder(config)).buildApp()
   const shell = readFileSync(resolve(dir, 'dist/client/app/one/index.html'), 'utf8')
-  const table = JSON.parse(/id="cl-routes">(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
+  const table = JSON.parse(/id="cl-routes"[^>]*>(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
   expect(table.map((t) => t.p)).toEqual(['/docs/app', '/docs/app/[id]'])
   expect(table.every((t) => t.r.startsWith('/docs/assets/'))).toBe(true)
   expect(existsSync(resolve(dir, 'dist/client/app/one/__data.json'))).toBe(true)

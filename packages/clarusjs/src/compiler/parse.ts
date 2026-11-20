@@ -9,7 +9,7 @@ export type Attr =
 export type TemplateNode =
   | { type: 'element'; tag: string; attrs: Attr[]; children: TemplateNode[]; start: number }
   | { type: 'text'; value: string; start: number }
-  | { type: 'expr'; expr: string; start: number } // {{ expr }}
+  | { type: 'expr'; expr: string; start: number; json?: true } // {{ expr }}; json: written as JSON (JSON-LD)
   | { type: 'raw'; value: string; start: number } // content of a `verbatim` element, shown as text
   | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
   | { type: 'fill'; name: string; children: TemplateNode[]; start: number } // @slot('name') { … } inside a component tag
@@ -318,6 +318,19 @@ export function parse(source: string, file: string): ParsedFile {
           if (end === -1) fail('unclosed <script inline>', start)
           const kids: TemplateNode[] = selfClosing ? [] : [{ type: 'text', value: source.slice(i, end), start: i }]
           nodes.push({ type: 'element', tag, attrs: list.filter((a) => a.name !== 'inline'), children: kids, start })
+          i = selfClosing ? i : end + '</script>'.length
+        } else if (tag === 'script' && list.some((a) => a.kind === 'static' && a.name === 'type' && a.value === 'application/ld+json')) {
+          // JSON-LD: static JSON as written, or one {{ }} hole holding the whole value, written as JSON.
+          const bound = list.find((a) => a.kind !== 'static')
+          if (bound) fail('a JSON-LD script takes static attributes only', bound.start)
+          const end = source.indexOf('</script>', i)
+          if (end === -1) fail('unclosed <script type="application/ld+json">', start)
+          const body = selfClosing ? '' : source.slice(i, end)
+          const hole = /^\s*\{\{([\s\S]*)\}\}\s*$/.exec(body)
+          const at = i + body.indexOf('{{')
+          if (!hole && body.includes('{{')) fail('JSON-LD takes static JSON, or one {{ }} hole holding the whole value ({{ { "@type": "Article", headline: title } }})', at)
+          const kids: TemplateNode[] = hole ? [{ type: 'expr', expr: hole[1]!.trim(), start: at, json: true }] : body ? [{ type: 'text', value: body, start: i }] : []
+          nodes.push({ type: 'element', tag, attrs: list, children: kids, start })
           i = selfClosing ? i : end + '</script>'.length
         } else if (tag === 'script') {
           if (parent) fail('<script> must be at the top level (a component script); add `inline` for a script that runs where it stands', start)

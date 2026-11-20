@@ -31,10 +31,10 @@ export function matchRoute(table: Entry[], pathname: string): { r: string; param
 export async function show(
   url: URL,
   table: Entry[],
-  load: (src: string) => Promise<Page> = (src) => import(/* @vite-ignore */ src),
-  get: (url: string) => Promise<Response> = fetch,
   // False once a newer navigation has started: then this one must not touch the document.
   isCurrent: () => boolean = () => true,
+  load: (src: string) => Promise<Page> = (src) => import(/* @vite-ignore */ src),
+  get: (url: string) => Promise<Response> = fetch,
 ): Promise<boolean> {
   const found = matchRoute(table, url.pathname)
   if (!found) return false
@@ -50,7 +50,8 @@ export async function show(
   const doc = new DOMParser().parseFromString(page.render(props), 'text/html')
   // The head stays (its stylesheets are every client page's, linked by the shell); the title and the page's own
   // <html> attributes (lang, dir, …) are the new page's.
-  document.title = doc.title
+  // The site's titleTemplate, from the shell (always set: '%s' without one).
+  document.title = document.getElementById('cl-routes')!.dataset.title!.replace('%s', () => doc.title)
   const root = document.documentElement
   for (const { name } of [...root.attributes]) root.removeAttribute(name)
   for (const { name, value } of [...doc.documentElement.attributes]) root.setAttribute(name, value)
@@ -63,7 +64,7 @@ export async function show(
     script.remove()
   }
   // Attaches the new page's islands; the loader also releases the old page's.
-  ;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach?.(document.body)
+  ;(globalThis as { __clAttach?: (root: ParentNode, navigated: 1) => void }).__clAttach?.(document.body, 1) // 1: navigated (bytes)
   return true
 }
 
@@ -77,12 +78,12 @@ type NavigateEvent = Event & {
   intercept(options: { handler(): Promise<void> }): void
 }
 
-const routes = typeof document !== 'undefined' ? document.getElementById('cl-routes') : null
+const routes = globalThis.document?.getElementById('cl-routes')
 if (routes) {
-  const table = JSON.parse(routes.textContent ?? '[]') as Entry[]
+  const table = JSON.parse(routes.textContent!) as Entry[]
   // Each navigation gets a number; only the latest may change the document or fall back.
   let latest = 1 // the first render is navigation 1
-  show(new URL(location.href), table, undefined, undefined, () => latest === 1).catch((err: Error) => {
+  show(new URL(location.href), table, () => latest === 1).catch((err: Error) => {
     if (latest !== 1) return
     document.body.textContent = err.message.startsWith('404') ? 'Page not found.' : 'Could not load page.'
   })
@@ -98,7 +99,7 @@ if (routes) {
     const id = ++latest
     const isCurrent = () => latest === id && !e.signal.aborted
     e.intercept({
-      handler: () => show(url, table, undefined, undefined, isCurrent).then(() => {}, () => {
+      handler: () => show(url, table, isCurrent).then(() => {}, () => {
         if (!isCurrent()) return
         fallback = url.href
         location.reload() // the URL is already committed; assign() would stay in the page with a #hash
