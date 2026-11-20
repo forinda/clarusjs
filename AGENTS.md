@@ -53,8 +53,8 @@ Releases are automated from `main` (see RELEASE.md): never run `npm publish` or 
 - **Server code never reaches the client.** Client modules must not import `render`, `clarusjs/runtime/server` or loaders.
 - **Stateless components ship nothing.** No `<script>` → client compile is `export {}`.
 - **HTML contract is fixed** (changing it is a design change; update `docs/architecture.md` §5 first):
-  `<cl-island c="NAME" src="URL" p="JSON">`, `<!--[N-->…<!--]-->`, `data-cl-e="N"`. Static parts carry no markers.
-- **Escape everything dynamic.** Server holes go through `escape()`; island props through `island()`; the client writes text nodes only.
+  `<cl-island c="NAME" src="URL" p="JSON">`, `<!--[N-->…<!--]-->`, `data-cl-e="N"` (events), `data-cl-a="N"` (reactive attributes). Static parts carry no markers.
+- **Escape everything dynamic.** Server holes go through `escape()`; attributes through `attr()` (escaped, URL-checked via `runtime/attrs.ts`, shared with the browser); island props through `island()`; the client writes text nodes and `setAttribute` only.
 - **Generated names start with `__cl_`** so they never collide with author code.
 - **Errors are located.** Compile errors are `ClarusError` with `file:line:col message`. Never let a raw acorn error escape.
 - **Compiled output stays readable.** Exact-output tests in `test/compiler/emit-*.test.ts` pin it; update them deliberately.

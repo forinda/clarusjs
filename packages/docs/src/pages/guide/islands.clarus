@@ -1,18 +1,18 @@
 @import docs from '../../layouts/docs.clarus'
 @import callout from '../../components/callout.clarus'
 
-<docs [title]="'Islands'">
+<docs [title]="'Islands'" [section]="'islands'" [description]="'Interactive components that attach to server HTML: state, signals and what ships to the browser.'">
   <h1>Islands</h1>
   <p>A component with a <code>&lt;script&gt;</code> is interactive. It is rendered to HTML on the server like everything else, then <em>attached</em> in the browser: its event handlers and updates are wired to the HTML that is already there. Nothing re-renders.</p>
 
   <h2>State</h2>
   <p><code>state()</code> makes a value reactive and <code>derived()</code> computes from it. You read and write them as plain variables; the compiler rewrites <code>count++</code> into a signal update.</p>
-  <pre><code>{{ `<script>
+  <pre><code verbatim><script>
   let count = state(0)
   const double = derived(() => count * 2)
 </script>
 
-<button (click)="count++">{{ count }} × 2 = {{ double }}</button>` }}</code></pre>
+<button (click)="count++">{{ count }} × 2 = {{ double }}</button></code></pre>
 
   <h2>What ships to the browser</h2>
   <ul>

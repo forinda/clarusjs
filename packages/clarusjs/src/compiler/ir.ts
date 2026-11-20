@@ -8,6 +8,8 @@ export type IRNode =
   | { kind: 'hole'; expr: string; reactive: boolean; index: number } // index = -1 when not reactive
   | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[] }
   | { kind: 'slot' } // where a stateless component renders the content it wraps
+  // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
+  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number }
 export type IREvent = { index: number; type: string; handler: string }
 export type ComponentIR = {
   file: string
@@ -37,6 +39,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   const events: IREvent[] = []
   let holeCount = 0
   let eventElementCount = 0
+  let attrElementCount = 0
 
   const emitStatic = (html: string) => {
     const last = out[out.length - 1]
@@ -51,6 +54,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
 
   function visit(node: TemplateNode, rawText?: string): void {
     if (node.type === 'text') return emitStatic(node.value)
+    if (node.type === 'raw') return emitStatic(node.value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
     if (node.type === 'expr') {
       checkExpr(node.expr, file, source, node.start)
       const reactive = referencesNames(node.expr, scriptScope)
@@ -82,20 +86,37 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       out.push({ kind: 'slot' })
       return
     }
-    let open = `<${node.tag}`
+    emitStatic(`<${node.tag}`)
     const elementEvents = node.attrs.filter((a) => a.kind === 'event')
+    const dynamic: Extract<IRNode, { kind: 'attr' }>[] = []
     for (const a of node.attrs) {
-      if (a.kind === 'static') open += a.value === true ? ` ${a.name}` : ` ${a.name}="${a.value}"`
-      else if (a.kind === 'prop') fail('[prop] bindings on HTML elements are not supported yet', a.start)
-      else if (!stateful) fail('event bindings need a <script> with state; this component is static', a.start)
-      else checkHandler(a.expr, file, source, a.start)
+      if (a.kind === 'static') emitStatic(a.value === true ? ` ${a.name}` : ` ${a.name}="${a.value}"`)
+      else if (a.kind === 'event') {
+        if (!stateful) fail('event bindings need a <script> with state; this component is static', a.start)
+        checkHandler(a.expr, file, source, a.start)
+      } else {
+        if (/^on/i.test(a.name)) fail(`use (${a.name.slice(2).toLowerCase()}) for events, not an ${a.name} attribute`, a.start)
+        const exprs = a.kind === 'prop' ? [{ expr: a.expr, start: a.start }] : a.parts.filter((p) => typeof p !== 'string')
+        for (const e of exprs) checkExpr(e.expr, file, source, e.start)
+        const reactive = stateful && exprs.some((e) => referencesNames(e.expr, scriptScope))
+        const value = a.kind === 'prop' ? { expr: a.expr } : { parts: a.parts.map((p) => (typeof p === 'string' ? p : { expr: p.expr })) }
+        const node_ = { kind: 'attr' as const, name: a.name, value, reactive, index: -1 }
+        if (reactive) dynamic.push(node_)
+        out.push(node_)
+      }
+    }
+    // One marker per element for its reactive attributes, one for its events.
+    if (dynamic.length) {
+      const index = attrElementCount++
+      for (const d of dynamic) d.index = index
+      emitStatic(` data-cl-a="${index}"`)
     }
     if (elementEvents.length) {
       const index = eventElementCount++
-      open += ` data-cl-e="${index}"`
+      emitStatic(` data-cl-e="${index}"`)
       for (const a of elementEvents) events.push({ index, type: a.name, handler: a.kind === 'event' ? a.expr : '' })
     }
-    emitStatic(open + '>')
+    emitStatic('>')
     node.children.forEach((child) => visit(child, RAW_TEXT.has(node.tag) ? node.tag : rawText))
     if (!VOID.has(node.tag)) emitStatic(`</${node.tag}>`)
   }

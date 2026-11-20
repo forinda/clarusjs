@@ -51,8 +51,13 @@ test('event binding without a script is a build error at the attribute', () => {
   expect(e.message.startsWith('x.clarus:2:9 ')).toBe(true)
 })
 
-test('[prop] on a plain HTML element is an error', () => {
-  expect(lowerError('<div [title]="t">x</div>').message).toContain('[prop] bindings on HTML elements are not supported yet')
+test('[attr] on an HTML element lowers to a dynamic attribute', () => {
+  const ir = lowerSource('@input t: string\n<div [title]="t">x</div>')
+  expect(ir.nodes).toEqual([
+    { kind: 'static', html: '<div' },
+    { kind: 'attr', name: 'title', value: { expr: 't' }, reactive: false, index: -1 },
+    { kind: 'static', html: '>x</div>' },
+  ])
 })
 
 test('component children are lowered in the parent scope', () => {
