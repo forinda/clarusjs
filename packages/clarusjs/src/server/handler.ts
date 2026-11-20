@@ -55,6 +55,8 @@ export function createHandler(
     base?: string
     /** Fragment navigation: every static and server page also answers at <path>/index.frag.html. */
     fragments?: boolean
+    /** URL of the fragment navigation script (with fragments on, every static and server page loads it). */
+    navUrl?: string
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -213,9 +215,13 @@ export function createHandler(
       if (wantsFrag) return new Response(head ? null : toFragment(html), { headers: { 'content-type': 'text/html; charset=utf-8' } })
       const visible = maskComments(html)
       const hasIslands = visible.includes('<cl-island ')
-      // Only pages with islands get a script, and only the loader; it fetches each island's own chunk.
-      const style = hasIslands ? '<style>cl-island{display:contents}</style>' : '' // islands never affect layout
-      const script = hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''
+      // Only pages with islands get a script, and only the loader; it fetches each island's own chunk. With fragment
+      // navigation every page gets the navigation script instead, which brings the loader for islands that arrive.
+      const nav = options.fragments === true
+      const style = hasIslands || nav ? '<style>cl-island{display:contents}</style>' : '' // islands never affect layout
+      const script = nav
+        ? `<script type="module" src="${options.navUrl ?? '/cl-nav.js'}"></script>`
+        : hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''
       const body = /<html[\s>]/i.test(visible)
         ? fullDocument(html, style, script)
         : `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title>${style}</head><body>${html}${script}</body></html>`
