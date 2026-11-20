@@ -1,0 +1,14 @@
+{{-- A copy button for the code sample it sits next to (inside a .sample wrapper). --}}
+<script>
+  let copied = state(false)
+  async function copy(button) {
+    const code = button.closest('.sample')?.querySelector('code')?.textContent ?? ''
+    try {
+      await navigator.clipboard.writeText(code)
+      copied = true
+      setTimeout(() => { copied = false }, 1500)
+    } catch {}
+  }
+</script>
+
+<button type="button" class="copy" (click)="copy($event.currentTarget ?? $event.target)">@if (copied) {Copied} @else {Copy}</button>

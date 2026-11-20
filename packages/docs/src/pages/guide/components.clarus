@@ -1,3 +1,4 @@
+@import copy from '../../components/copy.clarus'
 @import docs from '../../layouts/docs.clarus'
 @import callout from '../../components/callout.clarus'
 
@@ -7,46 +8,46 @@
 
   <h2>Inputs and holes</h2>
   <p><code>@input</code> declares what a component receives. <code verbatim>{{ }}</code> holes print values, always escaped.</p>
-  <pre><code verbatim>{{-- components/greeting.clarus --}}
+  <div class="sample"><pre><code verbatim>{{-- components/greeting.clarus --}}
 @input name: string
 
-<p>Hello, {{ name }}!</p></code></pre>
+<p>Hello, {{ name }}!</p></code></pre><copy attach="interaction" /></div>
 
   <h2>Using components</h2>
   <p>Import a component by name, then use it as a tag. Pass inputs with <code>[name]="expression"</code>.</p>
-  <pre><code verbatim>@import greeting from '../components/greeting.clarus'
+  <div class="sample"><pre><code verbatim>@import greeting from '../components/greeting.clarus'
 
-<greeting [name]="'world'" /></code></pre>
+<greeting [name]="'world'" /></code></pre><copy attach="interaction" /></div>
 
   <h2>Attributes</h2>
   <p>Bind an attribute with <code verbatim>[name]="expression"</code>, or put <code verbatim>{{ }}</code> inside an attribute value. Values are escaped. URL attributes such as <code>href</code> and <code>src</code> only accept relative URLs and <code>http:</code>, <code>https:</code>, <code>mailto:</code> and <code>tel:</code> (plus raster <code>data:</code> images for image attributes); anything else becomes <code>about:invalid#unsafe</code>. <code>srcdoc</code> can't be bound. A bound <code>style</code> is escaped but not checked, so don't put untrusted data in it. <code>true</code> adds a boolean attribute; <code>false</code>, <code>null</code> and <code>undefined</code> remove it.</p>
-  <pre><code verbatim><a href="/guide/{{ slug }}" [aria-current]="active ? 'page' : false">{{ label }}</a>
-<button [disabled]="saving">Save</button></code></pre>
+  <div class="sample"><pre><code verbatim><a href="/guide/{{ slug }}" [aria-current]="active ? 'page' : false">{{ label }}</a>
+<button [disabled]="saving">Save</button></code></pre><copy attach="interaction" /></div>
   <p>Inside an interactive component, attributes that read state update when it changes. For events, use <code verbatim>(click)="…"</code>, not <code>onclick</code>.</p>
 
   <h2>Control flow</h2>
   <p>Show one of several branches with <code>@if</code>, <code>@else if</code> and <code>@else</code>. Outside an interactive component the choice is made on the server and costs nothing in the browser. Inside one, the branch switches when the state it reads changes: the old branch's handlers are removed and the new branch is inserted and wired.</p>
-  <pre><code verbatim>@if (user.isAdmin) {
+  <div class="sample"><pre><code verbatim>@if (user.isAdmin) {
   <a href="/admin">Admin</a>
 } @else if (user.isEditor) {
   <a href="/edit">Edit</a>
 } @else {
   <span>Read only</span>
-}</code></pre>
+}</code></pre><copy attach="interaction" /></div>
   <p>Repeat content with <code>@for</code>. <code>track</code> gives each row a key (without it, rows are keyed by position), <code>$index</code> is the row's position, and <code>@empty</code> shows when the list is empty.</p>
-  <pre><code verbatim><ul>
+  <div class="sample"><pre><code verbatim><ul>
   @for (post of posts; track post.id) {
     <li>{{ $index + 1 }}. {{ post.title }}</li>
   } @empty {
     <li>No posts yet.</li>
   }
-</ul></code></pre>
+</ul></code></pre><copy attach="interaction" /></div>
   <p>Inside an interactive component, rows with the same key keep their elements when the list changes; new rows are rendered and removed rows are cleaned up.</p>
   <p>Inside a block, a bare <code>}</code> closes it; write <code>&amp;#125;</code> for a literal one.</p>
 
   <h2>Slots</h2>
   <p>A component without a script can wrap content: whatever you put between its tags renders at its <code>&lt;slot /&gt;</code>. The content belongs to the page that writes it, so its holes read the page's inputs. This is how layouts work: this site's layout is a component, and every page wraps its content in it.</p>
-  <pre><code verbatim>{{-- layouts/docs.clarus --}}
+  <div class="sample"><pre><code verbatim>{{-- layouts/docs.clarus --}}
 @input title: string
 <html lang="en">
   <head><title>{{ title }} · clarusjs</title></head>
@@ -57,11 +58,11 @@
 @import docs from '../../layouts/docs.clarus'
 <docs [title]="'Components'">
   <h1>Components</h1>
-</docs></code></pre>
+</docs></code></pre><copy attach="interaction" /></div>
 
   <h2>Named slots</h2>
   <p>A component can have several slots. Give them names, and fill them from the parent with <code verbatim>@slot('name') { … }</code>; everything else goes to the default slot. Content inside a <code>&lt;slot&gt;</code> is the fallback, shown when nothing fills it.</p>
-  <pre><code verbatim>{{-- components/panel.clarus --}}
+  <div class="sample"><pre><code verbatim>{{-- components/panel.clarus --}}
 <section>
   <header><slot name="head">Untitled</slot></header>
   <slot />
@@ -71,7 +72,7 @@
 <panel>
   @slot('head') { <h2>Settings</h2> }
   <p>Everything else is the default slot.</p>
-</panel></code></pre>
+</panel></code></pre><copy attach="interaction" /></div>
   <p>This site's layout has a <code>next</code> slot: each guide page fills it with the link at the bottom, and other pages get the fallback.</p>
 
   <h2>Showing code</h2>

@@ -1,6 +1,9 @@
+@import pill from './pill.clarus'
+
 <script>
+  import { todos } from '../stores/todos.ts'
   let draft = state('')
-  let items = state([{ id: 1, text: 'Read the islands guide' }])
+  let items = shared(todos)
   let next = state(2)
   function add() {
     const text = draft.trim()
@@ -17,6 +20,7 @@
     <input name="item" (input)="draft = $event.target.value" placeholder="Add an item" aria-label="New item" autocomplete="off">
     <button type="submit">Add</button>
   </form>
+  <p class="todo-count"><pill [text]="items.length === 1 ? '1 item' : items.length + ' items'" /></p>
   <ul class="todo-list">
     @for (item of items; track item.id) {
       <li><span>{{ item.text }}</span> <button type="button" class="remove" (click)="remove(item)" [aria-label]="'Remove ' + item.text">×</button></li>

@@ -21,9 +21,9 @@ test('counter client output is readable and exact', () => {
   expect(compile(fixture('counter.clarus'), { file: 'counter.clarus', target: 'client' }).code).toBe(
 `import { state, derived, holes as __cl_holes, text as __cl_text, on as __cl_on } from 'clarusjs/runtime'
 
-export function attach(__cl_root, __cl_props = {}) {
+export function attach(__cl_root, __cl_props = {}, __cl_state) {
   const { start = 0 } = __cl_props
-  const count = state(start)
+  const count = state(__cl_state && "count" in __cl_state ? __cl_state.count : start)
   const double = derived(() => count.get() * 2)
   function add() { count.set(count.get() + 1) }
 
@@ -74,4 +74,38 @@ test('two islands of the same component are independent', async () => {
   a!.querySelector('button')!.click()
   expect(a!.textContent).toBe('Clicked 3 times (double: 6)')
   expect(b!.textContent).toBe('Clicked 10 times (double: 20)')
+})
+
+test('#14: attach uses the state the server rendered instead of re-running initial values', async () => {
+  const source = `<script>
+  let started = state(Date.now())
+  let n = state(0)
+  const later = derived(() => started + n)
+</script>
+<b (click)="n++">{{ started }}|{{ later }}</b>`
+  const server = await importCode(compile(source, { file: 'clock.clarus', target: 'server', clientUrl: '/c' }).code, 'clock-s')
+  const client = await importCode(compile(source, { file: 'clock.clarus', target: 'client' }).code, 'clock-c')
+  const realNow = Date.now
+  Date.now = () => 1000
+  document.body.innerHTML = server.render()
+  Date.now = () => 5000
+  try {
+    const island = document.querySelector('cl-island')!
+    expect(island.getAttribute('s')).toBe('{"started":1000,"n":0}')
+    const { parse } = await import('../../src/runtime/serialize.ts')
+    client.attach(island, parse(island.getAttribute('p')!), parse(island.getAttribute('s')!))
+    expect(island.querySelector('b')!.textContent).toBe('1000|1000')
+    island.querySelector('b')!.click()
+    expect(island.querySelector('b')!.textContent).toBe('1000|1001')
+  } finally {
+    Date.now = realNow
+  }
+})
+
+test('#14: without server state, attach still computes initial values', async () => {
+  const { attach } = await load('counter')
+  document.body.innerHTML = '<cl-island><button data-cl-e="0">Clicked <!--[0-->5<!--]--> times (double: <!--[1-->10<!--]-->)</button></cl-island>'
+  attach(document.querySelector('cl-island'), { start: 5 })
+  document.querySelector('button')!.click()
+  expect(document.querySelector('button')!.textContent).toBe('Clicked 6 times (double: 12)')
 })

@@ -21,6 +21,8 @@ export function clientUrlFor(root: string, file: string): string {
 
 const LOADER_ENTRY = 'cl-loader'
 const CLIENT_OUT = 'dist/client'
+// Placeholder for a nested island's chunk URL in the client build, replaced once the bundle's file names are known.
+const CHUNK_TOKEN = '__CLARUS_CHUNK__'
 const SERVER_OUT = 'dist/server'
 const entryName = (root: string, file: string) => relative(root, file).replace(/\.clarus$/, '')
 
@@ -79,6 +81,20 @@ export default function clarusjs(): Plugin {
     },
     // Each build re-reads the client manifest: a builder can run buildApp() more than once.
     buildStart() { built = undefined },
+    // Client build: nested islands rendered in the browser get their chunk's real URL.
+    generateBundle(_options, bundle) {
+      if (this.environment.config.consumer !== 'client' || command !== 'build') return
+      const byName = new Map<string, string>()
+      for (const out of Object.values(bundle)) if (out.type === 'chunk' && out.isEntry) byName.set(out.name, base + out.fileName)
+      for (const out of Object.values(bundle)) {
+        if (out.type !== 'chunk' || !out.code.includes(CHUNK_TOKEN)) continue
+        out.code = out.code.replace(/__CLARUS_CHUNK__\[(.+?)\]__/g, (_, name: string) => {
+          const url = byName.get(name)
+          if (!url) this.error(`clarusjs: no client chunk for ${name}.clarus (stateful components must be under src/)`)
+          return url!
+        })
+      }
+    },
     configResolved(config) {
       root = config.root
       command = config.command
@@ -106,10 +122,16 @@ export default function clarusjs(): Plugin {
       filter: { id: /\.clarus(\?|$)/ },
       handler(code, id) {
         const file = id.replace(/\?.*$/, '')
-        const target = this.environment.config.consumer === 'server' ? 'server' : 'client'
+        // ?render: a component's server render function, used in the browser to render children of islands.
+        const target = this.environment.config.consumer === 'server' || /[?&]render\b/.test(id) ? 'server' : 'client'
         // ponytail: ?import makes Vite's dev transform middleware serve .clarus as JS for the loader's dynamic import; build output uses hashed chunk URLs from the client manifest (stage 3)
-        const urls = target === 'server' ? builtUrls() : undefined
-        const clientUrl = urls ? urls.get(entryName(root, file)) : clientUrlFor(root, file)
+        const consumer = this.environment.config.consumer
+        // Server build: chunk URLs come from the client manifest. Client build (a ?render child): the chunk doesn't
+        // exist yet, so write a placeholder that generateBundle swaps for the real file name. Dev: the source URL.
+        const urls = consumer === 'server' ? builtUrls() : undefined
+        const clientUrl = urls
+          ? urls.get(entryName(root, file))
+          : command === 'build' ? `${CHUNK_TOKEN}[${entryName(root, file)}]__` : clientUrlFor(root, file)
         if (urls && !clientUrl && compile(code, { file, target: 'client' }).stateful) {
           this.error(`${file}: stateful component is not under src/, so it has no client chunk`)
         }

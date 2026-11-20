@@ -33,11 +33,15 @@ for (const { path, title } of pages) {
 }
 
 for (const { path } of guides) {
-  test(`${path} loads no JavaScript`, async ({ page }) => {
+  test(`${path} loads only the loader and the theme toggle`, async ({ page }) => {
     const { response, scripts } = await visit(page, path)
     expect(response?.status()).toBe(200)
     await expect(page.locator('h1')).toHaveCount(1)
-    expect(scripts).toEqual([])
+    // The page itself, its layout and its text ship nothing; copy buttons load only when used.
+    expect(scripts.every((s) => new URL(s).pathname.startsWith('/assets/'))).toBe(true)
+    expect(scripts.some((s) => /cl-loader-.+\.js$/.test(s))).toBe(true)
+    expect(scripts.some((s) => /theme-toggle-.+\.js$/.test(s))).toBe(true)
+    expect(scripts.some((s) => /copy-.+\.js$/.test(s))).toBe(false)
   })
 }
 
@@ -65,6 +69,7 @@ test('home: only the loader and island code load, and the counter island works',
   expect(scripts.every((s) => /\/assets\//.test(s))).toBe(true)
   const islands = page.locator('cl-island[c="counter"]')
   await expect(islands).toHaveCount(1)
+  await expect(islands).toHaveAttribute('s', '{"count":0}') // the state the server rendered with
   await expect(islands).toHaveAttribute('data-cl-ready', '')
   const button = islands.locator('button')
   const before = await page.locator('main').textContent()
@@ -102,12 +107,18 @@ test('the nav marks the current page, and each page has its own description', as
 test('home: the "what ships" island switches @if branches in the browser', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (err) => errors.push(err.message))
+  const chunks: string[] = []
+  page.on('request', (req) => { if (/what-ships-.+\.js$/.test(req.url())) chunks.push(req.url()) })
   await page.goto('/')
+  await page.waitForLoadState('networkidle')
   const island = page.locator('cl-island[c="what-ships"]')
-  await expect(island).toHaveAttribute('data-cl-ready', '')
+  await expect(island).toHaveAttribute('a', 'interaction')
+  expect(chunks).toEqual([]) // attach="interaction": no code until it's used
   const toggle = island.locator('button.toggle')
   await expect(island.locator('ul.ships')).toHaveCount(0)
-  await toggle.click()
+  await toggle.click() // loads the island, and this click is replayed once it attaches
+  await expect(island).toHaveAttribute('data-cl-ready', '')
+  expect(chunks).toHaveLength(1)
   await expect(island.locator('ul.ships li')).toHaveCount(3)
   await expect(toggle).toHaveText('Hide')
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
@@ -139,6 +150,7 @@ test('home: the list island adds and removes rows by key, with @empty', async ({
   await todo.locator('button[type="submit"]').click()
   await expect(rows.locator('span')).toHaveText(['Read the islands guide', 'Write a component', 'Ship it'])
   await expect(input).toHaveValue('')
+  await expect(todo.locator('.pill')).toHaveText('3 items') // a stateless child whose props read the island's state
   const kept = await rows.nth(2).elementHandle()
   await todo.getByRole('button', { name: 'Remove Write a component' }).click()
   await expect(rows.locator('span')).toHaveText(['Read the islands guide', 'Ship it'])
@@ -146,6 +158,7 @@ test('home: the list island adds and removes rows by key, with @empty', async ({
   await todo.getByRole('button', { name: 'Remove Read the islands guide' }).click()
   await todo.getByRole('button', { name: 'Remove Ship it' }).click()
   await expect(todo.locator('.todo-list .empty')).toHaveText('Nothing yet.')
+  await expect(todo.locator('.pill')).toHaveText('0 items')
   expect(errors).toEqual([])
 })
 
@@ -163,4 +176,52 @@ test('named slot: each guide page fills "next", other pages get the fallback', a
     await expect(link, path).toHaveCount(1)
     await expect(link, path).toHaveAttribute('href', href)
   }
+})
+
+test('home: two islands share the to-do store', async ({ page }) => {
+  await page.goto('/')
+  const summary = page.locator('cl-island[c="todo-summary"]')
+  await expect(summary).toHaveAttribute('data-cl-ready', '')
+  await expect(summary.locator('strong')).toHaveText('1')
+  const todo = page.locator('cl-island[c="todo"]')
+  await expect(todo).toHaveAttribute('data-cl-ready', '')
+  await todo.locator('input[name="item"]').fill('Shared')
+  await todo.locator('input[name="item"]').press('Enter')
+  await expect(summary.locator('strong')).toHaveText('2')
+  await expect(summary).toContainText('2 items')
+})
+
+test('theme toggle cycles system → light → dark and is remembered across pages', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/guide/islands')
+  const toggle = page.locator('cl-island[c="theme-toggle"] button')
+  await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
+  await expect(toggle).toHaveAttribute('aria-label', /system/)
+  await toggle.click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await toggle.click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+  expect(bg).not.toBe('rgb(251, 252, 252)') // dark tokens apply even though the system is light
+  await page.goto('/guide/build')
+  await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await toggle.click()
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/)
+})
+
+test('copy buttons load on first click and copy their sample', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  const chunks: string[] = []
+  page.on('request', (req) => { if (/copy-.+\.js$/.test(req.url())) chunks.push(req.url()) })
+  await page.goto('/guide/getting-started')
+  await page.waitForLoadState('networkidle')
+  expect(chunks).toEqual([])
+  const sample = page.locator('.sample').first()
+  const button = sample.locator('button.copy')
+  await button.click() // loads the island; the click is replayed once it attaches
+  await expect(button).toHaveText('Copied')
+  expect(chunks).toHaveLength(1)
+  const copied = await page.evaluate(() => navigator.clipboard.readText())
+  expect(copied).toBe(await sample.locator('code').textContent())
 })

@@ -1,4 +1,5 @@
 {{-- The whole page: every docs page wraps its content in <docs [title]="…">. --}}
+@import themeToggle from '../components/theme-toggle.clarus'
 @input title: string
 @input section: string = ''
 @input description: string = 'clarusjs: clear, compiled views. Server HTML with JavaScript only where it is interactive.'
@@ -21,6 +22,7 @@
         <a href="/guide/islands" [aria-current]="section === 'islands' ? 'page' : false">Islands</a>
         <a href="/guide/build" [aria-current]="section === 'build' ? 'page' : false">Build</a>
         <a href="https://github.com/forinda/clarusjs">GitHub</a>
+        <themeToggle />
       </nav>
     </header>
     <main class="content">

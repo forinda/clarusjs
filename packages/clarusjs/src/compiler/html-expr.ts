@@ -37,17 +37,25 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
       return `((__cl_l) => __cl_l.length ? __cl_l.map(${row}).join("") : ${n.empty ? `(${htmlExpr(n.empty, rw)})` : '""'})([...(${list} ?? [])])`
     }
     if (n.kind === 'component') {
-      const props = n.props.map((p) => `${p.name}: ${wrapExpr(p.expr)}`).join(', ')
-      const slots = [
-        ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw)}`] : []),
-        ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw)}`),
-      ]
-      return slots.length ? `${renderName(n.name)}({ ${props} }, { ${slots.join(', ')} })` : `${renderName(n.name)}({ ${props} })`
+      const call = componentCall(n, rw)
+      return n.region >= 0 ? `__cl_regionHtml(${n.region}, () => ${call})` : call
     }
     const value = `__cl_escape(${wrapExpr(rw.expr(n.expr))})`
     return n.reactive ? `"<!--[${n.index}-->" + ${value} + "<!--]-->"` : value
   })
   return parts.length ? parts.join(' + ') : '""'
+}
+
+/** `render_child({ props }, { slots })` for a component node. */
+export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rewriter): string {
+  const props = n.props.map((p) => `${p.name}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')
+  const slots = [
+    ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw)}`] : []),
+    ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw)}`),
+  ]
+  const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
+  if (n.attach) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { attach: ${JSON.stringify(n.attach)} })`
+  return slotsArg ? `${renderName(n.name)}({ ${props} }, ${slotsArg})` : `${renderName(n.name)}({ ${props} })`
 }
 
 /** Index of the branch an @if picks: `(a ? 0 : b ? 1 : 2)`, or -1 when nothing matches and there is no @else. */

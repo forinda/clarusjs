@@ -28,12 +28,13 @@ function inside(ctx: Ctx, node: Node): boolean {
  * holes `<!--[N-->`, @if blocks `<!--[bN:K-->`, @for lists `<!--[fN-->` with rows `<!--[r-->` and `<!--[e-->`,
  * all closed by `<!--]-->`.
  */
-function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[] } {
+function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[]; regions: Range[] } {
   const root = rootOf(ctx)
   const holes: Hole[] = []
   const blocks: Block[] = []
   const fors: For[] = []
-  type Open = { kind: 'hole' | 'block' | 'for' | 'row' | 'empty'; index: number; k: number; start: Comment; rows: Range[]; empty: Range | null }
+  const regions: Range[] = []
+  type Open = { kind: 'hole' | 'block' | 'for' | 'row' | 'empty' | 'region'; index: number; k: number; start: Comment; rows: Range[]; empty: Range | null }
   const open: Open[] = []
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, {
     acceptNode: (n) =>
@@ -50,6 +51,7 @@ function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[] } {
     if ((m = /^\[(\d+)$/.exec(data))) push('hole', Number(m[1]))
     else if ((m = /^\[b(\d+):(-?\d+)$/.exec(data))) push('block', Number(m[1]), Number(m[2]))
     else if ((m = /^\[f(\d+)$/.exec(data))) push('for', Number(m[1]))
+    else if ((m = /^\[c(\d+)$/.exec(data))) push('region', Number(m[1]))
     else if (data === '[r') push('row')
     else if (data === '[e') push('empty')
     else if (data === ']' && open.length) {
@@ -58,13 +60,14 @@ function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[] } {
       if (o.kind === 'hole') holes[o.index] = { start: o.start, end: c }
       else if (o.kind === 'block') blocks[o.index] = { start: o.start, end: c, k: o.k }
       else if (o.kind === 'for') fors[o.index] = { start: o.start, end: c, rows: o.rows, empty: o.empty }
+      else if (o.kind === 'region') regions[o.index] = { start: o.start, end: c }
       else if (parent?.kind === 'for') {
         if (o.kind === 'row') parent.rows.push({ start: o.start, end: c })
         else parent.empty = { start: o.start, end: c }
       }
     }
   }
-  return { holes, blocks, fors }
+  return { holes, blocks, fors, regions }
 }
 
 /** Hole markers in `ctx`, by index. */
@@ -84,6 +87,9 @@ function insertHtml(html: string, end: Node): { first: Node | null; last: Node |
   const first = t.content.firstChild
   const last = t.content.lastChild
   end.parentNode!.insertBefore(t.content, end)
+  // Child islands in the new HTML attach like the ones on the page (the loader registers this hook).
+  const attachIslands = (globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach
+  if (attachIslands && end.parentNode) attachIslands(end.parentNode)
   return { first, last }
 }
 
@@ -120,6 +126,31 @@ export function block(ctx: Ctx, index: number, which: () => number, branches: { 
       }
       first = false
       dispose = k >= 0 ? scope(() => branches[k]!.wire()) : null
+    })
+  })
+}
+
+/**
+ * A child component inside an island whose props or content read state. `html()` renders it with the current
+ * values; when anything it read changes, the old HTML is disposed and replaced, and `wire()` wires the island's own
+ * holes and events in the child's slot content again. A stateful child is remounted with its new props.
+ */
+export function region(ctx: Ctx, index: number, html: () => string, wire: () => void): void {
+  const r = scan(ctx).regions[index]
+  if (!r) return
+  let dispose: (() => void) | null = null
+  let first = true
+  onDispose(() => dispose?.())
+  effect(() => {
+    const next = html()
+    untrack(() => {
+      if (!first) {
+        dispose?.()
+        while (r.start.nextSibling && r.start.nextSibling !== r.end) r.start.nextSibling.remove()
+        insertHtml(next, r.end)
+      }
+      first = false
+      dispose = scope(wire)
     })
   })
 }

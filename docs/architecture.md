@@ -157,13 +157,13 @@ Server output (readable, roughly what you'll see in `dist/`):
 ```js
 import { escape as __cl_escape, island as __cl_island } from 'clarusjs/runtime/server'
 
-export function render(__cl_props = {}, __cl_slots) {
+export function render(__cl_props = {}, __cl_slots, __cl_opts) {
   if (__cl_slots !== undefined) throw new Error("[clarusjs] <counter> does not accept children yet")
   const { start = 0 } = __cl_props
   let count = (start)
   const double = (() => count * 2)()
   function add() { count++ }
-  return __cl_island("counter", "/src/components/counter.clarus?import", { start }, "<button data-cl-e=\"0\">Clicked " + "<!--[0-->" + __cl_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __cl_escape(double) + "<!--]-->" + ")</button>")
+  return __cl_island("counter", "/src/components/counter.clarus?import", { start }, "<button data-cl-e=\"0\">Clicked " + "<!--[0-->" + __cl_escape(count) + "<!--]-->" + " times (double: " + "<!--[1-->" + __cl_escape(double) + "<!--]-->" + ")</button>", { count }, __cl_opts?.attach)
 }
 ```
 
@@ -172,9 +172,9 @@ Client output:
 ```js
 import { state, derived, holes as __cl_holes, text as __cl_text, on as __cl_on } from 'clarusjs/runtime'
 
-export function attach(__cl_root, __cl_props = {}) {
+export function attach(__cl_root, __cl_props = {}, __cl_state) {
   const { start = 0 } = __cl_props
-  const count = state(start)
+  const count = state(__cl_state && "count" in __cl_state ? __cl_state.count : start)
   const double = derived(() => count.get() * 2)
   function add() { count.set(count.get() + 1) }
 
@@ -197,7 +197,7 @@ to change later, so it's fixed now.
 ```html
 <h1>Ada Lovelace</h1>                         <!-- static: no markers, no JS -->
 
-<cl-island c="counter" src="/assets/counter-3f2a.js" p='{"start":3}'>
+<cl-island c="counter" src="/assets/counter-3f2a.js" p='{"start":3}' s='{"count":3}'>
   <button data-cl-e="0">
     Clicked <!--[0-->3<!--]--> times (double: <!--[1-->6<!--]-->)
   </button>
@@ -208,11 +208,12 @@ to change later, so it's fixed now.
 
 | Marker | Meaning |
 |---|---|
-| `<cl-island c src p>` | stateful component boundary: name, its JS chunk, its serialized props. `display: contents`, so it doesn't affect layout |
+| `<cl-island c src p s a>` | stateful component boundary: name, its JS chunk, its serialized props (`p`), the `state()` values it rendered with (`s`, omitted when it has none) and when to attach (`a`: `idle`, `visible` or `interaction`; omitted for the default, on load). `display: contents`, so it doesn't affect layout |
 | `<!--[n-->…<!--]-->` | reactive hole `n`; the client replaces what's between |
 | `data-cl-e="n"` | element with event binding `n` |
 | `data-cl-a="n"` | element whose attributes read state; the client keeps them in sync |
 | `<!--[bn:k-->…<!--]-->` | `@if` block `n` inside an island; `k` is the branch the server rendered (`-1` for none) |
+| `<!--[cn-->…<!--]-->` | a child component inside an island whose props or slot content read state; the browser re-renders it |
 | `<!--[fn-->…<!--]-->` | `@for` list `n` inside an island; each row is wrapped in `<!--[r-->…<!--]-->`, `@empty` content in `<!--[e-->…<!--]-->`. Markers inside a row repeat per row and are looked up within that row |
 
 Static parts of the page carry **no markers at all**. Islands are
@@ -248,10 +249,12 @@ sequenceDiagram
   Note over B,C: no re-render, no DOM diff, no hydration mismatch possible
 ```
 
-**POC limitation, stated honestly:** `attach` runs the component's `<script>`
-again in the browser to recreate its functions, but never re-renders DOM.
-**(later)** Serialize the state values into `p` too, so attach uses the
-server's values and the script only runs for its functions.
+**State from the server.** The `s` attribute carries the `state()` values the island rendered with. `attach` starts
+from them, so an initial value like `Date.now()` isn't recomputed in the browser; `derived()` values are recomputed
+from the restored state. Values go through `runtime/serialize.ts` (JSON plus Date, Map, Set, undefined, NaN, ±Infinity,
+-0, BigInt; functions, class instances and cycles are rejected with their path). Other locals in `<script>` still run
+again in the browser. **Island props and state are public**: they are in the page. Reading server-only globals
+(`process`, `Deno`, `Bun`, `require`) in an island's script is a build error.
 
 ## 7. Data flow
 

@@ -16,7 +16,7 @@ test('one failing island does not stop the others, and is logged by name', async
   await attachAll(document, load)
 
   const ok = document.querySelectorAll('cl-island')[1]!
-  expect(attach).toHaveBeenCalledWith(ok, { start: 10 })
+  expect(attach).toHaveBeenCalledWith(ok, { start: 10 }, undefined) // no s attribute: no server state
   expect(ok.hasAttribute('data-cl-ready')).toBe(true)
   expect(String(error.mock.calls[0]?.[0])).toContain('broken')
 

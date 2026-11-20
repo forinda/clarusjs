@@ -1,13 +1,15 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
 import { ClarusError } from './errors.ts'
 import type { ImportDecl, InputDecl, ParsedFile, TemplateNode } from './parse.ts'
-import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, type Signals } from './script.ts'
+import { analyzeScript, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
   | { kind: 'static'; html: string }
   | { kind: 'hole'; expr: string; reactive: boolean; index: number } // index = -1 when not reactive
   // children: content for the default slot; fills: content for named slots (@slot('name') { … }).
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[] }
+  // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
+  // can re-render it (-1 otherwise).
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number; attach?: string }
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
   | { kind: 'slot'; name: string; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
@@ -24,19 +26,22 @@ export type ComponentIR = {
   name: string // basename without .clarus
   inputs: InputDecl[]
   imports: ImportDecl[]
-  script?: string
+  script?: string // without its import statements, which are in scriptImports
+  scriptImports: string[]
   signals: Signals
   stateful: boolean
   nodes: IRNode[]
   events: IREvent[]
 }
 
+const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
 export function lower(parsed: ParsedFile, file: string, source: string): ComponentIR {
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const stateful = !!parsed.script
-  const signals: Signals = parsed.script ? analyzeScript(parsed.script.code, file, source, parsed.script.start) : new Map()
+  const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
+  const signals: Signals = parsed.script ? analyzeScript(split.body, file, source, parsed.script.start) : new Map()
   // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.
   // text()'s effect tracks the real dependencies, so over-marking only costs a pair of comment markers.
   const scriptScope = parsed.script ? new Set([...signals.keys(), ...scriptNames(parsed.script.code)]) : new Set<string>()
@@ -49,6 +54,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   let attrElementCount = 0
   let blockCount = 0
   let forCount = 0
+  let regionCount = 0
   let loopNames = new Set<string>() // @for item and $index names in scope: they make holes inside rows reactive
   let scopeKey: string | undefined // the @if branch being lowered, for events
 
@@ -115,13 +121,22 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       return
     }
     if (components.has(node.tag)) {
-      if (stateful) fail('components inside a stateful component are not supported yet', node.start)
       const props: { name: string; expr: string }[] = []
+      let attach: string | undefined
       for (const a of node.attrs) {
         if (a.kind === 'prop') { checkExpr(a.expr, file, source, a.start); props.push({ name: a.name, expr: a.expr }) }
-        else fail(`component <${node.tag}> only takes [prop] bindings`, a.start)
+        else if (a.kind === 'static' && a.name === 'attach') {
+          // When the island's code loads in the browser (see runtime/loader.ts).
+          if (typeof a.value !== 'string' || !ATTACH_MODES.includes(a.value)) fail(`attach must be one of ${ATTACH_MODES.join(', ')}`, a.start)
+          attach = a.value as string
+        } else fail(`component <${node.tag}> only takes [prop] bindings and attach="…"`, a.start)
       }
       // Content is rendered here, in this component's scope, and handed to the child for its slots.
+      const hasContent = node.children.some((c) => c.type !== 'text' || c.value.trim())
+      const readsState = props.some((p) => referencesNames(p.expr, scriptScope) || referencesNames(p.expr, loopNames))
+      const region = stateful && (hasContent || readsState) ? regionCount++ : -1
+      const parentScope = scopeKey
+      if (region >= 0) scopeKey = `c${region}`
       const lowerList = (list: TemplateNode[]) => {
         const nodes_: IRNode[] = []
         const parent = out
@@ -139,7 +154,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       const rest = node.children.filter((c) => c.type !== 'fill')
       // Whitespace around @slot blocks is not content for the default slot.
       const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
-      out.push({ kind: 'component', name: node.tag, props, children, fills })
+      scopeKey = parentScope
+      out.push({ kind: 'component', name: node.tag, props, children, fills, region, ...(attach ? { attach } : {}) })
       return
     }
     if (node.tag === 'slot') {
@@ -201,7 +217,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     name: file.split('/').pop()!.replace(/\.clarus$/, ''),
     inputs: parsed.inputs,
     imports: parsed.imports,
-    script: parsed.script?.code,
+    script: parsed.script ? split.body : undefined,
+    scriptImports: split.imports,
     signals,
     stateful,
     nodes,

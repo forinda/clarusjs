@@ -27,6 +27,12 @@ describe('island', () => {
   test('rejects props that cannot be serialized, naming the path', () => {
     expect(() => island('c', '/c', { cb: () => 1 }, '')).toThrow(TypeError)
     expect(() => island('c', '/c', { cb: () => 1 }, '')).toThrow(/cb/)
-    expect(() => island('c', '/c', { a: { b: 1n } }, '')).toThrow(/a\.b/)
+    expect(() => island('c', '/c', { a: { b: Symbol('x') } }, '')).toThrow(/a\.b/)
   })
+})
+
+test('#14: island state goes in an s attribute, escaped; no state, no attribute', () => {
+  const out = island('c', '/c', {}, '', { label: '"><script>', when: new Date(0) })
+  expect(out).toContain(' s="{&quot;label&quot;:&quot;\\&quot;&gt;&lt;script&gt;&quot;,&quot;when&quot;:{&quot;$cl&quot;:&quot;d&quot;,&quot;v&quot;:&quot;1970-01-01T00:00:00.000Z&quot;}}"')
+  expect(island('c', '/c', {}, '')).not.toContain(' s=')
 })

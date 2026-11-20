@@ -1,3 +1,4 @@
+@import copy from '../../components/copy.clarus'
 @import docs from '../../layouts/docs.clarus'
 @import callout from '../../components/callout.clarus'
 
@@ -7,12 +8,43 @@
 
   <h2>State</h2>
   <p><code>state()</code> makes a value reactive and <code>derived()</code> computes from it. You read and write them as plain variables; the compiler rewrites <code>count++</code> into a signal update.</p>
-  <pre><code verbatim><script>
+  <div class="sample"><pre><code verbatim><script>
   let count = state(0)
   const double = derived(() => count * 2)
 </script>
 
-<button (click)="count++">{{ count }} × 2 = {{ double }}</button></code></pre>
+<button (click)="count++">{{ count }} × 2 = {{ double }}</button></code></pre><copy attach="interaction" /></div>
+
+  <h2>Starting from the server's values</h2>
+  <p>An island's state is rendered on the server first. Its values travel with the HTML, so the browser picks up exactly where the server left off: an initial value like <code>Date.now()</code> isn't computed a second time. Values can be plain JSON, <code>Date</code>, <code>Map</code>, <code>Set</code>, <code>BigInt</code> and <code>undefined</code>; functions and class instances can't be sent.</p>
+  <callout><p><strong>Island props and state are public.</strong> They are written into the page so the browser can continue from them. Never put secrets in them. Reading server-only globals such as <code>process</code> in an island's script is a build error for this reason.</p></callout>
+
+  <h2>Shared state</h2>
+  <p>Put state that several islands use in a store: a module that exports <code>state()</code> values. Each island takes a local name for it with <code>shared()</code> and reads and writes it like its own state.</p>
+  <div class="sample"><pre><code verbatim>// stores/cart.ts
+import { state } from 'clarusjs/runtime'
+export const cart = state([])
+
+// components/cart-count.clarus
+<script>
+  import { cart } from '../stores/cart.ts'
+  let items = shared(cart)
+</script>
+<span>{{ items.length }} in cart</span></code></pre><copy attach="interaction" /></div>
+  <p>On the server, a shared value is rendered from the store's initial value, never its current one, and each render gets its own copy: a server keeps modules alive across requests, so anything else could show one visitor's data to another. Store values must therefore be plain data that can be copied.</p>
+
+  <h2>Components inside islands</h2>
+  <p>An island can use other components. A component without a script is rendered in the browser too when the props or content it gets from the island change; one with a script becomes its own island and keeps its own state, starting from the props it was first given.</p>
+
+  <h2>When islands attach</h2>
+  <p>By default an island's code loads as soon as the page does. Add <code>attach</code> to load it later:</p>
+  <ul>
+    <li><code>attach="idle"</code>: once the browser has nothing else to do.</li>
+    <li><code>attach="visible"</code>: when it scrolls into view.</li>
+    <li><code>attach="interaction"</code>: the first time someone clicks, types or focuses inside it.</li>
+  </ul>
+  <div class="sample"><pre><code verbatim><comments attach="visible" [post]="post.id" /></code></pre><copy attach="interaction" /></div>
+  <p>Nothing the visitor does is lost while the code loads: clicks, key presses, input and form submissions inside the island are held and replayed once it attaches, and a form doesn't post in the meantime. The "What ships to the browser?" toggle on the home page uses <code>attach="interaction"</code>.</p>
 
   <h2>What ships to the browser</h2>
   <ul>
@@ -20,7 +52,7 @@
     <li>One chunk per interactive component, with just its <code>attach</code> function.</li>
     <li>Nothing for components without a script, and nothing for the page itself.</li>
   </ul>
-  <p>This page has no islands, so it loads no JavaScript at all. The <a href="/">home page</a> has one.</p>
+  <p>This page's text and layout ship no JavaScript. It loads two kinds of island: the theme toggle in the header, and the copy buttons on code samples, which use <code>attach="interaction"</code> so their code only loads when you click one.</p>
 
   <callout><p>In the HTML, an island is a <code>&lt;cl-island&gt;</code> element that names its chunk and props, and its reactive text sits between <code>&lt;!--[0--&gt;</code> markers. View the source of the home page to see it.</p></callout>
   @slot('next') {<a href="/guide/build">Next: Build →</a>}

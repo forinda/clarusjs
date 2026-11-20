@@ -1,8 +1,8 @@
 // IR → client module: `attach(root, props)`. Runs in the browser, only for stateful components.
 import type { ComponentIR, IRNode } from './ir.ts'
-import { attrValueExpr, htmlExpr, tagArg, walk, whichExpr, type Rewriter } from './html-expr.ts'
+import { attrValueExpr, componentCall, htmlExpr, tagArg, walk, whichExpr, type Rewriter } from './html-expr.ts'
 import { rewriteClient, rewriteClientExpr, wrapExpr, type Signals } from './script.ts'
-import { indentScript, inputsLine } from './shared.ts'
+import { indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitClient(ir: ComponentIR): string {
   if (!ir.stateful) return 'export {}\n'
@@ -11,27 +11,38 @@ export function emitClient(ir: ComponentIR): string {
   const hasHoles = all.some((n) => n.kind === 'hole' && n.reactive)
   const hasBlocks = all.some((n) => n.kind === 'if' && n.block >= 0)
   const hasFors = all.some((n) => n.kind === 'for' && n.block >= 0)
-  const rendersHtml = hasBlocks || hasFors
+  const hasRegions = all.some((n) => n.kind === 'component' && n.region >= 0)
+  const rendersHtml = hasBlocks || hasFors || hasRegions
   const used = [
     kinds.has('state') && 'state',
     kinds.has('derived') && 'derived',
+    kinds.has('shared') && 'shared',
     hasHoles && 'holes as __cl_holes',
     hasHoles && 'text as __cl_text',
     ir.events.length > 0 && 'on as __cl_on',
     all.some((n) => n.kind === 'attr' && n.reactive) && 'attr as __cl_attr',
     hasBlocks && 'block as __cl_block',
     hasFors && 'forBlock as __cl_for',
+    hasRegions && 'region as __cl_region',
     // Branch and row HTML is rendered in the browser with the same helpers as on the server.
     rendersHtml && 'escape as __cl_escape',
     rendersHtml && all.some((n) => n.kind === 'attr') && 'attrHtml as __cl_attrHtml',
     rendersHtml && hasBlocks && 'blockHtml as __cl_blockHtml',
     rendersHtml && hasFors && 'forHtml as __cl_forHtml',
+    hasRegions && 'regionHtml as __cl_regionHtml',
   ].filter(Boolean)
 
   let out = used.length ? `import { ${used.join(', ')} } from 'clarusjs/runtime'\n` : ''
-  out += `\nexport function attach(__cl_root, __cl_props = {}) {\n`
+  // Child components render in the browser too (in branches, rows and regions): import their server render
+  // functions through the plugin's ?render query.
+  const usedComponents = new Set(all.flatMap((n) => (n.kind === 'component' ? [n.name] : [])))
+  for (const imp of ir.imports) {
+    if (usedComponents.has(imp.name)) out += `import { render as ${renderName(imp.name)} } from '${imp.from}?render'\n`
+  }
+  for (const line of ir.scriptImports) out += `${line}\n`
+  out += `\nexport function attach(__cl_root, __cl_props = {}, __cl_state) {\n`
   out += inputsLine(ir)
-  if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals))
+  if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals, { stateFromServer: true }))
   const lines = wiring(ir, ir.nodes, undefined, '__cl_root', ir.signals, 0)
   if (lines.length) out += '\n' + lines.map((l) => `  ${l}\n`).join('')
   return out + '}\n'
@@ -67,6 +78,10 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
   const fn = (args: string, inner: string[]) =>
     inner.length ? `(${args}) => {\n${inner.map((l) => `      ${l}`).join('\n')}\n    }` : `(${args}) => {}`
   for (const n of nodes) {
+    if (n.kind === 'component' && n.region >= 0) {
+      const content = [...n.children, ...n.fills.flatMap((f) => f.nodes)]
+      lines.push(`__cl_region(${ctx}, ${n.region}, () => ${componentCall(n, rw)}, ${fn('', wiring(ir, content, `c${n.region}`, ctx, signals, depth))})`)
+    }
     if (n.kind === 'if' && n.block >= 0) {
       const branches = n.branches.map((b, i) =>
         `    { html: () => ${htmlExpr(b.nodes, rw)}, wire: ${fn('', wiring(ir, b.nodes, `${n.block}.${i}`, ctx, signals, depth))} },`)
