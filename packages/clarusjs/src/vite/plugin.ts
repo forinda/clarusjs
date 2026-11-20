@@ -1,11 +1,12 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
 import { existsSync, readFileSync } from 'node:fs'
-import { isAbsolute, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isRunnableDevEnvironment, type Plugin, type UserConfig } from 'vite'
 import { compile, ClarusError } from '../compiler/index.ts'
 import { findClarusFiles, prerender } from './build.ts'
+import { writeManifest } from './manifest.ts'
 import { sendResponse, toRequest } from './node.ts'
 
 // From src/ (workspace, tests) our siblings are .ts files; from the published dist/ they are .js.
@@ -106,7 +107,8 @@ export default function clarusjs(): Plugin {
       if (!client || !ssr) return
       await builder.build(client)
       await builder.build(ssr)
-      await prerender(resolve(builder.config.root, SERVER_OUT, 'index.mjs'), resolve(builder.config.root, CLIENT_OUT))
+      const routes = await prerender(resolve(builder.config.root, SERVER_OUT, 'index.mjs'), resolve(builder.config.root, CLIENT_OUT))
+      writeManifest(dirname(resolve(builder.config.root, CLIENT_OUT)), routes, builder.config.base)
     },
     resolveId(id) {
       if (id === '/cl-loader.js') return here('../runtime/loader')

@@ -257,3 +257,17 @@ test('copy buttons load on first click and copy their sample', async ({ page, co
   const copied = await page.evaluate(() => navigator.clipboard.readText())
   expect(copied).toBe(await sample.locator('code').textContent())
 })
+
+test('the route manifest matches what the browser loads', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
+  expect(Object.keys(manifest.routes).sort()).toEqual(pages.map((p) => p.path).sort())
+  for (const path of ['/', '/guide/state']) {
+    const route = manifest.routes[path]
+    const { scripts } = await visit(page, path)
+    const loaded = [...new Set(scripts.map((s) => new URL(s).pathname.slice(1)))].sort()
+    const initial = route.js.files.filter((f: string) => !route.islands.some((i: { src: string; attach: string }) => i.src === f && i.attach !== 'load'))
+    expect(loaded, path).toEqual([...initial].sort())
+    page.removeAllListeners()
+  }
+})
