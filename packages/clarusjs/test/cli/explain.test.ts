@@ -91,3 +91,16 @@ test('#31: a route whose load() ran at build says so', () => {
   writeFileSync(resolve(root, 'dist/clarusjs-manifest.json'), JSON.stringify(withLoader))
   expect(explain({ root, route: '/about' }).text).toContain('  Data        load() ran once, at build time')
 })
+
+test('#29: a server route is explained as rendered per request', () => {
+  const root = project()
+  const server = { mode: 'server' as const, html: null, loader: 'request' as const, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] }
+  writeFileSync(resolve(root, 'dist/clarusjs-manifest.json'), JSON.stringify({ version: 1, routes: { '/account/[id]': server } }))
+  expect(explain({ root, route: '/account/[id]' }).text).toBe([
+    '/account/[id]',
+    '  Rendered    on every request, by dist/server/index.mjs',
+    '  Data        load() runs on every request',
+    '  Islands     decided per request',
+  ].join('\n'))
+  expect(explain({ root }).text).toContain('/account/[id]  -        per request')
+})

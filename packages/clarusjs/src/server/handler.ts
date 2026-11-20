@@ -1,3 +1,5 @@
+import { modeFor, type ModeTable } from './modes.ts'
+
 // The fetch handler: Request → Response. Same function for dev, per-request SSR and (later) build-time prerender.
 
 type PageModule = { render(props?: object): string }
@@ -33,13 +35,14 @@ export function routeFromFile(file: string): string {
 
 export function createHandler(
   pages: Record<string, () => Promise<PageModule>>,
-  options: { loaderUrl?: string; data?: Record<string, () => Promise<DataModule>> } = {},
-): { fetch(request: Request): Promise<Response>; routes: string[]; paths(): Promise<string[]> } {
+  options: { loaderUrl?: string; data?: Record<string, () => Promise<DataModule>>; modes?: ModeTable } = {},
+): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
   const routes: Route[] = Object.entries(pages)
     .map(([file, load]) => ({ path: routeFromFile(file), file: file.replace(/^\//, ''), load, ...compile(routeFromFile(file)) }))
     .sort((a, b) => a.keys.length - b.keys.length || b.path.split('/').length - a.path.split('/').length)
   const data = options.data ?? {}
+  const modes = options.modes ?? {}
   const loaderUrl = options.loaderUrl ?? '/cl-loader.js'
 
   function match(pathname: string): { route: Route; params: Params } | null {
@@ -59,10 +62,24 @@ export function createHandler(
 
   return {
     routes: routes.map((r) => r.path).sort(),
+    /** Routes rendered per request ('server' mode), as their files name them. */
+    serverRoutes: routes.filter((r) => modeFor(r.path, modes) === 'server').map((r) => r.path).sort(),
+    /** Whether a URL path belongs to a server route (what a host must send to this handler instead of a file). */
+    isServerPath(pathname) {
+      const found = match(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
+      return Boolean(found && modeFor(found.route.path, modes) === 'server')
+    },
+    /** Whether a route (as its file names it) has a load(). */
+    async hasLoader(path) {
+      const route = routes.find((r) => r.path === path)
+      const file = route && `/${route.file.replace(/\.tscl$/, '.load.ts')}`
+      return Boolean(file && data[file] && typeof (await data[file]!()).load === 'function')
+    },
     /** Every concrete path to prerender: static routes as they are, dynamic ones from their entries(). */
     async paths() {
       const out: string[] = []
       for (const route of routes) {
+        if (modeFor(route.path, modes) !== 'static') continue
         if (!route.keys.length) { out.push(route.path); continue }
         const dataFile = route.file.replace(/\.tscl$/, '.load.ts')
         const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
