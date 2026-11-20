@@ -13,6 +13,8 @@ description: clarusjs compiles templates to server HTML and ships JavaScript onl
 - **Errors at build time.** Template mistakes fail the build with a file, line and column, and `clarusjs check` type-checks templates with TypeScript.
 - **Readable output.** The compiled JavaScript is short and plain. You can open it and follow it.
 
+<!-- @include: ../../parts/requirements.md -->
+
 ## When to use it
 
 clarusjs fits sites that are mostly content with interactive parts: documentation, marketing sites, blogs, shops, dashboards with a few live widgets. If every part of every screen is interactive (a design tool, a spreadsheet), a client-side framework is a better fit.

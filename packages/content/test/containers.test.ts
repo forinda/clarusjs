@@ -3,7 +3,7 @@ import { expect, test } from 'vitest'
 import { compile } from 'clarusjs/compiler'
 import markdown from '../src/index.ts'
 
-const html = (code: string, options = {}) => markdown(options).toTscl(code, '/a/src/pages/x.md', { route: '/x' })
+const html = (code: string, options = {}) => markdown(options).toTscl(code, '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })
 
 test('::: tip with the default title, and a custom title', () => {
   expect(html('::: tip\nUse **this**.\n:::\n')).toBe('<div class="custom-block tip"><p class="custom-block-title">Tip</p>\n<p>Use <strong>this</strong>.</p>\n</div>\n')
@@ -28,11 +28,11 @@ test('titles can be localized', () => {
 
 test('with a container component, blocks render through it; a title fills its title slot', () => {
   const opts = { layout: false as const, container: { tag: 'callout', from: '/src/components/callout.tscl' } }
-  const out = markdown(opts).toTscl('::: tip\nUse it.\n:::\n\n::: danger Watch {{ out }} @here\nx\n:::\n', '/a/src/pages/x.md', { route: '/x' })
+  const out = markdown(opts).toTscl('::: tip\nUse it.\n:::\n\n::: danger Watch {{ out }} @here\nx\n:::\n', '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })
   expect(out.split('\n')[0]).toBe("@import callout from '/src/components/callout.tscl'")
   expect(out).toContain('<callout [type]="\'tip\'">\n<p>Use it.</p>\n</callout>')
   expect(out).toContain("<callout [type]=\"'danger'\">@slot('title') {Watch &#123;&#123; out &#125;&#125; &#64;here}")
   expect(() => compile(out, { file: 'x.tscl', target: 'server' })).not.toThrow()
   // details stays a native <details> even with a component.
-  expect(markdown(opts).toTscl('::: details\nx\n:::\n', '/a/src/pages/x.md', { route: '/x' })).toContain('<details class="custom-block details"><summary>Details</summary>')
+  expect(markdown(opts).toTscl('::: details\nx\n:::\n', '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })).toContain('<details class="custom-block details"><summary>Details</summary>')
 })

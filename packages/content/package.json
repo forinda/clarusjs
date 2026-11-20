@@ -46,12 +46,14 @@
     "ssg",
     "vite"
   ],
-  "homepage": "https://github.com/forinda/clarusjs#readme",
+  "homepage": "https://clarusjs.com",
   "bugs": {
     "url": "https://github.com/forinda/clarusjs/issues"
   },
   "dependencies": {
+    "@shikijs/transformers": "^4.6.0",
     "markdown-it": "^15.0.3",
+    "shiki": "^4.6.0",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
