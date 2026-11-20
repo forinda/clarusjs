@@ -1,0 +1,57 @@
+{{-- The whole page. Header, sidebar, breadcrumb and previous/next all come from src/nav.ts. --}}
+@import themeToggle from '../components/theme-toggle.tscl'
+@import { sections, sectionKey, groupsOf, crumb, pager, sourceOf } from '../nav.ts'
+@input title: string
+@input path: string = '/'
+@input description: string = 'clarusjs: clear, compiled views. Server HTML with JavaScript only where it is interactive.'
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ description }}">
+    <title>{{ title }} · clarusjs</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/docs.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/"><img src="/logo.svg" alt="" width="28" height="28"><span>clarus<span class="js">.js</span></span></a>
+      <nav class="top-nav" aria-label="Main">
+        @for (s of sections; track s.key) {<a [href]="s.href" [aria-current]="sectionKey(path) === s.key ? 'true' : false">{{ s.title }}</a>}
+        <a href="https://github.com/forinda/clarusjs">GitHub</a>
+        <themeToggle />
+      </nav>
+    </header>
+    @if (sectionKey(path)) {
+      <div class="docs">
+        <input type="checkbox" id="menu" class="menu-toggle" aria-label="Show the page list">
+        <label for="menu" class="menu-button">Menu</label>
+        <aside class="sidebar" aria-label="Pages">
+          @for (group of groupsOf(path); track group.title) {
+            <p class="group">{{ group.title }}</p>
+            <ul>
+              @for (item of group.items; track item.href) {<li><a [href]="item.href" [aria-current]="item.href === path ? 'page' : false">{{ item.title }}</a></li>}
+            </ul>
+          }
+        </aside>
+        <main class="content">
+          <p class="crumb">{{ crumb(path) }}</p>
+          <slot />
+          <footer class="page-footer">
+            <a class="edit" [href]="sourceOf(path)">Edit this page on GitHub</a>
+            <nav class="pager" aria-label="Previous and next">
+              @if (pager(path).prev.href) {<a class="prev" [href]="pager(path).prev.href"><small>Previous</small>{{ pager(path).prev.title }}</a>}
+              @if (pager(path).next.href) {<a class="next" [href]="pager(path).next.href"><small>Next</small>{{ pager(path).next.title }}</a>}
+            </nav>
+          </footer>
+        </main>
+      </div>
+    } @else {
+      <main class="content home"><slot /></main>
+    }
+    <footer class="site-footer">
+      <p>MIT licensed. This site is built with clarusjs: its pages are static HTML, and only its interactive parts ship JavaScript.</p>
+    </footer>
+  </body>
+</html>

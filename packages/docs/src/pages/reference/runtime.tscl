@@ -1,0 +1,15 @@
+@import copy from '../../components/copy.tscl'
+@import docs from '../../layouts/docs.tscl'
+
+<docs [title]="'Runtime'" [path]="'/reference/runtime'" [description]="'state, derived and shared: the functions you use in island scripts and stores.'">
+  <h1>Runtime</h1>
+  <h2>state(initial)</h2>
+  <p>A reactive value. In an island's script, read and write it as a plain variable. In a <code>.ts</code> module, use <code>.get()</code> and <code>.set(value)</code>.</p>
+  <div class="sample"><pre><code verbatim>import { state } from 'clarusjs/runtime'
+
+const count = state(0)   // { get(), set(v), initial }</code></pre><copy attach="interaction" /></div>
+  <h2>derived(fn)</h2>
+  <p>A value computed from other state; it updates when they change. Read-only.</p>
+  <h2>shared(store)</h2>
+  <p>In an island's script, a local name for a store (a module-level <code>state()</code>). Reads and writes go to the store, so every island using it stays in sync. On the server it renders a copy of the store's initial value.</p>
+</docs>

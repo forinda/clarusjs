@@ -1,3 +1,0 @@
-@import counter from '../components/counter.clarus'
-<h1>CJS</h1>
-<counter [start]="1" />

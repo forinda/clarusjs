@@ -1,0 +1,46 @@
+@import copy from '../components/copy.tscl'
+@import docs from '../layouts/docs.tscl'
+@import counter from '../components/counter.tscl'
+@import callout from '../components/callout.tscl'
+@import whatShips from '../components/what-ships.tscl'
+@import todo from '../components/todo.tscl'
+@import todoSummary from '../components/todo-summary.tscl'
+
+<docs [title]="'Clear, compiled views'">
+  <section class="hero">
+    <img src="/logo.svg" alt="" width="96" height="96">
+    <h1>clarus<span class="js">.js</span></h1>
+    <p class="tagline">Clear, compiled views.</p>
+    <p>Write components in a familiar template language. clarusjs compiles them to plain server HTML and ships JavaScript only for the parts that are interactive. You can always see where each line runs.</p>
+    <p class="actions"><a class="button" href="/guide/getting-started">Get started</a> <a class="button ghost" href="https://github.com/forinda/clarusjs">GitHub</a></p>
+  </section>
+
+  <h2>This page has one island</h2>
+  <p>Everything on this page is static HTML, rendered at build time. The button below is a component with a <code>&lt;script&gt;</code>, so it is the only thing that ships JavaScript. Click it.</p>
+  <div class="demo"><counter [start]="0" /></div>
+  <whatShips attach="interaction" />
+  <div class="sample"><pre><code verbatim>@input start: number = 0
+
+<script>
+  let count = state(start)
+  const double = derived(() => count * 2)
+  function add() { count++ }
+</script>
+
+<button (click)="add()">Clicked {{ count }} times (double: {{ double }})</button></code></pre><copy attach="interaction" /></div>
+
+  <h2>Lists</h2>
+  <p>This list is an island too: <code>@for</code> renders it on the server, and in the browser rows are added and removed by key without touching the others.</p>
+  <todoSummary />
+  <todo />
+
+  <h2>Why clarusjs</h2>
+  <ul class="points">
+    <li><strong>HTML first.</strong> Components without a <code>&lt;script&gt;</code> are HTML only, forever, at zero JavaScript cost.</li>
+    <li><strong>No hydration.</strong> Interactive components attach to the server's HTML. Nothing re-renders, so nothing can mismatch.</li>
+    <li><strong>Errors at build time.</strong> Template mistakes fail the build with a file, line and column.</li>
+    <li><strong>Readable output.</strong> The compiled JavaScript is short and plain. Open it and follow it.</li>
+  </ul>
+
+  <callout><p>clarusjs is early (<code>0.x</code>). This site is its proving ground: every feature is built because the site needs it, and tested here in a real browser.</p></callout>
+</docs>

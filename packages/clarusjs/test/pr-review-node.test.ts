@@ -13,8 +13,8 @@ test('non-finite numbers in island props round-trip (#14), instead of silently b
 })
 
 const handler = createHandler({
-  '/src/pages/index.clarus': async () => ({ render: () => '<p>text</p><!-- <cl-island c="x"> -->' }),
-  '/src/pages/app.clarus': async () => ({ render: () => '<cl-island c="c" src="/c" p="{}"></cl-island>' }),
+  '/src/pages/index.tscl': async () => ({ render: () => '<p>text</p><!-- <cl-island c="x"> -->' }),
+  '/src/pages/app.tscl': async () => ({ render: () => '<cl-island c="c" src="/c" p="{}"></cl-island>' }),
 })
 
 test('an island inside an HTML comment does not add the loader', async () => {
@@ -32,6 +32,6 @@ test('HEAD responses have no body', async () => {
 })
 
 test('island URLs for files outside the Vite root use /@fs/', () => {
-  expect(clientUrlFor('/app', '/app/src/components/c.clarus')).toBe('/src/components/c.clarus?import')
-  expect(clientUrlFor('/app', '/libs/ui/c.clarus')).toBe('/@fs/libs/ui/c.clarus?import')
+  expect(clientUrlFor('/app', '/app/src/components/c.tscl')).toBe('/src/components/c.tscl?import')
+  expect(clientUrlFor('/app', '/libs/ui/c.tscl')).toBe('/@fs/libs/ui/c.tscl?import')
 })

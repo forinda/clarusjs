@@ -1,6 +1,7 @@
 // `vite build` on an app using the plugin: client build, server build, then every page prerendered to static HTML.
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { gzipSync } from 'node:zlib'
 import { createBuilder } from 'vite'
 import { beforeAll, expect, test } from 'vitest'
 import { routeToFile } from '../src/vite/build.ts'
@@ -91,4 +92,44 @@ test('an island that renders a nested island in the browser points it at the nes
   const code = read(`assets/${panel}`)
   expect(code).toContain(`/assets/${counter.replace(/\\/g, '/')}`)
   expect(code).not.toContain('__CLARUS_CHUNK__')
+})
+
+// Size budgets: raising one is a deliberate change (see AGENTS.md), not a side effect.
+const KB = 1024
+const gz = (path: string) => gzipSync(readFileSync(path), { level: 9 }).length
+
+test('size budget: the browser runtime every island shares stays within 5 KB gzip', () => {
+  const files = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js') && !f.startsWith('src'))
+  const total = files.reduce((n, f) => n + gz(resolve(client, 'assets', f)), 0)
+  expect(total, `runtime: ${files.join(', ')} = ${total} B gzip`).toBeLessThanOrEqual(5 * KB)
+})
+
+test('size budget: all the JavaScript the fixture site ships stays within 6 KB gzip', () => {
+  const files = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
+  const total = files.reduce((n, f) => n + gz(resolve(client, 'assets', f)), 0)
+  expect(total, `${total} B gzip`).toBeLessThanOrEqual(6 * KB)
+})
+
+test('no compiler or command-line code reaches the browser', () => {
+  for (const f of (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((x) => x.endsWith('.js'))) {
+    const js = read(`assets/${f}`)
+    expect(js, f).not.toMatch(/acorn|commander|parseExpressionAt|ClarusError/)
+  }
+})
+
+test('#25: writes dist/clarusjs-manifest.json describing every route', () => {
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  const gz = expect.any(Number)
+  expect(Object.keys(manifest.routes)).toEqual(['/', '/about/team', '/explain'])
+  expect(manifest.routes['/about/team']).toEqual({ mode: 'static', html: 'about/team/index.html', loader: null, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] })
+  const home = manifest.routes['/']
+  expect(home.islands.map((i: { component: string; attach: string; count: number }) => [i.component, i.attach, i.count])).toEqual([['counter', 'load', 1], ['panel', 'load', 1]])
+  expect(home.islands.every((i: { gzip: number; src: string }) => i.gzip > 0 && existsSync(resolve(client, i.src)))).toBe(true)
+  expect(home.js).toEqual({ files: expect.any(Array), gzip: gz, initialGzip: gz })
+  expect(home.js.gzip).toBeGreaterThan(home.islands[0].gzip)
+  for (const f of home.js.files) expect(existsSync(resolve(client, f)), f).toBe(true)
+})
+
+test('#27: a page that reads the manifest is rendered again once it is written', () => {
+  expect(read('explain/index.html')).toContain('<p id="home-islands">counter, panel</p>')
 })

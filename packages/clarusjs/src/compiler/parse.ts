@@ -1,4 +1,4 @@
-// .clarus source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
+// .tscl source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
 import { ClarusError } from './errors.ts'
 
 export type Attr =
@@ -13,32 +13,52 @@ export type TemplateNode =
   | { type: 'raw'; value: string; start: number } // content of a `verbatim` element, shown as text
   | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
   | { type: 'fill'; name: string; children: TemplateNode[]; start: number } // @slot('name') { … } inside a component tag
-  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
-export type InputDecl = { name: string; type: string; default?: string; start: number }
+  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; itemStart: number; listStart: number; trackStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
+export type InputDecl = { name: string; type: string; default?: string; start: number; nameStart: number; typeStart: number; defaultStart?: number }
+// @import type { A, B } from '…': types for @input declarations (erased from compiled output, used by type checking).
+export type TypeImport = { clause: string; from: string; start: number; clauseStart: number }
+// @import { a, b } from '…' or @import data from './x.json': values a template uses. Server-only in components
+// without a script; bundled for the browser in islands.
+export type DataImport = { clause: string; from: string; start: number; clauseStart: number }
 export type ImportDecl = { name: string; from: string; start: number }
 export type ParsedFile = {
   inputs: InputDecl[]
   imports: ImportDecl[]
+  typeImports: TypeImport[]
+  dataImports: DataImport[]
   script?: { code: string; start: number } // start = offset of the first char inside <script>
   nodes: TemplateNode[]
 }
 
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
-const INPUT_RE = /^@input\s+([A-Za-z_$][\w$]*)\s*:\s*([^=\n]+?)\s*(?:=\s*(.+?))?\s*$/
+const INPUT_RE = /^@input\s+([A-Za-z_$][\w$]*)\s*:\s*([^=\n]+?)\s*(?:=\s*(.+?))?\s*$/d
+const DATA_IMPORT_RE = /^@import\s+(\{[^}]*\})\s+from\s+(['"])(.+?)\2\s*$/d
+const IMPORT_TYPE_RE = /^@import\s+type\s+(\{[^}]*\}|[A-Za-z_$][\w$]*)\s+from\s+(['"])(.+?)\2\s*$/d
 const IMPORT_RE = /^@import\s+([A-Za-z_$][\w-]*)\s+from\s+(['"])(.+?)\2\s*$/
 
 export function parse(source: string, file: string): ParsedFile {
-  const out: ParsedFile = { inputs: [], imports: [], nodes: [] }
+  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], dataImports: [], nodes: [] }
   let i = 0
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
 
   function directive(): void {
     const end = source.indexOf('\n', i) === -1 ? source.length : source.indexOf('\n', i)
+    const lineStart = i + (source.slice(i, end).length - source.slice(i, end).trimStart().length)
     const line = source.slice(i, end).trim()
-    let m: RegExpMatchArray | null
-    if ((m = line.match(INPUT_RE))) out.inputs.push({ name: m[1]!, type: m[2]!.trim(), default: m[3], start: i })
-    else if ((m = line.match(IMPORT_RE))) out.imports.push({ name: m[1]!, from: m[3]!, start: i })
+    let m: RegExpExecArray | RegExpMatchArray | null
+    if ((m = INPUT_RE.exec(line))) {
+      const at = (group: number) => lineStart + (m as RegExpExecArray).indices![group]![0]
+      out.inputs.push({ name: m[1]!, type: m[2]!.trim(), default: m[3], start: i, nameStart: at(1), typeStart: at(2), ...(m[3] ? { defaultStart: at(3) } : {}) })
+    } else if ((m = IMPORT_TYPE_RE.exec(line))) {
+      out.typeImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + (m as RegExpExecArray).indices![1]![0] })
+    } else if ((m = DATA_IMPORT_RE.exec(line))) {
+      out.dataImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + (m as RegExpExecArray).indices![1]![0] })
+    } else if ((m = line.match(IMPORT_RE))) {
+      // A default import of a .tscl file is a component; of anything else, data.
+      if (m[3]!.endsWith('.tscl')) out.imports.push({ name: m[1]!, from: m[3]!, start: i })
+      else out.dataImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + line.indexOf(m[1]!, 7) })
+    }
     else fail(`unknown or malformed directive "${line.split(/\s/)[0]}"`, i)
     i = end
   }
@@ -159,8 +179,13 @@ export function parse(source: string, file: string): ParsedFile {
   }
 
   // Split at top-level ';' (outside strings and brackets).
-  function splitClauses(text: string): string[] {
-    const parts: string[] = []
+  /** Top-level `;` clauses, trimmed, each with its offset in `text`. */
+  function splitClauses(text: string): { text: string; start: number }[] {
+    const parts: { text: string; start: number }[] = []
+    const push = (from: number, to: number) => {
+      const raw = text.slice(from, to)
+      if (raw.trim()) parts.push({ text: raw.trim(), start: from + raw.length - raw.trimStart().length })
+    }
     let depth = 0
     let from = 0
     for (let j = 0; j < text.length; j++) {
@@ -168,9 +193,10 @@ export function parse(source: string, file: string): ParsedFile {
       if (c === '"' || c === "'" || c === '`') { for (j++; j < text.length && text[j] !== c; j++) if (text[j] === '\\') j++ }
       else if ('([{'.includes(c)) depth++
       else if (')]}'.includes(c)) depth--
-      else if (c === ';' && depth === 0) { parts.push(text.slice(from, j)); from = j + 1 }
+      else if (c === ';' && depth === 0) { push(from, j); from = j + 1 }
     }
-    return [...parts, text.slice(from)].map((p) => p.trim()).filter(Boolean)
+    push(from, text.length)
+    return parts
   }
 
   // @for (item of list; track key) { … } @empty { … }
@@ -178,15 +204,22 @@ export function parse(source: string, file: string): ParsedFile {
     const start = i
     i += 4
     const { cond: head, condStart: headStart } = condition('@for')
-    const [first = '', ...rest] = splitClauses(head)
-    const m = /^([\s\S]+?)\s+of\s+([\s\S]+)$/.exec(first)
+    // Where `head` (trimmed) starts in the source, so every part below gets its exact offset.
+    let at = headStart
+    while (/\s/.test(source[at] ?? '')) at++
+    const [first = { text: '', start: 0 }, ...rest] = splitClauses(head)
+    const m = /^([\s\S]+?)\s+of\s+([\s\S]+)$/d.exec(first.text)
     if (!m) fail('expected "item of list" in @for', headStart)
     if (!/^[A-Za-z_$][\w$]*$/.test(m![1]!.trim())) fail('the @for item must be a simple name', headStart)
+    const itemStart = at + first.start + m!.indices![1]![0]
+    const listStart = at + first.start + m!.indices![2]![0]
     let track: string | null = null
+    let trackStart = -1
     for (const clause of rest) {
-      const t = /^track\s+([\s\S]+)$/.exec(clause)
-      if (!t) fail(`unknown @for clause "${clause}"`, headStart)
+      const t = /^track\s+([\s\S]+)$/d.exec(clause.text)
+      if (!t) fail(`unknown @for clause "${clause.text}"`, headStart)
       track = t![1]!.trim()
+      trackStart = at + clause.start + t!.indices![1]![0]
     }
     while (/\s/.test(source[i] ?? '')) i++
     if (source[i] !== '{') fail('expected { to open the block', i)
@@ -202,7 +235,7 @@ export function parse(source: string, file: string): ParsedFile {
       i++
       empty = children({ tag: '@empty', start, block: true })
     } else i = save
-    return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, children: body, empty, start }
+    return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, itemStart, listStart, trackStart, children: body, empty, start }
   }
 
   // @slot('name') { … }: content for a component's named slot.
@@ -306,4 +339,11 @@ export function parse(source: string, file: string): ParsedFile {
 
   out.nodes = children()
   return out
+}
+
+/** Local names an import clause binds: `{ a, b as c, type T }` → a, c; `x` → x. */
+export function importNames(clause: string): string[] {
+  if (!clause.startsWith('{')) return [clause]
+  return clause.slice(1, -1).split(',').map((p) => p.trim()).filter((p) => p && !p.startsWith('type '))
+    .map((p) => p.split(/\s+as\s+/).pop()!.trim())
 }

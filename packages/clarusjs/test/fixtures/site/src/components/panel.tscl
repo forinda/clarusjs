@@ -1,0 +1,5 @@
+@import counter from './counter.tscl'
+
+<script>let open = state(false)</script>
+
+<button class="open" (click)="open = !open">open</button>@if (open) {<counter [start]="7" />}

@@ -4,7 +4,7 @@ Guidance for AI agents (and humans) working in this repo.
 
 ## What this is
 
-clarusjs compiles `.clarus` components (Vue/Angular-style templates + an optional `<script>` with signals) into:
+clarusjs compiles `.tscl` components (Vue/Angular-style templates + an optional `<script>` with signals) into:
 
 - a **server module**: `render(props) → string`, HTML with markers around reactive holes only;
 - a **client module**, only for stateful components: `attach(root, props)`, which wires signals to the server's HTML without re-rendering it.
@@ -23,6 +23,7 @@ pnpm typecheck      # tsc --noEmit in every package
 pnpm dev            # serves examples/counter
 pnpm docs:dev       # the docs site (packages/docs), built with clarusjs
 pnpm docs:test      # builds the docs site and runs its Playwright tests (Chromium)
+pnpm docs:check     # clarusjs check on the docs site: type errors at file.tscl:line:col
 pnpm changeset      # describe a change to a published package (commit the generated file)
 ```
 
@@ -60,7 +61,8 @@ Releases are automated from `main` (see RELEASE.md): never run `npm publish` or 
 - **Errors are located.** Compile errors are `ClarusError` with `file:line:col message`. Never let a raw acorn error escape.
 - **Compiled output stays readable.** Exact-output tests in `test/compiler/emit-*.test.ts` pin it; update them deliberately.
 - **Tests first.** Write the failing test, watch it fail, then implement. Bug fixes start with a reproducing test.
-- **Keep it small.** No new runtime dependencies (only `acorn`, compiler-side). Deliberate shortcuts get a `ponytail:` comment naming the limit and the upgrade path.
+- **Size budgets are tests.** Browser runtime ≤ 5 KB gzip, a fixture site's JavaScript ≤ 6 KB gzip, published tarball ≤ 60 KB (unpacked ≤ 250 KB), dependencies exactly `acorn` (compiler) and `commander` (CLI), and no compiler or CLI code in browser assets (`test/build.test.ts`, `test/dist.test.ts`). Raising a budget or adding a dependency is a deliberate, explained change in its own PR.
+- **Keep it small.** No new runtime dependencies beyond `acorn` (compiler) and `commander` (CLI); neither may reach a browser bundle. Deliberate shortcuts get a `ponytail:` comment naming the limit and the upgrade path.
 
 ## The docs site is the proving ground
 
