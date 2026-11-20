@@ -1,0 +1,34 @@
+@import copy from '../../components/copy.clarus'
+@import docs from '../../layouts/docs.clarus'
+@import { readManifest } from 'clarusjs/manifest'
+
+<docs [title]="'This site, explained'" [path]="'/guide/explained'" [description]="'Every page of this site with its islands and the JavaScript it ships, generated from the route manifest at build time.'">
+  <h1>This site, explained</h1>
+  <p class="lead">Every page of this site, with its islands and the JavaScript it ships. The table is generated while the site is built, from the same route manifest <code>clarusjs explain</code> reads, so it is always the truth about the version you are reading.</p>
+
+  <table class="explained">
+    <thead><tr><th>Route</th><th>Islands</th><th>JS on load</th><th>JS in all</th></tr></thead>
+    <tbody>
+      @for (entry of Object.entries(readManifest()?.routes ?? {}); track entry[0]) {
+        <tr>
+          <td><a [href]="entry[0]">{{ entry[0] }}</a></td>
+          <td>{{ entry[1].islands.map((i) => i.component + (i.count > 1 ? ' ×' + i.count : '') + (i.attach === 'load' ? '' : ' (' + i.attach + ')')).join(', ') || 'none' }}</td>
+          <td>{{ (entry[1].js.initialGzip / 1024).toFixed(1) }} KB</td>
+          <td>{{ (entry[1].js.gzip / 1024).toFixed(1) }} KB</td>
+        </tr>
+      } @empty {
+        <tr><td colspan="4">Build the site (<code>vite build</code>) to fill this table.</td></tr>
+      }
+    </tbody>
+  </table>
+  <p>Sizes are gzip. "JS on load" is the island loader, the shared runtime and the islands that attach right away; copy buttons attach on first interaction, so their code is only in "JS in all".</p>
+
+  <h2>How this page is made</h2>
+  <p>A page can read the manifest with <code>readManifest()</code>. While the site is built, any page that reads it is rendered again once the manifest is written; outside a build it returns <code>null</code>.</p>
+  <div class="sample"><pre><code verbatim>@import { readManifest } from 'clarusjs/manifest'
+
+@for (entry of Object.entries(readManifest()?.routes ?? {}); track entry[0]) {
+  <p>{{ entry[0] }}: {{ entry[1].islands.length }} islands</p>
+}</code></pre><copy attach="interaction" /></div>
+  <p>To see one page in detail, run <code>clarusjs explain /guide/state</code> after a build.</p>
+</docs>

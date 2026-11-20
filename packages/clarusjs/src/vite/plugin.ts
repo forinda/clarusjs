@@ -1,6 +1,6 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, isAbsolute, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isRunnableDevEnvironment, type Plugin, type UserConfig } from 'vite'
@@ -107,8 +107,18 @@ export default function clarusjs(): Plugin {
       if (!client || !ssr) return
       await builder.build(client)
       await builder.build(ssr)
-      const routes = await prerender(resolve(builder.config.root, SERVER_OUT, 'index.mjs'), resolve(builder.config.root, CLIENT_OUT))
-      writeManifest(dirname(resolve(builder.config.root, CLIENT_OUT)), routes, builder.config.base)
+      const entry = resolve(builder.config.root, SERVER_OUT, 'index.mjs')
+      const out = resolve(builder.config.root, CLIENT_OUT)
+      const dist = dirname(out)
+      const manifestFile = resolve(dist, 'clarusjs-manifest.json')
+      rmSync(manifestFile, { force: true }) // a page reading the manifest must never see the previous build's
+      const { routes, readers } = await prerender(entry, out, manifestFile)
+      writeManifest(dist, routes, builder.config.base)
+      // Pages that read the manifest saw none on the first pass: render them again now that it exists.
+      if (readers.length) {
+        await prerender(entry, out, manifestFile, readers)
+        writeManifest(dist, routes, builder.config.base)
+      }
     },
     resolveId(id) {
       if (id === '/cl-loader.js') return here('../runtime/loader')

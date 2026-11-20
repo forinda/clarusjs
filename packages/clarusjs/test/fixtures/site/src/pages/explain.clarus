@@ -1,0 +1,3 @@
+@import { readManifest } from 'clarusjs/manifest'
+<h1>Explain</h1>
+<p id="home-islands">{{ readManifest()?.routes['/']?.islands.map((i) => i.component).join(', ') ?? 'not built yet' }}</p>

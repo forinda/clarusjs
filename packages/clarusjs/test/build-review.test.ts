@@ -1,5 +1,5 @@
 // Regressions from the slice-1 branch review: non-ESM apps, base paths, a missing client manifest.
-import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { createBuilder, preview } from 'vite'
@@ -22,6 +22,9 @@ function tempApp() {
   const root = mkdtempSync(resolve(tmpdir(), 'clarusjs-base-'))
   cpSync(resolve(fixtures, 'site/src'), resolve(root, 'src'), { recursive: true })
   cpSync(resolve(fixtures, 'site/public'), resolve(root, 'public'), { recursive: true })
+  // Like an app that installed clarusjs, so pages can import 'clarusjs/manifest'.
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
   return root
 }
 
