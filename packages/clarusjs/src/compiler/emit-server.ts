@@ -12,6 +12,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string): string {
     all.some((n) => n.kind === 'attr') && 'attr as __cl_attrHtml',
     all.some((n) => n.kind === 'if' && n.block >= 0) && 'blockHtml as __cl_blockHtml',
     all.some((n) => n.kind === 'for' && n.block >= 0) && 'forHtml as __cl_forHtml',
+    all.some((n) => n.kind === 'component' && n.region >= 0) && 'regionHtml as __cl_regionHtml',
   ].filter(Boolean).join(', ')
   let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
   for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}'\n`

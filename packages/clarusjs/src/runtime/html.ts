@@ -28,3 +28,8 @@ export function forHtml(index: number, list: unknown, row: (item: any, i: number
     : empty ? `<!--[e-->${empty()}<!--]-->` : ''
   return `<!--[f${index}-->${body}<!--]-->`
 }
+
+/** A child component inside an island that the browser may re-render: markers around its HTML. */
+export function regionHtml(index: number, html: () => string): string {
+  return `<!--[c${index}-->${html()}<!--]-->`
+}

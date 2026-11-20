@@ -7,7 +7,9 @@ export type IRNode =
   | { kind: 'static'; html: string }
   | { kind: 'hole'; expr: string; reactive: boolean; index: number } // index = -1 when not reactive
   // children: content for the default slot; fills: content for named slots (@slot('name') { … }).
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[] }
+  // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
+  // can re-render it (-1 otherwise).
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number }
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
   | { kind: 'slot'; name: string; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
@@ -49,6 +51,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   let attrElementCount = 0
   let blockCount = 0
   let forCount = 0
+  let regionCount = 0
   let loopNames = new Set<string>() // @for item and $index names in scope: they make holes inside rows reactive
   let scopeKey: string | undefined // the @if branch being lowered, for events
 
@@ -115,13 +118,17 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       return
     }
     if (components.has(node.tag)) {
-      if (stateful) fail('components inside a stateful component are not supported yet', node.start)
       const props: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
         if (a.kind === 'prop') { checkExpr(a.expr, file, source, a.start); props.push({ name: a.name, expr: a.expr }) }
         else fail(`component <${node.tag}> only takes [prop] bindings`, a.start)
       }
       // Content is rendered here, in this component's scope, and handed to the child for its slots.
+      const hasContent = node.children.some((c) => c.type !== 'text' || c.value.trim())
+      const readsState = props.some((p) => referencesNames(p.expr, scriptScope) || referencesNames(p.expr, loopNames))
+      const region = stateful && (hasContent || readsState) ? regionCount++ : -1
+      const parentScope = scopeKey
+      if (region >= 0) scopeKey = `c${region}`
       const lowerList = (list: TemplateNode[]) => {
         const nodes_: IRNode[] = []
         const parent = out
@@ -139,7 +146,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       const rest = node.children.filter((c) => c.type !== 'fill')
       // Whitespace around @slot blocks is not content for the default slot.
       const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
-      out.push({ kind: 'component', name: node.tag, props, children, fills })
+      scopeKey = parentScope
+      out.push({ kind: 'component', name: node.tag, props, children, fills, region })
       return
     }
     if (node.tag === 'slot') {

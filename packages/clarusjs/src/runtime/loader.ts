@@ -7,10 +7,13 @@ type IslandModule = { attach(root: Element, props: Record<string, unknown>, stat
 // Islands whose chunk is being fetched. `data-cl-ready` is set only after attach() succeeds.
 const loading = new WeakSet<Element>()
 
+let lastLoad: (src: string) => Promise<IslandModule> = (src) => import(/* @vite-ignore */ src)
+
 export async function attachAll(
   root: ParentNode = document,
-  load: (src: string) => Promise<IslandModule> = (src) => import(/* @vite-ignore */ src),
+  load: (src: string) => Promise<IslandModule> = lastLoad,
 ): Promise<void> {
+  lastLoad = load
   const islands = [...root.querySelectorAll('cl-island:not([data-cl-ready]):not([data-cl-error])')].filter((el) => !loading.has(el))
   const pending = islands.map(async (el) => {
     loading.add(el)
@@ -39,5 +42,8 @@ export async function attachAll(
   })
   await Promise.all(pending)
 }
+
+// Islands inserted later (an @if branch, a @for row, a re-rendered child) are attached through this hook.
+;(globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach = (root) => void attachAll(root)
 
 if (typeof document !== 'undefined') attachAll()

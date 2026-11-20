@@ -106,7 +106,8 @@ export default function clarusjs(): Plugin {
       filter: { id: /\.clarus(\?|$)/ },
       handler(code, id) {
         const file = id.replace(/\?.*$/, '')
-        const target = this.environment.config.consumer === 'server' ? 'server' : 'client'
+        // ?render: a component's server render function, used in the browser to render children of islands.
+        const target = this.environment.config.consumer === 'server' || /[?&]render\b/.test(id) ? 'server' : 'client'
         // ponytail: ?import makes Vite's dev transform middleware serve .clarus as JS for the loader's dynamic import; build output uses hashed chunk URLs from the client manifest (stage 3)
         const urls = target === 'server' ? builtUrls() : undefined
         const clientUrl = urls ? urls.get(entryName(root, file)) : clientUrlFor(root, file)

@@ -140,6 +140,7 @@ test('home: the list island adds and removes rows by key, with @empty', async ({
   await todo.locator('button[type="submit"]').click()
   await expect(rows.locator('span')).toHaveText(['Read the islands guide', 'Write a component', 'Ship it'])
   await expect(input).toHaveValue('')
+  await expect(todo.locator('.pill')).toHaveText('3 items') // a stateless child whose props read the island's state
   const kept = await rows.nth(2).elementHandle()
   await todo.getByRole('button', { name: 'Remove Write a component' }).click()
   await expect(rows.locator('span')).toHaveText(['Read the islands guide', 'Ship it'])
@@ -147,6 +148,7 @@ test('home: the list island adds and removes rows by key, with @empty', async ({
   await todo.getByRole('button', { name: 'Remove Read the islands guide' }).click()
   await todo.getByRole('button', { name: 'Remove Ship it' }).click()
   await expect(todo.locator('.todo-list .empty')).toHaveText('Nothing yet.')
+  await expect(todo.locator('.pill')).toHaveText('0 items')
   expect(errors).toEqual([])
 })
 
