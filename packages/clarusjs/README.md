@@ -6,6 +6,8 @@
 
 <p align="center"><strong>Clear, compiled views.</strong></p>
 
+<p align="center"><a href="https://clarusjs.com">Documentation</a> · <a href="https://clarusjs.com/guide/getting-started">Getting started</a> · <a href="https://www.npmjs.com/package/clarusjs">npm</a></p>
+
 Write components in a familiar template language. clarusjs compiles them to plain server HTML and ships JavaScript
 only for the parts that are interactive. Static sites, server rendering and client apps share one component model,
 and you can always see where each line runs.
