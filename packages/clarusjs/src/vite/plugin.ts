@@ -54,6 +54,7 @@ export default function clarusjs(): Plugin {
           ],
         },
       }
+      if (env.isPreview) config.build = { outDir: CLIENT_OUT } // preview serves the static site
       if (env.command !== 'build') return config
       // Client entries: the island loader plus every stateful component. Stateless components never reach the client.
       const appRoot = resolve(userConfig.root ?? process.cwd())
@@ -110,6 +111,18 @@ export default function clarusjs(): Plugin {
           throw err
         }
       },
+    },
+    // The built site is static files: /guide/x is guide/x/index.html. appType 'custom' turns off Vite's own lookup.
+    configurePreviewServer(server) {
+      const outDir = resolve(server.config.root, server.config.build.outDir)
+      server.middlewares.use((req, _res, next) => {
+        const path = decodeURIComponent((req.url ?? '/').split('?')[0]!)
+        if (!/\.[a-z0-9]+$/i.test(path)) {
+          const file = resolve(outDir, `.${path.replace(/\/?$/, '/')}index.html`)
+          if (file.startsWith(outDir) && existsSync(file)) req.url = file.slice(outDir.length).replace(/\\/g, '/')
+        }
+        next()
+      })
     },
     configureServer(server) {
       return () => {

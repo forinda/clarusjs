@@ -1,0 +1,30 @@
+@import docs from '../../layouts/docs.clarus'
+@import callout from '../../components/callout.clarus'
+
+<docs [title]="'Getting started'">
+  <h1>Getting started</h1>
+  <p>clarusjs is a Vite plugin plus a small runtime. You need Node 22.12 or later.</p>
+
+  <h2>Install</h2>
+  <pre><code>{{ `pnpm add clarusjs
+pnpm add -D vite` }}</code></pre>
+
+  <h2>Configure Vite</h2>
+  <pre><code>{{ `// vite.config.ts
+import { defineConfig } from 'vite'
+import clarusjs from 'clarusjs/vite'
+
+export default defineConfig({ plugins: [clarusjs()] })` }}</code></pre>
+
+  <h2>Write a page</h2>
+  <p>Every <code>.clarus</code> file under <code>src/pages</code> is a route: <code>src/pages/index.clarus</code> is <code>/</code>, and <code>src/pages/guide/intro.clarus</code> is <code>/guide/intro</code>.</p>
+  <pre><code>{{ `{{-- src/pages/index.clarus --}}
+<h1>Hello</h1>
+<p>This page is plain HTML.</p>` }}</code></pre>
+
+  <h2>Run it</h2>
+  <pre><code>{{ `pnpm vite          # dev server, pages rendered on each request
+pnpm vite build    # static site in dist/client/` }}</code></pre>
+
+  <callout><p>Next: <a href="/guide/components">components</a>, then <a href="/guide/islands">islands</a> for the interactive parts.</p></callout>
+</docs>

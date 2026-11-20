@@ -21,6 +21,8 @@ pnpm install
 pnpm test           # every package: unit tests + e2e against a real Vite dev server
 pnpm typecheck      # tsc --noEmit in every package
 pnpm dev            # serves examples/counter
+pnpm docs:dev       # the docs site (packages/docs), built with clarusjs
+pnpm docs:test      # builds the docs site and runs its Playwright tests (Chromium)
 pnpm changeset      # describe a change to a published package (commit the generated file)
 ```
 
@@ -37,6 +39,7 @@ Releases are automated from `main` (see RELEASE.md): never run `npm publish` or 
 | `src/runtime/` | `server.ts` (escape, island), `signals.ts`, `dom.ts` (holes/text/on), `loader.ts` (finds islands, calls attach) |
 | `src/server/handler.ts` | `createHandler(pages)` → `{ fetch }` |
 | `src/vite/` | `plugin.ts`, `node.ts` (Node http ⇄ fetch) |
+| `packages/docs/` | the docs site, built with clarusjs; private. Its Playwright tests (`e2e/`) run against the built site and are the end-to-end proof of each framework feature |
 | `examples/counter/` | the POC app (private workspace package, depends on `clarusjs: workspace:*`) |
 | `.changeset/` | pending changesets and config |
 | `test/` | mirrors `src/`; `test/fixtures/*.clarus`; `test/helpers.ts` (`importCode`) |
@@ -57,6 +60,12 @@ Releases are automated from `main` (see RELEASE.md): never run `npm publish` or 
 - **Compiled output stays readable.** Exact-output tests in `test/compiler/emit-*.test.ts` pin it; update them deliberately.
 - **Tests first.** Write the failing test, watch it fail, then implement. Bug fixes start with a reproducing test.
 - **Keep it small.** No new runtime dependencies (only `acorn`, compiler-side). Deliberate shortcuts get a `ponytail:` comment naming the limit and the upgrade path.
+
+## The docs site is the proving ground
+
+Every framework feature is built because the docs site needs it: add the feature in `packages/clarusjs` with unit
+tests, use it on the site, and cover it with a Playwright test in `packages/docs/e2e`. Nothing site-specific goes into
+`packages/clarusjs`.
 
 ## Commits and PRs
 

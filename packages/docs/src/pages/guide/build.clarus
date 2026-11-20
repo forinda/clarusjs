@@ -1,0 +1,22 @@
+@import docs from '../../layouts/docs.clarus'
+@import callout from '../../components/callout.clarus'
+
+<docs [title]="'Build'">
+  <h1>Build and deploy</h1>
+  <p><code>vite build</code> produces a complete static site. It runs in three steps:</p>
+  <ol>
+    <li><strong>Client:</strong> the island loader and one chunk per interactive component, with hashed file names.</li>
+    <li><strong>Server:</strong> a <code>fetch(Request)</code> handler that renders every page, pointing islands at those hashed chunks.</li>
+    <li><strong>Prerender:</strong> the handler is called once per page and the HTML is written to <code>dist/client/&lt;route&gt;/index.html</code>.</li>
+  </ol>
+  <p>A page that fails to render fails the build, naming the page.</p>
+
+  <h2>Deploy</h2>
+  <p>Upload <code>dist/client/</code> to any static host. This site deploys to Netlify:</p>
+  <pre><code>{{ `# netlify.toml
+[build]
+  command = "pnpm install --frozen-lockfile && pnpm --filter @clarusjs/docs build"
+  publish = "packages/docs/dist/client"` }}</code></pre>
+
+  <callout><p>The same handler can also run on a server per request. Choosing between build time and request time per route is coming in a later release.</p></callout>
+</docs>

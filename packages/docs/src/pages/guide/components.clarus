@@ -1,0 +1,37 @@
+@import docs from '../../layouts/docs.clarus'
+@import callout from '../../components/callout.clarus'
+
+<docs [title]="'Components'">
+  <h1>Components</h1>
+  <p>A component is a <code>.clarus</code> file: a template, optional typed inputs, and an optional <code>&lt;script&gt;</code>. Without a script it is HTML only.</p>
+
+  <h2>Inputs and holes</h2>
+  <p><code>@input</code> declares what a component receives. <code>{{ '{{ }}' }}</code> holes print values, always escaped.</p>
+  <pre><code>{{ `{{-- components/greeting.clarus --}}
+@input name: string
+
+<p>Hello, {{ name }}!</p>` }}</code></pre>
+
+  <h2>Using components</h2>
+  <p>Import a component by name, then use it as a tag. Pass inputs with <code>[name]="expression"</code>.</p>
+  <pre><code>{{ `@import greeting from '../components/greeting.clarus'
+
+<greeting [name]="'world'" />` }}</code></pre>
+
+  <h2>Slots</h2>
+  <p>A component without a script can wrap content: whatever you put between its tags renders at its <code>&lt;slot /&gt;</code>. The content belongs to the page that writes it, so its holes read the page's inputs. This is how layouts work: this site's layout is a component, and every page wraps its content in it.</p>
+  <pre><code>{{ `{{-- layouts/docs.clarus --}}
+@input title: string
+<html lang="en">
+  <head><title>{{ title }} · clarusjs</title></head>
+  <body><main><slot /></main></body>
+</html>
+
+{{-- pages/guide/components.clarus --}}
+@import docs from '../../layouts/docs.clarus'
+<docs [title]="'Components'">
+  <h1>Components</h1>
+</docs>` }}</code></pre>
+
+  <callout><p>Mistakes are build errors with a location, for example <code>components.clarus:3:9 [prop] bindings on HTML elements are not supported yet</code>.</p></callout>
+</docs>

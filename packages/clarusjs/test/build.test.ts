@@ -63,3 +63,22 @@ test('routeToFile maps routes to index.html files', () => {
 test('a page that throws while prerendering fails the build, naming the route', async () => {
   await expect(build(resolve(import.meta.dirname, 'fixtures/site-broken'))).rejects.toThrow(/prerender \/: .*boom/)
 }, 120_000)
+
+test('vite preview serves the built pages at their routes, with or without a trailing slash', async () => {
+  const { preview } = await import('vite')
+  const server = await preview({ root, configFile: resolve(root, 'vite.config.ts'), logLevel: 'silent', preview: { port: 0 } })
+  try {
+    const address = server.httpServer.address()
+    const base = `http://localhost:${typeof address === 'object' && address ? address.port : 0}`
+    for (const [path, text] of [['/', '<h1>Home</h1>'], ['/about/team', '<h1>Team</h1>'], ['/about/team/', '<h1>Team</h1>']] as const) {
+      const res = await fetch(base + path)
+      expect(res.status, path).toBe(200)
+      expect(res.headers.get('content-type'), path).toContain('text/html')
+      expect(await res.text(), path).toContain(text)
+    }
+    expect((await fetch(`${base}/site.css`)).status).toBe(200)
+    expect((await fetch(`${base}/missing`)).status).toBe(404)
+  } finally {
+    await server.close()
+  }
+})
