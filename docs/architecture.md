@@ -252,7 +252,8 @@ sequenceDiagram
 from them, so an initial value like `Date.now()` isn't recomputed in the browser; `derived()` values are recomputed
 from the restored state. Values go through `runtime/serialize.ts` (JSON plus Date, Map, Set, undefined, NaN, ±Infinity,
 -0, BigInt; functions, class instances and cycles are rejected with their path). Other locals in `<script>` still run
-again in the browser.
+again in the browser. **Island props and state are public**: they are in the page. Reading server-only globals
+(`process`, `Deno`, `Bun`, `require`) in an island's script is a build error.
 
 ## 7. Data flow
 

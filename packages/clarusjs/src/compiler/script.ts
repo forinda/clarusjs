@@ -157,9 +157,23 @@ function signalCall(init: N | null | undefined): 'state' | 'derived' | undefined
   return init.callee.name === 'state' || init.callee.name === 'derived' ? init.callee.name : undefined
 }
 
+// Globals that only exist on a server runtime. An island's script also runs in the browser and its state() values
+// are written into the page, so reading these would leak server data (or simply fail in the browser).
+const SERVER_GLOBALS = new Set(['process', 'Deno', 'Bun', 'require'])
+
 export function analyzeScript(code: string, file: string, source: string, offset: number): Signals {
   const signals: Signals = new Map()
-  for (const stmt of parseScript(code, file, source, offset).body as N[]) {
+  const ast = parseScript(code, file, source, offset)
+  const declared = scriptNames(code)
+  print(ast, code, (node, parent, key) => {
+    if (node.type === 'Identifier' && SERVER_GLOBALS.has(node.name) && !declared.has(node.name) && !isBinding(parent, key)) {
+      throw new ClarusError(
+        `\`${node.name}\` is server-only: an island's script also runs in the browser, and its state and props are sent to the browser in the page`,
+        file, source, offset + node.start)
+    }
+    return undefined
+  })
+  for (const stmt of ast.body as N[]) {
     if (stmt.type === 'ImportDeclaration' || stmt.type.startsWith('Export')) {
       throw new ClarusError('imports in <script> are not supported yet', file, source, offset + stmt.start)
     }

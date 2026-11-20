@@ -61,3 +61,14 @@ test('HTML comments are static text, not markup or holes', () => {
   const ir = lowerSource('<p>a<!-- <b> {{ x }} --></p>')
   expect(ir.nodes).toEqual([{ kind: 'static', html: '<p>a<!-- <b> {{ x }} --></p>' }])
 })
+
+test('an island script reading server-only globals is a located build error (its state is sent to the browser)', () => {
+  for (const global of ['process.env.API_KEY', 'Deno.env.get("K")', 'Bun.env.K', 'require("fs")']) {
+    const src = `<script>\n  let key = state(${global})\n</script>\n<b (click)="key = ''">{{ key }}</b>`
+    expect(compileError(src).message, global).toMatch(/^x\.clarus:2:19 .*server-only.*sent to the browser/)
+  }
+})
+
+test('a local named like a server global is fine', () => {
+  expect(() => compile('<script>\n  const process = (x) => x\n  let n = state(process(1))\n</script>\n<b (click)="n++">{{ n }}</b>', { file: 'x.clarus', target: 'client' })).not.toThrow()
+})
