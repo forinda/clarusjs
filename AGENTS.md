@@ -40,7 +40,7 @@ Releases are automated from `main` (see RELEASE.md): never run `npm publish` or 
 | `examples/counter/` | the POC app (private workspace package, depends on `clarusjs: workspace:*`) |
 | `.changeset/` | pending changesets and config |
 | `test/` | mirrors `src/`; `test/fixtures/*.clarus`; `test/helpers.ts` (`importCode`) |
-| `docs/` | architecture and plans (committed) |
+| `docs/` | architecture (committed); `docs/superpowers/` holds local specs and plans (gitignored, never commit) |
 | `.scratch/` | local notes and research (gitignored, never commit) |
 
 ## Rules
