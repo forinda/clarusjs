@@ -164,3 +164,13 @@ test('#31: load() runs at build for each page, and the manifest says so', () => 
   expect(manifest.routes['/users/ada'].loader).toBe('build')
   expect(manifest.routes['/'].loader).toBeNull()
 })
+
+test('security: prerender never writes outside the output folder', async () => {
+  const { prerender } = await import('../src/vite/build.ts')
+  const dir = mkdtempSync(resolve(tmpdir(), 'clarusjs-escape-'))
+  const entry = resolve(dir, 'server.mjs')
+  // A handler that claims a route escaping the output folder (as a decoded "..%5C.." segment could on Windows).
+  writeFileSync(entry, `export default { routes: [], async paths() { return ['/ok', '/a/../../escape'] }, async fetch() { return new Response('x') } }`)
+  await expect(prerender(entry, resolve(dir, 'out'), resolve(dir, 'm.json'))).rejects.toThrow(/prerender \/a\/\.\.\/\.\.\/escape: outside the output folder/)
+  expect(existsSync(resolve(dir, 'escape'))).toBe(false)
+})

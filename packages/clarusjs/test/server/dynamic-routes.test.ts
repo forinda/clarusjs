@@ -41,7 +41,7 @@ test('paths() lists every page to prerender, using entries() for dynamic routes'
 test('a dynamic route without entries(), or with unsafe values, is an error that names the file', async () => {
   const missing = createHandler({ '/src/pages/users/[id].tscl': echo('user') })
   await expect(missing.paths()).rejects.toThrow('/users/[id] is a dynamic route: export entries() from src/pages/users/[id].load.ts to list the pages to prerender')
-  for (const bad of [{ id: '..' }, { id: 'a/b' }, { id: '' }, { id: 1 }, {}]) {
+  for (const bad of [{ id: '..' }, { id: 'a/b' }, { id: '' }, { id: 1 }, {}, { id: '..\\..\\x' }, { id: 'a\0b' }]) {
     const h = createHandler({ '/src/pages/users/[id].tscl': echo('user') }, { data: { '/src/pages/users/[id].load.ts': async () => ({ entries: () => [bad] as unknown as Record<string, string>[] }) } })
     await expect(h.paths(), JSON.stringify(bad)).rejects.toThrow(/^src\/pages\/users\/\[id\]\.load\.ts: entries\(\) gave .* for "id"/)
   }

@@ -92,9 +92,10 @@ export function createHandler(
             const key = PARAM.exec(seg)?.[1]
             if (key === undefined) return seg
             const value = (params as Record<string, unknown>)[key]
-            // Each value fills one path segment and names a folder in the build: never empty, '.', '..' or with a '/'.
-            if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || value.includes('/')) {
-              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/", and not "." or ".."`)
+            // Each value fills one path segment and names a folder in the build: never empty, '.' or '..'.
+            // Path separators on any OS ('/', '\\') and NUL could step out of that folder once the segment is decoded.
+            if (typeof value !== 'string' || value === '' || value === '.' || value === '..' || /[/\\\0]/.test(value)) {
+              throw new Error(`${dataFile}: entries() gave ${JSON.stringify(value)} for "${key}"; each value must be a non-empty string without "/" or "\\", and not "." or ".."`)
             }
             return encodeURIComponent(value)
           }).join('/'))

@@ -34,7 +34,7 @@ export function routeToFile(route: string): string {
 export async function prerender(serverEntry: string, outDir: string, manifestFile: string, only?: string[]): Promise<{ routes: string[]; readers: string[]; loaded: string[]; server: { route: string; loader: boolean }[] }> {
   const script = `
     import { mkdirSync, writeFileSync } from 'node:fs'
-    import { dirname, resolve } from 'node:path'
+    import { dirname, resolve, sep } from 'node:path'
     import { pathToFileURL } from 'node:url'
     const routeToFile = ${routeToFile.toString()}
     const [entry, outDir, only] = process.argv.slice(1)
@@ -63,6 +63,11 @@ export async function prerender(serverEntry: string, outDir: string, manifestFil
         process.exit(1)
       }
       const file = resolve(outDir, routeToFile(route))
+      // Whatever a route decodes to, its page must land inside the output folder.
+      if (!file.startsWith(resolve(outDir) + sep)) {
+        process.stderr.write('prerender ' + route + ': outside the output folder')
+        process.exit(1)
+      }
       mkdirSync(dirname(file), { recursive: true })
       writeFileSync(file, await response.text())
       if (globalThis.__clManifestRead) readers.push(route)
