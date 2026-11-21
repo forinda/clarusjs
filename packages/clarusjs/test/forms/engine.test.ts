@@ -209,3 +209,57 @@ test('review: touched follows the row, not the index: removing a touched row doe
   expect(f.error('lines.0.item')).toBe('') // the remaining row was never left
   expect(f.touched('lines.0.item')).toBe(false)
 })
+
+test('reset(values): new values become the starting point (data loaded after the form was made)', () => {
+  const { el, f, v } = mount(emailForm, { customer: { email: '' } })
+  f.reset({ customer: { email: 'ada@example.com' } }) // the record arrived
+  expect(v.get()).toEqual({ customer: { email: 'ada@example.com' } })
+  expect(f.changed('customer.email')).toBe(false)
+  v.set({ customer: { email: 'grace@example.com' } })
+  expect(f.changed('customer.email')).toBe(true)
+  f.reset() // back to the loaded record, not the first one
+  expect(v.get()).toEqual({ customer: { email: 'ada@example.com' } })
+  expect(el('[data-cl-message]').hidden).toBe(true)
+})
+
+test('connect finds its own element: not one in a nested island, and in a row only that row\'s', () => {
+  document.body.innerHTML = `<cl-island id="parent"><cl-island id="child"><div data-cl-form="0"></div></cl-island><form id="own" data-cl-form="0"><input required data-cl-path="a"></form></cl-island>`
+  const f = form(state({ a: '' }))
+  scope(() => connect(document.getElementById('parent')!, 0, () => f))
+  expect(document.getElementById('own')!.hasAttribute('novalidate')).toBe(true)
+  // Rows: two copies of the same markup between row markers; the second row connects its own form.
+  document.body.innerHTML = `<cl-island id="list"><!--[r--><form id="r1" data-cl-form="0"></form><!--]--><!--[r--><form id="r2" data-cl-form="0"></form><!--]--></cl-island>`
+  const list = document.getElementById('list')!
+  const [, , start, end] = [...list.childNodes].filter((n) => n.nodeType === 8) as Comment[]
+  const g = form(state({}))
+  scope(() => connect({ root: list, start: start!, end: end! }, 0, () => g))
+  expect(document.getElementById('r2')!.hasAttribute('novalidate')).toBe(true)
+  expect(document.getElementById('r1')!.hasAttribute('novalidate')).toBe(false)
+})
+
+test('the last disconnect cancels a pending schema check', () => {
+  vi.useFakeTimers()
+  const validate = vi.fn(() => ({ value: {} }))
+  const { el, dispose } = mount(emailForm, { customer: { email: '' } }, { schema: { '~standard': { version: 1, vendor: 't', validate } } as any })
+  validate.mockClear()
+  type(el('input'), 'a')
+  dispose()
+  vi.advanceTimersByTime(1000)
+  expect(validate).not.toHaveBeenCalled()
+})
+
+test('on the server, a form made over a store\'s signal is inert too (no effect kept per process)', async () => {
+  vi.resetModules()
+  vi.doMock('../../src/runtime/env.ts', () => ({ browser: false }))
+  try {
+    const { form: serverForm } = await import('../../src/forms/index.ts')
+    const { state: serverState } = await import('../../src/runtime/signals.ts')
+    const store = serverState({ name: '' })
+    const f = serverForm(store)
+    f.setErrors({ name: 'x' }) // a live engine would list it
+    expect(f.errors).toEqual([])
+  } finally {
+    vi.doUnmock('../../src/runtime/env.ts')
+    vi.resetModules()
+  }
+})
