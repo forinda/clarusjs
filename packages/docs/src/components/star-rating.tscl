@@ -1,0 +1,12 @@
+{{-- A child island that tells its parent something happened: a bubbling custom event, "rate", from its button. --}}
+@input max: number = 5
+
+<script>
+  let hovered = state(0)
+</script>
+
+<span class="stars" role="group" aria-label="Rate">
+  @for (n of Array.from({ length: max }, (_, i) => i + 1); track n) {
+    <button type="button" class="star" [aria-label]="n + ' stars'" [class]="n <= hovered ? 'star on' : 'star'" (mouseenter)="hovered = n" (mouseleave)="hovered = 0" (click)="$event.target.dispatchEvent(new CustomEvent('rate', { bubbles: true, detail: n }))">★</button>
+  }
+</span>

@@ -1,10 +1,11 @@
 ---
 title: "Forms"
 group: "Interactivity"
-order: 5
+order: 7
 description: "Bind form fields two ways with [(value)] and @model, keep one state object, and reset or undo without cloning."
 ---
 @import signupForm from '~/components/signup-form.tscl'
+@import orderForm from '~/components/order-form.tscl'
 
 # Forms
 
@@ -65,3 +66,40 @@ Take the starting value from the state (`const initial = form`), not from the ob
 Try it: fill in the form, then reset it.
 
 <signupForm />
+
+## Large forms
+
+The same pieces scale: one state object for the whole form, sections as nested objects, and paths for everything.
+
+```tscl
+<script>
+  let order = state({
+    customer: { name: '', email: '' },
+    lines: [{ item: 'Notebook', qty: '1', price: '4' }],
+  })
+  const initial = order
+  const total = derived(() => order.lines.reduce((sum, line) => sum + Number(line.qty) * Number(line.price), 0))
+  const errors = derived(() => ({ name: order.customer.name.trim() ? '' : 'Enter a name.' }))
+  function addLine() { order = { ...order, lines: [...order.lines, { item: '', qty: '1', price: '0' }] } }
+  function removeLine(index) { order = { ...order, lines: order.lines.filter((_, i) => i !== index) } }
+</script>
+
+<textField [label]="'Name'" [(value)]="order.customer.name" />
+@for (line of order.lines; track $index) {
+  <input [(value)]="order.lines[$index].item">
+  <button (click)="removeLine($index)">×</button>
+}
+```
+
+- **Repeating groups.** Bind a row's field through the list and its index: `[(value)]="order.lines[$index].item"`. A write replaces that one line and the list around it, copy-on-write. Binding the row variable itself (`line.item`) is an error, because it would only change the row's copy.
+- **Adding and removing** replaces the list: `[...lines, next]`, `lines.filter(…)`.
+- **Derived values** such as totals, errors or "has anything changed" are `derived()`. They recompute when the parts they read change, and nothing else does. Keep validation in a `.ts` module so the server can run the same rules.
+- **Text in, numbers out.** `[(value)]` writes the field's text, as the browser gives it. Convert where you compute (`Number(line.qty)`), or keep a number in state with `(input)="qty = $event.target.valueAsNumber"`.
+- **Sections as components.** A section with many fields can be its own component with an object `@model`: `<addressFields [(value)]="order.shipping" />`, where its fields bind `[(value)]="value.street"`. Each write replaces the section, which writes it back to the order.
+- **Submitting.** `(submit)="$event.preventDefault(); send(order)"` posts the one object as JSON. Server validation can return errors by field path, to show next to each field.
+
+A copy per keystroke is cheap: only the changed path is new, and the rest is shared. Even a form with hundreds of fields stays quick.
+
+Try it: add lines, change quantities, remove one, send, reset.
+
+<orderForm />
