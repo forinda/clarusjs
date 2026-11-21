@@ -210,7 +210,9 @@ test('#40: a page links the stylesheets it imports, processed and hashed by Vite
   expect(read('index.html')).not.toContain('base-')
 })
 
-test('size budget: clarusjs/forms stays within 2.5 KB gzip on its own, and a site without forms ships none of it', async () => {
+// 3 KB: the engine core is about 2 KB; steps (#253) and submit (#254) bring it near 3 KB. Loaded only by islands with
+// [engine], so pages without forms pay nothing (checked below).
+test('size budget: clarusjs/forms stays within 3 KB gzip on its own, and a site without forms ships none of it', async () => {
   const { build: viteBuild } = await import('vite')
   const out = (await viteBuild({
     configFile: false, logLevel: 'silent',
@@ -218,7 +220,7 @@ test('size budget: clarusjs/forms stays within 2.5 KB gzip on its own, and a sit
   })) as { output: { type: string; code?: string }[] }[]
   const code = out[0]!.output.find((o) => o.type === 'chunk')!.code!
   const size = gzipSync(code, { level: 9 }).length
-  expect(size, `clarusjs/forms: ${size} B gzip`).toBeLessThanOrEqual(2.5 * KB)
+  expect(size, `clarusjs/forms: ${size} B gzip`).toBeLessThanOrEqual(3 * KB)
   // The fixture site has no [engine]: none of the engine is in its assets.
   const assets = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
   for (const f of assets) expect(readFileSync(resolve(client, 'assets', f), 'utf8'), f).not.toContain('data-cl-message')
