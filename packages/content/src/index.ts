@@ -26,6 +26,54 @@ export type MarkdownOptions = {
   quiz?: { tag: string; from: string }
   /** `::: quiz` is for lessons (frontmatter `steps: true`); 'everywhere' allows it on any page. */
   quizzes?: 'lessons' | 'everywhere'
+  /**
+   * Validate each page's frontmatter: one [Standard Schema](https://standardschema.dev) (Zod, Valibot, ArkType…), or
+   * one per folder under src/pages (`{ 'guide/**': Guide, 'blog/*.md': Post }`, the first matching glob wins). A
+   * page that doesn't match fails the build; the schema's output (defaults, coercions) is what the page gets.
+   * Synchronous schemas only.
+   * @see https://clarusjs.com/guide/markdown#frontmatter-schemas
+   */
+  schema?: StandardSchema | Record<string, StandardSchema>
+}
+
+/** The Standard Schema interface (https://standardschema.dev), as much of it as validating frontmatter needs. */
+export type StandardSchema<Output = unknown> = {
+  readonly '~standard': {
+    readonly version: 1
+    readonly vendor: string
+    validate(value: unknown): StandardResult<Output> | Promise<StandardResult<Output>>
+  }
+}
+type StandardResult<Output> =
+  | { readonly value: Output; readonly issues?: undefined }
+  | { readonly issues: ReadonlyArray<{ readonly message: string; readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }> }> }
+
+/** 'guide/**' and 'blog/*.md' as a regex over a page's path under src/pages: ** any depth, * within one segment. */
+function globToRegex(glob: string): RegExp {
+  const pattern = glob
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*\//g, '\0A').replace(/\/\*\*$/, '\0B').replace(/\*\*/g, '\0C') // ** first, so * below is one segment
+    .replace(/\*/g, '[^/]*')
+    .replace(/\0A/g, '(?:.*/)?').replace(/\0B/g, '(?:/.*)?').replace(/\0C/g, '.*')
+  return new RegExp(`^${pattern}$`)
+}
+
+/** The page's frontmatter after its schema (if any): its output, or an error listing each issue. */
+function validateFrontmatter(data: Record<string, unknown>, schema: MarkdownOptions['schema'], file: string, root: string): Record<string, unknown> {
+  if (!schema) return data
+  const rel = relative(root, file).split(sep).join('/')
+  const underPages = rel.replace(/^src\/pages\//, '')
+  const pick = '~standard' in schema ? schema : Object.entries(schema as Record<string, StandardSchema>).find(([glob]) => globToRegex(glob).test(underPages))?.[1]
+  if (!pick) return data
+  const result = (pick as StandardSchema)['~standard'].validate(data)
+  if (result instanceof Promise) throw new Error(`${rel}: the frontmatter schema validated asynchronously; markdown({ schema }) needs a synchronous schema`)
+  if (result.issues) {
+    throw new Error(result.issues.map((issue) => {
+      const path = (issue.path ?? []).map((p) => String(typeof p === 'object' ? p.key : p)).join('.')
+      return `${rel}: frontmatter${path ? `.${path}` : ''}: ${issue.message}`
+    }).join('\n'))
+  }
+  return result.value as Record<string, unknown>
 }
 
 const TYPES = ['tip', 'info', 'warning', 'danger', 'details', 'code-group', 'quiz'] as const
@@ -342,7 +390,7 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       const { route } = context
       // ---\nyaml\n---: the page's frontmatter.
       const front = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(code)
-      const data = (front ? parseYaml(front[1]!) : null) ?? {}
+      const data = validateFrontmatter((front ? parseYaml(front[1]!) : null) ?? {}, options.schema, file, context.root)
       // Snippets and includes first: what they bring in is Markdown like the rest of the page.
       let body = expand(front ? code.slice(front[0].length) : code, file, context)
       // @import lines at the top pass through, so components can be used in the Markdown.

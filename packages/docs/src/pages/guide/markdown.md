@@ -42,6 +42,20 @@ Write **Markdown** as usual.
 
 `steps: true` (for lessons) wraps each `##` heading and what follows it, up to the next one, in a `<section class="step" aria-labelledby="…">`. The page is still a plain page; a layout can show one step at a time (see [Docs theme](/guide/docs-theme#lessons)).
 
+## Frontmatter schemas
+
+Validate frontmatter with any [Standard Schema](https://standardschema.dev) library (Zod, Valibot, ArkType…): one schema for every page, or one per folder under `src/pages`:
+
+```ts
+import * as v from 'valibot'
+
+const Post = v.object({ title: v.string(), date: v.pipe(v.string(), v.isoDate()), draft: v.optional(v.boolean(), false) })
+
+markdown({ schema: { 'blog/**': Post } }) // ** any depth, * one folder; the first matching glob wins
+```
+
+A page that doesn't match fails the build (and shows in development) with the file and each problem: `src/pages/blog/x.md: frontmatter.date: Invalid date`. The schema's output, with its defaults and coercions, is what the page gets. Schemas must validate synchronously, as most do. `@clarusjs/content` depends on no schema library, only the Standard Schema interface; this site's guide pages are checked by a small hand-written one, `src/schemas.ts`.
+
 ## Components in Markdown
 
 Import components at the top, then use them like HTML. Leave blank lines around Markdown inside a component:
