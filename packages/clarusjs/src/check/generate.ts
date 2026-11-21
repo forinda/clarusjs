@@ -3,7 +3,7 @@
 // every copied span is recorded so tsc's errors can be mapped back to the template. Pure: string in, string out.
 import { routeFromFile } from '../server/handler.ts'
 import { ClarusError } from '../compiler/errors.ts'
-import { parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
+import { FOR_IMPLICIT, parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
 import { referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
@@ -41,6 +41,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   emit('declare function derived<T>(fn: () => T): T\n')
   emit('declare function shared<T>(store: { get(): T }): T\n')
   emit('declare function __cl_use(value: unknown): void\n')
+  emit('declare const __cl_bool: boolean\n') // a row's $first…: boolean, not narrowed to false
   // [prop] on an element sets an attribute: true → bare, false/null → removed, anything else as text. So a boolean
   // attribute (per the DOM's own types) takes a boolean (a string, even 'false', would switch it on), and any other a
   // primitive (an object would read "[object Object]").
@@ -197,12 +198,13 @@ export function generateTs(source: string, file: string, options: { loader?: str
         copy(node.item, node.itemStart)
         emit(' of ')
         copy(node.list, node.listStart)
-        emit(') {\n    const $index: number = 0; __cl_use($index)\n')
+        // The row's implicit names: $index and $count numbers; $first, $last, $even, $odd booleans.
+        emit(') {\n    const $index: number = 0, $count: number = 0, $first = __cl_bool, $last = __cl_bool, $even = __cl_bool, $odd = __cl_bool; __cl_use([$index, $count, $first, $last, $even, $odd])\n')
         if (node.track !== null) use(node.track, node.trackStart)
         // Inside the loop its item (and $index) shadow outer names: a condition about an outer `row` must not be
         // repeated where `row` is the loop's.
         const outer = guards.splice(0)
-        guards.push(...outer.filter((g) => !referencesNames(g, new Set([node.item, '$index']))))
+        guards.push(...outer.filter((g) => !referencesNames(g, new Set([node.item, ...FOR_IMPLICIT]))))
         node.children.forEach(visit)
         guards.splice(0, guards.length, ...outer)
         emit('  }\n')

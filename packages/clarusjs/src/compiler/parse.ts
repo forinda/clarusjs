@@ -62,6 +62,8 @@ export type ParsedFile = {
   nodes: TemplateNode[]
 }
 
+/** The names a @for row has besides its item: $index, $count, $first, $last, $even, $odd. */
+export const FOR_IMPLICIT = ['$index', '$count', '$first', '$last', '$even', '$odd']
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 const DATA_IMPORT_RE = /^@import\s+(\{[^}]*\})\s+from\s+(['"])(.+?)\2\s*$/d
 const IMPORT_TYPE_RE = /^@import\s+type\s+(\{[^}]*\}|[A-Za-z_$][\w$]*)\s+from\s+(['"])(.+?)\2\s*$/d
@@ -366,12 +368,14 @@ export function parse(source: string, file: string): ParsedFile {
     if (!m) fail('expected "item of list" in @for', headStart)
     if (!/^[A-Za-z_$][\w$]*$/.test(m![1]!.trim())) fail('the @for item must be a simple name', headStart)
     const itemStart = at + first.start + m!.indices![1]![0]
+    if (FOR_IMPLICIT.includes(m![1]!.trim())) fail(`"${m![1]!.trim()}" is an implicit @for variable: name the item something else`, itemStart)
     const listStart = at + first.start + m!.indices![2]![0]
     let track: string | null = null
     let trackStart = -1
     for (const clause of rest) {
       const t = /^track\s+([\s\S]+)$/d.exec(clause.text)
       if (!t) fail(`unknown @for clause "${clause.text}"`, headStart)
+      if (track !== null) fail('only one track per @for', at + clause.start)
       track = t![1]!.trim()
       trackStart = at + clause.start + t!.indices![1]![0]
     }
@@ -388,6 +392,10 @@ export function parse(source: string, file: string): ParsedFile {
       if (source[i] !== '{') fail('expected { to open the block', i)
       i++
       empty = children({ tag: '@empty', start, block: true })
+      const after = i
+      while (/\s/.test(source[i] ?? '')) i++
+      if (/^@empty[\s{]/.test(source.slice(i, i + 7))) fail('only one @empty per @for', i)
+      i = after
     } else i = save
     return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, itemStart, listStart, trackStart, children: body, empty, start }
   }

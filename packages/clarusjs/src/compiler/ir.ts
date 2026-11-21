@@ -1,7 +1,7 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
 import { parseExpressionAt } from 'acorn'
 import { ClarusError } from './errors.ts'
-import { importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
+import { FOR_IMPLICIT, importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
 import { analyzeScript, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
@@ -37,6 +37,8 @@ export type ComponentIR = {
   stateful: boolean
   nodes: IRNode[]
   events: IREvent[]
+  /** Things that compile but likely aren't meant (located, not thrown). */
+  warnings: ClarusError[]
 }
 
 const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
@@ -46,6 +48,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
+  const warnings: ClarusError[] = []
   // This component's @model inputs: fields bound to them take their path from the parent (see modelPath).
   const modelNames = new Set(parsed.inputs.filter((i) => i.model).map((i) => i.name))
   const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
@@ -167,7 +170,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
         children.forEach((child) => visit(child, rawText))
         return list
       }
-      const nodes = lowerInto(node.children, `f${block}`, new Set([...parentLoop, node.item, '$index']))
+      if (block >= 0 && node.track === null) warnings.push(new ClarusError('@for without track: rows are matched by position, so a row\'s state moves to another item when the list changes order; add track item.id (or another unique key)', file, source, node.start))
+      const nodes = lowerInto(node.children, `f${block}`, new Set([...parentLoop, node.item, ...FOR_IMPLICIT]))
       const empty = node.empty ? lowerInto(node.empty, `f${block}e`, parentLoop) : null
       out = parent
       scopeKey = parentScope
@@ -341,6 +345,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     stateful,
     nodes,
     events,
+    warnings,
   }
 }
 

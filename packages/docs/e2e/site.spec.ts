@@ -1612,3 +1612,12 @@ test('#284: every @see link in the packages\' JSDoc lands on a page with that se
     if (anchor) expect(await res.text(), link).toContain(`id="${anchor}"`)
   }
 })
+
+test('#249 lists: $count, $first, $last, $even and $odd follow the list in an island', async ({ page }) => {
+  await page.goto('/guide/lists')
+  const demo = page.locator('#row-names')
+  await expect(page.locator('cl-island[c="row-names"]')).toHaveAttribute('data-cl-ready', '')
+  await expect(demo.locator('li')).toHaveText(['1 of 2 · first · even', '2 of 2 · last · odd'])
+  await demo.getByRole('button', { name: 'Add a row' }).click()
+  await expect(demo.locator('li')).toHaveText(['1 of 3 · first · even', '2 of 3 · odd', '3 of 3 · last · even'])
+})

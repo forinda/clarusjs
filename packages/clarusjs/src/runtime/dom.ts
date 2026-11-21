@@ -188,7 +188,7 @@ export function forBlock(
   index: number,
   list: () => unknown,
   keyOf: (item: any, i: number) => unknown,
-  row: { html: (item: any, i: number) => string; wire: (ctx: Ctx, item: Signal<any>, index: Signal<number>) => void },
+  row: { html: (item: any, i: number, list: unknown[]) => string; wire: (ctx: Ctx, item: Signal<any>, index: Signal<number>, count: Signal<number>) => void },
   empty: { html: () => string; wire: (ctx: Ctx) => void } | null,
 ): void {
   const f = scan(ctx).fors[index]
@@ -197,11 +197,12 @@ export function forBlock(
   let rows: Row[] = []
   let emptyRange: (Range & { dispose: () => void }) | null = null
   let first = true
+  const count = state(0) // the list's length, for rows using $count, $last…
 
   const wireRow = (range: Range, key: unknown, item: unknown, i: number): Row => {
     const itemS = state(item)
     const indexS = state(i)
-    const dispose = scope(() => row.wire({ root, ...range }, itemS, indexS))
+    const dispose = scope(() => row.wire({ root, ...range }, itemS, indexS, count))
     return { ...range, key, item: itemS, index: indexS, dispose }
   }
   const wireEmpty = (range: Range) => ({ ...range, dispose: empty ? scope(() => empty.wire({ root, ...range })) : () => {} })
@@ -214,6 +215,7 @@ export function forBlock(
   effect(() => {
     const items = [...((list() ?? []) as Iterable<unknown>)]
     untrack(() => {
+      count.set(items.length)
       // Keys, made unique: a repeated key would make two rows share one identity.
       const seen = new Set<unknown>()
       const keys = items.map((item, i) => {
@@ -244,7 +246,7 @@ export function forBlock(
           kept.index.set(i)
           return kept
         }
-        const { first: start, last: end } = insertHtml(`<!--[r-->${row.html(item, i)}<!--]-->`, f.end)
+        const { first: start, last: end } = insertHtml(`<!--[r-->${row.html(item, i, items)}<!--]-->`, f.end)
         return wireRow({ start: start as Comment, end: end as Comment }, keys[i], item, i)
       })
       for (const r of old.values()) {

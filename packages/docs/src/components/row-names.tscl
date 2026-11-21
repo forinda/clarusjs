@@ -1,0 +1,18 @@
+{{-- The Lists guide's demo: a row's implicit names follow the list as rows are added. --}}
+<script>
+  let rows = state(['a', 'b'])
+</script>
+
+<div id="row-names" class="demo-panel">
+  <ul>
+    @for (row of rows; track row) {
+      <li [class]="$even ? 'even' : 'odd'">{{ $index + 1 }} of {{ $count }}{{ $first ? ' · first' : '' }}{{ $last ? ' · last' : '' }} · {{ $even ? 'even' : 'odd' }}</li>
+    }
+  </ul>
+  <button type="button" (click)="rows = [...rows, String.fromCharCode(97 + rows.length)]">Add a row</button>
+</div>
+
+<style scoped>
+  :scope { border: 1px solid var(--rule); border-radius: 8px; padding: 12px 16px; }
+  .even { background: color-mix(in srgb, var(--rule) 30%, transparent); }
+</style>
