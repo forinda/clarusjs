@@ -247,3 +247,55 @@ test('#213: an unknown prop on a component without inputs is an error, like on o
     'src/pages/index.tscl:4:27 TS2353',
   ])
 })
+
+test('#99: @type types a component\'s props: checked in the file and where it is used; errors in the type are located', () => {
+  const root = project({
+    'src/components/card.tscl': '@type User = { name: string; admin: boolean }\n@input user: User\n<p>{{ user.name }} {{ user.nmae }}</p>\n',
+    'src/components/broken.tscl': '@type Id = Strng\n@input id: Id\n<p>{{ id }}</p>\n',
+    'src/pages/index.tscl': "@import card from '../components/card.tscl'\n<card [user]=\"{ name: 'a', admin: true }\" />\n<card [user]=\"{ name: 'b' }\" />\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line}:${d.column} ${d.code}`)).toEqual([
+    'src/components/broken.tscl:1:12 TS2552', // Strng: cannot find name, did you mean String?
+    'src/components/card.tscl:3:28 TS2339', // user.nmae
+    'src/pages/index.tscl:3:8 TS2741', // admin missing
+  ])
+  expect(readFileSync(resolve(root, '.clarusjs/views.d.ts'), 'utf8')).toMatch(/declare namespace __cl_v\d+ \{\n  type User = \{ name: string; admin: boolean \}/)
+})
+
+test('#99: @interface and multi-line mapped, conditional and inferred @type types are checked like any TypeScript', () => {
+  const root = project({
+    'src/components/card.tscl': [
+      '@interface Named { name: string }',
+      '@interface User<Role = string> extends Named {',
+      '  role: Role',
+      '}',
+      "@type Flags<K extends string> = { [P in K]: boolean }",
+      '@type ElementOf<T> = T extends (infer U)[] ? U : never',
+      "@input user: User<'admin' | 'guest'>",
+      "@input flags: Flags<'dark'>",
+      '@input first: ElementOf<number[]>',
+      '<p>{{ user.name }} {{ user.role }} {{ flags.dark }} {{ first.toFixed() }} {{ flags.light }}</p>',
+      '',
+    ].join('\n'),
+    'src/pages/index.tscl': "@import card from '../components/card.tscl'\n<card [user]=\"{ name: 'a', role: 'owner' }\" [flags]=\"{ dark: true }\" [first]=\"1\" />\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
+    'src/components/card.tscl:10 TS2339', // flags.light: not in the mapped type
+    'src/pages/index.tscl:2 TS2322', // role 'owner' isn't 'admin' | 'guest'
+  ])
+})
+
+test('#99: multi-line @input types and function-typed inputs are checked, at their lines', () => {
+  const root = project({
+    'src/components/picker.tscl': "@input options: {\n  size: 'sm' | 'lg'\n  label?: string\n} = { size: 'sm' }\n@input onPick: (id: string) => void\n<p>{{ options.size }} {{ options.colour }}</p>\n",
+    'src/pages/index.tscl': "@import picker from '../components/picker.tscl'\n<picker [options]=\"{ size: 'xl' }\" [onPick]=\"(id: string) => id\" />\n<picker [onPick]=\"(id: number) => id\" />\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
+    'src/components/picker.tscl:6 TS2339', // options.colour
+    'src/pages/index.tscl:2 TS2322', // size 'xl'
+    'src/pages/index.tscl:3 TS2322', // onPick takes a string id
+  ])
+})
