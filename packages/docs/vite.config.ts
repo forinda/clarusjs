@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
 import markdown from '@clarusjs/content'
 import { themeDocs } from '@clarusjs/theme-docs/vite.js'
+import { guidePage } from './src/schemas.ts'
 
 export default defineConfig({
   plugins: [
@@ -35,6 +36,8 @@ export default defineConfig({
         copy: { tag: 'copy', from: '@clarusjs/theme-docs/copy.tscl' },
         // ::: quiz blocks in lessons render through the theme's quiz (its options are an island).
         quiz: { tag: 'quiz', from: '@clarusjs/theme-docs/quiz.tscl' },
+        // Guide pages must have a title, description, sidebar group and order (src/schemas.ts).
+        schema: { 'guide/**': guidePage },
       })],
     }),
   ],
