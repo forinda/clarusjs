@@ -46,6 +46,18 @@ clarusjs uses the browser's own `@scope`. Every component's top-level elements c
 </style>
 ```
 
+Pass a class to a component with `class="…"` on its tag: it lands on the component's top-level elements, after their own, so the parent's rules can use it.
+
+```tscl
+<card class="featured" />
+
+<style scoped>
+  .featured { border-color: gold; }
+</style>
+```
+
+Only a static `class` passes through; `[class]` and `{{ }}` in it aren't supported on a component yet.
+
 Rendering only `<card />` and writing `:scope {}` styles nothing: `:scope` is the parent's own top-level element, and a component on its own has none.
 
 <scopeDemo />
