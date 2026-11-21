@@ -169,3 +169,24 @@ test("a script's own functions get `: any` on untyped parameters (scripts are Ja
   for (const [v, length, s, exact] of mappings) if (exact) expect(code.slice(v, v + length)).toBe(source.slice(s, s + length))
   expect(mappings.filter(([, , , exact]) => exact).some(([v, l]) => code.slice(v, v + l).includes('return a'))).toBe(true)
 })
+
+test('[prop] on an HTML element: a boolean attribute takes a boolean, others a primitive (numbers are fine)', () => {
+  const errors = check({
+    'src/a.tscl': `<script>
+  let busy = state(false)
+  let n = state(2)
+  let user = state({ name: 'a' })
+</script>
+<button [disabled]="'false'" [hidden]="busy"></button>
+<input [readonly]="'yes'" [required]="busy" [tabindex]="n" [value]="n" [checked]="busy">
+<a [href]="user" [aria-current]="busy ? 'page' : false" [data-id]="n" [title]="null"></a>
+<my-element [anything]="user"></my-element>
+`,
+  })
+  expect(errors).toEqual([
+    expect.stringMatching(/^src\/a\.tscl:6:21 .*'"false"' is not assignable to parameter of type 'boolean \| null \| undefined'/), // [disabled]="'false'": still disabled
+    expect.stringMatching(/^src\/a\.tscl:7:20 .*'"yes"' is not assignable to parameter of type 'boolean \| null \| undefined'/), // readonly → readOnly
+    expect.stringMatching(/^src\/a\.tscl:8:12 .*'\{ name: string; \}' is not assignable to parameter of type 'string \| number \| boolean \| null \| undefined'/), // an object would be "[object Object]"
+    expect.stringMatching(/^src\/a\.tscl:9:25 .*'\{ name: string; \}' is not assignable/), // a custom element gets attributes too
+  ])
+})

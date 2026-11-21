@@ -46,7 +46,7 @@ Add it to `tsconfig.json`, next to `compilerOptions`:
 
 - **TypeScript 7.1 or later.** On 7.0 the entry is ignored; `clarusjs check` (below) works on both.
 - **Trust.** A mapper is code that runs while TypeScript checks: VS Code runs it in a trusted workspace, and `tsc` only with `--runExternalCode` (`tsc --noEmit --runExternalCode`).
-- **Template syntax errors** (an unclosed `@if`) are reported as `clarus` errors. As with any syntax error, TypeScript reports type errors again once it's fixed.
+- **Template syntax errors** (an unclosed `@if` or `<div>`, while you type) are reported as `clarus` errors, and the rest of the file keeps its hover, completion and errors in the editor. `tsc` on the command line, as for any syntax error, reports type errors again once it's fixed.
 - **Scripts are JavaScript.** Parameters of a script's own functions are typed `any`, so a strict project doesn't flag them; callbacks keep the type their context gives them.
 
 `clarusjs check` type-checks the same way in one command, also on TypeScript 7.0, and covers Markdown pages, which the mapper doesn't. Use it in CI (see [Type checking](./type-checking.md)).
