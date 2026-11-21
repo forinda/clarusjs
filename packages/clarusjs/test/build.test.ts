@@ -68,7 +68,8 @@ test('routeToFile maps routes to index.html files', () => {
 })
 
 test('a page that throws while prerendering fails the build, naming the route', async () => {
-  await expect(build(resolve(import.meta.dirname, 'fixtures/site-broken'))).rejects.toThrow(/prerender \/: .*boom/)
+  // The failing page's file and error (the handler's log), then the route (#196: a failure answers 500).
+  await expect(build(resolve(import.meta.dirname, 'fixtures/site-broken'))).rejects.toThrow(/src\/pages\/index\.tscl: render failed: boom\nprerender \/: status 500/)
 }, 120_000)
 
 test('vite preview serves the built pages at their routes, with or without a trailing slash', async () => {

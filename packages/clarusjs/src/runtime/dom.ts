@@ -199,7 +199,8 @@ export function forBlock(
       const keys = items.map((item, i) => {
         let key = keyOf(item, i)
         if (seen.has(key)) {
-          console.warn(`[clarusjs] @for: duplicate key ${String(key)}; rows with repeated keys are matched by position`)
+          // Development only: a production build drops it.
+          if (import.meta.env?.DEV) console.warn(`[clarusjs] @for: duplicate key ${String(key)}; rows with repeated keys are matched by position`)
           key = `${String(key)}\u0000${i}`
         }
         seen.add(key)

@@ -351,6 +351,12 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         writeFileSync(resolve(out, routeToFile('/404')), html)
         writeFileSync(resolve(out, '404.html'), html)
       }
+      // 500.html, for hosts that serve it when something fails: the 500 page, with links from the site root.
+      if (pageRoutes.includes('/500') && !clientRoutes.includes('/500')) {
+        const html = rootLinks(readFileSync(resolve(out, routeToFile('/500')), 'utf8'), basePath(builder.config.base))
+        writeFileSync(resolve(out, routeToFile('/500')), html)
+        writeFileSync(resolve(out, '500.html'), html)
+      }
       // Redirect pages exist (links to old paths stay valid); their anchors are the target's, so they go unchecked.
       if (options.redirects) {
         writeRedirects(out, options.redirects, basePath(builder.config.base).replace(/\/$/, ''))
@@ -405,7 +411,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           if (marker) writeFileSync(file, html.replace(marker, ''))
           return !!marker || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? ''))
         }
-        const pages = pageRoutes.filter((page) => page !== '/404' && !clientRoutes.includes(page) && !optedOut(page) && !exclude.some((re) => re.test(page)))
+        const pages = pageRoutes.filter((page) => page !== '/404' && page !== '/500' && !clientRoutes.includes(page) && !optedOut(page) && !exclude.some((re) => re.test(page)))
           .map((path) => ({ path, lastmod: dates.get(fileOf(path) ?? '') ?? epoch }))
         writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
       }
@@ -475,6 +481,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  client: ${JSON.stringify(client)},\n` +
         `  base: ${JSON.stringify(base)},\n` +
         `  fragments: ${options.fragments === true},\n` +
+        // The dev server shows a failing page's error itself; builds and production answer with the 500 page.
+        `  dev: ${command === 'serve'},\n` +
         `  navUrl: ${JSON.stringify(navUrl)},\n` +
         `  stylesUrl: ${JSON.stringify(stylesUrl)},\n` +
         `  css: ${JSON.stringify(css)},\n` +

@@ -45,12 +45,14 @@ Try it: type a note, then click a link in the sidebar.
 Every page change goes through the same steps: `loading` (the next page is fetched), then `swapping` (it replaces this one). While one runs, `<html>` carries `data-cl-navigating="loading"` or `"swapping"`, so CSS alone can show progress; this site's thin bar at the top is just that.
 
 ```ts
-import { navigating, beforeSwap, afterSwap } from 'clarusjs/navigation'
+import { navigating, beforeSwap, afterSwap, abort } from 'clarusjs/navigation'
 
 let nav = shared(navigating)                 // null when idle, else { from, to, type, phase, signal }
 beforeSwap((t) => fadeOut(t.signal))         // the next page is loaded; this one is still shown
 afterSwap(() => document.querySelector('h1')?.focus())  // the new page is in, its islands attached
 ```
+
+`abort()` stops the navigation in progress, like the browser's stop button: its requests are cancelled. While a link or `navigate()` loads, the address bar keeps the current URL (in browsers that support it; elsewhere it changes at once), so stopping leaves page and URL as they were.
 
 In-between hooks run in order and may return a promise: the page change waits for it. `t.signal` aborts when a newer navigation takes over. A hook that throws makes the page load normally.
 
