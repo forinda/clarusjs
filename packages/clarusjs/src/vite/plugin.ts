@@ -14,6 +14,7 @@ export { gitDates } from './sitemap.ts'
 import { writeManifest } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
+import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
 import { gitDates, sitemapXml } from './sitemap.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { rootLinks, routeFromFile } from '../server/handler.ts'
@@ -132,6 +133,12 @@ export type ClarusOptions = {
    * 'error'). `anchors`: links to a #id the target page doesn't have (default 'warn'). `strict`: warnings fail too.
    */
   links?: { pages?: LinkLevel; anchors?: LinkLevel; strict?: boolean }
+  /**
+   * Paths that moved: `{ '/old': '/new' }` (a site path or a full URL). The build writes a page at each old path that
+   * sends visitors on, and `_redirects` lines (a real 301 on Netlify and Cloudflare Pages); dev answers 301.
+   * @see https://clarusjs.com/guide/routing
+   */
+  redirects?: Record<string, string>
   /**
    * Every page's <head>: `titleTemplate` ('%s · Site') wraps the document title, `tags` are added unless the page has
    * its own with the same key. Anything else: export `transformHead(head, page)` from src/head.ts.
@@ -318,6 +325,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     async buildApp(builder) {
       const { client, ssr } = builder.environments
       if (!client || !ssr) return
+      // Before anything is built: an old path must not be a page.
+      checkRedirects(options.redirects ?? {}, files.find(resolve(builder.config.root, 'src/pages')).map((f) => routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`)))
       await builder.build(client)
       await builder.build(ssr)
       const entry = resolve(builder.config.root, SERVER_OUT, 'index.mjs')
@@ -341,6 +350,13 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         const html = rootLinks(readFileSync(resolve(out, routeToFile('/404')), 'utf8'), basePath(builder.config.base))
         writeFileSync(resolve(out, routeToFile('/404')), html)
         writeFileSync(resolve(out, '404.html'), html)
+      }
+      // Redirect pages exist (links to old paths stay valid); their anchors are the target's, so they go unchecked.
+      if (options.redirects) {
+        writeRedirects(out, options.redirects, basePath(builder.config.base).replace(/\/$/, ''))
+        const moved = Object.keys(options.redirects).map((from) => (from.length > 1 ? from.replace(/\/+$/, '') : from))
+        pageRoutes.push(...moved)
+        clientRoutes.push(...moved)
       }
       const issues = checkLinks({
         outDir: out,
@@ -560,6 +576,12 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           try {
             const env = server.environments.ssr
             if (!isRunnableDevEnvironment(env)) return next()
+            if (options.redirects) {
+              const prefix = basePath(server.config.base).replace(/\/$/, '')
+              const pathname = new URL(req.url ?? '/', 'http://x').pathname
+              const to = redirectFor(options.redirects, pathname.startsWith(prefix + '/') ? pathname.slice(prefix.length) : pathname, prefix)
+              if (to !== undefined) return void res.writeHead(301, { location: to }).end()
+            }
             const app = await env.runner.import<{ default: { fetch(r: Request): Promise<Response> } }>(ENTRY)
             const response = await app.default.fetch(toRequest(req))
             // The 404 page (HTML) is the answer; a plain 404 falls through to Vite.

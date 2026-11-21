@@ -738,6 +738,24 @@ test('transitions: beforeSwap holds the page change, the navigating store shows 
   await expect(page.locator('html')).not.toHaveAttribute('data-cl-navigating')
 })
 
+test('redirects: a static redirect forwards to its page; a server page\'s load() redirects', async ({ page, request }) => {
+  await page.goto('/docs')
+  await expect(page).toHaveURL(/\/guide\/getting-started$/)
+  await expect(page.locator('h1')).toHaveText(/Getting started/)
+  // The playground (a server page) sends a name of only spaces to the plain page.
+  const res = await request.get('/playground?name=%20%20', { maxRedirects: 0 })
+  expect([res.status(), res.headers().location]).toEqual([303, '/playground'])
+  await page.goto('/playground?name=%20%20')
+  await expect(page).toHaveURL(/\/playground$/)
+  // Fragment navigation that hits the redirect loads the page normally, so the address bar shows where it landed.
+  await page.goto('/guide/holes')
+  await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
+  await page.evaluate(() => { const a = document.createElement('a'); a.href = '/playground?name=%20'; a.id = 'to-playground'; a.textContent = 'go'; document.querySelector('main')!.append(a) })
+  await page.locator('#to-playground').click()
+  await expect(page).toHaveURL(/\/playground$/)
+  await expect(page.locator('h1')).toHaveText('Server playground')
+})
+
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')

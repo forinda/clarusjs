@@ -39,6 +39,15 @@ function compile(path: string): { keys: string[]; regex: RegExp } {
 }
 
 /** '/src/pages/index.tscl' → '/', '/src/pages/blog/index.tscl' → '/blog', '/src/pages/about.md' → '/about' (any page source) */
+/**
+ * A redirect for a server page's `load()` to return: `return redirect('/login')`. 302 by default; 301 or 308 for
+ * a page that moved for good, 303 after a form, 307 to keep the method.
+ * @see https://clarusjs.com/guide/routing
+ */
+export function redirect(to: string, status: 301 | 302 | 303 | 307 | 308 = 302): Response {
+  return new Response(null, { status, headers: { location: to } })
+}
+
 export function routeFromFile(file: string): string {
   const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.[^./]+$/, '').replace(/\/index$/, '')
   return path || '/'
@@ -235,8 +244,11 @@ export function createHandler(
         } catch (err) {
           return failure(`${dataFile}: load() failed: ${(err as Error)?.message ?? err}`)
         }
+        // A Response (such as redirect()) is the answer, for the page as for its fragment or data: a navigator
+        // that followed a redirect then loads the target page normally.
+        if (loaded instanceof Response) return loaded
         if (loaded === null || typeof loaded !== 'object' || Array.isArray(loaded)) {
-          return failure(`${dataFile}: load() must return an object of page inputs, got ${Array.isArray(loaded) ? 'an array' : loaded === null ? 'null' : typeof loaded}`)
+          return failure(`${dataFile}: load() must return an object of page inputs (or a Response, such as redirect()), got ${Array.isArray(loaded) ? 'an array' : loaded === null ? 'null' : typeof loaded}`)
         }
         ;(globalThis as { __clLoaderRan?: boolean }).__clLoaderRan = true // recorded by prerender for the manifest
         props = { ...found.params, ...loaded }
