@@ -149,3 +149,11 @@ test('#168: headings (On this page, lesson steps) are top-level only: a ## insid
   expect(out).toContain(`[headings]="[{ id: 'read', text: 'Read', level: 2 }, { id: 'write', text: 'Write', level: 2 }]"`)
   expect(out.match(/<section class="step"/g)).toHaveLength(2)
 })
+
+test('a verbatim element is left as written: its text is already shown as text, so it is not escaped twice', () => {
+  const out = page('<p class="lead"><code verbatim>{{ }} @if</code> holes, and {{ x }} outside.</p>\n')
+  expect(out).toContain('<code verbatim>{{ }} @if</code> holes, and &#123;&#123; x }} outside.')
+  // The page shows {{ }} @if in the code element (not &#123;…), and the entities elsewhere decode to {{ x }}.
+  const { code } = compile(out.replace(/^@import.*\n/, '').replace(/<\/?cl-layout[^>]*>/g, ''), { file: 'x.tscl', target: 'server' })
+  expect(code).toContain('<code>{{ }} @if</code> holes, and &#123;&#123; x }} outside.')
+})

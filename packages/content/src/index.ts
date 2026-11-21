@@ -297,7 +297,9 @@ function pageHead(data: Record<string, unknown>, title: string | undefined): str
 
 /** Markdown output is static HTML: anything a .tscl template would read as syntax ({{ }}, @if …) is escaped. */
 function staticHtml(html: string): string {
-  return html.replace(/\{\{/g, '&#123;&#123;').replace(/@/g, '&#64;')
+  // A verbatim element's content is already shown as text by the compiler: escaping it here would show the entities.
+  return html.split(/(<([\w-]+)\b[^>]*\sverbatim\b[^>]*>[\s\S]*?<\/\2>)/).map((part, i) =>
+    i % 3 === 1 ? part : i % 3 === 2 ? '' : part.replace(/\{\{/g, '&#123;&#123;').replace(/@/g, '&#64;')).join('')
 }
 
 /**
