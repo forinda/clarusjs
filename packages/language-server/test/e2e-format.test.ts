@@ -14,11 +14,11 @@ let root: string
 beforeAll(async () => {
   root = mkdtempSync(resolve(tmpdir(), 'cl-ls-e2e-format-'))
   writeFileSync(resolve(root, 'package.json'), '{"name":"app"}')
-  writeFileSync(resolve(root, '.prettierrc'), '{"singleQuote":true,"semi":false}')
+  writeFileSync(resolve(root, '.prettierrc'), '{"singleQuote":true,"semi":false,"plugins":["@clarusjs/prettier-plugin"]}')
   mkdirSync(resolve(root, 'node_modules/@clarusjs'), { recursive: true })
   symlinkSync(realpathSync(resolve(PLUGIN, 'node_modules/prettier')), resolve(root, 'node_modules/prettier'))
   symlinkSync(PLUGIN, resolve(root, 'node_modules/@clarusjs/prettier-plugin'))
-  server = startLanguageServer(BIN, root)
+  server = startLanguageServer(BIN, tmpdir()) // not the project: plugins named in the config must still resolve
   // Workspace folders without the folder-change capability: the server must keep running (it used to exit).
   await server.initialize([{ uri: URI.file(root).toString(), name: 'app' }], { trusted: true }, {})
 }, 60_000)

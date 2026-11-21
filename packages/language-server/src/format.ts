@@ -3,7 +3,7 @@
 // folder's own node_modules, as for the compiler. Otherwise, no formatting.
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
-import { join, sep } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 /** Formats a .tscl file's text (`path` picks the Prettier config). */
@@ -27,10 +27,23 @@ export async function loadFormatter(root: string, trusted: boolean, log: (messag
     log(`clarusjs: formatting with the project's Prettier (${prettierEntry})`)
     return async (text, path) => {
       try {
+        // As `prettier --write` run in the folder: its ignore files, .editorconfig, and the config as it is now.
+        const info = await prettier.getFileInfo(path, { ignorePath: [join(root, '.gitignore'), join(root, '.prettierignore')], resolveConfig: false })
+        if (info?.ignored) return text
+        await prettier.clearConfigCache()
         // Only a config inside the trusted folder: Prettier also looks in parent folders, and a config's plugins run.
         const file: string | null = await prettier.resolveConfigFile(path)
-        const config = file && file.startsWith(root + sep) ? ((await prettier.resolveConfig(path, { config: file })) ?? {}) : {}
-        return await prettier.format(text, { ...config, filepath: path, parser: 'tscl', plugins: [...(config.plugins ?? []), plugin] })
+        const config = file && file.startsWith(root + sep) ? ((await prettier.resolveConfig(path, { config: file, editorconfig: true })) ?? {}) : {}
+        // Plugins named in the config, from the config's folder (Prettier would look in the server's working folder);
+        // the clarusjs plugin is added from the project either way.
+        const from = createRequire(file ?? join(root, 'package.json'))
+        const plugins = ((config.plugins ?? []) as unknown[]).flatMap((p) => {
+          if (typeof p !== 'string') return [p]
+          if (p.startsWith('.')) return [resolve(dirname(file!), p)]
+          if (p === '@clarusjs/prettier-plugin') return []
+          try { return [from.resolve(p)] } catch { return [p] }
+        })
+        return await prettier.format(text, { ...config, filepath: path, parser: 'tscl', plugins: [...plugins, plugin] })
       } catch (err) {
         log(`clarusjs: couldn't format ${path}: ${(err as Error).message}`) // shown in the editor's output, not as an edit
         throw err

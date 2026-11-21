@@ -36,7 +36,8 @@ npx prettier --check "src/**/*.tscl"   # in CI: fails if a file isn't formatted
 
 - **The template:** elements are indented one level per nesting, as are the contents of `@if`, `@else`, `@for`, `@empty` and `@slot` blocks. Long tags are broken one attribute per line. Expressions in `{{ }}`, `[prop]` and `(event)` are formatted as JavaScript.
 - **`<script>` and `<style>`:** formatted by Prettier's JavaScript and CSS formatters, with your options (`semi`, `singleQuote`, `printWidth` and the rest).
-- **Left as written:** the directives at the top (`@import`, `@input`, `@model`, `@type`, `@interface`), `{{-- --}}` comments, and the contents of `verbatim` elements.
+- **Left as written:** directives (`@import`, `@input`, `@model`, `@type`, `@interface`), `{{-- --}}` comments, the contents of `verbatim` elements, and a block that sits inside a sentence (`Hello @if (x) {<b>world</b>}!`), since putting it on lines of its own would change the spaces on the page. A directive written further down the file moves to the top.
+- **Files the compiler rejects** aren't formatted: Prettier reports the compiler's error instead.
 
 For example, this:
 
@@ -65,7 +66,7 @@ becomes:
 </section>
 ```
 
-Whitespace between inline elements is kept where it shows on the page: `<b>a</b> <i>b</i>` keeps its space, and `<b>a</b><i>b</i>` stays without one.
+Whitespace is kept where it shows on the page: `<b>a</b> <i>b</i>` keeps its space, and `<b>a</b><i>b</i>` stays without one.
 
 ## In your editor
 
