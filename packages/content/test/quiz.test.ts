@@ -38,3 +38,13 @@ test('a quiz needs exactly one right answer, and is for lessons unless quizzes a
   expect(() => html(quiz)).toThrow(/x\.md: ::: quiz is for lessons \(frontmatter steps: true\); markdown\(\{ quizzes: 'everywhere' \}\) allows it on any page/)
   expect(html(quiz, { quizzes: 'everywhere' })).toContain('class="quiz"')
 })
+
+test('a quiz component gets its question and options as plain text: <, & and quotes aren\'t escaped twice', () => {
+  const src = '::: quiz Which components ship <b>"JS"</b> & why?\n- [ ] Every component\n- [x] Only components with a `<script>`\n- [ ] Tom\'s "page"\n\nOnly islands.\n:::\n'
+  const out = html(lesson + src, { quiz: { tag: 'quiz', from: '@clarusjs/theme-docs/quiz.tscl' } })
+  // Binding values are JavaScript: the strings hold the text itself, never HTML entities (the template escapes once).
+  expect(out).toContain(`[options]="['Every component', 'Only components with a <script>', 'Tom\\'s \\u0022page\\u0022']"`)
+  expect(out).toContain(`[question]="'Which components ship \\u0022JS\\u0022 & why?'"`)
+  expect(out).not.toContain('&lt;')
+  expect(() => server(out)).not.toThrow()
+})
