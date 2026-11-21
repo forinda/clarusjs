@@ -81,12 +81,13 @@ function frontmatter(text) {
   for (const line of block.split(/\r?\n/)) {
     const m = /^(\w+):\s*(.*?)\s*$/.exec(line)
     if (!m) continue
-    const v = m[2]
-    try {
-      data[m[1]] = v.startsWith('"') ? JSON.parse(v) : v.replace(/^'(.*)'$/, '$1')
-    } catch {
-      data[m[1]] = v
-    }
+    // A quoted value ends at its closing quote; otherwise a ` #` starts a comment.
+    const double = /^"((?:[^"\\]|\\.)*)"/.exec(m[2])
+    const single = /^'((?:[^']|'')*)'/.exec(m[2])
+    if (double) {
+      try { data[m[1]] = JSON.parse(double[0]) } catch { data[m[1]] = double[1] }
+    } else if (single) data[m[1]] = single[1].replaceAll("''", "'")
+    else data[m[1]] = m[2].replace(/\s+#.*$/, '')
   }
   return data
 }

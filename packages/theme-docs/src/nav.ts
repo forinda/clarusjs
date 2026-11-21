@@ -64,7 +64,8 @@ export function pagesNav(sections: Section[], pages: PageInfo[]): Section[] {
     const groups = section.groups.map((g) => ({ title: g.title, items: [...g.items] }))
     const listed = new Set(groups.flatMap((g) => g.items.map((i) => i.href)))
     for (const page of pages) {
-      if (!page.href.startsWith(`/${section.key}/`) || listed.has(page.href)) continue
+      const inSection = page.href === `/${section.key}` || page.href.startsWith(`/${section.key}/`)
+      if (!inSection || listed.has(page.href)) continue
       const title = page.group ?? section.title
       let group = groups.find((g) => g.title === title)
       if (!group) groups.push(group = { title, items: [] })
@@ -75,6 +76,6 @@ export function pagesNav(sections: Section[], pages: PageInfo[]): Section[] {
     // New groups (after the config's) in the order of their first item.
     const added = groups.slice(section.groups.length).sort((a, b) => rank(a.items[0]!) - rank(b.items[0]!))
     const all = [...groups.slice(0, section.groups.length), ...added]
-    return { ...section, href: section.href || all[0]?.items[0]?.href || '', groups: all }
+    return { ...section, href: section.href || all.find((g) => g.items.length)?.items[0]?.href || '', groups: all }
   })
 }

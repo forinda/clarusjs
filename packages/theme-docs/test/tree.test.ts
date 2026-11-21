@@ -67,3 +67,18 @@ test('themeDocs() serves the pages as virtual:theme-docs/pages', async () => {
   expect(code).toContain('{"href":"/reference/cli","title":"CLI"}')
   expect(code).not.toContain('Hidden')
 })
+
+test("a section's index page belongs to it; an empty href falls to the first page of the first group with one", () => {
+  const pages = [{ href: '/guide', title: 'Overview', order: 0 }, { href: '/guidebook/x', title: 'Other' }, { href: '/guide/a', title: 'A', group: 'Late' }]
+  const [guide] = pagesNav([{ key: 'guide', title: 'Guide', href: '', groups: [{ title: 'Empty', items: [] }, { title: 'Late', items: [] }] }], pages)
+  expect(guide!.groups.flatMap((g) => g.items.map((i) => i.href))).toEqual(['/guide/a', '/guide'])
+  expect(guide!.href).toBe('/guide/a')
+})
+
+test('frontmatter: a # comment after a value is not part of it, a # inside quotes is', () => {
+  const dir = mkdtempSync(resolve(tmpdir(), 'theme-fm-'))
+  mkdirSync(resolve(dir, 'guide'))
+  writeFileSync(resolve(dir, 'guide/a.md'), '---\ntitle: "C# basics" # the title\norder: 2 # second\ngroup: \'A # B\'\n---\n')
+  writeFileSync(resolve(dir, 'guide/b.md'), '---\ntitle: B\nsidebar: false # hide it\n---\n')
+  expect(readPages(dir)).toEqual([{ href: '/guide/a', title: 'C# basics', group: 'A # B', order: 2 }])
+})
