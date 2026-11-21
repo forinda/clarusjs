@@ -44,6 +44,6 @@ test('load() must return a plain object', async () => {
   )
   const res = await h.fetch(new Request('http://x/'))
   expect(res.status).toBe(500)
-  expect(log).toHaveBeenCalledWith('[clarusjs] src/pages/index.load.ts: load() must return an object of page inputs, got string')
+  expect(log).toHaveBeenCalledWith('[clarusjs] src/pages/index.load.ts: load() must return an object of page inputs (or a Response, such as redirect()), got string')
   log.mockRestore()
 })
