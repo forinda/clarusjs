@@ -79,7 +79,7 @@ test('size budget: the published package stays small (tarball 90 KB, unpacked 32
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
   expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(90 * 1024)
   expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(320 * 1024)
-})
+}, 30_000) // npm pack takes over 5 s when every package's tests run at once
 
 test('#197: sideEffects lists only the browser scripts that start work when loaded (bundlers drop the rest when unused)', () => {
   const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))

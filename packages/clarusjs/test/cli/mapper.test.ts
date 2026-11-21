@@ -39,6 +39,45 @@ test('transform: a template error is a mapper diagnostic at its place, and the f
   expect(out.text).toContain('export')
 })
 
+test('transform: a stand-in for a whole construct maps to all of it, with no language features (errors only)', () => {
+  const content = "@import card from './card.tscl'\n<card [(open)]=\"shown\" />\n"
+  const out = transform({ fileName: '/app/src/pages/index.tscl', content })
+  const atoms = out.mappings.filter(([, , , , kind]) => kind === 1)
+  const of = (name: string) => atoms.find(([v, l]) => out.text.slice(v, v + l) === name)
+  // The component's props object stands for the tag; the model check for the binding's name.
+  expect(of('__cl_p')?.slice(2)).toEqual([content.indexOf('<card'), '<card'.length, 1, 0])
+  expect(of('__cl_m')?.slice(2)).toEqual([content.indexOf('[(open)]'), '[(open)]'.length, 1, 0])
+  // Verbatim copies keep every feature (no sixth value).
+  expect(out.mappings.filter(([, , , , kind]) => kind === 0).every((m) => m.length === 5)).toBe(true)
+})
+
+test('transform: a template that doesn\'t parse still gives TypeScript for the rest, with the errors as diagnostics', () => {
+  const tsc = resolve(pkg, 'node_modules/typescript/bin/tsc')
+  // TypeScript for the virtual text: does it hold the template's expressions, type-checked?
+  const typeErrors = (text: string) => {
+    const dir = mkdtempSync(resolve(tmpdir(), 'cl-tolerant-'))
+    writeFileSync(resolve(dir, 'a.ts'), text)
+    const run = spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--lib', 'es2023,dom', '--types', '', resolve(dir, 'a.ts')], { cwd: dir, encoding: 'utf8' })
+    return run.stdout.match(/TS\d+/g) ?? []
+  }
+  const cases = [
+    // Unclosed at the end (an @if block, a <div>) while typing the next line.
+    "@input user: { name: string }\n<div>\n  @if (user) {\n    <p>{{ user.nope }}</p>\n",
+    // A broken line in the middle: the rest of the file still counts.
+    "@input user: { name: string }\n<p>ok</p>\n@if (user {\n<p>{{ user.nope }}</p>\n",
+    // An unclosed hole at the end.
+    "@input user: { name: string }\n<p>{{ user.nope }}</p>\n<p>{{ user.name",
+  ]
+  for (const content of cases) {
+    const out = transform({ fileName: '/app/src/a.tscl', content })
+    expect(out.diagnostics, content).toHaveLength(1) // still reported: the first error (later ones may come from the repairs)
+    const span = out.mappings.find(([v, l, , , k]) => k === 0 && out.text.slice(v, v + l) === 'user.nope')
+    expect(span?.[2], content).toBe(content.indexOf('user.nope')) // the expression is there, where it was written
+    expect(typeErrors(out.text), content).toContain('TS2339') // and checked: `nope` isn't on user
+    for (const [, , s, l] of out.mappings) expect(s + l).toBeLessThanOrEqual(content.length) // nothing maps past the file
+  }
+}, 60_000)
+
 /** One framed JSON-RPC exchange with a `clarusjs mapper` process. */
 async function exchange(requests: object[]): Promise<{ id: number; result?: any; error?: any }[]> {
   const child = spawn(process.execPath, [cli, 'mapper'], { cwd: pkg })
@@ -96,8 +135,14 @@ test('tsc 7.1 with the mapper reports template type errors at their .tscl place,
     .stdout.trim().split('\n').map((l) => l.replace(/: error (\w+):.*/, ' $1'))
   expect(tsc()).toEqual([
     'src/card.tscl(3,14) TS2339', // {{ title.nope }}
+    'src/missing.tscl(2,1) TS2741', // <card />: title is missing
     'src/page.tscl(2,8) TS2322', // <card [title]="1" />: a number for a string input
   ])
+  // The missing prop is underlined on the whole tag name.
+  const pretty = spawnSync(process.execPath, [resolve(pkg, 'node_modules/typescript-beta/bin/tsc'), '-p', '.', '--runExternalCode', '--pretty', 'true'], { cwd: dir, encoding: 'utf8' }).stdout.replace(/\x1b\[[0-9;]*m/g, '')
+  const lines = pretty.split('\n')
+  const at = lines.findIndex((l) => l.includes('missing.tscl:2:1'))
+  expect(lines.slice(at).find((l) => l.includes('~'))?.trim()).toBe('~~~~~')
   // A template that doesn't parse is a syntax error: tsc reports it (and, as for any syntax error, stops there).
   writeFileSync(resolve(dir, 'src/broken.tscl'), '<p>ok</p>\n@if (true {\n')
   expect(tsc()).toEqual(['src/broken.tscl(2,5) clarus1'])
