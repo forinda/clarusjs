@@ -319,10 +319,16 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void
   onDispose(() => { const at = list.indexOf(handler); if (at !== -1) list.splice(at, 1) }) // a removed branch or row stops listening
 }
 
+/** The element matching `selector` in `ctx`: this island's (not a nested island's), and in a row, that row's. */
+export function marked(ctx: Ctx, selector: string): Element | undefined {
+  const root = rootOf(ctx)
+  const island = root.closest('cl-island')
+  return [...root.querySelectorAll(selector)].find((e) => e.closest('cl-island') === island && inside(ctx, e))
+}
+
 /** Keep attribute `name` of the element marked `data-cl-a="index"` in `ctx` in sync with `fn()`. */
 export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, tag?: string): void {
-  const root = rootOf(ctx)
-  const el = [...root.querySelectorAll(`[data-cl-a="${index}"]`)].find((e) => e.closest('cl-island') === root && inside(ctx, e))
+  const el = marked(ctx, `[data-cl-a="${index}"]`)
   if (!el) return
   effect(() => {
     const v = attrValue(name, fn(), tag)

@@ -31,13 +31,13 @@ export type FormOptions<T> = {
 }
 
 /** An error being shown, for a summary: its path, message, its message element's id, and its step. */
-export type FormError = { path: string; message: string; id: string; step: string | null }
+export type FormError<T = any> = { path: Path<T>; message: string; id: string; step: string | null }
 
 export type Form<T> = {
   /** The message shown for a field now: '' when there is none, or it isn't shown yet. */
   error(path: Path<T>): string
   /** Every error being shown, in document order. */
-  readonly errors: FormError[]
+  readonly errors: FormError<T>[]
   /** Left at least once. */
   touched(path: Path<T>): boolean
   /** Differs from the starting value. */
@@ -50,6 +50,27 @@ export type Form<T> = {
   setErrors(errors: Record<string, string>): void
   /** Focus a field (the checked radio of a group, else the first). */
   focus(path: Path<T>): void
-  /** Back to the starting values, with touched and errors cleared. */
-  reset(): void
+  /**
+   * Back to the starting values, with touched and errors cleared. With `values` (a record loaded after the form was
+   * made, or saved), those become the values and the new starting point.
+   */
+  reset(values?: T): void
+  /** Multi-step forms: the current step's id. */
+  readonly step: string
+  /** Every step, in document order: current, done (left with next() and now without errors), errors shown in it. */
+  readonly steps: { id: string; current: boolean; done: boolean; errors: number }[]
+  /** Check the current step; with errors, stay and focus the first (false); else go to the next step (true). */
+  next(): Promise<boolean>
+  /** The previous step, without checks. */
+  back(): void
+  /** Go to a step by id. */
+  go(id: string): void
+  /** The submit callback is running. */
+  readonly submitting: boolean
+  /**
+   * Check everything; with errors, go to the first (its step, its field) and resolve false. Else call `submit` with
+   * the values: server errors it returns land the same way (false); otherwise true. A connected <form> runs this on
+   * submit. One at a time.
+   */
+  submit(): Promise<boolean>
 }

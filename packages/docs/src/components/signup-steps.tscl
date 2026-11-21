@@ -1,0 +1,80 @@
+{{--
+  A three-step sign-up run by the forms engine (clarusjs/forms): errors on their fields, steps in the URL hash,
+  submit takes you to the errors, server errors land on their fields. The look is this template's and the site's CSS.
+--}}
+<script>
+  import { form } from 'clarusjs/forms'
+  import { register, signupSchema } from '../signup.ts'
+  let signup = state({ name: '', email: '', username: '', plan: '', terms: false })
+  let welcome = state('')
+  let tried = state(false) // the summary shows after a submit: showing it on leaving a field moves the buttons
+  const titles = { 'signup-details': 'Details', 'signup-account': 'Account', 'signup-confirm': 'Confirm' }
+  const f = form(signup, {
+    schema: signupSchema,
+    async submit(values) {
+      const answer = await register(values)
+      if (answer.errors) return answer
+      welcome = 'Welcome, ' + values.name + '!'
+    },
+  })
+</script>
+
+<form class="steps-form" [engine]="f" (submit)="tried = true">
+  <ol class="steps-list">
+    @for (s of f.steps; track s.id) {
+      <li [aria-current]="s.current ? 'step' : false" [class]="s.errors ? 'has-errors' : s.done ? 'done' : false">{{ titles[s.id] }}{{ s.errors ? ' (' + s.errors + ')' : '' }}</li>
+    }
+  </ol>
+  @if (tried && f.errors.length) {
+    <div class="steps-summary" role="alert">
+      <p>Fix {{ f.errors.length === 1 ? 'this' : 'these' }}:</p>
+      <ul>
+        @for (e of f.errors; track e.path) {
+          <li><a [href]="'#' + e.id" (click)="$event.preventDefault(); f.focus(e.path)">{{ e.path }}: {{ e.message }}</a></li>
+        }
+      </ul>
+    </div>
+  }
+  <fieldset id="signup-details" data-cl-step>
+    <legend>Your details</legend>
+    <div class="field" data-cl-field><label for="signup-name">Name</label> <input id="signup-name" required minlength="2" autocomplete="off" [(value)]="signup.name"> <small data-cl-message></small></div>
+    <div class="field" data-cl-field><label for="signup-email">Email</label> <input id="signup-email" type="email" required autocomplete="off" [(value)]="signup.email"> <small data-cl-message></small></div>
+    <div class="steps-nav"><button type="button" (click)="f.next()">Next</button></div>
+  </fieldset>
+  <fieldset id="signup-account" data-cl-step>
+    <legend>Your account</legend>
+    <div class="field" data-cl-field><label for="signup-username">Username</label> <input id="signup-username" required autocomplete="off" [(value)]="signup.username"> <small data-cl-message></small></div>
+    <div class="field" data-cl-field><label for="signup-plan">Plan</label> <select id="signup-plan" required [(value)]="signup.plan"><option value="">Choose a plan</option><option value="free">Free</option><option value="pro">Pro</option></select> <small data-cl-message></small></div>
+    <div class="steps-nav"><button type="button" (click)="f.back()">Back</button> <button type="button" (click)="f.next()">Next</button></div>
+  </fieldset>
+  <fieldset id="signup-confirm" data-cl-step>
+    <legend>Confirm</legend>
+    <div class="field" data-cl-field><label class="check"><input type="checkbox" required [(checked)]="signup.terms"> I accept the terms</label> <small data-cl-message></small></div>
+    <div class="steps-nav"><button type="button" (click)="f.back()">Back</button> <button [disabled]="f.submitting">Create account</button></div>
+  </fieldset>
+  @if (welcome) { <p class="steps-welcome" role="status">{{ welcome }}</p> }
+</form>
+
+<style>
+  .steps-form { display: grid; gap: 12px; max-width: 460px; margin: 16px 0; padding: 16px; border: 1px solid var(--rule); border-radius: 12px; }
+  .steps-form > fieldset { display: grid; gap: 10px; border: 0; padding: 0; margin: 0; }
+  legend { font-weight: 600; margin-bottom: 4px; }
+  /* Only the current step, once the engine has attached (without JavaScript, every step shows). */
+  [data-cl-steps] [data-cl-step]:not([data-cl-current]) { display: none; }
+  .steps-list { display: flex; gap: 16px; margin: 0; padding: 0; list-style: none; font-size: 14px; color: var(--muted); }
+  .steps-list [aria-current="step"] { color: var(--fg); font-weight: 600; }
+  .steps-list .done::before { content: "✓ "; }
+  .steps-list .has-errors { color: var(--bad); }
+  .steps-summary { border-left: 3px solid var(--bad); padding: 4px 12px; }
+  .steps-summary p, .steps-summary ul { margin: 4px 0; }
+  .field { display: grid; gap: 4px; }
+  .field > label { font-size: 14px; color: var(--muted); }
+  .field .check { display: flex; gap: 8px; align-items: center; color: var(--fg); font-size: inherit; }
+  input:not([type="checkbox"]), select { font: inherit; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--fg); }
+  [aria-invalid="true"] { border-color: var(--bad); }
+  /* A message keeps its space while hidden: appearing as a field is left must not move the buttons under the pointer. */
+  [data-cl-message] { display: block; min-height: 1.4em; color: var(--bad); font-size: 14px; }
+  [data-cl-message][hidden] { visibility: hidden; }
+  .steps-nav { display: flex; gap: 8px; }
+  .steps-welcome { margin: 0; color: var(--ok); }
+</style>

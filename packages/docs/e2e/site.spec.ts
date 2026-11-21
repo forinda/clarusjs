@@ -1414,3 +1414,87 @@ test('wide screens: the sidebar and the table of contents stay in view under the
   expect(end.x + end.width).toBeLessThanOrEqual(docs.x + docs.width)
   expect(end.x + end.width).toBeGreaterThan(docs.x + docs.width - 32)
 })
+
+// Form validation guide: the multi-step demo, run by clarusjs/forms.
+async function stepsDemo(page: import('@playwright/test').Page, path = '/guide/form-validation') {
+  await page.goto(path)
+  const demo = page.locator('cl-island[c="signup-steps"]')
+  await expect(demo).toHaveAttribute('data-cl-ready', '')
+  return demo
+}
+
+test('form validation: Next stays on a step with errors, shown on their fields and focused; then moves on, in the hash', async ({ page }) => {
+  const demo = await stepsDemo(page)
+  await expect(demo.locator('#signup-details')).toBeVisible()
+  await expect(demo.locator('#signup-account')).toBeHidden()
+  await demo.getByRole('button', { name: 'Next' }).first().click()
+  const name = demo.getByLabel('Name', { exact: true })
+  await expect(name).toBeFocused()
+  await expect(name).toHaveAttribute('aria-invalid', 'true')
+  const message = demo.locator('#signup-details [data-cl-message]').first()
+  await expect(message).toBeVisible()
+  await expect(name).toHaveAttribute('aria-describedby', (await message.getAttribute('id'))!)
+  await name.fill('Ada')
+  await demo.getByLabel('Email').fill('ada@example.com')
+  await expect(name).not.toHaveAttribute('aria-invalid', 'true')
+  await demo.getByRole('button', { name: 'Next' }).first().click()
+  await expect(demo.locator('#signup-account')).toBeVisible()
+  await expect(page).toHaveURL(/#signup-account$/)
+  await demo.getByRole('button', { name: 'Back' }).first().click()
+  await expect(page).toHaveURL(/#signup-details$/)
+  await page.goBack()
+  await expect(page).toHaveURL(/#signup-account$/)
+  await expect(demo.locator('#signup-account')).toBeVisible()
+})
+
+test('form validation: a reload on a step\'s hash opens it; a heading\'s hash leaves the form on its first step', async ({ page }) => {
+  let demo = await stepsDemo(page, '/guide/form-validation#signup-account')
+  await expect(demo.locator('#signup-account')).toBeVisible()
+  await expect(demo.locator('#signup-details')).toBeHidden()
+  const heading = await page.locator('main h2[id]').first().getAttribute('id')
+  await page.goto('/guide/forms') // a real load next, not a hash change on the same page
+  demo = await stepsDemo(page, `/guide/form-validation#${heading}`)
+  await expect(demo.locator('#signup-details')).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`#${heading}$`))
+})
+
+test('form validation: submit from the last step goes to the first error, with a summary linking to every field', async ({ page }) => {
+  const demo = await stepsDemo(page, '/guide/form-validation#signup-confirm')
+  await demo.getByRole('button', { name: 'Create account' }).click()
+  await expect(demo.locator('#signup-details')).toBeVisible()
+  await expect(demo.getByLabel('Name', { exact: true })).toBeFocused()
+  const summary = demo.getByRole('alert')
+  await expect(summary.getByRole('link')).toHaveCount(5) // name, email, username, plan, terms
+  await summary.getByRole('link', { name: /terms/i }).click()
+  await expect(demo.locator('#signup-confirm')).toBeVisible()
+  await expect(demo.getByLabel(/terms/i)).toBeFocused()
+})
+
+test('form validation: an async check (a taken username) and a server error land on their fields', async ({ page }) => {
+  const demo = await stepsDemo(page)
+  await demo.getByLabel('Name', { exact: true }).fill('Ada')
+  await demo.getByLabel('Email').fill('taken@example.com')
+  await demo.getByRole('button', { name: 'Next' }).first().click()
+  await expect(demo.locator('#signup-account')).toBeVisible()
+  const username = demo.getByLabel('Username')
+  await username.fill('admin')
+  await username.blur()
+  await expect(demo.locator('#signup-account')).toContainText('That username is taken.')
+  await username.fill('ada')
+  await demo.getByLabel('Plan').selectOption('pro')
+  await demo.getByRole('button', { name: 'Next' }).first().click()
+  await expect(demo.locator('#signup-confirm')).toBeVisible()
+  await demo.getByLabel(/terms/i).check()
+  await demo.getByRole('button', { name: 'Create account' }).click()
+  // The (pretend) server says the email is registered: back to that field.
+  await expect(demo.locator('#signup-details')).toBeVisible()
+  await expect(demo.getByLabel('Email')).toBeFocused()
+  await expect(demo.locator('#signup-details')).toContainText('That email is already registered.')
+  await demo.getByLabel('Email').fill('ada@example.com')
+  await demo.getByRole('button', { name: 'Next' }).first().click()
+  await expect(demo.locator('#signup-account')).toBeVisible() // next() is async (it waits for the schema)
+  await demo.getByRole('button', { name: 'Next' }).first().click()
+  await expect(demo.locator('#signup-confirm')).toBeVisible()
+  await demo.getByRole('button', { name: 'Create account' }).click()
+  await expect(demo.getByRole('status')).toHaveText('Welcome, Ada!')
+})
