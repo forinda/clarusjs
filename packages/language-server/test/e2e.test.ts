@@ -31,3 +31,15 @@ test('a broken template gets the compiler\'s error; HTML completion works throug
   const completion = await server.sendCompletionRequest(typing.uri, { line: 1, character: 3 })
   expect(completion?.items.map((i) => i.label)).toContain('div')
 }, 60_000)
+
+test('binding forms come through the HTML service: <button [dis…', async () => {
+  const doc = await server.openUntitledDocument('tscl', '<button ')
+  const completion = await server.sendCompletionRequest(doc.uri, { line: 0, character: 8 })
+  expect(completion?.items.map((i) => i.label)).toEqual(expect.arrayContaining(['[disabled]', '(click)']))
+}, 60_000)
+
+test('semantic tokens over LSP: the template syntax is coloured', async () => {
+  const doc = await server.openUntitledDocument('tscl', '@if (ok) {<p>{{ x }}</p>}\n')
+  const tokens = await server.sendSemanticTokensRequest(doc.uri)
+  expect(tokens?.data.length).toBeGreaterThanOrEqual(3 * 5) // @if, {{, }}: five numbers each
+}, 60_000)

@@ -7,7 +7,8 @@ import { dirname, join, relative, resolve, sep } from 'node:path'
 import type { ParsedFile } from 'clarusjs/compiler'
 import type { Compiler } from './compiler.ts'
 
-export type Import = { name: string; specifier: string; target?: string; start: number; end: number }
+/** An @import: its name (nameStart..nameStart+name.length) and specifier (start..end, without quotes). */
+export type Import = { name: string; nameStart: number; specifier: string; target?: string; start: number; end: number }
 
 const IGNORED = new Set(['node_modules', 'dist', '.clarusjs', '.git'])
 // `@import name from 'spec'` at the start of a line (indented too); start/end are the specifier's, without quotes.
@@ -28,6 +29,7 @@ export class Project {
   private imports = new Map<string, Import[]>()
   private parsed = new Map<string, ParsedFile>()
   private paths: [string, string[]][] | undefined
+  private mapperCache = new Map<string, boolean>()
 
   constructor(readonly root: string, readonly compiler: Compiler) {}
 
@@ -57,14 +59,30 @@ export class Project {
   }
 
   update(path: string, text: string): void {
+    if (this.texts.get(path) === text) return // unchanged: nothing to parse again
     this.texts.set(path, text)
-    this.imports.set(path, [...text.matchAll(IMPORT)].map((m) => {
+    // In Markdown, fenced code blocks are examples, not imports: blanked (same length) before matching.
+    const source = path.endsWith('.md') ? text.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, (block) => block.replace(/[^\n]/g, ' ')) : text
+    this.imports.set(path, [...source.matchAll(IMPORT)].map((m) => {
       const start = m.index! + m[0].length - m[3]!.length - 1
-      return { name: m[1]!, specifier: m[3]!, target: this.resolve(m[3]!, path), start, end: start + m[3]!.length }
+      const nameStart = m.index! + /^[ \t]*@import[ \t]+/.exec(m[0])![0].length
+      return { name: m[1]!, nameStart, specifier: m[3]!, target: this.resolve(m[3]!, path), start, end: start + m[3]!.length }
     }))
     if (path.endsWith('.tscl')) {
       try { this.parsed.set(path, this.compiler.parse(text, path)) } catch {} // a file being typed: keep the last good parse
     }
+  }
+
+  /** Back to the file on disk (an edited buffer closed without saving), or out of the index if it's gone. */
+  restore(path: string): void {
+    if (existsSync(path)) this.update(path, readFileSync(path, 'utf8'))
+    else this.remove(path)
+  }
+
+  /** Forget cached tsconfig answers (a tsconfig.json changed). */
+  forgetConfig(): void {
+    this.mapperCache.clear()
+    this.paths = undefined
   }
 
   remove(path: string): void {
@@ -109,10 +127,23 @@ export class Project {
 
   /** Does the nearest tsconfig.json (up to the root) run the clarusjs content mapper? */
   mapperConfigured(path: string): boolean {
-    for (let dir = dirname(path); ; dir = dirname(dir)) {
+    const start = dirname(path)
+    const cached = this.mapperCache.get(start)
+    if (cached !== undefined) return cached
+    let answer = false
+    for (let dir = start; ; dir = dirname(dir)) {
       const config = join(dir, 'tsconfig.json')
-      if (existsSync(config)) return (readJsonc(config)?.contentMappers ?? []).some((m: { package?: string }) => m.package === 'clarusjs')
-      if (dir === this.root || dir === dirname(dir) || relative(this.root, dir).startsWith('..')) return false
+      if (existsSync(config)) { answer = (readJsonc(config)?.contentMappers ?? []).some((m: { package?: string }) => m.package === 'clarusjs'); break }
+      if (dir === this.root || dir === dirname(dir) || relative(this.root, dir).startsWith('..')) break
     }
+    this.mapperCache.set(start, answer)
+    return answer
   }
+}
+
+/** The project a file belongs to: the deepest workspace folder holding it, else the loose one. */
+export function pickProject(projects: Project[], path: string, loose: Project): Project {
+  let best: Project | undefined
+  for (const p of projects) if ((path === p.root || path.startsWith(p.root + sep)) && (!best || p.root.length > best.root.length)) best = p
+  return best ?? loose
 }
