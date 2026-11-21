@@ -665,6 +665,32 @@ test('history.pushState and replaceState belong to the page: the router never tu
   expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
 })
 
+test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
+  await page.goto('/tour/1')
+  await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
+  const data: string[] = []
+  page.on('request', (r) => { if (r.url().includes('__data.json')) data.push(r.url()) })
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>('h1')!.setAttribute('tabindex', '-1')
+    document.querySelector<HTMLElement>('h1')!.focus()
+    history.replaceState(null, '', '?tab=1')
+    history.pushState(null, '', '/tour/1?tab=2')
+  })
+  await page.waitForTimeout(500)
+  expect(data).toEqual([])
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
+})
+
+test('client routes: a replaceState while the next page loads still shows that page', async ({ page }) => {
+  await page.route('**/tour/2/__data.json', async (route) => { await new Promise((done) => setTimeout(done, 600)); await route.continue() })
+  await page.goto('/tour/1')
+  await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
+  await page.click('nav.tour a.next')
+  await expect(page).toHaveURL(/\/tour\/2$/)
+  await page.evaluate(() => history.replaceState(null, '', location.pathname + '#top'))
+  await expect(page.locator('h1')).toHaveText('The router renders')
+})
+
 test('lesson without JavaScript: a plain page, every step shown, segments jump to them, no action bar', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false })
   const page = await context.newPage()
