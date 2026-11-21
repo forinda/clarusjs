@@ -71,3 +71,48 @@ test('valid and accepted: submit resolves true', async () => {
   for (const [path, value] of [['name', 'Ada'], ['email', 'a@b.c']]) input(path!).value = value!
   expect(await f.submit()).toBe(true)
 })
+
+test('review: a schema error on a path with no field (a whole-object rule) stops submit and is listed', async () => {
+  const whole = { '~standard': { version: 1 as const, vendor: 't', validate: (v: unknown) => ({ issues: [{ message: 'Passwords differ.', path: [] }] }) } } as any
+  const submit = vi.fn()
+  const { f, input } = mount({ schema: whole, submit }, { name: 'Ada', plan: 'free', email: 'a@b.c' })
+  for (const [path, value] of [['name', 'Ada'], ['email', 'a@b.c']]) input(path!).value = value!
+  expect(await f.submit()).toBe(false)
+  expect(submit).not.toHaveBeenCalled()
+  expect(f.errors).toEqual([{ path: '', message: 'Passwords differ.', id: '', step: null }])
+})
+
+test('review: a server error on a path with no field is kept, listed, and submit resolves false', async () => {
+  const { f, input } = mount({ submit: () => ({ errors: { '': 'Server down.' } }) }, { name: 'Ada', plan: 'free', email: 'a@b.c' })
+  for (const [path, value] of [['name', 'Ada'], ['email', 'a@b.c']]) input(path!).value = value!
+  expect(await f.submit()).toBe(false)
+  expect(f.errors.map((e) => e.message)).toEqual(['Server down.'])
+})
+
+test('review: next() and submit() wait for the newest schema check, not a superseded one', async () => {
+  vi.useFakeTimers()
+  const slow = { '~standard': { version: 1 as const, vendor: 't', validate: (v: any) => new Promise((resolve) => setTimeout(() => resolve(v.name === 'admin' ? { issues: [{ message: 'Taken.', path: ['name'] }] } : { value: v }), 500)) } } as any
+  const values = state({ name: '', plan: 'free', email: '' })
+  document.body.innerHTML = html
+  const f = form(values, { schema: slow })
+  scope(() => connect(document.body, 0, () => f))
+  const name = document.querySelector('[data-cl-path="name"]') as HTMLInputElement
+  name.value = 'admin'
+  values.set({ ...values.get(), name: 'admin' })
+  name.dispatchEvent(new Event('input', { bubbles: true }))
+  await vi.advanceTimersByTimeAsync(100)
+  const moved = f.next()
+  await vi.advanceTimersByTimeAsync(2000)
+  expect(await moved).toBe(false) // "admin" is taken: stay
+  expect(f.error('name')).toBe('Taken.')
+  vi.useRealTimers()
+})
+
+test('review: a schema that throws doesn\'t leave the form pending', async () => {
+  const broken = { '~standard': { version: 1 as const, vendor: 't', validate: () => Promise.reject(new Error('boom')) } } as any
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { f } = mount({ schema: broken })
+  await expect(f.submit()).resolves.toBe(false) // required fields are empty anyway
+  expect(f.pending).toBe(false)
+  error.mockRestore()
+})
