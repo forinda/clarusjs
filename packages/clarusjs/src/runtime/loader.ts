@@ -165,6 +165,10 @@ function arrive(): void {
   if (!update || el.getAttribute('c') !== next.getAttribute('c') || el.getAttribute('src') !== next.getAttribute('src')) return false
   const p = next.getAttribute('p') ?? '{}'
   el.setAttribute('p', p)
+  // Its path for the forms engine moves with it (a row removed above shifts the indexes).
+  const path = next.getAttribute('data-cl-path')
+  if (path === null) el.removeAttribute('data-cl-path')
+  else el.setAttribute('data-cl-path', path)
   update(parse(p) as Record<string, unknown>)
   return true
 }
