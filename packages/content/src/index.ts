@@ -284,6 +284,11 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       const env = { tags: [] as string[], groups: 0, file, root: context.root }
       const tags = protectTags(body, components, env.tags)
       const tokens = md.parse(tags.body, env)
+      const headings = tokens.flatMap((t, i) => {
+        if (t.type !== 'heading_open' || (t.tag !== 'h2' && t.tag !== 'h3')) return []
+        const text = (tokens[i + 1]!.children ?? []).filter((c: Tok) => c.type === 'text' || c.type === 'code_inline').map((c: Tok) => c.content).join('')
+        return [{ id: String(t.attrGet('id') ?? ''), text, level: t.tag === 'h2' ? 2 : 3 }]
+      })
       const h1 = tokens.findIndex((t: Tok & { tag: string }) => t.type === 'heading_open' && t.tag === 'h1')
       const firstHeading = h1 === -1 ? undefined : (tokens[h1 + 1]!.children ?? []).filter((t: Tok) => t.type === 'text' || t.type === 'code_inline').map((t: Tok) => t.content).join('')
       const title = typeof data.title === 'string' ? data.title : firstHeading
@@ -295,6 +300,8 @@ export default function markdown(options: MarkdownOptions = {}): Source {
         title !== undefined ? `[title]="${quote(title)}"` : '',
         typeof data.description === 'string' ? `[description]="${quote(data.description)}"` : '',
         `[path]="${quote(route)}"`,
+        // The page's h2 and h3, for the layout's "On this page" (ids as the heading anchors have them).
+        headings.length ? `[headings]="[${headings.map((h) => `{ id: ${quote(h.id)}, text: ${quote(h.text)}, level: ${h.level} }`).join(', ')}]"` : '',
       ].filter(Boolean).join(' ')
       return [`@import cl-layout from '${layout}'`, ...imports, `<cl-layout ${props}>${html}</cl-layout>`, ''].join('\n')
     },
