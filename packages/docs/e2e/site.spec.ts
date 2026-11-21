@@ -706,6 +706,38 @@ test('navigation hooks: beforeNavigate cancels a link click, navigate() leaves a
   await expect(page.locator('h1')).toHaveText('Holes')
 })
 
+test('transitions: <html data-cl-navigating> shows the phase while a fragment loads, and is gone after', async ({ page }) => {
+  await page.route('**/guide/lists/index.frag.html', async (route) => { await new Promise((done) => setTimeout(done, 600)); await route.continue() })
+  await page.goto('/guide/holes')
+  await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
+  await page.locator('.sidebar a[href="/guide/lists"]').click()
+  await expect(page.locator('html')).toHaveAttribute('data-cl-navigating', 'loading')
+  await expect(page.locator('h1')).toHaveText('Lists')
+  await expect(page.locator('html')).not.toHaveAttribute('data-cl-navigating')
+})
+
+test('transitions: beforeSwap holds the page change, the navigating store shows the phase, the client router too', async ({ page }) => {
+  await page.goto('/guide/navigation')
+  const demo = page.locator('cl-island[c="swap-demo"]')
+  await expect(demo).toHaveAttribute('data-cl-ready', '')
+  await expect(demo.locator('.swap-status')).toHaveText('Idle')
+  await demo.getByRole('checkbox').check()
+  await page.locator('.sidebar a[href="/guide/lists"]').click()
+  await expect(demo.locator('.swap-status')).toHaveText('Going to /guide/lists: swapping')
+  await expect(page.locator('html')).toHaveAttribute('data-cl-navigating', 'swapping')
+  await expect(page.locator('h1')).toHaveText('Navigation') // held by beforeSwap
+  await expect(page.locator('h1')).toHaveText('Lists')
+  await expect(page.locator('html')).not.toHaveAttribute('data-cl-navigating')
+  // Client routes go through the same steps.
+  await page.route('**/tour/2/__data.json', async (route) => { await new Promise((done) => setTimeout(done, 600)); await route.continue() })
+  await page.goto('/tour/1')
+  await expect(page.locator('cl-island[c="tour-keys"]')).toHaveAttribute('data-cl-ready', '')
+  await page.keyboard.press('ArrowRight')
+  await expect(page.locator('html')).toHaveAttribute('data-cl-navigating', 'loading')
+  await expect(page.locator('h1')).toHaveText('The router renders')
+  await expect(page.locator('html')).not.toHaveAttribute('data-cl-navigating')
+})
+
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')

@@ -1,7 +1,15 @@
 // Which navigations clarusjs takes over, in one place for the fragment navigator and the client router. Browser
 // only. Each passes a picker: given the URL, it returns how to render that page, or nothing to leave it alone.
 
-export type Render = (url: URL, isCurrent: () => boolean) => Promise<unknown>
+/** `gate()` is awaited right before the page changes the document: false means stop (a newer navigation won). */
+export type Render = (url: URL, gate: () => Promise<boolean> | boolean) => Promise<unknown>
+/** A navigation in progress, as the in-between hooks and the navigating store see it. */
+export type Transition = { from: URL; to: URL; type: string; phase: 'loading' | 'swapping'; signal: AbortSignal }
+// Set by clarusjs/navigation, which islands bundle separately: told each step of a navigation (loading, swapping,
+// swapped, then undefined when it ends), it runs the in-between hooks and updates the navigating store. The
+// navigation waits for the promise it returns.
+type Step = Transition['phase'] | 'swapped' | undefined
+type Hub = (step: Step, t: Transition) => unknown
 type Pick = (url: URL) => Render | false | null | undefined
 
 type NavigateEvent = {
@@ -39,13 +47,22 @@ export function onNavigate(e: NavigateEvent, pick: Pick): void {
   if (!render) return
   const id = ++latest
   const isCurrent = () => latest == id && !e.signal.aborted
+  const t: Transition = { from: new URL(location.href), to: url, type: e.navigationType, phase: 'loading', signal: e.signal }
+  const data = document.documentElement.dataset
+  // Each step: on <html data-cl-navigating> (for CSS), then to clarusjs/navigation when an island loaded it.
+  const step = async (s: Step) => {
+    if (s != 'swapped') s ? (data.clNavigating = t.phase = s) : delete data.clNavigating
+    await (globalThis as { __clNav?: Hub }).__clNav?.(s, t)
+  }
   swapping = true
+  step('loading')
   e.intercept({
-    handler: () => render(url, isCurrent).catch((err) => {
-      if (!isCurrent()) return
-      fallback = url.href
-      location.reload() // the URL is already committed; assign() would stay in the page with a #hash
-      throw err // reported as navigateerror (onNavigateError)
-    }).finally(() => { if (latest == id) swapping = false }) as Promise<void>,
+    handler: () => render(url, async () => isCurrent() && (await step('swapping'), isCurrent()))
+      .then((): unknown => isCurrent() && step('swapped')).catch((err: unknown) => {
+        if (!isCurrent()) return
+        fallback = url.href
+        location.reload() // the URL is already committed; assign() would stay in the page with a #hash
+        throw err // reported as navigateerror (onNavigateError)
+      }).finally(() => { if (latest == id) { swapping = false; step(undefined) } }) as Promise<void>,
   })
 }

@@ -15,14 +15,14 @@ const region = (doc: Document) => doc.querySelector('[data-cl-swap]') ?? doc.bod
 export async function swap(
   url: URL,
   get: (url: string) => Promise<Response> = fetch,
-  // False once a newer navigation has started: then this one must not touch the document.
-  isCurrent: () => boolean = () => true,
+  // Awaited right before the swap (where the in-between hooks run): false once a newer navigation has started,
+  // then this one must not touch the document.
+  isCurrent: () => Promise<boolean> | boolean = () => true,
 ): Promise<void> {
   const src = fragmentUrl(url)
   const res = await get(src)
   if (!res.ok) throw new Error(`${res.status}: ${src}`)
   const doc = new DOMParser().parseFromString(await res.text(), 'text/html')
-  if (!isCurrent()) return
   const next = region(doc)
   const old = region(document)
   // A body can only replace a body, and a marked region a marked region: otherwise load the page normally.
@@ -40,7 +40,7 @@ export async function swap(
     document.head.append(added)
   }
   await Promise.all(loading)
-  if (!isCurrent()) return
+  if (!(await isCurrent())) return
   // Persisted elements move into the new page as they are, with their state and attached islands.
   for (const old of document.querySelectorAll('[data-cl-persist]')) {
     next.querySelector(`[data-cl-persist="${CSS.escape(old.getAttribute('data-cl-persist')!)}"]`)?.replaceWith(old)

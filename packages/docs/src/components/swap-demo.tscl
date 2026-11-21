@@ -1,0 +1,20 @@
+{{-- Transitions, live: the navigating store, and a beforeSwap that can hold the page change for a moment. --}}
+<script>
+  import { beforeSwap, navigating } from 'clarusjs/navigation'
+  let slow = state(false)
+  let nav = shared(navigating)
+  beforeSwap((t) => {
+    if (!slow) return
+    // Waits, unless a newer navigation takes over first.
+    return new Promise((done) => {
+      const timer = setTimeout(() => done(true), 800)
+      t.signal.addEventListener('abort', () => { clearTimeout(timer); done(true) })
+    })
+  })
+  function toggle(on) { slow = on }
+</script>
+
+<div class="swap-demo">
+  <label><input type="checkbox" (change)="toggle($event.target.checked)"> Wait 0.8 s before each page change (<code>beforeSwap</code>)</label>
+  <p class="swap-status" aria-live="polite">@if (nav) {Going to {{ nav.to.pathname }}: {{ nav.phase }}} @else {Idle}</p>
+</div>
