@@ -45,3 +45,8 @@ test('in development the error is thrown as it is, for the dev server to show wi
   await expect(h.fetch(new Request('http://x/data'))).rejects.toThrow('db password wrong')
   await expect(h.fetch(new Request('http://x/broken'))).rejects.toThrow('render exploded')
 })
+
+test('review (#186): a 500 page with its own load() still gets status 500 (load() inputs are added to it)', async () => {
+  const h = createHandler({ '/src/pages/500.tscl': errorPage }, { data: { '/src/pages/500.load.ts': async () => ({ load: () => ({}) }) } })
+  expect(await (await h.fetch(new Request('http://x/500'))).text()).toContain('Something broke (500)')
+})

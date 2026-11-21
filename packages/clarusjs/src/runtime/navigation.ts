@@ -29,7 +29,8 @@ if (browser) {
 
 /**
  * Go to `to`, as a link click would: the page's navigator swaps or renders it. Resolves once the new page is shown,
- * or when a newer navigation replaces this one; rejects when it fails.
+ * and also when the navigation is cancelled or a newer one replaces it (so check `currentUrl` when it matters);
+ * rejects when it fails.
  * @see https://clarusjs.com/guide/fragment-navigation
  * @see https://clarusjs.com/guide/client-routes
  */
@@ -87,7 +88,10 @@ export function afterNavigate(fn: (to: URL) => void): void {
  * @see https://clarusjs.com/guide/navigation
  */
 export function onNavigateError(fn: (to: URL, error: unknown) => void): void {
-  hook('navigateerror', (e) => fn(new URL(location.href), e.error))
+  // Where it was going: a navigation that failed before its URL changed (held while loading) never became current.
+  let to = ''
+  hook('navigate', (e) => { to = e.destination!.url })
+  hook('navigateerror', (e) => fn(new URL(to || location.href), e.error))
 }
 
 /**
@@ -103,7 +107,9 @@ const after: ((t: Transition) => unknown)[] = []
 if (browser) {
   ;(globalThis as { __clNav?: unknown }).__clNav = async (step: string | undefined, t: Transition) => {
     navigating.set(step ? { ...t } : null)
-    for (const hook of step == 'swapping' ? [...before] : step == 'swapped' ? [...after] : []) await hook(t)
+    const hooks = step == 'swapping' ? before : step == 'swapped' ? after : []
+    // Each hook is awaited in turn; one whose island was released meanwhile (by an earlier hook) is skipped.
+    for (const hook of [...hooks]) if (hooks.includes(hook)) await hook(t)
   }
 }
 

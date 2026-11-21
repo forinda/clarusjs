@@ -57,6 +57,7 @@ test('a failed render reloads the page once and is reported; that URL is then le
   nav(e)
   location.href = 'http://x/app/broken' // committed (the browser changes the URL before running handler)
   await expect(e.handler!()).rejects.toThrow('500') // rejected, so the Navigation API reports it (navigateerror)
+  await new Promise((r) => setTimeout(r))
   expect(reload).toHaveBeenCalledOnce()
   const again = event('http://x/app/broken')
   nav(again)
@@ -126,6 +127,7 @@ test('a step that throws (an in-between hook) falls back to a page load, reporte
   onNavigate(e, () => async (_, gate) => { await gate() })
   location.href = 'http://x/to2' // committed
   await expect(e.handler!()).rejects.toThrow('hook')
+  await new Promise((r) => setTimeout(r))
   expect(reload).toHaveBeenCalledOnce()
   expect(attr()).toBeUndefined()
 })
@@ -192,8 +194,11 @@ test('a failure before the URL changed loads the new page normally (not a reload
   precommit()
   const e = event('http://x/broken')
   onNavigate(e, () => async () => { throw new Error('500') })
-  await e.precommit!() // released: the page loads normally
-  await expect(e.handler!()).rejects.toThrow('500') // then the browser runs handler, which reports it
+  // Review (#186): the precommit promise rejects with the error itself (reported as navigateerror); the normal load
+  // starts after that, so it doesn't turn the failure into a cancellation.
+  await expect(e.precommit!()).rejects.toThrow('500')
+  expect(assign).not.toHaveBeenCalled()
+  await new Promise((r) => setTimeout(r))
   expect(assign).toHaveBeenCalledWith('http://x/broken')
   expect(reload).not.toHaveBeenCalled()
 })
@@ -223,4 +228,20 @@ test('the page’s own replaceState while a held URL loads is left alone, and th
   await new Promise((r) => setTimeout(r))
   expect(navigate).toHaveBeenCalledWith('http://x/target') // the clicked page still comes
   void held
+})
+
+test('review (#186): a navigation cancelled before its handlers run (beforeNavigate) leaves no phase and no held URL', async () => {
+  const navigate = vi.fn()
+  vi.stubGlobal('navigation', { navigate })
+  const cancel = new AbortController()
+  const e = event('http://x/cancelled', { signal: cancel.signal })
+  onNavigate(e, () => render)
+  expect(document.documentElement.dataset.clNavigating).toBe('loading')
+  cancel.abort() // the browser aborts it; neither precommitHandler nor handler ever runs
+  await new Promise((r) => setTimeout(r))
+  expect(document.documentElement.dataset.clNavigating).toBeUndefined()
+  const own = event('http://x/?tab=2', { navigationType: 'push', destination: { url: 'http://x/?tab=2', sameDocument: true } })
+  onNavigate(own, () => render)
+  await new Promise((r) => setTimeout(r))
+  expect(navigate).not.toHaveBeenCalled() // not sent to the cancelled URL
 })

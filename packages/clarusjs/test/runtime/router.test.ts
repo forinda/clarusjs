@@ -97,12 +97,19 @@ test('#192: a redirected __data.json request (the server sent the page) is an er
   await expect(show(new URL('http://x/app'), table, undefined, async () => ({ render: () => '<p>x</p>' }), html)).rejects.toThrow()
 })
 
-test('#196: swapIn() puts a whole page in (body, <html> attributes, islands) and returns it (inline scripts: e2e)', () => {
+test('#196: swapIn() puts a whole page in: body, <html> attributes, title, islands (inline scripts: e2e)', async () => {
   const attach = vi.fn()
   ;(globalThis as { __clAttach?: unknown }).__clAttach = attach
-  const doc = swapIn('<html lang="en"><head><title>Page not found · Site</title></head><body><h1>Gone</h1></body></html>')
-  expect(doc.title).toBe('Page not found · Site')
+  await swapIn('<html lang="en"><head><title>Page not found · Site</title></head><body><h1>Gone</h1></body></html>')
+  expect(document.title).toBe('Page not found · Site') // as written; show() passes the title template
   expect(document.documentElement.lang).toBe('en')
   expect(document.body.innerHTML).toBe('<h1>Gone</h1>')
   expect(attach).toHaveBeenCalledWith(document.body, 1)
+})
+
+test('review (#186): show() resolves once the new page\'s islands that attach right away are attached', async () => {
+  let attached = false
+  ;(globalThis as { __clAttach?: unknown }).__clAttach = () => new Promise<void>((r) => setTimeout(() => { attached = true; r() }, 10))
+  await show(new URL('http://x/app'), table, undefined, async () => ({ render: () => '<p>x</p>' }), async () => new Response('{}'))
+  expect(attached).toBe(true)
 })

@@ -74,8 +74,13 @@ export function onNavigate(e: NavigateEvent, pick: Pick): void {
   let ready!: () => void
   let commit!: () => void
   const atGate = new Promise<void>((r) => (ready = r))
-  const onCommit = new Promise<void>((r) => (commit = () => { swapping = true; r() }))
+  const onCommit = new Promise<void>((r) => (commit = () => { swapping = true; held = ''; r() }))
   let running: Promise<void> | undefined
+  // Ends this attempt (unless a newer one started): also when it is cancelled before its handlers ever run. `held`
+  // clears a task later: a page's own history change aborts this attempt just before its event reaches us, and still
+  // has to find it (see above).
+  const end = () => { if (latest == id) { swapping = false; step(); setTimeout(() => latest == id && (held = '')) } }
+  e.signal.onabort = end
   const work = () => (running = render(url, async () => {
     if (!isCurrent()) return false
     ready()
@@ -86,15 +91,13 @@ export function onNavigate(e: NavigateEvent, pick: Pick): void {
     if (!isCurrent()) return
     fallback = url.href
     // Loaded normally: a reload once the URL changed (assign() would only move within the page with a #hash), else
-    // the new URL.
-    location.href == url.href ? location.reload() : location.assign(url.href)
+    // the new URL. After the failure is reported, so starting that load doesn't turn it into a cancellation.
+    setTimeout(() => (location.href == url.href ? location.reload() : location.assign(url.href)))
     throw err // reported as navigateerror (onNavigateError)
-  }).finally(() => {
-    ready() // a held URL is released either way: the page is swapped in, or loads normally
-    if (latest == id) { swapping = false; held = ''; step() }
-  }) as Promise<void>)
+  }).finally(end) as Promise<void>)
   e.intercept({
-    precommitHandler: hold ? () => (work(), atGate) : undefined,
+    // Resolves when the page is ready to swap in; rejects with a failure before that (reported, URL unchanged).
+    precommitHandler: hold ? () => Promise.race([atGate, work()]) : undefined,
     handler: () => (commit(), running ?? work()),
   })
 }

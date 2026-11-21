@@ -269,7 +269,7 @@ export function createHandler(
           return fail(`${dataFile}: load() must return an object of page inputs (or a Response, such as redirect()), got ${Array.isArray(loaded) ? 'an array' : loaded === null ? 'null' : typeof loaded}`)
         }
         ;(globalThis as { __clLoaderRan?: boolean }).__clLoaderRan = true // recorded by prerender for the manifest
-        props = { ...found.params, ...loaded }
+        props = { ...props, ...loaded }
       }
       if (wantsData) {
         return new Response(head ? null : safeJson(stringify(props)), { headers: { 'content-type': 'application/json; charset=utf-8' } })
