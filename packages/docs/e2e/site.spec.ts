@@ -1153,3 +1153,22 @@ test('theme regions: header, sidebar, content and "On this page" at desktop, lap
   await page.mouse.wheel(0, 2000)
   await expect(page.locator('header.site-header')).toBeInViewport()
 })
+
+test('wide screens: the sidebar and the table of contents stay in view under the header, and the header lines up with the page', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 900 })
+  await page.goto('/guide/markdown')
+  await page.evaluate(() => scrollTo(0, 2000))
+  const header = await page.locator('header.site-header').boundingBox()
+  for (const name of ['Pages', 'On this page']) {
+    const box = (await page.getByRole(name === 'Pages' ? 'navigation' : 'complementary', { name }).boundingBox())!
+    expect(box.y, name).toBeCloseTo(header!.height, 0)
+  }
+  // The header's content is as wide as the page below it, not the whole window.
+  const docs = (await page.locator('.docs').boundingBox())!
+  const brand = (await page.locator('.site-header .brand').boundingBox())!
+  const end = (await page.locator('.site-header .header-end').boundingBox())!
+  expect(brand.x).toBeGreaterThanOrEqual(docs.x)
+  expect(brand.x).toBeLessThan(docs.x + 32)
+  expect(end.x + end.width).toBeLessThanOrEqual(docs.x + docs.width)
+  expect(end.x + end.width).toBeGreaterThan(docs.x + docs.width - 32)
+})
