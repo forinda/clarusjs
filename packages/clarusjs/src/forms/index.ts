@@ -48,6 +48,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   let timer: ReturnType<typeof setTimeout> | undefined
   let last = initial
   const current = state('') // the step shown (multi-step forms)
+  const submitting = state(false)
   const passed = new Set<string>() // steps left with next()
 
   const now = () => untrack(() => current.get())
@@ -171,7 +172,14 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     refresh()
     check()
   }
-  const listeners = [['input', onInput], ['change', onInput], ['focusout', onLeave]] as const
+  const onSubmit = (e: Event) => { e.preventDefault(); void engine.submit() } // never a page reload
+  const listeners = [['input', onInput], ['change', onInput], ['focusout', onLeave], ['submit', onSubmit]] as const
+  /** Go to the first error (document order): its step, its field. */
+  const toFirstError = () => {
+    const first = fields().find((f) => errorsNow[f.path])
+    if (first) engine.focus(first.path as never)
+    return !first
+  }
   const urlEvents = ['popstate', 'hashchange']
 
   const engine: Engine<T> = {
@@ -225,6 +233,25 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       if (prev) go(prev.id)
     },
     go,
+    get submitting() { return submitting.get() },
+    async submit() {
+      if (untrack(() => submitting.get())) return false // one at a time, from the first check on
+      submitting.set(true)
+      try {
+        shownAll.on = true // every error shows from now on
+        await check()
+        refresh()
+        if (!toFirstError()) return false
+        const answer = await options.submit?.(untrack(() => signal.get()))
+        if (answer && answer.errors && Object.keys(answer.errors).length) {
+          engine.setErrors(answer.errors)
+          return toFirstError()
+        }
+        return true
+      } finally {
+        submitting.set(false)
+      }
+    },
     reset() {
       touched.clear(); dirty.clear(); forced.clear(); server = {}; shownAll.on = false
       signal.set(initial)
@@ -272,5 +299,6 @@ function inert<T>(): Form<T> {
   return {
     error: () => '', errors: [], touched: () => false, changed: () => false, valid: true, pending: false,
     setErrors() {}, focus() {}, reset() {}, step: '', steps: [], next: async () => false, back() {}, go() {},
+    submitting: false, submit: async () => false,
   }
 }

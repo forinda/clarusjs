@@ -62,4 +62,12 @@ export type Form<T> = {
   back(): void
   /** Go to a step by id. */
   go(id: string): void
+  /** The submit callback is running. */
+  readonly submitting: boolean
+  /**
+   * Check everything; with errors, go to the first (its step, its field) and resolve false. Else call `submit` with
+   * the values: server errors it returns land the same way (false); otherwise true. A connected <form> runs this on
+   * submit. One at a time.
+   */
+  submit(): Promise<boolean>
 }
