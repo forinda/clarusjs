@@ -25,6 +25,10 @@ export type Resource<T> = {
   ready(): Promise<T | undefined>
 }
 
+/**
+ * `resource()`'s options: a starting value, retry, refetch, and (with `key`) caching.
+ * @see https://clarusjs.com/reference/fetch#resource
+ */
 export type ResourceOptions<T> = {
   /** The starting value (from the page's load()): shown in server HTML and while the browser revalidates. */
   initial?: T
@@ -320,7 +324,10 @@ const sleep = (ms: number, signal: AbortSignal) =>
     signal.addEventListener('abort', abort, { once: true })
   })
 
-/** Keys asked of one endpoint at the same moment, answered by one request. */
+/**
+ * Keys asked of one endpoint at the same moment, answered by one request: what `batch()` gives.
+ * @see https://clarusjs.com/reference/fetch#batch
+ */
 export type Batch<T> = { get(key: string): Promise<T> }
 
 /**

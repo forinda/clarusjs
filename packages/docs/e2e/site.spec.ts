@@ -1589,3 +1589,24 @@ test('quiz text from Markdown shows as written: `<script>` in an option is <scri
   await expect(quiz.locator('.quiz-correct')).toHaveText('Answer: Only components with a <script>')
   await expect(quiz).not.toContainText('&lt;')
 })
+
+test('#284: every @see link in the packages\' JSDoc lands on a page with that section', async ({ page }) => {
+  const { readdirSync, readFileSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const root = new URL('../../', import.meta.url).pathname
+  const links = new Set<string>()
+  for (const pkg of ['clarusjs', 'content', 'theme-docs']) {
+    const dir = join(root, pkg, 'src')
+    for (const f of readdirSync(dir, { recursive: true }) as string[]) {
+      if (!/\.(ts|tscl)$/.test(f)) continue
+      for (const m of readFileSync(join(dir, f), 'utf8').matchAll(/@see https:\/\/clarusjs\.com(\/[^\s)*]*)/g)) links.add(m[1]!)
+    }
+  }
+  expect(links.size).toBeGreaterThan(20)
+  for (const link of links) {
+    const [path, anchor] = link.split('#')
+    const res = await page.request.get(path!)
+    expect(res.status(), link).toBe(200)
+    if (anchor) expect(await res.text(), link).toContain(`id="${anchor}"`)
+  }
+})
