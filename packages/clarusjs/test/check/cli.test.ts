@@ -188,3 +188,9 @@ test('#161: components from packages are type-checked where they are used (their
   const result = check({ root, typescript })
   expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:3 TS2322'])
 })
+
+test('a JavaScript project\'s jsconfig.json is used like a tsconfig.json', () => {
+  const root = project({ 'jsconfig.json': JSON.stringify({ compilerOptions: { strict: true, lib: ['ES2023', 'DOM'] } }), 'src/pages/index.tscl': '<p>hi</p>\n' })
+  check({ root, typescript })
+  expect(JSON.parse(readFileSync(resolve(root, '.clarusjs/tsconfig.check.json'), 'utf8')).extends).toBe('../jsconfig.json')
+})

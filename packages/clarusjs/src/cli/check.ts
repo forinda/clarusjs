@@ -105,9 +105,11 @@ export function check(options: { root: string; typescript?: string }): CheckResu
 
   // The project's own settings, plus what checking templates needs. Scripts are JavaScript, so untyped parameters
   // are expected (noImplicitAny off). rootDirs lets virtual files and real sources import each other.
-  const hasConfig = existsSync(resolve(root, 'tsconfig.json'))
+  // A JavaScript project's jsconfig.json counts like a tsconfig.json.
+  const own = ['tsconfig.json', 'jsconfig.json'].find((name) => existsSync(resolve(root, name)))
+  const hasConfig = own !== undefined
   const config = {
-    ...(hasConfig ? { extends: '../tsconfig.json' } : {}),
+    ...(hasConfig ? { extends: `../${own}` } : {}),
     compilerOptions: {
       ...(hasConfig ? {} : { strict: true, target: 'ES2023', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2023', 'DOM', 'DOM.Iterable'] }),
       noEmit: true,

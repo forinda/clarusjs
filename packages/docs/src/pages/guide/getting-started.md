@@ -34,6 +34,52 @@ Every `.tscl` file under `src/pages` is a route: `src/pages/index.tscl` is `/`, 
 <p>This page is plain HTML.</p>
 ```
 
+## TypeScript or JavaScript
+
+Both work: island scripts are JavaScript either way, and `@input` types are checked by `clarusjs check` (see [Type checking](./type-checking.md)). The config is for your editor and the checker.
+
+::: code-group
+```json [tsconfig.json]
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", ".clarusjs/views.d.ts", ".clarusjs/routes.d.ts"]
+}
+```
+```json [jsconfig.json]
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true
+  },
+  "include": ["src", ".clarusjs/views.d.ts", ".clarusjs/routes.d.ts"]
+}
+```
+:::
+
+- **`moduleResolution: "Bundler"`** resolves imports the way Vite does, including `clarusjs/navigation` and the other entry points.
+- **`allowImportingTsExtensions`** lets a page or component import `../data.ts` with its extension, as Vite allows. A JavaScript project imports `.js` files and doesn't need it.
+- **`.clarusjs/`** holds the types `clarusjs check` writes: `views.d.ts` (for [`render()`](/reference/runtime)) and `routes.d.ts` (for [`href()`](./navigation.md#typed-routes)). Including them gives your editor the same errors as the checker. Run `clarusjs check` once to create them, and add the folder to `.gitignore`:
+
+```sh
+# .gitignore
+.clarusjs/
+```
+
+In JavaScript, `checkJs` turns on type errors in `.js` files, from JSDoc types and the generated ones; leave it out for hints without errors. `clarusjs check` reads either file.
+
 ## Run it
 
 <pm [commands]="['exec vite        # dev server, pages rendered on each request', 'exec vite build  # static site in dist/client/']" />
