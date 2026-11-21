@@ -98,3 +98,12 @@ test('when the island goes, the form stops listening to the URL and keeps no rem
   expect(f.step).toBe('details') // no longer following the hash
   expect(f.errors).toEqual([])
 })
+
+test('review: Back to the entry the page loaded on (no hash) returns to the first step', async () => {
+  const { f, input } = mount()
+  input('name').value = 'Ada'
+  expect(await f.next()).toBe(true)
+  history.pushState(null, '', '/signup') // as Back to the first entry
+  window.dispatchEvent(new PopStateEvent('popstate'))
+  expect(f.step).toBe('details')
+})
