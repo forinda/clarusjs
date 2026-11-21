@@ -9,6 +9,8 @@ import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
 import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, routeToFile } from './build.ts'
 export { packageOf } from './build.ts'
+/** Newest commit time (unix seconds) of every file under a folder, from one `git log` (themes use it for "last updated"). */
+export { gitDates } from './sitemap.ts'
 import { writeManifest } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'

@@ -587,6 +587,17 @@ test('the theme and site stylesheets go through Vite: imported by the layouts, h
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.site-header')!).borderBottomStyle)).toBe('solid')
 })
 
+test('last updated: each page shows the last commit date of its source file from git', async ({ page }) => {
+  const { execFileSync } = await import('node:child_process')
+  for (const [path, file] of [['/guide/lists', 'guide/lists.md'], ['/guide/verbatim', 'guide/verbatim.tscl']]) {
+    const seconds = Number(execFileSync('git', ['log', '-1', '--format=%ct', '--', file], { cwd: resolve(import.meta.dirname, '../src/pages'), encoding: 'utf8' }))
+    await page.goto(path)
+    const time = page.locator('.page-footer p.updated time')
+    await expect(time, path).toHaveAttribute('datetime', new Date(seconds * 1000).toISOString())
+    await expect(time, path).toHaveText(new Date(seconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }))
+  }
+})
+
 test('a Markdown page renders in the layout, with anchors, a component and the right edit link', async ({ page }) => {
   await page.goto('/guide/what-is-clarusjs')
   await expect(page.locator('h1')).toHaveText(/What is clarusjs\?/)
@@ -648,7 +659,7 @@ test('highlighted code: colours follow the theme, code groups switch without Jav
 test('snippets show real source files; includes share Markdown between pages', async ({ page }) => {
   await page.goto('/guide/markdown')
   const snippet = page.locator('.code-block').filter({ has: page.locator('.code-title', { hasText: 'src/nav.ts' }) })
-  await expect(snippet.locator('code')).toContainText('export function sourceOf(path: string)')
+  await expect(snippet.locator('code')).toContainText("editLink: 'https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/:file'")
   await expect(snippet.locator('code')).not.toContainText('#region')
   for (const path of ['/guide/markdown', '/guide/what-is-clarusjs']) {
     await page.goto(path)

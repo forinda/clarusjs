@@ -3,6 +3,7 @@
 // Plain JavaScript: vite.config loads it from node_modules, where Node doesn't strip types. Types: vite.d.ts.
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { gitDates } from 'clarusjs/vite'
 
 const ID = 'virtual:theme-docs/pages'
 
@@ -38,9 +39,10 @@ export function themeDocs(options = {}) {
 }
 
 /**
- * Every page under `dir` with its sidebar entry: frontmatter `title` (else the first `# ` heading, or a .tscl page's
- * `[title]="'…'"`, else the file name), `group` (else the subfolder inside its section), `order`. Left out:
- * `sidebar: false`, dynamic routes (`[step]`) and files or folders starting with `_`.
+ * Every page under `dir` with its source `file`, its last commit time (`updated`, from one `git log`) and its sidebar
+ * entry: frontmatter `title` (else the first `# ` heading, or a .tscl page's `[title]="'…'"`, else the file name),
+ * `group` (else the subfolder inside its section), `order`. `hidden` (not in the sidebar): `sidebar: false` and
+ * dynamic routes (`[step]`). Files or folders starting with `_` aren't pages.
  * @param {string} dir
  * @returns {import('./nav.ts').PageInfo[]}
  */
@@ -52,21 +54,24 @@ export function readPages(dir) {
   } catch {
     return []
   }
+  const dates = gitDates(dir, '.')
   /** @type {import('./nav.ts').PageInfo[]} */
   const pages = []
   for (const file of files.map((f) => f.replaceAll('\\', '/')).sort()) {
     const m = /^(.+)\.(md|tscl)$/.exec(file)
-    if (!m || m[1].split('/').some((part) => /^[[_]/.test(part))) continue
+    if (!m || m[1].split('/').some((part) => part.startsWith('_'))) continue
     const text = readFileSync(join(dir, file), 'utf8')
     const data = m[2] === 'md' ? frontmatter(text) : {}
-    if (data.sidebar === 'false') continue
     const parts = m[1].split('/')
     const href = ('/' + m[1]).replace(/\/index$/, '') || '/'
     /** @type {import('./nav.ts').PageInfo} */
-    const page = { href, title: data.title ?? /^# (.+)$/m.exec(text)?.[1]?.trim() ?? /\[title\]="'([^']*)'"/.exec(text)?.[1] ?? words(parts.at(-1) ?? '') }
+    const page = { href, title: data.title ?? /^# (.+)$/m.exec(text)?.[1]?.trim() ?? /\[title\]="'([^']*)'"/.exec(text)?.[1] ?? words(parts.at(-1) ?? ''), file }
     const group = data.group ?? (parts.length > 2 ? words(parts[1]) : undefined)
     if (group) page.group = group
     if (data.order !== undefined && Number.isFinite(Number(data.order))) page.order = Number(data.order)
+    const updated = dates.get(resolve(dir, file))
+    if (updated !== undefined) page.updated = updated
+    if (data.sidebar === 'false' || parts.some((part) => part.startsWith('['))) page.hidden = true
     pages.push(page)
   }
   return pages

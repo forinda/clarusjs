@@ -7,9 +7,10 @@ import { beforeAll, expect, test } from 'vitest'
 import clarusjs from 'clarusjs/vite'
 
 let html = ''
+let root = ''
 
 beforeAll(async () => {
-  const root = mkdtempSync(resolve(tmpdir(), 'theme-docs-'))
+  root = mkdtempSync(resolve(tmpdir(), 'theme-docs-'))
   const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
   mkdirSync(resolve(root, 'node_modules/@clarusjs'), { recursive: true })
   symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/@clarusjs/theme-docs'), 'dir')
@@ -18,7 +19,8 @@ beforeAll(async () => {
   brand: { text: 'acme', accent: '.dev' },
   sections: [{ key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', items: [{ title: 'Start', href: '/guide/start' }, { title: 'Next', href: '/guide/next' }] }] }],
   social: [{ label: 'GitHub', href: 'https://github.com/acme/x', icon: 'github' }],
-  editLink: (path: string) => 'https://example.com/edit' + path,
+  editLink: 'https://example.com/edit/:file',
+  pages: [{ href: '/guide/start', title: 'Start', file: 'guide/start.tscl', updated: 1700000000 }, { href: '/guide/next', title: 'Next', file: 'guide/next.tscl' }],
   footer: 'Acme footer',
 }
 `)
@@ -45,11 +47,18 @@ test('sidebar: a popover nav with the current page, slots, and the header links 
   expect(html).toMatch(/<div class="sidebar-links">.*GitHub/s)
 })
 
-test('content and "On this page": crumb, both forms of the table of contents, edit link, pager, footer slot', () => {
+test('content and "On this page": crumb, both forms of the table of contents, edit link, last updated, pager, footer slot', () => {
   expect(html).toContain('<p class="crumb">Guide › Basics</p>')
   expect(html).toMatch(/<aside class="toc" aria-label="On this page">.*<a href="#one">One<\/a>.*<li class="sub"><a href="#two">Two<\/a>/s)
   expect(html).toMatch(/<details class="toc-inline">\s*<summary>On this page<\/summary>/)
-  expect(html).toContain('<a class="edit" href="https://example.com/edit/guide/start">')
+  expect(html).toContain('<a class="edit" href="https://example.com/edit/guide/start.tscl">')
+  expect(html).toMatch(/<p class="updated">Last updated <time datetime="2023-11-14T22:13:20\.000Z">Nov 14, 2023<\/time><\/p>/)
   expect(html).toMatch(/<a class="next" href="\/guide\/next"><small>Next<\/small>Next<\/a>/)
   expect(html).toContain('<footer class="site-footer"><p>Custom footer</p></footer>')
+})
+
+test('a page without a date shows none', async () => {
+  const next = readFileSync(resolve(root, 'dist/client/guide/next/index.html'), 'utf8')
+  expect(next).not.toContain('class="updated"')
+  expect(next).toContain('<a class="edit" href="https://example.com/edit/guide/next.tscl">')
 })
