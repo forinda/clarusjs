@@ -31,6 +31,9 @@ Runs `fetcher` and gives its answer as `value`, `loading` and `error`. It runs a
     - **`interval`** (ms): run again on this interval while the page is visible;
     - **`focus`**: run again when the page is shown again;
     - **`onStart`** (default `true`): run when the island attaches.
+  - **`key`**: a function returning the cache key, an array such as `['items', { page }]`. Answers are cached by it and shared by every resource on the page; a key seen before is served without a request until it's invalidated. A falsy key means "not ready". See [Caching](#caching).
+  - **`stale`** (ms, with `key`): a cached answer older than this is fetched again when used. Unset: fresh until invalidated. `0`: always fetched.
+  - **`keep`** (ms, with `key`, default 5 minutes): how long an answer nothing shows stays cached.
 
 ### Returns
 
@@ -41,6 +44,7 @@ A `Resource<T>`:
 - **`error`**: the last run's error, or `undefined`. It's cleared when a run starts.
 - **`refetch()`**: run now, cancelling a run in flight. Returns a promise that settles when this run ends (with its retries), or when a newer run replaces it.
 - **`mutate(value)`**: show `value` now, for example an optimistic update. The next run replaces it.
+- **`ready()`**: a promise of the first answer. It resolves with `value` once there is one (at once if there already is), or rejects with the first run's error. On the server it resolves with `initial`. Use it in an event handler or an async function: a script's top level can't `await`.
 
 ### Caveats
 
@@ -103,6 +107,15 @@ const prices = resource(load, { retry: 3, refetch: { interval: 10_000 } })
 const stats = resource(load, { initial: props.stats })
 ```
 
+**Wait for the data in code:**
+
+```ts
+async function exportCsv() {
+  const rows = await items.ready()   // the first answer, fetched or already there
+  download(toCsv(rows))
+}
+```
+
 **Update optimistically, then confirm:**
 
 ```ts
@@ -111,6 +124,88 @@ async function rename(name) {
   await fetch('/api/me', { method: 'PATCH', body: JSON.stringify({ name }) })
   await user.refetch()
 }
+```
+
+## Caching
+
+With `key`, a resource's answers live in a cache shared by the whole page.
+
+- **A key seen before is served without a request,** until `invalidate()` matches it, or it's older than `stale`. `refetch()` always asks.
+- **Keys are compared by value**, object properties in any order: `['items', { page: 2, q: '' }]` and `['items', { q: '', page: 2 }]` are one key. Put in the key everything the request depends on: on a cached answer the fetcher doesn't run.
+- **Keys are plain values:** strings, numbers, booleans, `null`, arrays and plain objects. They're compared as JSON is written: a property set to `undefined` is left out, and a `Map`, `Set` or class instance becomes `{}`, so two of them would share one entry.
+- **One key, one kind of data.** Resources sharing a key share its answer, whatever their fetchers; nothing checks that they fetch the same thing.
+- **One request per key at a time.** Resources asking a key that's already loading wait for that request. It ends even if the resource that started it moves on.
+- **Moving to another key keeps the previous value** on screen, with `loading` true, until the new answer arrives.
+- **`initial` with `key`** fills the entry if it's empty, as fresh: no browser request until it's invalidated.
+- **`mutate(value)`** on a keyed resource writes its entry, so every resource showing it updates.
+- **An error isn't cached:** the entry keeps its last answer, and the next use fetches again.
+- **Memory:** an answer nothing shows is dropped after `keep`. The cache lives in the page: it survives fragment navigation, not a full reload. On the server there's no cache.
+
+## invalidate()
+
+```ts
+invalidate(prefix?: unknown[]): void
+```
+
+Marks every cached answer whose key starts with `prefix` as stale. The resources showing one fetch it again now; the others fetch when next used.
+
+### Parameters
+
+- **`prefix`** (optional): the key's first elements. `['items']` matches `['items', { page: 1 }]` and `['items', 'archived']`, not `['itemsArchive']` nor `['other', 'items']`. Without it, everything.
+
+### Caveats
+
+- **A request in flight when you invalidate** isn't stored when it ends: the resources showing the key make a fresh one (one request for all of them), and a resource opening the key later fetches too.
+
+### Usage
+
+```ts
+async function rename(id, name) {
+  await fetch(`/api/items/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) })
+  invalidate(['items'])
+}
+```
+
+## setData()
+
+```ts
+setData<T>(key: unknown[], value: T | ((prev: T | undefined) => T)): void
+```
+
+Sets a cached answer, and shows it in every resource using that key. Creates the entry if it's missing.
+
+### Usage
+
+**An optimistic edit, confirmed by the server:**
+
+```ts
+async function rename(id, name) {
+  setData(['items', { page }], (data) => data && { ...data, rows: data.rows.map((r) => (r.id === id ? { ...r, name } : r)) })
+  try {
+    await fetch(`/api/items/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) })
+  } finally {
+    invalidate(['items']) // the server's version wins, also if the request failed
+  }
+}
+```
+
+## prefetch()
+
+```ts
+prefetch<T>(key: unknown[], fetcher): Promise<void>
+```
+
+Fetches an answer into the cache ahead of time, unless it's there and not invalidated (a resource's `stale` isn't considered here). The promise settles when it's stored. Errors are ignored: the resource that opens the key later fetches again.
+
+### Usage
+
+**The next page, while this one is shown:**
+
+```ts
+effect(() => {
+  if (list.value && page < list.value.pages)
+    prefetch(['records', { page: page + 1 }], ({ signal }) => json(`/api/records?page=${page + 1}`, { signal }))
+})
 ```
 
 ## batch()
