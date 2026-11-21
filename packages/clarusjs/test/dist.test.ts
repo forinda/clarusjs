@@ -79,6 +79,12 @@ test('size budget: the published package stays small (tarball 80 KB, unpacked 29
   expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(290 * 1024)
 })
 
+test('#197: sideEffects lists only the browser scripts that start work when loaded (bundlers drop the rest when unused)', () => {
+  const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))
+  const scripts = ['loader', 'router', 'fragments', 'navigation']
+  expect(pkg.sideEffects).toEqual([...scripts.map((s) => `./src/runtime/${s}.ts`), ...scripts.map((s) => `./dist/runtime/${s}.js`)])
+})
+
 test('dependencies are exactly acorn (compiler) and commander (CLI): adding one is a deliberate change', () => {
   const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))
   expect(Object.keys(pkg.dependencies).sort()).toEqual(['acorn', 'commander'])
