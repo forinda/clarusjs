@@ -1580,3 +1580,12 @@ test('#287 caching: seen pages make no request, invalidate refetches what\'s sho
   await expect(list.locator('li').first()).toHaveText('Record 1')
   await expect.poll(() => asked.slice(before)).toContain('1')
 })
+
+test('quiz text from Markdown shows as written: `<script>` in an option is <script>, not &lt;script&gt;', async ({ page }) => {
+  await page.goto('/learn/first-island#quiz')
+  const quiz = page.locator('.quiz')
+  await expect(quiz.getByRole('radio', { name: 'Only components with a <script>' })).toHaveCount(1)
+  await quiz.locator('summary', { hasText: 'Show the answer' }).click()
+  await expect(quiz.locator('.quiz-correct')).toHaveText('Answer: Only components with a <script>')
+  await expect(quiz).not.toContainText('&lt;')
+})
