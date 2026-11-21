@@ -3,7 +3,7 @@
 Format [clarusjs](https://github.com/forinda/clarusjs) `.tscl` components with Prettier: the template is indented like HTML, `<script>` is formatted as JavaScript and `<style>` as CSS, with your project's Prettier options.
 
 ```sh
-pnpm add -D prettier @clarusjs/prettier-plugin
+pnpm add -D prettier @clarusjs/prettier-plugin   # with clarusjs in the project: it reads files with its parser
 ```
 
 ```json

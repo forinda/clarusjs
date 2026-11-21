@@ -110,3 +110,77 @@ test('an entity the author wrote (&#64;, &#064;) stays as written; @ in comments
   expect(out).toContain('<!-- see @if -->')
   expect(out).toContain('title="a > b @x"')
 })
+
+// Review of #303: each case formats to the same meaning, and formatting twice changes nothing.
+const same = async (src: string, options = {}) => {
+  const once = await fmt(src, options)
+  expect(await fmt(once, options)).toBe(once)
+  expect(shape(once)).toBe(shape(src))
+  return once
+}
+
+test('a multi-line @type with a generic keeps the lines after it (R1)', async () => {
+  const out = await same("@type P = Map<\n  string,\n  number\n>\n@input p: P\n<p>{{ p }}</p>\n")
+  expect(out).toContain('@type P = Map<\n  string,\n  number\n>\n@input p: P\n')
+})
+
+test('a hole with a bitwise | keeps its parentheses (R2)', async () => {
+  expect(await same('<p>{{ (a || b) | c }}</p>\n')).toContain('{{ (a || b) | c }}')
+})
+
+test('a top-level @word never lands at a line start; a directive after the template moves to the head (R3)', async () => {
+  const long = '<b>x</b> some long top level text that goes on and on and on past the print width and mentions @clarusjs/content here\n'
+  const out = await same(long)
+  expect(out).not.toMatch(/^\s*@clarusjs/m)
+  const moved = await same("<script>\nlet a = state(1)\n</script>\n@import Foo from './foo.tscl'\nhello <b>x</b>\n")
+  expect(moved.startsWith("@import Foo from './foo.tscl'\n")).toBe(true)
+})
+
+test('literal { and } in text format (R4), and a quoted > before verbatim', async () => {
+  for (const src of ['<code>function f() { return 1 }</code>\n', '<p>a } b</p>\n', "<p>Use {{ '{' }} a }</p>\n", '@if (a) {<p>a } b</p>}\n', '<pre data-x="a>b" verbatim>{ raw }</pre>\n']) {
+    await same(src)
+  }
+})
+
+test('blank lines before @else and @empty: stable (R6)', async () => {
+  await same('@if (a) {<p>a</p>}\n\n@else {<p>b</p>}\n')
+  await same('<ul>@for (x of xs; track x) {<li>{{ x }}</li>}\n\n@empty {<li>none</li>}</ul>\n')
+})
+
+test('an inline block keeps the whitespace around and inside it (R7)', async () => {
+  expect(await same('<p>Hello @if (x) {<b>world</b>}!</p>\n')).toContain('Hello @if (x) {<b>world</b>}!')
+})
+
+test('@else and @empty as text right after a hole (R8)', async () => {
+  await same('<p>{{ n }}@empty</p>\n')
+  await same('<p>Count {{ n }} @else text</p>\n')
+})
+
+test('@slot text in a script or an attribute is left alone (R9)', async () => {
+  const out = await same('<script>\nconst s = "@slot  (\'x\')"\n</script>\n<a title="see @slot (x)">x</a>\n')
+  expect(out).toContain('"@slot  (\'x\')"')
+  expect(out).toContain('title="see @slot (x)"')
+})
+
+test('an author comment that looks like a placeholder stays (R10)', async () => {
+  const out = await same('<p>{{-- note --}}<!--cl:0--></p>\n')
+  expect(out).toContain('{{-- note --}}')
+  expect(out).toContain('<!--cl:0-->')
+})
+
+test('a file the compiler rejects is an error, not a reformat', async () => {
+  await expect(fmt('<p>\n')).rejects.toThrow(/unclosed/)
+})
+
+test('cases that were already right stay right after the rewrite', async () => {
+  for (const src of [
+    '', '@input a: string\n', '{{-- only a note --}}\n', '<p>a</p>\r\n<p>b</p>\r\n',
+    '<pre>  keep\n   this</pre>\n<textarea>  x</textarea>\n',
+    '<a title="x@y.z {{ \'@if\' }}">{{ "@for {" }}</a>\n',
+    '<script inline>\nwindow.x = { a: 1 }\n</script>\n<script type="application/ld+json">{"a": {"b": 1}}</script>\n',
+    '@input f: (a: string) => number = (a) => a.length\n<p>{{ f("x") }}</p>\n',
+    '@type T = {\n  a: string\n}\n<p>x</p>\n',
+    '<ul>@for (x of [{ a: 1 }]; track x.a) {<li>{{ $index }} {{ x.a }}</li>}</ul>\n',
+    '<myCard [(value)]="form.name" /><myCard>@slot(\'title\') {<b>T</b>}</myCard>\n',
+  ]) await same(src)
+})
