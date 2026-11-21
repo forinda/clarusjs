@@ -28,6 +28,16 @@
     "url": "https://github.com/forinda/clarusjs/issues"
   },
   "type": "module",
+  "sideEffects": [
+    "./src/runtime/loader.ts",
+    "./src/runtime/router.ts",
+    "./src/runtime/fragments.ts",
+    "./src/runtime/navigation.ts",
+    "./dist/runtime/loader.js",
+    "./dist/runtime/router.js",
+    "./dist/runtime/fragments.js",
+    "./dist/runtime/navigation.js"
+  ],
   "exports": {
     "./compiler": "./src/compiler/index.ts",
     "./runtime": "./src/runtime/index.ts",

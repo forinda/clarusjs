@@ -61,3 +61,10 @@ test('#40: stylesheets the new page needs are added once to <head> before the sw
   expect(document.querySelector('main')!.textContent).toBe('new')
   expect(document.querySelector('main link')).toBeNull()
 })
+
+test('#192: a redirected fragment request is an error: the page then loads normally, so the redirect lands on its URL', async () => {
+  document.body.innerHTML = '<p>old</p>'
+  const redirected = { ok: true, status: 200, redirected: true, text: async () => '<html><body><p>moved</p></body></html>' } as unknown as Response
+  await expect(swap(new URL('http://x/old'), async () => redirected)).rejects.toThrow('200: /old/index.frag.html')
+  expect(document.body.innerHTML).toBe('<p>old</p>')
+})

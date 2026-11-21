@@ -39,6 +39,15 @@ function compile(path: string): { keys: string[]; regex: RegExp } {
 }
 
 /** '/src/pages/index.tscl' → '/', '/src/pages/blog/index.tscl' → '/blog', '/src/pages/about.md' → '/about' (any page source) */
+/**
+ * A redirect for a server page's `load()` to return: `return redirect('/login')`. 302 by default; 301 or 308 for
+ * a page that moved for good, 303 after a form, 307 to keep the method.
+ * @see https://clarusjs.com/guide/routing
+ */
+export function redirect(to: string, status: 301 | 302 | 303 | 307 | 308 = 302): Response {
+  return new Response(null, { status, headers: { location: to } })
+}
+
 export function routeFromFile(file: string): string {
   const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.[^./]+$/, '').replace(/\/index$/, '')
   return path || '/'
@@ -67,6 +76,8 @@ export function createHandler(
     head?: HeadOptions
     /** The site's public address: canonical URLs and social cards (see head.ts). */
     site?: SiteOptions
+    /** Development: a failing page throws its error (the dev server shows it with its stack) instead of answering 500. */
+    dev?: boolean
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -200,6 +211,20 @@ export function createHandler(
         if (page.status !== 200) return plain()
         return new Response(head ? null : rootLinks(await page.text(), options.base ?? '/'), { status: 404, headers: page.headers })
       }
+      // A failing page: in development its error is thrown, for the dev server to show. Otherwise the details go to the
+      // log and the visitor gets the site's 500 page (src/pages/500.tscl, given { status: 500 }), or plain text.
+      const fail = async (message: string, err?: unknown): Promise<Response> => {
+        if (options.dev) throw err ?? new Error(message)
+        const plain500 = failure(message)
+        if (wantsData || wantsFrag || trim(pathname) === '/500' || !routes.some((r) => r.path === '/500')) return plain500
+        try {
+          const page = await handler.fetch(new Request(new URL('/500', request.url), { method: request.method }))
+          if (page.status !== 200) return plain500
+          return new Response(head ? null : rootLinks(await page.text(), options.base ?? '/'), { status: 500, headers: page.headers })
+        } catch {
+          return plain500
+        }
+      }
       const mode = found && modeFor(found.route.path, modes)
       if (!found) return notFound()
       // A prerendered dynamic route only has the pages its entries() lists, as on a static host.
@@ -221,11 +246,12 @@ export function createHandler(
         try {
           page = completeHead(shell, maskComments, { ...siteHead, site: options.site, base: options.base }, { route: found.route.path, path: pagePath(pathname, false) })
         } catch (err) {
-          return failure(`${found.route.file}: ${(err as Error).message}`)
+          return fail(`${found.route.file}: ${(err as Error).message}`, err)
         }
         return new Response(head ? null : page, { headers: { 'content-type': 'text/html; charset=utf-8' } })
       }
-      let props: object = found.params
+      // The 500 page is told its status, whether a failure shows it or it is visited (or prerendered) at /500.
+      let props: object = found.route.path === '/500' ? { status: 500, ...found.params } : found.params
       const dataFile = found.route.file.replace(/\.[^./]+$/, '.load.ts')
       const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
       if (mod?.load) {
@@ -233,10 +259,13 @@ export function createHandler(
         try {
           loaded = await mod.load({ params: found.params, request })
         } catch (err) {
-          return failure(`${dataFile}: load() failed: ${(err as Error)?.message ?? err}`)
+          return fail(`${dataFile}: load() failed: ${(err as Error)?.message ?? err}`, err)
         }
+        // A Response (such as redirect()) is the answer, for the page as for its fragment or data: a navigator
+        // that followed a redirect then loads the target page normally.
+        if (loaded instanceof Response) return loaded
         if (loaded === null || typeof loaded !== 'object' || Array.isArray(loaded)) {
-          return failure(`${dataFile}: load() must return an object of page inputs, got ${Array.isArray(loaded) ? 'an array' : loaded === null ? 'null' : typeof loaded}`)
+          return fail(`${dataFile}: load() must return an object of page inputs (or a Response, such as redirect()), got ${Array.isArray(loaded) ? 'an array' : loaded === null ? 'null' : typeof loaded}`)
         }
         ;(globalThis as { __clLoaderRan?: boolean }).__clLoaderRan = true // recorded by prerender for the manifest
         props = { ...found.params, ...loaded }
@@ -244,13 +273,18 @@ export function createHandler(
       if (wantsData) {
         return new Response(head ? null : safeJson(stringify(props)), { headers: { 'content-type': 'application/json; charset=utf-8' } })
       }
-      let html = (await found.route.load()).render(props)
+      let html: string
+      try {
+        html = (await found.route.load()).render(props)
+      } catch (err) {
+        return fail(`${found.route.file}: render failed: ${(err as Error)?.message ?? err}`, err)
+      }
       // A page that isn't a whole document is put in a minimal one, so every page's head is completed the same way.
       if (!/<html[\s>]/i.test(maskComments(html))) html = `<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title></head><body>${html}</body></html>`
       try {
         html = completeHead(html, maskComments, { ...options.head, site: options.site, base: options.base }, { route: found.route.path, path: pagePath(pathname, wantsFrag) })
       } catch (err) {
-        return failure(`${found.route.file}: ${(err as Error).message}`)
+        return fail(`${found.route.file}: ${(err as Error).message}`, err)
       }
       if (wantsFrag) {
         // The page's stylesheet links go right after its title, so fragment navigation can load any that are missing.
