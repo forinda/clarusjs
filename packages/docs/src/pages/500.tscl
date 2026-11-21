@@ -1,0 +1,9 @@
+{{-- Shown when a page fails on the server (the playground runs on every request): nothing internal, links from the site root. --}}
+@import docs from '../layouts/docs.tscl'
+@input status: number = 500
+
+<docs [title]="'Something went wrong'" [path]="'/500'" [description]="'This page could not be shown.'">
+  <h1>Something went wrong</h1>
+  <p class="lead">This page could not be shown (error {{ status }}). Try again in a moment.</p>
+  <p><a class="button" href="./">Home</a> <a class="button ghost" href="guide/getting-started">Get started</a></p>
+</docs>

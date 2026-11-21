@@ -21,7 +21,8 @@ export async function swap(
 ): Promise<void> {
   const src = fragmentUrl(url)
   const res = await get(src)
-  if (!res.ok) throw new Error(`${res.status}: ${src}`)
+  // Redirected: the page moved, and the address bar would keep the old URL. Failing loads the page normally.
+  if (!res.ok || res.redirected) throw new Error(`${res.status}: ${src}`)
   const doc = new DOMParser().parseFromString(await res.text(), 'text/html')
   const next = region(doc)
   const old = region(document)
@@ -52,4 +53,4 @@ export async function swap(
 }
 
 // Every navigation the shared guard takes over.
-takeOver(() => (url, isCurrent) => swap(url, fetch, isCurrent))
+takeOver(() => (url, isCurrent, signal) => swap(url, (src) => fetch(src, { signal }), isCurrent))

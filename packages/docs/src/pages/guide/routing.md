@@ -75,3 +75,34 @@ export async function load({ params }) {
 ::: tip
 This site's [release notes](/releases) are a dynamic route: `src/pages/releases/[version].tscl`, with one page per version in the package changelog, each loaded by `load()`.
 :::
+
+## Redirects
+
+A page that moved gets a redirect in `vite.config.ts`. The old path keeps working, and old links pass the build's link check:
+
+```ts
+clarusjs({ redirects: { '/docs': '/guide/getting-started' } })
+```
+
+The build writes a small page at each old path that sends visitors on, and a `_redirects` file, which Netlify and Cloudflare Pages answer with a real `301`. The dev server answers `301` too. This site has that one: try [/docs](/docs).
+
+A server page's `load()` can redirect on each request instead, for example to a login page:
+
+```ts
+// src/pages/account.load.ts
+import { redirect } from 'clarusjs/server'
+
+export async function load({ request }) {
+  const user = await userFrom(request)
+  if (!user) return redirect('/login')  // 302; or 301, 303, 307, 308
+  return { user }
+}
+```
+
+`load()` can return any `Response` this way. Fragment navigation and the client router follow it: the page loads normally, and the address bar shows where it landed.
+
+## Error pages
+
+`src/pages/404.tscl` is shown for any unknown address, with status 404. `src/pages/500.tscl` is shown, with status 500, when a page rendered on request fails: its `load()` throws or it can't render. It gets a `status` input; the error itself only goes to the server log, so nothing internal reaches visitors. Both are also written as `404.html` and `500.html` for hosts that serve them, with links resolved from the site root.
+
+In development a failing page shows the error itself instead, with its stack and source location, from the dev server.

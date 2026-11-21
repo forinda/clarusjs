@@ -43,6 +43,16 @@ export async function navigate(to: string | URL, options: { replace?: boolean; s
   }
 }
 
+/**
+ * Stops the navigation in progress, like the browser's stop button: its requests are cancelled and, where the URL was
+ * held while loading (push and replace in browsers with precommit handlers), page and URL stay as they were. Hooks
+ * see it through `t.signal`. Like the stop button, it also stops the page's own loading (images still arriving).
+ * @see https://clarusjs.com/guide/navigation
+ */
+export function abort(): void {
+  if (browser) stop()
+}
+
 /** Back one entry, like the browser's back button. */
 export function back(): void {
   if (browser) history.back()
