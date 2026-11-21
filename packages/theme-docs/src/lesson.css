@@ -25,8 +25,9 @@
 /* The one-step view hides the others: hidden wins over any display a step gets (grid when split). */
 .lesson .step[hidden] { display: none !important; }
 .lesson .step h2 { margin-top: 24px; }
-/* Headings take focus when a step opens (for screen readers); the ring would only mark the step's title. */
-.lesson .step h2:focus { outline: none; }
+/* Headings take focus when a step opens (for screen readers). After a click the ring would only mark the title;
+   keyboard users keep it, so they can see where focus went. */
+.lesson .step h2:focus:not(:focus-visible) { outline: none; }
 /* A step's title needs no permalink: the header's segments link to each step. */
 .lesson .step .header-anchor { display: none; }
 .result { padding: 16px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); }

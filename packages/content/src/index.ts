@@ -369,7 +369,8 @@ export default function markdown(options: MarkdownOptions = {}): Source {
         if (open) tokens.push(html('</section>\n'))
       }
       const headings = tokens.flatMap((t, i) => {
-        if (t.type !== 'heading_open' || (t.tag !== 'h2' && t.tag !== 'h3')) return []
+        // Top-level only, like the lesson steps: a heading inside a blockquote or list isn't a section of the page.
+        if (t.type !== 'heading_open' || (t.tag !== 'h2' && t.tag !== 'h3') || t.level !== 0) return []
         const text = (tokens[i + 1]!.children ?? []).filter((c: Tok) => c.type === 'text' || c.type === 'code_inline').map((c: Tok) => c.content).join('')
         return [{ id: String(t.attrGet('id') ?? ''), text, level: t.tag === 'h2' ? 2 : 3 }]
       })

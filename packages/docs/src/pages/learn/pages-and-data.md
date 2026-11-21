@@ -36,6 +36,10 @@ export function load({ params }) {
 }
 ```
 
+### The page
+
+The page declares what `load()` returns as its inputs:
+
 ```tscl [src/pages/posts/[slug].tscl]
 @import type { Post } from '../../data/posts.ts'
 @input post: Post

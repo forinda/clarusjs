@@ -125,8 +125,10 @@ export function lessonOf(config: ThemeConfig, path: string): { leave: string; pr
   const items = section ? (section.key === config.learn?.section ? lessonsOf(config) : flat(section)) : []
   const i = items.findIndex((item) => item.href === path)
   return {
-    // Learn lessons lead back to the progress page; other lessons to their section.
-    leave: (section && section.key === config.learn?.section ? config.learn.progress : section?.href) || '/',
+    // Learn lessons lead back to the progress page; other lessons to their section's own page, unless that is one
+    // of its lessons (leaving would open a lesson): then home.
+    leave: section && section.key === config.learn?.section ? config.learn.progress || '/'
+      : section?.href && !items.some((item) => item.href === section.href) ? section.href : '/',
     prev: items[i - 1]?.href ?? '',
     next: items[i + 1]?.href ?? '',
     label: section ? `${section.title} · Lesson ${i + 1} of ${items.length}` : '',

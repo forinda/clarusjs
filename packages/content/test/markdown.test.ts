@@ -143,3 +143,9 @@ test('#157: steps: true wraps each h2 and what follows it in a <section class="s
   // Without it, no sections.
   expect(page('# A\n\n## B\n\nx\n')).not.toContain('<section')
 })
+
+test('#168: headings (On this page, lesson steps) are top-level only: a ## inside a blockquote is neither', () => {
+  const out = page('---\nsteps: true\n---\n# L\n\n## Read\n\n> ## Note\n> quoted\n\n## Write\n\nx\n')
+  expect(out).toContain(`[headings]="[{ id: 'read', text: 'Read', level: 2 }, { id: 'write', text: 'Write', level: 2 }]"`)
+  expect(out.match(/<section class="step"/g)).toHaveLength(2)
+})

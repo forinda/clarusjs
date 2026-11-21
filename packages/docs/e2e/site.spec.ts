@@ -696,7 +696,8 @@ test('lesson: one step at a time, Continue and Back, the URL and the segments fo
   await expect(page).toHaveURL(/#create$/)
   await expect(page.locator('#create')).toBeFocused()
   await expect(page.locator('.segments li.done')).toHaveCount(1)
-  await expect(page.locator('.segments li.current a')).toHaveAttribute('aria-current', '')
+  await expect(page.locator('.segments li.current a')).toHaveAttribute('aria-current', 'step')
+  await expect(page.locator('.segments a[aria-current]')).toHaveCount(1)
   await bar.getByRole('button', { name: 'Back' }).click()
   await expect(visible.locator('h2')).toHaveText(/^Read/)
   // A segment link (or any #hash in a step) shows that step.
@@ -840,6 +841,37 @@ test('home: two ways in, Learn and Docs', async ({ page }) => {
   await expect(ways.locator('a.way')).toHaveCount(2)
   await expect(ways.locator('a.way').first()).toHaveAttribute('href', '/learn/first-page')
   await expect(ways.locator('a.way').nth(1)).toHaveAttribute('href', '/guide/what-is-clarusjs')
+})
+
+test('lesson: a #link to something inside a step opens that step and keeps the target', async ({ page }) => {
+  await page.goto('/learn/pages-and-data')
+  await expect(page.locator('.lesson-bar')).toBeVisible()
+  await page.evaluate(() => { location.hash = '#the-page' })
+  await expect(page.locator('main .step:visible h2')).toHaveText(/^Route/)
+  await expect(page).toHaveURL(/#the-page$/)
+  await expect(page.locator('#the-page')).toBeInViewport()
+})
+
+test('lesson: keyboard users see where focus went when a step opens; a mouse click shows no ring', async ({ page }) => {
+  await page.goto('/learn/first-page')
+  const continueButton = page.locator('.lesson-bar button.primary')
+  await continueButton.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('#create')).toBeFocused()
+  expect(await page.locator('#create').evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none')
+  await continueButton.click()
+  await expect(page.locator('#write')).toBeFocused()
+  expect(await page.locator('#write').evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none')
+})
+
+test('fragment navigation: a replaceState while the next page loads still shows that page', async ({ page }) => {
+  await page.route('**/guide/lists/index.frag.html', async (route) => { await new Promise((done) => setTimeout(done, 600)); await route.continue() })
+  await page.goto('/guide/holes')
+  await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
+  await page.locator('.sidebar a[href="/guide/lists"]').click()
+  await expect(page).toHaveURL(/\/guide\/lists$/)
+  await page.evaluate(() => history.replaceState(null, '', location.pathname + '#top'))
+  await expect(page.locator('h1')).toHaveText('Lists')
 })
 
 test('lesson with reduced motion: steps change without animation', async ({ browser }) => {

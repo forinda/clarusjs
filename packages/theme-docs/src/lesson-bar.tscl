@@ -44,7 +44,9 @@
     name = document.getElementById(id)?.textContent?.replace(/#$/, '').trim() ?? ''
     document.querySelectorAll('.segments li').forEach((li, j) => {
       li.className = j < current ? 'done' : j === current ? 'current' : ''
-      li.querySelector('a')?.toggleAttribute('aria-current', j === current)
+      const link = li.querySelector('a')
+      if (j === current) link?.setAttribute('aria-current', 'step')
+      else link?.removeAttribute('aria-current')
     })
     if (focus) {
       history.replaceState(null, '', '#' + id)
@@ -91,7 +93,18 @@
     steps().forEach(split)
     document.body.classList.add('one-step')
     document.querySelector('.lesson-bar').hidden = false
-    show(Math.max(0, indexOf(location.hash)), false)
+    // A #hash opens the step it points into and keeps its target: a step heading takes focus, anything else
+    // scrolls into view (Back and Continue go by step headings instead).
+    function reveal() {
+      const i = indexOf(location.hash)
+      if (i === -1) return false
+      show(i, false)
+      const target = document.getElementById(decodeURIComponent(location.hash.slice(1)))
+      if (target?.matches('.step > h2, .step-text > h2')) target.focus()
+      target?.scrollIntoView()
+      return true
+    }
+    if (!reveal()) show(0, false)
     document.addEventListener('quiz:result', (event) => {
       if (!steps()[current]?.contains(event.target)) return
       const { ok, done, text: detail } = event.detail
@@ -100,7 +113,7 @@
       checking = !!steps()[current].querySelector('[data-quiz]:not([data-answered])')
       verdict(ok ? 'ok' : 'bad', ok ? 'Correct!' : 'Not quite', detail)
     })
-    window.addEventListener('hashchange', () => { const i = indexOf(location.hash); if (i !== -1) show(i, true) })
+    window.addEventListener('hashchange', reveal)
   }
 </script>
 
