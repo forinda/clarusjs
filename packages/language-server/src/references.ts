@@ -62,29 +62,34 @@ export function renameEdits(project: Project, path: string, text: string, offset
 
 /** A specifier for `target` from `importer`, in the style of `previous` (~/ stays ~/; otherwise relative). */
 function specifierFor(project: Project, importer: string, target: string, previous: string): string {
-  if (previous.startsWith('~/')) return `~/${relative(resolve(project.root, 'src'), target).split('\\').join('/')}`
+  const fromSrc = relative(resolve(project.root, 'src'), target).split('\\').join('/')
+  if (previous.startsWith('~/') && !fromSrc.startsWith('..')) return `~/${fromSrc}` // still under src/
+  if (previous.startsWith('/')) return `/${relative(project.root, target).split('\\').join('/')}`
   const rel = relative(dirname(importer), target).split('\\').join('/')
   return rel.startsWith('.') ? rel : `./${rel}`
 }
 
-export function fileRenameEdits(project: Project, oldPath: string, newPath: string): WorkspaceEdit {
+/**
+ * Edits for files being renamed or moved, all at once (a multi-select drag moves several): every @import whose file
+ * or target moves is rewritten from their final places, so two moved files that import each other stay linked and no
+ * two edits touch one specifier.
+ */
+export function fileRenameEdits(project: Project, renames: [string, string][]): WorkspaceEdit {
+  const moved = new Map(renames)
   const changes: NonNullable<WorkspaceEdit['changes']> = {}
-  const add = (file: string, start: number, end: number, newText: string) => {
+  const files = new Set<string>([...moved.keys()].flatMap((old) => [old, ...project.importersOf(old)]))
+  for (const file of files) {
     const text = project.textOf(file) ?? ''
-    ;(changes[URI.file(file).toString()] ??= []).push({ range: rangeOf(text, start, end), newText })
-  }
-  for (const file of project.importersOf(oldPath)) {
-    for (const i of project.importsOf(file).filter((x) => x.target === oldPath)) {
-      // A package or tsconfig-paths specifier that still reaches the file stays; the rest are rewritten.
-      const kept = !i.specifier.startsWith('.') && !i.specifier.startsWith('~/') && project.resolve(i.specifier, file) === newPath
-      if (!kept) add(file, i.start, i.end, specifierFor(project, file === oldPath ? newPath : file, newPath, i.specifier))
+    const from = moved.get(file) ?? file
+    for (const i of project.importsOf(file)) {
+      if (!i.target || (!moved.has(file) && !moved.has(i.target))) continue
+      const to = moved.get(i.target) ?? i.target
+      // A package or tsconfig-paths specifier that still reaches the target stays.
+      const ours = i.specifier.startsWith('.') || i.specifier.startsWith('~/') || i.specifier.startsWith('/')
+      if (!ours && project.resolve(i.specifier, from) === to) continue
+      const next = ours || moved.has(i.target) ? specifierFor(project, from, to, i.specifier) : i.specifier
+      if (next !== i.specifier) (changes[URI.file(file).toString()] ??= []).push({ range: rangeOf(text, i.start, i.end), newText: next })
     }
-  }
-  // The moved file's own relative imports, from its new folder.
-  for (const i of project.importsOf(oldPath)) {
-    if (!i.target || !i.specifier.startsWith('.')) continue
-    const next = specifierFor(project, newPath, i.target, i.specifier)
-    if (next !== i.specifier) add(oldPath, i.start, i.end, next)
   }
   return { changes }
 }

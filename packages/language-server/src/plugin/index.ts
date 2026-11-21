@@ -70,7 +70,7 @@ export function createTsclServicePlugin(projectFor: (path: string) => Project): 
         provideFileRenameEdits(oldUri, newUri) {
           const oldPath = URI.parse(oldUri.toString()).fsPath
           if (!oldPath.endsWith('.tscl')) return undefined
-          return fileRenameEdits(projectFor(oldPath), oldPath, URI.parse(newUri.toString()).fsPath)
+          return fileRenameEdits(projectFor(oldPath), [[oldPath, URI.parse(newUri.toString()).fsPath]])
         },
         provideDocumentSemanticTokens(document, range, legend) {
           const doc = open(document)

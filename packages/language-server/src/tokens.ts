@@ -2,6 +2,8 @@
 // and names, component tags), so editors without the TextMate grammar colour it. Lexical, like the HTML view: a file
 // being typed still gets them. One token per line segment, as LSP requires.
 
+import { scan } from './blank.ts'
+
 export const TOKEN_TYPES = ['keyword', 'variable', 'operator', 'comment', 'macro', 'type'] as const
 export type Token = { line: number; character: number; length: number; type: number }
 
@@ -10,7 +12,7 @@ const DIRECTIVE = /^[ \t]*(@(?:import|input|model|type|interface))(?![\w$-])/
 const BLOCK = /^@(?:else\s+if|if|for|slot|else|empty)(?![\w$-])/
 
 export function tokensOf(source: string, components: Set<string>): Token[] {
-  const spans: [number, number, number][] = [] // [start, end, type]
+  let spans: [number, number, number][] = [] // [start, end, type]
   let atLineStart = true
   for (let i = 0; i < source.length; ) {
     if (atLineStart) {
@@ -68,6 +70,10 @@ export function tokensOf(source: string, components: Set<string>): Token[] {
     }
     i++
   }
+  // Nothing inside <script> or <style> bodies: those are JavaScript and CSS.
+  const { scripts, styles } = scan(source)
+  const bodies = [...scripts, ...styles]
+  spans = spans.filter(([a]) => !bodies.some(([s, e]) => a >= s && a < e))
   // Split each span at line breaks, and give line/character.
   const tokens: Token[] = []
   let line = 0

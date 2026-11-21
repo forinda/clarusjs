@@ -43,7 +43,7 @@ Install it in the project (or globally) to get the `clarusjs-ls` command:
 npm install -D @clarusjs/language-server
 ```
 
-**Trust.** Started with `initializationOptions: { trusted: true }`, the server uses the project's own `clarusjs` compiler (when it's recent enough), so the editor agrees with the build; otherwise the one bundled with it. VS Code passes your workspace trust; in other editors, set it in the server's options.
+**Trust.** Started with `initializationOptions: { trusted: true }`, the server uses the project's own `clarusjs` compiler (when it's recent enough), so the editor agrees with the build; otherwise the one bundled with it. That runs code from the project's `node_modules/clarusjs`, so set it only for projects you trust (the examples below set it; drop it for others). VS Code passes your workspace trust.
 
 ## Type errors as you type
 
