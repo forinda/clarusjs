@@ -1,0 +1,44 @@
+{{-- A larger form: one state object with a section, repeating lines bound by index, derived total and validation. --}}
+@import textField from './text-field.tscl'
+
+<script>
+  let order = state({ customer: { name: '', email: '' }, lines: [{ item: 'Notebook', qty: '1', price: '4' }] })
+  const initial = order
+  const total = derived(() => order.lines.reduce((sum, line) => sum + Number(line.qty) * Number(line.price), 0))
+  const errors = derived(() => ({
+    name: order.customer.name.trim() ? '' : 'Enter a name.',
+    lines: order.lines.some((line) => !line.item.trim()) ? 'Every line needs an item.' : '',
+  }))
+  let sent = state('')
+  function addLine() { order = { ...order, lines: [...order.lines, { item: '', qty: '1', price: '0' }] } }
+  function removeLine(index) { order = { ...order, lines: order.lines.filter((_, i) => i !== index) } }
+  function submit() {
+    if (errors.name || errors.lines) return
+    sent = JSON.stringify(order)
+  }
+</script>
+
+<form class="order" (submit)="$event.preventDefault(); submit()">
+  <fieldset>
+    <legend>Customer</legend>
+    <textField [label]="'Name'" [(value)]="order.customer.name" />
+    <textField [label]="'Email'" [type]="'email'" [(value)]="order.customer.email" />
+    @if (errors.name) {<p class="order-error">{{ errors.name }}</p>}
+  </fieldset>
+  <fieldset>
+    <legend>Lines</legend>
+    @for (line of order.lines; track $index) {
+      <div class="order-line">
+        <input [aria-label]="'Item ' + ($index + 1)" [(value)]="order.lines[$index].item">
+        <input type="number" min="0" [aria-label]="'Quantity ' + ($index + 1)" [(value)]="order.lines[$index].qty">
+        <input type="number" min="0" step="any" [aria-label]="'Price ' + ($index + 1)" [(value)]="order.lines[$index].price">
+        <button type="button" [aria-label]="'Remove line ' + ($index + 1)" (click)="removeLine($index)">×</button>
+      </div>
+    }
+    <button type="button" class="order-add" (click)="addLine()">Add a line</button>
+    @if (errors.lines) {<p class="order-error">{{ errors.lines }}</p>}
+  </fieldset>
+  <p class="order-total">Total: {{ total }}</p>
+  <button type="submit">Send</button> <button type="button" class="order-reset" (click)="order = initial; sent = ''">Reset</button>
+  @if (sent) {<pre class="order-sent">{{ sent }}</pre>}
+</form>
