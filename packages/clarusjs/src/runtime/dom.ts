@@ -283,7 +283,10 @@ export function text(hole: Hole, fn: () => unknown): void {
 type Handler = { fn: (e: Event) => void; ctx: Ctx }
 const registry = new WeakMap<Element, Map<string, Map<number, Handler[]>>>()
 // These don't bubble, so they are caught on the way down instead.
-const CAPTURE = new Set(['focus', 'blur'])
+const CAPTURE = new Set([
+  'focus', 'blur', 'mouseenter', 'mouseleave', 'pointerenter', 'pointerleave', 'load', 'error', 'scroll', 'toggle',
+  'invalid', 'close', 'cancel', 'play', 'pause', 'ended', 'timeupdate', 'volumechange', 'loadedmetadata', 'canplay',
+])
 
 /**
  * Register a handler for elements marked `data-cl-e="index"` inside `ctx`.
