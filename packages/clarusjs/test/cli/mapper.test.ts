@@ -39,6 +39,18 @@ test('transform: a template error is a mapper diagnostic at its place, and the f
   expect(out.text).toContain('export')
 })
 
+test('transform: a stand-in for a whole construct maps to all of it, with no language features (errors only)', () => {
+  const content = "@import card from './card.tscl'\n<card [(open)]=\"shown\" />\n"
+  const out = transform({ fileName: '/app/src/pages/index.tscl', content })
+  const atoms = out.mappings.filter(([, , , , kind]) => kind === 1)
+  const of = (name: string) => atoms.find(([v, l]) => out.text.slice(v, v + l) === name)
+  // The component's props object stands for the tag; the model check for the binding's name.
+  expect(of('__cl_p')?.slice(2)).toEqual([content.indexOf('<card'), '<card'.length, 1, 0])
+  expect(of('__cl_m')?.slice(2)).toEqual([content.indexOf('[(open)]'), '[(open)]'.length, 1, 0])
+  // Verbatim copies keep every feature (no sixth value).
+  expect(out.mappings.filter(([, , , , kind]) => kind === 0).every((m) => m.length === 5)).toBe(true)
+})
+
 /** One framed JSON-RPC exchange with a `clarusjs mapper` process. */
 async function exchange(requests: object[]): Promise<{ id: number; result?: any; error?: any }[]> {
   const child = spawn(process.execPath, [cli, 'mapper'], { cwd: pkg })
@@ -96,8 +108,14 @@ test('tsc 7.1 with the mapper reports template type errors at their .tscl place,
     .stdout.trim().split('\n').map((l) => l.replace(/: error (\w+):.*/, ' $1'))
   expect(tsc()).toEqual([
     'src/card.tscl(3,14) TS2339', // {{ title.nope }}
+    'src/missing.tscl(2,1) TS2741', // <card />: title is missing
     'src/page.tscl(2,8) TS2322', // <card [title]="1" />: a number for a string input
   ])
+  // The missing prop is underlined on the whole tag name.
+  const pretty = spawnSync(process.execPath, [resolve(pkg, 'node_modules/typescript-beta/bin/tsc'), '-p', '.', '--runExternalCode', '--pretty', 'true'], { cwd: dir, encoding: 'utf8' }).stdout.replace(/\x1b\[[0-9;]*m/g, '')
+  const lines = pretty.split('\n')
+  const at = lines.findIndex((l) => l.includes('missing.tscl:2:1'))
+  expect(lines.slice(at).find((l) => l.includes('~'))?.trim()).toBe('~~~~~')
   // A template that doesn't parse is a syntax error: tsc reports it (and, as for any syntax error, stops there).
   writeFileSync(resolve(dir, 'src/broken.tscl'), '<p>ok</p>\n@if (true {\n')
   expect(tsc()).toEqual(['src/broken.tscl(2,5) clarus1'])

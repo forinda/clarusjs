@@ -7,8 +7,13 @@ import { ClarusError } from '../compiler/errors.ts'
 import { generateTs } from '../check/generate.ts'
 import { loaderOf } from './check.ts'
 
-/** [virtual start, virtual length, original start, original length, kind]: 0 = verbatim, 1 = atom (a whole span). */
-type Span = [number, number, number, number, 0 | 1]
+/**
+ * [virtual start, virtual length, original start, original length, kind, features?]: kind 0 = verbatim, 1 = atom (a
+ * whole span). Features (a bitmask of language-service operations; all when absent) are none for atoms: they are
+ * generated stand-ins (`__cl_p` for a component's props), so only their errors belong in the template, not hover,
+ * completion or rename. Diagnostics can't be switched off per span.
+ */
+type Span = [number, number, number, number, 0 | 1] | [number, number, number, number, 1, number]
 type Diagnostic = { messageText: string; start: number; length: number; code: number }
 
 export function transform(params: { fileName: string; content: string }): { text: string; extension: '.ts'; mappings: Span[]; diagnostics: Diagnostic[] } {
@@ -16,9 +21,12 @@ export function transform(params: { fileName: string; content: string }): { text
   try {
     const loader = loaderOf(fileName)
     const { code, mappings } = generateTs(content, fileName, { componentSuffix: '', ...(loader ? { loader } : {}) })
-    const spans: Span[] = mappings.map(([v, length, s, exact]) =>
+    const spans: Span[] = mappings.map(([v, length, s, exact, sourceLength]): Span => {
+      if (exact && code.slice(v, v + length) === content.slice(s, s + length)) return [v, length, s, length, 0]
       // A copy that isn't the template's text at that place (a trimmed or rearranged span) maps as a whole.
-      exact && code.slice(v, v + length) === content.slice(s, s + length) ? [v, length, s, length, 0] : [v, length, s, Math.min(1, content.length - s), 1])
+      if (exact) return [v, length, s, Math.min(length, content.length - s), 1]
+      return [v, length, s, Math.min(sourceLength ?? 1, content.length - s), 1, 0]
+    })
     return { text: code, extension: '.ts', mappings: spans, diagnostics: [] }
   } catch (err) {
     if (!(err instanceof ClarusError)) throw err

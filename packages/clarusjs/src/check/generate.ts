@@ -6,10 +6,11 @@ import { parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
 import { splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
- * [virtual offset, length, source offset, exact]. Exact spans are verbatim copies (offsets map one to one); other
- * spans stand for a whole template construct and map to its start.
+ * [virtual offset, length, source offset, exact, source length]. Exact spans are verbatim copies (offsets map one to
+ * one); other spans stand for a whole template construct (a component's tag, a binding's name): the source length
+ * says how much of the template that is.
  */
-export type Mapping = [number, number, number, boolean]
+export type Mapping = [number, number, number, boolean, number?]
 
 /**
  * `loader`: the module specifier of the page's .load.ts when it exports load(); what it returns is checked against
@@ -22,7 +23,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   let code = ''
   const emit = (text: string) => { code += text }
   const copy = (text: string, sourceStart: number) => { mappings.push([code.length, text.length, sourceStart, true]); code += text }
-  const point = (text: string, sourceStart: number) => { mappings.push([code.length, text.length, sourceStart, false]); code += text }
+  const point = (text: string, sourceStart: number, sourceLength = 1) => { mappings.push([code.length, text.length, sourceStart, false, sourceLength]); code += text }
   // Where a trimmed expression starts in the source, searching from `from`.
   const at = (text: string, from: number) => source.indexOf(text, from)
   const components = new Map(parsed.imports.map((imp) => [imp.name, imp]))
@@ -180,7 +181,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
           // An object literal typed as the child's Inputs: unknown props are excess properties, missing ones are
           // reported on the variable, which maps to the tag.
           emit('  { const ')
-          point('__cl_p', node.start)
+          point('__cl_p', node.start, node.tag.length + 1) // the tag: `<card`
           emit(`: __cl_Readonly<${alias(node.tag)}> = { `) // a child reads its inputs only, so readonly values fit
           for (const a of node.attrs) {
             if (a.kind !== 'prop' && a.kind !== 'model') continue
@@ -194,7 +195,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
             if (a.kind !== 'model') continue
             // [(x)] needs @model x in the child.
             emit('  { const ')
-            point('__cl_m', a.start + 2) // TypeScript reports a wrong initializer at the variable's name
+            point('__cl_m', a.start, a.name.length + 4) // the binding: `[(open)]` (TypeScript reports a wrong initializer at the variable's name)
             emit(`: ${alias(node.tag)}_M = ${JSON.stringify(a.name)}; __cl_use(__cl_m) }\n`)
             // What the child writes back (its model's type; a default only makes the input optional) must fit the
             // target, and the target must be writable.
