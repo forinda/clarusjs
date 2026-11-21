@@ -17,7 +17,7 @@ description: "Bind attributes with [name] or {{ }}; values are escaped and URLs 
 ## Values
 
 - Values are escaped.
-- `true` adds a boolean attribute; `false`, `null` and `undefined` remove it.
+- `true` adds a boolean attribute; `false`, `null` and `undefined` remove it. Except where `false` is a value: on the enumerated `spellcheck`, `draggable` and `contenteditable`, and the ARIA states `aria-expanded`, `aria-pressed`, `aria-checked` and `aria-selected`, `true` and `false` become `"true"` and `"false"` (`translate`: `"yes"` and `"no"`). A missing `aria-expanded` would mean nothing expands; `"false"` means it's closed. Other `aria-*` attributes follow the usual rule, so `[aria-current]="active ? 'page' : false"` leaves it off.
 - Inside an interactive component, attributes that read state update when it changes.
 
 ## Safety

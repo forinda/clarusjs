@@ -26,14 +26,21 @@ function safeUrl(url: string, image: boolean): boolean {
   return image && RASTER_DATA.test(compact)
 }
 
+// false is a value here, not a missing attribute: enumerated attributes (removing one means its default), and the
+// ARIA states whose absence means "doesn't apply" (no aria-expanded: nothing expands). Other aria-* (aria-current:
+// `active ? 'page' : false`) keep false = removed.
+const ENUMERATED = new Set(['contenteditable', 'draggable', 'spellcheck', 'translate', 'aria-expanded', 'aria-pressed', 'aria-checked', 'aria-selected'])
+
 /**
  * What an attribute should become: `null` removes it, `true` makes it a bare boolean attribute, a string is its value.
  */
 export function attrValue(name: string, value: unknown, tag?: string): string | true | null {
-  if (value === false || value == null) return null
+  if (value == null) return null
+  const n = name.toLowerCase()
+  if (typeof value === 'boolean' && ENUMERATED.has(n)) return n === 'translate' ? (value ? 'yes' : 'no') : String(value) // translate: yes/no
+  if (value === false) return null
   if (value === true) return true
   const s = String(value)
-  const n = name.toLowerCase()
   // List-valued URL attributes: every entry must be safe, not just the first.
   if (n === 'srcset') {
     // "url 1x, url 2x"

@@ -25,6 +25,13 @@ description: "Bind form fields two ways with [(value)] and @model, keep one stat
 <input type="checkbox" [(checked)]="form.updates">
 ```
 
+More kinds of fields:
+
+- **A group of checkboxes** binds an array with `[(value)]` on each: a checkbox is checked when the array includes its value, and toggling adds or removes it (`<input type="checkbox" value="news" [(value)]="form.topics">`). A single checkbox is a boolean, with `[(checked)]`.
+- **`<select multiple>`** with `[(value)]` binds an array of the selected values.
+- **Number and range inputs** write numbers. A field that isn't a number, such as an empty one, stays a string.
+- **While an input method composes text** (Japanese, Chinese, Korean…), nothing is written; the composed text is, when it's done.
+
 The target is a state variable or a property path of one. A write replaces the state, copy-on-write: typing in the first field runs `form = { ...form, name: value }`. Nothing is changed in place.
 
 ## Field components

@@ -340,7 +340,13 @@ export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, t
   const el = marked(ctx, `[data-cl-a="${index}"]`)
   if (!el) return
   effect(() => {
-    const v = attrValue(name, fn(), tag)
+    const raw = fn()
+    // <select multiple> bound to an array: each option selected when the array has its value.
+    if (name === 'value' && Array.isArray(raw) && (el as HTMLSelectElement).multiple) {
+      for (const o of (el as HTMLSelectElement).options) o.selected = raw.includes(o.value)
+      return
+    }
+    const v = attrValue(name, raw, tag)
     if (v === null) el.removeAttribute(name)
     else el.setAttribute(name, v === true ? '' : v)
     // A form field shows its property once someone has typed or clicked in it, not the attribute: set both.

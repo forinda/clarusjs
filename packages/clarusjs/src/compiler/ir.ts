@@ -275,7 +275,48 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       // A radio group (#267): [(value)] on each radio binds one value: checked when it equals the radio's value, and
       // picking the radio writes that value (as Vue's v-model on radios).
       const typeAttr = node.attrs.find((x) => x.kind === 'static' && x.name === 'type')
-      if (a.name === 'value' && tag === 'input' && typeAttr?.kind === 'static' && typeAttr.value === 'radio') {
+      const inputType = typeAttr?.kind === 'static' && typeof typeAttr.value === 'string' ? typeAttr.value : 'text'
+      const path = { kind: 'prop' as const, name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start }
+      // Checkboxes with a value bound by [(value)] (#241): an array, as Vue's v-model: checked when it includes the
+      // value; toggling adds or removes it.
+      if (a.name === 'value' && tag === 'input' && inputType === 'checkbox') {
+        const own = node.attrs.find((x) => x.name === 'value' && (x.kind === 'static' || x.kind === 'prop'))
+        if (!own) return fail("a checkbox bound with [(value)] needs a value (value=\"…\" or [value]): it's what goes into the array; for a boolean, use [(checked)]", a.start)
+        const mine = own.kind === 'static' ? JSON.stringify(own.value === true ? '' : own.value) : `(${(own as { expr: string }).expr})`
+        const next = `($event.target.checked ? [...(${a.expr}), ${mine}] : (${a.expr}).filter((__cl_x) => __cl_x !== ${mine}))`
+        return [
+          { kind: 'prop', name: 'checked', expr: `(${a.expr}).includes(${mine})`, start: a.start },
+          { kind: 'event', name: 'change', expr: writeBack(a.expr, next, a.name, a.start), start: a.start },
+          path,
+        ]
+      }
+      // <select multiple>: the selected values, as an array.
+      if (a.name === 'value' && tag === 'select' && node.attrs.some((x) => x.kind === 'static' && x.name === 'multiple')) {
+        return [
+          { kind: 'prop', name: a.name, expr: a.expr, start: a.start },
+          { kind: 'event', name: 'change', expr: writeBack(a.expr, 'Array.from($event.target.selectedOptions, (__cl_o) => __cl_o.value)', a.name, a.start), start: a.start },
+          path,
+        ]
+      }
+      // Number and range inputs write numbers (as Vue's v-model): a field that isn't a number (empty) stays a string.
+      if (a.name === 'value' && tag === 'input' && (inputType === 'number' || inputType === 'range')) {
+        return [
+          { kind: 'prop', name: a.name, expr: a.expr, start: a.start },
+          { kind: 'event', name: type, expr: writeBack(a.expr, '((__cl_v) => (isNaN(parseFloat(__cl_v)) ? __cl_v : parseFloat(__cl_v)))($event.target.value)', a.name, a.start), start: a.start },
+          path,
+        ]
+      }
+      // Text: no write while an input method composes (IME); the composed text is written when it ends.
+      if (type === 'input' && !(tag === 'input' && inputType === 'radio')) {
+        const write = writeBack(a.expr, `$event.target.${a.name}`, a.name, a.start)
+        return [
+          { kind: 'prop', name: a.name, expr: a.expr, start: a.start },
+          { kind: 'event', name: 'input', expr: `if (!$event.isComposing) { ${write} }`, start: a.start },
+          { kind: 'event', name: 'compositionend', expr: write, start: a.start },
+          path,
+        ]
+      }
+      if (a.name === 'value' && tag === 'input' && inputType === 'radio') {
         const own = node.attrs.find((x) => x.name === 'value' && (x.kind === 'static' || x.kind === 'prop'))
         if (!own) return fail("a radio bound with [(value)] needs a value (value=\"…\" or [value]): it's what the radio writes when picked", a.start)
         const mine = own.kind === 'static' ? JSON.stringify(own.value === true ? '' : own.value) : `(${(own as { expr: string }).expr})`
@@ -289,6 +330,9 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       // Its path, for the forms engine (clarusjs/forms): see docs/architecture.md §5.
       return [{ kind: 'prop', name: a.name, expr: a.expr, start: a.start }, event, { kind: 'prop', name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start }]
     })
+    // A field's value and checked go last: a browser clamps a value to the min/max/step (and type) already set.
+    const late = (x: { kind: string; name: string }) => x.kind !== 'event' && (x.name === 'value' || x.name === 'checked')
+    attrs.sort((x, y) => Number(late(x)) - Number(late(y)))
     emitStatic(`<${node.tag}`)
     const elementEvents = attrs.filter((a) => a.kind === 'event')
     const dynamic: Extract<IRNode, { kind: 'attr' }>[] = []

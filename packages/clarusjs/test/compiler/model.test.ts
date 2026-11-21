@@ -137,7 +137,7 @@ test('#267: radio groups: [(value)] on radios binds one value; checked when equa
   const server = compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js' }).code
   const s = await importCode(server, 'radio-s', {}, true)
   const html = s.render({}) as string
-  expect(html).toMatch(/<input class="free[^"]*" type="radio" name="plan" value="free" checked/)
+  expect(html).toMatch(/<input class="free[^>]*value="free"[^>]* checked/)
   expect(html).not.toMatch(/value="pro"[^>]* checked/)
   expect(html).toContain('data-cl-path=""') // the path without its root name: the whole of plan
   const c = await importCode(compile(src, { file: 'x.tscl', target: 'client' }).code, 'radio-c')
