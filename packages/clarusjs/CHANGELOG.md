@@ -1,5 +1,40 @@
 # clarusjs
 
+## 0.8.0
+
+### Minor Changes
+
+- [#151](https://github.com/forinda/clarusjs/pull/151) [`ed45e75`](https://github.com/forinda/clarusjs/commit/ed45e7503b0769cf6f15606e1764b205ec37c035) Thanks [@forinda](https://github.com/forinda)! - Focus and announcements on navigation. After a fragment swap or a client route render, focus moves to the new content: the `#hash` target, else the page's `<h1>`, else `<main>`. The new title is announced in a polite live region. The router and the navigation script stay within their 1 KB budgets: the work is in the loader.
+
+- [#144](https://github.com/forinda/clarusjs/pull/144) [`1697023`](https://github.com/forinda/clarusjs/commit/1697023ecd5015f40f4ea7ad6a68777d05afd16a) Thanks [@forinda](https://github.com/forinda)! - Every page's `<head>`:
+  
+  - `head: { titleTemplate, tags, jsonLd }` in the plugin. `titleTemplate` (`%s · Site`) wraps each title, client routes included. `tags` (`[tag, attrs, content?]`) go on every page, for example icons, theme colour or analytics scripts such as gtag. `jsonLd` is site-wide schema.org data.
+  - `<cl-head>…</cl-head>` anywhere in a page adds tags to its `<head>`. They win over site tags with the same key (title, meta name/property, canonical…), and a `<title>` there is used as written.
+  - `transformHead(head, page)` exported from `src/head.ts` runs last on every page.
+  - JSON-LD in templates: `<script type="application/ld+json">{{ { "@type": "Article", headline: title } }}</script>` writes the value as JSON that is safe inside the script.
+
+- [#162](https://github.com/forinda/clarusjs/pull/162) [`5c0509e`](https://github.com/forinda/clarusjs/commit/5c0509e91117e7f8931e46cd939cb6d4c64e1514) Thanks [@forinda](https://github.com/forinda)! - Components from packages: `@import x from 'some-package/x.tscl'` works like a component in `src/`. clarusjs follows `@import` lines into packages, so their islands get client chunks and their scoped styles are bundled, in dev and build. Packages that ship `.tscl` files are bundled for server rendering.
+
+- [#149](https://github.com/forinda/clarusjs/pull/149) [`e55fc99`](https://github.com/forinda/clarusjs/commit/e55fc99a48e30153bcb33aad6747f39d19ab8ad6) Thanks [@forinda](https://github.com/forinda)! - `robots.txt` and a 404 page.
+  
+  - With `site` set, `vite build` writes `robots.txt` that allows all crawlers and points at the sitemap. A `public/robots.txt` of your own wins, and `robots: false` turns it off.
+  - `src/pages/404.tscl` (or `404.md`) is served for unknown addresses with status 404 in dev, in server mode and in `vite preview`.
+  - `vite build` writes it to `404.html` for static hosts. Its relative links are resolved from the site root, so they work at any depth, and it is never in the sitemap.
+
+- [#148](https://github.com/forinda/clarusjs/pull/148) [`45411d7`](https://github.com/forinda/clarusjs/commit/45411d706122449664cedd94cdfda9b6e0ed1ee9) Thanks [@forinda](https://github.com/forinda)! - Sitemap exclusions: `sitemap: { exclude: ["/drafts/**", "/tags/*", "/legal"] }` leaves pages out by path (`*` is one segment, `**` any depth). A page leaves itself out with `<cl-head><meta name="sitemap" content="false"></cl-head>`, and the marker is removed from the built page.
+
+- [#148](https://github.com/forinda/clarusjs/pull/148) [`02ff969`](https://github.com/forinda/clarusjs/commit/02ff969e791e771a307b3f57dd4043136edf4e16) Thanks [@forinda](https://github.com/forinda)! - Sitemap: with `site` set, `vite build` writes `sitemap.xml` listing every prerendered static page. Client and server routes, data files, fragments and `noindex` pages are left out. Each page's `lastmod` is its source file's last commit, read with one batched `git log`. Files git doesn't know use `SOURCE_DATE_EPOCH`, or get no date. `sitemap: false` turns it off.
+
+- [#147](https://github.com/forinda/clarusjs/pull/147) [`f6d35df`](https://github.com/forinda/clarusjs/commit/f6d35dfe7184d261ffe6ad8f02eb4b1403862527) Thanks [@forinda](https://github.com/forinda)! - Canonical URLs and social cards: with `site: { url, name?, image? }`, every page gets `<link rel="canonical">` and Open Graph/Twitter tags (title without the template, description, url, type, site name, image as an absolute URL, card type). They fill in like site tags, so a page's own tags win. Without `site`, a relative `og:image` or `og:url` fails the build instead of shipping a broken card. Link checking also checks absolute links to the site itself. The published JavaScript no longer carries source comments (the declarations and the browser runtime keep theirs), which keeps the package small.
+
+- [#155](https://github.com/forinda/clarusjs/pull/155) [`c0e086e`](https://github.com/forinda/clarusjs/commit/c0e086e4c4d7776e4d7d24f578661f2c9fe49318) Thanks [@forinda](https://github.com/forinda)! - Tailwind CSS v4 works with its official Vite plugin, with no extra setup. Component `<style>` blocks can start with `@reference` (for `@apply`) or `@import`. Those statements are kept outside the component's `@scope` block, and their relative paths still resolve from the component file.
+
+### Patch Changes
+
+- [#165](https://github.com/forinda/clarusjs/pull/165) [`350d421`](https://github.com/forinda/clarusjs/commit/350d421f6f07de6567ad785e737e287f6107b1ed) Thanks [@forinda](https://github.com/forinda)! - `gitDates(root, dir)` is exported from `clarusjs/vite`: the newest commit time of every file under a folder, from one `git log` (the sitemap's dates), for themes and plugins.
+
+- [#168](https://github.com/forinda/clarusjs/pull/168) [`c37358e`](https://github.com/forinda/clarusjs/commit/c37358e587c632c56e1b51e5fc4c6fc79e69225c) Thanks [@forinda](https://github.com/forinda)! - Fragment navigation no longer turns a page's own `history.pushState` / `replaceState` into a page load (it refetched the fragment and moved focus). Back and forward still swap pages, and a `replaceState` that interrupts a page still loading shows that page.
+
 ## 0.7.0
 
 ### Minor Changes
