@@ -147,3 +147,15 @@ test('review: views.d.ts is declarations only, so an app tsconfig can include it
   expect(errors).toHaveLength(1)
   expect(errors[0]).toMatch(/^src\/server\/mail\.ts\(3,.*'nam' does not exist/)
 })
+
+test('#161: components from packages are type-checked where they are used (their own imports resolve too)', () => {
+  const root = project({
+    'node_modules/fake-theme/package.json': JSON.stringify({ name: 'fake-theme', type: 'module', exports: { './*': './src/*' } }),
+    'node_modules/fake-theme/src/types.ts': 'export type Config = { name: string }\n',
+    'node_modules/fake-theme/src/badge.tscl': '@input count: number\n<b>{{ count }}</b>\n',
+    'node_modules/fake-theme/src/layout.tscl': "@import badge from './badge.tscl'\n@import type { Config } from './types.ts'\n@input config: Config\n<main><badge [count]=\"1\" />{{ config.name }}<slot /></main>\n",
+    'src/pages/index.tscl': "@import layout from 'fake-theme/layout.tscl'\n@import badge from 'fake-theme/badge.tscl'\n<layout [config]=\"{ name: 'x' }\"><badge [count]=\"'three'\" /></layout>\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:3 TS2322'])
+})

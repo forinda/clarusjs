@@ -1,12 +1,14 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
-import { findClarusFiles, prerender, routeToFile } from './build.ts'
+import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, routeToFile } from './build.ts'
+export { packageOf } from './build.ts'
 import { writeManifest } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
@@ -43,6 +45,8 @@ const scopeFor = (root: string, file: string) => scopeId(relative(root, file).sp
  */
 function pageStylesheets(root: string, files: Files): Map<string, string[]> {
   const deps = new Map<string, { css: string[]; components: string[] }>()
+  const require = createRequire(resolve(root, 'package.json'))
+  const packageFile = (spec: string) => { try { return realpathSync(require.resolve(spec.replace(/\?.*$/, ''))) } catch { return undefined } }
   const read = (file: string) => {
     if (!deps.has(file)) {
       let parsed
@@ -54,7 +58,8 @@ function pageStylesheets(root: string, files: Files): Map<string, string[]> {
       }
       deps.set(file, {
         css: parsed?.cssImports.map((c) => near(c.from)) ?? [],
-        components: parsed?.imports.filter((imp) => /^[./]/.test(imp.from)).map((imp) => near(imp.from)) ?? [],
+        // Components in packages too ('@clarusjs/theme-docs/layout.tscl'): their stylesheets are the page's as well.
+        components: parsed?.imports.map((imp) => (/^[./]/.test(imp.from) ? near(imp.from) : packageFile(imp.from))).filter((f): f is string => !!f) ?? [],
       })
     }
     return deps.get(file)!
@@ -82,7 +87,7 @@ function writeStyles(root: string, files: Files): boolean {
   // relative paths rewritten from the component's folder to .clarusjs/ ("tailwindcss" and URLs stay as written).
   const head = new Set<string>()
   const outDir = resolve(root, '.clarusjs')
-  for (const file of files.find(resolve(root, 'src'))) {
+  for (const file of files.components(root)) {
     try {
       let out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file) }).css
       out = out.replace(/^(?:[ \t]*@(?:reference|import)\b[^;{]*;[ \t]*\n?)+/, (statements) => {
@@ -108,7 +113,8 @@ const CLIENT_OUT = 'dist/client'
 // Placeholder for a nested island's chunk URL in the client build, replaced once the bundle's file names are known.
 const CHUNK_TOKEN = '__CLARUS_CHUNK__'
 const SERVER_OUT = 'dist/server'
-const entryName = (root: string, file: string) => relative(root, file).replace(/\.[^./\\]+$/, '')
+// Outside the app (a workspace package): each leading ../ becomes _/, so chunk names stay inside dist/.
+const entryName = (root: string, file: string) => relative(root, file).split(sep).join('/').replace(/\.[^./\\]+$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))
 
 export type ClarusOptions = {
   /** When each route renders: { '/account/*': 'server' }. Routes default to 'static' (prerendered at build). */
@@ -155,7 +161,13 @@ export type Source = { extension: string; toTscl(code: string, file: string, con
 export type SourceContext = { route: string; root: string; addDependency(file: string): void }
 
 /** How the plugin finds and reads component files: .tscl, plus the extensions of its page sources. */
-type Files = { find(dir: string): string[]; read(file: string, root: string): string }
+type Files = {
+  find(dir: string): string[]
+  read(file: string, root: string): string
+  /** Every component of the app: those under src/, and every .tscl their @imports reach, in packages too. */
+  components(root: string): string[]
+}
+
 
 /** Client-mode pages: route (as the file names it) → absolute file. */
 function clientPages(appRoot: string, modes: ModeTable, files: Files): Map<string, string> {
@@ -181,6 +193,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   // Page sources only apply under src/pages: elsewhere (src/parts, …) their files are plain files, not components.
   const files: Files = {
     find: (dir) => findClarusFiles(dir, extensions).filter((f) => f.endsWith('.tscl') || f.includes(`${sep}src${sep}pages${sep}`)),
+    components: (appRoot) => reachableComponents(appRoot, files.find(resolve(appRoot, 'src')), (file) => files.read(file, appRoot), extensions),
     read: (file, appRoot) => {
       const code = readFileSync(file, 'utf8')
       const src = sources.find((x) => file.endsWith(x.extension))
@@ -231,6 +244,15 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         },
       }
       if (env.isPreview) config.build = { outDir: CLIENT_OUT } // preview serves the static site
+      // Packages that ship components are bundled for server rendering: Node can't load a .tscl file itself.
+      const shipping = new Set<string>()
+      if (!env.isPreview) {
+        for (const file of files.components(resolve(userConfig.root ?? process.cwd()))) {
+          const name = packageOfFile(file)
+          if (name) shipping.add(name)
+        }
+        if (shipping.size) config.ssr = { noExternal: [...shipping] }
+      }
       if (env.command !== 'build') return config
       if (userConfig.base !== undefined && !userConfig.base.startsWith('/') && !/^https?:\/\//.test(userConfig.base)) {
         // Pages live at different depths and islands are imported from the loader, so URLs must not be relative.
@@ -239,7 +261,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       // Client entries: the island loader plus every stateful component. Stateless components never reach the client.
       const appRoot = resolve(userConfig.root ?? process.cwd())
       const input: Record<string, string> = { [LOADER_ENTRY]: here('../runtime/loader') }
-      for (const file of files.find(resolve(appRoot, 'src'))) {
+      const components = files.components(appRoot)
+      for (const file of components) {
         if (compile(files.read(file, appRoot), { file, target: 'client' }).stateful) input[entryName(appRoot, file)] = file
       }
       // Client routes: the router, and each page's render function for the browser.
@@ -250,7 +273,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       // Stylesheets imported by pages and components: each goes through Vite's CSS pipeline as its own entry.
       for (const sheet of new Set([...pageStylesheets(appRoot, files).values()].flat())) {
         if (!existsSync(sheet)) throw new Error(`clarusjs: imported stylesheet not found: ${relative(appRoot, sheet)}`)
-        input[`css/${relative(appRoot, sheet).split(sep).join('/').replace(/\.css$/, '')}`] = sheet
+        input[`css/${relative(appRoot, sheet).split(sep).join('/').replace(/\.css$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))}`] = sheet
       }
       for (const file of client.values()) input[renderEntry(entryName(appRoot, file))] = `${file}?render`
       config.builder = {}

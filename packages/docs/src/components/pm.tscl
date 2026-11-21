@@ -1,5 +1,5 @@
 {{-- Commands as tabs for pnpm, npm, yarn and bun. Every group on the page follows the same choice, and it is remembered. --}}
-@import copy from './copy.tscl'
+@import copy from '@clarusjs/theme-docs/copy.tscl'
 @input commands: string[]
 
 <script>

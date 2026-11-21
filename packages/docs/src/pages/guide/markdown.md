@@ -43,7 +43,7 @@ Write **Markdown** as usual.
 Import components at the top, then use them like HTML. Leave blank lines around Markdown inside a component:
 
 ```md
-@import callout from '../components/callout.tscl'
+@import callout from '@clarusjs/theme-docs/callout.tscl'
 
 <callout [type]="'tip'">
 
@@ -90,10 +90,10 @@ npm install @clarusjs/content
 Show a file, or part of it, with `<<<`. `@` is the project root; regions are marked with `#region name` and `#endregion` comments:
 
 ```md
-<<< @/src/nav.ts#pager [src/nav.ts]
+<<< @/src/nav.ts#edit [src/nav.ts]
 ```
 
-<<< @/src/nav.ts#pager [src/nav.ts]
+<<< @/src/nav.ts#edit [src/nav.ts]
 
 The code above is this site's real `src/nav.ts`, read when the site is built. Include shared Markdown with `<!-- @include: ./part.md -->` (or `#region` of it); its relative links are rewritten to work from the including page:
 
@@ -158,7 +158,7 @@ GitHub alerts work too: `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]
 By default these are plain HTML (`<div class="custom-block tip">`). Pass `container: { tag, from }` to render them through your own component instead, with a custom title in its `title` slot. This site renders them as its callouts:
 
 ```ts
-markdown({ container: { tag: 'callout', from: '/src/components/callout.tscl' } })
+markdown({ container: { tag: 'callout', from: '@clarusjs/theme-docs/callout.tscl' } })
 ```
 
 ::: warning A title from the Markdown

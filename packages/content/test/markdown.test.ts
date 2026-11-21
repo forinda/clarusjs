@@ -127,3 +127,8 @@ test('review: a frontmatter title with {{ }} and @ stays text in <cl-head>', () 
   const out = page('---\ntitle: "Use {{ x }} @if"\ntitleTemplate: false\n---\nx\n')
   expect(out).toContain('<cl-head><title>Use &#123;&#123; x }} &#64;if</title></cl-head>')
 })
+
+test('#124: the layout gets the page headings (h2, h3) for its "On this page"', () => {
+  const out = page("# Title\n\n## First part\n\n### A detail\n\n## Second 'part'\n\n#### Too deep\n")
+  expect(out).toContain(`[headings]="[{ id: 'first-part', text: 'First part', level: 2 }, { id: 'a-detail', text: 'A detail', level: 3 }, { id: 'second-part', text: 'Second \\'part\\'', level: 2 }]"`)
+})
