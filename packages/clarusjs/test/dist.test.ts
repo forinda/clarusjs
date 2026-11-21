@@ -79,13 +79,15 @@ test('the clarusjs command is built, with a shebang', () => {
   expect(readFileSync(bin, 'utf8').startsWith('#!/usr/bin/env node')).toBe(true)
 })
 
-// 100 / 350 KB: the forms engine (#250: clarusjs/forms, steps, submit) takes the package past 90 / 320 KB, which
+// 110 / 380 KB: clarusjs/fetch (#258: resource, batch, json; #287: the keyed cache) with its typed docs takes the
+// package to 100.2 / 346 KB once main's other changes are in (#289).
+// 100 / 350 KB before: the forms engine (#250: clarusjs/forms, steps, submit) takes the package past 90 / 320 KB, which
 // the editor epic (#45: the content mapper, tolerant parsing) had nearly filled (88 / 304 KB).
 // 90 / 320 KB before: the TypeScript epic (#211); 80 / 290 KB: the navigation epic (#169); 70 / 250 KB before that.
-test('size budget: the published package stays small (tarball 100 KB, unpacked 350 KB)', () => {
+test('size budget: the published package stays small (tarball 110 KB, unpacked 380 KB)', () => {
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
-  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(100 * 1024)
-  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(350 * 1024)
+  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(110 * 1024)
+  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(380 * 1024)
 }, 30_000) // npm pack takes over 5 s when every package's tests run at once
 
 test('#197: sideEffects lists only the browser scripts that start work when loaded (bundlers drop the rest when unused)', () => {
