@@ -802,6 +802,20 @@ test('client routes: a first render that fails shows the site\'s 500 or 404 page
   await expect(page.locator('h1')).toHaveText('Page not found')
 })
 
+test('view transitions: a page change runs inside document.startViewTransition, then the new page shows', async ({ page }) => {
+  await page.goto('/guide/holes')
+  await expect(page.locator('cl-island[c="view-transitions"]')).toHaveAttribute('data-cl-ready', '')
+  await page.evaluate(() => {
+    const start = document.startViewTransition.bind(document)
+    ;(window as { __vt?: number }).__vt = 0
+    document.startViewTransition = ((update: () => Promise<void>) => { (window as { __vt?: number }).__vt!++; return start(update) }) as typeof document.startViewTransition
+  })
+  await page.locator('.sidebar a[href="/guide/lists"]').click()
+  await expect(page.locator('h1')).toHaveText('Lists')
+  expect(await page.evaluate(() => (window as { __vt?: number }).__vt)).toBe(1)
+  await expect(page.locator('cl-island[c="view-transitions"]')).toHaveAttribute('data-cl-ready', '') // kept across swaps
+})
+
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')

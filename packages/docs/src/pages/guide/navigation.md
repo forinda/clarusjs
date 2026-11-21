@@ -57,3 +57,12 @@ afterSwap(() => document.querySelector('h1')?.focus())  // the new page is in, i
 In-between hooks run in order and may return a promise: the page change waits for it. `t.signal` aborts when a newer navigation takes over. A hook that throws makes the page load normally.
 
 <swapDemo />
+
+### View transitions
+
+```ts
+import { viewTransitions } from 'clarusjs/navigation'
+viewTransitions() // once, from any island
+```
+
+Page changes then run as [view transitions](https://developer.mozilla.org/docs/Web/API/View_Transition_API) where the browser has them: a cross-fade by default, changed with `::view-transition-*` rules in your CSS. Elsewhere they stay instant. `beforeSwap` hooks run before the browser's snapshot of the old page, `afterSwap` hooks once the new one is in. The docs theme turns it on with `viewTransitions: true` in its config, as this site does.

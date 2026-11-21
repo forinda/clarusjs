@@ -107,10 +107,28 @@ const after: ((t: Transition) => unknown)[] = []
 if (browser) {
   ;(globalThis as { __clNav?: unknown }).__clNav = async (step: string | undefined, t: Transition) => {
     navigating.set(step ? { ...t } : null)
+    if (step != 'swapping') done?.() // the new page is in (or the navigation ended): the transition animates
     const hooks = step == 'swapping' ? before : step == 'swapped' ? after : []
     // Each hook is awaited in turn; one whose island was released meanwhile (by an earlier hook) is skipped.
     for (const hook of [...hooks]) if (hooks.includes(hook)) await hook(t)
+    // A view transition: the browser snapshots this page, then the swap (which waits for this) runs inside it.
+    const start = (document as { startViewTransition?(update: () => Promise<void>): unknown }).startViewTransition
+    if (step == 'swapping' && transitions && start) {
+      await new Promise<void>((snapshot) => start.call(document, () => { snapshot(); return new Promise<void>((r) => (done = r)) }))
+    }
   }
+}
+let transitions = false
+let done: (() => void) | undefined
+
+/**
+ * Page changes run as view transitions where the browser has them (`document.startViewTransition`), so CSS
+ * `::view-transition-*` rules animate them; elsewhere they stay instant. Call it once, from any island's script.
+ * `beforeSwap` hooks run before the browser's snapshot, `afterSwap` hooks once the new page is in.
+ * @see https://clarusjs.com/guide/navigation
+ */
+export function viewTransitions(): void {
+  transitions = true
 }
 
 function inBetween(hooks: ((t: Transition) => unknown)[], fn: (t: Transition) => unknown): void {
