@@ -1,5 +1,90 @@
 # clarusjs
 
+## 0.9.0
+
+### Minor Changes
+
+- [#257](https://github.com/forinda/clarusjs/pull/257) [`7a38592`](https://github.com/forinda/clarusjs/commit/7a385924e5900383ee9219f7e36d999e3b74591e) Thanks [@forinda](https://github.com/forinda)! - `browser` from `clarusjs/runtime`: true in the browser, false on the server, for the parts of a component's script that only make sense where it attaches (timers, listeners on `window`, the DOM). Replaces `typeof window !== 'undefined'`; a window without a document (some server runtimes define one) counts as the server.
+
+- [#281](https://github.com/forinda/clarusjs/pull/281) [`80f961c`](https://github.com/forinda/clarusjs/commit/80f961cf0963e42508eabbc23b4cd1ec8e05041b) Thanks [@forinda](https://github.com/forinda)! - `class="…"` on a component tag passes through to the component's top-level elements, after their own class and the scope class, so a parent's `<style scoped>` can style it ([#279](https://github.com/forinda/clarusjs/issues/279)). Islands keep it when they re-render a block in the browser. Only a static `class` for now: `[class]` or `{{ }}` in it on a component is a located error.
+
+- [#234](https://github.com/forinda/clarusjs/pull/234) [`7009b8c`](https://github.com/forinda/clarusjs/commit/7009b8cc7bf75ebe2dfdefae9d87c31eb824f297) Thanks [@forinda](https://github.com/forinda)! - A TypeScript 7.1 content mapper for `.tscl` files: add `"contentMappers": [{ "package": "clarusjs", "extensions": [".tscl"] }]` to `tsconfig.json`, and TypeScript (in VS Code, or `tsc --runExternalCode`) checks templates as you type, with errors, hover and completion in the template. It runs as `clarusjs mapper`. Template type checking (here and in `clarusjs check`) also types the untyped parameters of a script's own functions as `any`, so strict projects don't flag them.
+
+- [#261](https://github.com/forinda/clarusjs/pull/261) [`ddcf28b`](https://github.com/forinda/clarusjs/commit/ddcf28b1b996a833007f1c49de4f52f886b2b9f7) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/forms`: a headless forms engine. `const f = form(values, { schema, show, messages })` over a component's state or a store; `<form [engine]="f">` connects it. Every field's error (native constraints, a Standard Schema, server errors via `f.setErrors`) shows in its `[data-cl-message]` element, with `aria-invalid` and `aria-describedby`, without naming the path in the template. `f.error(path)`, `f.errors`, `f.touched`, `f.changed`, `f.valid`, `f.pending`, `f.focus`, `f.reset`; paths are type-checked. The compiler marks every `[(value)]`/`[(checked)]` with `data-cl-path`.
+
+- [#268](https://github.com/forinda/clarusjs/pull/268) [`5fffc7d`](https://github.com/forinda/clarusjs/commit/5fffc7d28f5e50664a4b81f2e189fa5d59a47ce3) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/forms`: `f.reset(values)` sets new values and makes them the starting point (a record loaded after the form was made, or saved and reloaded), so `f.changed()` and `f.reset()` compare against it. Also: `[engine]` connects its own element inside `@for` rows and next to nested islands (the same lookup reactive attributes use, now shared as `marked()` in the runtime); a form's pending schema check stops when its last island goes; a form made over a store's signal is inert on the server.
+
+- [#262](https://github.com/forinda/clarusjs/pull/262) [`4c40fa8`](https://github.com/forinda/clarusjs/commit/4c40fa80fe2f57c425d7c1d569c132aa078eec6c) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/forms`: multi-step forms on one page. Sections marked `data-cl-step` with an `id` are shown one at a time, with the current one in the URL hash (Back/Forward and reload land on it; other hashes, like heading anchors, leave the form alone). `f.next()` checks the current step and stays with the first error focused, `f.back()` never checks, `f.go(id)`, `f.step`, and `f.steps` (current, done, errors per step) for a step list. `f.focus(path)` opens the step holding the field.
+
+- [#263](https://github.com/forinda/clarusjs/pull/263) [`54297d3`](https://github.com/forinda/clarusjs/commit/54297d34a7003649a211a7bf2c16c830751da898) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/forms`: submit takes you to the errors. A connected `<form>`'s submit (or `f.submit()`) checks everything, waits for the schema, and with errors goes to the step of the first one, focuses its field and shows them all (`f.errors` lists them with their message ids, for a summary). Otherwise it calls `submit(values)`; server errors it returns (`{ errors: { path: message } }`) land the same way. One submit at a time (`f.submitting`); `show: 'submit'` keeps errors hidden until the first one.
+
+- [#271](https://github.com/forinda/clarusjs/pull/271) [`ade6f06`](https://github.com/forinda/clarusjs/commit/ade6f0677169a74ff2c4c4f5204bd4d7ecb45067) Thanks [@forinda](https://github.com/forinda)! - `parse` (and the `ParsedFile`, `InputDecl`, `ImportDecl`, `TemplateNode`, `Attr` types) from `clarusjs/compiler`, so tools such as a language server can read a `.tscl` file's syntax tree.
+
+- [#280](https://github.com/forinda/clarusjs/pull/280) [`bcbda7d`](https://github.com/forinda/clarusjs/commit/bcbda7da92db7c10d823949d5f4fc8c2d2049cad) Thanks [@forinda](https://github.com/forinda)! - Explicit `<style scoped>` and unique scope classes ([#279](https://github.com/forinda/clarusjs/issues/279)).
+  
+  - **Breaking:** a plain `<style>` is now global, plain CSS. Add `scoped` to keep a component's styles scoped to it. For now the compiler warns about a plain `<style>`, with its place; write `<style global>` to keep one global without the warning.
+  - Every component's top-level elements carry a class unique to the component (`cl-c-<name>-<hash>`), merged with their own `class`. It replaces the `data-cl-c` attribute. `cl-c-` is a reserved class prefix.
+  - A parent's `<style scoped>` styles a child component's top-level element (by its class or tag), but not its inside. Parent rules no longer leak into a child component that has no `<style>` of its own.
+  - `compile()` returns `warnings`, located `ClarusError`s that aren't thrown. The Vite plugin prints them once per file.
+
+### Patch Changes
+
+- [#224](https://github.com/forinda/clarusjs/pull/224) [`bf8c684`](https://github.com/forinda/clarusjs/commit/bf8c68430cd3f122c48403061e78362626cb9b51) Thanks [@forinda](https://github.com/forinda)! - `clarusjs check`: `$event` for an event name the DOM doesn't know (a custom event like `(rate)`) is a `CustomEvent`, so `$event.detail` checks; and `state([])` starts an array of anything instead of `never[]` (scripts are JavaScript, so there is no `state<string[]>([])`).
+
+- [#212](https://github.com/forinda/clarusjs/pull/212) [`61a3ffd`](https://github.com/forinda/clarusjs/commit/61a3ffd3410ebe589c7fb29f1249b59a08a16620) Thanks [@forinda](https://github.com/forinda)! - `clarusjs check` covers page sources: it reads the clarusjs plugin's `sources` (Markdown pages from `@clarusjs/content`) and `resolve.alias` from the app's Vite config. A component used in a `.md` page is checked like in a `.tscl` page, with errors at `page.md:line:col`; a page source's `.load.ts` is paired with it, and its views are in `.clarusjs/views.d.ts`. Root paths (`/src/…`) resolve as in Vite.
+
+- [#245](https://github.com/forinda/clarusjs/pull/245) [`e56bbc1`](https://github.com/forinda/clarusjs/commit/e56bbc16eaa243909a6a571d7bffb44a5bd6ece3) Thanks [@forinda](https://github.com/forinda)! - Type checking (`clarusjs check` and the content mapper): `[attr]="…"` on an element is checked against what it sets. A boolean attribute (by the DOM's own types: `disabled`, `readonly`, `hidden`, …) takes a boolean, since any string, even `'false'`, switches it on; any other attribute takes a string, number, boolean or null, since an object would render as `[object Object]`.
+
+- [#264](https://github.com/forinda/clarusjs/pull/264) [`82b7f6f`](https://github.com/forinda/clarusjs/commit/82b7f6f9e99bdd8c0691509e56ff7e5db8d4d3ba) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/forms`: a field's message element is found in the nearest container around it that has one, so it can sit beside the label (`<div data-cl-field><label>…</label> <input …> <small data-cl-message></small></div>`) instead of inside it, where it would be read as part of the field's name. `f.errors` paths are typed, so a summary can pass them to `f.focus()`.
+
+- [#266](https://github.com/forinda/clarusjs/pull/266) [`a9f2c81`](https://github.com/forinda/clarusjs/commit/a9f2c8181a68b9afd51f0cb9e71a2efdacc9a02e) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/forms` fixes from review:
+  - Errors on paths no field shows (a whole-object schema rule, a server error like `{ '': 'Server down.' }`) stop submit and are listed in `f.errors` (with no id or step), instead of being dropped.
+  - `f.next()` and `f.submit()` wait for the newest schema check (a pending pause is cut short), so a slow async rule can't be skipped; a schema that throws no longer leaves `f.pending` stuck.
+  - A field without its own `[data-cl-message]` no longer takes another field's.
+  - Touched state follows the row, not its index: removing a touched row doesn't show the next row's error.
+  - Back to the page as it loaded (no hash) shows the first step.
+
+- [#256](https://github.com/forinda/clarusjs/pull/256) [`bb0f81f`](https://github.com/forinda/clarusjs/commit/bb0f81fd490e72c3b29cf4bb44a7df2cf54482c2) Thanks [@forinda](https://github.com/forinda)! - Type checking (`clarusjs check` and the content mapper):
+  - An event handler or two-way binding inside `@if (x)` keeps that narrowing (`x` was "possibly null" inside a `(click)` handler); `@else` branches know the earlier conditions were false.
+  - `$event.currentTarget` is the element the handler is on (`HTMLInputElement` for `<input (input)>`).
+  - No errors from generated code under `noUnusedLocals` (unread inputs, `$index`, helper types).
+
+- [#216](https://github.com/forinda/clarusjs/pull/216) [`358f9ae`](https://github.com/forinda/clarusjs/commit/358f9ae3a087fa6ab5193f61151223dd998e81f1) Thanks [@forinda](https://github.com/forinda)! - Types in a `.tscl` file: `@type Name<T> = …` and `@interface Name<T> extends … { … }`, for the file's `@input` props. Any TypeScript type (unions, generics with defaults, mapped and conditional types, `infer`), continuing onto following lines while a bracket is open. Erased from compiled output; checked by `clarusjs check`, with errors at their line. Local to the file: other files see them only through the component's inputs.
+  
+  `@input` types and defaults can span lines too (an object type, a default object), and function types keep their `=>`: `@input onPick: (id: string) => void` (the `=` of `=>` was read as the start of a default).
+
+- [#244](https://github.com/forinda/clarusjs/pull/244) [`44fd0fb`](https://github.com/forinda/clarusjs/commit/44fd0fb0c373a758c0ac99548f47563696a6fbc0) Thanks [@forinda](https://github.com/forinda)! - Content mapper: an error on a whole construct underlines all of it (a missing prop underlines `<card`, a two-way binding check `[(open)]`), not one character; and generated stand-ins (`__cl_p`) take no part in hover, completion or rename.
+
+- [#222](https://github.com/forinda/clarusjs/pull/222) [`12b8958`](https://github.com/forinda/clarusjs/commit/12b8958c3880e2d5017c0fd3179c20f0708ad5a1) Thanks [@forinda](https://github.com/forinda)! - Two-way binding into lists: `[(value)]="rows[$index].name"` writes back copy-on-write (`rows = rows.map(…)`), so a field in a `@for` row updates the list. Binding to the row variable itself (`[(value)]="row.name"`), which only changed the row's copy, is now a located error pointing to the index form.
+
+- [#215](https://github.com/forinda/clarusjs/pull/215) [`349cbd7`](https://github.com/forinda/clarusjs/commit/349cbd7be506893b0da3a698fc2b6868bd051861) Thanks [@forinda](https://github.com/forinda)! - `clarusjs check` reports an unknown prop on a component that declares no `@input` (it was accepted silently), as it already did for components with inputs; `render()` from `clarusjs/views` checks the same.
+
+- [#223](https://github.com/forinda/clarusjs/pull/223) [`0138f4c`](https://github.com/forinda/clarusjs/commit/0138f4c5614351597701ff76e75eb619fa0f57ff) Thanks [@forinda](https://github.com/forinda)! - Event bindings for events that don't bubble work: `(mouseenter)`, `(mouseleave)`, `(pointerenter)`, `(pointerleave)`, `(load)`, `(error)`, `(scroll)`, `(toggle)`, `(invalid)`, `(close)`, `(cancel)` and media events are caught in the capture phase, like `(focus)` and `(blur)` already were.
+
+- [#218](https://github.com/forinda/clarusjs/pull/218) [`0d40714`](https://github.com/forinda/clarusjs/commit/0d40714ab77e0cad96f861f5dcdd35567b797b19) Thanks [@forinda](https://github.com/forinda)! - Inputs are read-only and reactive, like `derived()`. In an island, each input is a read-only signal: holes, `@if`/`@for`, effects and `derived()` that read it update when it changes. A nested island whose parent island passes it new props gets them in place (its DOM and `state()` are kept) instead of being re-rendered. Assigning to an input is a compile error at its line (copy it to change it locally: `let local = state(count)`), and `clarusjs check` types inputs as deeply read-only, so changing anything inside one is a type error; a component's props accept read-only values.
+
+- [#231](https://github.com/forinda/clarusjs/pull/231) [`048b058`](https://github.com/forinda/clarusjs/commit/048b05807649e2fdce117e9f4d27c1b9a7f5c37a) Thanks [@forinda](https://github.com/forinda)! - Fixes from review:
+  - `[(value)]="form['name']"` updates an object property (a bracket path used to assume an array).
+  - A destructuring write to an input (`({ value } = …)`) is a located read-only error.
+  - A multi-line generic type (`Array<` across lines) stays inside its `@type`.
+  - `(mouseenter)` and other events that don't bubble run only their target's handler, not an ancestor's.
+  - A `@model` write is taken only by the island that binds that child, not by an outer one.
+  - A nested island is kept in place only for the same component source.
+  - New props are applied together (a new `batch()` in `clarusjs/runtime`), so effects never see half an update.
+  - `clarusjs check`: works through a symlinked project root; resolves aliased component imports (outside the project, and exact aliases to a `.tscl` file); checks that a child's `@model` type can be written back into the parent's target.
+
+- [#233](https://github.com/forinda/clarusjs/pull/233) [`983bd03`](https://github.com/forinda/clarusjs/commit/983bd03934fdeadb199f65f56e198bbfd8f0b6f2) Thanks [@forinda](https://github.com/forinda)! - Fixes from review:
+  - Forms: a component bound two ways more than once carries a path per binding (`data-cl-path-<model>` on its island; its own fields write `@<model>`), so each binding's errors reach its field. A literal key (`order['email']`) is decoded in the path. `form` imported under another name keeps its state, and a local named `form` is left alone. A schema that throws blocks submit. Values changed during a check are checked again before submit; `next()` checks the step's fields as they are after waiting; server errors for values changed while the server answered are dropped.
+  - Type checking: enumerated attributes (`draggable`, `spellcheck`, `translate`) take their strings; a condition about an outer name isn't repeated inside a `@for` whose item has that name.
+
+- [#269](https://github.com/forinda/clarusjs/pull/269) [`6975d9e`](https://github.com/forinda/clarusjs/commit/6975d9eac1c7ebb3c8f0172ad43accb540a5260a) Thanks [@forinda](https://github.com/forinda)! - Type checking: a callback is typed `any` only when passed to one of the script's own top-level functions (not a nested function that happens to share an imported name), and not when that parameter has a default, which gives the callback its type.
+
+- [#235](https://github.com/forinda/clarusjs/pull/235) [`f6cbb76`](https://github.com/forinda/clarusjs/commit/f6cbb769244967f587dd52f38c977de0df89562f) Thanks [@forinda](https://github.com/forinda)! - The theme's templates type-check under strict TypeScript with the content mapper: its config types take readonly lists (a template's inputs are readonly, and mutable configs still fit), and its scripts narrow DOM lookups instead of assuming elements exist. Template type checking also types callbacks passed to a script's own functions (`record((p) => …)`) as `any`, like those functions' own parameters.
+
+- [#246](https://github.com/forinda/clarusjs/pull/246) [`63a125b`](https://github.com/forinda/clarusjs/commit/63a125b6ba20497904b80143d8eb4d2d77322d51) Thanks [@forinda](https://github.com/forinda)! - Content mapper: a template that doesn't parse (an unclosed `@if`, `<div>` or `{{` while you type) still gives TypeScript for the rest of the file, so hover, completion and type errors keep working in the editor; the syntax error is reported as before. The build and `clarusjs check` stay strict.
+
+- [#221](https://github.com/forinda/clarusjs/pull/221) [`3c42922`](https://github.com/forinda/clarusjs/commit/3c42922919566d8ed62e3254beacf10dc8d2a9f8) Thanks [@forinda](https://github.com/forinda)! - Two-way binding. `[(value)]="form.name"` on an `<input>`, `<textarea>` or `<select>` (and `[(checked)]` on a checkbox) shows a value and writes it back, copy-on-write (`form = { ...form, name: value }`), so a previous state is just the old value. On a component, `[(x)]` binds its `@model x` input, the one kind of input a component may write: the write goes to the parent island (a `cl:model` event), which updates its state and passes the value back in place; with no parent binding it, the component keeps the value. `clarusjs check` requires `@model x` for `[(x)]` and a writable target. A reactive `[value]`/`[checked]` binding now also sets the property, so a field shows it after someone has typed.
+
 ## 0.8.1
 
 ### Patch Changes
