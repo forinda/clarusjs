@@ -737,7 +737,7 @@ test('lesson quiz: the bar checks it, says how it went in green or red, then con
   await expect(page.locator('.quiz-answer')).toHaveAttribute('open', '')
   await expect(page.getByRole('radio', { name: 'src/pages/about.tscl' })).toBeDisabled()
   await expect(primary).toHaveText('Continue')
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+  expect((await (await axe(page)).analyze()).violations).toEqual([])
   await primary.click()
   await expect(page.locator('main .step:visible h2')).toHaveText(/^Done/)
   await expect(page.locator('.lesson-bar')).not.toHaveClass(/\b(ok|bad)\b/)
