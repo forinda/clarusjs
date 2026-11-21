@@ -1,3 +1,8 @@
 packages:
   - packages/*
   - examples/*
+
+# Install scripts: none run. @vscode/vsce-sign's (via @vscode/vsce) fetches a signing tool that packaging a .vsix
+# doesn't use (signing is a Marketplace publish step).
+allowBuilds:
+  '@vscode/vsce-sign': false
