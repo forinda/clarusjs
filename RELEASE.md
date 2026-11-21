@@ -65,7 +65,7 @@ looks up pull requests on GitHub. CI provides one automatically.
 
 ## VS Code extension
 
-`packages/vscode` (`clarusjs-vscode`, publisher `clarusjs`) is private to the workspace: it has no changesets, and the release workflow doesn't touch it. It's versioned and published by hand. The extension bundles its own code (the HTML language service and the component reading), so changes to it reach editors only with its next release; type checking inside templates comes from the `clarusjs` package (the content mapper), released as usual.
+`packages/vscode` (`clarusjs-vscode`, publisher `forinda`: `forinda.clarusjs-vscode` on the Marketplace) is private to the workspace: it has no changesets, and the release workflow doesn't touch it. It's versioned and published by hand. The extension bundles its own code (the HTML language service and the component reading), so changes to it reach editors only with its next release; type checking inside templates comes from the `clarusjs` package (the content mapper), released as usual.
 
 1. **Changelog and version**, in a PR named `chore(vscode): release X.Y.Z`:
    - add `## X.Y.Z` at the top of `packages/vscode/CHANGELOG.md`, written for users like the entries below it;
@@ -86,11 +86,11 @@ looks up pull requests on GitHub. CI provides one automatically.
 3. **Try it**: `code --install-extension packages/vscode/clarusjs-vscode-X.Y.Z.vsix`, reload the window, then open a `.tscl` file (highlighting, hover on a tag and a component, a snippet such as `island`).
 
 4. **Publish**, either:
-   - from the CLI, with an Azure DevOps personal access token that has **Marketplace → Manage** scope for the `clarusjs` publisher:
+   - from the CLI, with an Azure DevOps personal access token that has **Marketplace → Manage** scope for the `forinda` publisher:
 
      ```bash
      cd packages/vscode
-     npx vsce login clarusjs    # once per machine; asks for the token
+     npx vsce login forinda    # once per machine; asks for the token
      npx vsce publish --packagePath clarusjs-vscode-X.Y.Z.vsix
      ```
 
