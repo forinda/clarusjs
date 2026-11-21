@@ -22,10 +22,13 @@ A page is HTML with holes for values. It becomes static HTML when the site is bu
 Create a project and install it:
 
 ```sh
-pnpm create vite my-site --template vanilla-ts
-cd my-site
-pnpm add -D clarusjs
+mkdir my-site && cd my-site
+pnpm init
+pnpm add clarusjs
+pnpm add -D vite
 ```
+
+You need Node 22.12 or later.
 
 Add the plugin to `vite.config.ts`:
 
@@ -60,6 +63,18 @@ pnpm vite
 
 Change the heading and save: the page updates. Then build the static site with `pnpm vite build`; the page is in `dist/client/index.html`.
 
+## Quiz
+
+::: quiz Where does the page for `/about` live?
+- [ ] `src/about.html`
+- [x] `src/pages/about.tscl`
+- [ ] `pages/about/index.tscl`
+
+A page's path under `src/pages` is its URL: `src/pages/about.tscl` is `/about`, and `src/pages/index.tscl` is `/`.
+:::
+
 ## Done
 
-You have a project, a page, and a build. Next: templates, with inputs, lists and conditions. The [Getting started](/guide/getting-started) guide covers the same ground as a reference.
+You have a project, a page, and a build. Next: templates, with values, lists and conditions.
+
+In the docs: [Getting started](/guide/getting-started), [Pages and routes](/guide/routing).

@@ -7,7 +7,7 @@ export const sidebar: Section[] = [
     key: 'learn',
     title: 'Learn',
     href: '',
-    groups: [{ title: 'Your first site', items: [] }],
+    groups: [{ title: 'Your first site', items: [] }, { title: 'You', items: [{ title: 'Your progress', href: '/learn/progress' }] }],
   },
   {
     key: 'guide',

@@ -3,14 +3,34 @@
   follows the URL's #step (the header's segments link there), and after the last step goes to the next lesson.
   It reveals itself (and the one-step view) when it attaches: without JavaScript the lesson is a plain page.
 --}}
+@input lesson: string = ''
 @input prev: string = ''
 @input next: string = ''
 @input leave: string = '/'
 
 <script>
+  import { answer, finish, load, save, step } from './progress.ts'
+  // Progress lives in this browser; the XP chip and the progress page listen for learn:progress.
+  function record(update) {
+    save(update(load()))
+    window.dispatchEvent(new Event('learn:progress'))
+  }
   let current = state(0)
   let total = state(0)
   let name = state('')
+  // On a step with an unanswered quiz the main button is Check; the quiz's answer shows here, green or red.
+  let checking = state(false)
+  let result = state('')
+  let title = state('')
+  let text = state('')
+  const bar = () => document.querySelector('.lesson-bar')
+  function verdict(kind, heading, detail) {
+    result = kind
+    title = heading
+    text = detail
+    bar()?.classList.toggle('ok', kind === 'ok')
+    bar()?.classList.toggle('bad', kind === 'bad')
+  }
   const steps = () => [...document.querySelectorAll('main .step')]
   function show(i, focus) {
     const all = steps()
@@ -18,6 +38,8 @@
     current = Math.max(0, Math.min(i, all.length - 1))
     total = all.length
     all.forEach((step, j) => { step.hidden = j !== current })
+    checking = !!all[current].querySelector('[data-quiz]:not([data-answered])')
+    verdict('', '', '')
     const id = all[current].getAttribute('aria-labelledby')
     name = document.getElementById(id)?.textContent?.replace(/#$/, '').trim() ?? ''
     document.querySelectorAll('.segments li').forEach((li, j) => {
@@ -40,8 +62,18 @@
     else if (prev) location.href = prev
   }
   function forward() {
-    if (current < total - 1) show(current + 1, true)
-    else location.href = next || leave
+    if (checking) {
+      steps()[current]?.querySelector('[data-quiz]:not([data-answered])')?.dispatchEvent(new CustomEvent('quiz:check', { bubbles: true }))
+      return
+    }
+    const id = steps()[current]?.getAttribute('aria-labelledby')
+    if (current < total - 1) {
+      if (id) record((p) => step(p, lesson, id))
+      show(current + 1, true)
+    } else {
+      record((p) => finish(id ? step(p, lesson, id) : p, lesson))
+      location.href = next || leave
+    }
   }
   // Each step's code and results (code blocks, .result) go in a side column, its text in the main one.
   function split(step) {
@@ -60,12 +92,22 @@
     document.body.classList.add('one-step')
     document.querySelector('.lesson-bar').hidden = false
     show(Math.max(0, indexOf(location.hash)), false)
+    document.addEventListener('quiz:result', (event) => {
+      if (!steps()[current]?.contains(event.target)) return
+      const { ok, done, text: detail } = event.detail
+      if (!done) return verdict('', 'Pick an answer', detail)
+      record((p) => answer(p, lesson + '#' + event.target.dataset.quiz, ok))
+      checking = !!steps()[current].querySelector('[data-quiz]:not([data-answered])')
+      verdict(ok ? 'ok' : 'bad', ok ? 'Correct!' : 'Not quite', detail)
+    })
     window.addEventListener('hashchange', () => { const i = indexOf(location.hash); if (i !== -1) show(i, true) })
   }
 </script>
 
 <div class="lesson-actions">
   <button type="button" class="back" (click)="back()" [disabled]="current === 0 && !prev">Back</button>
-  <div class="feedback" role="status">@if (total) {<p class="feedback-title">Step {{ current + 1 }} of {{ total }}: {{ name }}</p>}</div>
-  <button type="button" class="primary" (click)="forward()">@if (total && current === total - 1) {@if (next) {Next lesson} @else {Finish}} @else {Continue}</button>
+  <div class="feedback" role="status">
+    @if (title) {<p class="feedback-title">{{ title }}</p><p class="feedback-text">{{ text }}</p>} @else if (total) {<p class="feedback-title">Step {{ current + 1 }} of {{ total }}: {{ name }}</p>}
+  </div>
+  <button type="button" class="primary" (click)="forward()">@if (checking) {Check} @else if (total && current === total - 1) {@if (next) {Next lesson} @else {Finish}} @else {Continue}</button>
 </div>

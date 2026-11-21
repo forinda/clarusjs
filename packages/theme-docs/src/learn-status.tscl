@@ -1,0 +1,40 @@
+{{--
+  Learning status, from the progress kept in this browser: an XP chip (a link to the progress page), and on pages with
+  the Learn sidebar each lesson marked done, current or locked (a hint: every lesson stays open). Hidden until it has
+  read the progress, so pages without JavaScript show no "0 XP". Updates when the lesson bar saves (learn:progress).
+--}}
+@input lessons: string[]
+@input progress: string
+
+<script>
+  import { load, stats } from './progress.ts'
+  let xp = state(0)
+  let ready = state(false)
+  const words = { done: 'done', current: 'up next', locked: 'not started' }
+  function refresh() {
+    const s = stats(load(), lessons)
+    xp = s.xp
+    ready = true
+    for (const link of document.querySelectorAll('.sidebar ul a[href]')) {
+      if (!lessons.includes(link.getAttribute('href'))) continue
+      const status = s.status(link.getAttribute('href'))
+      link.dataset.status = status
+      let note = link.querySelector('.status-note')
+      if (!note) {
+        note = document.createElement('span')
+        note.className = 'status-note'
+        link.append(note)
+      }
+      note.textContent = ' (' + words[status] + ')'
+    }
+  }
+  if (typeof document !== 'undefined') {
+    refresh()
+    window.addEventListener('learn:progress', refresh)
+  }
+</script>
+
+<a class="xp-chip" [href]="progress" [hidden]="!ready" [aria-label]="xp + ' XP: your progress'">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>
+  {{ xp }} XP
+</a>

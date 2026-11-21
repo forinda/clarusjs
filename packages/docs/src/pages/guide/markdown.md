@@ -137,6 +137,21 @@ jsonLd:
 
 They become a `<cl-head>` block, which works in any `.tscl` page too (see the plugin's `head` option).
 
+## Quizzes
+
+In a lesson (frontmatter `steps: true`), `::: quiz` asks a question. Its task list is the options, with the right one ticked; whatever follows is the explanation:
+
+```md
+::: quiz Where does the page for `/about` live?
+- [ ] `src/about.html`
+- [x] `src/pages/about.tscl`
+
+A page's path under `src/pages` is its URL.
+:::
+```
+
+It is static HTML: the options are radio buttons and the answer is in a `<details>`, so it works without JavaScript. With `markdown({ quiz: { tag: 'quiz', from: '@clarusjs/theme-docs/quiz.tscl' } })` it renders through the theme's quiz, whose options are an island: pick one, Check, and the right answer and the explanation show. In a lesson the action bar does the checking (see [Docs theme](/guide/docs-theme#lessons)). A quiz needs exactly one right answer; `markdown({ quizzes: 'everywhere' })` allows quizzes outside lessons.
+
 ## Links
 
 Link to another page by its file: `[Setup](./getting-started.tscl)` or `[Intro](./what-is-clarusjs.md#when-to-use-it)` become the page's route, so links survive moving a page and match what your editor shows.

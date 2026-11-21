@@ -7,8 +7,9 @@
 @import themeToggle from './theme-toggle.tscl'
 @import siteSearch from './search.tscl'
 @import pageHead from './page-head.tscl'
+@import learnStatus from './learn-status.tscl'
 @import type { ThemeConfig, Heading } from './nav.ts'
-@import { sectionKey, groupsOf, crumb, pager, editHref, updatedOf } from './nav.ts'
+@import { sectionKey, groupsOf, crumb, pager, editHref, updatedOf, lessonsOf } from './nav.ts'
 @import './theme.css'
 @input config: ThemeConfig
 @input title: string
@@ -37,6 +38,8 @@
         @for (s of config.sections; track s.key) {<a [href]="s.href" [aria-current]="sectionKey(config.sections, path) === s.key ? 'true' : false">{{ s.title }}</a>}
       </nav>
       <div class="header-end">
+        {{-- On Learn pages: the XP chip, and the sidebar's lessons marked done, current or locked. --}}
+        @if (config.learn && sectionKey(config.sections, path) === config.learn.section) {<learnStatus [lessons]="lessonsOf(config).map((l) => l.href)" [progress]="config.learn.progress" />}
         {{-- Kept across fragment navigations, like the theme toggle: its shortcut listener is added once. --}}
         @if (config.search) {<span class="persist" data-cl-persist="search"><siteSearch /></span>}
         @if ((config.social ?? []).length) {
