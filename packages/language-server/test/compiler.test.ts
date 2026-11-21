@@ -40,3 +40,13 @@ test('trusted, but too old (no parse) or missing: the bundled compiler for both,
   const empty = mkdtempSync(resolve(tmpdir(), 'cl-ls-empty-'))
   expect((await loadCompiler(empty, true, () => {})).source).toBe('bundled')
 })
+
+test('a clarusjs above the trusted folder (a parent\'s node_modules) is not the project\'s: the bundled one', async () => {
+  const outer = project('globalThis.__clOuter = true; export const compile = () => {}; export const parse = () => {}; export class ClarusError extends Error {}')
+  const inner = resolve(outer, 'app')
+  mkdirSync(inner)
+  writeFileSync(resolve(inner, 'package.json'), '{"name":"inner"}')
+  const c = await loadCompiler(inner, true, () => {})
+  expect(c.source).toBe('bundled')
+  expect((globalThis as { __clOuter?: boolean }).__clOuter).toBeUndefined()
+})

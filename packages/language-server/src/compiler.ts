@@ -3,7 +3,7 @@
 // never the project's code without trust.
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import * as bundled from 'clarusjs/compiler'
 
@@ -21,15 +21,12 @@ export async function loadCompiler(root: string, trusted: boolean, log: (message
     log('clarusjs: using the compiler bundled with the language server (the workspace isn\'t trusted)')
     return BUNDLED
   }
-  // The project's own clarusjs: a node_modules/clarusjs from the root up, as Node finds it, but not through NODE_PATH
-  // or the server's own node_modules.
+  // The project's own clarusjs: the trusted folder's node_modules/clarusjs only. Not a parent folder's (outside what
+  // was trusted), NODE_PATH, or the server's own node_modules. A monorepo opened at a package with clarusjs hoisted
+  // above it gets the bundled compiler.
   let entry: string | undefined
-  for (let dir = root; ; dir = dirname(dir)) {
-    if (existsSync(join(dir, 'node_modules', 'clarusjs', 'package.json'))) {
-      try { entry = createRequire(join(dir, 'package.json')).resolve('clarusjs/compiler') } catch {}
-      break
-    }
-    if (dir === dirname(dir)) break
+  if (existsSync(join(root, 'node_modules', 'clarusjs', 'package.json'))) {
+    try { entry = createRequire(join(root, 'package.json')).resolve('clarusjs/compiler') } catch {}
   }
   if (!entry) {
     log('clarusjs: using the bundled compiler (the project has no clarusjs)')
