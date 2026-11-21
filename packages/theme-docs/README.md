@@ -2,11 +2,11 @@
 
 A docs theme for [clarusjs](https://clarusjs.com). It gives every page:
 - a **header**: brand, section links, social icons, a ⋯ overflow menu and a theme toggle;
-- a **sidebar**: a drawer on small screens, with no JavaScript;
+- a **sidebar**, listed in `config` or generated from `src/pages` (`themeDocs()` Vite plugin + `pagesNav`): a drawer on small screens, with no JavaScript;
 - the **content**, with a crumb, an edit link and previous/next links;
 - **On this page**: a column on wide screens, a collapsible box on narrow ones.
 
-It also has light and dark modes without a flash, copy buttons and callouts.
+It also has search (a build-time index split into small files, and a Ctrl/⌘K dialog), light and dark modes without a flash, copy buttons and callouts.
 
 ```sh
 pnpm add -D @clarusjs/theme-docs

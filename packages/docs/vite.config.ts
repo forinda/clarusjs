@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
 import markdown from '@clarusjs/content'
+import { themeDocs } from '@clarusjs/theme-docs/vite.js'
 
 export default defineConfig({
   plugins: [
+    themeDocs(),
     clarusjs({
       // Rendered on every request; on Netlify, by a function (see the Server playground page).
       routes: { '/playground': 'server', '/tour/*': 'client' },

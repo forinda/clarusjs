@@ -1,6 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
-import { sections } from '../src/nav.ts'
+import { readdirSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { pagesNav } from '@clarusjs/theme-docs/nav.ts'
+import { readPages } from '@clarusjs/theme-docs/vite.js'
+import { sidebar } from '../src/sidebar.ts'
 import AxeBuilder from '@axe-core/playwright'
+
+// The site's sidebar, built the way themeDocs() and nav.ts build it.
+const sections = pagesNav(sidebar, readPages(resolve(import.meta.dirname, '../src/pages')))
 
 // Every page in the sidebar, in sidebar order, plus the home page.
 const docs = sections.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => ({ path: i.href, title: i.title, section: s.key }))))
@@ -191,6 +198,22 @@ test('previous and next follow sidebar order within each section', async ({ page
   }
 })
 
+test('the sidebar is generated from the pages: each Markdown page sits in its frontmatter group, in its order', async ({ page }) => {
+  const dir = resolve(import.meta.dirname, '../src/pages/guide')
+  const templates = readdirSync(dir).filter((f) => f.endsWith('.md'))
+    .map((f) => readFileSync(resolve(dir, f), 'utf8'))
+    .filter((text) => /^group: "Templates"$/m.test(text))
+    .map((text) => ({ title: /^title: "?(.*?)"?$/m.exec(text)![1]!, order: Number(/^order: (\d+)$/m.exec(text)![1]) }))
+    .sort((a, b) => a.order - b.order)
+    .map((p) => p.title)
+  await page.goto('/guide/holes')
+  const group = page.locator('.sidebar p.group', { hasText: /^Templates$/ }).locator('xpath=following-sibling::ul[1]')
+  const shown = await group.locator('a').allTextContents()
+  // Verbatim is a .tscl page, placed by nav.ts.
+  expect(shown.filter((t) => t !== 'Verbatim')).toEqual(templates)
+  expect(shown).toContain('Verbatim')
+})
+
 test('named slot: a callout shows its filled title, or the fallback from its type', async ({ page }) => {
   await page.goto('/guide/state')
   await expect(page.locator('.callout.warning .callout-title')).toHaveText('Island props and state are public')
@@ -202,6 +225,8 @@ test('phone width: the page list is a drawer from ☰ that works without JavaScr
   const context = await browser.newContext({ viewport: { width: 390, height: 800 }, javaScriptEnabled: false })
   const page = await context.newPage()
   await page.goto('/guide/lists')
+  // The section links live in the drawer on phones, not in the header.
+  await expect(page.locator('.site-header .top-nav')).toBeHidden()
   const sidebar = page.locator('.sidebar')
   await expect(sidebar).toBeHidden()
   await page.getByRole('button', { name: 'Open menu' }).click()
@@ -564,6 +589,57 @@ test('the theme and site stylesheets go through Vite: imported by the layouts, h
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.site-header')!).borderBottomStyle)).toBe('solid')
 })
 
+test('last updated: each page shows the last commit date of its source file from git', async ({ page }) => {
+  const { execFileSync } = await import('node:child_process')
+  for (const [path, file] of [['/guide/lists', 'guide/lists.md'], ['/guide/verbatim', 'guide/verbatim.tscl']]) {
+    const seconds = Number(execFileSync('git', ['log', '-1', '--format=%ct', '--', file], { cwd: resolve(import.meta.dirname, '../src/pages'), encoding: 'utf8' }))
+    await page.goto(path)
+    const time = page.locator('.page-footer p.updated time')
+    await expect(time, path).toHaveAttribute('datetime', new Date(seconds * 1000).toISOString())
+    await expect(time, path).toHaveText(new Date(seconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }))
+  }
+})
+
+test('search: Ctrl+K opens a modal, results load from small index files, arrows and Enter open one, Escape closes', async ({ page }) => {
+  const fetched: string[] = []
+  page.on('request', (r) => { if (r.url().includes('/search/')) fetched.push(new URL(r.url()).pathname) })
+  await page.goto('/guide/holes')
+  const dialog = page.locator('dialog.search-dialog')
+  await expect(dialog).not.toBeVisible()
+  await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
+  await page.keyboard.press('Control+k')
+  await expect(dialog).toBeVisible()
+  const input = dialog.getByRole('combobox', { name: 'Search the docs' })
+  await expect(input).toBeFocused()
+  await input.fill('fragment navig')
+  const options = dialog.getByRole('option')
+  await expect(options.first()).toContainText('Fragment navigation')
+  await expect(dialog.getByRole('status')).toHaveText(/^\d+ results?$/)
+  // Only the term files for the words typed and the section files for the results: never the whole index.
+  expect(fetched.every((p) => /^\/search\/(t-(fr|na)|s-\d+)\.json$/.test(p))).toBe(true)
+  await input.press('ArrowDown')
+  await expect(options.nth(1)).toHaveAttribute('aria-selected', 'true')
+  await expect(input).toHaveAttribute('aria-activedescendant', 'search-result-1')
+  await input.press('ArrowUp')
+  const href = await options.first().locator('a').getAttribute('href')
+  await input.press('Enter')
+  await expect(page).toHaveURL(new RegExp(href!.replace(/[.?#]/g, '\\$&') + '$'))
+  await expect(dialog).not.toBeVisible()
+  // "/" opens it too (outside a text field); Escape closes it and focus goes back to the page.
+  await page.keyboard.press('/')
+  await expect(dialog).toBeVisible()
+  await page.keyboard.type('zzqqxx')
+  await expect(dialog.getByRole('status')).toHaveText('No results for "zzqqxx"')
+  await page.keyboard.press('Escape')
+  await expect(dialog).not.toBeVisible()
+  // The header button opens the same dialog; while it's open, the page behind is inert (focus stays inside).
+  await page.locator('.search-button').click()
+  await expect(dialog).toBeVisible()
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Tab')
+  expect(await page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true)
+  expect((await new AxeBuilder({ page }).include('dialog.search-dialog').analyze()).violations).toEqual([])
+})
+
 test('a Markdown page renders in the layout, with anchors, a component and the right edit link', async ({ page }) => {
   await page.goto('/guide/what-is-clarusjs')
   await expect(page.locator('h1')).toHaveText(/What is clarusjs\?/)
@@ -625,7 +701,7 @@ test('highlighted code: colours follow the theme, code groups switch without Jav
 test('snippets show real source files; includes share Markdown between pages', async ({ page }) => {
   await page.goto('/guide/markdown')
   const snippet = page.locator('.code-block').filter({ has: page.locator('.code-title', { hasText: 'src/nav.ts' }) })
-  await expect(snippet.locator('code')).toContainText('export function sourceOf(path: string)')
+  await expect(snippet.locator('code')).toContainText("editLink: 'https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/:file'")
   await expect(snippet.locator('code')).not.toContainText('#region')
   for (const path of ['/guide/markdown', '/guide/what-is-clarusjs']) {
     await page.goto(path)

@@ -1,5 +1,7 @@
 ---
 title: "CLI"
+group: "APIs"
+order: 3
 description: "The clarusjs command line: check and explain."
 ---
 

@@ -1,5 +1,7 @@
 ---
 title: "Island attributes"
+group: "Templates"
+order: 2
 description: "Attributes you can put on an interactive component tag, and the island element."
 ---
 

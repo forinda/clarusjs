@@ -1,5 +1,7 @@
 ---
 title: "Template syntax"
+group: "Templates"
+order: 1
 description: "Every directive and binding in .tscl templates, on one page."
 ---
 

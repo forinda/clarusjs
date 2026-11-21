@@ -1,5 +1,7 @@
 ---
 title: "Components"
+group: "Templates"
+order: 1
 description: "A clarusjs component is a .tscl file: a template, optional typed inputs and an optional script."
 ---
 

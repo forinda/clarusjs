@@ -1,5 +1,7 @@
 ---
 title: Accessibility
+group: "Site quality"
+order: 2
 description: What this site's layout does for keyboard and screen reader users, and how to do the same in yours.
 ---
 

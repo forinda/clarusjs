@@ -1,5 +1,7 @@
 ---
 title: "Static build"
+group: "Build & deploy"
+order: 1
 description: "vite build writes a complete static site in three steps."
 ---
 

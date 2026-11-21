@@ -1,5 +1,7 @@
 ---
 title: "Client routes"
+group: "Interactivity"
+order: 7
 description: "Routes rendered in the browser by a small router, with data from load() and navigation without reloads."
 ---
 

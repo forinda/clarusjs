@@ -1,5 +1,7 @@
 ---
 title: "Pages and routes"
+group: "Introduction"
+order: 4
 description: "File-based routes in clarusjs, dynamic routes with [param] segments, entries() to list their pages and load() for their data."
 ---
 

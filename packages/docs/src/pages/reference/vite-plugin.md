@@ -1,5 +1,7 @@
 ---
 title: "Vite plugin"
+group: "APIs"
+order: 2
 description: "The clarusjs Vite plugin: its routes option, and what it does in dev, build and preview."
 ---
 

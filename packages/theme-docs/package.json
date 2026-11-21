@@ -16,8 +16,10 @@
     "access": "public"
   },
   "scripts": {
+    "types": "node scripts/types.mjs",
+    "prepack": "pnpm types",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "pnpm types && tsc --noEmit"
   },
   "peerDependencies": {
     "clarusjs": "workspace:^"
