@@ -55,7 +55,8 @@ type NavigateEvent = Event & {
   hashChange: boolean
   downloadRequest: string | null
   formData: FormData | null
-  destination: { url: string }
+  destination: { url: string; sameDocument: boolean }
+  navigationType: 'push' | 'replace' | 'reload' | 'traverse'
   signal: AbortSignal
   intercept(options: { handler(): Promise<void> }): void
 }
@@ -67,7 +68,8 @@ let latest = 0
 let fallback = ''
 navigation?.addEventListener('navigate', (event) => {
   const e = event as NavigateEvent
-  if (!e.canIntercept || e.hashChange || e.downloadRequest !== null || e.formData) return
+  // A #hash, and the page's own history.pushState/replaceState (same-document, not back/forward), are never a page load.
+  if (!e.canIntercept || e.hashChange || (e.destination.sameDocument && e.navigationType !== 'traverse') || e.downloadRequest !== null || e.formData) return
   const url = new URL(e.destination.url)
   if (url.href === fallback) return
   const id = ++latest

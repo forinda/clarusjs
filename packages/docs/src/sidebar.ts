@@ -4,6 +4,12 @@ import type { Section } from '@clarusjs/theme-docs/nav.ts'
 // in vite.config.ts); this sets the order of the groups and adds what isn't a Markdown page.
 export const sidebar: Section[] = [
   {
+    key: 'learn',
+    title: 'Learn',
+    href: '',
+    groups: [{ title: 'Your first site', items: [] }],
+  },
+  {
     key: 'guide',
     title: 'Guide',
     href: '/guide/what-is-clarusjs',

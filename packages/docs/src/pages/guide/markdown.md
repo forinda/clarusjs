@@ -40,6 +40,8 @@ Write **Markdown** as usual.
 
 `title` (or the first `#` heading) and `description` go to the layout, with the page's route as `path`. Set `layout:` in the frontmatter to use another layout, or `layout: false` for none.
 
+`steps: true` (for lessons) wraps each `##` heading and what follows it, up to the next one, in a `<section class="step" aria-labelledby="…">`. The page is still a plain page; a layout can show one step at a time (see [Docs theme](/guide/docs-theme#lessons)).
+
 ## Components in Markdown
 
 Import components at the top, then use them like HTML. Leave blank lines around Markdown inside a component:

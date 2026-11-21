@@ -1,0 +1,71 @@
+{{--
+  The lesson's action bar: Back, what step this is, Continue. It shows one step (<section class="step">) at a time,
+  follows the URL's #step (the header's segments link there), and after the last step goes to the next lesson.
+  It reveals itself (and the one-step view) when it attaches: without JavaScript the lesson is a plain page.
+--}}
+@input prev: string = ''
+@input next: string = ''
+@input leave: string = '/'
+
+<script>
+  let current = state(0)
+  let total = state(0)
+  let name = state('')
+  const steps = () => [...document.querySelectorAll('main .step')]
+  function show(i, focus) {
+    const all = steps()
+    if (!all.length) return
+    current = Math.max(0, Math.min(i, all.length - 1))
+    total = all.length
+    all.forEach((step, j) => { step.hidden = j !== current })
+    const id = all[current].getAttribute('aria-labelledby')
+    name = document.getElementById(id)?.textContent?.replace(/#$/, '').trim() ?? ''
+    document.querySelectorAll('.segments li').forEach((li, j) => {
+      li.className = j < current ? 'done' : j === current ? 'current' : ''
+      li.querySelector('a')?.toggleAttribute('aria-current', j === current)
+    })
+    if (focus) {
+      history.replaceState(null, '', '#' + id)
+      document.getElementById(id)?.focus()
+      window.scrollTo({ top: 0 })
+    }
+  }
+  // The step a #hash points into: its own heading, or anything inside it.
+  const indexOf = (hash) => {
+    const id = decodeURIComponent(hash.slice(1))
+    return id ? steps().findIndex((s) => s.getAttribute('aria-labelledby') === id || s.querySelector('#' + CSS.escape(id))) : -1
+  }
+  function back() {
+    if (current > 0) show(current - 1, true)
+    else if (prev) location.href = prev
+  }
+  function forward() {
+    if (current < total - 1) show(current + 1, true)
+    else location.href = next || leave
+  }
+  // Each step's code and results (code blocks, .result) go in a side column, its text in the main one.
+  function split(step) {
+    const side = [...step.children].filter((el) => el.matches('.code-block, .sample, pre, .result'))
+    if (!side.length || step.classList.contains('split')) return
+    const text = document.createElement('div')
+    text.className = 'step-text'
+    const aside = document.createElement('div')
+    aside.className = 'step-side'
+    for (const el of [...step.children]) (side.includes(el) ? aside : text).append(el)
+    step.append(text, aside)
+    step.classList.add('split')
+  }
+  if (typeof document !== 'undefined' && steps().length) {
+    steps().forEach(split)
+    document.body.classList.add('one-step')
+    document.querySelector('.lesson-bar').hidden = false
+    show(Math.max(0, indexOf(location.hash)), false)
+    window.addEventListener('hashchange', () => { const i = indexOf(location.hash); if (i !== -1) show(i, true) })
+  }
+</script>
+
+<div class="lesson-actions">
+  <button type="button" class="back" (click)="back()" [disabled]="current === 0 && !prev">Back</button>
+  <div class="feedback" role="status">@if (total) {<p class="feedback-title">Step {{ current + 1 }} of {{ total }}: {{ name }}</p>}</div>
+  <button type="button" class="primary" (click)="forward()">@if (total && current === total - 1) {@if (next) {Next lesson} @else {Finish}} @else {Continue}</button>
+</div>

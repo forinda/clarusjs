@@ -131,6 +131,30 @@ Set `search: true` in the config, and keep `themeDocs()` in `vite.config.ts`: af
 
 `themeDocs({ search: false })` skips the index.
 
+## Lessons
+
+`@clarusjs/theme-docs/lesson.tscl` is a layout for tutorials: a focused header, the lesson, and an action bar fixed to the bottom. A lesson is a Markdown page with `steps: true`, so each `##` section is a step:
+
+```md
+---
+title: "Install and a first page"
+layout: /src/layouts/lesson.tscl
+steps: true
+---
+
+# Install and a first page
+
+## Read
+…
+## Write
+…
+```
+
+- **Header:** a ✕ to leave (the section's link), "Learn · Lesson 1 of 6" (the lessons are the items of the config section the page is in), one segment per step, and a `header-end` slot.
+- **One step at a time:** with JavaScript, the bar shows one step, with Back, the step's name and Continue; the URL follows the step (`#write`) and the segments fill in. After the last step, Continue goes to the next lesson. Without JavaScript the bar stays hidden and the lesson is one plain page; the segments jump to each step.
+- **Code beside the text:** from 1024px, a step's code blocks and `.result` boxes sit in a column to the right of its text.
+- **Reduced motion:** steps change without animation.
+
 ## Regions at every width
 
 | Width | Sidebar | On this page | Social links |

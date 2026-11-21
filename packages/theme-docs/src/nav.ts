@@ -104,3 +104,20 @@ export function updatedOf(config: ThemeConfig, route: string): { iso: string; te
   const date = new Date(seconds * 1000)
   return { iso: date.toISOString(), text: date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }) }
 }
+
+/**
+ * A lesson's place in its section (the config section that lists it): where "leave" goes (the section's href), the
+ * previous and next lessons, and "Learn · Lesson 2 of 6". total 0 outside every section.
+ */
+export function lessonOf(sections: Section[], path: string): { leave: string; prev: string; next: string; label: string; total: number } {
+  const section = sections.find((s) => s.key === sectionKey(sections, path))
+  const items = section ? flat(section) : []
+  const i = items.findIndex((item) => item.href === path)
+  return {
+    leave: section?.href || '/',
+    prev: items[i - 1]?.href ?? '',
+    next: items[i + 1]?.href ?? '',
+    label: section ? `${section.title} · Lesson ${i + 1} of ${items.length}` : '',
+    total: items.length,
+  }
+}

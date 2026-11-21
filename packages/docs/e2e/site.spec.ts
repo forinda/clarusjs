@@ -9,9 +9,12 @@ import AxeBuilder from '@axe-core/playwright'
 // The site's sidebar, built the way themeDocs() and nav.ts build it.
 const sections = pagesNav(sidebar, readPages(resolve(import.meta.dirname, '../src/pages')))
 
-// Every page in the sidebar, in sidebar order, plus the home page.
-const docs = sections.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => ({ path: i.href, title: i.title, section: s.key }))))
-const pages = [{ path: '/', title: 'clarusjs' }, ...docs]
+// Docs (Guide, Reference) have the sidebar, edit links and pager; Learn's lessons use the lesson layout.
+const docSections = sections.filter((s) => s.key !== 'learn')
+const items = (list: typeof sections) => list.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => ({ path: i.href, title: i.title, section: s.key }))))
+// Every docs page in the sidebar, in sidebar order; every page there is, plus the home page.
+const docs = items(docSections)
+const pages = [{ path: '/', title: 'clarusjs' }, ...items(sections)]
 const guides = docs
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -114,7 +117,7 @@ test('the sidebar marks the current page, the header its section, and each page 
 
 test('every sidebar link lands on a page, and the edit link points at its source', async ({ page }) => {
   await page.goto('/guide/what-is-clarusjs')
-  for (const section of sections) {
+  for (const section of docSections) {
     await page.goto(section.href)
     const hrefs = await page.locator('.sidebar ul a').evaluateAll((links) => links.map((a) => a.getAttribute('href')!))
     expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
@@ -184,7 +187,7 @@ test('home: the list island adds and removes rows by key, with @empty', async ({
 })
 
 test('previous and next follow sidebar order within each section', async ({ page }) => {
-  for (const section of sections) {
+  for (const section of docSections) {
     const items = section.groups.flatMap((g) => g.items)
     for (const [i, item] of items.entries()) {
       await page.goto(item.href)
@@ -625,6 +628,8 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   await input.press('Enter')
   await expect(page).toHaveURL(new RegExp(href!.replace(/[.?#]/g, '\\$&') + '$'))
   await expect(dialog).not.toBeVisible()
+  // The URL commits before the new page is swapped in: wait for it, then search again.
+  await expect(page.locator('h1')).not.toHaveText('Holes')
   // "/" opens it too (outside a text field); Escape closes it and focus goes back to the page.
   await page.keyboard.press('/')
   await expect(dialog).toBeVisible()
@@ -638,6 +643,74 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   for (let i = 0; i < 4; i++) await page.keyboard.press('Tab')
   expect(await page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true)
   expect((await new AxeBuilder({ page }).include('dialog.search-dialog').analyze()).violations).toEqual([])
+})
+
+test('history.pushState and replaceState belong to the page: the router never turns them into a page load', async ({ page }) => {
+  await page.goto('/guide/holes')
+  await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
+  const fragments: string[] = []
+  page.on('request', (r) => { if (/\.frag\.html|__data\.json/.test(r.url())) fragments.push(r.url()) })
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>('h1')!.focus()
+    history.replaceState(null, '', '#escaping')
+    history.pushState(null, '', '/guide/holes?tab=2')
+  })
+  await page.waitForTimeout(500)
+  expect(fragments).toEqual([])
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
+})
+
+test('lesson without JavaScript: a plain page, every step shown, segments jump to them, no action bar', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false })
+  const page = await context.newPage()
+  await page.goto('/learn/first-page')
+  await expect(page.locator('.lesson-header .eyebrow')).toHaveText(/^Learn · Lesson 1 of \d+$/)
+  await expect(page.locator('main .step')).toHaveCount(5)
+  for (const step of await page.locator('main .step').all()) await expect(step).toBeVisible()
+  await expect(page.locator('.segments a')).toHaveText(['Read', 'Create', 'Write', 'Run', 'Done'])
+  await expect(page.locator('.lesson-bar')).toBeHidden()
+  await context.close()
+})
+
+test('lesson: one step at a time, Continue and Back, the URL and the segments follow, focus moves to the step', async ({ page }) => {
+  await page.goto('/learn/first-page')
+  const bar = page.getByRole('region', { name: 'Lesson actions' })
+  await expect(bar).toBeVisible()
+  const visible = page.locator('main .step:visible')
+  await expect(visible).toHaveCount(1)
+  await expect(visible.locator('h2')).toHaveText(/^Read/)
+  await expect(bar.getByRole('status')).toHaveText('Step 1 of 5: Read')
+  await expect(bar.getByRole('button', { name: 'Back' })).toBeDisabled()
+  await bar.getByRole('button', { name: 'Continue' }).click()
+  await expect(visible.locator('h2')).toHaveText(/^Create/)
+  await expect(page).toHaveURL(/#create$/)
+  await expect(page.locator('#create')).toBeFocused()
+  await expect(page.locator('.segments li.done')).toHaveCount(1)
+  await expect(page.locator('.segments li.current a')).toHaveAttribute('aria-current', '')
+  await bar.getByRole('button', { name: 'Back' }).click()
+  await expect(visible.locator('h2')).toHaveText(/^Read/)
+  // A segment link (or any #hash in a step) shows that step.
+  await page.locator('.segments a[href="#run"]').click()
+  await expect(visible.locator('h2')).toHaveText(/^Run/)
+  // Opened at a step: that step; the last step's button finishes the lesson.
+  await page.goto('/learn/first-page#done')
+  await expect(visible.locator('h2')).toHaveText(/^Done/)
+  await expect(bar.getByRole('status')).toHaveText('Step 5 of 5: Done')
+  const finish = bar.locator('button.primary')
+  await expect(finish).toHaveText(/^(Next lesson|Finish)$/)
+  // The bar never covers the lesson's end: the page leaves room for it.
+  const room = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('main.lesson')!).paddingBottom))
+  expect(room).toBeGreaterThanOrEqual((await bar.boundingBox())!.height)
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+})
+
+test('lesson with reduced motion: steps change without animation', async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: 'reduce' })
+  const page = await context.newPage()
+  await page.goto('/learn/first-page')
+  await page.getByRole('button', { name: 'Continue' }).click()
+  expect(await page.locator('main .step:visible').evaluate((el) => getComputedStyle(el).animationName)).toBe('none')
+  await context.close()
 })
 
 test('a Markdown page renders in the layout, with anchors, a component and the right edit link', async ({ page }) => {

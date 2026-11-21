@@ -283,7 +283,21 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       }
       const env = { tags: [] as string[], groups: 0, file, root: context.root }
       const tags = protectTags(body, components, env.tags)
-      const tokens = md.parse(tags.body, env)
+      let tokens = md.parse(tags.body, env)
+      // steps: true (lessons): each h2 and what follows it, up to the next h2, is a <section class="step">; the
+      // layout can show one at a time, and without JavaScript it is a plain page.
+      if (data.steps === true && tokens.length) {
+        const Token = tokens[0]!.constructor as new (type: string, tag: string, nesting: number) => (typeof tokens)[number]
+        const html = (content: string) => Object.assign(new Token('html_block', '', 0), { content })
+        let open = false
+        tokens = tokens.flatMap((t) => {
+          if (t.type !== 'heading_open' || t.tag !== 'h2' || t.level !== 0) return [t]
+          const before = open ? [html('</section>\n')] : []
+          open = true
+          return [...before, html(`<section class="step" aria-labelledby="${escapeHtml(String(t.attrGet('id') ?? ''))}">\n`), t]
+        })
+        if (open) tokens.push(html('</section>\n'))
+      }
       const headings = tokens.flatMap((t, i) => {
         if (t.type !== 'heading_open' || (t.tag !== 'h2' && t.tag !== 'h3')) return []
         const text = (tokens[i + 1]!.children ?? []).filter((c: Tok) => c.type === 'text' || c.type === 'code_inline').map((c: Tok) => c.content).join('')

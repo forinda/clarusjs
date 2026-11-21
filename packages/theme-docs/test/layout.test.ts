@@ -18,7 +18,7 @@ beforeAll(async () => {
   symlinkSync(resolve(import.meta.dirname, '../node_modules/clarusjs'), resolve(root, 'node_modules/clarusjs'), 'dir')
   w('src/config.ts', `export const config = {
   brand: { text: 'acme', accent: '.dev' },
-  sections: [{ key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', items: [{ title: 'Start', href: '/guide/start' }, { title: 'Next', href: '/guide/next' }] }] }],
+  sections: [{ key: 'learn', title: 'Learn', href: '/learn/one', groups: [{ title: 'First site', items: [{ title: 'One', href: '/learn/one' }, { title: 'Two', href: '/learn/two' }] }] }, { key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', items: [{ title: 'Start', href: '/guide/start' }, { title: 'Next', href: '/guide/next' }] }] }],
   social: [{ label: 'GitHub', href: 'https://github.com/acme/x', icon: 'github' }],
   editLink: 'https://example.com/edit/:file',
   pages: [{ href: '/guide/start', title: 'Start', file: 'guide/start.tscl', updated: 1700000000 }, { href: '/guide/next', title: 'Next', file: 'guide/next.tscl' }],
@@ -30,6 +30,9 @@ beforeAll(async () => {
   w('src/pages/guide/start.tscl', page('Start', '/guide/start', "<h1>Start</h1><h2 id=\"one\">One</h2>@slot('sidebar-top') {<p class=\"promo\">Promo</p>}@slot('footer') {<p>Custom footer</p>}"))
   w('src/pages/guide/next.tscl', page('Next', '/guide/next', '<h1>Next</h1>'))
   w('src/pages/index.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../config.ts'\n<layout [config]=\"config\" [title]=\"'Home'\"><h1>Home</h1></layout>\n")
+  const lesson = (path: string, body: string) => `@import lesson from '@clarusjs/theme-docs/lesson.tscl'\n@import { config } from '../../config.ts'\n<lesson [config]="config" [title]="'One'" [path]="'${path}'" [headings]="[{ id: 'read', text: 'Read', level: 2 }, { id: 'sub', text: 'Sub', level: 3 }, { id: 'write', text: 'Write', level: 2 }]">${body}</lesson>\n`
+  w('src/pages/learn/one.tscl', lesson('/learn/one', '<h1>One</h1><p>Intro</p><section class="step" aria-labelledby="read"><h2 id="read">Read</h2></section><section class="step" aria-labelledby="write"><h2 id="write">Write</h2></section>'))
+  w('src/pages/learn/two.tscl', lesson('/learn/two', '<h1>Two</h1>'))
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [themeDocs(), clarusjs()] })).buildApp()
   html = readFileSync(resolve(root, 'dist/client/guide/start/index.html'), 'utf8')
 }, 120_000)
@@ -74,4 +77,16 @@ test('search: a header button for the island, and the index written next to the 
   const sections = JSON.parse(readFileSync(resolve(root, 'dist/client/search/s-0.json'), 'utf8'))
   expect(sections).toContainEqual({ u: '/guide/start#one', p: 'Start', h: 'One', t: '' })
   expect(JSON.stringify(sections)).not.toContain('Custom footer')
+})
+
+test('lesson layout: a focused header (leave, lesson n of N, one segment per step), the page, a fixed action bar', () => {
+  const one = readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8')
+  expect(one).toContain('<title>One</title>')
+  expect(one).toMatch(/<header class="lesson-header">\s*<a class="leave" href="\/learn\/one" aria-label="Leave the lesson">/)
+  expect(one).toContain('<p class="eyebrow">Learn · Lesson 1 of 2</p>')
+  expect(one).toMatch(/<ol class="segments" aria-label="Steps">\s*<li><a href="#read">Read<\/a><\/li><li><a href="#write">Write<\/a><\/li>\s*<\/ol>/)
+  expect(one).toContain('<main class="lesson" id="content" tabindex="-1"><h1>One</h1><p>Intro</p><section class="step" aria-labelledby="read">')
+  // Hidden until its island attaches: without JavaScript the lesson is a plain page.
+  expect(one).toMatch(/<div class="lesson-bar" role="region" aria-label="Lesson actions" hidden><cl-island c="[^"]*lesson-bar" [^>]*p="[^"]*next[^"]*\/learn\/two/)
+  expect(one).not.toContain('class="sidebar"')
 })

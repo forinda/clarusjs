@@ -132,3 +132,14 @@ test('#124: the layout gets the page headings (h2, h3) for its "On this page"', 
   const out = page("# Title\n\n## First part\n\n### A detail\n\n## Second 'part'\n\n#### Too deep\n")
   expect(out).toContain(`[headings]="[{ id: 'first-part', text: 'First part', level: 2 }, { id: 'a-detail', text: 'A detail', level: 3 }, { id: 'second-part', text: 'Second \\'part\\'', level: 2 }]"`)
 })
+
+test('#157: steps: true wraps each h2 and what follows it in a <section class="step">, the intro stays outside', () => {
+  const out = page('---\ntitle: Lesson\nsteps: true\n---\n# Lesson\n\nIntro.\n\n## Read\n\nText.\n\n### Detail\n\nMore.\n\n## Write\n\n```js\nx\n```\n')
+  expect(out).toMatch(/<h1 id="lesson" tabindex="-1">Lesson<\/h1>\n<p>Intro\.<\/p>\n<section class="step" aria-labelledby="read">\n<h2 id="read"/)
+  expect(out).toMatch(/<p>More\.<\/p>\n<\/section>\n<section class="step" aria-labelledby="write">\n<h2 id="write"/)
+  expect(out).toMatch(/<\/pre><\/div>\n<\/section>\n<\/cl-layout>/)
+  expect(out.match(/<section/g)).toHaveLength(2)
+  expect(() => compile(out.replace(/^@import.*\n/, '').replace(/<\/?cl-layout[^>]*>/g, ''), { file: 'x.tscl', target: 'server' })).not.toThrow()
+  // Without it, no sections.
+  expect(page('# A\n\n## B\n\nx\n')).not.toContain('<section')
+})
