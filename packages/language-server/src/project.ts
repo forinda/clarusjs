@@ -7,7 +7,8 @@ import { dirname, join, relative, resolve, sep } from 'node:path'
 import type { ParsedFile } from 'clarusjs/compiler'
 import type { Compiler } from './compiler.ts'
 
-export type Import = { name: string; specifier: string; target?: string; start: number; end: number }
+/** An @import: its name (nameStart..nameStart+name.length) and specifier (start..end, without quotes). */
+export type Import = { name: string; nameStart: number; specifier: string; target?: string; start: number; end: number }
 
 const IGNORED = new Set(['node_modules', 'dist', '.clarusjs', '.git'])
 // `@import name from 'spec'` at the start of a line (indented too); start/end are the specifier's, without quotes.
@@ -60,7 +61,8 @@ export class Project {
     this.texts.set(path, text)
     this.imports.set(path, [...text.matchAll(IMPORT)].map((m) => {
       const start = m.index! + m[0].length - m[3]!.length - 1
-      return { name: m[1]!, specifier: m[3]!, target: this.resolve(m[3]!, path), start, end: start + m[3]!.length }
+      const nameStart = m.index! + /^[ \t]*@import[ \t]+/.exec(m[0])![0].length
+      return { name: m[1]!, nameStart, specifier: m[3]!, target: this.resolve(m[3]!, path), start, end: start + m[3]!.length }
     }))
     if (path.endsWith('.tscl')) {
       try { this.parsed.set(path, this.compiler.parse(text, path)) } catch {} // a file being typed: keep the last good parse
