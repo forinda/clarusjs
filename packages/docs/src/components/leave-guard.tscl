@@ -4,7 +4,8 @@
   let note = state('')
   let pending = state('')
   beforeNavigate((to, nav) => {
-    if (!note.trim() || to.pathname === location.pathname) return // links within this page are fine
+    // #hash links within this page are fine; a query change or a reload still replaces the page.
+    if (!note.trim() || (nav.type !== 'reload' && to.pathname === location.pathname && to.search === location.search)) return
     nav.cancel()
     pending = to.href
   })

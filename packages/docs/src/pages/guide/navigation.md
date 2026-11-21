@@ -22,7 +22,7 @@ back()                                             // like the back button
 let here = shared(currentUrl)                     // the current URL, as a store
 ```
 
-`navigate()` resolves once the new page is shown. Without the Navigation API it is a normal page load. Island scripts also run on the server, where `currentUrl` is `null` and navigating does nothing.
+`navigate()` resolves once the new page is shown, and also when the navigation is cancelled (a `beforeNavigate` hook, `abort()`) or replaced by a newer one: resolving doesn't prove the page is shown, so check `currentUrl` when that matters. It rejects when the page fails to load. Without the Navigation API it is a normal page load. Island scripts also run on the server, where `currentUrl` is `null` and navigating does nothing.
 
 ## Hooks
 

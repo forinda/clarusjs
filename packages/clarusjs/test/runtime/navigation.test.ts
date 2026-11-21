@@ -158,3 +158,26 @@ test('abort() stops the navigation in progress, as the browser’s stop button d
   abort()
   expect(stop).toHaveBeenCalledOnce()
 })
+
+test('review (#186): onNavigateError reports the page it was going to, also when its URL never changed', async () => {
+  const navigation = new FakeNavigation()
+  vi.stubGlobal('navigation', navigation)
+  const { onNavigateError } = await import('../../src/runtime/navigation.ts')
+  const errors: string[] = []
+  onNavigateError((to) => errors.push(to.pathname))
+  history.replaceState(null, '', '/start')
+  navigation.dispatchEvent(new Navigate('http://localhost:3000/broken'))
+  navigation.dispatchEvent(Object.assign(new Event('navigateerror'), { error: new Error('500') }))
+  expect(errors).toEqual(['/broken'])
+})
+
+test('review (#186): a hook whose island is released while an earlier hook runs is skipped', async () => {
+  const { beforeSwap } = await import('../../src/runtime/navigation.ts')
+  const { scope } = await import('../../src/runtime/signals.ts')
+  const seen: string[] = []
+  let releaseSecond = () => {}
+  scope(() => beforeSwap(async () => { seen.push('first'); releaseSecond() }))
+  releaseSecond = scope(() => beforeSwap(() => { seen.push('second') }))
+  await step()('swapping', { phase: 'swapping' })
+  expect(seen).toEqual(['first'])
+})
