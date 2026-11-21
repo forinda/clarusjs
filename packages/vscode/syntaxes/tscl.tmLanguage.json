@@ -1,0 +1,254 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "clarusjs template",
+  "scopeName": "text.html.tscl",
+  "patterns": [
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#directive"
+    },
+    {
+      "include": "#script"
+    },
+    {
+      "include": "#block"
+    },
+    {
+      "include": "#hole"
+    },
+    {
+      "include": "text.html.basic"
+    }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.block.tscl",
+      "begin": "\\{\\{--",
+      "end": "--\\}\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.begin.tscl"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.comment.end.tscl"
+        }
+      }
+    },
+    "directive": {
+      "patterns": [
+        {
+          "comment": "@import card from './card.tscl', @import type { T } from '\u2026', @import './x.css'",
+          "name": "meta.directive.import.tscl",
+          "begin": "^\\s*(@)(import)\\b",
+          "end": "$",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.keyword.tscl"
+            },
+            "2": {
+              "name": "keyword.control.import.tscl"
+            }
+          },
+          "patterns": [
+            {
+              "match": "\\b(type|from)\\b",
+              "name": "keyword.control.import.tscl"
+            },
+            {
+              "match": "[A-Za-z_$][\\w$-]*",
+              "name": "variable.other.readwrite.alias.tscl"
+            },
+            {
+              "include": "source.ts"
+            }
+          ]
+        },
+        {
+          "comment": "@input name: type = default and @model name: type = default (type and default may span lines)",
+          "name": "meta.directive.input.tscl",
+          "begin": "^\\s*(@)(input|model)\\s+([A-Za-z_$][\\w$]*)\\s*(:)",
+          "end": "(?=^\\s*(?:@[a-z]|<|\\{\\{--)|^\\s*$)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.keyword.tscl"
+            },
+            "2": {
+              "name": "storage.type.tscl"
+            },
+            "3": {
+              "name": "variable.parameter.tscl"
+            },
+            "4": {
+              "name": "punctuation.separator.key-value.tscl"
+            }
+          },
+          "contentName": "meta.type.annotation.tscl",
+          "patterns": [
+            {
+              "include": "source.ts#type"
+            },
+            {
+              "include": "source.ts"
+            }
+          ]
+        },
+        {
+          "comment": "@type Name<T> = \u2026 and @interface Name<T> extends \u2026 { \u2026 }",
+          "name": "meta.directive.type.tscl",
+          "begin": "^\\s*(@)(type|interface)\\s+([A-Za-z_$][\\w$]*)",
+          "end": "(?=^\\s*(?:@[a-z]|<|\\{\\{--)|^\\s*$)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.keyword.tscl"
+            },
+            "2": {
+              "name": "storage.type.tscl"
+            },
+            "3": {
+              "name": "entity.name.type.tscl"
+            }
+          },
+          "patterns": [
+            {
+              "include": "source.ts#type"
+            },
+            {
+              "include": "source.ts"
+            }
+          ]
+        }
+      ]
+    },
+    "script": {
+      "name": "meta.embedded.block.script.tscl",
+      "begin": "(<)(script)\\b([^>]*)(>)",
+      "end": "(</)(script)\\s*(>)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.html"
+        },
+        "3": {
+          "name": "meta.attribute.html"
+        },
+        "4": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.html"
+        },
+        "2": {
+          "name": "entity.name.tag.html"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.html"
+        }
+      },
+      "contentName": "source.ts",
+      "patterns": [
+        {
+          "include": "source.ts"
+        }
+      ]
+    },
+    "block": {
+      "patterns": [
+        {
+          "comment": "@if (\u2026) {, @else if (\u2026) {, @for (item of list; track key) {",
+          "name": "meta.block.control.tscl",
+          "begin": "(@)(if|else\\s+if|for)\\s*(\\()",
+          "end": "\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.keyword.tscl"
+            },
+            "2": {
+              "name": "keyword.control.flow.tscl"
+            },
+            "3": {
+              "name": "meta.brace.round.ts"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "meta.brace.round.ts"
+            }
+          },
+          "contentName": "meta.embedded.expression.tscl",
+          "patterns": [
+            {
+              "match": "\\b(of|track)\\b",
+              "name": "keyword.control.flow.tscl"
+            },
+            {
+              "include": "source.ts"
+            }
+          ]
+        },
+        {
+          "comment": "@else, @empty",
+          "match": "(@)(else|empty)\\b",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.keyword.tscl"
+            },
+            "2": {
+              "name": "keyword.control.flow.tscl"
+            }
+          }
+        },
+        {
+          "comment": "@slot('name') { \u2026 }",
+          "match": "(@)(slot)\\s*(\\()\\s*(['\"][^'\"]*['\"])\\s*(\\))",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.keyword.tscl"
+            },
+            "2": {
+              "name": "keyword.control.flow.tscl"
+            },
+            "3": {
+              "name": "meta.brace.round.ts"
+            },
+            "4": {
+              "name": "string.quoted.tscl"
+            },
+            "5": {
+              "name": "meta.brace.round.ts"
+            }
+          }
+        }
+      ]
+    },
+    "hole": {
+      "comment": "{{ expression }}",
+      "name": "meta.embedded.expression.tscl",
+      "begin": "\\{\\{(?!--)",
+      "end": "\\}\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.tscl"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.tscl"
+        }
+      },
+      "contentName": "source.ts",
+      "patterns": [
+        {
+          "include": "source.ts"
+        }
+      ]
+    }
+  }
+}

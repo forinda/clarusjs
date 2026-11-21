@@ -1,0 +1,98 @@
+{
+  "name": "clarusjs-vscode",
+  "displayName": "clarusjs",
+  "description": "clarusjs .tscl templates: syntax highlighting, snippets, file icon, comments and brackets.",
+  "version": "0.0.1",
+  "private": true,
+  "publisher": "clarusjs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/forinda/clarusjs",
+    "directory": "packages/vscode"
+  },
+  "homepage": "https://clarusjs.com/guide/editor",
+  "icon": "icons/extension.png",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "keywords": [
+    "clarusjs",
+    "tscl",
+    "template",
+    "islands"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "tscl",
+        "aliases": [
+          "clarusjs template",
+          "tscl"
+        ],
+        "extensions": [
+          ".tscl"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/tscl-light.svg",
+          "dark": "./icons/tscl-dark.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "tscl",
+        "scopeName": "text.html.tscl",
+        "path": "./syntaxes/tscl.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.ts": "typescript",
+          "source.css": "css",
+          "meta.embedded.expression.tscl": "typescript"
+        }
+      },
+      {
+        "scopeName": "text.html.tscl.bindings",
+        "path": "./syntaxes/tscl-bindings.tmLanguage.json",
+        "injectTo": [
+          "text.html.tscl"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.expression.tscl": "typescript"
+        }
+      }
+    ],
+    "snippets": [
+      {
+        "language": "tscl",
+        "path": "./snippets/tscl.json"
+      },
+      {
+        "language": "typescript",
+        "path": "./snippets/load.json"
+      }
+    ],
+    "configurationDefaults": {
+      "emmet.includeLanguages": {
+        "tscl": "html"
+      }
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "package": "vsce package --no-dependencies",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^4.1.1",
+    "shiki": "^4.6.0",
+    "vitest": "^5.1.1",
+    "clarusjs": "workspace:*",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  }
+}

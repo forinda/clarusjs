@@ -1,0 +1,36 @@
+{
+  "clarusjs load": {
+    "prefix": [
+      "clarus-load",
+      "load"
+    ],
+    "isFileTemplate": true,
+    "description": "A page's .load.ts: its data, read on the server",
+    "body": [
+      "// The inputs of the page next to this file, read on the server (at build time for static pages).",
+      "export async function load({ params, request }: { params: Record<string, string>; request: Request }) {",
+      "  return { ${1:title}: ${2:'Hello'} }",
+      "}",
+      ""
+    ]
+  },
+  "clarusjs entries": {
+    "prefix": [
+      "clarus-entries",
+      "entries"
+    ],
+    "isFileTemplate": true,
+    "description": "A dynamic route's .load.ts: the pages to build, and each one's data",
+    "body": [
+      "// The pages this dynamic route has (its [${1:id}] values), and each page's inputs.",
+      "export function entries() {",
+      "  return [{ ${1:id}: '${2:first}' }]",
+      "}",
+      "",
+      "export async function load({ params }: { params: { ${1:id}: string } }) {",
+      "  return { ${3:title}: params.${1:id} }",
+      "}",
+      ""
+    ]
+  }
+}

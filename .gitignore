@@ -14,3 +14,4 @@ playwright-report/
 packages/theme-docs/src/vite.d.ts
 packages/theme-docs/src/search.d.ts
 packages/theme-docs/src/nav.d.ts
+*.vsix
