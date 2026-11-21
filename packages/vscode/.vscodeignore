@@ -1,3 +1,6 @@
 test/**
 node_modules/**
+src/**
+vite.config.ts
+tsconfig.json
 *.vsix

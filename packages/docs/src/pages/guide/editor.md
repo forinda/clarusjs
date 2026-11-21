@@ -13,9 +13,10 @@ description: "The clarusjs VS Code extension (highlighting, snippets, file icon)
 
 Install **clarusjs** from the Extensions view. The extension is in this repository as `packages/vscode`; until its first Marketplace release, `pnpm --filter clarusjs-vscode package` builds a `.vsix`, which **Extensions: Install from VSIX…** installs.
 
-What it gives `.tscl` files:
+What it gives `.tscl` files (hover and completion inside expressions and scripts come from TypeScript: see below):
 
 - **Highlighting.** HTML, with TypeScript wherever a template holds code: `{{ }}` holes, `[prop]`, `(event)` and `[(model)]` bindings, `@if`/`@for` conditions, `@input`/`@model` types, `@type`/`@interface` and `<script>`. CSS in `<style>`, and `{{-- comments --}}`.
+- **Hover and completion for HTML.** Tags and attributes, as in `.html` files, and the components the file imports: hover `<card>` for where it comes from and its inputs, and inside `<card ` the completions offer `[title]` (and `[(value)]` for a `@model`).
 - **Snippets.** Type the prefix and press Tab:
 
 | Prefix | Inserts |
