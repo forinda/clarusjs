@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // #33: the client router renders client routes in the browser.
 import { afterEach, expect, test, vi } from 'vitest'
-import { matchRoute, show } from '../../src/runtime/router.ts'
+import { matchRoute, show, swapIn } from '../../src/runtime/router.ts'
 import { stringify } from '../../src/runtime/serialize.ts'
 
 // The shell's route table element: the server always sets data-title (the title template, '%s' without one).
@@ -95,4 +95,14 @@ test('show() applies the title template the shell carries on #cl-routes', async 
 test('#192: a redirected __data.json request (the server sent the page) is an error: the page then loads normally', async () => {
   const html = async () => new Response('<!doctype html><html><body><p>moved</p></body></html>', { headers: { 'content-type': 'text/html' } })
   await expect(show(new URL('http://x/app'), table, undefined, async () => ({ render: () => '<p>x</p>' }), html)).rejects.toThrow()
+})
+
+test('#196: swapIn() puts a whole page in (body, <html> attributes, islands) and returns it (inline scripts: e2e)', () => {
+  const attach = vi.fn()
+  ;(globalThis as { __clAttach?: unknown }).__clAttach = attach
+  const doc = swapIn('<html lang="en"><head><title>Page not found · Site</title></head><body><h1>Gone</h1></body></html>')
+  expect(doc.title).toBe('Page not found · Site')
+  expect(document.documentElement.lang).toBe('en')
+  expect(document.body.innerHTML).toBe('<h1>Gone</h1>')
+  expect(attach).toHaveBeenCalledWith(document.body, 1)
 })

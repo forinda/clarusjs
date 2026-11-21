@@ -50,7 +50,7 @@ test('a client route shell carries the title template for the router, and gets s
     head: { titleTemplate: '%s · "Site"', tags: [['meta', { name: 'theme-color', content: '#fff' }]] },
   })
   const html = await get(h, '/app')
-  expect(html).toContain('<script type="application/json" id="cl-routes" data-title="%s · &quot;Site&quot;">')
+  expect(html).toContain('<script type="application/json" id="cl-routes" data-title="%s · &quot;Site&quot;" data-base="/">')
   expect(html).toContain('<meta name="theme-color" content="#fff">')
 })
 

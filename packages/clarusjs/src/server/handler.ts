@@ -236,8 +236,9 @@ export function createHandler(
         const table = routes.filter((r) => client[r.path]).map((r) => ({ p: (prefix + r.path).replace(/(.)\/$/, '$1'), r: client[r.path]! }))
         const shell = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
           // Every client page's stylesheets: the router keeps the head, so this is all they get.
-          links(routes.filter((r) => client[r.path]).flatMap((r) => options.css?.[r.path] ?? [])) +
-          `<style>cl-island{display:contents}</style><script type="application/json" id="cl-routes" data-title="${escape(options.head?.titleTemplate ?? '%s')}">${safeJson(JSON.stringify(table))}</script>` +
+          // ...and the 404 and 500 pages', which the router shows when a first render fails (data-base: where they are).
+          links(routes.filter((r) => client[r.path] || r.path === '/404' || r.path === '/500').flatMap((r) => options.css?.[r.path] ?? [])) +
+          `<style>cl-island{display:contents}</style><script type="application/json" id="cl-routes" data-title="${escape(options.head?.titleTemplate ?? '%s')}" data-base="${escape(options.base ?? '/')}">${safeJson(JSON.stringify(table))}</script>` +
           `<script type="module" src="${loaderUrl}"></script><script type="module" src="${options.routerUrl ?? '/cl-router.js'}"></script>` +
           '</head><body><noscript>This page is rendered in the browser and needs JavaScript.</noscript></body></html>'
         // Site tags and transformHead apply to the shell; the router applies the title template to each page's title.

@@ -96,14 +96,14 @@ test('#33: the manifest marks client routes and leaves data files out', () => {
   expect(manifest.routes['/app/one'].js.files.some((f: string) => f.includes('render/'))).toBe(true)
 })
 
-// 1.35 KB: aborting a navigation (#193) stops its __data.json request and can hold the URL until the page is ready
-// (1.2 KB until then, for the transitions of #182; 1.1 KB before; 1 KB before #167).
-test('size budget: the client router stays within 1.35 KB gzip', async () => {
+// 1.4 KB: a client route that fails its first render shows the site's 404 or 500 page (#196). 1.35 KB until then, for
+// aborting a navigation (#193); 1.2 KB for the transitions of #182; 1.1 KB before; 1 KB before #167.
+test('size budget: the client router stays within 1.4 KB gzip', async () => {
   const { gzipSync } = await import('node:zlib')
   const shell = readFileSync(resolve(root, 'dist/client/app/index.html'), 'utf8')
   const router = /<script type="module" src="([^"]+)"><\/script><\/head>/.exec(shell)![1]!
   const size = gzipSync(readFileSync(resolve(root, 'dist/client', router.slice(1))), { level: 9 }).length
-  expect(size).toBeLessThanOrEqual(1382)
+  expect(size).toBeLessThanOrEqual(1434)
 })
 
 test('review: Netlify parameter names never collide', async () => {
