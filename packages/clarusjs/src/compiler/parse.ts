@@ -21,10 +21,15 @@ export type TypeImport = { clause: string; from: string; start: number; clauseSt
 // without a script; bundled for the browser in islands.
 export type DataImport = { clause: string; from: string; start: number; clauseStart: number }
 export type ImportDecl = { name: string; from: string; start: number }
+// @type Name = … and @interface Name { … }: types for the file's @input props. Local: other files see them only
+// through the component's props; types to share go in a .ts file. Erased from compiled output, used by type checking.
+// `type`: what follows the name (and its type parameters): the aliased type, or the interface's `extends … { … }`.
+export type TypeDecl = { kind: 'type' | 'interface'; name: string; params?: string; type: string; start: number; nameStart: number; typeStart: number }
 export type ParsedFile = {
   inputs: InputDecl[]
   imports: ImportDecl[]
   typeImports: TypeImport[]
+  types: TypeDecl[]
   dataImports: DataImport[]
   script?: { code: string; start: number } // start = offset of the first char inside <script>
   styles: { css: string; global: boolean; start: number }[] // top-level <style> blocks; `global` ones aren't scoped
@@ -33,14 +38,17 @@ export type ParsedFile = {
 }
 
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
-const INPUT_RE = /^@input\s+([A-Za-z_$][\w$]*)\s*:\s*([^=\n]+?)\s*(?:=\s*(.+?))?\s*$/d
 const DATA_IMPORT_RE = /^@import\s+(\{[^}]*\})\s+from\s+(['"])(.+?)\2\s*$/d
 const IMPORT_TYPE_RE = /^@import\s+type\s+(\{[^}]*\}|[A-Za-z_$][\w$]*)\s+from\s+(['"])(.+?)\2\s*$/d
 const IMPORT_RE = /^@import\s+([A-Za-z_$][\w-]*)\s+from\s+(['"])(.+?)\2\s*$/
 const CSS_IMPORT_RE = /^@import\s+(['"])(.+?)\1\s*$/
 
+/** The local names an `@import type` clause brings in: `{ A, B as C }` → A, C; `D` → D. */
+const typeNames = (clause: string) =>
+  clause.startsWith('{') ? clause.slice(1, -1).split(',').map((p) => p.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()!.trim()).filter(Boolean) : [clause.trim()]
+
 export function parse(source: string, file: string): ParsedFile {
-  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
+  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], types: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
   let i = 0
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
@@ -50,9 +58,10 @@ export function parse(source: string, file: string): ParsedFile {
     const lineStart = i + (source.slice(i, end).length - source.slice(i, end).trimStart().length)
     const line = source.slice(i, end).trim()
     let m: RegExpExecArray | RegExpMatchArray | null
-    if ((m = INPUT_RE.exec(line))) {
-      const at = (group: number) => lineStart + (m as RegExpExecArray).indices![group]![0]
-      out.inputs.push({ name: m[1]!, type: m[2]!.trim(), default: m[3], start: i, nameStart: at(1), typeStart: at(2), ...(m[3] ? { defaultStart: at(3) } : {}) })
+    if (/^@input\s/.test(line)) {
+      return inputDecl(lineStart)
+    } else if (/^@(type|interface)\s/.test(line)) {
+      return typeDecl(lineStart)
     } else if ((m = IMPORT_TYPE_RE.exec(line))) {
       out.typeImports.push({ clause: m[1]!, from: m[3]!, start: i, clauseStart: lineStart + (m as RegExpExecArray).indices![1]![0] })
     } else if ((m = DATA_IMPORT_RE.exec(line))) {
@@ -67,6 +76,104 @@ export function parse(source: string, file: string): ParsedFile {
       out.cssImports.push({ from: m[2]!, start: i })
     }
     else fail(`unknown or malformed directive "${line.split(/\s/)[0]}"`, i)
+    i = end
+  }
+
+  /** Where a type ends: the first line end outside brackets ((), [], {}), skipping string and template literals. */
+  function typeEnd(from: number, what: string): number {
+    const open: string[] = []
+    for (let j = from; j <= source.length; j++) {
+      const c = source[j]
+      if (c === undefined || (c === '\n' && !open.length)) {
+        if (open.length) fail(`${what}: unclosed ${open[0]}`, i)
+        return j
+      }
+      if (c === "'" || c === '"' || c === '`') {
+        for (j++; j < source.length && source[j] !== c; j++) if (source[j] === '\\') j++
+      } else if (c === '(' || c === '[' || c === '{') open.push(c)
+      else if (c === ')' || c === ']' || c === '}') open.pop()
+    }
+    return source.length
+  }
+
+  /**
+   * @input name: type = default. The type runs to the first '=' outside brackets that isn't part of '=>'; type and
+   * default continue onto the next lines while a bracket is open (an object type, a function, a default object).
+   */
+  function inputDecl(lineStart: number): void {
+    const malformed = () => fail('unknown or malformed directive "@input"', i)
+    let pos = lineStart + '@input'.length
+    while (source[pos] === ' ' || source[pos] === '\t') pos++
+    const name = /^[A-Za-z_$][\w$]*/.exec(source.slice(pos))?.[0] ?? malformed()
+    const nameStart = pos
+    pos += name.length
+    while (source[pos] === ' ' || source[pos] === '\t') pos++
+    if (source[pos] !== ':') malformed()
+    pos++
+    while (source[pos] === ' ' || source[pos] === '\t') pos++
+    const typeStart = pos
+    const open: string[] = []
+    let j = pos
+    for (; j < source.length; j++) {
+      const c = source[j]!
+      if (c === '\n' && !open.length) break
+      if (c === "'" || c === '"' || c === '`') {
+        for (j++; j < source.length && source[j] !== c; j++) if (source[j] === '\\') j++
+      } else if ('([{<'.includes(c)) open.push(c)
+      else if (')]}'.includes(c) || (c === '>' && source[j - 1] !== '=')) open.pop()
+      else if (c === '=' && !open.length && source[j + 1] !== '>' && source[j + 1] !== '=') break
+    }
+    if (open.length) fail(`@input ${name}: unclosed ${open[0]}`, i)
+    const type = source.slice(typeStart, j).trim()
+    if (!type) malformed()
+    let end = j
+    let fallback: { default: string; defaultStart: number } | undefined
+    if (source[j] === '=') {
+      let at = j + 1
+      while (source[at] === ' ' || source[at] === '\t') at++
+      end = typeEnd(at, `@input ${name}`)
+      const value = source.slice(at, end).trim()
+      if (!value) malformed()
+      fallback = { default: value, defaultStart: at }
+    }
+    out.inputs.push({ name, type, start: i, nameStart, typeStart, ...fallback })
+    i = end
+  }
+
+  /** @type Name<P> = type, or @interface Name<P> extends … { … }: on one line, or on more while a bracket is open. */
+  function typeDecl(lineStart: number): void {
+    const kind = source.startsWith('@interface', lineStart) ? 'interface' : 'type'
+    const malformed = () => fail(`unknown or malformed directive "@${kind}"`, i)
+    let pos = lineStart + kind.length + 1
+    while (source[pos] === ' ' || source[pos] === '\t') pos++
+    const name = /^[A-Za-z_$][\w$]*/.exec(source.slice(pos))?.[0] ?? malformed()
+    const nameStart = pos
+    pos += name.length
+    let params: string | undefined
+    if (source[pos] === '<') {
+      // Type parameters, with their constraints and defaults: to the matching '>' (one in '=>' doesn't count).
+      let depth = 0
+      let end = pos
+      for (; end < source.length; end++) {
+        if (source[end] === '<') depth++
+        else if (source[end] === '>' && source[end - 1] !== '=' && --depth === 0) break
+        else if (source[end] === '\n') malformed()
+      }
+      params = source.slice(pos, end + 1)
+      pos = end + 1
+    }
+    while (source[pos] === ' ' || source[pos] === '\t') pos++
+    if (kind === 'type') {
+      if (source[pos] !== '=') malformed()
+      pos++
+      while (source[pos] === ' ' || source[pos] === '\t') pos++
+    }
+    const end = typeEnd(pos, `@${kind} ${name}`)
+    const type = source.slice(pos, end).trimEnd().replace(/;$/, '').trimEnd()
+    if (!type || (kind === 'interface' && !type.includes('{'))) malformed()
+    if (out.types.some((t) => t.name === name)) fail(`@type ${name} is declared twice`, i)
+    if (out.typeImports.some((t) => typeNames(t.clause).includes(name))) fail(`@type ${name} is already imported with @import type`, i)
+    out.types.push({ kind, name, ...(params ? { params } : {}), type, start: i, nameStart, typeStart: pos })
     i = end
   }
 

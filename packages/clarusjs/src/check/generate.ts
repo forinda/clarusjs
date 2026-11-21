@@ -53,6 +53,13 @@ export function generateTs(source: string, file: string, options: { loader?: str
     }
   }
 
+  // @type: local aliases (not exported: other files see them only through Inputs).
+  for (const t of parsed.types) {
+    emit(t.kind === 'interface' ? `interface ${t.name}${t.params ?? ''} ` : `type ${t.name}${t.params ?? ''} = `)
+    copy(t.type, t.typeStart)
+    emit('\n')
+  }
+
   emit('\nexport interface Inputs {\n')
   // No inputs: one hidden optional member, so Inputs isn't an empty type (which accepts any props unchecked).
   if (!parsed.inputs.length) emit('  __cl_none?: never\n')
@@ -221,6 +228,8 @@ export function viewsDeclaration(views: { file: string; source: string }[]): str
         body.push(`  type ${clause} = import(${JSON.stringify(from)}).default`)
       }
     }
+    // @type aliases stay inside this view's namespace.
+    for (const t of parsed.types) body.push(t.kind === 'interface' ? `  interface ${t.name}${t.params ?? ''} ${t.type}` : `  type ${t.name}${t.params ?? ''} = ${t.type}`)
     body.push(`  interface Inputs {`)
     if (!parsed.inputs.length) body.push('    __cl_none?: never') // not empty: unknown props are errors
     for (const input of parsed.inputs) body.push(`    ${input.name}${input.default !== undefined ? '?' : ''}: ${input.type}`)
