@@ -214,7 +214,9 @@ test('#40: a page links the stylesheets it imports, processed and hashed by Vite
 // 3.5 KB: the final review's fixes (errors with no field, waiting for the newest async check, per-row touched state,
 // message elements that belong to one field) took it to 3.1 KB. 3 KB before: core about 2 KB, with steps and submit.
 // Loaded only by islands with [engine], so pages without forms pay nothing (checked below).
-test('size budget: clarusjs/fetch stays within 1.5 KB gzip on its own, and a site without it ships none of it', async () => {
+// 2.5 KB (was 1.5): the keyed result cache (#287: keys, freshness, invalidate, setData, prefetch, dropping unused
+// entries) goes into the same entry, which is at 1.49 KB without it.
+test('size budget: clarusjs/fetch stays within 2.5 KB gzip on its own, and a site without it ships none of it', async () => {
   const { build: viteBuild } = await import('vite')
   const out = (await viteBuild({
     configFile: false, logLevel: 'silent',
@@ -222,7 +224,7 @@ test('size budget: clarusjs/fetch stays within 1.5 KB gzip on its own, and a sit
   })) as { output: { type: string; code?: string }[] }[]
   const code = out[0]!.output.find((o) => o.type === 'chunk')!.code!
   const size = gzipSync(code, { level: 9 }).length
-  expect(size, `clarusjs/fetch: ${size} B gzip`).toBeLessThanOrEqual(1.5 * KB)
+  expect(size, `clarusjs/fetch: ${size} B gzip`).toBeLessThanOrEqual(2.5 * KB)
   // The fixture site doesn't fetch: none of it is in its assets.
   const assets = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
   for (const f of assets) for (const marker of ['batch: no answer for', 'onStart']) expect(readFileSync(resolve(client, 'assets', f), 'utf8'), `${f}: ${marker}`).not.toContain(marker)
