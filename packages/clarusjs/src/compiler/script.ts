@@ -239,6 +239,9 @@ export function analyzeScript(code: string, file: string, source: string, offset
     }
     return undefined
   })
+  // render() and attach() are synchronous: an await outside any function would be invalid JavaScript in them.
+  const tla = topLevelAwait(ast)
+  if (tla) throw new ClarusError("top-level await isn't supported in a <script> (rendering is synchronous): await inside a function, such as a resource's fetcher or an event handler", file, source, offset + tla.start)
   for (const stmt of ast.body as N[]) {
     if (stmt.type.startsWith('Export')) {
       throw new ClarusError('a <script> cannot export anything', file, source, offset + stmt.start)
@@ -397,4 +400,19 @@ export function referencesNames(expr: string, names: Set<string>): boolean {
     return undefined
   })
   return found
+}
+
+/** The first `await` (or `for await`) outside any function in a script, or undefined. */
+function topLevelAwait(node: N): N | undefined {
+  if (/Function/.test(node.type)) return undefined // its own scope: await there is fine
+  if (node.type === 'AwaitExpression' || (node.type === 'ForOfStatement' && node.await)) return node
+  for (const value of Object.values(node)) {
+    for (const child of Array.isArray(value) ? value : [value]) {
+      if (child && typeof child === 'object' && typeof (child as N).type === 'string') {
+        const found = topLevelAwait(child as N)
+        if (found) return found
+      }
+    }
+  }
+  return undefined
 }
