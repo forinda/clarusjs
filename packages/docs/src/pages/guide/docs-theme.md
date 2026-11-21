@@ -120,6 +120,17 @@ export const config: ThemeConfig = {
 - **Last updated** comes from one `git log` for all pages, the same one the sitemap uses. A page git doesn't know yet (not committed) shows no date. In CI, check out the full history (`fetch-depth: 0` on GitHub Actions): a shallow clone dates every page to the last commit.
 - `editLink` can still be a function of the route, for links that aren't one pattern.
 
+## Search
+
+Set `search: true` in the config, and keep `themeDocs()` in `vite.config.ts`: after the build it reads every built page and writes a search index next to them, in `dist/client/search/`.
+
+- **Sections:** each page is split at its headings (h1 to h3 with an id), so a result links to the part of the page that matches. The theme's own parts (crumb, contents, footer) aren't indexed. Pages with `noindex`, or with `data-search="false"` in their content, are left out.
+- **Small files, loaded on demand:** words are grouped by their first two letters (`t-is.json`), sections in chunks of 64 (`s-0.json`). A query fetches one word file per word it has and the sections of its best results, never the whole index.
+- **Ranking:** every word must match, the last one as a prefix, so results come while typing. A word in a heading counts more than one in the text, and a word repeated all over a long page counts no more than three uses.
+- **The dialog:** the header button, <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> or <kbd>/</kbd> open it. It's a native modal `<dialog>`: focus stays inside, <kbd>Escape</kbd> closes it, and focus goes back. Arrow keys move through the results, <kbd>Enter</kbd> opens one, and the number of results is announced.
+
+`themeDocs({ search: false })` skips the index.
+
 ## Regions at every width
 
 | Width | Sidebar | On this page | Social links |

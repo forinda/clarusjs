@@ -24,6 +24,8 @@ export type ThemeConfig = {
   editLink?: string | ((path: string) => string)
   /** The pages as themeDocs() reads them: source files for `editLink` patterns, and "Last updated" dates. */
   pages?: PageInfo[]
+  /** A search button (and Ctrl/⌘K, /) in the header; the index comes from the themeDocs() Vite plugin. */
+  search?: boolean
   /** The site footer's text. */
   footer?: string
 }

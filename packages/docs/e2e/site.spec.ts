@@ -225,6 +225,8 @@ test('phone width: the page list is a drawer from ☰ that works without JavaScr
   const context = await browser.newContext({ viewport: { width: 390, height: 800 }, javaScriptEnabled: false })
   const page = await context.newPage()
   await page.goto('/guide/lists')
+  // The section links live in the drawer on phones, not in the header.
+  await expect(page.locator('.site-header .top-nav')).toBeHidden()
   const sidebar = page.locator('.sidebar')
   await expect(sidebar).toBeHidden()
   await page.getByRole('button', { name: 'Open menu' }).click()
@@ -596,6 +598,46 @@ test('last updated: each page shows the last commit date of its source file from
     await expect(time, path).toHaveAttribute('datetime', new Date(seconds * 1000).toISOString())
     await expect(time, path).toHaveText(new Date(seconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }))
   }
+})
+
+test('search: Ctrl+K opens a modal, results load from small index files, arrows and Enter open one, Escape closes', async ({ page }) => {
+  const fetched: string[] = []
+  page.on('request', (r) => { if (r.url().includes('/search/')) fetched.push(new URL(r.url()).pathname) })
+  await page.goto('/guide/holes')
+  const dialog = page.locator('dialog.search-dialog')
+  await expect(dialog).not.toBeVisible()
+  await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
+  await page.keyboard.press('Control+k')
+  await expect(dialog).toBeVisible()
+  const input = dialog.getByRole('combobox', { name: 'Search the docs' })
+  await expect(input).toBeFocused()
+  await input.fill('fragment navig')
+  const options = dialog.getByRole('option')
+  await expect(options.first()).toContainText('Fragment navigation')
+  await expect(dialog.getByRole('status')).toHaveText(/^\d+ results?$/)
+  // Only the term files for the words typed and the section files for the results: never the whole index.
+  expect(fetched.every((p) => /^\/search\/(t-(fr|na)|s-\d+)\.json$/.test(p))).toBe(true)
+  await input.press('ArrowDown')
+  await expect(options.nth(1)).toHaveAttribute('aria-selected', 'true')
+  await expect(input).toHaveAttribute('aria-activedescendant', 'search-result-1')
+  await input.press('ArrowUp')
+  const href = await options.first().locator('a').getAttribute('href')
+  await input.press('Enter')
+  await expect(page).toHaveURL(new RegExp(href!.replace(/[.?#]/g, '\\$&') + '$'))
+  await expect(dialog).not.toBeVisible()
+  // "/" opens it too (outside a text field); Escape closes it and focus goes back to the page.
+  await page.keyboard.press('/')
+  await expect(dialog).toBeVisible()
+  await page.keyboard.type('zzqqxx')
+  await expect(dialog.getByRole('status')).toHaveText('No results for "zzqqxx"')
+  await page.keyboard.press('Escape')
+  await expect(dialog).not.toBeVisible()
+  // The header button opens the same dialog; while it's open, the page behind is inert (focus stays inside).
+  await page.locator('.search-button').click()
+  await expect(dialog).toBeVisible()
+  for (let i = 0; i < 4; i++) await page.keyboard.press('Tab')
+  expect(await page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true)
+  expect((await new AxeBuilder({ page }).include('dialog.search-dialog').analyze()).violations).toEqual([])
 })
 
 test('a Markdown page renders in the layout, with anchors, a component and the right edit link', async ({ page }) => {
