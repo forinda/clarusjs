@@ -1,5 +1,19 @@
 # @clarusjs/theme-docs
 
+## 0.1.1
+
+### Patch Changes
+
+- [#190](https://github.com/forinda/clarusjs/pull/190) [`e3392ef`](https://github.com/forinda/clarusjs/commit/e3392ef39bee3c5de3d548029b37b1bdcf8e5cd9) Thanks [@forinda](https://github.com/forinda)! - A thin progress bar at the top while a page change runs (from `html[data-cl-navigating]`, CSS only).
+
+- [#187](https://github.com/forinda/clarusjs/pull/187) [`9ffaf94`](https://github.com/forinda/clarusjs/commit/9ffaf942bc3ebcee32265a61ada1c2502118c7c5) Thanks [@forinda](https://github.com/forinda)! - Search opens the chosen result with `navigate()` from `clarusjs/navigation`.
+
+- [#174](https://github.com/forinda/clarusjs/pull/174) [`ad4a5e6`](https://github.com/forinda/clarusjs/commit/ad4a5e6f4a5ab6e77f6e841ee9d3af7c256eb957) Thanks [@forinda](https://github.com/forinda)! - The sidebar stays in view while the page scrolls (it scrolled away with the content), and the header's content lines up with the page instead of the window's edges. The header is `--header-height` tall, so the sidebar and the table of contents sit right under it. New token: `--page-width` (1440px).
+
+- [#207](https://github.com/forinda/clarusjs/pull/207) [`b2a4aba`](https://github.com/forinda/clarusjs/commit/b2a4aba280288fa978f60432db67a71763d45e13) Thanks [@forinda](https://github.com/forinda)! - `viewTransitions: true` in the theme config cross-fades page changes where the browser supports view transitions (no animation with reduced motion).
+- Updated dependencies [[`d3bfcad`](https://github.com/forinda/clarusjs/commit/d3bfcad7719f50e55599f357d59196489b0e2018), [`6faf6b2`](https://github.com/forinda/clarusjs/commit/6faf6b20fe62ee764e27f483031b7c84308a73a4), [`4d478ed`](https://github.com/forinda/clarusjs/commit/4d478edd0bb5b45e59a5943c1d0ef080847252c9), [`74ab408`](https://github.com/forinda/clarusjs/commit/74ab408acca5be012886e1e3c3b375c9c403da6d), [`a293c0a`](https://github.com/forinda/clarusjs/commit/a293c0a5f0eab6971cb8d3336542c3d40115bd47), [`bc20690`](https://github.com/forinda/clarusjs/commit/bc206903ee8c01a8292788fd8443c47656f57742), [`c80ed74`](https://github.com/forinda/clarusjs/commit/c80ed74fdf7163b0be9d9e3b5e4d1b9af0f38df2), [`9ffaf94`](https://github.com/forinda/clarusjs/commit/9ffaf942bc3ebcee32265a61ada1c2502118c7c5), [`e3392ef`](https://github.com/forinda/clarusjs/commit/e3392ef39bee3c5de3d548029b37b1bdcf8e5cd9), [`83383ad`](https://github.com/forinda/clarusjs/commit/83383adb2c8e42a3f7e078f6cc83ddb4012061dd), [`005cd31`](https://github.com/forinda/clarusjs/commit/005cd3123bffa1281d868138c3687648cc8107eb), [`2b38609`](https://github.com/forinda/clarusjs/commit/2b386098bb8919ad6c9af3fa26e3f78fbb434dde), [`770e109`](https://github.com/forinda/clarusjs/commit/770e109ff0a8c278a43ba7a8958e2b7a4af2a18e), [`e5c8f93`](https://github.com/forinda/clarusjs/commit/e5c8f93503049adcf11428090d15d11bac2ad2c9), [`b2a4aba`](https://github.com/forinda/clarusjs/commit/b2a4aba280288fa978f60432db67a71763d45e13)]:
+  - clarusjs@0.8.1
+
 ## 0.1.0
 
 ### Minor Changes

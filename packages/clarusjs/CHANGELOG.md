@@ -1,5 +1,47 @@
 # clarusjs
 
+## 0.8.1
+
+### Patch Changes
+
+- [#198](https://github.com/forinda/clarusjs/pull/198) [`d3bfcad`](https://github.com/forinda/clarusjs/commit/d3bfcad7719f50e55599f357d59196489b0e2018) Thanks [@forinda](https://github.com/forinda)! - Production builds leave out the development-only `@for` duplicate-key warning (it is behind `import.meta.env?.DEV`). The package declares `sideEffects`: only the loader, router, fragment navigation and `clarusjs/navigation` run code when loaded, so bundlers drop unused runtime modules.
+
+- [#209](https://github.com/forinda/clarusjs/pull/209) [`6faf6b2`](https://github.com/forinda/clarusjs/commit/6faf6b20fe62ee764e27f483031b7c84308a73a4) Thanks [@forinda](https://github.com/forinda)! - `clarusjs check` uses a JavaScript project's `jsconfig.json` like a `tsconfig.json`.
+
+- [#204](https://github.com/forinda/clarusjs/pull/204) [`4d478ed`](https://github.com/forinda/clarusjs/commit/4d478edd0bb5b45e59a5943c1d0ef080847252c9) Thanks [@forinda](https://github.com/forinda)! - A client route whose first render fails shows the site's 404 or 500 page (`src/pages/404.tscl`, `500.tscl`) at the same URL, with its islands and stylesheets (the shell links them). Without one, it shows "Could not load page." (also for a missing page, which said "Page not found." before).
+
+- [#201](https://github.com/forinda/clarusjs/pull/201) [`74ab408`](https://github.com/forinda/clarusjs/commit/74ab408acca5be012886e1e3c3b375c9c403da6d) Thanks [@forinda](https://github.com/forinda)! - Error pages. When a page rendered on request fails (its `load()` throws or it can't render), the answer is the site's `src/pages/500.tscl` with status 500 (it gets a `status` input), or plain text without one; the error only goes to the server log. Builds also write `500.html` (left out of the sitemap). In development, the dev server shows the error itself with its stack instead.
+
+- [#206](https://github.com/forinda/clarusjs/pull/206) [`a293c0a`](https://github.com/forinda/clarusjs/commit/a293c0a5f0eab6971cb8d3336542c3d40115bd47) Thanks [@forinda](https://github.com/forinda)! - Navigation fixes from review:
+  - a navigation cancelled before it starts (a `beforeNavigate` hook) no longer leaves `data-cl-navigating` set or sends a later history change to the cancelled URL;
+  - a failure before the URL changed is reported with the error itself, and the normal page load starts after that;
+  - `afterSwap` and `afterNavigate` run once the new page's islands that attach right away are attached;
+  - `onNavigateError` gets the page it was going to;
+  - a hook whose island was released by an earlier hook is skipped;
+  - the 500 page keeps `status` when it has its own `load()`;
+  - a redirect whose file would replace a generated page or data file, or land outside the site, fails the build;
+  - the browser runtime typechecks from source without an `ImportMeta.env` declaration.
+
+- [#200](https://github.com/forinda/clarusjs/pull/200) [`bc20690`](https://github.com/forinda/clarusjs/commit/bc206903ee8c01a8292788fd8443c47656f57742) Thanks [@forinda](https://github.com/forinda)! - Aborting a navigation. `abort()` in `clarusjs/navigation` stops the navigation in progress, like the browser's stop button. Push and replace navigations now hold the URL while the next page loads where the browser supports it (precommit handlers): the address bar changes once the page is ready to swap in, so an abort leaves page and URL as they were (elsewhere the URL changes at once, as before). Fragment and `__data.json` requests get the navigation's abort signal, so a stopped or superseded navigation stops downloading. A page's own `replaceState` while a held navigation loads no longer loses the clicked page.
+
+- [#188](https://github.com/forinda/clarusjs/pull/188) [`c80ed74`](https://github.com/forinda/clarusjs/commit/c80ed74fdf7163b0be9d9e3b5e4d1b9af0f38df2) Thanks [@forinda](https://github.com/forinda)! - Navigation hooks in `clarusjs/navigation`: `beforeNavigate` (can cancel), `afterNavigate` and `onNavigateError`, released with the island that registered them. A failed fragment swap or client render is now reported as `navigateerror` before the page loads normally.
+
+- [#187](https://github.com/forinda/clarusjs/pull/187) [`9ffaf94`](https://github.com/forinda/clarusjs/commit/9ffaf942bc3ebcee32265a61ada1c2502118c7c5) Thanks [@forinda](https://github.com/forinda)! - New entry `clarusjs/navigation` for islands: `navigate(to, { replace, state })` and `back()` move between pages through the page's navigator (fragments or the client router, as a link click would), and `currentUrl` is the current URL as a store (`let here = shared(currentUrl)`; `null` on the server). Without the Navigation API, `navigate()` is a normal page load. Ships only with islands that import it.
+
+- [#190](https://github.com/forinda/clarusjs/pull/190) [`e3392ef`](https://github.com/forinda/clarusjs/commit/e3392ef39bee3c5de3d548029b37b1bdcf8e5cd9) Thanks [@forinda](https://github.com/forinda)! - Transitions: every page change the router or fragment navigation takes over goes through `loading` then `swapping`, shown on `<html data-cl-navigating>` for CSS. In `clarusjs/navigation`: the `navigating` store, and the in-between hooks `beforeSwap` (the next page is loaded, this one still shown) and `afterSwap` (the new page is in). Hooks may return a promise, which the page change waits for; `t.signal` aborts when a newer navigation takes over.
+
+- [#210](https://github.com/forinda/clarusjs/pull/210) [`83383ad`](https://github.com/forinda/clarusjs/commit/83383adb2c8e42a3f7e078f6cc83ddb4012061dd) Thanks [@forinda](https://github.com/forinda)! - Path aliases. `~/` is `src/`, built in. Aliases from `tsconfig.json`/`jsconfig.json` `paths` and Vite's `resolve.alias` work in `@import` (components, data, stylesheets), island scripts and `.load.ts` files, resolved the same way in dev, build, prerender and `clarusjs check` (which no longer drops the project's `paths`). An import that no file, package or alias matches is an error at its `@import` (`file.tscl:line:col`).
+
+- [#195](https://github.com/forinda/clarusjs/pull/195) [`005cd31`](https://github.com/forinda/clarusjs/commit/005cd3123bffa1281d868138c3687648cc8107eb) Thanks [@forinda](https://github.com/forinda)! - Redirects. A server page's `load()` can return a `Response`, such as `redirect('/login')` from `clarusjs/server` (302 by default; 301, 303, 307 or 308). Fragment navigation and the client router follow it by loading the page normally, so the address bar shows where it landed. The plugin's `redirects: { '/old': '/new' }` writes a forwarding page at each old path and `_redirects` lines (a real 301 on Netlify and Cloudflare Pages), and the dev server answers 301; old paths pass the link check, and a redirect from a path that is a page is a build error.
+
+- [#177](https://github.com/forinda/clarusjs/pull/177) [`2b38609`](https://github.com/forinda/clarusjs/commit/2b386098bb8919ad6c9af3fa26e3f78fbb434dde) Thanks [@forinda](https://github.com/forinda)! - The client router leaves the page's own `history.pushState` and `replaceState` alone: they no longer re-render the route (which lost focus and state and fetched `__data.json` again). Back and forward still render, and a `replaceState` while the next page loads still shows that page.
+
+- [#186](https://github.com/forinda/clarusjs/pull/186) [`770e109`](https://github.com/forinda/clarusjs/commit/770e109ff0a8c278a43ba7a8958e2b7a4af2a18e) Thanks [@forinda](https://github.com/forinda)! - The client router and fragment navigation decide which navigations to take over in one shared place. Behaviour is unchanged; each script carries its own copy, so pages load no extra file.
+
+- [#208](https://github.com/forinda/clarusjs/pull/208) [`e5c8f93`](https://github.com/forinda/clarusjs/commit/e5c8f93503049adcf11428090d15d11bac2ad2c9) Thanks [@forinda](https://github.com/forinda)! - Typed routes: `href(route, params)` from `clarusjs/navigation` builds a page's URL from its route (`'/releases/[version]'`), with params encoded and the site's base. `clarusjs check` writes `.clarusjs/routes.d.ts` (every page under `src/pages`, Markdown pages too), so a route that doesn't exist or a missing param is a type error.
+
+- [#207](https://github.com/forinda/clarusjs/pull/207) [`b2a4aba`](https://github.com/forinda/clarusjs/commit/b2a4aba280288fa978f60432db67a71763d45e13) Thanks [@forinda](https://github.com/forinda)! - View transitions: `viewTransitions()` from `clarusjs/navigation` runs page changes (fragment swaps and client routes) inside `document.startViewTransition` where the browser has it; elsewhere they stay instant. `beforeSwap` runs before the browser's snapshot, `afterSwap` once the new page is in.
+
 ## 0.8.0
 
 ### Minor Changes
