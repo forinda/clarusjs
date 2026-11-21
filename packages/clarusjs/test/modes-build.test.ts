@@ -96,14 +96,14 @@ test('#33: the manifest marks client routes and leaves data files out', () => {
   expect(manifest.routes['/app/one'].js.files.some((f: string) => f.includes('render/'))).toBe(true)
 })
 
-// 1.1 KB: the router must leave the page's own history.pushState/replaceState alone (#167), which doesn't fit in
-// 1 KB (it was at exactly 1024 bytes).
-test('size budget: the client router stays within 1.1 KB gzip', async () => {
+// 1.2 KB: transition states and the in-between hooks (#182) run on client routes too, like on every other page
+// (1.1 KB until then; 1 KB before #167).
+test('size budget: the client router stays within 1.2 KB gzip', async () => {
   const { gzipSync } = await import('node:zlib')
   const shell = readFileSync(resolve(root, 'dist/client/app/index.html'), 'utf8')
   const router = /<script type="module" src="([^"]+)"><\/script><\/head>/.exec(shell)![1]!
   const size = gzipSync(readFileSync(resolve(root, 'dist/client', router.slice(1))), { level: 9 }).length
-  expect(size).toBeLessThanOrEqual(1126)
+  expect(size).toBeLessThanOrEqual(1229)
 })
 
 test('review: Netlify parameter names never collide', async () => {
