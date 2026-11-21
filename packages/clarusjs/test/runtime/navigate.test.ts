@@ -3,12 +3,12 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { onNavigate, type Render } from '../../src/runtime/navigate.ts'
 
-type Fake = Parameters<typeof onNavigate>[0] & { handler?: () => Promise<void> }
+type Fake = Parameters<typeof onNavigate>[0] & { handler?: () => Promise<void>; precommit?: () => Promise<void> }
 const event = (url: string, over: Partial<Fake> = {}): Fake => {
   const e: Fake = {
     canIntercept: true, hashChange: false, downloadRequest: null, formData: null, navigationType: 'push',
     destination: { url, sameDocument: false }, signal: new AbortController().signal,
-    intercept: (options) => { e.handler = options.handler },
+    intercept: (options) => { e.handler = options.handler; e.precommit = options.precommitHandler },
     ...over,
   }
   return e
@@ -21,8 +21,9 @@ const render: Render = async (url) => { if (failing) throw new Error('500'); ren
 const pick = (url: URL) => !url.pathname.startsWith('/static') && render
 const nav = (e: Fake) => onNavigate(e, pick)
 const reload = vi.fn()
-vi.stubGlobal('location', { href: 'http://x/', reload })
-afterEach(() => { rendered.length = 0; failing = false; reload.mockClear() })
+const assign = vi.fn()
+vi.stubGlobal('location', { href: 'http://x/', reload, assign })
+afterEach(() => { rendered.length = 0; failing = false; reload.mockClear(); assign.mockClear() })
 
 test('a #hash, downloads, forms, cross-origin and the page’s own pushState/replaceState are left alone', () => {
   const left = [
@@ -54,6 +55,7 @@ test('a failed render reloads the page once and is reported; that URL is then le
   failing = true
   const e = event('http://x/app/broken')
   nav(e)
+  location.href = 'http://x/app/broken' // committed (the browser changes the URL before running handler)
   await expect(e.handler!()).rejects.toThrow('500') // rejected, so the Navigation API reports it (navigateerror)
   expect(reload).toHaveBeenCalledOnce()
   const again = event('http://x/app/broken')
@@ -122,6 +124,7 @@ test('a step that throws (an in-between hook) falls back to a page load, reporte
   g.__clNav = (step) => { if (step == 'swapping') throw new Error('hook') }
   const e = event('http://x/to2')
   onNavigate(e, () => async (_, gate) => { await gate() })
+  location.href = 'http://x/to2' // committed
   await expect(e.handler!()).rejects.toThrow('hook')
   expect(reload).toHaveBeenCalledOnce()
   expect(attr()).toBeUndefined()
@@ -151,4 +154,73 @@ test('a newer navigation aborts the older one’s signal; the older never swaps'
   expect(signals[0]!.aborted).toBe(true)
   expect(swapped).toEqual(['/two'])
   expect(attr()).toBeUndefined()
+})
+
+// #193: where the browser can hold the URL (precommit handlers), it changes only once the page is ready to swap in,
+// so aborting before that leaves page and URL as they were. Requests get the navigation's signal.
+const precommit = () => {}
+afterEach(() => { vi.unstubAllGlobals(); vi.stubGlobal('location', { href: 'http://x/', reload, assign }) })
+
+test('the URL is held while the page loads: committed at the swap step, before the swap; requests get the signal', async () => {
+  precommit()
+  const seen: string[] = []
+  let signal: AbortSignal | undefined
+  const e = event('http://x/held')
+  onNavigate(e, () => async (_, gate, s) => { signal = s; seen.push('loading'); if (await gate()) seen.push('swap') })
+  expect(e.precommit).toBeDefined()
+  await e.precommit!() // resolves once the page reached the swap step
+  seen.push('commit')
+  await e.handler!()
+  expect(seen).toEqual(['loading', 'commit', 'swap'])
+  expect(signal).toBe(e.signal)
+})
+
+test('aborted while loading: the precommit settles, nothing reloads, the phase clears (the URL never changed)', async () => {
+  precommit()
+  const abort = new AbortController()
+  const e = event('http://x/slow', { signal: abort.signal })
+  onNavigate(e, () => async (_, __, s) => { await new Promise((_, fail) => s!.addEventListener('abort', () => fail(new DOMException('', 'AbortError')))) })
+  const held = e.precommit!()
+  abort.abort()
+  await held.catch(() => {})
+  expect(reload).not.toHaveBeenCalled()
+  expect(assign).not.toHaveBeenCalled()
+  expect(document.documentElement.dataset.clNavigating).toBeUndefined()
+})
+
+test('a failure before the URL changed loads the new page normally (not a reload of the old one)', async () => {
+  precommit()
+  const e = event('http://x/broken')
+  onNavigate(e, () => async () => { throw new Error('500') })
+  await e.precommit!() // released: the page loads normally
+  await expect(e.handler!()).rejects.toThrow('500') // then the browser runs handler, which reports it
+  expect(assign).toHaveBeenCalledWith('http://x/broken')
+  expect(reload).not.toHaveBeenCalled()
+})
+
+test('back/forward and reloads change the URL at once; a browser without precommit handlers only runs handler', async () => {
+  for (const navigationType of ['traverse', 'reload']) {
+    const e = event(`http://x/${navigationType}`, { navigationType })
+    onNavigate(e, () => render)
+    expect(e.precommit, navigationType).toBeUndefined()
+    await e.handler!()
+  }
+  const old = event('http://x/old-browser')
+  onNavigate(old, () => render)
+  await old.handler!() // precommitHandler ignored: the URL changed at once, and the page still renders
+  expect(rendered).toEqual(['/traverse', '/reload', '/old-browser'])
+})
+
+test('the page’s own replaceState while a held URL loads is left alone, and the navigation goes on to its page', async () => {
+  const navigate = vi.fn()
+  vi.stubGlobal('navigation', { navigate })
+  const e = event('http://x/target')
+  onNavigate(e, () => async (_, gate) => { await gate() })
+  const held = e.precommit!()
+  const own = event('http://x/#top', { navigationType: 'replace', destination: { url: 'http://x/#top', sameDocument: true } })
+  onNavigate(own, () => render)
+  expect(own.handler).toBeUndefined() // not taken over: the URL never left this page
+  await new Promise((r) => setTimeout(r))
+  expect(navigate).toHaveBeenCalledWith('http://x/target') // the clicked page still comes
+  void held
 })

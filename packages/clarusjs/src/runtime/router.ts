@@ -79,5 +79,5 @@ if (routes) {
     document.body.textContent = err.message.startsWith('404') ? 'Page not found.' : 'Could not load page.'
   })
   // Later navigations to client routes.
-  takeOver((url) => matchRoute(table, url.pathname) && ((url, isCurrent) => show(url, table, isCurrent)))
+  takeOver((url) => matchRoute(table, url.pathname) && ((url, isCurrent, signal) => show(url, table, isCurrent, undefined, (src) => fetch(src, { signal }))))
 }

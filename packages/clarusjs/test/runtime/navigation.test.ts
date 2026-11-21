@@ -149,3 +149,12 @@ test('beforeSwap and afterSwap run at their step, in order, awaited, and are rel
   await step()('swapped', t)
   expect(seen).toHaveLength(3)
 })
+
+// #193
+test('abort() stops the navigation in progress, as the browser’s stop button does', async () => {
+  const stop = vi.fn()
+  vi.stubGlobal('stop', stop)
+  const { abort } = await import('../../src/runtime/navigation.ts')
+  abort()
+  expect(stop).toHaveBeenCalledOnce()
+})
