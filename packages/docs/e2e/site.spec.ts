@@ -1138,6 +1138,8 @@ test('lesson: a #link to something inside a step opens that step and keeps the t
 
 test('lesson: keyboard users see where focus went when a step opens; a mouse click shows no ring', async ({ page }) => {
   await page.goto('/learn/first-page')
+  // The bar's island must be attached before the keypress, or Enter lands on a button with no handler yet (#291).
+  await expect(page.locator('cl-island[c="lesson-bar"]')).toHaveAttribute('data-cl-ready', '')
   const continueButton = page.locator('.lesson-bar button.primary')
   await continueButton.focus()
   await page.keyboard.press('Enter')
