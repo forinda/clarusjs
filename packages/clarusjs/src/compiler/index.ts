@@ -60,6 +60,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     css += `${statements}@scope (.cl-c-${id}) to ([class*="cl-c-"]:not(.cl-c-${id}) > *) {${s.css.slice(head.length).replace(/\s*$/, '')}\n}\n`
   }
   const ir = lower(parsed, options.file, source)
+  warnings.push(...ir.warnings)
   if (options.target === 'client') return { code: emitClient(ir), stateful: ir.stateful, css, warnings }
   if (ir.stateful && !options.clientUrl) throw new Error(`[clarusjs] ${options.file}: clientUrl is required to compile a stateful component for the server`)
   return { code: emitServer(ir, options.clientUrl ?? '', options.renderImports), stateful: ir.stateful, css, warnings }

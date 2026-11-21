@@ -1,7 +1,7 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
 import { parseExpressionAt } from 'acorn'
 import { ClarusError } from './errors.ts'
-import { importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
+import { FOR_IMPLICIT, importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
 import { analyzeScript, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
@@ -37,6 +37,8 @@ export type ComponentIR = {
   stateful: boolean
   nodes: IRNode[]
   events: IREvent[]
+  /** Things that compile but likely aren't meant (located, not thrown). */
+  warnings: ClarusError[]
 }
 
 const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
@@ -46,6 +48,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
+  const warnings: ClarusError[] = []
   // This component's @model inputs: fields bound to them take their path from the parent (see modelPath).
   const modelNames = new Set(parsed.inputs.filter((i) => i.model).map((i) => i.name))
   const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
@@ -107,6 +110,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   let eventElementCount = 0
   let attrElementCount = 0
   let formCount = 0
+  let selectModel: string | undefined // inside a <select [(value)]>: its bound value, for its options' `selected`
   // Under an [engine] element: the object its fields bind (one per form, so a path can't silently miss).
   let engineScope: { root: string | null } | null = null
   const sameRoot = (path: string, at: number) => {
@@ -167,7 +171,9 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
         children.forEach((child) => visit(child, rawText))
         return list
       }
-      const nodes = lowerInto(node.children, `f${block}`, new Set([...parentLoop, node.item, '$index']))
+      if (node.track !== null && referencesNames(node.track, new Set(FOR_IMPLICIT.filter((x) => x !== '$index')))) fail('track can use the item and $index, not $count, $first, $last, $even or $odd (a key must not change when the list grows)', node.trackStart)
+      if (block >= 0 && node.track === null) warnings.push(new ClarusError('@for without track: rows are matched by position, so a row\'s state moves to another item when the list changes order; add track item.id (or another unique key)', file, source, node.start))
+      const nodes = lowerInto(node.children, `f${block}`, new Set([...parentLoop, node.item, ...FOR_IMPLICIT]))
       const empty = node.empty ? lowerInto(node.empty, `f${block}e`, parentLoop) : null
       out = parent
       scopeKey = parentScope
@@ -260,6 +266,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       out.push({ kind: 'slot', name, fallback })
       return
     }
+    const outerSelect = selectModel // restored after this element: a <select>'s binding reaches its options only
     // [(value)] / [(checked)] on a form element: the property, and an event writing it back (copy-on-write).
     const tag = node.tag
     const attrs = node.attrs.flatMap((a): Exclude<Attr, { kind: 'model' }>[] => {
@@ -268,10 +275,80 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       if (!bindable) fail(`[(${a.name})] on <${tag}>: an element binds two ways only with [(value)] (input, select, textarea) or [(checked)]`, a.start)
       const type = a.name === 'checked' || tag === 'select' ? 'change' : 'input'
       sameRoot(a.expr, a.start)
+      // A radio group (#267): [(value)] on each radio binds one value: checked when it equals the radio's value, and
+      // picking the radio writes that value (as Vue's v-model on radios).
+      // Radios, checkboxes and number fields bind differently: that needs a static type. A bound [type] (text or email,
+      // a field component's prop) binds as text.
+      const typeAttr = node.attrs.find((x) => x.kind === 'static' && x.name === 'type')
+      const inputType = typeAttr?.kind === 'static' && typeof typeAttr.value === 'string' ? typeAttr.value.toLowerCase() : 'text' // types are case-insensitive
+      const path = { kind: 'prop' as const, name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start }
+      // Checkboxes with a value bound by [(value)] (#241): an array, as Vue's v-model: checked when it includes the
+      // value; toggling adds or removes it.
+      if (a.name === 'value' && tag === 'input' && inputType === 'checkbox') {
+        const own = node.attrs.find((x) => x.name === 'value' && (x.kind === 'static' || x.kind === 'prop'))
+        if (!own) return fail("a checkbox bound with [(value)] needs a value (value=\"…\" or [value]): it's what goes into the array; for a boolean, use [(checked)]", a.start)
+        const mine = own.kind === 'static' ? JSON.stringify(own.value === true ? '' : own.value) : `(${(own as { expr: string }).expr})`
+        // A missing array (undefined, null) is an empty one.
+        const next = `($event.target.checked ? [...((${a.expr}) ?? []), ${mine}] : ((${a.expr}) ?? []).filter((__cl_x) => __cl_x !== ${mine}))`
+        return [
+          { kind: 'prop', name: 'checked', expr: `((${a.expr}) ?? []).includes(${mine})`, start: a.start },
+          { kind: 'event', name: 'change', expr: writeBack(a.expr, next, a.name, a.start), start: a.start },
+          path,
+        ]
+      }
+      // A <select>: its value, or (multiple, static or bound) the selected values as an array. Its options render
+      // `selected` on the server (see the option case below), so the page shows the choice before any JavaScript.
+      if (a.name === 'value' && tag === 'select') {
+        selectModel = a.expr
+        return [
+          { kind: 'prop', name: a.name, expr: a.expr, start: a.start },
+          { kind: 'event', name: 'change', expr: writeBack(a.expr, '($event.target.multiple ? Array.from($event.target.selectedOptions, (__cl_o) => __cl_o.value) : $event.target.value)', a.name, a.start), start: a.start },
+          path,
+        ]
+      }
+      // Number and range inputs write numbers (as Vue's v-model): a field that isn't a number (empty) stays a string.
+      if (a.name === 'value' && tag === 'input' && (inputType === 'number' || inputType === 'range')) {
+        return [
+          { kind: 'prop', name: a.name, expr: a.expr, start: a.start },
+          { kind: 'event', name: type, expr: writeBack(a.expr, '((__cl_v) => (isNaN(parseFloat(__cl_v)) ? __cl_v : parseFloat(__cl_v)))($event.target.value)', a.name, a.start), start: a.start },
+          path,
+        ]
+      }
+      // Text: no write while an input method composes (IME); the composed text is written when it ends.
+      if (type === 'input' && !(tag === 'input' && inputType === 'radio')) {
+        const write = writeBack(a.expr, `$event.target.${a.name}`, a.name, a.start)
+        return [
+          { kind: 'prop', name: a.name, expr: a.expr, start: a.start },
+          { kind: 'event', name: 'input', expr: `if (!$event.isComposing) { ${write} }`, start: a.start },
+          { kind: 'event', name: 'compositionend', expr: write, start: a.start },
+          path,
+        ]
+      }
+      if (a.name === 'value' && tag === 'input' && inputType === 'radio') {
+        const own = node.attrs.find((x) => x.name === 'value' && (x.kind === 'static' || x.kind === 'prop'))
+        if (!own) return fail("a radio bound with [(value)] needs a value (value=\"…\" or [value]): it's what the radio writes when picked", a.start)
+        const mine = own.kind === 'static' ? JSON.stringify(own.value === true ? '' : own.value) : `(${(own as { expr: string }).expr})`
+        return [
+          { kind: 'prop', name: 'checked', expr: `(${a.expr}) === ${mine}`, start: a.start },
+          { kind: 'event', name: 'change', expr: writeBack(a.expr, mine, a.name, a.start), start: a.start },
+          { kind: 'prop', name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start },
+        ]
+      }
       const event = { kind: 'event' as const, name: type, expr: writeBack(a.expr, `$event.target.${a.name}`, a.name, a.start), start: a.start }
       // Its path, for the forms engine (clarusjs/forms): see docs/architecture.md §5.
       return [{ kind: 'prop', name: a.name, expr: a.expr, start: a.start }, event, { kind: 'prop', name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start }]
     })
+    // A field's value and checked go last: a browser clamps a value to the min/max/step (and type) already set.
+    const late = (x: { kind: string; name: string }) => x.kind !== 'event' && (x.name === 'value' || x.name === 'checked')
+    attrs.sort((x, y) => Number(late(x)) - Number(late(y)))
+    // An <option> of a bound <select>: `selected` when the bound value (or array, for multiple) has its value.
+    if (tag === 'option' && selectModel !== undefined) {
+      const own = node.attrs.find((x) => x.name === 'value' && (x.kind === 'static' || x.kind === 'prop'))
+      if (own) {
+        const mine = own.kind === 'static' ? JSON.stringify(own.value === true ? '' : own.value) : `(${(own as { expr: string }).expr})`
+        attrs.push({ kind: 'prop', name: 'selected', expr: `((__cl_s, __cl_v) => (Array.isArray(__cl_s) ? __cl_s.map(String).includes(String(__cl_v)) : String(__cl_s) === String(__cl_v)))(${selectModel}, ${mine})`, start: own.start })
+      }
+    }
     emitStatic(`<${node.tag}`)
     const elementEvents = attrs.filter((a) => a.kind === 'event')
     const dynamic: Extract<IRNode, { kind: 'attr' }>[] = []
@@ -323,8 +400,10 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     emitStatic('>')
     const outer = engineScope
     if (engine) engineScope = { root: null }
+    if (tag !== 'select' || !node.attrs.some((x) => x.kind === 'model')) selectModel = tag === 'optgroup' || tag === 'option' ? selectModel : undefined
     node.children.forEach((child) => visit(child, RAW_TEXT.has(node.tag) ? node.tag : rawText))
     engineScope = outer
+    selectModel = outerSelect
     if (!VOID.has(node.tag)) emitStatic(`</${node.tag}>`)
   }
 
@@ -341,6 +420,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     stateful,
     nodes,
     events,
+    warnings,
   }
 }
 
