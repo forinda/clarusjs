@@ -39,3 +39,15 @@ Import values a template needs with `@import { … } from '…'`, or `@import da
 ::: tip
 Mistakes are build errors with a location, for example `components.tscl:3:9 unclosed <span>`.
 :::
+
+## Components from packages
+
+Import a component from a package by its path, as you would any module. It can be interactive, have scoped styles, and import other components:
+
+```tscl
+@import layout from '@acme/docs-theme/layout.tscl'
+
+<layout [title]="'Home'"><h1>Hello</h1></layout>
+```
+
+clarusjs follows `@import` lines from `src/` into packages, so a package's islands get their own chunk and its styles join yours, in development and in builds. A package shares components by shipping its `.tscl` files (export them in `package.json`, for example `"exports": { "./*": "./src/*" }`).

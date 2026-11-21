@@ -1,6 +1,7 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
@@ -82,7 +83,7 @@ function writeStyles(root: string, files: Files): boolean {
   // relative paths rewritten from the component's folder to .clarusjs/ ("tailwindcss" and URLs stay as written).
   const head = new Set<string>()
   const outDir = resolve(root, '.clarusjs')
-  for (const file of files.find(resolve(root, 'src'))) {
+  for (const file of files.components(root)) {
     try {
       let out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file) }).css
       out = out.replace(/^(?:[ \t]*@(?:reference|import)\b[^;{]*;[ \t]*\n?)+/, (statements) => {
@@ -108,7 +109,8 @@ const CLIENT_OUT = 'dist/client'
 // Placeholder for a nested island's chunk URL in the client build, replaced once the bundle's file names are known.
 const CHUNK_TOKEN = '__CLARUS_CHUNK__'
 const SERVER_OUT = 'dist/server'
-const entryName = (root: string, file: string) => relative(root, file).replace(/\.[^./\\]+$/, '')
+// Outside the app (a workspace package): each leading ../ becomes _/, so chunk names stay inside dist/.
+const entryName = (root: string, file: string) => relative(root, file).split(sep).join('/').replace(/\.[^./\\]+$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))
 
 export type ClarusOptions = {
   /** When each route renders: { '/account/*': 'server' }. Routes default to 'static' (prerendered at build). */
@@ -155,7 +157,46 @@ export type Source = { extension: string; toTscl(code: string, file: string, con
 export type SourceContext = { route: string; root: string; addDependency(file: string): void }
 
 /** How the plugin finds and reads component files: .tscl, plus the extensions of its page sources. */
-type Files = { find(dir: string): string[]; read(file: string, root: string): string }
+type Files = {
+  find(dir: string): string[]
+  read(file: string, root: string): string
+  /** Every component of the app: those under src/, and every .tscl their @imports reach, in packages too. */
+  components(root: string): string[]
+}
+
+/** The package a file belongs to, from its last node_modules segment (pnpm: node_modules/.pnpm/x@1/node_modules/x/…). */
+export function packageOf(file: string): string | undefined {
+  return /.*[\\/]node_modules[\\/]((?:@[^\\/]+[\\/])?[^\\/]+)[\\/]/.exec(file)?.[1]!.replace(/\\/g, '/')
+}
+
+/**
+ * Component files reachable from `start` through @import lines: relative paths, root-relative ('/src/…') and package
+ * specifiers ('@clarusjs/theme-docs/layout.tscl', resolved as Node would from the app). Real paths, so a workspace
+ * package linked into node_modules is one file, not two.
+ */
+export function reachableComponents(root: string, start: string[], read: (file: string) => string, extensions: string[]): string[] {
+  const require = createRequire(resolve(root, 'package.json'))
+  const seen = new Set<string>()
+  const queue = start.map((f) => realpathSync(f))
+  while (queue.length) {
+    const file = queue.shift()!
+    if (seen.has(file)) continue
+    seen.add(file)
+    let imports: { from: string }[]
+    try { imports = parse(read(file), file).imports } catch { continue } // compile errors are reported elsewhere
+    for (const { from } of imports) {
+      const spec = from.replace(/\?.*$/, '')
+      if (!extensions.some((e) => spec.endsWith(e))) continue
+      let target: string
+      try {
+        target = spec.startsWith('.') ? resolve(dirname(file), spec) : spec.startsWith('/') ? resolve(root, spec.slice(1)) : require.resolve(spec)
+        target = realpathSync(target)
+      } catch { continue } // an unresolvable import is reported when the component compiles
+      if (!seen.has(target)) queue.push(target)
+    }
+  }
+  return [...seen]
+}
 
 /** Client-mode pages: route (as the file names it) → absolute file. */
 function clientPages(appRoot: string, modes: ModeTable, files: Files): Map<string, string> {
@@ -181,6 +222,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   // Page sources only apply under src/pages: elsewhere (src/parts, …) their files are plain files, not components.
   const files: Files = {
     find: (dir) => findClarusFiles(dir, extensions).filter((f) => f.endsWith('.tscl') || f.includes(`${sep}src${sep}pages${sep}`)),
+    components: (appRoot) => reachableComponents(appRoot, files.find(resolve(appRoot, 'src')), (file) => files.read(file, appRoot), extensions),
     read: (file, appRoot) => {
       const code = readFileSync(file, 'utf8')
       const src = sources.find((x) => file.endsWith(x.extension))
@@ -231,6 +273,15 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         },
       }
       if (env.isPreview) config.build = { outDir: CLIENT_OUT } // preview serves the static site
+      // Packages that ship components are bundled for server rendering: Node can't load a .tscl file itself.
+      const shipping = new Set<string>()
+      if (!env.isPreview) {
+        for (const file of files.components(resolve(userConfig.root ?? process.cwd()))) {
+          const name = packageOf(file)
+          if (name) shipping.add(name)
+        }
+        if (shipping.size) config.ssr = { noExternal: [...shipping] }
+      }
       if (env.command !== 'build') return config
       if (userConfig.base !== undefined && !userConfig.base.startsWith('/') && !/^https?:\/\//.test(userConfig.base)) {
         // Pages live at different depths and islands are imported from the loader, so URLs must not be relative.
@@ -239,7 +290,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       // Client entries: the island loader plus every stateful component. Stateless components never reach the client.
       const appRoot = resolve(userConfig.root ?? process.cwd())
       const input: Record<string, string> = { [LOADER_ENTRY]: here('../runtime/loader') }
-      for (const file of files.find(resolve(appRoot, 'src'))) {
+      const components = files.components(appRoot)
+      for (const file of components) {
         if (compile(files.read(file, appRoot), { file, target: 'client' }).stateful) input[entryName(appRoot, file)] = file
       }
       // Client routes: the router, and each page's render function for the browser.
