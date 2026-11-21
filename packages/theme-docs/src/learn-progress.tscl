@@ -1,0 +1,7 @@
+{{-- The progress page's board (put it on the page at config.learn.progress): XP, lessons, quiz accuracy, badges, Reset. --}}
+@import progressBoard from './progress-board.tscl'
+@import type { ThemeConfig } from './nav.ts'
+@import { lessonsOf } from './nav.ts'
+@input config: ThemeConfig
+
+<progressBoard [lessons]="lessonsOf(config)" />

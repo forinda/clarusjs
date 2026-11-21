@@ -14,6 +14,8 @@ export const theme: ThemeConfig = {
     { label: 'npm', href: 'https://www.npmjs.com/package/clarusjs', icon: 'npm' },
   ],
   search: true,
+  // Lessons are the Learn section's pages; progress stays in the browser.
+  learn: { section: 'learn', progress: '/learn/progress' },
   // #region edit
   // "Edit this page": the page's source file (:file, e.g. guide/lists.md); pages also give "Last updated".
   editLink: 'https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/:file',

@@ -315,3 +315,26 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
 .quiz-answer { margin-top: 12px; font-size: 15px; }
 .quiz-answer > summary { cursor: pointer; color: var(--muted); }
 .quiz-correct { font-weight: 650; margin: 8px 0; }
+
+/* Learn: the XP chip, lesson states in the sidebar (a hint: every lesson stays open), the progress page. */
+.xp-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--bg); color: var(--fg); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.xp-chip[hidden] { display: none; }
+.xp-chip svg { color: #c99400; }
+.xp-chip:hover { border-color: var(--accent); }
+.sidebar a[data-status]::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--rule); vertical-align: -1px; }
+.sidebar a[data-status="done"]::before { background: var(--ok); border-color: var(--ok); }
+.sidebar a[data-status="current"]::before { border-color: var(--accent); }
+.sidebar a[data-status="locked"] { color: var(--muted); }
+.status-note { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.progress-board .status-note { position: static; width: auto; height: auto; clip-path: none; color: var(--muted); font-size: 14px; }
+.progress-note { padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+.progress-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 0 0 24px; }
+.progress-stats div { padding: 14px 16px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); }
+.progress-stats dt { font-size: 13px; color: var(--muted); }
+.progress-stats dd { margin: 4px 0 0; font-size: 22px; font-weight: 800; }
+.badges { display: grid; gap: 8px; padding: 0; list-style: none; }
+.badges li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; padding: 12px 14px; border: 1px dashed var(--rule); border-radius: 12px; color: var(--muted); }
+.badges li.earned { border-style: solid; border-color: var(--ok); color: var(--fg); background: var(--ok-soft); }
+.badges em { margin-left: auto; font-style: normal; font-size: 13px; font-weight: 700; }
+.progress-lessons li[data-status="done"] a::after { content: ' ✓'; color: var(--ok); }
+.progress-reset { margin-top: 16px; min-height: 44px; padding: 0 16px; border: 1px solid var(--bad); border-radius: 10px; background: transparent; color: var(--bad); font: inherit; font-weight: 600; cursor: pointer; }

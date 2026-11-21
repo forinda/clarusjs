@@ -3,11 +3,18 @@
   follows the URL's #step (the header's segments link there), and after the last step goes to the next lesson.
   It reveals itself (and the one-step view) when it attaches: without JavaScript the lesson is a plain page.
 --}}
+@input lesson: string = ''
 @input prev: string = ''
 @input next: string = ''
 @input leave: string = '/'
 
 <script>
+  import { answer, finish, load, save, step } from './progress.ts'
+  // Progress lives in this browser; the XP chip and the progress page listen for learn:progress.
+  function record(update) {
+    save(update(load()))
+    window.dispatchEvent(new Event('learn:progress'))
+  }
   let current = state(0)
   let total = state(0)
   let name = state('')
@@ -59,8 +66,14 @@
       steps()[current]?.querySelector('[data-quiz]:not([data-answered])')?.dispatchEvent(new CustomEvent('quiz:check', { bubbles: true }))
       return
     }
-    if (current < total - 1) show(current + 1, true)
-    else location.href = next || leave
+    const id = steps()[current]?.getAttribute('aria-labelledby')
+    if (current < total - 1) {
+      if (id) record((p) => step(p, lesson, id))
+      show(current + 1, true)
+    } else {
+      record((p) => finish(id ? step(p, lesson, id) : p, lesson))
+      location.href = next || leave
+    }
   }
   // Each step's code and results (code blocks, .result) go in a side column, its text in the main one.
   function split(step) {
@@ -83,6 +96,7 @@
       if (!steps()[current]?.contains(event.target)) return
       const { ok, done, text: detail } = event.detail
       if (!done) return verdict('', 'Pick an answer', detail)
+      record((p) => answer(p, lesson + '#' + event.target.dataset.quiz, ok))
       checking = !!steps()[current].querySelector('[data-quiz]:not([data-answered])')
       verdict(ok ? 'ok' : 'bad', ok ? 'Correct!' : 'Not quite', detail)
     })

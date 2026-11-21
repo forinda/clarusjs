@@ -24,6 +24,11 @@ export type ThemeConfig = {
   editLink?: string | ((path: string) => string)
   /** The pages as themeDocs() reads them: source files for `editLink` patterns, and "Last updated" dates. */
   pages?: PageInfo[]
+  /**
+   * Learn: the section whose pages are lessons, and its progress page (not a lesson). Progress, XP and badges are
+   * kept in the browser (localStorage); an XP chip shows in lesson headers and on the section's pages.
+   */
+  learn?: { section: string; progress: string }
   /** A search button (and Ctrl/⌘K, /) in the header; the index comes from the themeDocs() Vite plugin. */
   search?: boolean
   /** The site footer's text. */
@@ -105,16 +110,23 @@ export function updatedOf(config: ThemeConfig, route: string): { iso: string; te
   return { iso: date.toISOString(), text: date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }) }
 }
 
+/** The lessons of the Learn section, in order (its items but the progress page). */
+export function lessonsOf(config: ThemeConfig): Item[] {
+  const section = config.sections.find((s) => s.key === config.learn?.section)
+  return section ? flat(section).filter((i) => i.href !== config.learn?.progress) : []
+}
+
 /**
- * A lesson's place in its section (the config section that lists it): where "leave" goes (the section's href), the
- * previous and next lessons, and "Learn · Lesson 2 of 6". total 0 outside every section.
+ * A lesson's place in its section (the config section that lists it; with `learn`, its lessons): where "leave" goes
+ * (the section's href), the previous and next lessons, and "Learn · Lesson 2 of 6". total 0 outside every section.
  */
-export function lessonOf(sections: Section[], path: string): { leave: string; prev: string; next: string; label: string; total: number } {
-  const section = sections.find((s) => s.key === sectionKey(sections, path))
-  const items = section ? flat(section) : []
+export function lessonOf(config: ThemeConfig, path: string): { leave: string; prev: string; next: string; label: string; total: number } {
+  const section = config.sections.find((s) => s.key === sectionKey(config.sections, path))
+  const items = section ? (section.key === config.learn?.section ? lessonsOf(config) : flat(section)) : []
   const i = items.findIndex((item) => item.href === path)
   return {
-    leave: section?.href || '/',
+    // Learn lessons lead back to the progress page; other lessons to their section.
+    leave: (section && section.key === config.learn?.section ? config.learn.progress : section?.href) || '/',
     prev: items[i - 1]?.href ?? '',
     next: items[i + 1]?.href ?? '',
     label: section ? `${section.title} · Lesson ${i + 1} of ${items.length}` : '',
