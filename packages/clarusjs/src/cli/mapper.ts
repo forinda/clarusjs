@@ -3,8 +3,7 @@
 // trusted VS Code workspace) and speaks JSON-RPC 2.0 to it over stdio, Content-Length framed. Each .tscl file becomes
 // the same TypeScript `clarusjs check` generates, with a span map, so errors, hover and completion land in the
 // template; template syntax errors come back as the mapper's own diagnostics.
-import { ClarusError } from '../compiler/errors.ts'
-import { generateTs } from '../check/generate.ts'
+import { generateTolerant } from '../check/generate.ts'
 import { loaderOf } from './check.ts'
 
 /**
@@ -18,24 +17,21 @@ type Diagnostic = { messageText: string; start: number; length: number; code: nu
 
 export function transform(params: { fileName: string; content: string }): { text: string; extension: '.ts'; mappings: Span[]; diagnostics: Diagnostic[] } {
   const { fileName, content } = params
-  try {
-    const loader = loaderOf(fileName)
-    const { code, mappings } = generateTs(content, fileName, { componentSuffix: '', ...(loader ? { loader } : {}) })
-    const spans: Span[] = mappings.map(([v, length, s, exact, sourceLength]): Span => {
-      if (exact && code.slice(v, v + length) === content.slice(s, s + length)) return [v, length, s, length, 0]
-      // A copy that isn't the template's text at that place (a trimmed or rearranged span) maps as a whole.
-      if (exact) return [v, length, s, Math.min(length, content.length - s), 1]
-      return [v, length, s, Math.min(sourceLength ?? 1, content.length - s), 1, 0]
-    })
-    return { text: code, extension: '.ts', mappings: spans, diagnostics: [] }
-  } catch (err) {
-    if (!(err instanceof ClarusError)) throw err
-    const lines = content.split('\n')
-    const start = Math.min(content.length, lines.slice(0, err.line - 1).reduce((n, l) => n + l.length + 1, 0) + err.column - 1)
-    const messageText = err.message.slice(`${err.file}:${err.line}:${err.column} `.length)
-    // A module still, so imports of this file resolve (to nothing typed) while its template is fixed.
-    return { text: 'export {}\n', extension: '.ts', mappings: [], diagnostics: [{ messageText, start, length: Math.min(1, content.length - start), code: 1 }] }
-  }
+  const loader = loaderOf(fileName)
+  // Tolerant: while someone types, the template often doesn't parse; the rest of it still gets TypeScript.
+  const { result, errors } = generateTolerant(content, fileName, { componentSuffix: '', ...(loader ? { loader } : {}) })
+  // The first error only: later ones may come from the repairs, not from the template.
+  const diagnostics = errors.slice(0, 1).map((e) => ({ messageText: e.message, start: e.offset, length: Math.min(1, content.length - e.offset), code: 1 }))
+  // Still broken: a module still, so imports of this file resolve (to nothing typed) while its template is fixed.
+  if (!result) return { text: 'export {}\n', extension: '.ts', mappings: [], diagnostics }
+  const { code, mappings } = result
+  const spans: Span[] = mappings.map(([v, length, s, exact, sourceLength]): Span => {
+    if (exact && code.slice(v, v + length) === content.slice(s, s + length)) return [v, length, s, length, 0]
+    // A copy that isn't the template's text at that place (a trimmed, rearranged or repaired span) maps as a whole.
+    if (exact) return [v, length, s, Math.min(length, content.length - s), 1]
+    return [v, length, s, Math.min(sourceLength ?? 1, content.length - s), 1, 0]
+  })
+  return { text: code, extension: '.ts', mappings: spans, diagnostics }
 }
 
 function handle(request: { id?: number | string; method: string; params?: any }): object | undefined {

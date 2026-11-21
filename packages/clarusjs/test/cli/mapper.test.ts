@@ -51,6 +51,33 @@ test('transform: a stand-in for a whole construct maps to all of it, with no lan
   expect(out.mappings.filter(([, , , , kind]) => kind === 0).every((m) => m.length === 5)).toBe(true)
 })
 
+test('transform: a template that doesn\'t parse still gives TypeScript for the rest, with the errors as diagnostics', () => {
+  const tsc = resolve(pkg, 'node_modules/typescript/bin/tsc')
+  // TypeScript for the virtual text: does it hold the template's expressions, type-checked?
+  const typeErrors = (text: string) => {
+    const dir = mkdtempSync(resolve(tmpdir(), 'cl-tolerant-'))
+    writeFileSync(resolve(dir, 'a.ts'), text)
+    const run = spawnSync(process.execPath, [tsc, '--noEmit', '--strict', '--lib', 'es2023,dom', '--types', '', resolve(dir, 'a.ts')], { cwd: dir, encoding: 'utf8' })
+    return run.stdout.match(/TS\d+/g) ?? []
+  }
+  const cases = [
+    // Unclosed at the end (an @if block, a <div>) while typing the next line.
+    "@input user: { name: string }\n<div>\n  @if (user) {\n    <p>{{ user.nope }}</p>\n",
+    // A broken line in the middle: the rest of the file still counts.
+    "@input user: { name: string }\n<p>ok</p>\n@if (user {\n<p>{{ user.nope }}</p>\n",
+    // An unclosed hole at the end.
+    "@input user: { name: string }\n<p>{{ user.nope }}</p>\n<p>{{ user.name",
+  ]
+  for (const content of cases) {
+    const out = transform({ fileName: '/app/src/a.tscl', content })
+    expect(out.diagnostics, content).toHaveLength(1) // still reported: the first error (later ones may come from the repairs)
+    const span = out.mappings.find(([v, l, , , k]) => k === 0 && out.text.slice(v, v + l) === 'user.nope')
+    expect(span?.[2], content).toBe(content.indexOf('user.nope')) // the expression is there, where it was written
+    expect(typeErrors(out.text), content).toContain('TS2339') // and checked: `nope` isn't on user
+    for (const [, , s, l] of out.mappings) expect(s + l).toBeLessThanOrEqual(content.length) // nothing maps past the file
+  }
+}, 60_000)
+
 /** One framed JSON-RPC exchange with a `clarusjs mapper` process. */
 async function exchange(requests: object[]): Promise<{ id: number; result?: any; error?: any }[]> {
   const child = spawn(process.execPath, [cli, 'mapper'], { cwd: pkg })
