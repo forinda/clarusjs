@@ -5,6 +5,7 @@ import { htmlFeatures } from '../src/html.ts'
 
 const files: Record<string, string> = {
   '/app/src/components/card.tscl': "@input title: string\n@input tags: string[] = []\n@model open: boolean = false\n\n<h2>{{ title }}</h2>\n",
+  '/app/src/components/rating.tscl': "<script>\n  let stars = state(0)\n  function pick(n, el) { stars = n; el.dispatchEvent(new CustomEvent('rate', { bubbles: true, detail: n })) }\n  const clear = (el) => el.dispatchEvent(new CustomEvent(\"rating:clear\"))\n</script>\n<button (click)=\"pick(5, $event.target)\">★</button>\n",
 }
 const features = htmlFeatures((path) => files[path])
 const page = '/app/src/pages/index.tscl'
@@ -48,4 +49,28 @@ test('completion: HTML tags, imported components, and their inputs as bindings',
 test('an import that can\'t be read is still a tag, without inputs', () => {
   const text = "@import badge from 'ui/badge.tscl'\n<badge />\n"
   expect(features.hover(text, page, at(text, '<badge') + 2)?.markdown).toContain('ui/badge.tscl')
+})
+
+test('HTML elements: [prop] and (event) bindings complete and hover, [(value)] and [(checked)] on fields', () => {
+  const text = '<button '
+  const labels = features.complete(text, page, text.length).map((c) => c.label)
+  expect(labels).toEqual(expect.arrayContaining(['[disabled]', '[class]', '(click)', '(keydown)', 'disabled']))
+  expect(labels).not.toContain('[onclick]')
+  expect(labels).not.toContain('(disabled)')
+  const field = '<input '
+  expect(features.complete(field, page, field.length).map((c) => c.label)).toEqual(expect.arrayContaining(['[value]', '[(value)]', '[(checked)]', '(input)']))
+  const select = '<div '
+  expect(features.complete(select, page, select.length).map((c) => c.label)).not.toContain('[(value)]')
+  const bound = '<button [disabled]="busy" (click)="save()">go</button>\n'
+  expect(features.hover(bound, page, bound.indexOf('disabled') + 1)?.markdown).toMatch(/expression/)
+  expect(features.hover(bound, page, bound.indexOf('click') + 1)?.markdown).toMatch(/\$event/)
+})
+
+test('a component\'s events (the CustomEvents its script dispatches) complete and show on hover', () => {
+  const text = "@import rating from '../components/rating.tscl'\n<rating "
+  const labels = features.complete(text, page, text.length).map((c) => c.label)
+  expect(labels).toEqual(expect.arrayContaining(['(rate)', '(rating:clear)']))
+  const tag = "@import rating from '../components/rating.tscl'\n<rating (rate)=\"x = $event.detail\" />\n"
+  expect(features.hover(tag, page, tag.indexOf('<rating') + 2)?.markdown).toContain('(rate)')
+  expect(features.hover(tag, page, tag.indexOf('(rate)') + 2)?.markdown).toContain('$event.detail')
 })
