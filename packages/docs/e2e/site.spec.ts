@@ -1498,3 +1498,12 @@ test('form validation: an async check (a taken username) and a server error land
   await demo.getByRole('button', { name: 'Create account' }).click()
   await expect(demo.getByRole('status')).toHaveText('Welcome, Ada!')
 })
+
+test('editor setup: the language server, and setup for each editor', async ({ page }) => {
+  await page.goto('/guide/editor')
+  for (const name of ['The language server', 'Neovim', 'Helix', 'JetBrains IDEs', 'Zed', 'Sublime Text']) {
+    await expect(page.getByRole('heading', { name: new RegExp(`^${name}`) })).toBeVisible() // headings end with their permalink
+  }
+  await expect(page.locator('main')).toContainText('clarusjs-ls --stdio')
+  await expect(page.locator('main')).toContainText('npm install -D @clarusjs/language-server')
+})
