@@ -200,7 +200,9 @@ function renderer(options: MarkdownOptions): Md {
     if (type === 'quiz') {
       const q = meta as { name: string; html: string; options: string[]; answer: number }
       if (!options.quiz) return `<div class="quiz" data-quiz="${q.name}">`
-      tags.push(`<${options.quiz.tag} [name]="${quote(q.name)}" [question]="${escapeHtml(quote(title))}" [options]="[${q.options.map((o) => escapeHtml(quote(o))).join(', ')}]" [answer]="${q.answer}">`)
+      // Binding values are JavaScript, not HTML: quote() makes the text a string literal safe inside "…" (no HTML
+      // escaping, which the template's {{ }} would show as &lt;…).
+      tags.push(`<${options.quiz.tag} [name]="${quote(q.name)}" [question]="${quote(title)}" [options]="[${q.options.map(quote).join(', ')}]" [answer]="${q.answer}">`)
       return `<!--cl-tag-${tags.length - 1}-->`
     }
     if (options.container) {

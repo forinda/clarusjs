@@ -1524,3 +1524,12 @@ test('editor setup: the language server, and setup for each editor', async ({ pa
   await expect(page.locator('main')).toContainText('npm install -g @clarusjs/language-server')
   await expect(page.locator('main')).toContainText('queries/tscl/highlights.scm')
 })
+
+test('quiz text from Markdown shows as written: `<script>` in an option is <script>, not &lt;script&gt;', async ({ page }) => {
+  await page.goto('/learn/first-island#quiz')
+  const quiz = page.locator('.quiz')
+  await expect(quiz.getByRole('radio', { name: 'Only components with a <script>' })).toHaveCount(1)
+  await quiz.locator('summary', { hasText: 'Show the answer' }).click()
+  await expect(quiz.locator('.quiz-correct')).toHaveText('Answer: Only components with a <script>')
+  await expect(quiz).not.toContainText('&lt;')
+})
