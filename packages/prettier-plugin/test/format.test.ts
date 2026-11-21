@@ -184,3 +184,21 @@ test('cases that were already right stay right after the rewrite', async () => {
     '<myCard [(value)]="form.name" /><myCard>@slot(\'title\') {<b>T</b>}</myCard>\n',
   ]) await same(src)
 })
+
+test('a block next to a hole, or inside an inline element, is kept as written (the docs brand link)', async () => {
+  const hole = '<span>{{ a }}@if (b) {<span class="js">{{ b }}</span>}</span>'
+  expect(await same(`<div>${hole}</div>\n`)).toContain(hole)
+  const link = '<a class="brand" href="/">@if (logo) {<img [src]="logo" alt="">}<span>x</span></a>'
+  expect(await same(`<header>${link}</header>\n`)).toContain('@if (logo) {<img [src]="logo" alt="">}')
+  // A block among block elements is still laid out.
+  expect(await same('<ul>@for (x of xs; track x) {<li>{{ x }}</li>}</ul>\n')).toContain('\n  @for (x of xs; track x) {\n    <li>')
+})
+
+test('only blocks of block-level elements are laid out; a block of inline pieces stays as written (release notes)', async () => {
+  const li = "<li>@for (part of text.split('`'); track $index) {@if ($index % 2) {<code>{{ part }}</code>} @else {<span>{{ part }}</span>}} @if (pr) {<a [href]=\"url\">{{ pr }}</a>}</li>"
+  const out = await same(`<ul>@for (c of changes; track c.url) {${li}}</ul>\n`)
+  expect(out).toContain(li)
+  expect(out).toContain('<ul>\n  @for (c of changes; track c.url) {\n')
+  // Components: their display isn't known, so a block of them stays as written too.
+  expect(await same('<div>@for (x of xs; track x) {<card [x]="x" />}</div>\n')).toContain('@for (x of xs; track x) {<card [x]="x" />}')
+})

@@ -83,7 +83,7 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
   const COMMENT = fresh((p) => `<!--cl${p}:`)
   const HOLE = fresh((p) => `__cl${p}_hole`)
   const WORD = fresh((p) => `__cl${p}_word`)
-  const INLINE = fresh((p) => `cl${p}-inline`)
+  const INLINE = fresh((p) => `__cl${p}_inline`) // a word: Prettier never breaks inside one
   const SLOT = fresh((p) => `@defer (__cl${p}_slot__`)
   const saved: string[] = []
   const save = (original: string) => saved.push(original) - 1
@@ -236,10 +236,8 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
 
   // The template, node by node.
   const holds: Edit[] = [] // whole regions kept as written
-  const visit = (nodes: TemplateNode[], topLevel: boolean, rawText: boolean) => {
-    // A block among text (a sentence with an @if in it) is inline: Angular would put it on lines of its own.
-    const inline = nodes.some((n) => n.type === 'text' && n.value.replace(/<!--[\s\S]*?-->/g, '').trim())
-    for (const n of nodes) {
+  const visit = (nodes: TemplateNode[], topLevel: boolean, rawText: boolean, edgeOk = topLevel) => {
+    for (const [k, n] of nodes.entries()) {
       if (n.type === 'text') {
         if (!rawText && source.slice(n.start, n.start + n.value.length) === n.value) textEdits(n.start, n.value, topLevel)
       } else if (n.type === 'raw') {
@@ -248,19 +246,19 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
         if (!rawText && bitwise(n.expr)) holeEdit(n.start)
       } else if (n.type === 'element') {
         for (const a of n.attrs) if (a.kind === 'interp') for (const p of a.parts) if (typeof p !== 'string' && bitwise(p.expr)) holeEdit(p.start)
-        visit(n.children, false, rawText || n.tag === 'script' || n.tag === 'style')
+        visit(n.children, false, rawText || n.tag === 'script' || n.tag === 'style', BLOCK_TAGS.has(n.tag))
       } else {
         const end = blockEnd(n.start)
-        if (inline && end !== -1) {
-          holds.push({ start: n.start, end, text: `<${INLINE}-${save(source.slice(n.start, end))}></${INLINE}-${saved.length - 1}>` })
+        if (!canLayout(n, nodes[k - 1], nodes[k + 1], edgeOk || topLevel) && end !== -1) {
+          holds.push({ start: n.start, end, text: `${INLINE}${save(source.slice(n.start, end))}_` })
           continue
         }
         if (n.type === 'fill' && /^@slot\s*\(/.test(source.slice(n.start, n.start + 12))) {
           edits.push({ start: n.start, end: source.indexOf('(', n.start) + 1, text: SLOT })
         }
-        if (n.type === 'if') for (const b of n.branches) visit(b.children, false, false)
-        else if (n.type === 'for') { visit(n.children, false, false); if (n.empty) visit(n.empty, false, false) }
-        else visit(n.children, false, false)
+        if (n.type === 'if') for (const b of n.branches) visit(b.children, false, false, true)
+        else if (n.type === 'for') { visit(n.children, false, false, true); if (n.empty) visit(n.empty, false, false, true) }
+        else visit(n.children, false, false, true)
       }
     }
   }
@@ -293,8 +291,45 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
       .replace(new RegExp(`${escape(COMMENT)}(\\d+)-->`, 'g'), back)
       .replace(new RegExp(`\\{\\{ ${HOLE}(\\d+) \\}\\}`, 'g'), back)
       .replace(new RegExp(`${WORD}(\\d+)_`, 'g'), back)
-      .replace(new RegExp(`<${INLINE}-(\\d+)></${INLINE}-\\1>`, 'g'), back),
+      .replace(new RegExp(`${INLINE}(\\d+)_`, 'g'), back),
   }
+}
+
+/** Elements laid out as blocks (or rows, cells, options): whitespace next to them doesn't show. */
+const BLOCK_TAGS = new Set(['address', 'article', 'aside', 'blockquote', 'body', 'caption', 'col', 'colgroup', 'dd', 'details', 'dialog', 'div', 'dl', 'dt', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'legend', 'li', 'link', 'main', 'menu', 'meta', 'nav', 'ol', 'optgroup', 'option', 'p', 'pre', 'script', 'search', 'section', 'style', 'summary', 'table', 'tbody', 'td', 'template', 'tfoot', 'th', 'thead', 'title', 'tr', 'ul'])
+
+/** Whitespace-only text (comments allowed): Angular's line breaks there change nothing. */
+const blank = (n: TemplateNode) => n.type === 'text' && !n.value.replace(/<!--[\s\S]*?-->/g, '').trim()
+
+/**
+ * Whether a block can go on lines of its own: Angular adds line breaks before and after it and inside each `{ }`, and
+ * a line break shows on the page as a space unless whitespace was there already, the thing across it is block-level,
+ * or it's at the edge of a block-level element (or the top level, whose whitespace the compiler drops). Otherwise the
+ * block is kept as written (in a sentence, in an <a>, around <code> and <span> pieces).
+ */
+function canLayout(n: TemplateNode, prev: TemplateNode | undefined, next: TemplateNode | undefined, edgeOk: boolean): boolean {
+  const before = (x: TemplateNode | undefined) => (x ? (x.type === 'text' ? /\s$/.test(x.value) : blockish(x)) : edgeOk)
+  const after = (x: TemplateNode | undefined) => (x ? (x.type === 'text' ? /^\s/.test(x.value) : blockish(x)) : edgeOk)
+  // Inside a branch: its first and last nodes (the block's own edges are safe once its outside is).
+  const inside = (kids: TemplateNode[]) => !kids.length || (edge(kids[0]!, 'start') && edge(kids[kids.length - 1]!, 'end'))
+  const branches = n.type === 'if' ? n.branches.map((b) => b.children) : n.type === 'for' ? [n.children, ...(n.empty ? [n.empty] : [])] : n.type === 'fill' ? [n.children] : []
+  return before(prev) && after(next) && branches.every(inside)
+}
+
+/** A branch's first (`start`) or last node: whitespace on that side, or block-level. */
+function edge(x: TemplateNode, side: 'start' | 'end'): boolean {
+  if (x.type === 'text') return side === 'start' ? /^\s/.test(x.value) : /\s$/.test(x.value)
+  return blockish(x)
+}
+
+/** A node whitespace next to doesn't show: a block-level element, or a block holding only such nodes. */
+function blockish(n: TemplateNode): boolean {
+  if (blank(n)) return true
+  if (n.type === 'element') return BLOCK_TAGS.has(n.tag)
+  if (n.type === 'if') return n.branches.every((b) => b.children.every(blockish))
+  if (n.type === 'for') return n.children.every(blockish) && (n.empty ?? []).every(blockish)
+  if (n.type === 'fill') return n.children.every(blockish)
+  return false
 }
 
 /** Index of the quote closing the string that starts at `i`. */
