@@ -11,7 +11,7 @@
   let done = state(0)
   let accuracy = state('')
   let badges = state([])
-  let statuses = state({})
+  let statuses = state(Object.create(null)) // lesson href → its status
   let mode = state('waiting')
   let confirming = state(false)
   function refresh() {

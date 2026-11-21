@@ -184,6 +184,41 @@ export function splitImports(code: string, file: string, source: string, offset:
   return { imports, body }
 }
 
+/**
+ * Where type annotations go for type checking: `: any` after the untyped parameters of the script's own functions
+ * (declarations, `const f = (x) => …`, class methods) and of callbacks passed straight to them (`record((p) => …)`).
+ * A script is JavaScript, so nothing else types those, and a strict project would report each one. Other callbacks
+ * keep their contextual type; a parameter with a default takes its type.
+ */
+export function untypedParams(code: string): { at: number; text: string }[] {
+  const ast = parseScript(code)
+  const isFn = (n: N | null | undefined) => !!n && (n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression')
+  // The script's own function names, then the functions to annotate.
+  const own = new Set<string>()
+  print(ast, code, (node) => {
+    if (node.type === 'FunctionDeclaration' && node.id) own.add(node.id.name)
+    if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier' && isFn(node.init)) own.add(node.id.name)
+    return undefined
+  })
+  const targets = new Set<N>()
+  print(ast, code, (node, parent, key) => {
+    if (node.type === 'FunctionDeclaration' || (isFn(node) && ((parent?.type === 'VariableDeclarator' && key === 'init') || parent?.type === 'MethodDefinition'))) targets.add(node)
+    if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && own.has(node.callee.name)) for (const arg of node.arguments as N[]) if (isFn(arg)) targets.add(arg)
+    return undefined
+  })
+  const edits: { at: number; text: string }[] = []
+  for (const fn of targets) {
+    for (const p of fn.params as N[]) {
+      if (p.type === 'AssignmentPattern') continue
+      // `x => …` has no parentheses to annotate in.
+      const bare = fn.type === 'ArrowFunctionExpression' && !code.slice(fn.start, p.start).includes('(')
+      if (bare) edits.push({ at: p.start, text: '(' })
+      edits.push({ at: p.end, text: (p.type === 'RestElement' ? ': any[]' : ': any') + (bare ? ')' : '') })
+    }
+  }
+  return edits.sort((a, b) => a.at - b.at)
+}
+
 // Globals that only exist on a server runtime. An island's script also runs in the browser and its state() values
 // are written into the page, so reading these would leak server data (or simply fail in the browser).
 const SERVER_GLOBALS = new Set(['process', 'Deno', 'Bun', 'require'])

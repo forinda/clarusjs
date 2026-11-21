@@ -13,6 +13,10 @@
 /** Sections per `s-<n>.json` file. */
 export const CHUNK = 64
 
+/** The site's base path ('/' unless Vite's `base` is set), where the search index is fetched from. */
+/** @type {string} */
+export const base = /** @type {any} */ (import.meta).env?.BASE_URL ?? '/' // Vite's import.meta.env, when there is one
+
 /** @param {string} text @returns {string[]} lowercase words of two or more letters, accents folded */
 export function tokens(text) {
   return (text.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => w.length > 1)

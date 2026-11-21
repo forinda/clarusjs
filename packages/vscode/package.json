@@ -1,7 +1,7 @@
 {
   "name": "clarusjs-vscode",
   "displayName": "clarusjs",
-  "description": "clarusjs .tscl templates: syntax highlighting, snippets, file icon, comments and brackets.",
+  "description": "clarusjs .tscl templates: syntax highlighting, HTML hover and completion with your components, snippets, file icon.",
   "version": "0.0.1",
   "private": true,
   "publisher": "clarusjs",
@@ -25,6 +25,10 @@
     "tscl",
     "template",
     "islands"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:tscl"
   ],
   "contributes": {
     "languages": [
@@ -84,15 +88,19 @@
   },
   "scripts": {
     "test": "vitest run",
-    "package": "vsce package --no-dependencies",
-    "typecheck": "tsc --noEmit"
+    "package": "vite build && vsce package --no-dependencies",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build"
   },
   "devDependencies": {
-    "@vscode/vsce": "^4.1.1",
-    "shiki": "^4.6.0",
-    "vitest": "^5.1.1",
-    "clarusjs": "workspace:*",
     "@types/node": "^26.6.6",
-    "typescript": "^7.0.2"
+    "@types/vscode": "~1.90.0",
+    "@vscode/vsce": "^4.1.1",
+    "clarusjs": "workspace:*",
+    "shiki": "^4.6.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1",
+    "vscode-html-languageservice": "^5.6.2"
   }
 }

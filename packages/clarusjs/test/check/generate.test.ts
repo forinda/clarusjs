@@ -151,3 +151,21 @@ test('review: identical script imports each map to their own line', () => {
   const lines = errors.filter((e) => e.includes('missing')).map((e) => e.split(':')[1])
   expect(lines).toEqual(['2', '3'])
 })
+
+test("a script's own functions get `: any` on untyped parameters (scripts are JavaScript); callbacks keep their contextual type", () => {
+  const source = "<script>\n  import { x } from './x.ts'\n  function add(a, { b }, ...rest) { return a }\n  const one = z => z\n  const two = async (c = 1) => c\n  const list = state([1]).map((v) => v)\n</script>\n<p>{{ add(1, {}) }}</p>\n"
+  const { code, mappings } = generateTs(source, 'x.tscl')
+  expect(code).toContain('function add(a: any, { b }: any, ...rest: any[]) { return a }')
+  expect(code).toContain('const one = (z: any) => z')
+  expect(code).toContain('const two = async (c = 1) => c') // a default gives the type
+  expect(code).toContain('.map((v) => v)')
+  // A callback given to one of the script's own functions has no context type either.
+  const own = generateTs("<script>\n  function record(update) { return update(1) }\n  const each = (f) => f\n  record((p) => p)\n  each(function (q) { return q })\n  record.call(null, (r) => r)\n</script>\n<p>{{ record((x) => x) }}</p>\n", 'y.tscl').code
+  expect(own).toContain('record((p: any) => p)')
+  expect(own).toContain('each(function (q: any) { return q })')
+  expect(own).toContain('record.call(null, (r) => r)') // not a direct call: left as is
+  // Every exact span is the template's own text (the imports are copied once, at the top), so a mapper can call
+  // them verbatim.
+  for (const [v, length, s, exact] of mappings) if (exact) expect(code.slice(v, v + length)).toBe(source.slice(s, s + length))
+  expect(mappings.filter(([, , , exact]) => exact).some(([v, l]) => code.slice(v, v + l).includes('return a'))).toBe(true)
+})

@@ -3,7 +3,7 @@
 // every copied span is recorded so tsc's errors can be mapped back to the template. Pure: string in, string out.
 import { routeFromFile } from '../server/handler.ts'
 import { parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
-import { splitImports } from '../compiler/script.ts'
+import { splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
  * [virtual offset, length, source offset, exact]. Exact spans are verbatim copies (offsets map one to one); other
@@ -13,9 +13,10 @@ export type Mapping = [number, number, number, boolean]
 
 /**
  * `loader`: the module specifier of the page's .load.ts when it exports load(); what it returns is checked against
- * the page's inputs. `loaderSpan` is where that check sits in the generated code, so its errors can say so.
+ * the page's inputs. `componentSuffix`: added to component imports ('.ts' for `clarusjs check`'s generated files; ''
+ * for the content mapper, where TypeScript resolves the .tscl file itself). `loaderSpan` is where that check sits in the generated code, so its errors can say so.
  */
-export function generateTs(source: string, file: string, options: { loader?: string } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
+export function generateTs(source: string, file: string, options: { loader?: string; componentSuffix?: string } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
   const parsed = parse(source, file)
   const mappings: Mapping[] = []
   let code = ''
@@ -40,7 +41,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
     copy(t.clause, t.clauseStart)
     emit(` from ${JSON.stringify(t.from)}\n`)
   }
-  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M } from ${JSON.stringify(`${imp.from}.ts`)}\n`)
+  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
   for (const d of parsed.dataImports) {
     emit('import ')
     copy(d.clause, d.clauseStart)
@@ -104,7 +105,19 @@ export function generateTs(source: string, file: string, options: { loader?: str
     emit(' } = __cl_props\n')
   }
   if (parsed.script && script) {
-    copy(script.body, parsed.script.start)
+    // The script in verbatim pieces: its imports (already at the top) are blanked, and untyped parameters annotated.
+    const body = script.body
+    const cuts = [
+      ...script.imports.map((imp) => ({ at: imp.start, end: imp.start + imp.text.length, text: body.slice(imp.start, imp.start + imp.text.length) })),
+      ...untypedParams(parsed.script.code).map((e) => ({ ...e, end: e.at })),
+    ].sort((a, b) => a.at - b.at)
+    let pos = 0
+    for (const cut of cuts) {
+      if (cut.at > pos) copy(body.slice(pos, cut.at), parsed.script.start + pos)
+      emit(cut.text)
+      pos = Math.max(pos, cut.end)
+    }
+    if (body.length > pos) copy(body.slice(pos), parsed.script.start + pos)
     emit('\n;\n') // the script may end without a semicolon; what follows must not continue its last statement
   }
 

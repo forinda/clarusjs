@@ -1,10 +1,11 @@
-// The theme's settings and the navigation helpers the layout uses. Server-only: the layout is static HTML.
+// The theme's settings and the navigation helpers the layout uses. Server-only: the layout is static HTML. Lists are
+// readonly, as a template's inputs are: the layout passes its config to these helpers as it gets it.
 
 /** A sidebar entry; `order` sorts it within its group (lowest first, then by title). */
 export type Item = { title: string; href: string; order?: number }
-export type Group = { title: string; items: Item[] }
+export type Group = { title: string; items: readonly Item[] }
 /** A top-level part of the docs (Guide, Reference): its own sidebar groups. */
-export type Section = { key: string; title: string; href: string; groups: Group[] }
+export type Section = { key: string; title: string; href: string; groups: readonly Group[] }
 export type Social = { label: string; href: string; icon: 'github' | 'npm' | 'link' }
 /** A heading on the page, for "On this page". */
 export type Heading = { id: string; text: string; level: number }
@@ -14,16 +15,16 @@ export type ThemeConfig = {
   brand: { text: string; accent?: string; logo?: string }
   /** The site's public address, for structured data (no trailing slash). */
   siteUrl?: string
-  sections: Section[]
+  sections: readonly Section[]
   /** Icon links at the right of the header (GitHub, npm…). */
-  social?: Social[]
+  social?: readonly Social[]
   /**
    * "Edit this page": a pattern where `:file` is the page's source file under src/pages (`guide/start.md`, found in
    * `pages`), or a function of the route (the page's source route, for dynamic pages). None without it.
    */
   editLink?: string | ((path: string) => string)
   /** The pages as themeDocs() reads them: source files for `editLink` patterns, and "Last updated" dates. */
-  pages?: PageInfo[]
+  pages?: readonly PageInfo[]
   /**
    * Learn: the section whose pages are lessons, and its progress page (not a lesson). Progress, XP and badges are
    * kept in the browser (localStorage); an XP chip shows in lesson headers and on the section's pages.
@@ -44,24 +45,24 @@ const none: Item = { title: '', href: '' }
 const flat = (section: Section) => section.groups.flatMap((g) => g.items)
 
 /** The section a page belongs to ('' for pages outside every section, like a home page). */
-export function sectionKey(sections: Section[], path: string): string {
+export function sectionKey(sections: readonly Section[], path: string): string {
   return sections.find((s) => flat(s).some((i) => i.href === path))?.key ?? ''
 }
 
 /** Sidebar groups for the page's section (none outside the sections). */
-export function groupsOf(sections: Section[], path: string): Group[] {
+export function groupsOf(sections: readonly Section[], path: string): readonly Group[] {
   return sections.find((s) => s.key === sectionKey(sections, path))?.groups ?? []
 }
 
 /** "Guide › Templates" */
-export function crumb(sections: Section[], path: string): string {
+export function crumb(sections: readonly Section[], path: string): string {
   const section = sections.find((s) => s.key === sectionKey(sections, path))
   const group = section?.groups.find((g) => g.items.some((i) => i.href === path))
   return section && group ? `${section.title} › ${group.title}` : ''
 }
 
 /** Previous and next pages in sidebar order; an empty item (href '') when there is none. */
-export function pager(sections: Section[], path: string): { prev: Item; next: Item } {
+export function pager(sections: readonly Section[], path: string): { prev: Item; next: Item } {
   const section = sections.find((s) => s.key === sectionKey(sections, path))
   const items = section ? flat(section) : []
   const i = items.findIndex((item) => item.href === path)
@@ -79,7 +80,7 @@ export type PageInfo = { href: string; title: string; file: string; group?: stri
  * section's title), sorted by `order`, then title. The config wins: its groups come first and its items replace pages
  * with the same href, so it can rename, reorder and add (non-page) entries. An empty section `href` means its first page.
  */
-export function pagesNav(sections: Section[], pages: PageInfo[]): Section[] {
+export function pagesNav(sections: readonly Section[], pages: readonly PageInfo[]): Section[] {
   return sections.map((section) => {
     const groups = section.groups.map((g) => ({ title: g.title, items: [...g.items] }))
     const listed = new Set(groups.flatMap((g) => g.items.map((i) => i.href)))

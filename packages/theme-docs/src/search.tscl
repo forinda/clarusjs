@@ -5,13 +5,12 @@
 --}}
 <script>
   import { navigate } from 'clarusjs/navigation'
-  import { search } from './search.js'
+  import { base, search } from './search.js'
   let query = state('')
   let results = state([])
   let active = state(0)
   let searched = state(false)
   const status = derived(() => !searched ? '' : results.length === 0 ? 'No results for "' + query + '"' : results.length === 1 ? '1 result' : results.length + ' results')
-  const base = import.meta.env?.BASE_URL ?? '/'
   const load = (file) => fetch(base + 'search/' + file).then((r) => (r.ok ? r.json() : {}))
   let latest = 0
   async function run(value) {
@@ -23,12 +22,12 @@
     active = 0
     searched = value.trim() !== ''
   }
-  const dialog = () => document.querySelector('.search-dialog')
+  const dialog = () => { const d = document.querySelector('.search-dialog'); return d instanceof HTMLDialogElement ? d : null }
   function open() {
     const d = dialog()
     if (!d || d.open) return
     d.showModal()
-    d.querySelector('input').select()
+    d.querySelector('input')?.select()
   }
   function move(by) {
     if (!results.length) return
@@ -38,13 +37,13 @@
   function key(event) {
     if (event.key === 'ArrowDown') { event.preventDefault(); move(1) }
     else if (event.key === 'ArrowUp') { event.preventDefault(); move(-1) }
-    else if (event.key === 'Enter' && results.length) { event.preventDefault(); dialog().close(); navigate(results[active].u) }
+    else if (event.key === 'Enter' && results.length) { event.preventDefault(); dialog()?.close(); navigate(results[active].u) }
     // One Escape closes (a search field would only clear itself first).
-    else if (event.key === 'Escape') { event.preventDefault(); dialog().close() }
+    else if (event.key === 'Escape') { event.preventDefault(); dialog()?.close() }
   }
   if (typeof document !== 'undefined') {
     document.addEventListener('keydown', (event) => {
-      const typing = event.target.closest?.('input, textarea, select, [contenteditable]')
+      const typing = event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]')
       if ((event.key === 'k' && (event.metaKey || event.ctrlKey)) || (event.key === '/' && !typing)) {
         event.preventDefault()
         open()
@@ -60,7 +59,7 @@
     <kbd aria-hidden="true">⌘K</kbd>
   </button>
   {{-- A click on the backdrop (the dialog itself, outside its box) closes it; so does choosing a result. --}}
-  <dialog class="search-dialog" aria-label="Search the docs" (click)="($event.target.matches('dialog') || $event.target.closest('a')) && dialog().close()">
+  <dialog class="search-dialog" aria-label="Search the docs" (click)="($event.target.matches('dialog') || $event.target.closest('a')) && dialog()?.close()">
     <div class="search-box">
       <input type="search" role="combobox" aria-label="Search the docs" aria-controls="search-results" aria-autocomplete="list" [aria-expanded]="results.length ? 'true' : 'false'" [aria-activedescendant]="results.length ? 'search-result-' + active : false" placeholder="Search the docs" autocomplete="off" spellcheck="false" (input)="run($event.target.value)" (keydown)="key($event)">
       <p class="search-status" role="status">{{ status }}</p>
