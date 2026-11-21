@@ -105,3 +105,12 @@ test('the built package has clarusjs/forms, with its types', async () => {
   expect(typeof forms.connect).toBe('function')
   expect(readFileSync(`${dist}/forms/index.d.ts`, 'utf8')).toContain('export declare function form')
 })
+
+test('the built package has clarusjs/fetch, with its types, in its published exports', async () => {
+  const fetchEntry = await import(`${dist}/fetch/index.js`)
+  for (const name of ['resource', 'batch', 'json']) expect(typeof fetchEntry[name], name).toBe('function')
+  expect(readFileSync(`${dist}/fetch/index.d.ts`, 'utf8')).toContain('export declare function resource')
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  expect(pkg.exports['./fetch']).toBe('./src/fetch/index.ts')
+  expect(pkg.publishConfig.exports['./fetch']).toEqual({ types: './dist/fetch/index.d.ts', default: './dist/fetch/index.js' })
+})
