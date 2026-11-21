@@ -9,3 +9,8 @@ playwright-report/
 .playwright-mcp/
 .clarusjs/
 .netlify/
+
+# Generated from the JSDoc in packages/theme-docs/src/*.js (pnpm types; typecheck and prepack run it)
+packages/theme-docs/src/vite.d.ts
+packages/theme-docs/src/search.d.ts
+packages/theme-docs/src/nav.d.ts
