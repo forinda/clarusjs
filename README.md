@@ -12,7 +12,7 @@ Write components once in a familiar template language. clarusjs compiles them to
 JavaScript only for the parts that are actually interactive. Static sites, server rendering and client apps share one
 component model, and you can always see where each line runs.
 
-> Status: proof of concept. The design lives in [docs/architecture.md](docs/architecture.md).
+> Status: early (`0.x`). The API will change between minor versions. The design lives in [docs/architecture.md](docs/architecture.md).
 
 ## The name
 
@@ -22,15 +22,13 @@ the browser. The logo spells **TSCL**, the `.tscl` file extension: a clear cut s
 **S**-shaped lightning bolt, with **C** and **L** down the stem. Clear HTML all the way through, and a spark of
 interactivity only where a page needs one. **.js** because it is, in the end, just JavaScript you can open and read.
 
-clarusjs borrows openly from projects that got one thing very right:
+## Principles
 
-| From | What clarusjs takes |
-|---|---|
-| **KickJS views** | templates checked at build time, typed inputs, `@fragment`-style partial renders |
-| **Vue · Angular** | an approachable template syntax: `{{ }}`, `@if` / `@for`, `(event)`, `[prop]` |
-| **Svelte** | a compiler that does the heavy lifting, and signals written as plain variables |
-| **Astro** | static by default, with interactive islands only where needed |
-| **htmx · Turbo** | navigation by swapping server-rendered fragments, no client router required |
+- **Checked at build time.** Templates and their typed inputs are checked before anything ships, with errors at `file.tscl:line:col`.
+- **One template syntax.** `{{ }}` holes, `@if` / `@for`, `(event)` and `[prop]`, the same on the server and in the browser.
+- **The compiler does the work.** Signals are written as plain variables; the output is HTML plus small, readable modules.
+- **Static by default.** JavaScript ships only for the interactive islands a page has.
+- **Navigation without a framework router.** Pages swap server-rendered fragments; a client router runs only for routes that need one.
 
 ## What it looks like
 
