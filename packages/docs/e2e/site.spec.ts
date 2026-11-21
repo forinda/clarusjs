@@ -303,9 +303,9 @@ test('copy buttons load on first click and copy their sample', async ({ page, co
 test('the route manifest matches what the browser loads', async ({ page }) => {
   const { readFileSync } = await import('node:fs')
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
-  // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour) and 404.
+  // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour), 404 and 500.
   const routes = Object.keys(manifest.routes)
-  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404'
+  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500'
   expect(routes.filter((r) => !generated(r)).sort()).toEqual(pages.map((p) => p.path).sort())
   for (const path of ['/', '/guide/state']) {
     const route = manifest.routes[path]
@@ -777,6 +777,16 @@ test('abort: the URL is held while a page loads; Stop cancels its request and le
   await page.locator('.sidebar a[href="/guide/holes"]').click()
   await expect(page.locator('h1')).toHaveText('Holes')
   await expect(page).toHaveURL(/\/guide\/holes$/)
+})
+
+test('error pages: the 500 page renders at /500 and as 500.html, with links that work from the site root', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  expect(readFileSync(new URL('../dist/client/500.html', import.meta.url), 'utf8')).toContain('Something went wrong')
+  await page.goto('/500')
+  await expect(page.locator('h1')).toHaveText('Something went wrong')
+  await expect(page.locator('.lead')).toContainText('error 500')
+  await page.getByRole('link', { name: 'Get started' }).first().click()
+  await expect(page).toHaveURL(/\/guide\/getting-started$/)
 })
 
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
