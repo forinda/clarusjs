@@ -110,6 +110,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   let eventElementCount = 0
   let attrElementCount = 0
   let formCount = 0
+  let selectModel: string | undefined // inside a <select [(value)]>: its bound value, for its options' `selected`
   // Under an [engine] element: the object its fields bind (one per form, so a path can't silently miss).
   let engineScope: { root: string | null } | null = null
   const sameRoot = (path: string, at: number) => {
@@ -264,6 +265,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       out.push({ kind: 'slot', name, fallback })
       return
     }
+    const outerSelect = selectModel // restored after this element: a <select>'s binding reaches its options only
     // [(value)] / [(checked)] on a form element: the property, and an event writing it back (copy-on-write).
     const tag = node.tag
     const attrs = node.attrs.flatMap((a): Exclude<Attr, { kind: 'model' }>[] => {
@@ -274,6 +276,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       sameRoot(a.expr, a.start)
       // A radio group (#267): [(value)] on each radio binds one value: checked when it equals the radio's value, and
       // picking the radio writes that value (as Vue's v-model on radios).
+      // Radios, checkboxes and number fields bind differently: that needs a static type. A bound [type] (text or email,
+      // a field component's prop) binds as text.
       const typeAttr = node.attrs.find((x) => x.kind === 'static' && x.name === 'type')
       const inputType = typeAttr?.kind === 'static' && typeof typeAttr.value === 'string' ? typeAttr.value : 'text'
       const path = { kind: 'prop' as const, name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start }
@@ -283,18 +287,21 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
         const own = node.attrs.find((x) => x.name === 'value' && (x.kind === 'static' || x.kind === 'prop'))
         if (!own) return fail("a checkbox bound with [(value)] needs a value (value=\"…\" or [value]): it's what goes into the array; for a boolean, use [(checked)]", a.start)
         const mine = own.kind === 'static' ? JSON.stringify(own.value === true ? '' : own.value) : `(${(own as { expr: string }).expr})`
-        const next = `($event.target.checked ? [...(${a.expr}), ${mine}] : (${a.expr}).filter((__cl_x) => __cl_x !== ${mine}))`
+        // A missing array (undefined, null) is an empty one.
+        const next = `($event.target.checked ? [...((${a.expr}) ?? []), ${mine}] : ((${a.expr}) ?? []).filter((__cl_x) => __cl_x !== ${mine}))`
         return [
-          { kind: 'prop', name: 'checked', expr: `(${a.expr}).includes(${mine})`, start: a.start },
+          { kind: 'prop', name: 'checked', expr: `((${a.expr}) ?? []).includes(${mine})`, start: a.start },
           { kind: 'event', name: 'change', expr: writeBack(a.expr, next, a.name, a.start), start: a.start },
           path,
         ]
       }
-      // <select multiple>: the selected values, as an array.
-      if (a.name === 'value' && tag === 'select' && node.attrs.some((x) => x.kind === 'static' && x.name === 'multiple')) {
+      // A <select>: its value, or (multiple, static or bound) the selected values as an array. Its options render
+      // `selected` on the server (see the option case below), so the page shows the choice before any JavaScript.
+      if (a.name === 'value' && tag === 'select') {
+        selectModel = a.expr
         return [
           { kind: 'prop', name: a.name, expr: a.expr, start: a.start },
-          { kind: 'event', name: 'change', expr: writeBack(a.expr, 'Array.from($event.target.selectedOptions, (__cl_o) => __cl_o.value)', a.name, a.start), start: a.start },
+          { kind: 'event', name: 'change', expr: writeBack(a.expr, '($event.target.multiple ? Array.from($event.target.selectedOptions, (__cl_o) => __cl_o.value) : $event.target.value)', a.name, a.start), start: a.start },
           path,
         ]
       }
@@ -333,6 +340,14 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     // A field's value and checked go last: a browser clamps a value to the min/max/step (and type) already set.
     const late = (x: { kind: string; name: string }) => x.kind !== 'event' && (x.name === 'value' || x.name === 'checked')
     attrs.sort((x, y) => Number(late(x)) - Number(late(y)))
+    // An <option> of a bound <select>: `selected` when the bound value (or array, for multiple) has its value.
+    if (tag === 'option' && selectModel !== undefined) {
+      const own = node.attrs.find((x) => x.name === 'value' && (x.kind === 'static' || x.kind === 'prop'))
+      if (own) {
+        const mine = own.kind === 'static' ? JSON.stringify(own.value === true ? '' : own.value) : `(${(own as { expr: string }).expr})`
+        attrs.push({ kind: 'prop', name: 'selected', expr: `((__cl_s, __cl_v) => (Array.isArray(__cl_s) ? __cl_s.map(String).includes(String(__cl_v)) : String(__cl_s) === String(__cl_v)))(${selectModel}, ${mine})`, start: own.start })
+      }
+    }
     emitStatic(`<${node.tag}`)
     const elementEvents = attrs.filter((a) => a.kind === 'event')
     const dynamic: Extract<IRNode, { kind: 'attr' }>[] = []
@@ -384,8 +399,10 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     emitStatic('>')
     const outer = engineScope
     if (engine) engineScope = { root: null }
+    if (tag !== 'select' || !node.attrs.some((x) => x.kind === 'model')) selectModel = tag === 'optgroup' || tag === 'option' ? selectModel : undefined
     node.children.forEach((child) => visit(child, RAW_TEXT.has(node.tag) ? node.tag : rawText))
     engineScope = outer
+    selectModel = outerSelect
     if (!VOID.has(node.tag)) emitStatic(`</${node.tag}>`)
   }
 

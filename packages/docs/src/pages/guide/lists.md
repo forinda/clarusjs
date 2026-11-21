@@ -21,7 +21,7 @@ description: "Repeat content with @for: track keys, @empty, and each row's $inde
 </ul>
 ```
 
-- `track` gives each row a key. Without it, rows are keyed by position, and in an interactive component the compiler warns: a row's state would move to another item when the list changes order.
+- `track` gives each row a key. Without it, rows are keyed by position, and in an interactive component the compiler warns: a row's state would move to another item when the list changes order. To match rows by position on purpose, write `track $index`.
 - `@empty` shows when the list is empty.
 
 ## A row's names

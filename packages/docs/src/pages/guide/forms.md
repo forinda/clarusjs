@@ -31,6 +31,8 @@ More kinds of fields:
 - **`<select multiple>`** with `[(value)]` binds an array of the selected values.
 - **Number and range inputs** write numbers. A field that isn't a number, such as an empty one, stays a string.
 - **While an input method composes text** (Japanese, Chinese, Korean…), nothing is written; the composed text is, when it's done.
+- **A bound `<select>`'s options** render `selected` on the server, so the choice shows before any JavaScript.
+- **Radios, checkboxes and number fields need a static `type`** to bind this way; a field whose `[type]` is bound (text or email) binds as text.
 
 The target is a state variable or a property path of one. A write replaces the state, copy-on-write: typing in the first field runs `form = { ...form, name: value }`. Nothing is changed in place.
 

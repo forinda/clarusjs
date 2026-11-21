@@ -10,4 +10,4 @@ Clearer `@for` errors:
 - a second `track`;
 - a second `@empty`.
 
-An island `@for` without `track` now warns: rows are matched by position, so a row's state can move to another item.
+An island `@for` without `track` now warns: rows are matched by position, so a row's state can move to another item. Matching by position on purpose? Write `track $index`. A script can't declare a variable named like one of the row names.

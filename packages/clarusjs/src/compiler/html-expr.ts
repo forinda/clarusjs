@@ -105,8 +105,10 @@ const DERIVED: Record<string, string> = {
 /** The @for implicit names a row's template uses, besides `$index`: `$count` and those derived from it. */
 export function rowNames(n: Extract<IRNode, { kind: 'for' }>): string[] {
   const text = JSON.stringify(n.nodes)
-  const used = Object.keys(DERIVED).filter((name) => text.includes(name))
-  return text.includes('$count') || used.includes('$last') ? ['$count', ...used] : used
+  // As names, not inside others ($lastName) or after a dot (user.$first).
+  const has = (name: string) => new RegExp(`(?<![\\w$.])\\${name}(?![\\w$])`).test(text)
+  const used = Object.keys(DERIVED).filter(has)
+  return has('$count') || used.includes('$last') ? ['$count', ...used] : used
 }
 /**
  * A row's parameters: the item and `$index`, then (when used) the list, `$count` and the names derived from them as

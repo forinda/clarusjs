@@ -58,7 +58,8 @@ export async function render<N extends ViewName>(name: N, props: ViewProps<N>): 
 
 /**
  * HTML that `h()` built: a template's `{{ }}` inserts it as it is (any other value is escaped). Only `h()` makes one,
- * from escaped parts; data (JSON) can't, so an island prop is always text.
+ * from escaped parts; data (JSON) can't. It's for server-rendered pages and components: it can't be sent to the
+ * browser (an island's props, a client route's data).
  * @see https://clarusjs.com/reference/server#h
  */
 export type Html = { readonly [HTML]: true; readonly html: string; toString(): string }
@@ -83,7 +84,8 @@ async function childrenHtml(children: Children): Promise<string> {
 /**
  * Build HTML in server code: an element (`'p'`, `'div'`), or a view (any `.tscl` under src/, by its path:
  * `'components/card'`), with props or attributes and children. Text is escaped and attributes are URL-checked, as in
- * templates; `h()` results nest. Put the result in a page through `load()`: `{{ }}` inserts it as HTML.
+ * templates; `h()` results nest. Put the result in a page through `load()`: `{{ }}` inserts it as HTML. Take view and
+ * tag names from your own list, never from request data or a database.
  * @param name An element's tag, or a view's name (it has a `/`).
  * @param props A view's inputs, or an element's attributes (`on*`, `srcdoc` refused).
  * @param children The default slot's (or element's) content; for a view, an object fills named slots.
@@ -114,12 +116,16 @@ export async function h<N extends ViewName>(name: N | (string & {}), props: (N e
   }
   const tag = name.toLowerCase()
   if (!/^[a-z][a-z0-9-]*$/.test(tag)) throw new Error(`h(): "${name}" isn't a tag or a view name (views have a /, such as "components/card")`)
-  if (REFUSED.has(tag)) throw new Error(`h(): <${tag}> loads or runs things: write it in a .tscl view, where the compiler checks it`)
+  // cl-*: clarusjs's own markup (a cl-island loads and runs the script at its src).
+  if (REFUSED.has(tag) || tag.startsWith('cl-')) throw new Error(`h(): <${tag}> loads or runs things: write it in a .tscl view, where the compiler checks it`)
+  if (children && typeof children === 'object' && !Array.isArray(children) && !(children as { [HTML]?: unknown })[HTML] && !(children instanceof Promise)) throw new Error(`h(): named slots are for views; <${tag}> takes a list of children`)
   let attrs = ''
   for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
     if (!/^[^\s"'>/=]+$/.test(key)) throw new Error(`h(): "${key}" isn't an attribute name`)
     if (/^on/i.test(key) || key.toLowerCase() === 'srcdoc') throw new Error(`h(): "${key}" can't be set from code (event handlers and srcdoc run code); use a .tscl view`)
     attrs += attrHtml(key, value, tag)
   }
-  return html(VOID.has(tag) ? `<${tag}${attrs}>` : `<${tag}${attrs}>${await childrenHtml(children as Children)}</${tag}>`)
+  const inner = await childrenHtml(children as Children)
+  if (VOID.has(tag) && inner) throw new Error(`h(): <${tag}> can't have children`)
+  return html(VOID.has(tag) ? `<${tag}${attrs}>` : `<${tag}${attrs}>${inner}</${tag}>`)
 }

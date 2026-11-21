@@ -343,14 +343,20 @@ export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, t
     const raw = fn()
     // <select multiple> bound to an array: each option selected when the array has its value.
     if (name === 'value' && Array.isArray(raw) && (el as HTMLSelectElement).multiple) {
-      for (const o of (el as HTMLSelectElement).options) o.selected = raw.includes(o.value)
+      const values = raw.map(String) // option values are text: [1, 2] selects "1" and "2"
+      for (const o of (el as HTMLSelectElement).options) o.selected = values.includes(o.value)
       return
     }
     const v = attrValue(name, raw, tag)
     if (v === null) el.removeAttribute(name)
     else el.setAttribute(name, v === true ? '' : v)
     // A form field shows its property once someone has typed or clicked in it, not the attribute: set both.
-    if (name === 'value' && 'value' in el) (el as HTMLInputElement).value = v === null || v === true ? '' : v
+    if (name === 'value' && 'value' in el) {
+      const field = el as HTMLInputElement
+      const next = v === null || v === true ? '' : v
+      // A number field showing the same number keeps what was typed ("1.0" isn't rewritten to "1" mid-typing).
+      if (field.value !== next && !(/^(number|range)$/.test(field.type) && field.value !== '' && Number(field.value) === Number(raw))) field.value = next
+    }
     if (name === 'checked' && 'checked' in el) (el as HTMLInputElement).checked = v !== null
   })
 }

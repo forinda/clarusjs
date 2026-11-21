@@ -1,5 +1,5 @@
 import { modeFor, type ModeTable } from './modes.ts'
-import { stringify } from '../runtime/serialize.ts'
+import { toBrowser } from '../runtime/server.ts'
 import { completeHead, type HeadOptions, type SiteOptions } from './head.ts'
 import { escape } from '../runtime/html.ts'
 
@@ -283,7 +283,7 @@ export function createHandler(
         props = { ...props, ...loaded }
       }
       if (wantsData) {
-        return new Response(head ? null : safeJson(stringify(props)), { headers: { 'content-type': 'application/json; charset=utf-8' } })
+        return new Response(head ? null : safeJson(toBrowser(props)), { headers: { 'content-type': 'application/json; charset=utf-8' } })
       }
       let html: string
       try {

@@ -6,5 +6,5 @@
 
 - Text is escaped and attributes are URL-checked, as in templates, and `h()` results nest.
 - A template's `{{ }}` inserts `h()` output as HTML; every other value is escaped as before.
-- Only `h()` can make that output (data such as JSON can't), so an island prop holding it arrives as text.
-- `on*` attributes, `srcdoc` and tags that load or run things are refused from code.
+- Only `h()` can make that output (data such as JSON can't). It's for server-rendered pages: sending it in an island's props or a client route's data is an error naming it.
+- `on*` attributes, `srcdoc`, tags that load or run things, and clarusjs's own `cl-*` tags are refused from code. Take view and tag names from your own list, never from request data.
