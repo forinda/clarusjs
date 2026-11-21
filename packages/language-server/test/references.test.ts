@@ -54,7 +54,7 @@ test('rename a tag or import name: that file\'s import name and tags only', asyn
 
 test('rename/move a file: importers\' specifiers follow (relative recomputed, ~/ kept as ~/, Markdown too), and its own relative imports', async () => {
   const { project, at } = await setup(files)
-  const edit = fileRenameEdits(project, [[at('src/components/card.tscl'), at('src/ui/panels/card.tscl')]])
+  const edit = fileRenameEdits([project], [[at('src/components/card.tscl'), at('src/ui/panels/card.tscl')]])
   const after = apply(project, edit)
   expect(after[at('src/pages/index.tscl')]).toContain("@import card from '../ui/panels/card.tscl'")
   expect(after[at('src/pages/about.tscl')]).toContain("@import Tile from '~/ui/panels/card.tscl'")

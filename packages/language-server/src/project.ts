@@ -5,6 +5,8 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import type { ParsedFile } from 'clarusjs/compiler'
+import { projectAliases, resolveAlias, type Alias } from '../../clarusjs/src/vite/aliases.ts' // the build's own rules, bundled
+import { blankFences, blankOut, scan } from './blank.ts'
 import type { Compiler } from './compiler.ts'
 
 /** An @import: its name (nameStart..nameStart+name.length) and specifier (start..end, without quotes). */
@@ -28,7 +30,7 @@ export class Project {
   private texts = new Map<string, string>()
   private imports = new Map<string, Import[]>()
   private parsed = new Map<string, ParsedFile>()
-  private paths: [string, string[]][] | undefined
+  private aliases: Alias[] | undefined
   private mapperCache = new Map<string, boolean>()
 
   constructor(readonly root: string, readonly compiler: Compiler) {}
@@ -46,7 +48,9 @@ export class Project {
         return []
       })
     }
-    for (const path of walk(this.root)) this.update(path, readFileSync(path, 'utf8'))
+    for (const path of walk(this.root)) {
+      try { this.update(path, readFileSync(path, 'utf8')) } catch {} // unreadable (a dangling symlink): skipped
+    }
   }
 
   files(): string[] {
@@ -61,8 +65,13 @@ export class Project {
   update(path: string, text: string): void {
     if (this.texts.get(path) === text) return // unchanged: nothing to parse again
     this.texts.set(path, text)
-    // In Markdown, fenced code blocks are examples, not imports: blanked (same length) before matching.
-    const source = path.endsWith('.md') ? text.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, (block) => block.replace(/[^\n]/g, ' ')) : text
+    // Only real @import lines, blanked (same length) elsewhere: Markdown code samples; a template's {{-- --}}
+    // comments and <script>/<style> bodies.
+    const source = path.endsWith('.md') ? blankFences(text) : blankOut(text, [
+      ...[...text.matchAll(/\{\{--[\s\S]*?(--\}\}|$)/g)].map((m): [number, number] => [m.index!, m.index! + m[0].length]),
+      ...scan(text).scripts,
+      ...scan(text).styles,
+    ])
     this.imports.set(path, [...source.matchAll(IMPORT)].map((m) => {
       const start = m.index! + m[0].length - m[3]!.length - 1
       const nameStart = m.index! + /^[ \t]*@import[ \t]+/.exec(m[0])![0].length
@@ -79,10 +88,11 @@ export class Project {
     else this.remove(path)
   }
 
-  /** Forget cached tsconfig answers (a tsconfig.json changed). */
+  /** A tsconfig.json or jsconfig.json changed: forget cached answers and resolve the indexed imports again. */
   forgetConfig(): void {
     this.mapperCache.clear()
-    this.paths = undefined
+    this.aliases = undefined
+    for (const [path, list] of this.imports) for (const i of list) i.target = this.resolve(i.specifier, path)
   }
 
   remove(path: string): void {
@@ -105,23 +115,16 @@ export class Project {
     return [...this.imports].filter(([, list]) => list.some((i) => i.target === target)).map(([path]) => path)
   }
 
-  /** Where `specifier`, imported by `from`, leads: relative, ~/ (src/), tsconfig paths, then a package. */
+  /**
+   * Where `specifier`, imported by `from`, leads, as the build reads it: relative, /-rooted, the aliases (~/ and
+   * tsconfig/jsconfig paths with baseUrl, the most specific first), then a package.
+   * ponytail: Vite's own resolve.alias entries aren't read (that needs the Vite config loaded).
+   */
   resolve(specifier: string, from: string): string | undefined {
     if (specifier.startsWith('./') || specifier.startsWith('../')) return resolve(dirname(from), specifier)
-    if (specifier.startsWith('~/')) return resolve(this.root, 'src', specifier.slice(2))
     if (specifier.startsWith('/')) return resolve(this.root, specifier.slice(1))
-    this.paths ??= Object.entries((readJsonc(join(this.root, 'tsconfig.json'))?.compilerOptions?.paths ?? {}) as Record<string, string[]>)
-    for (const [pattern, targets] of this.paths) {
-      const star = pattern.indexOf('*')
-      const head = star === -1 ? pattern : pattern.slice(0, star)
-      const tail = star === -1 ? '' : pattern.slice(star + 1)
-      if (star === -1 ? specifier !== pattern : !(specifier.startsWith(head) && specifier.endsWith(tail))) continue
-      const middle = star === -1 ? '' : specifier.slice(head.length, specifier.length - tail.length)
-      for (const target of targets) {
-        const path = resolve(this.root, target.replace('*', middle))
-        if (existsSync(path)) return path
-      }
-    }
+    const aliased = resolveAlias(specifier, (this.aliases ??= projectAliases(this.root)))
+    if (aliased) return resolve(aliased)
     try { return createRequire(from).resolve(specifier) } catch { return undefined }
   }
 

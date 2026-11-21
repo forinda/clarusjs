@@ -37,11 +37,13 @@ Install **clarusjs** (`forinda.clarusjs-vscode`) from the Extensions view. It ru
 - **References and renames:** Find All References on a component; rename a component in a file; renaming or moving a `.tscl` file updates every `@import` that points to it, Markdown pages included.
 - **Semantic colouring** of the template syntax, for editors without the TextMate grammar.
 
-Install it in the project (or globally) to get the `clarusjs-ls` command:
+Install it globally to get the `clarusjs-ls` command on your `PATH`, where editors look for it:
 
 ```sh
-npm install -D @clarusjs/language-server
+npm install -g @clarusjs/language-server
 ```
+
+Installed in a project instead (`npm install -D @clarusjs/language-server`), the command is `node_modules/.bin/clarusjs-ls`: give editors that path in place of `clarusjs-ls`.
 
 **Trust.** Started with `initializationOptions: { trusted: true }`, the server uses the project's own `clarusjs` compiler (when it's recent enough), so the editor agrees with the build; otherwise the one bundled with it. That runs code from the project's `node_modules/clarusjs`, so set it only for projects you trust (the examples below set it; drop it for others). VS Code passes your workspace trust.
 
@@ -103,6 +105,12 @@ file-types = ["tscl"]
 roots = ["package.json"]
 grammar = "html"
 language-servers = ["clarusjs"]
+```
+
+Helix finds highlight queries by language name, so give `tscl` the HTML ones: create `queries/tscl/highlights.scm` in your Helix runtime folder (`~/.config/helix/runtime/`) with one line:
+
+```scheme
+; inherits: html
 ```
 
 ### JetBrains IDEs

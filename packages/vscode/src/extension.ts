@@ -21,15 +21,18 @@ async function start(context: vscode.ExtensionContext): Promise<void> {
   await client.start()
 }
 
+/** Starts (or restarts) the server, one at a time: a restart asked for during a start runs after it. */
+let queue = Promise.resolve()
+const restart = (context: vscode.ExtensionContext) =>
+  (queue = queue.then(async () => {
+    await client?.stop()
+    await start(context)
+  }))
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  await start(context)
-  context.subscriptions.push(
-    // Trust changes which compiler the server may load: start it again.
-    vscode.workspace.onDidGrantWorkspaceTrust(async () => {
-      await client?.stop()
-      await start(context)
-    }),
-  )
+  // Listening before the first start: trust granted while it starts still restarts the server with it.
+  context.subscriptions.push(vscode.workspace.onDidGrantWorkspaceTrust(() => restart(context)))
+  await restart(context)
 }
 
 export function deactivate(): Promise<void> | undefined {

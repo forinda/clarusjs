@@ -9,8 +9,8 @@ export type Scan = { blank: Range[]; styles: Range[]; scripts: Range[] }
 const DIRECTIVE = /^[ \t]*@(import|input|model|type|interface)(?![\w$-])/
 // As the compiler reads them: @if/@for/@slot need a space or `(` after (an email's @if.com isn't one); @else and
 // @empty only follow a block's closing brace.
-const OPENER = /^@(if|for|slot)(?=[\s(])/
-const FOLLOWER = /^@(else\s+if(?=[\s(])|else(?=[\s{])|empty(?=[\s{]))/
+export const OPENER = /^@(if|for|slot)(?=[\s(])/
+export const FOLLOWER = /^@(else\s+if(?=[\s(])|else(?=[\s{])|empty(?=[\s{]))/
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
 /** Index after the quote that closes the string starting at `i` (s[i] is the quote), or the end. */
@@ -35,25 +35,40 @@ function closeBracket(s: string, i: number): number {
   return s.length
 }
 
-/** Index after the `}}` closing the hole at `i` (`{{`), strings skipped, or the end. */
-function closeHole(s: string, i: number): number {
+/** Index after the `}}` closing the hole at `i` (`{{`), strings and nested braces skipped, or the end. */
+export function closeHole(s: string, i: number): number {
+  let depth = 0 // braces the expression opened: `{{ {x: {}}.x }}` closes at the last `}}`
   for (let j = i + 2; j < s.length; j++) {
     const c = s[j]!
     if (c === '"' || c === "'" || c === '`') { j = skipString(s, j) - 1; continue }
-    if (c === '}' && s[j + 1] === '}') return j + 2
+    if (c === '{') depth++
+    else if (c === '}') {
+      if (depth === 0 && s[j + 1] === '}') return j + 2
+      if (depth > 0) depth--
+    }
   }
   return s.length
 }
 
-/** End of a directive starting at `i`: its line, and more lines while a bracket it opened is still open. */
+/**
+ * End of a directive starting at `i`: its line, and more lines while a bracket it opened is still open. In the type
+ * (before a top-level `=`), `<…>` counts too, so `Array<\n string\n>` is one directive; not in a default value, where
+ * `<` and `>` compare.
+ */
 function directiveEnd(s: string, i: number): number {
   let depth = 0
+  let angle = 0
+  let defaults = false
   for (let j = i; j < s.length; j++) {
     const c = s[j]!
     if (c === '"' || c === "'" || c === '`') { j = skipString(s, j) - 1; continue }
-    if (c === '(' || c === '[' || c === '{') depth++
+    if (c === '=' && s[j + 1] === '>') { j++; continue } // an arrow, in a type or a default
+    if (c === '=' && depth === 0 && angle === 0) defaults = true
+    else if (c === '<' && !defaults) angle++
+    else if (c === '>' && !defaults && angle > 0) angle--
+    else if (c === '(' || c === '[' || c === '{') depth++
     else if ((c === ')' || c === ']' || c === '}') && depth > 0) depth--
-    else if (c === '\n' && depth === 0) return j
+    else if (c === '\n' && depth === 0 && angle === 0) return j
   }
   return s.length
 }
@@ -104,7 +119,9 @@ function tag(s: string, i: number, out: Scan): { end: number; depth: number } {
 function blockHead(s: string, i: number, j: number, condition: boolean): { end: number; opened: boolean } {
   if (condition) {
     j = skipSpace(s, j)
-    j = s[j] === '(' ? closeBracket(s, j) : lineEnd(s, i)
+    // An unclosed `(` (being typed) ends with its line, not the file.
+    const close = s[j] === '(' ? closeBracket(s, j) : -1
+    j = close !== -1 && close < s.length ? close : lineEnd(s, i)
   }
   const k = skipSpace(s, j)
   return s[k] === '{' ? { end: k + 1, opened: true } : { end: j, opened: false }
@@ -183,3 +200,40 @@ export function blankOut(source: string, ranges: Range[]): string {
 
 /** The template as HTML: its own syntax blanked. */
 export const htmlView = (source: string) => blankOut(source, scan(source).blank)
+
+/** Markdown with its fenced code blocks and inline code spans blanked (same length): examples, not template. */
+export const blankFences = (text: string) =>
+  text
+    .replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, (block) => block.replace(/[^\n]/g, ' '))
+    .replace(/`[^`\n]*`/g, (span) => ' '.repeat(span.length))
+
+/** Index of the `>` ending the tag whose attributes start at `j`, quoted values skipped (or the end). */
+export function tagEnd(s: string, j: number): number {
+  for (; j < s.length; j++) {
+    if (s[j] === '"' || s[j] === "'") { const e = s.indexOf(s[j]!, j + 1); if (e === -1) return s.length; j = e }
+    else if (s[j] === '>') return j
+  }
+  return s.length
+}
+
+export type Tag = { name: string; start: number; end: number }
+
+/**
+ * The real tags of a template (open and close), by name range: not in script or style bodies, comments, holes,
+ * attribute values, or (Markdown) code samples.
+ */
+export function tagsIn(text: string, markdown = false): Tag[] {
+  const source = markdown ? blankFences(text) : text
+  const { blank, styles } = scan(source)
+  const view = blankOut(source, [...blank, ...styles])
+  const out: Tag[] = []
+  for (let i = view.indexOf('<'); i !== -1; i = view.indexOf('<', i + 1)) {
+    if (view.startsWith('<!--', i)) { const e = view.indexOf('-->', i + 4); if (e === -1) break; i = e + 2; continue }
+    const m = /^<\/?([A-Za-z][\w:.-]*)/.exec(view.slice(i, i + 64))
+    if (!m) continue
+    const start = i + m[0].length - m[1]!.length
+    out.push({ name: m[1]!, start, end: start + m[1]!.length })
+    i = tagEnd(view, start + m[1]!.length)
+  }
+  return out
+}

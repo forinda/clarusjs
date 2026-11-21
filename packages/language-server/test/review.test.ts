@@ -32,7 +32,7 @@ test('moving two files that import each other: one edit set, from their final pl
     'src/b.tscl': '<i></i>\n',
     'src/page.tscl': "@import a from './a.tscl'\n@import b from './b.tscl'\n<a /><b />\n",
   })
-  const edit = fileRenameEdits(project, [[at('src/a.tscl'), at('src/ui/a.tscl')], [at('src/b.tscl'), at('src/ui/b.tscl')]])
+  const edit = fileRenameEdits([project], [[at('src/a.tscl'), at('src/ui/a.tscl')], [at('src/b.tscl'), at('src/ui/b.tscl')]])
   for (const edits of Object.values(edit.changes!)) {
     const starts = edits.map((e) => `${e.range.start.line}:${e.range.start.character}`)
     expect(new Set(starts).size).toBe(starts.length) // no two edits on one range
@@ -107,7 +107,7 @@ test('minor: moving a file keeps a /-rooted specifier /-rooted, and a ~/ one lea
     'src/a.tscl': "@import card from '/src/card.tscl'\n<card />\n",
     'src/b.tscl': "@import card from '~/card.tscl'\n<card />\n",
   })
-  const after = applied(project, fileRenameEdits(project, [[at('src/card.tscl'), at('lib/card.tscl')]]))
+  const after = applied(project, fileRenameEdits([project], [[at('src/card.tscl'), at('lib/card.tscl')]]))
   expect(after[at('src/a.tscl')]).toContain("from '/lib/card.tscl'")
   expect(after[at('src/b.tscl')]).toContain("from '../lib/card.tscl'")
 })

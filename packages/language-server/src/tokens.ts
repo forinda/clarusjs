@@ -2,19 +2,23 @@
 // and names, component tags), so editors without the TextMate grammar colour it. Lexical, like the HTML view: a file
 // being typed still gets them. One token per line segment, as LSP requires.
 
-import { scan } from './blank.ts'
+import { closeHole, FOLLOWER, OPENER, scan, tagEnd } from './blank.ts'
 
 export const TOKEN_TYPES = ['keyword', 'variable', 'operator', 'comment', 'macro', 'type'] as const
 export type Token = { line: number; character: number; length: number; type: number }
 
 const T = Object.fromEntries(TOKEN_TYPES.map((t, i) => [t, i])) as Record<(typeof TOKEN_TYPES)[number], number>
 const DIRECTIVE = /^[ \t]*(@(?:import|input|model|type|interface))(?![\w$-])/
-const BLOCK = /^@(?:else\s+if|if|for|slot|else|empty)(?![\w$-])/
 
 export function tokensOf(source: string, components: Set<string>): Token[] {
-  let spans: [number, number, number][] = [] // [start, end, type]
+  const spans: [number, number, number][] = [] // [start, end, type]
+  // <script> and <style> bodies are JavaScript and CSS: jumped over.
+  const { scripts, styles } = scan(source)
+  const bodies = new Map([...scripts, ...styles])
   let atLineStart = true
   for (let i = 0; i < source.length; ) {
+    const body = bodies.get(i)
+    if (body !== undefined && body > i) { i = body; continue }
     if (atLineStart) {
       atLineStart = false
       const d = DIRECTIVE.exec(source.slice(i, i + 32))
@@ -37,14 +41,14 @@ export function tokensOf(source: string, components: Set<string>): Token[] {
     }
     if (source.startsWith('{{', i)) {
       spans.push([i, i + 2, T.macro])
-      const e = source.indexOf('}}', i + 2)
-      if (e === -1) break
-      spans.push([e, e + 2, T.macro])
-      i = e + 2
+      const e = closeHole(source, i) // nested braces and strings skipped
+      if (!source.startsWith('}}', e - 2) || e - 2 < i + 2) break
+      spans.push([e - 2, e, T.macro])
+      i = e
       continue
     }
     if (c === '@') {
-      const b = BLOCK.exec(source.slice(i, i + 16))
+      const b = OPENER.exec(source.slice(i, i + 8)) ?? FOLLOWER.exec(source.slice(i, i + 12))
       if (b) { spans.push([i, i + b[0].length, T.keyword]); i += b[0].length; continue }
     }
     if (c === '<') {
@@ -54,8 +58,7 @@ export function tokensOf(source: string, components: Set<string>): Token[] {
       if (components.has(m[1]!)) spans.push([nameStart, nameStart + m[1]!.length, T.type])
       // Binding names in the tag: [x], (x), [(x)].
       let j = i + m[0].length
-      const close = source.indexOf('>', j)
-      const end = close === -1 ? source.length : close
+      const end = tagEnd(source, j) // a `>` in a quoted value doesn't end the tag
       for (const a of source.slice(j, end).matchAll(/(\[\(|\[|\()([\w.:-]+)(\)\]|\]|\))(?==)/g)) {
         const at = j + a.index!
         spans.push([at, at + a[1]!.length, T.operator])
@@ -70,10 +73,6 @@ export function tokensOf(source: string, components: Set<string>): Token[] {
     }
     i++
   }
-  // Nothing inside <script> or <style> bodies: those are JavaScript and CSS.
-  const { scripts, styles } = scan(source)
-  const bodies = [...scripts, ...styles]
-  spans = spans.filter(([a]) => !bodies.some(([s, e]) => a >= s && a < e))
   // Split each span at line breaks, and give line/character.
   const tokens: Token[] = []
   let line = 0

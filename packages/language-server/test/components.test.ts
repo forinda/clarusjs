@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { expect, test } from 'vitest'
+import { URI } from 'vscode-uri'
 import { loadCompiler } from '../src/compiler.ts'
 import { completions, definition, hover } from '../src/components.ts'
 import { contextAt } from '../src/context.ts'
@@ -76,8 +77,8 @@ test('hover on a component tag: where it comes from, its inputs with whole types
 test('go to definition: a component tag, and its @import specifier, lead to the file', async () => {
   const { at, root } = await setup()
   const card = resolve(root, 'src/components/card.tscl')
-  expect(at(`${IMPORT}<ca§rd />\n`, definition)?.[0]?.targetUri).toBe(`file://${card}`)
-  expect(at("@import card from '../comp§onents/card.tscl'\n<card />\n", definition)?.[0]?.targetUri).toBe(`file://${card}`)
+  expect(at(`${IMPORT}<ca§rd />\n`, definition)?.[0]?.targetUri).toBe(URI.file(card).toString())
+  expect(at("@import card from '../comp§onents/card.tscl'\n<card />\n", definition)?.[0]?.targetUri).toBe(URI.file(card).toString())
 })
 
 test('while typing (unclosed <div, @if (, {{): no throws, and answers where they still make sense', async () => {

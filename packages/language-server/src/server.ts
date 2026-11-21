@@ -55,7 +55,7 @@ export function startServer(): void {
   })
   connection.onInitialized(async () => {
     server.initialized()
-    void server.fileWatcher.watchFiles(['**/*.tscl', '**/src/pages/**/*.md', '**/tsconfig.json'])
+    void server.fileWatcher.watchFiles(['**/*.tscl', '**/src/pages/**/*.md', '**/tsconfig.json', '**/jsconfig.json'])
     for (const root of folders) await addFolder(root, true)
     await server.languageFeatures.requestRefresh(false)
     // Folders added later are indexed too; removed ones dropped.
@@ -72,9 +72,13 @@ export function startServer(): void {
   server.fileWatcher.onDidChangeWatchedFiles(({ changes }) => {
     for (const change of changes) {
       const path = URI.parse(change.uri).fsPath
-      if (path.endsWith('tsconfig.json')) { for (const p of projects) p.forgetConfig(); continue }
+      if (path.endsWith('tsconfig.json') || path.endsWith('jsconfig.json')) { for (const p of projects) p.forgetConfig(); continue }
       if (change.type === 3) projectFor(path).remove(path) // deleted
-      else { try { projectFor(path).update(path, readFileSync(path, 'utf8')) } catch {} }
+      else {
+        // An open buffer is what counts (its unsaved edits); disk only for closed files.
+        const open = server.documents.get(URI.file(path))
+        try { projectFor(path).update(path, open ? open.getText() : readFileSync(path, 'utf8')) } catch {}
+      }
     }
   })
   // An open buffer counts from the moment it changes, not only when it's saved.
@@ -89,13 +93,13 @@ export function startServer(): void {
     const path = URI.parse(document.uri).fsPath
     projectFor(path)?.restore(path)
   })
-  // Several files moved at once (a multi-select drag): one edit set from all their final places. (Volar would ask for
-  // each file separately, and their edits could overlap.)
+  // Several files moved at once (a multi-select drag): one edit set from all their final places, across every workspace
+  // project. (No plugin declares file-rename edits, so Volar registers no handler of its own to replace this one.)
   connection.workspace.onWillRenameFiles(({ files }) => {
     const renames = files.map((f) => [URI.parse(f.oldUri).fsPath, URI.parse(f.newUri).fsPath] as [string, string]).filter(([old]) => old.endsWith('.tscl'))
     if (!renames.length) return null
     // (The connection's LSP types are an older copy of the same WorkspaceEdit shape.)
-    return fileRenameEdits(projectFor(renames[0]![0]), renames) as never
+    return fileRenameEdits([...projects, loose!], renames) as never
   })
   connection.onShutdown(() => server.shutdown())
 }

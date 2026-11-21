@@ -1,9 +1,10 @@
 // Components in a template: completion (directives, the file's imported components as tags, their inputs, models and
 // events as bindings, @import paths), hover on a component tag, and go to definition from a tag or its specifier. Read
 // with the compiler's parser (each component's last good parse); the cursor's context is lexical.
-import { dirname, relative } from 'node:path'
+import { dirname, relative, sep } from 'node:path'
 import type { CompletionItem, CompletionList, Hover, LocationLink } from '@volar/language-service'
 import { URI } from 'vscode-uri'
+import { tagsIn } from './blank.ts'
 import { contextAt } from './context.ts'
 import { positionAt } from './positions.ts'
 import type { Import, Project } from './project.ts'
@@ -36,7 +37,7 @@ export function completions(project: Project, path: string, text: string, offset
     return list(DIRECTIVES.filter((d) => d.startsWith(ctx.prefix)).map((d) => ({ label: d, kind: Kind.Keyword, textEdit: { range: range(ctx.start), newText: d } })))
   }
   if (ctx.kind === 'tag-name') {
-    return list(project.importsOf(path).filter((i) => i.name.startsWith(ctx.prefix)).map((i) => ({ label: i.name, kind: Kind.Class, detail: `Component from ${i.specifier}`, textEdit: { range: range(ctx.start), newText: i.name } })))
+    return list(project.importsOf(path).filter((i) => i.name.startsWith(ctx.prefix)).map((i) => ({ label: i.name, kind: Kind.Class, detail: `Component from ${i.specifier}`, textEdit: { range: range(ctx.start, offset + /^[\w:.-]*/.exec(text.slice(offset))![0].length), newText: i.name } }))) // the whole name, typed in its middle
   }
   if (ctx.kind === 'attr-name') {
     const imp = importNamed(project, path, ctx.tag)
@@ -50,21 +51,14 @@ export function completions(project: Project, path: string, text: string, offset
   }
   if (ctx.kind === 'import-path') {
     const dir = dirname(path)
-    const specifiers = project.files().filter((f) => f.endsWith('.tscl') && f !== path).map((f) => { const r = relative(dir, f); return r.startsWith('.') ? r : `./${r}` })
+    const specifiers = project.files().filter((f) => f.endsWith('.tscl') && f !== path).map((f) => { const r = relative(dir, f).split(sep).join('/'); return r.startsWith('.') ? r : `./${r}` })
     return list(specifiers.filter((s) => s.startsWith(ctx.prefix)).map((s) => ({ label: s, kind: Kind.File, textEdit: { range: range(ctx.start, ctx.end), newText: s } })))
   }
   return list([])
 }
 
 /** The component tag (open or close) whose name covers `offset`, with its name's range. */
-function tagAt(text: string, offset: number): { name: string; start: number; end: number } | undefined {
-  for (const m of text.matchAll(/<\/?([A-Za-z][\w.-]*)/g)) {
-    const start = m.index! + m[0].length - m[1]!.length
-    const end = start + m[1]!.length
-    if (offset >= start && offset <= end) return { name: m[1]!, start, end }
-    if (start > offset) break
-  }
-}
+const tagAt = (text: string, offset: number) => tagsIn(text).find((t) => offset >= t.start && offset <= t.end)
 
 export function hover(project: Project, path: string, text: string, offset: number): Hover | undefined {
   const tag = tagAt(text, offset)

@@ -1505,5 +1505,6 @@ test('editor setup: the language server, and setup for each editor', async ({ pa
     await expect(page.getByRole('heading', { name: new RegExp(`^${name}`) })).toBeVisible() // headings end with their permalink
   }
   await expect(page.locator('main')).toContainText('clarusjs-ls --stdio')
-  await expect(page.locator('main')).toContainText('npm install -D @clarusjs/language-server')
+  await expect(page.locator('main')).toContainText('npm install -g @clarusjs/language-server')
+  await expect(page.locator('main')).toContainText('queries/tscl/highlights.scm')
 })

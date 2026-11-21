@@ -1,7 +1,7 @@
 // Where the cursor is, lexically: in a tag's name, an attribute's name or value, an @import specifier, a directive
 // being typed, or text. Never throws: the buffer being typed rarely parses. Inside a <script> or <style> body it's
 // text: those are JavaScript and CSS, not template.
-import { scan } from './blank.ts'
+import { blankOut, scan } from './blank.ts'
 
 export type Context =
   | { kind: 'tag-name'; prefix: string; start: number }
@@ -12,7 +12,7 @@ export type Context =
   | { kind: 'text' }
 
 export function contextAt(text: string, offset: number): Context {
-  const { scripts, styles } = scan(text)
+  const { blank, scripts, styles } = scan(text)
   if ([...scripts, ...styles].some(([a, b]) => offset >= a && offset <= b)) return { kind: 'text' }
   const lineStart = text.lastIndexOf('\n', offset - 1) + 1
   const line = text.slice(lineStart, offset)
@@ -24,20 +24,17 @@ export function contextAt(text: string, offset: number): Context {
     const eol = text.indexOf('\n', offset)
     return { kind: 'import-path', prefix: imp[2]!, start, end: close !== -1 && (eol === -1 || close < eol) ? close : offset }
   }
-  // Inside a tag: the nearest `<name` before the cursor with no `>` after it outside quotes (a binding's value can
-  // hold `=>` or `a > b`).
-  const lt = tagStart(text, offset)
-  if (lt !== -1) {
-    const inside = text.slice(lt + 1, offset)
+  // Inside a tag: read forward over the HTML view (binding values and holes blanked), following quotes.
+  const tag = openTag(blankOut(text, blank), offset)
+  if (tag) {
+    const inside = text.slice(tag.start + 1, offset)
     const name = /^[A-Za-z][\w:.-]*/.exec(inside)?.[0] ?? ''
-    if (inside.length <= name.length) return { kind: 'tag-name', prefix: inside, start: lt + 1 }
-    // In an attribute value when an odd number of quotes comes before the cursor.
-    const quotes = (inside.match(/"/g) ?? []).length
-    if (quotes % 2 === 1) {
-      const attr = /(\S+)="[^"]*$/.exec(inside)?.[1] ?? ''
+    if (inside.length <= name.length) return { kind: 'tag-name', prefix: inside, start: tag.start + 1 }
+    if (tag.quote !== -1) {
+      const attr = /([^\s=]+)\s*=\s*$/.exec(text.slice(tag.start + 1, tag.quote))?.[1] ?? ''
       return { kind: 'attr-value', tag: name, attr }
     }
-    const prefix = /[^\s"]*$/.exec(inside)?.[0] ?? ''
+    const prefix = /[^\s"']*$/.exec(inside)?.[0] ?? ''
     return { kind: 'attr-name', tag: name, prefix, start: offset - prefix.length }
   }
   if (text[offset - 1] === '<') return { kind: 'tag-name', prefix: '', start: offset }
@@ -47,18 +44,19 @@ export function contextAt(text: string, offset: number): Context {
   return { kind: 'text' }
 }
 
-/** Where the tag the cursor is in starts (its `<`), or -1: quotes are followed, so a `>` in a value doesn't end it. */
-function tagStart(text: string, offset: number): number {
-  for (let lt = text.lastIndexOf('<', offset - 1); lt !== -1; lt = text.lastIndexOf('<', lt - 1)) {
-    if (!/[A-Za-z]/.test(text[lt + 1] ?? '')) continue // `a < b` in a value, not a tag
-    let quote = ''
-    for (let k = lt + 1; k < offset; k++) {
-      const c = text[k]!
-      if (quote) { if (c === quote) quote = '' }
-      else if (c === '"' || c === "'") quote = c
-      else if (c === '>') return -1 // the tag closed before the cursor
-    }
-    return lt
+/** The tag the cursor is in (its `<`), and the quote it's inside (-1 if none); a `<` in a value isn't a tag. */
+function openTag(view: string, offset: number): { start: number; quote: number } | undefined {
+  let start = -1
+  let quote = -1
+  for (let i = 0; i < offset; i++) {
+    const c = view[i]!
+    if (start === -1) {
+      if (c !== '<') continue
+      if (view.startsWith('<!--', i)) { const e = view.indexOf('-->', i + 4); if (e === -1 || e + 3 > offset) return undefined; i = e + 2; continue }
+      if (/[A-Za-z]/.test(view[i + 1] ?? '')) start = i
+    } else if (quote !== -1) { if (c === view[quote]) quote = -1 }
+    else if (c === '"' || c === "'") quote = i
+    else if (c === '>') start = -1
   }
-  return -1
+  return start === -1 ? undefined : { start, quote }
 }
