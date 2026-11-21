@@ -46,6 +46,9 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
   let stop: (() => void) | undefined
   let disposed = false
   let quiet = options.initial !== undefined // revalidating initial: no loading state for the first run
+  let busy = false // a run is in flight (quietly too): interval and focus skip
+  const retry = typeof options.retry === 'number' ? { count: options.retry } : options.retry ?? { count: 0 }
+  const delay = retry.delay ?? ((attempt: number) => Math.min(500 * 2 ** (attempt - 1), 8000))
 
   const run = () => {
     tick.get()
@@ -59,26 +62,42 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
       quiet = false
       if (out === undefined || out === null || out === false) {
         controller = undefined
+        busy = false
         loading.set(false) // not ready: keep the last value
         return Promise.resolve()
       }
       error.set(undefined)
       if (!wasQuiet) loading.set(true)
+      busy = true
       const latest = () => id === runs && !disposed
-      return Promise.resolve(out).then(
-        (v) => { if (latest()) { value.set(v); loading.set(false) } },
-        (err) => { if (latest()) { error.set(err); loading.set(false) } },
+      // The first attempt is the tracked call above; retries call the fetcher again (untracked) after a delay.
+      const attempt = async (n: number, first: unknown): Promise<T> => {
+        try { return await (n === 0 ? first : fetcher({ signal: c.signal })) as T } catch (err) {
+          if (n >= retry.count || c.signal.aborted) throw err
+          await sleep(delay(n + 1), c.signal)
+          return attempt(n + 1, undefined)
+        }
+      }
+      return attempt(0, out).then(
+        (v) => { if (latest()) { value.set(v); loading.set(false); busy = false } },
+        (err) => { if (latest()) { error.set(err); loading.set(false); busy = false } },
       )
     })
   }
 
-  const dispose = () => { disposed = true; stop?.(); controller?.abort() }
+  const timers: (() => void)[] = []
+  const dispose = () => { disposed = true; stop?.(); controller?.abort(); for (const t of timers) t() }
+  // Interval and focus refetches don't interrupt a run in flight (it's already fresh); only refetch() does.
+  const again = () => { if (!busy && document.visibilityState !== 'hidden') void self.refetch() }
   if (browser) {
     onDispose(dispose)
     if (options.refetch?.onStart !== false) stop = effect(run)
+    const { interval, focus } = options.refetch ?? {}
+    if (interval) { const t = setInterval(again, interval); timers.push(() => clearInterval(t)) }
+    if (focus) { document.addEventListener('visibilitychange', again); timers.push(() => document.removeEventListener('visibilitychange', again)) }
   }
 
-  return {
+  const self: Resource<T> = {
     get value() { return value.get() },
     get loading() { return loading.get() },
     get error() { return error.get() },
@@ -90,4 +109,12 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
     },
     mutate(v) { value.set(v) },
   }
+  return self
 }
+
+/** Wait `ms`; rejects when `signal` aborts first. */
+const sleep = (ms: number, signal: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const t = setTimeout(resolve, ms)
+    signal.addEventListener('abort', () => { clearTimeout(t); reject(signal.reason) }, { once: true })
+  })
