@@ -1,0 +1,24 @@
+{{-- Chained: waits for the user (its fetcher reads user.value), then loads their activity. The demo server fails
+     its first request once, so the retry shows. --}}
+<script>
+  import { browser } from 'clarusjs/runtime'
+  import { json, resource } from 'clarusjs/fetch'
+  import { user } from '../stores/dashboard.ts'
+  const once = browser ? Math.random().toString(36).slice(2) : ''
+  const feed = resource(({ signal }) => {
+    const id = user.value?.id
+    return id !== undefined && json(`/api/demo-stats?keys=activity:${id}&fail=${once}`, { signal }).then((r) => r[`activity:${id}`])
+  }, { retry: 2 })
+</script>
+
+<section class="demo-panel" id="activity">
+  @if (feed.value) { <ul>@for (item of feed.value; track item) { <li>{{ item }}</li> }</ul> }
+  @else if (feed.error) { <p>Couldn't load the activity.</p> }
+  @else { <p class="demo-muted">Waiting for the user, then loading the activity…</p> }
+</section>
+
+<style scoped>
+  :scope { border: 1px solid var(--rule); border-radius: 8px; padding: 12px 16px; }
+  ul { margin: 0; padding-left: 1.2rem; }
+  .demo-muted { color: var(--muted); }
+</style>

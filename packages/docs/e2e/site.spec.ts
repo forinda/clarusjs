@@ -42,7 +42,8 @@ for (const { path, title } of pages) {
     await expect(page).toHaveTitle(new RegExp(esc(title)))
     await expect(page).toHaveTitle(/clarusjs/)
     await expect(page.locator('h1')).toHaveCount(1)
-    expect(errors).toEqual([])
+    // The Fetching guide's demo fails one request on purpose (to show a retry); the browser logs that 503.
+    expect(errors.filter((e) => !(path === '/guide/fetching' && /status of 503/.test(e)))).toEqual([])
   })
 }
 
@@ -305,7 +306,8 @@ test('the route manifest matches what the browser loads', async ({ page }) => {
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
   // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour), 404 and 500.
   const routes = Object.keys(manifest.routes)
-  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500'
+  // /api/demo-stats is the Fetching guide's JSON endpoint (a server route), not a page in the sidebar.
+  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500' || r === '/api/demo-stats' || r === '/api/demo-records'
   expect(routes.filter((r) => !generated(r)).sort()).toEqual(pages.map((p) => p.path).sort())
   for (const path of ['/', '/guide/state']) {
     const route = manifest.routes[path]
@@ -445,7 +447,7 @@ test('the generated Netlify function serves only the server routes', async () =>
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
   // The page, and its fragment for fragment navigation.
-  expect(fn).toContain('export const config = {"path":["/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
+  expect(fn).toContain('export const config = {"path":["/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -1523,6 +1525,60 @@ test('editor setup: the language server, and setup for each editor', async ({ pa
   await expect(page.locator('main')).toContainText('clarusjs-ls --stdio')
   await expect(page.locator('main')).toContainText('npm install -g @clarusjs/language-server')
   await expect(page.locator('main')).toContainText('queries/tscl/highlights.scm')
+})
+
+test('#258 fetching: cards batch into one request, the feed waits on the user and retries, refresh refetches', async ({ page }) => {
+  // Server HTML: each island's loading state, no data (nothing is fetched while server-rendering).
+  const html = (await (await page.request.get('/guide/fetching')).text()).replace(/<!--.*?-->/g, '') // hole markers out
+  expect(html).toContain('Loading visits')
+  expect(html).not.toContain('12,400')
+  const keys: string[] = []
+  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-stats') keys.push(u.searchParams.get('keys')!) })
+  const errors: string[] = []
+  page.on('console', (m) => { if (m.type() === 'error' && !/503/.test(m.text())) errors.push(m.text()) })
+  await page.goto('/guide/fetching')
+  await expect(page.locator('#stat-visits')).toContainText('12,400')
+  await expect(page.locator('#stat-signups')).toContainText('318')
+  await expect(page.locator('#stat-revenue')).toContainText('$9,200')
+  const cards = keys.filter((k) => /visits|signups|revenue/.test(k))
+  expect(cards).toHaveLength(1) // one request for the three cards, in the order they attached
+  expect(cards[0]!.split(',').sort()).toEqual(['revenue', 'signups', 'visits'])
+  // The feed waits for the user (chained), and its first request fails once: it's retried.
+  await expect(page.locator('#user-panel')).toContainText('Ada')
+  await expect(page.locator('#activity li')).toHaveCount(3)
+  expect(keys.filter((k) => k.startsWith('activity'))).toHaveLength(2)
+  expect(keys.indexOf('user')).toBeLessThan(keys.findIndex((k) => k.startsWith('activity')))
+  // Refresh: the user panel asks again.
+  const before = keys.filter((k) => k === 'user').length
+  await page.locator('#user-panel button', { hasText: 'Refresh' }).click()
+  await expect.poll(() => keys.filter((k) => k === 'user').length).toBe(before + 1)
+  expect(errors).toEqual([])
+})
+
+test('#287 caching: seen pages make no request, invalidate refetches what\'s shown', async ({ page }) => {
+  const asked: string[] = [] // the page param of each list request (renames are left out)
+  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-records' && !u.searchParams.has('rename')) asked.push(u.searchParams.get('page')!) })
+  await page.goto('/guide/fetching#caching')
+  const list = page.locator('#record-list')
+  await expect(list.locator('li').first()).toHaveText('Record 1')
+  await expect.poll(() => asked).toEqual(['1', '2']) // page 1, and page 2 prefetched
+  await list.getByRole('button', { name: 'Next' }).click()
+  await expect(list.locator('li').first()).toHaveText(/^Record 11( \(renamed\))?$/)
+  await list.getByRole('button', { name: 'Previous' }).click()
+  await expect(list.locator('li').first()).toHaveText('Record 1')
+  await list.getByRole('button', { name: 'Next' }).click()
+  await expect(list.locator('li').first()).toHaveText(/^Record 11( \(renamed\))?$/)
+  await expect.poll(() => asked.filter((p) => p === '1' || p === '2').length).toBe(2) // seen pages: from the cache
+  expect(asked).toContain('3') // page 3 prefetched while on page 2
+  // Edit: rename the first row on screen, then invalidate(['records']): the page on screen fetches again.
+  const before = asked.length
+  await list.getByRole('button', { name: 'Rename the first row' }).click()
+  await expect(list.locator('li').first()).toHaveText('Record 11 (renamed)')
+  expect(asked.slice(before)[0]).toBe('2') // the page on screen first (the next one is prefetched again after)
+  expect(asked.slice(before)).not.toContain('1')
+  await list.getByRole('button', { name: 'Previous' }).click() // page 1 was invalidated too: fetched on use
+  await expect(list.locator('li').first()).toHaveText('Record 1')
+  await expect.poll(() => asked.slice(before)).toContain('1')
 })
 
 test('quiz text from Markdown shows as written: `<script>` in an option is <script>, not &lt;script&gt;', async ({ page }) => {

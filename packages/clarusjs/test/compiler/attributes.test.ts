@@ -133,6 +133,25 @@ test('srcset checks every candidate', async () => {
   expect(await render(src, { s: '/a.png 1x, javascript:alert(1) 2x' })).toContain('srcset="about:invalid#unsafe"')
 })
 
+test('#248: a URL that loads a page or resource into this one can\'t come from data: a located build error', () => {
+  // § marks the attribute the error points at.
+  for (const marked of ['<iframe §[src]="u"></iframe>', '<iframe §src="{{ u }}"></iframe>', '<frame §[src]="u"></frame>', '<embed §[src]="u">', '<object §[data]="u"></object>', '<object §codebase="{{ u }}"></object>', '<base §[href]="u">', '<link rel="stylesheet" §[href]="u">', '<link §[href]="u">', '<link [rel]="u" §[href]="u">', '<link rel="canonical icon" §[href]="u">', '<link rel="canonical" [rel]="u" §[href]="u">', '<link rel="canonical" rel="stylesheet" §[href]="u">', '<link [rel]="u" rel="canonical" §[href]="u">']) {
+    const tag = marked.replace('§', '')
+    expect(compileError(`@input u: string\n${tag}`).message, tag).toMatch(new RegExp(`^x\\.tscl:2:${marked.indexOf('§') + 1} .*static`))
+  }
+})
+
+test('#248: iframe sandbox, allow and referrerpolicy are static only, so data can\'t loosen an iframe', () => {
+  for (const attr of ['[sandbox]="u"', 'allow="{{ u }}"', '[referrerpolicy]="u"']) {
+    expect(compileError(`@input u: string\n<iframe src="/a" ${attr}></iframe>`).message, attr).toMatch(/^x\.tscl:2:18 .*static/)
+  }
+})
+
+test('#248: still allowed: static resource URLs, links and images from data, and <link> rels that load nothing', async () => {
+  const html = await render('@input u: string = "https://example.com/p"\n<iframe src="/embed" sandbox="allow-scripts"></iframe><a [href]="u">a</a><img [src]="u"><link rel="canonical" [href]="u"><link rel="alternate prev" href="{{ u }}">')
+  expect(html).toBe('<iframe src="/embed" sandbox="allow-scripts"></iframe><a href="https://example.com/p">a</a><img src="https://example.com/p"><link rel="canonical" href="https://example.com/p"><link rel="alternate prev" href="https://example.com/p">')
+})
+
 test('binding srcdoc is a located build error', () => {
   expect(compileError('@input h: string\n<iframe [srcdoc]="h"></iframe>').message).toMatch(/^x\.tscl:2:9 .*srcdoc/)
   expect(compileError('@input h: string\n<iframe srcdoc="{{ h }}"></iframe>').message).toMatch(/^x\.tscl:2:9 .*srcdoc/)

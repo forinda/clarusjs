@@ -43,6 +43,7 @@
     "./runtime": "./src/runtime/index.ts",
     "./navigation": "./src/runtime/navigation.ts",
     "./forms": "./src/forms/index.ts",
+    "./fetch": "./src/fetch/index.ts",
     "./runtime/server": "./src/runtime/server.ts",
     "./server": "./src/server/handler.ts",
     "./vite": "./src/vite/plugin.ts",
@@ -101,6 +102,10 @@
       "./forms": {
         "types": "./dist/forms/index.d.ts",
         "default": "./dist/forms/index.js"
+      },
+      "./fetch": {
+        "types": "./dist/fetch/index.d.ts",
+        "default": "./dist/fetch/index.js"
       },
       "./runtime/server": {
         "types": "./dist/runtime/server.d.ts",
