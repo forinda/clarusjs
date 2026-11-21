@@ -7,6 +7,7 @@ description: "clarusjs/fetch: islands fetch their own data in the browser, in pa
 @import statCard from '~/components/stat-card.tscl'
 @import userPanel from '~/components/user-panel.tscl'
 @import activityFeed from '~/components/activity-feed.tscl'
+@import recordList from '~/components/record-list.tscl'
 
 # Fetching data
 
@@ -101,6 +102,34 @@ const feed = resource(load, {
 
 `refetch()` runs it now, for a Refresh button or after you've saved something. `mutate(value)` shows a value right away (an optimistic update); the next run replaces it.
 
+## Caching
+
+Give a resource a `key`, and its answers are cached by it: a key seen before comes back without a request. This list has 20,000 records, 10 per page. Go forward and back: pages you've seen don't ask the server again, the next page is fetched ahead, and the previous page stays on screen while a new one loads. **Rename the first row** changes a record, then invalidates every cached page.
+
+<recordList />
+
+```tscl
+<script>
+  import { invalidate, json, prefetch, resource } from 'clarusjs/fetch'
+  let page = state(1)
+  let q = state('')
+  const list = resource(({ signal }) => json(`/api/records?page=${page}&q=${q}`, { signal }), {
+    key: () => ['records', { page: page, q: q }],   // one cache entry per page and filter
+  })
+  async function rename(id, name) {
+    await fetch(`/api/records/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) })
+    invalidate(['records'])                          // every cached page: the visible one refetches now
+  }
+</script>
+```
+
+- **Fresh until invalidated.** A cached answer is used until `invalidate()` matches its key. For data other people change often, add `stale: 30_000`: an answer older than that is fetched again when used.
+- **The key is the cache's name for the request.** Put in it everything the request depends on (the page, the filter), and keep it to plain values: `{ page, q }` and `{ q, page }` are the same key.
+- **Shared.** Resources with the same key, in any island on the page, share one entry and one request.
+- **`invalidate(prefix)`** matches keys element by element: `invalidate(['records'])` matches `['records', { page: 2 }]`, not `['recordsArchive']`.
+- **`setData(key, fn)`** changes a cached answer right away (an optimistic edit); **`prefetch(key, fetcher)`** fetches one ahead.
+- **Memory.** An answer nothing shows is dropped after 5 minutes (`keep`). The cache lives in the page: it survives [fragment navigation](./fragment-navigation.md), not a full reload.
+
 ## On the server
 
 Nothing is fetched while the server renders the page. A resource there is in its loading state, so the HTML shows your loading text and the browser fills it in. If the page's `load()` already has the data, pass it as `initial`: the server HTML shows it, and the browser fetches again to bring it up to date.
@@ -113,7 +142,7 @@ To skip that first browser fetch, set `refetch: { onStart: false }`. The resourc
 
 ## What it doesn't do
 
-- **Keep answers between requests:** two islands asking at the same moment share one request, but a later ask goes to the server again.
+- **Keep answers across full page loads:** the cache (with `key`) lives in the page; a reload starts it empty.
 - **Merge different endpoints into one request:** write a server route that combines them, and batch that.
 - **Mutations:** send them with `fetch` (or a form, see [Form validation](./form-validation.md)), then `refetch()` or `mutate()`.
 
