@@ -13,6 +13,7 @@ export const theme: ThemeConfig = {
     { label: 'GitHub', href: 'https://github.com/forinda/clarusjs', icon: 'github' },
     { label: 'npm', href: 'https://www.npmjs.com/package/clarusjs', icon: 'npm' },
   ],
+  search: true,
   // #region edit
   // "Edit this page": the page's source file (:file, e.g. guide/lists.md); pages also give "Last updated".
   editLink: 'https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/:file',

@@ -1,10 +1,11 @@
 // @clarusjs/theme-docs: the layout in a real build, used the way a site uses it (config, headings, slots).
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { createBuilder } from 'vite'
 import { beforeAll, expect, test } from 'vitest'
 import clarusjs from 'clarusjs/vite'
+import { themeDocs } from '../src/vite.js'
 
 let html = ''
 let root = ''
@@ -22,13 +23,14 @@ beforeAll(async () => {
   editLink: 'https://example.com/edit/:file',
   pages: [{ href: '/guide/start', title: 'Start', file: 'guide/start.tscl', updated: 1700000000 }, { href: '/guide/next', title: 'Next', file: 'guide/next.tscl' }],
   footer: 'Acme footer',
+  search: true,
 }
 `)
   const page = (title: string, path: string, body: string) => `@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../../config.ts'\n<layout [config]="config" [title]="'${title}'" [path]="'${path}'" [headings]="[{ id: 'one', text: 'One', level: 2 }, { id: 'two', text: 'Two', level: 3 }]">${body}</layout>\n`
   w('src/pages/guide/start.tscl', page('Start', '/guide/start', "<h1>Start</h1><h2 id=\"one\">One</h2>@slot('sidebar-top') {<p class=\"promo\">Promo</p>}@slot('footer') {<p>Custom footer</p>}"))
   w('src/pages/guide/next.tscl', page('Next', '/guide/next', '<h1>Next</h1>'))
   w('src/pages/index.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../config.ts'\n<layout [config]=\"config\" [title]=\"'Home'\"><h1>Home</h1></layout>\n")
-  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp()
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [themeDocs(), clarusjs()] })).buildApp()
   html = readFileSync(resolve(root, 'dist/client/guide/start/index.html'), 'utf8')
 }, 120_000)
 
@@ -61,4 +63,15 @@ test('a page without a date shows none', async () => {
   const next = readFileSync(resolve(root, 'dist/client/guide/next/index.html'), 'utf8')
   expect(next).not.toContain('class="updated"')
   expect(next).toContain('<a class="edit" href="https://example.com/edit/guide/next.tscl">')
+})
+
+test('search: a header button for the island, and the index written next to the pages, in small files', () => {
+  expect(html).toMatch(/<span class="persist" data-cl-persist="search"><cl-island c="[^"]*search/)
+  expect(html).toContain('<dialog class="search-dialog" aria-label="Search the docs"')
+  const files = readdirSync(resolve(root, 'dist/client/search')).sort()
+  expect(files).toContain('s-0.json')
+  expect(files).toContain('t-st.json')
+  const sections = JSON.parse(readFileSync(resolve(root, 'dist/client/search/s-0.json'), 'utf8'))
+  expect(sections).toContainEqual({ u: '/guide/start#one', p: 'Start', h: 'One', t: '' })
+  expect(JSON.stringify(sections)).not.toContain('Custom footer')
 })

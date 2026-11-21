@@ -5,6 +5,7 @@
   Slots: sidebar-top, sidebar-bottom, content-top, content-bottom, footer.
 --}}
 @import themeToggle from './theme-toggle.tscl'
+@import siteSearch from './search.tscl'
 @import type { ThemeConfig, Heading } from './nav.ts'
 @import { sectionKey, groupsOf, crumb, pager, editHref, updatedOf } from './nav.ts'
 @import './theme.css'
@@ -43,6 +44,8 @@
         @for (s of config.sections; track s.key) {<a [href]="s.href" [aria-current]="sectionKey(config.sections, path) === s.key ? 'true' : false">{{ s.title }}</a>}
       </nav>
       <div class="header-end">
+        {{-- Kept across fragment navigations, like the theme toggle: its shortcut listener is added once. --}}
+        @if (config.search) {<span class="persist" data-cl-persist="search"><siteSearch /></span>}
         @if ((config.social ?? []).length) {
           <span class="social">
             @for (link of config.social ?? []; track link.href) {
