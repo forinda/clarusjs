@@ -7,6 +7,7 @@ import { create as createCssService } from 'volar-service-css'
 import { create as createEmmetService } from 'volar-service-emmet'
 import { create as createHtmlService } from 'volar-service-html'
 import { URI } from 'vscode-uri'
+import { bindingsProvider } from './bindings.ts'
 import { loadCompiler } from './compiler.ts'
 import { createTsclServicePlugin } from './plugin/index.ts'
 import { Project } from './project.ts'
@@ -36,7 +37,8 @@ export function startServer(): void {
     // clarusjs first: where one answer wins (hover, rename), a component tag is ours, not the HTML service's.
     return server.initialize(params, createSimpleProject([tsclLanguagePlugin]), [
       createTsclServicePlugin(projectFor),
-      createHtmlService(),
+      // The binding forms of HTML attributes ([disabled], (click), [(value)]) as extra HTML data.
+      createHtmlService({ getCustomData: () => [bindingsProvider()] }),
       createCssService(),
       createEmmetService(),
     ])

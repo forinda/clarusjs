@@ -3,6 +3,8 @@
 import type { LanguageServiceContext, LanguageServicePlugin } from '@volar/language-service'
 import { URI } from 'vscode-uri'
 import type { Project } from '../project.ts'
+import { completions, definition, hover } from '../components.ts'
+import { offsetAt } from '../positions.ts'
 import { diagnosticsFor } from './diagnostics.ts'
 
 /** The .tscl file a (possibly embedded) document belongs to. */
@@ -16,13 +18,36 @@ export function createTsclServicePlugin(projectFor: (path: string) => Project): 
     capabilities: {
       // Only what compile() sees in one file: other files' changes don't change these.
       diagnosticProvider: { interFileDependencies: false, workspaceDiagnostics: false },
+      completionProvider: { triggerCharacters: ['@', '<', ' ', '[', '(', "'", '"', '/'] },
+      hoverProvider: true,
+      definitionProvider: true,
     },
     create(context) {
+      /** The .tscl document's path, project and text (the project synced to the buffer), or nothing for others. */
+      const open = (document: { uri: string; languageId: string; getText(): string }) => {
+        if (document.languageId !== 'tscl') return undefined
+        const path = URI.parse(sourceUri(context, document.uri)).fsPath
+        const text = document.getText()
+        const project = projectFor(path)
+        project.update(path, text)
+        return { path, text, project }
+      }
       return {
         provideDiagnostics(document) {
-          if (document.languageId !== 'tscl') return undefined
-          const path = URI.parse(sourceUri(context, document.uri)).fsPath
-          return diagnosticsFor(projectFor(path), path, document.getText())
+          const doc = open(document)
+          return doc && diagnosticsFor(doc.project, doc.path, doc.text)
+        },
+        provideCompletionItems(document, position) {
+          const doc = open(document)
+          return doc && completions(doc.project, doc.path, doc.text, offsetAt(doc.text, position))
+        },
+        provideHover(document, position) {
+          const doc = open(document)
+          return doc && hover(doc.project, doc.path, doc.text, offsetAt(doc.text, position))
+        },
+        provideDefinition(document, position) {
+          const doc = open(document)
+          return doc && definition(doc.project, doc.path, doc.text, offsetAt(doc.text, position))
         },
       }
     },
