@@ -1,4 +1,5 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
+import { parseExpressionAt } from 'acorn'
 import { ClarusError } from './errors.ts'
 import { importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
 import { analyzeScript, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
@@ -10,11 +11,13 @@ export type IRNode =
   // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
   // can re-render it (-1 otherwise).
   // models: [(name)]="path" bindings: each write from the child runs `set` (a statement using __cl_v).
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number; attach?: string }
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[] }
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
   | { kind: 'slot'; name: string; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
   | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string }
+  // [engine]="f": an element connected to a form from clarusjs/forms (marked data-cl-form="index").
+  | { kind: 'connect'; expr: string; index: number }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
   | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
   // @for / @empty. block = -1 outside islands; inside an island, the list's marker index. `item` and `$index` are in
@@ -43,6 +46,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
+  // This component's @model inputs: fields bound to them take their path from the parent (see modelPath).
+  const modelNames = new Set(parsed.inputs.filter((i) => i.model).map((i) => i.name))
   const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
   const signals: Signals = parsed.script ? analyzeScript(split.body, file, source, parsed.script.start) : new Map()
   // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.
@@ -67,24 +72,9 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   const writeBack = (path: string, value: string, name: string, at: number): string => {
     if (!stateful) fail(`[(${name})] needs a <script> with state to write back to`, at)
     const invalid = () => fail(`[(${name})] needs a variable or a property path (form.name, rows[$index].name) to write back to, not "${path}"`, at)
-    const root = /^[A-Za-z_$][\w$]*/.exec(path)?.[0] ?? invalid()
+    const parsed = pathSegments(path) ?? invalid()
+    const { root, segments } = parsed
     if (loopNames.has(root)) fail(`[(${name})] can't write back to the row variable "${root}": bind the list by index, like [(${name})]="rows[$index].${path.slice(root.length).replace(/^\./, '') || 'name'}"`, at)
-    const segments: ({ key: string } | { index: string })[] = []
-    for (let rest = path.slice(root.length); rest; ) {
-      const key = /^\.([A-Za-z_$][\w$]*)/.exec(rest)
-      if (key) { segments.push({ key: key[1]! }); rest = rest.slice(key[0].length); continue }
-      if (rest[0] !== '[') invalid()
-      let depth = 0
-      let close = 0
-      for (; close < rest.length; close++) {
-        if (rest[close] === '[') depth++
-        else if (rest[close] === ']' && --depth === 0) break
-      }
-      const index = rest.slice(1, close).trim()
-      if (close >= rest.length || !index) invalid()
-      segments.push({ index })
-      rest = rest.slice(close + 1)
-    }
     // From the innermost segment out: each level is a copy of its parent with one part replaced.
     const bases = [root]
     for (const seg of segments) bases.push('key' in seg ? `${bases.at(-1)}.${seg.key}` : `${bases.at(-1)}[${seg.index}]`)
@@ -116,6 +106,15 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   let holeCount = 0
   let eventElementCount = 0
   let attrElementCount = 0
+  let formCount = 0
+  // Under an [engine] element: the object its fields bind (one per form, so a path can't silently miss).
+  let engineScope: { root: string | null } | null = null
+  const sameRoot = (path: string, at: number) => {
+    const root = pathSegments(path)?.root
+    if (!engineScope || !root) return
+    if (engineScope.root === null) engineScope.root = root
+    else if (engineScope.root !== root) fail(`fields under [engine] bind one object: found ${engineScope.root} and ${root}`, at)
+  }
   let blockCount = 0
   let forCount = 0
   let regionCount = 0
@@ -193,12 +192,16 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       const props: { name: string; expr: string }[] = []
       const models: { name: string; set: string }[] = []
       let attach: string | undefined
+      const paths: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
         if (a.kind === 'prop') { checkExpr(a.expr, file, source, a.start); props.push({ name: a.name, expr: a.expr }) }
         else if (a.kind === 'model') {
           const set = writeBack(a.expr, '__cl_v', a.name, a.start)
           checkExpr(a.expr, file, source, a.start)
           props.push({ name: a.name, expr: a.expr })
+          sameRoot(a.expr, a.start)
+          // The forms engine's path for this component (the first two-way binding's); island() puts it on the island.
+          paths.push({ name: a.name, expr: modelPath(a.expr, modelNames) })
           models.push({ name: a.name, set })
         }
         else if (a.kind === 'static' && a.name === 'attach') {
@@ -231,7 +234,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       // Whitespace around @slot blocks is not content for the default slot.
       const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
       scopeKey = parentScope
-      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), children, fills, region, ...(attach ? { attach } : {}) })
+      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(paths.length ? { paths } : {}) })
       return
     }
     if (node.tag === 'slot') {
@@ -257,11 +260,15 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       const bindable = (a.name === 'value' && ['input', 'select', 'textarea'].includes(tag)) || (a.name === 'checked' && tag === 'input')
       if (!bindable) fail(`[(${a.name})] on <${tag}>: an element binds two ways only with [(value)] (input, select, textarea) or [(checked)]`, a.start)
       const type = a.name === 'checked' || tag === 'select' ? 'change' : 'input'
-      return [{ kind: 'prop', name: a.name, expr: a.expr, start: a.start }, { kind: 'event', name: type, expr: writeBack(a.expr, `$event.target.${a.name}`, a.name, a.start), start: a.start }]
+      sameRoot(a.expr, a.start)
+      const event = { kind: 'event' as const, name: type, expr: writeBack(a.expr, `$event.target.${a.name}`, a.name, a.start), start: a.start }
+      // Its path, for the forms engine (clarusjs/forms): see docs/architecture.md §5.
+      return [{ kind: 'prop', name: a.name, expr: a.expr, start: a.start }, event, { kind: 'prop', name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start }]
     })
     emitStatic(`<${node.tag}`)
     const elementEvents = attrs.filter((a) => a.kind === 'event')
     const dynamic: Extract<IRNode, { kind: 'attr' }>[] = []
+    let engine = false
     for (const a of attrs) {
       if (a.kind === 'static') emitStatic(a.value === true ? ` ${a.name}` : ` ${a.name}="${a.value}"`)
       else if (a.kind === 'event') {
@@ -272,6 +279,14 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
           const exprStart = found === -1 ? a.start : found // a generated handler ([(value)]): at the binding
           for (const w of writesTo(a.expr, inputNames)) readOnly(w.name, exprStart + w.start)
         }
+      } else if (a.kind === 'prop' && a.name === 'engine') {
+        // [engine]="f": this element's form (and its fields) belong to the forms engine f (clarusjs/forms).
+        if (!stateful) fail('[engine] needs a <script> (an island): the forms engine runs in the browser', a.start)
+        checkExpr(a.expr, file, source, a.start)
+        const index = formCount++
+        emitStatic(` data-cl-form="${index}"`)
+        out.push({ kind: 'connect', expr: a.expr, index })
+        engine = true
       } else {
         if (/^on/i.test(a.name)) fail(`use (${a.name.slice(2).toLowerCase()}) for events, not an ${a.name} attribute`, a.start)
         // srcdoc is a whole HTML document: binding data into it is HTML injection, so it stays static.
@@ -297,7 +312,10 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       for (const a of elementEvents) events.push({ index, type: a.name, handler: a.kind === 'event' ? a.expr : '', scope: scopeKey })
     }
     emitStatic('>')
+    const outer = engineScope
+    if (engine) engineScope = { root: null }
     node.children.forEach((child) => visit(child, RAW_TEXT.has(node.tag) ? node.tag : rawText))
+    engineScope = outer
     if (!VOID.has(node.tag)) emitStatic(`</${node.tag}>`)
   }
 
@@ -315,4 +333,50 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     nodes,
     events,
   }
+}
+
+/** A two-way binding's path: its root name and its segments (`.key`, `[index]`), or null when it isn't a path. */
+function pathSegments(path: string): { root: string; segments: ({ key: string } | { index: string })[] } | null {
+  const root = /^[A-Za-z_$][\w$]*/.exec(path)?.[0]
+  if (!root) return null
+  const segments: ({ key: string } | { index: string })[] = []
+  for (let rest = path.slice(root.length); rest; ) {
+    const key = /^\.([A-Za-z_$][\w$]*)/.exec(rest)
+    if (key) { segments.push({ key: key[1]! }); rest = rest.slice(key[0].length); continue }
+    if (rest[0] !== '[') return null
+    let depth = 0
+    let close = 0
+    for (; close < rest.length; close++) {
+      if (rest[close] === '[') depth++
+      else if (rest[close] === ']' && --depth === 0) break
+    }
+    const index = rest.slice(1, close).trim()
+    if (close >= rest.length || !index) return null
+    segments.push({ index })
+    rest = rest.slice(close + 1)
+  }
+  return { root, segments }
+}
+
+/**
+ * The forms engine's path for a two-way binding, as a JS expression: the path without its root name, dotted, with
+ * computed indexes evaluated: `order.lines[$index].item` → `"lines." + ($index) + ".item"`, `value` → `""`.
+ */
+function modelPath(path: string, models: Set<string> = new Set()): string {
+  const parsed = pathSegments(path)
+  const parts = (parsed?.segments ?? []).map((seg) => {
+    if ('key' in seg) return JSON.stringify(seg.key)
+    // A literal key is its value ('email', "\u0065mail", 2); anything else is computed where it's rendered.
+    let literal: unknown
+    try {
+      const node = parseExpressionAt(seg.index, 0, { ecmaVersion: 'latest' }) as unknown as { type: string; value?: unknown; end: number }
+      if (node.type === 'Literal' && node.end === seg.index.length && (typeof node.value === 'string' || typeof node.value === 'number')) literal = node.value
+    } catch {}
+    return literal !== undefined ? JSON.stringify(String(literal)) : `(${seg.index})`
+  })
+  // Bound to one of this component's own @model inputs: its path comes from the parent ('@name', resolved by the
+  // engine through the island's data-cl-path-name).
+  if (parsed && models.has(parsed.root)) parts.unshift(JSON.stringify(`@${parsed.root}`))
+  if (!parts.length) return '""'
+  return parts.map((p, i) => (i ? `"." + ${p}` : p)).join(' + ')
 }

@@ -4,6 +4,7 @@ import { Command } from 'commander'
 import { check } from './check.ts'
 import { loadProject } from './project.ts'
 import { explain } from './explain.ts'
+import { serve } from './mapper.ts'
 
 const program = new Command('clarusjs').description('clarusjs: clear, compiled views')
 
@@ -35,5 +36,10 @@ program
     else console.log(options.json ? result.json : result.text)
     process.exitCode = result.exitCode
   })
+
+program
+  .command('mapper')
+  .description('the TypeScript 7.1 content mapper for .tscl files (TypeScript starts it; see https://clarusjs.com/guide/editor)')
+  .action(() => serve())
 
 program.parse()

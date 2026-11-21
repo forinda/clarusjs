@@ -3,9 +3,9 @@
 @input next: string
 
 <script>
-  import { onDispose } from 'clarusjs/runtime'
+  import { browser, onDispose } from 'clarusjs/runtime'
   import { navigate } from 'clarusjs/navigation'
-  if (typeof document !== 'undefined') {
+  if (browser) {
     const keys = (event) => {
       if (event.altKey || event.ctrlKey || event.metaKey || event.target.closest?.('input, textarea, select, [contenteditable]')) return
       const to = event.key === 'ArrowLeft' ? prev : event.key === 'ArrowRight' ? next : ''

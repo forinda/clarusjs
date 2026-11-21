@@ -1,7 +1,7 @@
 // IR → client module: `attach(root, props)`. Runs in the browser, only for stateful components.
 import type { ComponentIR, IRNode } from './ir.ts'
 import { attrValueExpr, componentCall, htmlExpr, tagArg, walk, whichExpr, type Rewriter } from './html-expr.ts'
-import { rewriteClient, rewriteClientExpr, wrapExpr, type Signals } from './script.ts'
+import { formName, rewriteClient, rewriteClientExpr, wrapExpr, type Signals } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitClient(ir: ComponentIR): string {
@@ -43,6 +43,7 @@ export function emitClient(ir: ComponentIR): string {
     if (usedComponents.has(imp.name)) out += `import { render as ${renderName(imp.name)} } from '${imp.from}?render'\n`
   }
   for (const d of ir.dataImports) out += `import ${d.clause} from '${d.from}'\n`
+  if (all.some((n) => n.kind === 'connect')) out += `import { connect as __cl_connect } from 'clarusjs/forms'\n`
   for (const line of ir.scriptImports) out += `${line}\n`
   out += `\nexport function attach(__cl_root, __cl_props = {}, __cl_state) {\n`
   // Inputs: read-only signals (writes are compile errors), set from props now and by the returned update.
@@ -56,7 +57,7 @@ export function emitClient(ir: ComponentIR): string {
       : `  const ${i.name} = state(${value(i, '__cl_props')})\n`
   }
   out += inputsLine({ ...ir, inputs: ir.inputs.filter((i) => !inputs.includes(i)) })
-  if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals, { stateFromServer: true }))
+  if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals, { stateFromServer: true, forms: formName(ir.scriptImports) }))
   const lines = wiring(ir, ir.nodes, undefined, '__cl_root', ir.signals, 0)
   if (lines.length) out += '\n' + lines.map((l) => `  ${l}\n`).join('')
   // New props from a parent island: each input follows (the loader keeps this, and the parent calls it in place).
@@ -86,6 +87,7 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
   for (const h of [...holes].sort((a, b) => a.index - b.index)) lines.push(`__cl_text(__cl_h[${h.index}], () => ${wrapExpr(rw.expr(h.expr))})`)
   for (const a of nodes) {
     if (a.kind === 'attr' && a.reactive) lines.push(`__cl_attr(${ctx}, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, rw.expr)}${tagArg(a)})`)
+    if (a.kind === 'connect') lines.push(`__cl_connect(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)
   }
   for (const e of ir.events.filter((ev) => ev.scope === scope)) {
     const body = rewriteClient(e.handler, signals).trim()

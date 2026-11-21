@@ -1,0 +1,3 @@
+@input title: string
+
+<h2>{{ title.nope }}</h2>

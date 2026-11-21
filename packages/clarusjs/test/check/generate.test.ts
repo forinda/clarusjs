@@ -29,7 +29,7 @@ function check(files: Record<string, string>): string[] {
     generated.set(vpath, { ...out, source, file })
   }
   writeFileSync(resolve(root, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { strict: true, noEmit: true, target: 'ES2023', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2023', 'DOM'], allowImportingTsExtensions: true, rootDirs: ['.', '.clarusjs/virtual'], skipLibCheck: true },
+    compilerOptions: { strict: true, noUnusedLocals: true, noEmit: true, target: 'ES2023', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2023', 'DOM'], allowImportingTsExtensions: true, rootDirs: ['.', '.clarusjs/virtual'], skipLibCheck: true },
     include: ['src', '.clarusjs/virtual'],
   }))
   let output = ''
@@ -128,7 +128,7 @@ test('@for needs something iterable', () => {
 
 test('$event is typed by event name, its target is left open', () => {
   expect(check({ 'src/components/f.tscl': `<script>let v = state('')</script>
-<input (input)="v = $event.target.value; $event.data?.length"><b (click)="$event.clientX.toFixed()">x</b>
+<input (input)="v = $event.target.value; $event.data?.length"><b (click)="$event.clientX.toFixed()">x</b>{{ v }}
 ` })).toEqual([])
 })
 
@@ -150,4 +150,117 @@ test('review: identical script imports each map to their own line', () => {
   const errors = check({ 'src/pages/index.tscl': `<script>\nimport './missing.ts'\nimport './missing.ts'\nlet n = state(0)\n</script>\n<b (click)="n++">{{ n }}</b>\n` })
   const lines = errors.filter((e) => e.includes('missing')).map((e) => e.split(':')[1])
   expect(lines).toEqual(['2', '3'])
+})
+
+test("a script's own functions get `: any` on untyped parameters (scripts are JavaScript); callbacks keep their contextual type", () => {
+  const source = "<script>\n  import { x } from './x.ts'\n  function add(a, { b }, ...rest) { return a }\n  const one = z => z\n  const two = async (c = 1) => c\n  const list = state([1]).map((v) => v)\n</script>\n<p>{{ add(1, {}) }}</p>\n"
+  const { code, mappings } = generateTs(source, 'x.tscl')
+  expect(code).toContain('function add(a: any, { b }: any, ...rest: any[]) { return a }')
+  expect(code).toContain('const one = (z: any) => z')
+  expect(code).toContain('const two = async (c = 1) => c') // a default gives the type
+  expect(code).toContain('.map((v) => v)')
+  // A callback given to one of the script's own functions has no context type either.
+  const own = generateTs("<script>\n  function record(update) { return update(1) }\n  const each = (f) => f\n  record((p) => p)\n  each(function (q) { return q })\n  record.call(null, (r) => r)\n</script>\n<p>{{ record((x) => x) }}</p>\n", 'y.tscl').code
+  expect(own).toContain('record((p: any) => p)')
+  expect(own).toContain('each(function (q: any) { return q })')
+  expect(own).toContain('record.call(null, (r) => r)') // not a direct call: left as is
+  // Every exact span is the template's own text (the imports are copied once, at the top), so a mapper can call
+  // them verbatim.
+  for (const [v, length, s, exact] of mappings) if (exact) expect(code.slice(v, v + length)).toBe(source.slice(s, s + length))
+  expect(mappings.filter(([, , , exact]) => exact).some(([v, l]) => code.slice(v, v + l).includes('return a'))).toBe(true)
+})
+
+test('[prop] on an HTML element: a boolean attribute takes a boolean, others a primitive (numbers are fine)', () => {
+  const errors = check({
+    'src/a.tscl': `<script>
+  let busy = state(false)
+  let n = state(2)
+  let user = state({ name: 'a' })
+</script>
+<button [disabled]="'false'" [hidden]="busy"></button>
+<input [readonly]="'yes'" [required]="busy" [tabindex]="n" [value]="n" [checked]="busy">
+<a [href]="user" [aria-current]="busy ? 'page' : false" [data-id]="n" [title]="null"></a>
+<my-element [anything]="user"></my-element>
+`,
+  })
+  expect(errors).toEqual([
+    expect.stringMatching(/^src\/a\.tscl:6:21 .*'"false"' is not assignable to parameter of type 'boolean \| null \| undefined'/), // [disabled]="'false'": still disabled
+    expect.stringMatching(/^src\/a\.tscl:7:20 .*'"yes"' is not assignable to parameter of type 'boolean \| null \| undefined'/), // readonly → readOnly
+    expect.stringMatching(/^src\/a\.tscl:8:12 .*'\{ name: string; \}' is not assignable to parameter of type 'string \| number \| boolean \| null \| undefined'/), // an object would be "[object Object]"
+    expect.stringMatching(/^src\/a\.tscl:9:25 .*'\{ name: string; \}' is not assignable/), // a custom element gets attributes too
+  ])
+})
+
+test('event handlers keep the narrowing of the @if (and @else) around them; currentTarget is the element; no noise from generated code', () => {
+  const errors = check({
+    'src/a.tscl': `@input label: string
+@input unused: number
+<script>
+  let picked = state(Math.random() > 1 ? null : { name: 'a' })
+  let mode = state(Math.random() > 1 ? 'a' : 'b')
+</script>
+@if (picked) {
+  <button (click)="console.log(picked.name)">x</button>
+} @else if (mode === 'a') {
+  <button (click)="console.log(picked.name)">y</button>
+}
+<input (input)="console.log($event.currentTarget.value, label)">
+<p (click)="$event.currentTarget.value">z</p>
+@if (nope.length) {
+  <button (click)="console.log(1)">w</button>
+}
+`,
+  })
+  expect(errors).toEqual([
+    // In the @else if branch picked is null: still reported there.
+    expect.stringMatching(/^src\/a\.tscl:10:32 'picked' is possibly 'null'/),
+    expect.stringMatching(/^src\/a\.tscl:13:34 Property 'value' does not exist on type 'EventTarget & HTMLParagraphElement'/),
+    // An error in a condition is reported once, where it is written (not again where it's repeated for a handler).
+    expect.stringMatching(/^src\/a\.tscl:14:6 Cannot find name 'nope'/),
+  ])
+})
+
+test('forms: [engine] takes a form, and paths given to the form are the values\' paths', () => {
+  const forms = resolve(import.meta.dirname, '../../src/forms/index.ts')
+  const errors = check({
+    'node_modules/clarusjs/package.json': JSON.stringify({ name: 'clarusjs', exports: { './forms': './forms.ts' } }),
+    'node_modules/clarusjs/forms.ts': `export * from ${JSON.stringify(forms)}\n`,
+    'src/a.tscl': `<script>
+  import { form } from 'clarusjs/forms'
+  let order = state({ customer: { email: '' }, lines: [{ item: '' }] })
+  const f = form(order)
+</script>
+<form [engine]="f"><input [(value)]="order.customer.email"><p>{{ f.error('customer.email') }} {{ f.error('lines.0.item') }}</p></form>
+<p>{{ f.error('customer.emial') }}</p>
+<div [engine]="order"></div>
+`,
+  })
+  expect(errors).toEqual([
+    expect.stringMatching(/^src\/a\.tscl:7:15 .*'"customer\.emial"' is not assignable to parameter of type '"customer" \| "customer\.email"/),
+    expect.stringMatching(/^src\/a\.tscl:8:16 .*is missing the following properties from type 'Form<any>'/),
+  ])
+})
+
+test('review #233: only the script\'s own top-level functions count; a callback for a parameter with a default keeps its type', () => {
+  const nested = generateTs("<script>\n  function outer() { function visit(cb) { cb(1) } return visit }\n  const r = visit((n) => n)\n</script>\n<p>{{ r }}</p>\n", 'a.tscl').code
+  expect(nested).toContain('visit((n) => n)') // `visit` here isn't the nested one: no annotation
+  const withDefault = generateTs("<script>\n  function record(update = (n = 0) => n, other) { return update(1) }\n  const r = record((n) => n, (m) => m)\n</script>\n<p>{{ r }}</p>\n", 'b.tscl').code
+  expect(withDefault).toContain('record((n) => n, (m: any) => m)') // the first is typed by the default; the second isn't
+})
+
+test('review #233 (2): enumerated attributes take their strings; an outer @if guard isn\'t replayed onto a loop item of the same name', () => {
+  const errors = check({
+    'src/a.tscl': `<script>
+  let row = state(Math.random() > 1 ? null : { kind: 'ok', name: 'a' })
+  let rows = state([{ kind: 'bad' }])
+</script>
+<img [draggable]="'false'" [spellcheck]="'true'" alt="">
+@if (row) {
+  @for (row of rows; track $index) {
+    <button (click)="console.log(row.name)">x</button>
+  }
+}
+`,
+  })
+  expect(errors).toEqual([expect.stringMatching(/^src\/a\.tscl:8:38 Property 'name' does not exist/)])
 })

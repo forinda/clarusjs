@@ -1,0 +1,224 @@
+{
+  "Page": {
+    "prefix": [
+      "page",
+      "tscl-page"
+    ],
+    "isFileTemplate": true,
+    "description": "A page: a whole document under src/pages (its path is its URL)",
+    "body": [
+      "<html lang=\"en\">",
+      "  <head><title>${1:Title}</title></head>",
+      "  <body>",
+      "    <h1>${1:Title}</h1>",
+      "    $0",
+      "  </body>",
+      "</html>",
+      ""
+    ]
+  },
+  "Page in a layout": {
+    "prefix": [
+      "page-layout",
+      "tscl-page-layout"
+    ],
+    "isFileTemplate": true,
+    "description": "A page rendered in a layout component",
+    "body": [
+      "@import ${1:layout} from '${2:../layouts/${1:layout}.tscl}'",
+      "",
+      "<${1:layout} [title]=\"'${3:Title}'\">",
+      "  <h1>${3:Title}</h1>",
+      "  $0",
+      "</${1:layout}>",
+      ""
+    ]
+  },
+  "Page with data": {
+    "prefix": [
+      "page-data",
+      "tscl-page-data"
+    ],
+    "isFileTemplate": true,
+    "description": "A page whose inputs come from its .load.ts (create it with the clarus-load snippet)",
+    "body": [
+      "@input ${1:title}: string",
+      "",
+      "<html lang=\"en\">",
+      "  <head><title>{{ ${1:title} }}</title></head>",
+      "  <body>",
+      "    <h1>{{ ${1:title} }}</h1>",
+      "    $0",
+      "  </body>",
+      "</html>",
+      ""
+    ]
+  },
+  "Component": {
+    "prefix": [
+      "component",
+      "tscl-component"
+    ],
+    "isFileTemplate": true,
+    "description": "A component: typed inputs and a template, rendered on the server (no JavaScript)",
+    "body": [
+      "@input ${1:label}: ${2:string}",
+      "",
+      "<${3:div} class=\"${4:${TM_FILENAME_BASE}}\">{{ ${1:label} }}$0</${3:div}>",
+      ""
+    ]
+  },
+  "Island": {
+    "prefix": [
+      "island",
+      "tscl-island"
+    ],
+    "isFileTemplate": true,
+    "description": "An island: a component with a script and state, attached in the browser",
+    "body": [
+      "@input ${1:start}: number = ${2:0}",
+      "",
+      "<script>",
+      "  let ${3:count} = state(${1:start})",
+      "  function ${4:add}() { ${3:count}++ }",
+      "</script>",
+      "",
+      "<button type=\"button\" (click)=\"${4:add}()\">{{ ${3:count} }}</button>$0",
+      ""
+    ]
+  },
+  "Field": {
+    "prefix": [
+      "field",
+      "tscl-field"
+    ],
+    "isFileTemplate": true,
+    "description": "A form field component: its value is a @model the form binds two ways ([(value)])",
+    "body": [
+      "@input label: string",
+      "@model value: ${1:string} = ${2:''}",
+      "",
+      "<label>{{ label }} <input [(value)]=\"value\"></label>$0",
+      ""
+    ]
+  },
+  "@if": {
+    "prefix": "@if",
+    "description": "Show markup when a condition holds",
+    "body": [
+      "@if (${1:condition}) {",
+      "  $0",
+      "}"
+    ]
+  },
+  "@if @else": {
+    "prefix": "@ife",
+    "description": "@if with an @else branch",
+    "body": [
+      "@if (${1:condition}) {",
+      "  $2",
+      "} @else {",
+      "  $0",
+      "}"
+    ]
+  },
+  "@for": {
+    "prefix": "@for",
+    "description": "Repeat markup for each item, keyed by track",
+    "body": [
+      "@for (${1:item} of ${2:items}; track ${3:${1:item}.id}) {",
+      "  $0",
+      "}"
+    ]
+  },
+  "@for @empty": {
+    "prefix": "@fore",
+    "description": "@for with @empty content",
+    "body": [
+      "@for (${1:item} of ${2:items}; track ${3:${1:item}.id}) {",
+      "  $4",
+      "} @empty {",
+      "  $0",
+      "}"
+    ]
+  },
+  "@slot": {
+    "prefix": "@slot",
+    "description": "Fill a named slot of a component",
+    "body": [
+      "@slot('${1:title}') {${0}}"
+    ]
+  },
+  "@input": {
+    "prefix": "@input",
+    "description": "A typed input (read-only)",
+    "body": [
+      "@input ${1:name}: ${2:string}$0"
+    ]
+  },
+  "@model": {
+    "prefix": "@model",
+    "description": "An input the parent binds two ways with [(name)]",
+    "body": [
+      "@model ${1:value}: ${2:string} = ${3:''}$0"
+    ]
+  },
+  "@type": {
+    "prefix": "@type",
+    "description": "A type for this file's inputs (local to the file)",
+    "body": [
+      "@type ${1:Name} = ${0:{ \\}}"
+    ]
+  },
+  "@interface": {
+    "prefix": "@interface",
+    "description": "An interface for this file's inputs (local to the file)",
+    "body": [
+      "@interface ${1:Name} {",
+      "  $0",
+      "}"
+    ]
+  },
+  "@import component": {
+    "prefix": "@import",
+    "description": "Import a component",
+    "body": [
+      "@import ${1:name} from '${2:./${1:name}.tscl}'$0"
+    ]
+  },
+  "hole": {
+    "prefix": "{{",
+    "description": "Print a value (escaped)",
+    "body": [
+      "{{ ${1:value} }}$0"
+    ]
+  },
+  "binding": {
+    "prefix": "[]",
+    "description": "Bind a property or attribute",
+    "body": [
+      "[${1:name}]=\"${2:value}\"$0"
+    ]
+  },
+  "event": {
+    "prefix": "()",
+    "description": "Handle an event (islands)",
+    "body": [
+      "(${1:click})=\"${2:handler()}\"$0"
+    ]
+  },
+  "two-way binding": {
+    "prefix": "[()]",
+    "description": "Bind a value two ways",
+    "body": [
+      "[(${1:value})]=\"${2:form.name}\"$0"
+    ]
+  },
+  "comment": {
+    "prefix": "{{--",
+    "description": "A template comment (not in the HTML)",
+    "body": [
+      "{{-- $0 --}}"
+    ]
+  }
+}

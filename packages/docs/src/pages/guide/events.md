@@ -55,9 +55,9 @@ To listen beyond the island, for a shortcut or a resize, add the listener in the
 
 ```tscl
 <script>
-  import { onDispose } from 'clarusjs/runtime'
+  import { browser, onDispose } from 'clarusjs/runtime'
   let wide = state(false)
-  if (typeof window !== 'undefined') {
+  if (browser) {
     const fit = () => { wide = window.innerWidth > 900 }
     fit()
     window.addEventListener('resize', fit)
@@ -66,7 +66,37 @@ To listen beyond the island, for a shortcut or a resize, add the listener in the
 </script>
 ```
 
-The script also runs on the server (with no `window`), hence the check. `onDispose` runs when the island is removed, after a navigation for example.
+The script also runs on the server, where there is no `window`: `browser` (from `clarusjs/runtime`) is true only in the browser. `onDispose` runs when the island is removed, after a navigation for example.
+
+## Timers: a live clock
+
+A timer works the same way: start it in the browser, stop it in `onDispose`.
+
+```tscl
+<script>
+  import { browser, onDispose } from 'clarusjs/runtime'
+  let now = state(Date.now())
+  const time = derived(() => new Date(now).toLocaleTimeString())
+  if (browser) {
+    let timer
+    const tick = () => {
+      now = Date.now()
+      timer = setTimeout(tick, 1000 - (now % 1000))
+    }
+    tick()
+    onDispose(() => clearTimeout(timer))
+  }
+</script>
+
+<time [datetime]="new Date(now).toISOString()">{{ time }}</time>
+```
+
+- **The server renders the time it renders at.** For a built page that can be hours ago, so the first `tick()` catches up as soon as the island attaches.
+- **Ticks land on the whole second.** Each one waits for the next second (`1000 - now % 1000`), so the display changes with the clock, and a slow tick doesn't drift.
+- **One timer at a time.** Each tick schedules the next, and `onDispose` clears the pending one, so clocks don't pile up across navigations.
+- The text is in the browser's own locale and time zone, which can differ from the server's: the first tick puts it right.
+
+The full component is in the repository's example app: `examples/counter/src/components/clock.tscl`.
 
 Try it: hover and click the stars, type a note, press Escape or Enter.
 

@@ -1,0 +1,129 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "clarusjs template bindings",
+  "scopeName": "text.html.tscl.bindings",
+  "injectionSelector": "L:text.html.tscl meta.tag -comment -meta.embedded.expression.tscl",
+  "patterns": [
+    {
+      "name": "meta.attribute.model.tscl",
+      "begin": "(\\[\\()([\\w.:-]+)(\\)\\])\\s*(=)\\s*(\")",
+      "end": "\"",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.attribute.tscl"
+        },
+        "2": {
+          "name": "entity.other.attribute-name.tscl"
+        },
+        "3": {
+          "name": "punctuation.definition.attribute.tscl"
+        },
+        "4": {
+          "name": "punctuation.separator.key-value.html"
+        },
+        "5": {
+          "name": "punctuation.definition.string.begin.html"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.html"
+        }
+      },
+      "contentName": "meta.embedded.expression.tscl",
+      "patterns": [
+        {
+          "include": "source.ts"
+        }
+      ]
+    },
+    {
+      "name": "meta.attribute.property.tscl",
+      "begin": "(\\[)([\\w.:-]+)(\\])\\s*(=)\\s*(\")",
+      "end": "\"",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.attribute.tscl"
+        },
+        "2": {
+          "name": "entity.other.attribute-name.tscl"
+        },
+        "3": {
+          "name": "punctuation.definition.attribute.tscl"
+        },
+        "4": {
+          "name": "punctuation.separator.key-value.html"
+        },
+        "5": {
+          "name": "punctuation.definition.string.begin.html"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.html"
+        }
+      },
+      "contentName": "meta.embedded.expression.tscl",
+      "patterns": [
+        {
+          "include": "source.ts"
+        }
+      ]
+    },
+    {
+      "name": "meta.attribute.event.tscl",
+      "begin": "(\\()([\\w.:-]+)(\\))\\s*(=)\\s*(\")",
+      "end": "\"",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.attribute.tscl"
+        },
+        "2": {
+          "name": "entity.other.attribute-name.tscl"
+        },
+        "3": {
+          "name": "punctuation.definition.attribute.tscl"
+        },
+        "4": {
+          "name": "punctuation.separator.key-value.html"
+        },
+        "5": {
+          "name": "punctuation.definition.string.begin.html"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.end.html"
+        }
+      },
+      "contentName": "meta.embedded.expression.tscl",
+      "patterns": [
+        {
+          "include": "source.ts"
+        }
+      ]
+    },
+    {
+      "comment": "{{ }} inside a plain attribute value",
+      "name": "meta.embedded.expression.tscl",
+      "begin": "\\{\\{",
+      "end": "\\}\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.begin.tscl"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.embedded.end.tscl"
+        }
+      },
+      "contentName": "source.ts",
+      "patterns": [
+        {
+          "include": "source.ts"
+        }
+      ]
+    }
+  ]
+}

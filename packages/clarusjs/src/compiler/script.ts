@@ -184,6 +184,45 @@ export function splitImports(code: string, file: string, source: string, offset:
   return { imports, body }
 }
 
+/**
+ * Where type annotations go for type checking: `: any` after the untyped parameters of the script's own functions
+ * (declarations, `const f = (x) => …`, class methods) and of callbacks passed straight to them (`record((p) => …)`).
+ * A script is JavaScript, so nothing else types those, and a strict project would report each one. Other callbacks
+ * keep their contextual type; a parameter with a default takes its type.
+ */
+export function untypedParams(code: string): { at: number; text: string }[] {
+  const ast = parseScript(code)
+  const isFn = (n: N | null | undefined) => !!n && (n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression')
+  // The script's own top-level functions, by name, with their parameters. (Top level only: a nested function of the
+  // same name as an import isn't what a top-level call reaches.)
+  // ponytail: a top-level name shadowed inside a nested scope is still taken as the script's own; resolve scopes if
+  // that ever matters.
+  const own = new Map<string, N[]>()
+  for (const stmt of ast.body as N[]) {
+    if (stmt.type === 'FunctionDeclaration' && stmt.id) own.set(stmt.id.name, stmt.params)
+    if (stmt.type === 'VariableDeclaration') for (const d of stmt.declarations as N[]) if (d.id.type === 'Identifier' && isFn(d.init)) own.set(d.id.name, d.init.params)
+  }
+  const targets = new Set<N>()
+  print(ast, code, (node, parent, key) => {
+    if (node.type === 'FunctionDeclaration' || (isFn(node) && ((parent?.type === 'VariableDeclarator' && key === 'init') || parent?.type === 'MethodDefinition'))) targets.add(node)
+    const params = node.type === 'CallExpression' && node.callee.type === 'Identifier' ? own.get(node.callee.name) : undefined
+    // A callback for a parameter with a default is typed by that default: only the others have no type.
+    if (params) (node.arguments as N[]).forEach((arg, i) => { if (isFn(arg) && params[i]?.type !== 'AssignmentPattern') targets.add(arg) })
+    return undefined
+  })
+  const edits: { at: number; text: string }[] = []
+  for (const fn of targets) {
+    for (const p of fn.params as N[]) {
+      if (p.type === 'AssignmentPattern') continue
+      // `x => …` has no parentheses to annotate in.
+      const bare = fn.type === 'ArrowFunctionExpression' && !code.slice(fn.start, p.start).includes('(')
+      if (bare) edits.push({ at: p.start, text: '(' })
+      edits.push({ at: p.end, text: (p.type === 'RestElement' ? ': any[]' : ': any') + (bare ? ')' : '') })
+    }
+  }
+  return edits.sort((a, b) => a.at - b.at)
+}
+
 // Globals that only exist on a server runtime. An island's script also runs in the browser and its state() values
 // are written into the page, so reading these would leak server data (or simply fail in the browser).
 const SERVER_GLOBALS = new Set(['process', 'Deno', 'Bun', 'require'])
@@ -215,20 +254,37 @@ export function analyzeScript(code: string, file: string, source: string, offset
 
 // Scope-aware: a parameter or local that shadows a signal name turns the rewrite off inside that scope.
 // ponytail: `var` declared in nested blocks is not hoisted to the function scope here; add if it ever matters
-function clientHook(code: string, signals: Signals, entered: WeakSet<N> = new WeakSet()): Hook {
+/** Do these import statements bring in form from clarusjs/forms (so `form(x)` is the engine's, not a function of its own)? */
+export function formName(imports: string[]): string | undefined {
+  for (const line of imports) {
+    if (!/from\s*['"]clarusjs\/forms['"]/.test(line)) continue
+    const m = /\{[^}]*\bform\b(?:\s+as\s+([A-Za-z_$][\w$]*))?[^}]*\}/.exec(line)
+    if (m) return m[1] ?? 'form'
+  }
+}
+
+function clientHook(code: string, signals: Signals, entered: WeakSet<N> = new WeakSet(), forms?: string): Hook {
   const hook: Hook = (node, parent, key) => {
     const rec = (n: N) => print(n, code, hook, node, '')
     const isSignal = (n: N) => n.type === 'Identifier' && signals.has(n.name)
     if (!entered.has(node)) {
-      const shadowed = [...scopeNames(node)].filter((n) => signals.has(n))
-      if (shadowed.length) {
+      const names = scopeNames(node)
+      const shadowed = [...names].filter((n) => signals.has(n))
+      // A local of the same name as the imported form() is the script's own function: not special.
+      const formHidden = !!forms && names.has(forms)
+      if (shadowed.length || formHidden) {
         entered.add(node)
         const inner: Signals = new Map([...signals].filter(([n]) => !shadowed.includes(n)))
-        return print(node, code, clientHook(code, inner, entered), parent, key)
+        return print(node, code, clientHook(code, inner, entered, formHidden ? undefined : forms), parent, key)
       }
     }
     if (node.type === 'VariableDeclaration' && node.kind === 'let' && (node.declarations as N[]).every((d) => signalCall(d.init))) {
       return 'const' + print({ ...node, kind: 'const', start: node.start + 3 }, code, hook, parent, key)
+    }
+    // form(x) from clarusjs/forms takes the signal itself, as shared() does: the engine reads and follows it.
+    if (forms && node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === forms && node.arguments[0] && isSignal(node.arguments[0])) {
+      const [first, ...rest] = node.arguments as N[]
+      return `${forms}(${first!.name}${rest.map((a) => `, ${rec(a)}`).join('')})`
     }
     if (node.type === 'UpdateExpression' && isSignal(node.argument)) {
       const name = node.argument.name
@@ -258,9 +314,9 @@ function clientHook(code: string, signals: Signals, entered: WeakSet<N> = new We
  * Rewrite a script (or event handler) for the browser. With `stateFromServer`, each top-level `let x = state(init)`
  * starts from the value the server rendered with (`__cl_state.x`) when there is one, so `init` isn't re-run.
  */
-export function rewriteClient(code: string, signals: Signals, options: { stateFromServer?: boolean } = {}): string {
+export function rewriteClient(code: string, signals: Signals, options: { stateFromServer?: boolean; forms?: string } = {}): string {
   const ast = parseScript(code)
-  const hook = clientHook(code, signals)
+  const hook = clientHook(code, signals, new WeakSet(), options.forms)
   if (!options.stateFromServer) return code.slice(0, ast.start) + print(ast, code, hook) + code.slice(ast.end)
   const topLevel = new Set((ast.body as N[]).filter((n) => n.type === 'VariableDeclaration').flatMap((n) => n.declarations as N[]))
   const withState: Hook = (node, parent, key) => {

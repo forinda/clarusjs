@@ -31,7 +31,7 @@
     bar()?.classList.toggle('ok', kind === 'ok')
     bar()?.classList.toggle('bad', kind === 'bad')
   }
-  const steps = () => [...document.querySelectorAll('main .step')]
+  const steps = () => [...document.querySelectorAll('main .step')].filter((el) => el instanceof HTMLElement)
   function show(i, focus) {
     const all = steps()
     if (!all.length) return
@@ -40,7 +40,7 @@
     all.forEach((step, j) => { step.hidden = j !== current })
     checking = !!all[current].querySelector('[data-quiz]:not([data-answered])')
     verdict('', '', '')
-    const id = all[current].getAttribute('aria-labelledby')
+    const id = all[current].getAttribute('aria-labelledby') ?? ''
     name = document.getElementById(id)?.textContent?.replace(/#$/, '').trim() ?? ''
     document.querySelectorAll('.segments li').forEach((li, j) => {
       li.className = j < current ? 'done' : j === current ? 'current' : ''
@@ -92,7 +92,8 @@
   if (typeof document !== 'undefined' && steps().length) {
     steps().forEach(split)
     document.body.classList.add('one-step')
-    document.querySelector('.lesson-bar').hidden = false
+    const lessonBar = document.querySelector('.lesson-bar')
+    if (lessonBar instanceof HTMLElement) lessonBar.hidden = false
     // A #hash opens the step it points into and keeps its target: a step heading takes focus, anything else
     // scrolls into view (Back and Continue go by step headings instead).
     function reveal() {
@@ -106,10 +107,11 @@
     }
     if (!reveal()) show(0, false)
     document.addEventListener('quiz:result', (event) => {
-      if (!steps()[current]?.contains(event.target)) return
+      if (!(event instanceof CustomEvent) || !(event.target instanceof HTMLElement) || !steps()[current]?.contains(event.target)) return
       const { ok, done, text: detail } = event.detail
       if (!done) return verdict('', 'Pick an answer', detail)
-      record((p) => answer(p, lesson + '#' + event.target.dataset.quiz, ok))
+      const quiz = event.target.dataset.quiz
+      record((p) => answer(p, lesson + '#' + quiz, ok))
       checking = !!steps()[current].querySelector('[data-quiz]:not([data-answered])')
       verdict(ok ? 'ok' : 'bad', ok ? 'Correct!' : 'Not quite', detail)
     })

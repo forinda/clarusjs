@@ -108,3 +108,14 @@ test('new props are applied together: effects reading several inputs never see h
   update({ rows: [{ name: 'c' }], index: 0 })
   expect(document.querySelector('.name')!.textContent).toBe('c 0')
 })
+
+test('__clUpdate: an island kept in place takes its new data-cl-path-<model> (rows shifted)', async () => {
+  const update = (globalThis as { __clUpdate?: (el: Element, next: Element) => boolean }).__clUpdate!
+  document.body.innerHTML = '<cl-island c="field" src="/field.js" p="{}" data-cl-path-value="lines.1.item"><input></cl-island>'
+  await attachAll(document, async () => ({ attach: () => () => {} }))
+  const next = document.createElement('cl-island')
+  for (const [k, v] of [['c', 'field'], ['src', '/field.js'], ['p', '{}'], ['data-cl-path-value', 'lines.0.item']]) next.setAttribute(k!, v!)
+  const el = document.querySelector('cl-island')!
+  expect(update(el, next)).toBe(true)
+  expect(el.getAttribute('data-cl-path-value')).toBe('lines.0.item')
+})

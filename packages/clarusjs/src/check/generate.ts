@@ -2,26 +2,34 @@
 // TypeScript that has the same meaning (@if → if, @for → for…of, a component → an object typed as its Inputs), and
 // every copied span is recorded so tsc's errors can be mapped back to the template. Pure: string in, string out.
 import { routeFromFile } from '../server/handler.ts'
+import { ClarusError } from '../compiler/errors.ts'
 import { parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
-import { splitImports } from '../compiler/script.ts'
+import { referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
- * [virtual offset, length, source offset, exact]. Exact spans are verbatim copies (offsets map one to one); other
- * spans stand for a whole template construct and map to its start.
+ * [virtual offset, length, source offset, exact, source length]. Exact spans are verbatim copies (offsets map one to
+ * one); other spans stand for a whole template construct (a component's tag, a binding's name): the source length
+ * says how much of the template that is.
  */
-export type Mapping = [number, number, number, boolean]
+export type Mapping = [number, number, number, boolean, number?]
+
+// Boolean attributes whose DOM property is spelled differently (the rest match their lowercase name).
+// Enumerated attributes whose DOM property happens to be a boolean: the attribute takes strings ("true"/"false").
+const ENUMERATED = new Set(['draggable', 'spellcheck', 'translate', 'autocorrect', 'contenteditable'])
+const PROPERTY: Record<string, string> = { readonly: 'readOnly', novalidate: 'noValidate', formnovalidate: 'formNoValidate', allowfullscreen: 'allowFullscreen', playsinline: 'playsInline', nomodule: 'noModule', ismap: 'isMap' }
 
 /**
  * `loader`: the module specifier of the page's .load.ts when it exports load(); what it returns is checked against
- * the page's inputs. `loaderSpan` is where that check sits in the generated code, so its errors can say so.
+ * the page's inputs. `componentSuffix`: added to component imports ('.ts' for `clarusjs check`'s generated files; ''
+ * for the content mapper, where TypeScript resolves the .tscl file itself). `loaderSpan` is where that check sits in the generated code, so its errors can say so.
  */
-export function generateTs(source: string, file: string, options: { loader?: string } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
+export function generateTs(source: string, file: string, options: { loader?: string; componentSuffix?: string } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
   const parsed = parse(source, file)
   const mappings: Mapping[] = []
   let code = ''
   const emit = (text: string) => { code += text }
   const copy = (text: string, sourceStart: number) => { mappings.push([code.length, text.length, sourceStart, true]); code += text }
-  const point = (text: string, sourceStart: number) => { mappings.push([code.length, text.length, sourceStart, false]); code += text }
+  const point = (text: string, sourceStart: number, sourceLength = 1) => { mappings.push([code.length, text.length, sourceStart, false, sourceLength]); code += text }
   // Where a trimmed expression starts in the source, searching from `from`.
   const at = (text: string, from: number) => source.indexOf(text, from)
   const components = new Map(parsed.imports.map((imp) => [imp.name, imp]))
@@ -33,14 +41,24 @@ export function generateTs(source: string, file: string, options: { loader?: str
   emit('declare function derived<T>(fn: () => T): T\n')
   emit('declare function shared<T>(store: { get(): T }): T\n')
   emit('declare function __cl_use(value: unknown): void\n')
+  // [prop] on an element sets an attribute: true → bare, false/null → removed, anything else as text. So a boolean
+  // attribute (per the DOM's own types) takes a boolean (a string, even 'false', would switch it on), and any other a
+  // primitive (an object would read "[object Object]").
+  // (The text type is spelled out, not aliased, so errors name it.)
+  const text = 'string | number | boolean | null | undefined'
+  emit(`type __cl_AttrOf<T extends string, P extends string> = T extends keyof HTMLElementTagNameMap ? P extends keyof HTMLElementTagNameMap[T] ? (HTMLElementTagNameMap[T][P] extends boolean ? boolean | null | undefined : ${text}) : ${text} : ${text}\n`)
+  emit('declare function __cl_attr<T extends string, P extends string>(value: __cl_AttrOf<T, P>): void\n')
   // A name the DOM doesn't know is a custom event (a child island's CustomEvent, with its detail).
-  emit('type __cl_Event<K extends string> = (K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : CustomEvent) & { target: any; currentTarget: any }\n')
+  // currentTarget is the element the handler is on (an unknown tag: HTMLElement). Helper types are exported only so a
+  // file that doesn't use one isn't an unused declaration under noUnusedLocals.
+  emit('export type __cl_El<T extends string> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement\n')
+  emit('export type __cl_Event<K extends string, E = HTMLElement> = (K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : CustomEvent) & { target: any; currentTarget: E }\n')
   for (const t of parsed.typeImports) {
     emit('import type ')
     copy(t.clause, t.clauseStart)
     emit(` from ${JSON.stringify(t.from)}\n`)
   }
-  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M } from ${JSON.stringify(`${imp.from}.ts`)}\n`)
+  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
   for (const d of parsed.dataImports) {
     emit('import ')
     copy(d.clause, d.clauseStart)
@@ -84,10 +102,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
     const start = code.length
     point('const __cl_from_load: Partial<Inputs> = __cl_loaded', 0)
     loaderSpan = [start, code.length]
+    emit('; __cl_use(__cl_from_load)')
     emit('\n')
   }
   // Inputs are read-only, all the way down: they belong to the parent (copy one into state() to change it here).
-  emit('type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
+  emit('export type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
   emit('\nexport default function __cl_check(__cl_props: __cl_Readonly<Inputs>) {\n')
   // Inputs are constants; @model inputs may be written (the write goes to the parent), so they are `let`.
   for (const [keyword, list] of [['const', parsed.inputs.filter((x) => !x.model)], ['let', parsed.inputs.filter((x) => x.model)]] as const) {
@@ -102,9 +121,23 @@ export function generateTs(source: string, file: string, options: { loader?: str
       }
     })
     emit(' } = __cl_props\n')
+    // An input the template doesn't read isn't an unused variable of this generated code.
+    emit(`  __cl_use([${list.map((x) => x.name).join(', ')}])\n`)
   }
   if (parsed.script && script) {
-    copy(script.body, parsed.script.start)
+    // The script in verbatim pieces: its imports (already at the top) are blanked, and untyped parameters annotated.
+    const body = script.body
+    const cuts = [
+      ...script.imports.map((imp) => ({ at: imp.start, end: imp.start + imp.text.length, text: body.slice(imp.start, imp.start + imp.text.length) })),
+      ...untypedParams(parsed.script.code).map((e) => ({ ...e, end: e.at })),
+    ].sort((a, b) => a.at - b.at)
+    let pos = 0
+    for (const cut of cuts) {
+      if (cut.at > pos) copy(body.slice(pos, cut.at), parsed.script.start + pos)
+      emit(cut.text)
+      pos = Math.max(pos, cut.end)
+    }
+    if (body.length > pos) copy(body.slice(pos), parsed.script.start + pos)
     emit('\n;\n') // the script may end without a semicolon; what follows must not continue its last statement
   }
 
@@ -115,8 +148,18 @@ export function generateTs(source: string, file: string, options: { loader?: str
   }
   const attrValueStart = (a: Attr) => a.start + a.name.length + (a.kind === 'static' || a.kind === 'interp' ? 2 : a.kind === 'model' ? 6 : 4)
   // [(x)]="path": the path must be assignable (a state variable or a property path; not a read-only input).
+  // The conditions of the @if branches around the current node. A handler or write-back is a function, and TypeScript
+  // drops the narrowing of a variable that can change inside functions, so each repeats them, on a line of its own
+  // under @ts-ignore: the condition's errors are reported once, where it's written (this copy has no place in the
+  // template), and what follows on the next line is checked as usual.
+  const guards: string[] = []
+  const guarded = () => {
+    if (guards.length) emit(`\n    // @ts-ignore\n    if (${guards.join(' && ')})\n    `)
+  }
   const writable = (a: Attr & { expr: string }) => {
-    emit('  ;(() => { (')
+    emit('  ;(() => { ')
+    guarded()
+    emit('(')
     copy(a.expr, at(a.expr, attrValueStart(a)))
     emit(') = (')
     copy(a.expr, at(a.expr, attrValueStart(a)))
@@ -141,7 +184,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
             copy(b.cond, at(b.cond, b.condStart))
             emit(')) {\n')
           }
+          // This branch runs when every earlier condition is false and its own is true.
+          const earlier = node.branches.slice(0, i).map((x) => `!(${x.cond})`)
+          guards.push([...earlier, ...(b.cond === null ? [] : [`(${b.cond})`])].join(' && ') || 'true')
           b.children.forEach(visit)
+          guards.pop()
           emit('  }\n')
         })
         return
@@ -150,9 +197,14 @@ export function generateTs(source: string, file: string, options: { loader?: str
         copy(node.item, node.itemStart)
         emit(' of ')
         copy(node.list, node.listStart)
-        emit(') {\n    const $index: number = 0\n')
+        emit(') {\n    const $index: number = 0; __cl_use($index)\n')
         if (node.track !== null) use(node.track, node.trackStart)
+        // Inside the loop its item (and $index) shadow outer names: a condition about an outer `row` must not be
+        // repeated where `row` is the loop's.
+        const outer = guards.splice(0)
+        guards.push(...outer.filter((g) => !referencesNames(g, new Set([node.item, '$index']))))
         node.children.forEach(visit)
+        guards.splice(0, guards.length, ...outer)
         emit('  }\n')
         if (node.empty) {
           emit('  {\n')
@@ -167,7 +219,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
           // An object literal typed as the child's Inputs: unknown props are excess properties, missing ones are
           // reported on the variable, which maps to the tag.
           emit('  { const ')
-          point('__cl_p', node.start)
+          point('__cl_p', node.start, node.tag.length + 1) // the tag: `<card`
           emit(`: __cl_Readonly<${alias(node.tag)}> = { `) // a child reads its inputs only, so readonly values fit
           for (const a of node.attrs) {
             if (a.kind !== 'prop' && a.kind !== 'model') continue
@@ -181,11 +233,12 @@ export function generateTs(source: string, file: string, options: { loader?: str
             if (a.kind !== 'model') continue
             // [(x)] needs @model x in the child.
             emit('  { const ')
-            point('__cl_m', a.start + 2) // TypeScript reports a wrong initializer at the variable's name
+            point('__cl_m', a.start, a.name.length + 4) // the binding: `[(open)]` (TypeScript reports a wrong initializer at the variable's name)
             emit(`: ${alias(node.tag)}_M = ${JSON.stringify(a.name)}; __cl_use(__cl_m) }\n`)
             // What the child writes back (its model's type; a default only makes the input optional) must fit the
             // target, and the target must be writable.
             emit('  ;(() => { ') // no parentheses around the path: TypeScript reports the assignment at its left side
+            guarded()
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit(` = (undefined as unknown as Exclude<${alias(node.tag)}[${JSON.stringify(a.name)}], undefined>) });\n`)
           }
@@ -194,13 +247,24 @@ export function generateTs(source: string, file: string, options: { loader?: str
         }
         for (const a of node.attrs) {
           if (a.kind === 'model') { use(a.expr, attrValueStart(a)); writable(a) }
-          else if (a.kind === 'prop') use(a.expr, attrValueStart(a))
+          else if (a.kind === 'prop' && a.name === 'engine') {
+            // [engine]="f": a form from clarusjs/forms.
+            emit(`  ;((__cl_f: import('clarusjs/forms').Form<any>) => __cl_use(__cl_f))((`)
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit('));\n')
+          } else if (a.kind === 'prop') {
+            emit(`  __cl_attr<${JSON.stringify(node.tag.toLowerCase())}, ${JSON.stringify(ENUMERATED.has(a.name.toLowerCase()) ? '' : PROPERTY[a.name.toLowerCase()] ?? a.name.toLowerCase())}>((`)
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit('));\n')
+          }
           else if (a.kind === 'interp') {
             for (const p of a.parts) if (typeof p !== 'string') use(p.expr, p.start + 2)
           } else if (a.kind === 'event') {
-            emit(`  ;(($event: __cl_Event<${JSON.stringify(a.name)}>) => { `)
+            emit(`  ;(($event: __cl_Event<${JSON.stringify(a.name)}, __cl_El<${JSON.stringify(node.tag.toLowerCase())}>>) => { `)
+            guarded()
+            emit('{ ')
             copy(a.expr, at(a.expr, attrValueStart(a)))
-            emit(' });\n')
+            emit(' } });\n')
           }
         }
         node.children.forEach(visit)
@@ -285,4 +349,60 @@ export function routesDeclaration(files: string[]): string {
     return `    ${JSON.stringify(route)}: ${keys.length ? `{ ${keys.map((k) => `${k}: string`).join('; ')} }` : '{}'}`
   })
   return ['// Generated by clarusjs check: every page route → its params, for href() from clarusjs/navigation.', "declare module 'clarusjs/navigation' {", '  interface Routes {', ...entries, '  }', '}', 'export {}', ''].join('\n')
+}
+
+/** A ClarusError's message without its `file:line:col ` prefix, and its offset in `source`. */
+function located(err: ClarusError, source: string): { text: string; offset: number } {
+  const lines = source.split('\n')
+  const offset = Math.min(source.length, lines.slice(0, err.line - 1).reduce((n, l) => n + l.length + 1, 0) + err.column - 1)
+  return { text: err.message.slice(`${err.file}:${err.line}:${err.column} `.length), offset }
+}
+
+// What closes a construct left open at the end of the file, by the error that reports it.
+const CLOSERS: [RegExp, (m: RegExpExecArray) => string][] = [
+  [/^unclosed \{\{--/, () => ' --}}'],
+  [/^unclosed <!--/, () => ' -->'],
+  [/^unclosed \{\{$/, () => ' }}'],
+  [/^unclosed <\/([\w:-]+)>$/, () => '>'],
+  [/^unclosed <(script|style)\b/, (m) => `</${m[1]}>`],
+  [/^unclosed <([\w:-]+)(?: verbatim)?>$/, (m) => `</${m[1]}>`],
+  [/^unclosed @?[\w-]+ block$/, () => '\n}'],
+]
+
+/**
+ * generateTs for a template that may not parse, as an editor has it while someone types: each error is collected and
+ * the text repaired (what's open at the end is closed; any other error blanks its line, from the error on, then whole)
+ * until it parses, so TypeScript still covers the rest. Repairs only append or replace with spaces, so every offset
+ * in `source` stays where it was. `result` is null if it still doesn't parse after a few repairs.
+ */
+export function generateTolerant(source: string, file: string, options: Parameters<typeof generateTs>[2] = {}): { result: ReturnType<typeof generateTs> | null; errors: { message: string; offset: number }[] } {
+  const errors: { message: string; offset: number }[] = []
+  let text = source
+  // ponytail: 20 repairs at most; a file with more errors than that gets no TypeScript until some are fixed.
+  for (let tries = 0; tries < 20; tries++) {
+    try {
+      const result = generateTs(text, file, options)
+      // Nothing maps into what the repairs appended.
+      result.mappings = result.mappings.filter(([, , s]) => s < source.length).map((m) => (m[2] + m[1] > source.length && m[3] ? [m[0], m[1], m[2], false, source.length - m[2]] : m))
+      return { result, errors }
+    } catch (err) {
+      if (!(err instanceof ClarusError)) throw err
+      const { text: message, offset } = located(err, text)
+      if (!errors.some((e) => e.message === message && e.offset === offset)) errors.push({ message, offset: Math.min(offset, source.length) })
+      const closer = CLOSERS.map(([re, close]) => { const m = re.exec(message); return m && close(m) }).find((c) => c)
+      if (closer && text.slice(offset).indexOf('\n', 1) === -1 || closer && /^unclosed (<[\w:-]+|@?[\w-]+ block)/.test(message)) {
+        text += closer
+        continue
+      }
+      // A broken @-construct (@if, @for, @slot, a block) goes from its @, which may be on an earlier line than the error.
+      const from = /@|block|\( after|\(\s*$/.test(message) && text.lastIndexOf('@', offset) !== -1 ? text.lastIndexOf('@', offset) : offset
+      const lineStart = text.lastIndexOf('\n', from - 1) + 1
+      const lineEnd = text.indexOf('\n', from) === -1 ? text.length : text.indexOf('\n', from)
+      const blank = (from: number) => text.slice(0, from) + text.slice(from, lineEnd).replace(/[^\n]/g, ' ') + text.slice(lineEnd)
+      const next = blank(from) !== text ? blank(from) : blank(lineStart)
+      if (next === text) break
+      text = next
+    }
+  }
+  return { result: null, errors }
 }

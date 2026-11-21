@@ -42,6 +42,7 @@
     "./compiler": "./src/compiler/index.ts",
     "./runtime": "./src/runtime/index.ts",
     "./navigation": "./src/runtime/navigation.ts",
+    "./forms": "./src/forms/index.ts",
     "./runtime/server": "./src/runtime/server.ts",
     "./server": "./src/server/handler.ts",
     "./vite": "./src/vite/plugin.ts",
@@ -78,6 +79,7 @@
     "happy-dom": "^21.0.4",
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
+    "typescript-beta": "npm:typescript@7.1.0-beta",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
   },
@@ -95,6 +97,10 @@
       "./navigation": {
         "types": "./dist/runtime/navigation.d.ts",
         "default": "./dist/runtime/navigation.js"
+      },
+      "./forms": {
+        "types": "./dist/forms/index.d.ts",
+        "default": "./dist/forms/index.js"
       },
       "./runtime/server": {
         "types": "./dist/runtime/server.d.ts",
@@ -116,6 +122,15 @@
         "types": "./dist/server/views.d.ts",
         "default": "./dist/server/views.js"
       }
+    }
+  },
+  "typescript": {
+    "contentMapper": {
+      "exec": [
+        "node",
+        "./dist/cli/index.js",
+        "mapper"
+      ]
     }
   }
 }
