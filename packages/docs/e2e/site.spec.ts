@@ -756,6 +756,29 @@ test('redirects: a static redirect forwards to its page; a server page\'s load()
   await expect(page.locator('h1')).toHaveText('Server playground')
 })
 
+test('abort: the URL is held while a page loads; Stop cancels its request and leaves page and URL as they were', async ({ page }) => {
+  let release = () => {}
+  await page.route('**/guide/lists/index.frag.html', async (route) => { await new Promise<void>((done) => { release = done }); await route.continue().catch(() => {}) })
+  const failed: string[] = []
+  page.on('requestfailed', (r) => failed.push(new URL(r.url()).pathname))
+  await page.goto('/guide/navigation')
+  const demo = page.locator('cl-island[c="swap-demo"]')
+  await expect(demo).toHaveAttribute('data-cl-ready', '')
+  await page.locator('.sidebar a[href="/guide/lists"]').click()
+  await expect(page.locator('html')).toHaveAttribute('data-cl-navigating', 'loading')
+  await expect(page).toHaveURL(/\/guide\/navigation$/) // held: not committed while loading
+  await demo.getByRole('button', { name: 'Stop' }).click()
+  await expect(page.locator('html')).not.toHaveAttribute('data-cl-navigating')
+  release()
+  await expect(page).toHaveURL(/\/guide\/navigation$/)
+  await expect(page.locator('h1')).toHaveText('Navigation')
+  await expect.poll(() => failed).toContain('/guide/lists/index.frag.html') // the request was cancelled
+  // The next navigation works as usual, and its URL changes once the page is in.
+  await page.locator('.sidebar a[href="/guide/holes"]').click()
+  await expect(page.locator('h1')).toHaveText('Holes')
+  await expect(page).toHaveURL(/\/guide\/holes$/)
+})
+
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
@@ -777,9 +800,10 @@ test('client routes: a replaceState while the next page loads still shows that p
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
   await page.click('nav.tour a.next')
-  await expect(page).toHaveURL(/\/tour\/2$/)
+  await expect(page.locator('html')).toHaveAttribute('data-cl-navigating', 'loading')
   await page.evaluate(() => history.replaceState(null, '', location.pathname + '#top'))
   await expect(page.locator('h1')).toHaveText('The router renders')
+  await expect(page).toHaveURL(/\/tour\/2$/)
 })
 
 test('lesson without JavaScript: a plain page, every step shown, segments jump to them, no action bar', async ({ browser }) => {
@@ -986,9 +1010,11 @@ test('fragment navigation: a replaceState while the next page loads still shows 
   await page.goto('/guide/holes')
   await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
   await page.locator('.sidebar a[href="/guide/lists"]').click()
-  await expect(page).toHaveURL(/\/guide\/lists$/)
+  // While it loads (the URL is held), the page changes its own URL: the clicked page still shows.
+  await expect(page.locator('html')).toHaveAttribute('data-cl-navigating', 'loading')
   await page.evaluate(() => history.replaceState(null, '', location.pathname + '#top'))
   await expect(page.locator('h1')).toHaveText('Lists')
+  await expect(page).toHaveURL(/\/guide\/lists$/)
 })
 
 test('lesson with reduced motion: steps change without animation', async ({ browser }) => {
