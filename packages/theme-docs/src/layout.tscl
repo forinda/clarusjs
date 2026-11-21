@@ -1,0 +1,67 @@
+{{-- The docs layout: header, sidebar, content and footer. Everything site-specific comes from config. --}}
+@import themeToggle from './theme-toggle.tscl'
+@import type { ThemeConfig } from './nav.ts'
+@import { sectionKey, groupsOf, crumb, pager } from './nav.ts'
+@import './theme.css'
+@input config: ThemeConfig
+@input title: string
+@input description: string = ''
+@input path: string = '/'
+{{-- The page's own route, when it differs from the sidebar entry it belongs to (e.g. /releases/[version]). --}}
+@input source: string = ''
+{{-- The page's own address, when path names its sidebar entry instead (e.g. /releases/0.7.0 under /releases). --}}
+@input url: string = ''
+
+<html lang="en">
+  <head>
+    {{-- Runs before the first paint: the saved theme is on <html> before anything shows (no flash). --}}
+    <script inline>try{var t=localStorage.getItem('clarusjs-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @if (description) {<meta name="description" content="{{ description }}">}
+    <title>{{ title }}</title>
+    @if (config.siteUrl) {<script type="application/ld+json">{{ { '@context': 'https://schema.org', '@type': 'TechArticle', headline: title, description, url: `${config.siteUrl}${(url || path) === '/' ? '' : url || path}` } }}</script>}
+  </head>
+  <body>
+    {{-- First in the tab order: keyboard and screen reader users jump past the header and page list. --}}
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="/">@if (config.brand.logo) {<img [src]="config.brand.logo" alt="" width="28" height="28">}<span>{{ config.brand.text }}@if (config.brand.accent) {<span class="js">{{ config.brand.accent }}</span>}</span></a>
+      <nav class="top-nav" aria-label="Main">
+        @for (s of config.sections; track s.key) {<a [href]="s.href" [aria-current]="sectionKey(config.sections, path) === s.key ? 'true' : false">{{ s.title }}</a>}
+        @for (link of config.social ?? []; track link.href) {<a [href]="link.href">{{ link.label }}</a>}
+        {{-- Kept across fragment navigations: the same element, with its state. --}}
+        <span class="persist" data-cl-persist="theme"><themeToggle /></span>
+      </nav>
+    </header>
+    @if (sectionKey(config.sections, path)) {
+      <div class="docs">
+        <input type="checkbox" id="menu" class="menu-toggle" aria-label="Show the page list">
+        <label for="menu" class="menu-button">Menu</label>
+        <nav class="sidebar" aria-label="Pages">
+          @for (group of groupsOf(config.sections, path); track group.title) {
+            <p class="group">{{ group.title }}</p>
+            <ul>
+              @for (item of group.items; track item.href) {<li><a [href]="item.href" [aria-current]="item.href === path ? 'page' : false">{{ item.title }}</a></li>}
+            </ul>
+          }
+        </nav>
+        {{-- tabindex -1: the skip link (and navigation) can move focus here. --}}
+        <main class="content" id="content" tabindex="-1">
+          <p class="crumb">{{ crumb(config.sections, path) }}</p>
+          <slot />
+          <footer class="page-footer">
+            @if (config.editLink) {<a class="edit" [href]="config.editLink(source || path)">Edit this page on GitHub</a>}
+            <nav class="pager" aria-label="Previous and next">
+              @if (pager(config.sections, path).prev.href) {<a class="prev" [href]="pager(config.sections, path).prev.href"><small>Previous</small>{{ pager(config.sections, path).prev.title }}</a>}
+              @if (pager(config.sections, path).next.href) {<a class="next" [href]="pager(config.sections, path).next.href"><small>Next</small>{{ pager(config.sections, path).next.title }}</a>}
+            </nav>
+          </footer>
+        </main>
+      </div>
+    } @else {
+      <main class="content home" id="content" tabindex="-1"><slot /></main>
+    }
+    @if (config.footer) {<footer class="site-footer"><p>{{ config.footer }}</p></footer>}
+  </body>
+</html>

@@ -1,9 +1,5 @@
-// The docs site's one page list. The header, sidebar, breadcrumb, previous/next links and edit links are all
-// generated from it (src/layouts/docs.tscl), so they can't drift apart. Add a page here to put it in the docs.
-
-export type Item = { title: string; href: string }
-export type Group = { title: string; items: Item[] }
-export type Section = { key: string; title: string; href: string; groups: Group[] }
+// This site's navigation and theme settings: what @clarusjs/theme-docs shows in the header, sidebar and footer.
+import type { Section, ThemeConfig } from '@clarusjs/theme-docs/nav.ts'
 
 export const sections: Section[] = [
   {
@@ -75,35 +71,6 @@ export const sections: Section[] = [
   },
 ]
 
-const none: Item = { title: '', href: '' }
-const flat = (s: Section) => s.groups.flatMap((g) => g.items)
-
-/** The section a page belongs to ('' for pages outside the docs sections, like the home page). */
-export function sectionKey(path: string): string {
-  return sections.find((s) => flat(s).some((i) => i.href === path))?.key ?? ''
-}
-
-/** Sidebar groups for the page's section (none outside the sections). */
-export function groupsOf(path: string): Group[] {
-  return sections.find((s) => s.key === sectionKey(path))?.groups ?? []
-}
-
-/** "Guide › Templates" */
-export function crumb(path: string): string {
-  const section = sections.find((s) => s.key === sectionKey(path))
-  const group = section?.groups.find((g) => g.items.some((i) => i.href === path))
-  return section && group ? `${section.title} › ${group.title}` : ''
-}
-
-// #region pager
-/** Previous and next pages in sidebar order; an empty item (href '') when there is none. */
-export function pager(path: string): { prev: Item; next: Item } {
-  const section = sections.find((s) => s.key === sectionKey(path))
-  const items = section ? flat(section) : []
-  const i = items.findIndex((item) => item.href === path)
-  return { prev: items[i - 1] ?? none, next: items[i + 1] ?? none }
-}
-// #endregion pager
 
 // Pages written in Markdown (src/pages/**/*.md): their source file has that extension.
 const MARKDOWN = new Set([
@@ -140,8 +107,19 @@ const MARKDOWN = new Set([
   '/reference/vite-plugin',
 ])
 
-/** "Edit this page" link for a route. */
+// #region edit
+/** "Edit this page" link for a route: its Markdown or .tscl source on GitHub. */
 export function sourceOf(path: string): string {
   const file = path === '/' ? 'index' : path.replace(/^\//, '')
   return `https://github.com/forinda/clarusjs/edit/main/packages/docs/src/pages/${file}${MARKDOWN.has(path) ? '.md' : '.tscl'}`
+}
+// #endregion edit
+
+export const theme: ThemeConfig = {
+  brand: { text: 'clarus', accent: '.js', logo: '/logo.svg' },
+  siteUrl: 'https://clarusjs.com',
+  sections,
+  social: [{ label: 'GitHub', href: 'https://github.com/forinda/clarusjs', icon: 'github' }],
+  editLink: sourceOf,
+  footer: 'MIT licensed. This site is built with clarusjs: its pages are static HTML, and only its interactive parts ship JavaScript.',
 }

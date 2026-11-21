@@ -550,12 +550,13 @@ test('the saved theme survives fragment navigation and client routes (the router
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
 })
 
-test('the site stylesheet goes through Vite: imported by the layout, hashed, linked before the component styles', async ({ page }) => {
+test('the theme and site stylesheets go through Vite: imported by the layouts, hashed, linked before the component styles', async ({ page }) => {
   const response = await page.goto('/guide/styles')
   expect(response?.status()).toBe(200)
   const hrefs = await page.locator('head link[rel="stylesheet"]').evaluateAll((links) => links.map((l) => l.getAttribute('href')!))
-  expect(hrefs[0]).toMatch(/^\/assets\/.*docs-[\w-]+\.css$/)
-  expect(hrefs[1]).toMatch(/^\/assets\/cl-styles-[\w-]+\.css$/)
+  expect(hrefs[0]).toMatch(/^\/assets\/.*theme-[\w-]+\.css$/) // @clarusjs/theme-docs, imported by its layout
+  expect(hrefs[1]).toMatch(/^\/assets\/.*docs-[\w-]+\.css$/) // this site's own, after the theme so it can override
+  expect(hrefs[2]).toMatch(/^\/assets\/cl-styles-[\w-]+\.css$/)
   expect((await page.request.get('/docs.css')).status()).toBe(404) // no longer a raw public file
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.site-header')!).borderBottomStyle)).toBe('solid')
 })
@@ -621,7 +622,7 @@ test('highlighted code: colours follow the theme, code groups switch without Jav
 test('snippets show real source files; includes share Markdown between pages', async ({ page }) => {
   await page.goto('/guide/markdown')
   const snippet = page.locator('.code-block').filter({ has: page.locator('.code-title', { hasText: 'src/nav.ts' }) })
-  await expect(snippet.locator('code')).toContainText('export function pager(path: string)')
+  await expect(snippet.locator('code')).toContainText('export function sourceOf(path: string)')
   await expect(snippet.locator('code')).not.toContainText('#region')
   for (const path of ['/guide/markdown', '/guide/what-is-clarusjs']) {
     await page.goto(path)

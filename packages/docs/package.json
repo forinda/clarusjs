@@ -12,7 +12,8 @@
     "explain": "node --experimental-strip-types --no-warnings ../clarusjs/src/cli/index.ts explain"
   },
   "dependencies": {
-    "clarusjs": "workspace:*"
+    "clarusjs": "workspace:*",
+    "@clarusjs/theme-docs": "workspace:*"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
