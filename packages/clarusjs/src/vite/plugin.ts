@@ -15,6 +15,7 @@ import { writeManifest } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
+import { projectAliases, resolveAlias, type Alias } from './aliases.ts'
 import { gitDates, sitemapXml } from './sitemap.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { rootLinks, routeFromFile } from '../server/handler.ts'
@@ -46,7 +47,7 @@ const scopeFor = (root: string, file: string) => scopeId(relative(root, file).sp
  * Each page's stylesheets (absolute paths), from its own `@import './x.css'` and its components', transitively.
  * Dependencies come first, so a layout's base CSS is linked before what the page adds.
  */
-function pageStylesheets(root: string, files: Files): Map<string, string[]> {
+function pageStylesheets(root: string, files: Files, aliases: Alias[] = []): Map<string, string[]> {
   const deps = new Map<string, { css: string[]; components: string[] }>()
   const require = createRequire(resolve(root, 'package.json'))
   const packageFile = (spec: string) => { try { return realpathSync(require.resolve(spec.replace(/\?.*$/, ''))) } catch { return undefined } }
@@ -59,10 +60,12 @@ function pageStylesheets(root: string, files: Files): Map<string, string[]> {
         const path = from.replace(/\?.*$/, '')
         return path.startsWith('/') ? resolve(root, `.${path}`) : resolve(dirname(file), path)
       }
+      // A path alias (~/, tsconfig paths, Vite's resolve.alias), else a package specifier.
+      const bare = (from: string) => resolveAlias(from.replace(/\?.*$/, ''), aliases) ?? packageFile(from)
       deps.set(file, {
-        css: parsed?.cssImports.map((c) => near(c.from)) ?? [],
+        css: parsed?.cssImports.map((c) => (/^[./]/.test(c.from) ? near(c.from) : bare(c.from))).filter((f): f is string => !!f) ?? [],
         // Components in packages too ('@clarusjs/theme-docs/layout.tscl'): their stylesheets are the page's as well.
-        components: parsed?.imports.map((imp) => (/^[./]/.test(imp.from) ? near(imp.from) : packageFile(imp.from))).filter((f): f is string => !!f) ?? [],
+        components: parsed?.imports.map((imp) => (/^[./]/.test(imp.from) ? near(imp.from) : bare(imp.from))).filter((f): f is string => !!f) ?? [],
       })
     }
     return deps.get(file)!
@@ -200,9 +203,11 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   const extensions = ['.tscl', ...sources.map((src) => src.extension)]
   // Component files of every kind, read as .tscl text (a source's output, or the file itself).
   // Page sources only apply under src/pages: elsewhere (src/parts, …) their files are plain files, not components.
+  // The project's path aliases (set in the config hook, once the root and Vite's own aliases are known).
+  let aliases: Alias[] = []
   const files: Files = {
     find: (dir) => findClarusFiles(dir, extensions).filter((f) => f.endsWith('.tscl') || f.includes(`${sep}src${sep}pages${sep}`)),
-    components: (appRoot) => reachableComponents(appRoot, files.find(resolve(appRoot, 'src')), (file) => files.read(file, appRoot), extensions),
+    components: (appRoot) => reachableComponents(appRoot, files.find(resolve(appRoot, 'src')), (file) => files.read(file, appRoot), extensions, aliases),
     read: (file, appRoot) => {
       const code = readFileSync(file, 'utf8')
       const src = sources.find((x) => file.endsWith(x.extension))
@@ -243,12 +248,21 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   return {
     name: 'clarusjs',
     config(userConfig, env) {
+      // The plugin's own component and stylesheet discovery resolves the same aliases Vite does.
+      const projectRoot = resolve(userConfig.root ?? process.cwd())
+      aliases = projectAliases(projectRoot, userConfig.resolve?.alias)
+      // For Vite: ~/ and the tsconfig/jsconfig paths (its own resolve.alias it already has). Not Vite's
+      // resolve.tsconfigPaths: that only applies to files the tsconfig includes, and .tscl files never are. Regexes:
+      // a string find only matches itself, or itself followed by '/'.
+      const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const own = projectAliases(projectRoot).map((a) => ({ find: new RegExp(`^${escape(a.find)}${a.exact ? '$' : a.find.endsWith('/') ? '' : '(?=/|$)'}`), replacement: a.replacement }))
       const config: UserConfig = {
         appType: 'custom',
         resolve: {
           alias: [
             { find: 'clarusjs/runtime/server', replacement: here('../runtime/server') },
             { find: 'clarusjs/runtime', replacement: here('../runtime/index') },
+            ...own,
           ],
         },
       }
@@ -280,7 +294,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (options.fragments) input[NAV_ENTRY] = here('../runtime/fragments')
       if (writeStyles(appRoot, files)) input[STYLES_ENTRY] = resolve(appRoot, STYLES_FILE)
       // Stylesheets imported by pages and components: each goes through Vite's CSS pipeline as its own entry.
-      for (const sheet of new Set([...pageStylesheets(appRoot, files).values()].flat())) {
+      for (const sheet of new Set([...pageStylesheets(appRoot, files, aliases).values()].flat())) {
         if (!existsSync(sheet)) throw new Error(`clarusjs: imported stylesheet not found: ${relative(appRoot, sheet)}`)
         input[`css/${relative(appRoot, sheet).split(sep).join('/').replace(/\.css$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))}`] = sheet
       }
@@ -449,7 +463,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const navUrl = urls?.get(NAV_ENTRY) ?? '/cl-nav.js'
       // Each page's imported stylesheets: built URLs (by source key), or the source served by Vite in dev.
       const css: Record<string, string[]> = {}
-      for (const [route, sheets] of pageStylesheets(root, files)) {
+      for (const [route, sheets] of pageStylesheets(root, files, aliases)) {
         if (!sheets.length) continue
         css[route] = sheets.map((sheet) => {
           const key = relative(root, sheet).split(sep).join('/')
@@ -493,7 +507,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     } },
     transform: {
       filter: { id: fileRe },
-      handler(raw, id) {
+      async handler(raw, id) {
         const file = id.replace(/\?.*$/, '')
         // A page source's file is compiled from the .tscl text it produces: only under src/pages, and never when it is
         // imported as text or a URL (CHANGELOG.md?raw stays a string).
@@ -517,6 +531,17 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           : command === 'build' ? `${CHUNK_TOKEN}[${entryName(root, file)}]__` : clientUrlFor(root, file)
         if (urls && !clientUrl && compile(code, { file, target: 'client' }).stateful) {
           this.error(`${file}: stateful component is not under src/, so it has no client chunk`)
+        }
+        // Imports that aren't relative or root paths must resolve (an alias, a package): otherwise a located error at
+        // the @import, naming it, rather than Vite's error about the compiled module.
+        let parsed
+        try { parsed = parse(code, file) } catch { parsed = null } // compile reports it below
+        for (const imp of parsed ? [...parsed.imports, ...parsed.dataImports, ...parsed.cssImports] : []) {
+          if (/^[./]/.test(imp.from) || /^[a-z]+:/i.test(imp.from)) continue
+          if (await this.resolve(imp.from.replace(/\?.*$/, ''), id)) continue
+          const before = code.slice(0, imp.start)
+          const line = before.split('\n').length
+          this.error(`${rel}:${line}:${imp.start - before.lastIndexOf('\n')} cannot resolve '${imp.from}': no file, package or path alias (~/, tsconfig paths, resolve.alias) matches it`)
         }
         try {
           // A ?render module runs in the browser: its child components must be render modules too.

@@ -194,3 +194,14 @@ test('a JavaScript project\'s jsconfig.json is used like a tsconfig.json', () =>
   check({ root, typescript })
   expect(JSON.parse(readFileSync(resolve(root, '.clarusjs/tsconfig.check.json'), 'utf8')).extends).toBe('../jsconfig.json')
 })
+
+test('#102: ~/ and tsconfig paths resolve in templates (components, data) as in the build; errors stay in the template', () => {
+  const root = project({
+    'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true, module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2023', 'DOM'], allowImportingTsExtensions: true, noEmit: true, paths: { '@/*': ['./src/*'] } } }),
+    'src/components/card.tscl': '@input title: string\n<b>{{ title }}</b>\n',
+    'src/data/site.ts': "export const name: string = 'x'\n",
+    'src/pages/index.tscl': "@import card from '~/components/card.tscl'\n@import { name } from '@/data/site.ts'\n<card [title]=\"name\" />\n<p>{{ name.nope }}</p>\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:4 TS2339'])
+})
