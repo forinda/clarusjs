@@ -1,7 +1,7 @@
 // Attach helpers: find markers in server HTML and keep them updated. Browser only. Never re-renders existing HTML;
 // only @if branches and @for rows that did not exist on the server are rendered here.
 import { attrValue } from './attrs.ts'
-import { effect, onDispose, scope, state, untrack, type Signal } from './signals.ts'
+import { batch, effect, onDispose, scope, state, untrack, type Signal } from './signals.ts'
 
 /** @internal Compiled components call this; apps don't. */
 export type Hole = { start: Comment; end: Comment }
@@ -214,8 +214,8 @@ export function forBlock(
 
   effect(() => {
     const items = [...((list() ?? []) as Iterable<unknown>)]
-    untrack(() => {
-      count.set(items.length)
+    untrack(() => batch(() => {
+      count.set(items.length) // with the rows' new indices below, in one batch: $last doesn't flip on the way
       // Keys, made unique: a repeated key would make two rows share one identity.
       const seen = new Set<unknown>()
       const keys = items.map((item, i) => {
@@ -269,7 +269,7 @@ export function forBlock(
         const { first: start, last: end } = insertHtml(`<!--[e-->${empty.html()}<!--]-->`, f.end)
         emptyRange = wireEmpty({ start: start as Comment, end: end as Comment })
       }
-    })
+    }))
   })
 }
 
@@ -342,7 +342,7 @@ export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, t
   effect(() => {
     const raw = fn()
     // <select multiple> bound to an array: each option selected when the array has its value.
-    if (name === 'value' && Array.isArray(raw) && (el as HTMLSelectElement).multiple) {
+    if (name === 'value' && Array.isArray(raw) && el.tagName === 'SELECT' && (el as HTMLSelectElement).multiple) {
       const values = raw.map(String) // option values are text: [1, 2] selects "1" and "2"
       for (const o of (el as HTMLSelectElement).options) o.selected = values.includes(o.value)
       return

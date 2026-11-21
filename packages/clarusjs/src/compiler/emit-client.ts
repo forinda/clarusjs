@@ -24,7 +24,7 @@ export function emitClient(ir: ComponentIR): string {
     all.some((n) => n.kind === 'attr' && n.reactive) && 'attr as __cl_attr',
     hasBlocks && 'block as __cl_block',
     hasFors && 'forBlock as __cl_for',
-    all.some((n) => n.kind === 'for' && n.block >= 0 && rowNames(n).some((x) => x !== '$count')) && 'derived as __cl_derived',
+    all.some((n) => n.kind === 'for' && n.block >= 0 && rowNames(n, ir.events).some((x) => x !== '$count')) && 'derived as __cl_derived',
     hasRegions && 'region as __cl_region',
     all.some((n) => n.kind === 'component' && !!n.models?.length) && 'model as __cl_model',
     kinds.has('model') && 'modelInput as __cl_modelInput',
@@ -115,13 +115,13 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
       // In row HTML `item` and `$index` are plain values; while wiring a row they are that row's signals.
       const rowCtx = `__cl_c${depth + 1}`
       // The derived names ($first, $last, $even, $odd) are derived signals in the wiring, from $index and $count.
-      const names = rowNames(n)
+      const names = rowNames(n, ir.events)
       const derivedNames = names.filter((x) => x !== '$count')
       const loop = [n.item, '$index', ...(names.length ? ['$count'] : [])]
       const rowSignals: Signals = new Map([...signals, ...loop.map((name) => [name, 'state'] as const), ...derivedNames.map((name) => [name, 'derived'] as const)])
       const plain = rw.without([n.item, ...FOR_IMPLICIT])
       const key = n.track === null ? '$index' : wrapExpr(plain.expr(n.track))
-      const wire = [...rowDerived(n), ...wiring(ir, n.nodes, `f${n.block}`, rowCtx, rowSignals, depth + 1)]
+      const wire = [...rowDerived(n, ir.events), ...wiring(ir, n.nodes, `f${n.block}`, rowCtx, rowSignals, depth + 1)]
       const row = `{\n    html: (${rowParams(n)}) => ${htmlExpr(n.nodes, plain)},\n    wire: ${fn(`${rowCtx}, ${loop.join(', ')}`, wire)},\n  }`
       const empty = n.empty
         ? `{\n    html: () => ${htmlExpr(n.empty, rw)},\n    wire: ${fn(rowCtx, wiring(ir, n.empty, `f${n.block}e`, rowCtx, signals, depth + 1))},\n  }`

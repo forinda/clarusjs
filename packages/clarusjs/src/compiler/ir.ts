@@ -171,6 +171,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
         children.forEach((child) => visit(child, rawText))
         return list
       }
+      if (node.track !== null && referencesNames(node.track, new Set(FOR_IMPLICIT.filter((x) => x !== '$index')))) fail('track can use the item and $index, not $count, $first, $last, $even or $odd (a key must not change when the list grows)', node.trackStart)
       if (block >= 0 && node.track === null) warnings.push(new ClarusError('@for without track: rows are matched by position, so a row\'s state moves to another item when the list changes order; add track item.id (or another unique key)', file, source, node.start))
       const nodes = lowerInto(node.children, `f${block}`, new Set([...parentLoop, node.item, ...FOR_IMPLICIT]))
       const empty = node.empty ? lowerInto(node.empty, `f${block}e`, parentLoop) : null
@@ -279,7 +280,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       // Radios, checkboxes and number fields bind differently: that needs a static type. A bound [type] (text or email,
       // a field component's prop) binds as text.
       const typeAttr = node.attrs.find((x) => x.kind === 'static' && x.name === 'type')
-      const inputType = typeAttr?.kind === 'static' && typeof typeAttr.value === 'string' ? typeAttr.value : 'text'
+      const inputType = typeAttr?.kind === 'static' && typeof typeAttr.value === 'string' ? typeAttr.value.toLowerCase() : 'text' // types are case-insensitive
       const path = { kind: 'prop' as const, name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start }
       // Checkboxes with a value bound by [(value)] (#241): an array, as Vue's v-model: checked when it includes the
       // value; toggling adds or removes it.

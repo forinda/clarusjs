@@ -108,10 +108,10 @@ export async function h<N extends ViewName>(name: N | (string & {}), props: (N e
     if (!load) throw new Error(`clarusjs: no view "${name}"${views ? `; views: ${[...views.keys()].sort().join(', ')}` : ' (h() runs in server code, after the server entry has loaded)'}`)
     const named = children && typeof children === 'object' && !Array.isArray(children) && !(children as { [HTML]?: unknown })[HTML] && !(children instanceof Promise)
     const slots: Record<string, string> = {}
-    for (const [slot, content] of Object.entries(named ? (children as Record<string, Children>) : { default: children as Children })) {
-      const filled = await childrenHtml(content)
-      if (filled) slots[slot] = filled // only slots with content: a view without a <slot /> takes no children
-    }
+    // All at once, so every slot's failure is observed (one rejected slot doesn't leave another's unhandled).
+    const entries = Object.entries(named ? (children as Record<string, Children>) : { default: children as Children })
+    const filled = await Promise.all(entries.map(([, content]) => childrenHtml(content)))
+    entries.forEach(([slot], k) => { if (filled[k]) slots[slot] = filled[k]! }) // only slots with content: a view without a <slot /> takes no children
     return html((await load()).render(props as object, Object.keys(slots).length ? slots : undefined))
   }
   const tag = name.toLowerCase()

@@ -1631,3 +1631,18 @@ test('#259 h(): the playground builds HTML in load() with h(), and the page show
   await expect(built.locator('b')).toHaveCount(0)
   await expect(built.locator('em')).toHaveText('built with h()')
 })
+
+test('#241 forms: a checkbox group and a <select multiple> bind arrays, starting from the server\'s selection', async ({ page }) => {
+  // Before JavaScript: the server already rendered the choices.
+  const html = await (await page.request.get('/guide/forms')).text()
+  expect(html).toMatch(/<option value="en"[^>]* selected/) // an option from @for, selected by the server
+  await page.goto('/guide/forms')
+  const form = page.locator('form.signup').first()
+  await expect(page.locator('cl-island[c="signup-form"]').first()).toHaveAttribute('data-cl-ready', '')
+  const out = form.locator('.signup-lists')
+  await expect(out).toHaveText("Topics: news · Languages: en")
+  await form.getByRole('checkbox', { name: 'Releases' }).check()
+  await form.getByRole('checkbox', { name: 'News' }).uncheck()
+  await form.getByLabel('Languages').selectOption(['en', 'sw'])
+  await expect(out).toHaveText('Topics: releases · Languages: en, sw')
+})

@@ -10,5 +10,6 @@
   span { font: 600 13px var(--sans); color: var(--muted); }
   input { font: inherit; padding: 8px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--fg); transition: border-color 0.15s, box-shadow 0.15s; }
   input:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--rule)); }
-  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  /* A transparent outline: invisible normally (the ring is the shadow), but forced-colors mode shows it. */
+  input:focus { outline: 2px solid transparent; outline-offset: 2px; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 </style>

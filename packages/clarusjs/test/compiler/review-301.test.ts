@@ -7,7 +7,10 @@ import { island } from '../../src/runtime/server.ts'
 import { h, registerViews } from '../../src/server/views.ts'
 import { importCode } from '../helpers.ts'
 
-beforeAll(() => registerViews({ '/src/components/pill.tscl': async () => importCode(compile('@input text: string\n<span>{{ text }}</span>', { file: 'src/components/pill.tscl', target: 'server' }).code, 'r301-pill') }))
+beforeAll(() => registerViews({
+  '/src/components/pill.tscl': async () => importCode(compile('@input text: string\n<span>{{ text }}</span>', { file: 'src/components/pill.tscl', target: 'server' }).code, 'r301-pill'),
+  '/src/components/card.tscl': async () => importCode(compile('<section><slot /><slot name="foot" /></section>', { file: 'src/components/card.tscl', target: 'server' }).code, 'r301-card'),
+}))
 const err = (src: string) => { try { compile(src, { file: 'x.tscl', target: 'client' }) } catch (e) { return (e as ClarusError).message } return 'no error' }
 async function mount(source: string) {
   const s = await importCode(compile(source, { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code, 'r301-s', {}, true)
@@ -74,4 +77,51 @@ test('7: h() throws on children it can\'t use: a void element\'s, and named slot
 test('9: [(value)] with a bound [type] binds as text (a field component switching text and email); radio, checkbox and number need a static type', () => {
   const code = compile('<script>\n  let t = state("email"); let v = state("")\n</script>\n<input [type]="t" [(value)]="v">', { file: 'x.tscl', target: 'client' }).code
   expect(code).toContain('isComposing') // the text binding
+})
+
+test('CR-A: a track key can\'t use $count and the derived names (its key function has the item and $index only)', () => {
+  expect(err('<script>\n  let xs = state([1])\n</script>\n<ul>@for (x of xs; track x + $count) { <li></li> }</ul>')).toMatch(/^x\.tscl:4:\d+ track can use the item and \$index/)
+})
+
+test('CR-B: a row name used only in an event handler is wired', async () => {
+  const { $ } = await mount('<script>\n  let xs = state(["a", "b"]); let got = state("")\n</script>\n<div><ul>@for (x of xs; track x) { <li><button (click)="got = x + ($last ? \'!\' : \'\') + $count">{{ x }}</button></li> }</ul><p class="o">{{ got }}</p></div>')
+  ;(document.querySelectorAll('button')[1] as HTMLElement).click()
+  expect($('p.o').textContent).toBe('b!2')
+})
+
+test('CR-C: input types are case-insensitive (NUMBER is a number field; Radio a radio)', async () => {
+  const { $ } = await mount('<script>\n  let n = state(1); let p = state("a")\n</script>\n<div><input class="n" type="NUMBER" [(value)]="n"><input class="r" type="Radio" value="b" [(value)]="p"><p class="o">{{ typeof n }} {{ p }}</p></div>')
+  const n = $('input.n'); n.value = '5'; n.dispatchEvent(new Event('input', { bubbles: true }))
+  $('input.r').click()
+  expect($('p.o').textContent).toBe('number b')
+})
+
+test('CR-D: removing an earlier row doesn\'t flip $last off and on (an @if ($last) branch stays, with its state)', async () => {
+  const { $ } = await mount('<script>\n  let xs = state(["a", "b"])\n</script>\n<div><ul>@for (x of xs; track x) { <li>@if ($last) { <input class="last"> }</li> }</ul><button class="rm" (click)="xs = [\'b\']">rm</button></div>')
+  const input = $('input.last')
+  input.value = 'typed'
+  ;($('button.rm') as unknown as HTMLElement).click()
+  expect($('input.last')).toBe(input) // the same element, not recreated
+  expect($('input.last').value).toBe('typed')
+})
+
+test('CR-E: <input type="email" multiple> bound to an array doesn\'t crash (only selects have options)', async () => {
+  const { $ } = await mount('<script>\n  let to = state(["a@x.io", "b@x.io"])\n</script>\n<div><input type="email" multiple [value]="to"></div>')
+  expect($('input').value).toBe('a@x.io,b@x.io')
+})
+
+test('CR-F: options added later by @for are selected when the bound array has them', async () => {
+  const { $ } = await mount('<script>\n  let opts = state(["a"]); let picked = state(["b"])\n</script>\n<div><select multiple [(value)]="picked">@for (o of opts; track o) { <option [value]="o">{{ o }}</option> }</select><button (click)="opts = [\'a\', \'b\']">add</button></div>')
+  ;($('button') as unknown as HTMLElement).click()
+  expect([...$<HTMLSelectElement>('select').options].map((o) => o.selected)).toEqual([false, true])
+})
+
+test('CR-G: h() with two failing named slots rejects once, leaving no unhandled rejection', async () => {
+  const unhandled: unknown[] = []
+  const onUnhandled = (e: unknown) => unhandled.push(e)
+  process.on('unhandledRejection', onUnhandled)
+  await expect(h('components/card', {}, { default: Promise.reject(new Error('a')), foot: Promise.reject(new Error('b')) } as never)).rejects.toThrow()
+  await new Promise((r) => setTimeout(r, 20))
+  process.off('unhandledRejection', onUnhandled)
+  expect(unhandled).toEqual([])
 })

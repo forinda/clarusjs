@@ -103,8 +103,10 @@ const DERIVED: Record<string, string> = {
   $odd: '$index % 2 === 1',
 }
 /** The @for implicit names a row's template uses, besides `$index`: `$count` and those derived from it. */
-export function rowNames(n: Extract<IRNode, { kind: 'for' }>): string[] {
-  const text = JSON.stringify(n.nodes)
+export function rowNames(n: Extract<IRNode, { kind: 'for' }>, events: { handler: string; scope?: string }[] = []): string[] {
+  // Its template, and (in an island) the event handlers inside its rows: f<block>, f<block>.<nested>…
+  const rowEvents = events.filter((e) => e.scope === `f${n.block}` || e.scope?.startsWith(`f${n.block}.`)).map((e) => e.handler)
+  const text = JSON.stringify(n.nodes) + JSON.stringify(rowEvents)
   // As names, not inside others ($lastName) or after a dot (user.$first).
   const has = (name: string) => new RegExp(`(?<![\\w$.])\\${name}(?![\\w$])`).test(text)
   const used = Object.keys(DERIVED).filter(has)
@@ -120,6 +122,6 @@ export function rowParams(n: Extract<IRNode, { kind: 'for' }>): string {
   return [n.item, '$index', '__cl_list', '$count = __cl_list.length', ...names.filter((x) => x !== '$count').map((x) => `${x} = ${DERIVED[x]}`)].join(', ')
 }
 /** In a row's wiring: the derived names, from the row's $index and the list's $count signals. */
-export function rowDerived(n: Extract<IRNode, { kind: 'for' }>): string[] {
-  return rowNames(n).filter((x) => x !== '$count').map((x) => `const ${x} = __cl_derived(() => ${DERIVED[x]!.replace(/\$index/g, '$index.get()').replace(/\$count/g, '$count.get()')})`)
+export function rowDerived(n: Extract<IRNode, { kind: 'for' }>, events: { handler: string; scope?: string }[] = []): string[] {
+  return rowNames(n, events).filter((x) => x !== '$count').map((x) => `const ${x} = __cl_derived(() => ${DERIVED[x]!.replace(/\$index/g, '$index.get()').replace(/\$count/g, '$count.get()')})`)
 }

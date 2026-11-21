@@ -256,7 +256,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
             // A radio in a group writes its own value: check that value against the bound type.
             const type = node.attrs.find((x) => x.kind === 'static' && x.name === 'type')
             const own = node.attrs.find((x) => x.kind === 'static' && x.name === 'value')
-            const radio = node.tag === 'input' && a.name === 'value' && type?.kind === 'static' && type.value === 'radio' && own?.kind === 'static'
+            const radio = node.tag === 'input' && a.name === 'value' && type?.kind === 'static' && String(type.value).toLowerCase() === 'radio' && own?.kind === 'static'
             writable(a, radio ? JSON.stringify(own.value === true ? '' : own.value) : undefined)
           }
           else if (a.kind === 'prop' && a.name === 'engine') {
