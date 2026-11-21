@@ -1,48 +1,45 @@
-// The built extension loads as VS Code loads it (CommonJS, `vscode` external), registers its providers on activate,
-// and its hover provider answers: a stub `vscode` module stands in for the editor.
+// The built extension: dist/extension.js (the client VS Code loads; only `vscode` and Node built-ins outside it) and
+// dist/server.js (the clarusjs language server, bundled), which answers over LSP as VS Code starts it.
 import { execFileSync } from 'node:child_process'
-import { createRequire } from 'node:module'
-import Module from 'node:module'
+import { mkdtempSync, readFileSync } from 'node:fs'
+import { builtinModules } from 'node:module'
+import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
-import { expect, test } from 'vitest'
+import { startLanguageServer } from '@volar/test-utils'
+import { URI } from 'vscode-uri'
+import { beforeAll, expect, test } from 'vitest'
 
 const pkg = resolve(import.meta.dirname, '..')
+beforeAll(() => {
+  const vite = resolve(pkg, 'node_modules/vite/bin/vite.js')
+  execFileSync(process.execPath, [vite, 'build', '--logLevel', 'silent'], { cwd: pkg })
+  execFileSync(process.execPath, [vite, 'build', '--mode', 'server', '--logLevel', 'silent'], { cwd: pkg })
+}, 120_000)
 
-test('the bundle activates and serves hover for a component', () => {
-  execFileSync(process.execPath, [resolve(pkg, 'node_modules/vite/bin/vite.js'), 'build', '--logLevel', 'silent'], { cwd: pkg })
-  const providers: Record<string, any> = {}
-  class Range { constructor(public start: unknown, public end: unknown) {} }
-  class Hover { constructor(public contents: any, public range: Range) {} }
-  class MarkdownString { constructor(public value: string) {} }
-  const vscode = {
-    Range, Hover, MarkdownString, SnippetString: class {}, CompletionItem: class {},
-    workspace: { textDocuments: [] },
-    languages: {
-      registerHoverProvider: (lang: string, p: unknown) => { providers[`hover:${lang}`] = p; return { dispose() {} } },
-      registerCompletionItemProvider: (lang: string, p: unknown) => { providers[`complete:${lang}`] = p; return { dispose() {} } },
-    },
-  }
-  const resolveFilename = (Module as any)._resolveFilename
-  ;(Module as any)._resolveFilename = function (request: string, ...rest: unknown[]) { return request === 'vscode' ? 'vscode' : resolveFilename.call(this, request, ...rest) }
-  stubModule(vscode)
+test('the client bundle needs only vscode and Node built-ins', () => {
+  const code = readFileSync(resolve(pkg, 'dist/extension.js'), 'utf8')
+  const required = [...code.matchAll(/require\(["']([^"']+)["']\)/g)].map((m) => m[1]!)
+  expect(required.filter((r) => r !== 'vscode' && !r.startsWith('node:') && !builtinModules.includes(r))).toEqual([])
+  expect(code).toContain('LanguageClient')
+})
+
+test('the bundled server answers over LSP: a template error comes back', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'cl-vsix-'))
+  const server = startLanguageServer(resolve(pkg, 'dist/server.js'), root)
   try {
-    const extension = createRequire(import.meta.url)(resolve(pkg, 'dist/extension.js'))
-    const subscriptions: unknown[] = []
-    extension.activate({ subscriptions })
-    expect(subscriptions).toHaveLength(2)
-    const text = "@import card from './card.tscl'\n<card />\n"
-    const doc = { getText: () => text, uri: { fsPath: '/nowhere/page.tscl' }, offsetAt: (p: number) => p, positionAt: (o: number) => o }
-    const hover = providers['hover:tscl'].provideHover(doc, text.indexOf('<card') + 2)
-    expect(hover.contents.value).toContain('./card.tscl')
+    await server.initialize(URI.file(root).toString(), { trusted: false }, {})
+    const doc = await server.openUntitledDocument('tscl', '<form [engine]="f"></form>\n')
+    const diagnostics = await server.sendDocumentDiagnosticRequest(doc.uri)
+    expect('items' in diagnostics ? diagnostics.items.map((d) => d.message).join('\n') : '').toMatch(/\[engine\] needs a <script>/)
   } finally {
-    ;(Module as any)._resolveFilename = resolveFilename
-    delete (Module as any)._cache.vscode
+    server.connection.dispose()
   }
 }, 60_000)
 
-function stubModule(exports: object) {
-  const stub = new Module('vscode')
-  stub.exports = exports
-  stub.loaded = true
-  ;(Module as any)._cache.vscode = stub
-}
+// Size budget, set from the first build with the server (2.6 MB of bundles, a 625 KB .vsix): raising it is a
+// deliberate change in its own PR (AGENTS.md).
+test('size budget: the two bundles stay within 3 MB', async () => {
+  const { statSync } = await import('node:fs')
+  const total = ['extension.js', 'server.js'].reduce((n, f) => n + statSync(resolve(pkg, 'dist', f)).size, 0)
+  expect(total, `${total} B`).toBeLessThanOrEqual(3 * 1024 * 1024)
+})
