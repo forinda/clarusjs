@@ -84,6 +84,21 @@ Show the summary after a submit attempt (`(submit)="tried = true"` on the form, 
 
 Without errors it calls your `submit(values)`. Server errors it returns, `{ errors: { email: '…' } }`, land on their fields the same way. One submit runs at a time (`f.submitting`).
 
+## Editing existing data
+
+To edit a record, start the form from it. From a page's `.load.ts`, the island gets the record as an input; start the state from a copy (inputs are read-only):
+
+```tscl
+@input user: { name: string; email: string }
+<script>
+  import { form } from 'clarusjs/forms'
+  let edit = state({ ...user })
+  const f = form(edit)
+</script>
+```
+
+`f.changed(path)` then compares with the record, and `f.reset()` goes back to it. When the record arrives later (fetched in the browser) or is saved and reloaded, `f.reset(record)` sets it as the values and the new starting point, with touched and errors cleared.
+
 ## Type checking
 
 `clarusjs check` (and the editor) checks the paths you give the form: `f.error('customer.emial')` is an error that lists the paths there are. `[engine]` must be given a form.

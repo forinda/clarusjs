@@ -4,6 +4,8 @@
 // page it doesn't own. A form's values are any state: a component's or a store's.
 // @see https://clarusjs.com/guide/form-validation
 import { effect, onDispose, state, untrack, type Ctx, type Signal } from '../runtime/index.ts'
+import { marked } from '../runtime/dom.ts'
+import { browser } from '../runtime/env.ts'
 import type { Form, FormError, FormOptions, StandardSchema } from './types.ts'
 
 export type { Form, FormError, FormOptions, Path, StandardSchema } from './types.ts'
@@ -31,9 +33,10 @@ function pathOf(field: Element, root: Element): string {
 
 /** The form's engine. `values`: its state (on the server, where the compiler passes a plain value, it only renders). */
 export function form<T extends object>(values: Signal<T> | T, options: FormOptions<T> = {}): Form<T> {
-  if (!values || typeof (values as Signal<T>).get !== 'function') return inert<T>()
+  // On the server (a plain value from the compiler, or a store's signal in a module) it only renders.
+  if (!browser || !values || typeof (values as Signal<T>).get !== 'function') return inert<T>()
   const signal = values as Signal<T>
-  const initial = untrack(() => signal.get())
+  let initial = untrack(() => signal.get())
   const show = options.show ?? 'blur'
   // What changes the display; error() and friends read `version` so templates follow.
   const version = state(0)
@@ -290,7 +293,8 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
         submitting.set(false)
       }
     },
-    reset() {
+    reset(next) {
+      if (next !== undefined) initial = next // new values become the starting point
       touched = new WeakSet(); dirty = new WeakSet(); checked = new WeakSet(); forced.clear(); server = {}; shownAll.on = false
       signal.set(initial)
       refresh()
@@ -317,7 +321,10 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
         if (left) return void roots.set(root, left)
         roots.delete(root)
         for (const [type, fn] of listeners) root.removeEventListener(type, fn)
-        if (!roots.size) for (const type of urlEvents) removeEventListener(type, onHash)
+        if (!roots.size) {
+          for (const type of urlEvents) removeEventListener(type, onHash)
+          clearTimeout(timer) // nothing left to check
+        }
       }
     },
   }
@@ -326,8 +333,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
 
 /** [engine]="f" (compiled): connect the element marked data-cl-form="index" to its form until the island goes. */
 export function connect(ctx: Ctx, index: number, get: () => Form<any>): void {
-  const root = 'root' in ctx ? ctx.root : ctx
-  const el = root.matches(`[data-cl-form="${index}"]`) ? root : root.querySelector(`[data-cl-form="${index}"]`)
+  const el = marked(ctx, `[data-cl-form="${index}"]`)
   const engine = get() as Engine<any>
   if (el && typeof engine.connect === 'function') onDispose(engine.connect(el))
 }

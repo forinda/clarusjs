@@ -224,5 +224,6 @@ test('size budget: clarusjs/forms stays within 3.5 KB gzip on its own, and a sit
   expect(size, `clarusjs/forms: ${size} B gzip`).toBeLessThanOrEqual(3.5 * KB)
   // The fixture site has no [engine]: none of the engine is in its assets.
   const assets = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
-  for (const f of assets) expect(readFileSync(resolve(client, 'assets', f), 'utf8'), f).not.toContain('data-cl-message')
+  // Engine-only text: its message ids, the steps marker, and the schema failure notice.
+  for (const f of assets) for (const marker of ['cl-msg-', 'data-cl-steps', 'the form schema failed']) expect(readFileSync(resolve(client, 'assets', f), 'utf8'), `${f}: ${marker}`).not.toContain(marker)
 }, 60_000)
