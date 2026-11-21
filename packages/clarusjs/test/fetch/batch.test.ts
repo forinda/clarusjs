@@ -16,6 +16,18 @@ test('keys asked in the same microtask go out in one load; each get gets its par
   expect(load.mock.calls[0]![0]).toEqual(['a', 'b', 'c'])
 })
 
+test('keys asked in different microtasks of one task (islands attaching one after another) still go out together', async () => {
+  const load = vi.fn(answer)
+  const b = batch(load)
+  const p1 = b.get('a')
+  await Promise.resolve()
+  await Promise.resolve()
+  const p2 = b.get('b')
+  await Promise.all([p1, p2])
+  expect(load).toHaveBeenCalledTimes(1)
+  expect(load.mock.calls[0]![0]).toEqual(['a', 'b'])
+})
+
 test('concurrent gets of one key share one request and one promise', async () => {
   const load = vi.fn(answer)
   const b = batch(load)
@@ -72,6 +84,9 @@ test('json: non-2xx throws an Error with the status; 2xx returns the parsed body
   expect(await json('/good', { signal })).toEqual({ ok: 1 })
   expect(fetchMock.mock.calls[0]![1]).toEqual({ signal })
   await expect(json('/bad')).rejects.toThrow('/bad: 503 Service Unavailable')
+  // The failed response's body is read, so the request ends (a browser keeps an unread one open).
+  const bad = (await fetchMock.mock.results[1]!.value) as Response
+  expect(bad.bodyUsed).toBe(true)
 })
 
 test('resource + batch: three resources on one batch make one request', async () => {

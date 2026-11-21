@@ -146,3 +146,21 @@ test('disposed with its island after a lazy start (onStart: false): its signals 
   id.set(2)
   expect(fetcher).toHaveBeenCalledTimes(1)
 })
+
+test('async fetchers: await inside works; resolving to undefined is "not ready" (the last value is kept)', async () => {
+  const team = state<{ id: number } | undefined>({ id: 1 })
+  const r = resource(async ({ signal }) => {
+    const t = team.get() // read before the first await: tracked
+    if (!t) return undefined
+    await Promise.resolve(signal)
+    return `members of ${t.id}`
+  })
+  await flush()
+  expect(r.value).toBe('members of 1')
+  team.set(undefined)
+  await flush()
+  expect(r).toMatchObject({ value: 'members of 1', loading: false })
+  team.set({ id: 2 })
+  await flush()
+  expect(r.value).toBe('members of 2')
+})

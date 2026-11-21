@@ -16,6 +16,8 @@
 .button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
 
 .demo { margin: 8px 0 16px; }
+.demo-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.demo-panel { margin: 12px 0; }
 .counter {
   font: 600 15px var(--sans);
   padding: 10px 16px;
