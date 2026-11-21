@@ -31,13 +31,13 @@ export type FormOptions<T> = {
 }
 
 /** An error being shown, for a summary: its path, message, its message element's id, and its step. */
-export type FormError = { path: string; message: string; id: string; step: string | null }
+export type FormError<T = any> = { path: Path<T>; message: string; id: string; step: string | null }
 
 export type Form<T> = {
   /** The message shown for a field now: '' when there is none, or it isn't shown yet. */
   error(path: Path<T>): string
   /** Every error being shown, in document order. */
-  readonly errors: FormError[]
+  readonly errors: FormError<T>[]
   /** Left at least once. */
   touched(path: Path<T>): boolean
   /** Differs from the starting value. */

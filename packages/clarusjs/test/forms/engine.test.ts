@@ -178,3 +178,14 @@ test('on the server (a plain value, as the compiler passes there) a form shows n
   expect(f.errors).toEqual([])
   expect(f.valid).toBe(true)
 })
+
+test('the message can sit beside the label (outside it, so it is not part of the field\'s name): the nearest container with one', () => {
+  const { el, f } = mount(`<form data-cl-form="0"><div data-cl-field><label>Email <input required data-cl-path="email"></label> <small data-cl-message></small></div></form>`, { email: '' })
+  const input = el('input')
+  input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+  expect(f.error('email')).not.toBe('')
+  const message = el('[data-cl-message]')
+  expect(message.textContent).toBe(f.error('email'))
+  expect(input.getAttribute('aria-describedby')).toBe(message.id)
+  expect(input.closest('label')!.textContent).toBe('Email ') // the label holds the name only
+})

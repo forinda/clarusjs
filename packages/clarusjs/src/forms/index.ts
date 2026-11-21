@@ -10,6 +10,7 @@ export type { Form, FormError, FormOptions, Path, StandardSchema } from './types
 
 type Engine<T> = Form<T> & { connect(el: Element): () => void }
 
+const CONTAINERS = 'label, [data-cl-field], fieldset, cl-island'
 const FIELDS = 'input[data-cl-path],select[data-cl-path],textarea[data-cl-path]'
 const FLAGS = ['valueMissing', 'typeMismatch', 'patternMismatch', 'tooLong', 'tooShort', 'rangeUnderflow', 'rangeOverflow', 'stepMismatch', 'badInput'] as const
 let ids = 0
@@ -52,8 +53,16 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   const passed = new Set<string>() // steps left with next()
 
   const now = () => untrack(() => current.get())
-  /** A field's message element: the first [data-cl-message] in its label, [data-cl-field], fieldset or island. */
-  const boxOf = (el: Element) => el.closest('label, [data-cl-field], fieldset, cl-island')?.querySelector<HTMLElement>('[data-cl-message]')
+  /**
+   * A field's message element: the first [data-cl-message] in the nearest container around it (label,
+   * [data-cl-field], fieldset, island) that has one. Beside the label is best: inside, it's read as the field's name.
+   */
+  const boxOf = (el: Element) => {
+    for (let c = el.closest(CONTAINERS); c; c = c.parentElement?.closest(CONTAINERS) ?? null) {
+      const box = c.querySelector<HTMLElement>('[data-cl-message]')
+      if (box) return box
+    }
+  }
   /** The path of the field an event happened on, if it's one of this form's. */
   const eventPath = (e: Event) => {
     const field = (e.target as Element).closest?.(FIELDS)
@@ -184,7 +193,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
 
   const engine: Engine<T> = {
     error(path) { version.get(); return shown(path) ? errorsNow[path] ?? '' : '' },
-    get errors(): FormError[] {
+    get errors(): FormError<T>[] {
       version.get()
       const out: FormError[] = []
       for (const { el, path } of fields()) {
@@ -192,7 +201,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
         const box = boxOf(el)
         out.push({ path, message: errorsNow[path]!, id: box?.id || el.id, step: el.closest('[data-cl-step]')?.id ?? null })
       }
-      return out
+      return out as FormError<T>[]
     },
     touched(path) { version.get(); return touched.has(path) },
     changed(path) { return read(signal.get(), path) !== read(initial, path) },
