@@ -298,6 +298,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
         if (/^on/i.test(a.name)) fail(`use (${a.name.slice(2).toLowerCase()}) for events, not an ${a.name} attribute`, a.start)
         // srcdoc is a whole HTML document: binding data into it is HTML injection, so it stays static.
         if (a.name.toLowerCase() === 'srcdoc') fail('srcdoc cannot be bound; write it as a static attribute', a.start)
+        const loads = loadingUrl(node.tag, a.name, node.attrs)
+        if (loads) fail(`${a.name} on <${node.tag}> ${loads}, so it can't come from data: write it as a static attribute`, a.start)
         const exprs = a.kind === 'prop' ? [{ expr: a.expr, start: a.start }] : a.parts.filter((p) => typeof p !== 'string')
         for (const e of exprs) checkExpr(e.expr, file, source, e.start)
         const reactive = stateful && exprs.some((e) => referencesNames(e.expr, scriptScope) || referencesNames(e.expr, loopNames))
@@ -386,4 +388,29 @@ function modelPath(path: string, models: Set<string> = new Set()): string {
   if (parsed && models.has(parsed.root)) parts.unshift(JSON.stringify(`@${parsed.root}`))
   if (!parts.length) return '""'
   return parts.map((p, i) => (i ? `"." + ${p}` : p)).join(' + ')
+}
+
+// #248: URLs that load a page, plugin, stylesheet or base URL into this page. A value from data there (even
+// https) could embed anyone's page or restyle the site, so these are static only, like srcdoc. Links and images
+// keep the URL check (runtime/attrs.ts). (<script> in markup is `inline`, which takes static attributes only.)
+const LOADS: Record<string, Record<string, string>> = {
+  iframe: { src: 'loads a page into this one', sandbox: 'sets what the iframe may do', allow: 'sets what the iframe may do', referrerpolicy: 'sets what the iframe sends' },
+  frame: { src: 'loads a page into this one' },
+  embed: { src: 'loads a plugin or page into this one' },
+  object: { data: 'loads a plugin or page into this one', codebase: 'sets where a plugin loads from' },
+  base: { href: 'sets where every relative URL on the page points' },
+}
+// <link> rels that load nothing: their href may come from data (a canonical URL from the page's path).
+const SAFE_RELS = new Set(['canonical', 'alternate', 'prev', 'next', 'author', 'license', 'help', 'search', 'me', 'bookmark', 'external', 'nofollow', 'noopener', 'noreferrer', 'tag', 'privacy-policy', 'terms-of-service'])
+
+/** Why binding `attr` on `<tag>` is refused (it loads something into the page), or undefined. */
+function loadingUrl(tag: string, attr: string, attrs: Attr[]): string | undefined {
+  const t = tag.toLowerCase()
+  const name = attr.toLowerCase()
+  if (t === 'link' && name === 'href') {
+    const rel = attrs.find((x) => x.name.toLowerCase() === 'rel')
+    const rels = rel?.kind === 'static' && typeof rel.value === 'string' ? rel.value.toLowerCase().split(/\s+/).filter(Boolean) : []
+    return rels.length && rels.every((r) => SAFE_RELS.has(r)) ? undefined : 'can load a stylesheet, icon or script (only rel="canonical", "alternate" and other rels that load nothing take an href from data)'
+  }
+  return LOADS[t]?.[name]
 }

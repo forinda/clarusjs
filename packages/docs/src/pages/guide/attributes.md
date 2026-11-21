@@ -22,7 +22,16 @@ description: "Bind attributes with [name] or {{ }}; values are escaped and URLs 
 
 ## Safety
 
-URL attributes such as `href` and `src` only accept relative URLs and `http:`, `https:`, `mailto:` and `tel:` (plus raster `data:` images for image attributes); anything else becomes `about:invalid#unsafe`. `srcdoc` can't be bound. A bound `style` is escaped but not checked, so don't put untrusted data in it.
+URL attributes such as `href` and `src` only accept relative URLs and `http:`, `https:`, `mailto:` and `tel:` (plus raster `data:` images for image attributes); anything else becomes `about:invalid#unsafe`. A bound `style` is escaped but not checked, so don't put untrusted data in it.
+
+Some attributes load a whole page, plugin, stylesheet or base URL into yours, so a URL from data there could embed anyone's page or restyle your site. These take static values only, and binding them is a build error naming the place:
+
+- `srcdoc`;
+- `src` on `<iframe>`, `<frame>` and `<embed>`;
+- `data` and `codebase` on `<object>`;
+- `href` on `<base>`;
+- `sandbox`, `allow` and `referrerpolicy` on `<iframe>`, so data can't loosen what an iframe may do;
+- `href` on `<link>`, unless its `rel` is static and loads nothing: `<link rel="canonical" href="{{ url }}">` is fine.
 
 ::: tip
 For events, use `(click)="…"` inside an interactive component, not `onclick`.
