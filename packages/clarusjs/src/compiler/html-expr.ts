@@ -55,7 +55,9 @@ export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rew
     ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw)}`),
   ]
   const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
-  if (n.attach) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { attach: ${JSON.stringify(n.attach)} })`
+  // Render options: when to attach, and (for the forms engine) the path this component is bound to.
+  const opts = [...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.path ? [`path: ${wrapExpr(rw.expr(n.path))}`] : [])]
+  if (opts.length) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { ${opts.join(', ')} })`
   return slotsArg ? `${renderName(n.name)}({ ${props} }, ${slotsArg})` : `${renderName(n.name)}({ ${props} })`
 }
 
