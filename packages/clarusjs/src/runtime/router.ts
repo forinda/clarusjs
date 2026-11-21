@@ -49,25 +49,32 @@ export async function show(
     }),
   ])
   if (!(await isCurrent())) return false
-  const doc = new DOMParser().parseFromString(page.render(props), 'text/html')
-  // The head stays (its stylesheets are every client page's, linked by the shell); the title and the page's own
-  // <html> attributes (lang, dir, …) are the new page's.
-  // The site's titleTemplate, from the shell (always set: '%s' without one).
+  // The head stays (its stylesheets are every client page's, linked by the shell); the title gets the site's
+  // titleTemplate, from the shell (always set: '%s' without one).
+  const doc = swapIn(page.render(props))
   document.title = document.getElementById('cl-routes')!.dataset.title!.replace('%s', () => doc.title)
+  return true
+}
+
+/**
+ * Puts a whole page in: its body, its own <html> attributes (lang, dir, …) and its inline head scripts (such as
+ * setting the theme before paint, run once as on a normal load); then attaches its islands (the loader also releases
+ * the old page's). The head stays. Returns the parsed page, for its title.
+ */
+export function swapIn(html: string): Document {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
   const root = document.documentElement
   for (const { name } of [...root.attributes]) root.removeAttribute(name)
   for (const { name, value } of [...doc.documentElement.attributes]) root.setAttribute(name, value)
   document.body.replaceWith(doc.body)
-  // The page's inline head scripts (such as setting the theme before paint) run once, as on a normal load.
   for (const old of doc.head.querySelectorAll('script:not([src])')) {
     const script = document.createElement('script')
     script.textContent = old.textContent
     document.head.append(script)
     script.remove()
   }
-  // Attaches the new page's islands; the loader also releases the old page's.
   ;(globalThis as { __clAttach?: (root: ParentNode, navigated: 1) => void }).__clAttach?.(document.body, 1) // 1: navigated (bytes)
-  return true
+  return doc
 }
 
 const routes = globalThis.document?.getElementById('cl-routes')
@@ -76,7 +83,10 @@ if (routes) {
   // The first render is current until a navigation is taken over.
   show(new URL(location.href), table, () => !latest).catch((err: Error) => {
     if (latest) return
-    document.body.textContent = err.message.startsWith('404') ? 'Page not found.' : 'Could not load page.'
+    // The site's 404 or 500 page, at this same URL (its title as written); plain text when the site has none.
+    fetch(routes.dataset.base! + (/^404/.test(err.message) ? 404 : 500))
+      .then((res) => (res.ok ? res.text() : Promise.reject()))
+      .then((html) => { document.title = swapIn(html).title }, () => { document.body.textContent = 'Could not load page.' })
   })
   // Later navigations to client routes.
   takeOver((url) => matchRoute(table, url.pathname) && ((url, isCurrent, signal) => show(url, table, isCurrent, undefined, (src) => fetch(src, { signal }))))

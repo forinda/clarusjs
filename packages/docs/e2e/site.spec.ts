@@ -789,6 +789,19 @@ test('error pages: the 500 page renders at /500 and as 500.html, with links that
   await expect(page).toHaveURL(/\/guide\/getting-started$/)
 })
 
+test('client routes: a first render that fails shows the site\'s 500 or 404 page, at the same URL, with its islands', async ({ page }) => {
+  await page.route('**/tour/2/__data.json', (route) => route.fulfill({ status: 500, body: 'down' }))
+  await page.goto('/tour/2')
+  await expect(page.locator('h1')).toHaveText('Something went wrong')
+  await expect(page).toHaveURL(/\/tour\/2$/)
+  await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
+  await expect(page.locator('.site-header')).toBeVisible() // styled: the shell links the error pages' stylesheets
+  expect(await page.locator('.site-header').evaluate((el) => getComputedStyle(el).position)).toBe('sticky')
+  await page.route('**/tour/3/__data.json', (route) => route.fulfill({ status: 404, body: 'gone' }))
+  await page.goto('/tour/3')
+  await expect(page.locator('h1')).toHaveText('Page not found')
+})
+
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
