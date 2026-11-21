@@ -68,6 +68,10 @@ Add it to `tsconfig.json`, next to `compilerOptions`:
 
 `clarusjs check` type-checks the same way in one command, also on TypeScript 7.0, and covers Markdown pages, which the mapper doesn't. Use it in CI (see [Type checking](./type-checking.md)).
 
+## Formatting
+
+**Format Document** formats `.tscl` files with your project's Prettier and `@clarusjs/prettier-plugin`: see [Formatting](/guide/formatting).
+
 ## Other editors
 
 Each editor starts `clarusjs-ls --stdio` for files ending in `.tscl`. For TypeScript inside templates, add the content mapper line above to `tsconfig.json`: editors that use TypeScript 7.1's language server pick it up.
