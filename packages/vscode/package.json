@@ -1,8 +1,8 @@
 {
   "name": "clarusjs-vscode",
   "displayName": "clarusjs",
-  "description": "clarusjs .tscl templates: syntax highlighting, HTML hover and completion with your components, snippets, file icon.",
-  "version": "0.1.0",
+  "description": "clarusjs .tscl templates: the clarusjs language server (template errors, HTML/CSS/Emmet, components, references, renames), highlighting, snippets, file icon.",
+  "version": "0.2.0",
   "private": true,
   "publisher": "forinda",
   "license": "MIT",
@@ -14,7 +14,7 @@
   "homepage": "https://clarusjs.com/guide/editor",
   "icon": "icons/extension.png",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.91.0"
   },
   "categories": [
     "Programming Languages",
@@ -88,19 +88,28 @@
   },
   "scripts": {
     "test": "vitest run",
-    "package": "vite build && vsce package --no-dependencies",
+    "package": "pnpm build && vsce package --no-dependencies",
     "typecheck": "tsc --noEmit",
-    "build": "vite build"
+    "build": "vite build && vite build --mode server"
   },
   "devDependencies": {
+    "@clarusjs/language-server": "workspace:*",
     "@types/node": "^26.6.6",
-    "@types/vscode": "~1.90.0",
+    "@types/vscode": "~1.91.0",
+    "@volar/test-utils": "~2.4.31",
     "@vscode/vsce": "^4.1.1",
     "clarusjs": "workspace:*",
     "shiki": "^4.6.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.1",
-    "vscode-html-languageservice": "^5.6.2"
+    "vscode-languageclient": "^11.0.0",
+    "vscode-uri": "^3.2.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In Restricted Mode the language server uses the clarusjs compiler bundled with it, never the project's own."
+    }
   }
 }

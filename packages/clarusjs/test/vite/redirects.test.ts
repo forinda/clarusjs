@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { createBuilder, createServer } from 'vite'
 import { expect, test } from 'vitest'
 import clarusjs, { type ClarusOptions } from '../../src/vite/plugin.ts'
+import { unscoped } from '../helpers.ts'
 
 function site(pages: Record<string, string>) {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-redirects-'))
@@ -23,10 +24,10 @@ test('vite build: each redirect gets a page that sends visitors on, and a _redir
   const root = site({ 'src/pages/new.tscl': '<h1>New</h1>', 'src/pages/index.tscl': '<a href="/old">old link</a> <a href="/docs/">docs</a>' })
   const read = await build(root, { redirects: { '/old': '/new', '/docs': 'https://example.com/docs?a=1&b=2' } })
   const old = read('old/index.html')
-  expect(old).toContain('<meta http-equiv="refresh" content="0; url=/new">')
-  expect(old).toContain('<link rel="canonical" href="/new">')
-  expect(old).toContain('<meta name="robots" content="noindex">')
-  expect(old).toContain('<a href="/new">/new</a>')
+  expect(unscoped(old)).toContain('<meta http-equiv="refresh" content="0; url=/new">')
+  expect(unscoped(old)).toContain('<link rel="canonical" href="/new">')
+  expect(unscoped(old)).toContain('<meta name="robots" content="noindex">')
+  expect(unscoped(old)).toContain('<a href="/new">/new</a>')
   expect(read('docs/index.html')).toContain('url=https://example.com/docs?a=1&amp;b=2')
   // Old links still pass the link check (the build above didn't fail), and hosts with _redirects answer 301.
   expect(read('_redirects')).toBe('/old /new 301\n/docs https://example.com/docs?a=1&b=2 301\n')
@@ -66,5 +67,5 @@ test('review (#186): a redirect whose file would replace a generated one, or lan
   await expect(build(root, options({ '/app/1/__data.json': '/x' }))).rejects.toThrow("clarusjs: redirects['/app/1/__data.json'] would replace the page /app/1/__data.json")
   await expect(build(root, options({ '/%2e%2e/%2e%2e/public': '/x' }))).rejects.toThrow("clarusjs: redirects['/%2e%2e/%2e%2e/public'] is outside the site")
   expect(existsSync(resolve(root, 'public/index.html'))).toBe(false)
-  expect(readFileSync(resolve(root, 'dist/client/about/index.html'), 'utf8')).toContain('<h1>About</h1>')
+  expect(unscoped(readFileSync(resolve(root, 'dist/client/about/index.html'), 'utf8'))).toContain('<h1>About</h1>')
 }, 120_000)

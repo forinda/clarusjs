@@ -1,5 +1,17 @@
 # clarusjs for VS Code
 
+## 0.2.0
+
+The extension now runs the clarusjs language server (`@clarusjs/language-server`, bundled), the same one other editors use.
+
+- **Template errors as you type**, from the clarusjs compiler, at their place. With TypeScript 7.1's content mapper set up, syntax errors come from it instead, so a mistake shows once.
+- **Components:** completion of the file's imported components and of their inputs, models and events; hover shows where a component comes from and what it takes, with multi-line types whole; go to definition from a tag or its `@import`.
+- **References and renames:** Find All References for a component; rename a component in a file; renaming or moving a `.tscl` file updates the `@import`s that point to it (Markdown pages too).
+- **HTML, CSS and Emmet** in templates and `<style>`, with the binding forms of attributes (`[disabled]`, `(click)`, `[(value)]`).
+- **Semantic colouring** of the template syntax.
+- In a trusted workspace the server uses your project's own `clarusjs` compiler (when it's recent enough), so the editor agrees with your build.
+- Needs VS Code 1.91 or later.
+
 ## 0.1.0
 
 The first release.

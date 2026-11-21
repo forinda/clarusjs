@@ -218,12 +218,20 @@ to change later, so it's fixed now.
 | `<!--[cn-->…<!--]-->` | a child component inside an island whose props or slot content read state; the browser re-renders it, or, when it is a nested island, passes it the new props in place (its inputs are read-only signals; its state is kept) |
 | `<!--[fn-->…<!--]-->` | `@for` list `n` inside an island; each row is wrapped in `<!--[r-->…<!--]-->`, `@empty` content in `<!--[e-->…<!--]-->`. Markers inside a row repeat per row and are looked up within that row |
 
-A component with a scoped `<style>` marks its top-level elements with
-`data-cl-c="<scope id>"` (from its file path). Its CSS is wrapped in
-`@scope ([data-cl-c="<id>"]) to ([data-cl-c]) { … }`, so rules apply inside
-the component's elements (the top-level element itself is `:scope`) and stop
-at other components. All component styles are bundled into one stylesheet that
-every page links. `<style global>` is left as written and marks nothing.
+Every component marks its top-level elements with the class `cl-c-<scope id>`
+(the id from its file path; the `cl-c-` class prefix is reserved), merged with
+their own `class`. A `<style scoped>` block is wrapped in
+`@scope (.cl-c-<id>) to ([class*="cl-c-"]:not(.cl-c-<id>) > *) { … }`: its rules
+apply inside the component's elements (the top-level element itself is
+`:scope`) and to the top-level elements of the components it renders, but not
+inside those (Vue's rule: a parent can style a child's outer element, not its
+inside). Every component is marked, styled or not, so a scope always stops at a
+child component. A static `class="…"` on a component tag is appended to the
+component's top-level elements (render option `class`; an island carries it to
+the browser in its props as `__cl_class`, for the blocks it re-renders). A plain
+`<style>` and `<style global>` are global, plain CSS
+(a plain one warns, for one minor version, since it used to be scoped). All
+component styles are bundled into one stylesheet that every page links.
 
 `@import './x.css'` declares a stylesheet a component needs. Each page links
 the stylesheets it imports, directly or through its components (dependencies
@@ -259,7 +267,7 @@ islands or to pages on client routes, which render in the browser: their shell
 gets the site tags, and `#cl-routes` carries the template as `data-title` for the
 router to apply to each page's title.
 
-Static parts of the page carry **no markers at all** (apart from `data-cl-c` on styled components). Islands are
+Static parts of the page carry **no markers at all** (apart from the `cl-c-<id>` class on components' top-level elements). Islands are
 self-describing, so the loader needs no manifest at runtime and can attach to
 islands that arrive later (fragment navigation).
 

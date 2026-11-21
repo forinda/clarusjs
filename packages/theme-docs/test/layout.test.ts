@@ -7,6 +7,9 @@ import { beforeAll, expect, test } from 'vitest'
 import clarusjs from 'clarusjs/vite'
 import { themeDocs } from '../src/vite.js'
 
+/** Built HTML without the scope class every component's top-level elements carry (clarusjs#279): not what these tests check. */
+const unscoped = (html: string) => html.replace(/ class="cl-c-[\w-]+"/g, '').replace(/ cl-c-[\w-]+(?=[" ])/g, '')
+
 let html = ''
 let root = ''
 
@@ -36,7 +39,7 @@ beforeAll(async () => {
   w('src/pages/learn/two.tscl', lesson('/learn/two', '<h1>Two</h1>'))
   w('src/pages/learn/progress.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import learnProgress from '@clarusjs/theme-docs/learn-progress.tscl'\n@import { config } from '../../config.ts'\n<layout [config]=\"config\" [title]=\"'Progress'\" [path]=\"'/learn/progress'\"><h1>Progress</h1><learnProgress [config]=\"config\" /></layout>\n")
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [themeDocs(), clarusjs()] })).buildApp()
-  html = readFileSync(resolve(root, 'dist/client/guide/start/index.html'), 'utf8')
+  html = unscoped(readFileSync(resolve(root, 'dist/client/guide/start/index.html'), 'utf8'))
 }, 120_000)
 
 test('header: brand, section links with the current one marked, social icon links, ⋯ menu, ☰ for the drawer', () => {
@@ -65,7 +68,7 @@ test('content and "On this page": crumb, both forms of the table of contents, ed
 })
 
 test('a page without a date shows none', async () => {
-  const next = readFileSync(resolve(root, 'dist/client/guide/next/index.html'), 'utf8')
+  const next = unscoped(readFileSync(resolve(root, 'dist/client/guide/next/index.html'), 'utf8'))
   expect(next).not.toContain('class="updated"')
   expect(next).toContain('<a class="edit" href="https://example.com/edit/guide/next.tscl">')
 })
@@ -82,7 +85,7 @@ test('search: a header button for the island, and the index written next to the 
 })
 
 test('lesson layout: a focused header (leave, lesson n of N, one segment per step), the page, a fixed action bar', () => {
-  const one = readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8')
+  const one = unscoped(readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8'))
   expect(one).toContain('<title>One</title>')
   expect(one).toMatch(/<header class="lesson-header">\s*<a class="leave" href="\/learn\/progress" aria-label="Leave the lesson">/)
   expect(one).toContain('<p class="eyebrow">Learn · Lesson 1 of 2</p>') // the progress page isn't a lesson
@@ -94,7 +97,7 @@ test('lesson layout: a focused header (leave, lesson n of N, one segment per ste
 })
 
 test('quiz: an island whose server HTML works without JavaScript (radio options, the answer in a <details>)', () => {
-  const one = readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8')
+  const one = unscoped(readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8'))
   expect(one).toContain('<div class="quiz" data-quiz="quiz-0">')
   expect(one).toContain('<p class="quiz-question" id="quiz-0-q">Pick b</p>')
   expect(one).toMatch(/<cl-island c="[^"]*quiz-choices"[^>]*><div class="quiz-choices">/)
@@ -104,8 +107,8 @@ test('quiz: an island whose server HTML works without JavaScript (radio options,
 })
 
 test('progress: an XP chip (hidden until it knows the XP) in the lesson header and on Learn pages, and the progress page', () => {
-  const one = readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8')
-  const progress = readFileSync(resolve(root, 'dist/client/learn/progress/index.html'), 'utf8')
+  const one = unscoped(readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8'))
+  const progress = unscoped(readFileSync(resolve(root, 'dist/client/learn/progress/index.html'), 'utf8'))
   expect(one).toMatch(/<header class="lesson-header">.*<cl-island c="[^"]*learn-status"[^>]*><a class="xp-chip" href="\/learn\/progress" hidden/s)
   expect(progress).toMatch(/<header class="site-header">.*<cl-island c="[^"]*learn-status"/s)
   expect(html).not.toContain('learn-status') // a Guide page
