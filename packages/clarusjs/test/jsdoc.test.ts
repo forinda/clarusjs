@@ -22,11 +22,19 @@ function docOf(file: string, name: string): { doc: string | undefined; value: bo
 function exportsOf(file: string): { name: string; file: string; local: string }[] {
   const text = readFileSync(file, 'utf8')
   const out: { name: string; file: string; local: string }[] = []
-  for (const m of text.matchAll(/export\s+(?:type\s+)?\{([^}]*)\}\s+from\s+'([^']+)'/g)) {
+  for (const m of text.matchAll(/^export\s+(?:type\s+)?\{([^}]*)\}\s+from\s+'([^']+)'/gm)) {
     const from = resolve(dirname(file), m[2]!)
     for (const part of m[1]!.split(',').map((p) => p.trim().replace(/^type\s+/, '')).filter(Boolean)) {
       const [local, alias] = part.split(/\s+as\s+/)
       out.push({ name: (alias ?? local)!, file: from, local: local! })
+    }
+  }
+  // `export { a, type B }` without `from`: names declared here, or imported (then declared where they come from).
+  for (const m of text.matchAll(/^export\s+(?:type\s+)?\{([^}]*)\}(?!\s*from)/gm)) { // at a line start: not in generated code's strings
+    for (const part of m[1]!.split(',').map((p) => p.trim().replace(/^type\s+/, '')).filter(Boolean)) {
+      const [local, alias] = part.split(/\s+as\s+/)
+      const imported = new RegExp(`import\\s+(?:type\\s+)?\\{[^}]*\\b${local}\\b[^}]*\\}\\s+from\\s+'([^']+)'`).exec(text)
+      out.push({ name: (alias ?? local)!, file: imported ? resolve(dirname(file), imported[1]!) : file, local: local! })
     }
   }
   for (const m of text.matchAll(/^export\s+(?:default\s+)?(?:declare\s+)?(?:async\s+)?(?:function\*?|const|let|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/gm)) {
@@ -71,35 +79,6 @@ const PENDING: string[] = [
   "./compiler parse: no JSDoc",
   "./compiler scopeId: no @example",
   "./compiler scopeId: no @see https://clarusjs.com/…",
-  "./manifest IslandInfo: no JSDoc",
-  "./manifest Manifest: no JSDoc",
-  "./manifest RouteInfo: no JSDoc",
-  "./manifest readManifest: no @example",
-  "./manifest readManifest: no @see https://clarusjs.com/…",
-  "./navigation RouteName: no @see https://clarusjs.com/…",
-  "./navigation Routes: no JSDoc",
-  "./navigation abort: no @example",
-  "./navigation afterNavigate: no @example",
-  "./navigation afterSwap: no @example",
-  "./navigation back: no @example",
-  "./navigation back: no @see https://clarusjs.com/…",
-  "./navigation beforeNavigate: no @example",
-  "./navigation beforeSwap: no @example",
-  "./navigation currentUrl: no @example",
-  "./navigation href: no @example",
-  "./navigation navigate: no @example",
-  "./navigation navigating: no @example",
-  "./navigation onNavigateError: no @example",
-  "./navigation viewTransitions: no @example",
-  "./views ViewName: no @see https://clarusjs.com/…",
-  "./views ViewProps: no JSDoc",
-  "./views Views: no JSDoc",
-  "./views registerViews: no @example",
-  "./views registerViews: no @see https://clarusjs.com/…",
-  "./views render: no @example",
-  "./views render: no @see https://clarusjs.com/…",
-  "./views viewName: no @example",
-  "./views viewName: no @see https://clarusjs.com/…",
 ]
 
 test('#284: every public export has JSDoc with @see (and @example for values), or is @internal', () => {

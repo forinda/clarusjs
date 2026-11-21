@@ -16,6 +16,15 @@ const browser = typeof document !== 'undefined'
 /**
  * The current page's URL, as a store: `let here = shared(currentUrl)` in an island's script. `null` on the server
  * (what the server renders), so pass the page's path as a prop when the server HTML needs it.
+ * @example
+ * ```tscl
+ * <script>
+ *   import { currentUrl } from 'clarusjs/navigation'
+ *   let here = shared(currentUrl)
+ * </script>
+ * <a href="/guide" [class]="here?.pathname === '/guide' ? 'active' : ''">Guide</a>
+ * ```
+ * @see https://clarusjs.com/reference/navigation#currenturl
  * @see https://clarusjs.com/guide/fragment-navigation
  */
 export const currentUrl: Signal<URL | null> = state(browser ? new URL(location.href) : null)
@@ -31,8 +40,15 @@ if (browser) {
  * Go to `to`, as a link click would: the page's navigator swaps or renders it. Resolves once the new page is shown,
  * and also when the navigation is cancelled or a newer one replaces it (so check `currentUrl` when it matters);
  * rejects when it fails.
+ * @example
+ * ```ts
+ * async function save() {
+ *   await post(form)
+ *   await navigate('/account', { replace: true })
+ * }
+ * ```
+ * @see https://clarusjs.com/reference/navigation#navigate
  * @see https://clarusjs.com/guide/fragment-navigation
- * @see https://clarusjs.com/guide/client-routes
  */
 export async function navigate(to: string | URL, options: { replace?: boolean; state?: unknown } = {}): Promise<void> {
   if (!browser) return
@@ -48,13 +64,24 @@ export async function navigate(to: string | URL, options: { replace?: boolean; s
  * Stops the navigation in progress, like the browser's stop button: its requests are cancelled and, where the URL was
  * held while loading (push and replace in browsers with precommit handlers), page and URL stay as they were. Hooks
  * see it through `t.signal`. Like the stop button, it also stops the page's own loading (images still arriving).
- * @see https://clarusjs.com/guide/navigation
+ * @example
+ * ```tscl
+ * <button (click)="abort()">Stop loading</button>
+ * ```
+ * @see https://clarusjs.com/reference/navigation#abort
  */
 export function abort(): void {
   if (browser) stop()
 }
 
-/** Back one entry, like the browser's back button. */
+/**
+ * Back one entry, like the browser's back button.
+ * @example
+ * ```tscl
+ * <button (click)="back()">Back</button>
+ * ```
+ * @see https://clarusjs.com/reference/navigation#back
+ */
 export function back(): void {
   if (browser) history.back()
 }
@@ -69,7 +96,13 @@ function hook(type: string, listener: (e: Event & { navigationType?: string; des
 /**
  * Before any navigation (links, forms, back/forward, `navigate()`): `nav.cancel()` stops it, for example to keep
  * unsaved work. Back/forward can only be cancelled where the browser allows it.
- * @see https://clarusjs.com/guide/navigation
+ * @example
+ * ```ts
+ * beforeNavigate((to, nav) => {
+ *   if (dirty && !confirm('Leave without saving?')) nav.cancel()
+ * })
+ * ```
+ * @see https://clarusjs.com/reference/navigation#beforenavigate
  */
 export function beforeNavigate(fn: (to: URL, nav: { type: string; cancel(): void }) => void): void {
   hook('navigate', (e) => fn(new URL(e.destination!.url), { type: e.navigationType!, cancel: () => e.preventDefault() }))
@@ -77,7 +110,11 @@ export function beforeNavigate(fn: (to: URL, nav: { type: string; cancel(): void
 
 /**
  * After a navigation within the page finished: the new page is in and its islands attached.
- * @see https://clarusjs.com/guide/navigation
+ * @example
+ * ```ts
+ * afterNavigate((to) => analytics.page(to.pathname))
+ * ```
+ * @see https://clarusjs.com/reference/navigation#afternavigate
  */
 export function afterNavigate(fn: (to: URL) => void): void {
   hook('navigatesuccess', () => fn(new URL(location.href)))
@@ -85,7 +122,11 @@ export function afterNavigate(fn: (to: URL) => void): void {
 
 /**
  * A navigation failed (a fragment or a client page could not be loaded). The page then loads normally.
- * @see https://clarusjs.com/guide/navigation
+ * @example
+ * ```ts
+ * onNavigateError((to, error) => report(error, { url: to.href }))
+ * ```
+ * @see https://clarusjs.com/reference/navigation#onnavigateerror
  */
 export function onNavigateError(fn: (to: URL, error: unknown) => void): void {
   // Where it was going: a navigation that failed before its URL changed (held while loading) never became current.
@@ -98,7 +139,15 @@ export function onNavigateError(fn: (to: URL, error: unknown) => void): void {
  * The navigation in progress, as a store (`let nav = shared(navigating)`): `null` when idle, else where it goes and
  * its phase, `'loading'` (the next page is fetched) or `'swapping'` (it replaces this one). For CSS alone,
  * `<html data-cl-navigating>` carries the phase.
- * @see https://clarusjs.com/guide/navigation
+ * @example
+ * ```tscl
+ * <script>
+ *   import { navigating } from 'clarusjs/navigation'
+ *   let nav = shared(navigating)
+ * </script>
+ * @if (nav) { <div class="progress" role="status">Loading {{ nav.to.pathname }}…</div> }
+ * ```
+ * @see https://clarusjs.com/reference/navigation#navigating
  */
 export const navigating: Signal<Transition | null> = state(null)
 const before: ((t: Transition) => unknown)[] = []
@@ -125,7 +174,12 @@ let done: (() => void) | undefined
  * Page changes run as view transitions where the browser has them (`document.startViewTransition`), so CSS
  * `::view-transition-*` rules animate them; elsewhere they stay instant. Call it once, from any island's script.
  * `beforeSwap` hooks run before the browser's snapshot, `afterSwap` hooks once the new page is in.
- * @see https://clarusjs.com/guide/navigation
+ * @example
+ * ```ts
+ * // in the layout's island script
+ * viewTransitions()
+ * ```
+ * @see https://clarusjs.com/reference/navigation#viewtransitions
  */
 export function viewTransitions(): void {
   transitions = true
@@ -141,7 +195,11 @@ function inBetween(hooks: ((t: Transition) => unknown)[], fn: (t: Transition) =>
  * Runs once the next page is loaded, before it replaces this one (animate out, save state). Return a promise to
  * make the navigation wait; `t.signal` aborts when a newer navigation takes over. A hook that throws makes the page
  * load normally.
- * @see https://clarusjs.com/guide/navigation
+ * @example
+ * ```ts
+ * beforeSwap(() => document.querySelector('main')?.animate({ opacity: [1, 0] }, 150).finished)
+ * ```
+ * @see https://clarusjs.com/reference/navigation#beforeswap
  */
 export function beforeSwap(fn: (t: Transition) => unknown): void {
   inBetween(before, fn)
@@ -150,16 +208,25 @@ export function beforeSwap(fn: (t: Transition) => unknown): void {
 /**
  * Runs once the new page is in and its islands attached (animate in, move focus). Return a promise to make the
  * navigation wait for it.
- * @see https://clarusjs.com/guide/navigation
+ * @example
+ * ```ts
+ * afterSwap(() => document.querySelector('h1')?.focus())
+ * ```
+ * @see https://clarusjs.com/reference/navigation#afterswap
  */
 export function afterSwap(fn: (t: Transition) => unknown): void {
   inBetween(after, fn)
 }
 
-/** Route → params. Filled in by the generated .clarusjs/routes.d.ts (declaration merging; see `clarusjs check`). */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+/**
+ * Route → params. Filled in by the generated .clarusjs/routes.d.ts (declaration merging; see `clarusjs check`).
+ * @see https://clarusjs.com/reference/navigation#href
+ */
 export interface Routes {}
-/** Without the generated routes any path is accepted; with them, only real routes. */
+/**
+ * Without the generated routes any path is accepted; with them, only real routes.
+ * @see https://clarusjs.com/reference/navigation#href
+ */
 export type RouteName = [keyof Routes] extends [never] ? string : Extract<keyof Routes, string>
 type ParamsOf<R> = R extends keyof Routes ? Routes[R] : Record<string, string>
 
@@ -167,7 +234,11 @@ type ParamsOf<R> = R extends keyof Routes ? Routes[R] : Record<string, string>
  * A page's URL from its route, as its file names it, with the site's base: `href('/releases/[version]',
  * { version: '0.8.0' })` is `'/releases/0.8.0'`. With .clarusjs/routes.d.ts (written by `clarusjs check`), a route
  * that doesn't exist or a missing param is a type error. Params are encoded.
- * @see https://clarusjs.com/guide/navigation
+ * @example
+ * ```tscl
+ * <a [href]="href('/releases/[version]', { version: '0.8.0' })">0.8.0</a>
+ * ```
+ * @see https://clarusjs.com/reference/navigation#href
  */
 export function href<R extends RouteName>(
   route: R,

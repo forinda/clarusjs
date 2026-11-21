@@ -2,7 +2,7 @@
 title: "Server"
 group: "APIs"
 order: 3
-description: "clarusjs/server: redirect() for a server page's load(), and the built handler that serves server routes."
+description: "Server code: redirect(), render() a view to HTML, readManifest(), and the built handler that serves server routes."
 ---
 
 # Server
@@ -44,6 +44,66 @@ export async function load({ request }) {
   const user = await userFrom(request)
   if (!user) return redirect('/login')
   return { user }
+}
+```
+
+## render()
+
+```ts
+render(name: string, props: object): Promise<string>
+```
+
+From `clarusjs/views`. Renders a view (any `.tscl` under `src/`) to an HTML string, in server code: a `load()`, an endpoint, or a script importing the built server.
+
+### Parameters
+
+- **`name`**: the view's path under `src/`, without the extension: `'components/pill'`.
+- **`props`**: its inputs.
+
+### Returns
+
+A promise of the HTML.
+
+### Caveats
+
+- **Server code only,** after the server entry has loaded: that's where the views are registered.
+- **Typed once `clarusjs check` has run:** it writes `.clarusjs/views.d.ts`, and an unknown name or a wrong prop becomes a type error. Add that file to your `tsconfig.json`'s `include` to get the same types in your editor.
+- **The built server, `dist/server/index.mjs`, exports `render` too.**
+
+### Usage
+
+```ts
+import { render } from 'clarusjs/views'
+
+const html = await render('components/pill', { text: 'new' })
+```
+
+## readManifest()
+
+```ts
+readManifest(): Manifest | null
+```
+
+From `clarusjs/manifest`. The built site's route manifest: for each route, its mode, its islands, and the JavaScript and CSS it ships.
+
+### Returns
+
+The manifest during `vite build`. `null` in development, and on the first prerender pass.
+
+### Caveats
+
+- **Node only, while prerendering.** A page that calls it during `vite build` is rendered again once the manifest is written, so it can show what the built site ships.
+- **The same data is in `dist/clarusjs-manifest.json`** after the build.
+
+### Usage
+
+```ts
+// src/pages/size.load.ts
+import { readManifest } from 'clarusjs/manifest'
+
+export function load() {
+  const home = readManifest()?.routes['/']
+  return { js: home?.js.gzip ?? 0 }
 }
 ```
 

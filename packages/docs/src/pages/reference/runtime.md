@@ -206,14 +206,4 @@ const browser: boolean
 
 - **A runtime that defines `window` without `document`** (some server runtimes do) counts as the server.
 
-## render(name, props)
-
-From `clarusjs/views`, in server code (a `load()`, a script importing the built server): renders any view under `src/` to an HTML string. The name is its path without the extension.
-
-```ts
-import { render } from 'clarusjs/views'
-
-const html = await render('components/pill', { text: 'new' })
-```
-
-Props are typed against the view's inputs by `.clarusjs/views.d.ts`, which `clarusjs check` writes: an unknown name or a wrong prop is a type error. Add that file to your `tsconfig.json`'s `include` to get the same types in your editor. The built server, `dist/server/index.mjs`, exports `render` too.
+`render()`, for rendering a view to HTML in server code, is in the [Server reference](/reference/server#render).
