@@ -118,3 +118,64 @@ const sleep = (ms: number, signal: AbortSignal) =>
     const t = setTimeout(resolve, ms)
     signal.addEventListener('abort', () => { clearTimeout(t); reject(signal.reason) }, { once: true })
   })
+
+/** Keys asked of one endpoint at the same moment, answered by one request. */
+export type Batch<T> = { get(key: string): Promise<T> }
+
+/**
+ * One request for the keys asked at the same moment (the same microtask, or within `wait` ms), from any island:
+ * `load(keys)` answers each key. Concurrent asks for a key share its request; nothing is kept after it settles.
+ * `max` splits a large batch. Share it from a module (`export const stats = batch(…)`).
+ * @see https://clarusjs.com/guide/fetching
+ */
+export function batch<T>(
+  load: (keys: string[], ctx: { signal: AbortSignal }) => Record<string, T> | Promise<Record<string, T>>,
+  options: { wait?: number; max?: number } = {},
+): Batch<T> {
+  type Waiting = { resolve(v: T): void; reject(e: unknown): void }
+  let queued: Map<string, Waiting> | undefined
+  const inFlight = new Map<string, Promise<T>>()
+  const send = (keys: Map<string, Waiting>) => {
+    // ponytail: a batch request isn't aborted when its callers go (others may wait on it); it runs to the end.
+    const settle = (fn: (key: string, w: Waiting) => void) => { for (const [key, w] of keys) { inFlight.delete(key); fn(key, w) } }
+    Promise.resolve()
+      .then(() => load([...keys.keys()], { signal: new AbortController().signal }))
+      .then(
+        (answers) => settle((key, w) => (key in answers ? w.resolve(answers[key]!) : w.reject(new Error(`batch: no answer for "${key}"`)))),
+        (err) => settle((_, w) => w.reject(err)),
+      )
+  }
+  const flush = () => {
+    const all = [...queued!]
+    queued = undefined
+    const max = options.max ?? all.length
+    for (let i = 0; i < all.length; i += max) send(new Map(all.slice(i, i + max)))
+  }
+  return {
+    get(key) {
+      const pending = inFlight.get(key)
+      if (pending) return pending
+      if (!queued) {
+        queued = new Map()
+        if (options.wait) setTimeout(flush, options.wait)
+        else queueMicrotask(flush)
+      }
+      let w!: Waiting
+      const promise = new Promise<T>((resolve, reject) => { w = { resolve, reject } })
+      queued.set(key, w)
+      inFlight.set(key, promise)
+      return promise
+    },
+  }
+}
+
+/**
+ * `fetch(url, init)`, then the response's JSON. A response that isn't 2xx throws an Error naming the URL and status,
+ * so a resource's `retry` and `error` see it.
+ * @see https://clarusjs.com/guide/fetching
+ */
+export async function json<T = unknown>(url: string | URL, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init)
+  if (!res.ok) throw new Error(`${url}: ${res.status} ${res.statusText}`.trim())
+  return res.json() as Promise<T>
+}
