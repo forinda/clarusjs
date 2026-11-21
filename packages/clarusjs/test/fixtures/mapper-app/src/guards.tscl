@@ -1,0 +1,9 @@
+<script>
+  let picked = state(Math.random() > 1 ? null : { name: "a" })
+</script>
+@if (nope.length) {
+  <button (click)="console.log(1)">w</button>
+}
+@if (picked) {
+  <button (click)="console.log(picked.name)">x</button>
+}

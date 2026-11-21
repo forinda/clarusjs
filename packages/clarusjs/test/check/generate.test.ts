@@ -29,7 +29,7 @@ function check(files: Record<string, string>): string[] {
     generated.set(vpath, { ...out, source, file })
   }
   writeFileSync(resolve(root, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { strict: true, noEmit: true, target: 'ES2023', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2023', 'DOM'], allowImportingTsExtensions: true, rootDirs: ['.', '.clarusjs/virtual'], skipLibCheck: true },
+    compilerOptions: { strict: true, noUnusedLocals: true, noEmit: true, target: 'ES2023', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2023', 'DOM'], allowImportingTsExtensions: true, rootDirs: ['.', '.clarusjs/virtual'], skipLibCheck: true },
     include: ['src', '.clarusjs/virtual'],
   }))
   let output = ''
@@ -128,7 +128,7 @@ test('@for needs something iterable', () => {
 
 test('$event is typed by event name, its target is left open', () => {
   expect(check({ 'src/components/f.tscl': `<script>let v = state('')</script>
-<input (input)="v = $event.target.value; $event.data?.length"><b (click)="$event.clientX.toFixed()">x</b>
+<input (input)="v = $event.target.value; $event.data?.length"><b (click)="$event.clientX.toFixed()">x</b>{{ v }}
 ` })).toEqual([])
 })
 
@@ -188,5 +188,34 @@ test('[prop] on an HTML element: a boolean attribute takes a boolean, others a p
     expect.stringMatching(/^src\/a\.tscl:7:20 .*'"yes"' is not assignable to parameter of type 'boolean \| null \| undefined'/), // readonly → readOnly
     expect.stringMatching(/^src\/a\.tscl:8:12 .*'\{ name: string; \}' is not assignable to parameter of type 'string \| number \| boolean \| null \| undefined'/), // an object would be "[object Object]"
     expect.stringMatching(/^src\/a\.tscl:9:25 .*'\{ name: string; \}' is not assignable/), // a custom element gets attributes too
+  ])
+})
+
+test('event handlers keep the narrowing of the @if (and @else) around them; currentTarget is the element; no noise from generated code', () => {
+  const errors = check({
+    'src/a.tscl': `@input label: string
+@input unused: number
+<script>
+  let picked = state(Math.random() > 1 ? null : { name: 'a' })
+  let mode = state(Math.random() > 1 ? 'a' : 'b')
+</script>
+@if (picked) {
+  <button (click)="console.log(picked.name)">x</button>
+} @else if (mode === 'a') {
+  <button (click)="console.log(picked.name)">y</button>
+}
+<input (input)="console.log($event.currentTarget.value, label)">
+<p (click)="$event.currentTarget.value">z</p>
+@if (nope.length) {
+  <button (click)="console.log(1)">w</button>
+}
+`,
+  })
+  expect(errors).toEqual([
+    // In the @else if branch picked is null: still reported there.
+    expect.stringMatching(/^src\/a\.tscl:10:32 'picked' is possibly 'null'/),
+    expect.stringMatching(/^src\/a\.tscl:13:34 Property 'value' does not exist on type 'EventTarget & HTMLParagraphElement'/),
+    // An error in a condition is reported once, where it is written (not again where it's repeated for a handler).
+    expect.stringMatching(/^src\/a\.tscl:14:6 Cannot find name 'nope'/),
   ])
 })
