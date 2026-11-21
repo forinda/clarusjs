@@ -25,9 +25,13 @@ export function startServer(): void {
   let folders: string[] = []
   const log = (message: string) => connection.console.info(message)
   const projectFor = (path: string) => pickProject(projects, path, loose!)
-  /** Index a workspace folder (after `initialize` answers: a big one mustn't hold the editor up). */
-  const addFolder = async (root: string) => {
-    const project = new Project(root, await loadCompiler(root, trusted, log))
+  /**
+   * Index a workspace folder (after `initialize` answers: a big one mustn't hold the editor up). `mayTrust`: the
+   * folder was open when the editor told us it trusts the workspace; one added later wasn't part of that, so it gets
+   * the bundled compiler (the trust check runs again when the editor restarts the server).
+   */
+  const addFolder = async (root: string, mayTrust: boolean) => {
+    const project = new Project(root, await loadCompiler(root, trusted && mayTrust, log))
     projects.push(project)
     await project.load()
   }
@@ -52,7 +56,7 @@ export function startServer(): void {
   connection.onInitialized(async () => {
     server.initialized()
     void server.fileWatcher.watchFiles(['**/*.tscl', '**/src/pages/**/*.md', '**/tsconfig.json'])
-    for (const root of folders) await addFolder(root)
+    for (const root of folders) await addFolder(root, true)
     await server.languageFeatures.requestRefresh(false)
     // Folders added later are indexed too; removed ones dropped.
     connection.workspace.onDidChangeWorkspaceFolders(async ({ added, removed }) => {
@@ -61,7 +65,7 @@ export function startServer(): void {
         const at = projects.findIndex((p) => p.root === root)
         if (at !== -1) projects.splice(at, 1)
       }
-      for (const f of added) await addFolder(URI.parse(f.uri).fsPath)
+      for (const f of added) await addFolder(URI.parse(f.uri).fsPath, false)
       await server.languageFeatures.requestRefresh(false)
     })
   })
