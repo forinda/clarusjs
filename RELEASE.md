@@ -62,3 +62,38 @@ target version are skipped.
 
 Running `pnpm changeset:version` locally needs a `GITHUB_TOKEN` in the environment, because the changelog generator
 looks up pull requests on GitHub. CI provides one automatically.
+
+## VS Code extension
+
+`packages/vscode` (`clarusjs-vscode`, publisher `clarusjs`) is private to the workspace: it has no changesets, and the release workflow doesn't touch it. It's versioned and published by hand. The extension bundles its own code (the HTML language service and the component reading), so changes to it reach editors only with its next release; type checking inside templates comes from the `clarusjs` package (the content mapper), released as usual.
+
+1. **Changelog and version**, in a PR named `chore(vscode): release X.Y.Z`:
+   - add `## X.Y.Z` at the top of `packages/vscode/CHANGELOG.md`, written for users like the entries below it;
+   - set `"version"` in `packages/vscode/package.json`.
+
+   A new feature is a minor bump, a fix a patch. Commits since the last release: `git log --oneline <last release commit>.. -- packages/vscode`.
+
+2. **Package**, after the PR merges:
+
+   ```bash
+   git checkout main && git pull
+   pnpm install
+   pnpm --filter clarusjs-vscode package   # → packages/vscode/clarusjs-vscode-X.Y.Z.vsix
+   ```
+
+   `.vsix` files are git-ignored. To see what goes in: `cd packages/vscode && npx vsce ls --no-dependencies`.
+
+3. **Try it**: `code --install-extension packages/vscode/clarusjs-vscode-X.Y.Z.vsix`, reload the window, then open a `.tscl` file (highlighting, hover on a tag and a component, a snippet such as `island`).
+
+4. **Publish**, either:
+   - from the CLI, with an Azure DevOps personal access token that has **Marketplace → Manage** scope for the `clarusjs` publisher:
+
+     ```bash
+     cd packages/vscode
+     npx vsce login clarusjs    # once per machine; asks for the token
+     npx vsce publish --packagePath clarusjs-vscode-X.Y.Z.vsix
+     ```
+
+   - or in the browser: manage the publisher on the Visual Studio Marketplace, open the extension's **⋯** menu → **Update** (or **New extension** the first time), and upload the `.vsix`.
+
+   Publishing the packaged file (rather than `vsce publish` with no file) ships exactly what you tried in step 3. The Marketplace takes a few minutes to show the new version. For editors that use Open VSX (VSCodium, Cursor), the same file goes up with `npx ovsx publish clarusjs-vscode-X.Y.Z.vsix -p <token>`.
