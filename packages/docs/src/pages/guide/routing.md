@@ -100,3 +100,9 @@ export async function load({ request }) {
 ```
 
 `load()` can return any `Response` this way. Fragment navigation and the client router follow it: the page loads normally, and the address bar shows where it landed.
+
+## Error pages
+
+`src/pages/404.tscl` is shown for any unknown address, with status 404. `src/pages/500.tscl` is shown, with status 500, when a page rendered on request fails: its `load()` throws or it can't render. It gets a `status` input; the error itself only goes to the server log, so nothing internal reaches visitors. Both are also written as `404.html` and `500.html` for hosts that serve them, with links resolved from the site root.
+
+In development a failing page shows the error itself instead, with its stack and source location, from the dev server.
