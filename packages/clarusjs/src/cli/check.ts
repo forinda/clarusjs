@@ -1,11 +1,11 @@
 // `clarusjs check`: type-check every .tscl file in a project (and the .ts it uses) with the project's TypeScript,
 // reporting each error at file.tscl:line:col.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { ClarusError } from '../compiler/errors.ts'
-import { generateTs, toSourceOffset, viewsDeclaration, type Mapping } from '../check/generate.ts'
+import { generateTs, routesDeclaration, toSourceOffset, viewsDeclaration, type Mapping } from '../check/generate.ts'
 import { findClarusFiles, reachableComponents } from '../vite/build.ts'
 
 export type Diagnostic = { file: string; line: number; column: number; code: string; message: string }
@@ -98,6 +98,10 @@ export function check(options: { root: string; typescript?: string }): CheckResu
   mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
   const sources = findClarusFiles(resolve(root, 'src')).map((path) => ({ file: posix(relative(root, path)), source: readFileSync(path, 'utf8') }))
   writeFileSync(resolve(root, '.clarusjs/views.d.ts'), viewsDeclaration(sources))
+  // The routes: every page → its params, so href() from clarusjs/navigation only takes real routes. Also for apps'
+  // own tsconfig (add .clarusjs/routes.d.ts to include).
+  const walk = (dir: string): string[] => (existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(resolve(dir, e.name)) : [resolve(dir, e.name)])) : [])
+  writeFileSync(resolve(root, '.clarusjs/routes.d.ts'), routesDeclaration(walk(resolve(root, 'src/pages')).map((path) => posix(relative(root, path)))))
 
   // The project's own settings, plus what checking templates needs. Scripts are JavaScript, so untyped parameters
   // are expected (noImplicitAny off). rootDirs lets virtual files and real sources import each other.
@@ -113,7 +117,7 @@ export function check(options: { root: string; typescript?: string }): CheckResu
       rootDirs: ['..', './virtual'],
       paths,
     },
-    include: ['../src', './virtual', './views.d.ts'],
+    include: ['../src', './virtual', './views.d.ts', './routes.d.ts'],
   }
   const configPath = resolve(root, '.clarusjs/tsconfig.check.json')
   mkdirSync(dirname(configPath), { recursive: true })

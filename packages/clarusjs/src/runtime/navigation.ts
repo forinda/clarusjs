@@ -155,3 +155,26 @@ export function beforeSwap(fn: (t: Transition) => unknown): void {
 export function afterSwap(fn: (t: Transition) => unknown): void {
   inBetween(after, fn)
 }
+
+/** Route → params. Filled in by the generated .clarusjs/routes.d.ts (declaration merging; see `clarusjs check`). */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Routes {}
+/** Without the generated routes any path is accepted; with them, only real routes. */
+export type RouteName = [keyof Routes] extends [never] ? string : Extract<keyof Routes, string>
+type ParamsOf<R> = R extends keyof Routes ? Routes[R] : Record<string, string>
+
+/**
+ * A page's URL from its route, as its file names it, with the site's base: `href('/releases/[version]',
+ * { version: '0.8.0' })` is `'/releases/0.8.0'`. With .clarusjs/routes.d.ts (written by `clarusjs check`), a route
+ * that doesn't exist or a missing param is a type error. Params are encoded.
+ * @see https://clarusjs.com/guide/navigation
+ */
+export function href<R extends RouteName>(
+  route: R,
+  // Without the generated routes, params are optional; with them, required exactly when the route has some.
+  ...params: [keyof Routes] extends [never] ? [Record<string, string>?] : keyof ParamsOf<R> extends never ? [] : [ParamsOf<R>]
+): string {
+  const values = (params[0] ?? {}) as Record<string, string>
+  const base = ((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/').replace(/\/$/, '')
+  return base + route.replace(/\[([^\]]+)\]/g, (_, key: string) => encodeURIComponent(values[key] ?? ''))
+}
