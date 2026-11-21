@@ -247,3 +247,20 @@ test('review #233: only the script\'s own top-level functions count; a callback 
   const withDefault = generateTs("<script>\n  function record(update = (n = 0) => n, other) { return update(1) }\n  const r = record((n) => n, (m) => m)\n</script>\n<p>{{ r }}</p>\n", 'b.tscl').code
   expect(withDefault).toContain('record((n) => n, (m: any) => m)') // the first is typed by the default; the second isn't
 })
+
+test('review #233 (2): enumerated attributes take their strings; an outer @if guard isn\'t replayed onto a loop item of the same name', () => {
+  const errors = check({
+    'src/a.tscl': `<script>
+  let row = state(Math.random() > 1 ? null : { kind: 'ok', name: 'a' })
+  let rows = state([{ kind: 'bad' }])
+</script>
+<img [draggable]="'false'" [spellcheck]="'true'" alt="">
+@if (row) {
+  @for (row of rows; track $index) {
+    <button (click)="console.log(row.name)">x</button>
+  }
+}
+`,
+  })
+  expect(errors).toEqual([expect.stringMatching(/^src\/a\.tscl:8:38 Property 'name' does not exist/)])
+})

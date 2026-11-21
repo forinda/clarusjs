@@ -7,7 +7,7 @@ import type { FormOptions } from '../../src/forms/types.ts'
 import { scope, state } from '../../src/runtime/signals.ts'
 
 beforeEach(() => history.replaceState(null, '', '/signup'))
-afterEach(() => { document.body.innerHTML = '' })
+afterEach(() => { document.body.innerHTML = ''; vi.useRealTimers() })
 
 const html = `<form data-cl-form="0">
   <fieldset id="details" data-cl-step><label>Name <input required data-cl-path="name"><small data-cl-message></small></label></fieldset>
@@ -115,4 +115,52 @@ test('review: a schema that throws doesn\'t leave the form pending', async () =>
   await expect(f.submit()).resolves.toBe(false) // required fields are empty anyway
   expect(f.pending).toBe(false)
   error.mockRestore()
+})
+
+test('review #233 (2): a schema that throws blocks submit (fields otherwise valid)', async () => {
+  const broken = { '~standard': { version: 1 as const, vendor: 't', validate: () => Promise.reject(new Error('boom')) } } as any
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const submit = vi.fn()
+  const { f, input } = mount({ schema: broken, submit }, { name: 'Ada', plan: 'free', email: 'a@b.c' })
+  for (const [path, value] of [['name', 'Ada'], ['email', 'a@b.c']]) input(path!).value = value!
+  expect(await f.submit()).toBe(false)
+  expect(submit).not.toHaveBeenCalled()
+  expect(f.errors.map((e) => e.path)).toEqual([''])
+  error.mockRestore()
+})
+
+test('review #233 (2): values changed while a check runs are checked again before submit', async () => {
+  vi.useFakeTimers()
+  let calls = 0
+  const slow = { '~standard': { version: 1 as const, vendor: 't', validate: (v: any) => { calls++; return new Promise((r) => setTimeout(() => r(v.name === 'admin' ? { issues: [{ message: 'Taken.', path: ['name'] }] } : { value: v }), 100)) } } } as any
+  const values = state({ name: 'ada', plan: 'free', email: 'a@b.c' })
+  document.body.innerHTML = html
+  const submit = vi.fn()
+  const f = form(values, { schema: slow, submit })
+  scope(() => connect(document.body, 0, () => f))
+  for (const [path, value] of [['name', 'ada'], ['email', 'a@b.c']]) (document.querySelector(`[data-cl-path="${path}"]`) as HTMLInputElement).value = value!
+  await vi.advanceTimersByTimeAsync(200)
+  const sent = f.submit()
+  await vi.advanceTimersByTimeAsync(50)
+  values.set({ ...values.get(), name: 'admin' }) // changed while the check runs
+  await vi.advanceTimersByTimeAsync(1000)
+  expect(await sent).toBe(false)
+  expect(submit).not.toHaveBeenCalled()
+  vi.useRealTimers()
+})
+
+test('review #233 (2): a server error for a value changed during submit is dropped', async () => {
+  let release: (v: { errors: Record<string, string> }) => void = () => {}
+  const values = state({ name: 'Ada', plan: 'free', email: 'a@b.c' })
+  document.body.innerHTML = html
+  const f = form(values, { submit: () => new Promise((r) => { release = r }) })
+  scope(() => connect(document.body, 0, () => f))
+  for (const [path, value] of [['name', 'Ada'], ['email', 'a@b.c']]) (document.querySelector(`[data-cl-path="${path}"]`) as HTMLInputElement).value = value!
+  const sent = f.submit()
+  await new Promise((r) => setTimeout(r, 0))
+  values.set({ ...values.get(), email: 'b@c.d' }) // edited while the server answers
+  release({ errors: { email: 'Taken.', name: 'Bad.' } })
+  await sent
+  expect(f.error('email')).toBe('')
+  expect(f.error('name')).toBe('Bad.')
 })

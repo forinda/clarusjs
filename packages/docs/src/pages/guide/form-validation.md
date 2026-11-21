@@ -22,8 +22,8 @@ It's headless: the engine finds fields, decides errors and moves focus; how fiel
 </script>
 
 <form [engine]="f">
-  <div data-cl-field><label for="name">Name</label> <input id="name" required [(value)]="signup.name"> <small data-cl-message></small></div>
-  <div data-cl-field><label for="email">Email</label> <input id="email" type="email" required [(value)]="signup.email"> <small data-cl-message></small></div>
+  <div data-cl-field><label for="name">Name</label> <input id="name" name="name" required [(value)]="signup.name"> <small data-cl-message></small></div>
+  <div data-cl-field><label for="email">Email</label> <input id="email" name="email" type="email" required [(value)]="signup.email"> <small data-cl-message></small></div>
   <button>Send</button>
 </form>
 ```
@@ -31,7 +31,7 @@ It's headless: the engine finds fields, decides errors and moves focus; how fiel
 - **`form(values)`** takes the form's state: a component's `state()`, or a store's (see [Shared stores](./stores.md)).
 - **`[engine]="f"`** connects it to the `<form>` around that element (the element itself here).
 - **Each field finds its own error** by the path it's bound to (`signup.email` is `email`): no path is written twice. Its message goes into the `[data-cl-message]` element of the nearest container around the field that has one (an element marked `data-cl-field`, a `label`, a `fieldset`), and the field gets `aria-invalid` and `aria-describedby` pointing at it. Put the message beside the label rather than inside it: inside, it would be read as part of the field's name.
-- **Without JavaScript** it's a plain form: the browser checks `required` and `type="email"` itself, and it submits.
+- **Without JavaScript** it's a plain form: the browser checks `required` and `type="email"` itself, and it submits the fields that have a `name` (give each one, as above: the binding doesn't add it).
 
 ## Where errors come from
 

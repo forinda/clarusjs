@@ -107,3 +107,21 @@ test('review: Back to the entry the page loaded on (no hash) returns to the firs
   window.dispatchEvent(new PopStateEvent('popstate'))
   expect(f.step).toBe('details')
 })
+
+test('review #233 (2): next() checks the step\'s fields by their paths after waiting, not before', async () => {
+  document.body.innerHTML = `<form data-cl-form="0"><fieldset id="s1" data-cl-step><label><input required data-cl-path="lines.0.item"><small data-cl-message></small></label></fieldset><fieldset id="s2" data-cl-step></fieldset></form>`
+  let resolve: () => void = () => {}
+  const schema = { '~standard': { version: 1 as const, vendor: 't', validate: (v: any) => new Promise((r) => { resolve = () => r({ value: v }) }) } } as any
+  const f = form(state({ lines: [{ item: '' }] }), { schema })
+  scope(() => connect(document.body, 0, () => f))
+  const moved = f.next()
+  // A valid row is added above while the check waits: the empty field is now lines.1.item.
+  const empty = document.querySelector('input')!
+  empty.setAttribute('data-cl-path', 'lines.1.item')
+  const filled = document.createElement('input')
+  filled.setAttribute('data-cl-path', 'lines.0.item')
+  filled.value = 'ok'
+  empty.closest('label')!.before(filled)
+  resolve()
+  expect(await moved).toBe(false)
+})

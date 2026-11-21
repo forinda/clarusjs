@@ -255,27 +255,36 @@ export function analyzeScript(code: string, file: string, source: string, offset
 // Scope-aware: a parameter or local that shadows a signal name turns the rewrite off inside that scope.
 // ponytail: `var` declared in nested blocks is not hoisted to the function scope here; add if it ever matters
 /** Do these import statements bring in form from clarusjs/forms (so `form(x)` is the engine's, not a function of its own)? */
-export const importsForm = (imports: string[]) => imports.some((line) => /import\s*\{[^}]*\bform\b[^}]*\}\s*from\s*['"]clarusjs\/forms['"]/.test(line))
+export function formName(imports: string[]): string | undefined {
+  for (const line of imports) {
+    if (!/from\s*['"]clarusjs\/forms['"]/.test(line)) continue
+    const m = /\{[^}]*\bform\b(?:\s+as\s+([A-Za-z_$][\w$]*))?[^}]*\}/.exec(line)
+    if (m) return m[1] ?? 'form'
+  }
+}
 
-function clientHook(code: string, signals: Signals, entered: WeakSet<N> = new WeakSet(), forms = false): Hook {
+function clientHook(code: string, signals: Signals, entered: WeakSet<N> = new WeakSet(), forms?: string): Hook {
   const hook: Hook = (node, parent, key) => {
     const rec = (n: N) => print(n, code, hook, node, '')
     const isSignal = (n: N) => n.type === 'Identifier' && signals.has(n.name)
     if (!entered.has(node)) {
-      const shadowed = [...scopeNames(node)].filter((n) => signals.has(n))
-      if (shadowed.length) {
+      const names = scopeNames(node)
+      const shadowed = [...names].filter((n) => signals.has(n))
+      // A local of the same name as the imported form() is the script's own function: not special.
+      const formHidden = !!forms && names.has(forms)
+      if (shadowed.length || formHidden) {
         entered.add(node)
         const inner: Signals = new Map([...signals].filter(([n]) => !shadowed.includes(n)))
-        return print(node, code, clientHook(code, inner, entered, forms), parent, key)
+        return print(node, code, clientHook(code, inner, entered, formHidden ? undefined : forms), parent, key)
       }
     }
     if (node.type === 'VariableDeclaration' && node.kind === 'let' && (node.declarations as N[]).every((d) => signalCall(d.init))) {
       return 'const' + print({ ...node, kind: 'const', start: node.start + 3 }, code, hook, parent, key)
     }
     // form(x) from clarusjs/forms takes the signal itself, as shared() does: the engine reads and follows it.
-    if (forms && node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'form' && node.arguments[0] && isSignal(node.arguments[0])) {
+    if (forms && node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === forms && node.arguments[0] && isSignal(node.arguments[0])) {
       const [first, ...rest] = node.arguments as N[]
-      return `form(${first!.name}${rest.map((a) => `, ${rec(a)}`).join('')})`
+      return `${forms}(${first!.name}${rest.map((a) => `, ${rec(a)}`).join('')})`
     }
     if (node.type === 'UpdateExpression' && isSignal(node.argument)) {
       const name = node.argument.name
@@ -305,7 +314,7 @@ function clientHook(code: string, signals: Signals, entered: WeakSet<N> = new We
  * Rewrite a script (or event handler) for the browser. With `stateFromServer`, each top-level `let x = state(init)`
  * starts from the value the server rendered with (`__cl_state.x`) when there is one, so `init` isn't re-run.
  */
-export function rewriteClient(code: string, signals: Signals, options: { stateFromServer?: boolean; forms?: boolean } = {}): string {
+export function rewriteClient(code: string, signals: Signals, options: { stateFromServer?: boolean; forms?: string } = {}): string {
   const ast = parseScript(code)
   const hook = clientHook(code, signals, new WeakSet(), options.forms)
   if (!options.stateFromServer) return code.slice(0, ast.start) + print(ast, code, hook) + code.slice(ast.end)

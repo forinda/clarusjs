@@ -21,11 +21,23 @@ const read = (value: unknown, path: string): unknown => path.split('.').reduce<a
 const dotted = (path: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }> = []) =>
   path.map((p) => String(typeof p === 'object' ? p.key : p)).join('.')
 
-/** A field's full path: the data-cl-path values of the elements around it (inside `root`), outermost first. */
+/**
+ * A field's full path: the data-cl-path values of the elements around it (inside `root`), outermost first. A part
+ * `@name…` is a component's @model `name`: its path is the island's data-cl-path-name (set by the parent binding it),
+ * and the walk goes on from that island.
+ */
 function pathOf(field: Element, root: Element): string {
   const parts: string[] = []
   for (let el: Element | null = field; el && el !== root.parentElement; el = el.parentElement) {
-    const part = el.getAttribute('data-cl-path')
+    const here: Element = el
+    let part = here.getAttribute('data-cl-path')
+    if (part?.startsWith('@')) {
+      const [model, ...rest] = part.slice(1).split('.')
+      const island: Element | null | undefined = here.parentElement?.closest(`[data-cl-path-${model}]`)
+      if (!island) return ''
+      part = [island.getAttribute(`data-cl-path-${model}`), ...rest].filter(Boolean).join('.')
+      el = island
+    }
     if (part) parts.unshift(part)
   }
   return parts.join('.')
@@ -53,6 +65,8 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   const roots = new Map<Element, number>() // covered element → how many connections
   let checkSeq = 0
   let latest: Promise<void> = Promise.resolve()
+  let revision = 0 // advances with every change of the values
+  let failed = false // the schema threw: nothing is submitted until a check passes
   let timer: ReturnType<typeof setTimeout> | undefined
   let last = initial
   const current = state('') // the step shown (multi-step forms)
@@ -100,6 +114,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     }
     // Errors on paths no field shows (a whole-object rule, a server error by another name) still count, and list.
     for (const path of new Set([...Object.keys(schemaIssues), ...Object.keys(server)])) next[path] ??= server[path] || schemaIssues[path]!
+    if (failed) next[''] ??= options.messages?.schema ?? "The form couldn't be checked. Try again."
     errorsNow = next
     // ponytail: shown() scans the fields per field (quadratic); fine for forms, a per-refresh set if it ever isn't.
     for (const { el, path, root } of fields()) paint(el, boxOf(el, path, root), shown(path) ? errorsNow[path] ?? '' : '')
@@ -122,11 +137,12 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   /** Run the schema (latest check wins); resolves once its result is applied. */
   function check(): Promise<void> {
     const schema = options.schema
-    if (!schema) return Promise.resolve()
+    if (!schema) return (latest = Promise.resolve())
     const seq = ++checkSeq
     const apply = (result: Awaited<ReturnType<StandardSchema<T>['~standard']['validate']>>) => {
       if (seq !== checkSeq) return // a newer check started
       schemaIssues = {}
+      failed = false
       for (const issue of result.issues ?? []) {
         const path = dotted(issue.path)
         schemaIssues[path] ??= issue.message
@@ -139,16 +155,18 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     pending.set(true)
     // A schema that fails keeps its last issues: it's a bug to fix, not a reason to let anything through.
     return (latest = result.then(apply, (err) => {
-      if (seq === checkSeq) pending.set(false)
+      if (seq === checkSeq) { pending.set(false); failed = true; refresh() }
       console.error('[clarusjs] the form schema failed', err)
     }))
   }
-  /** The newest check, done: a pending pause is cut short, and a check started meanwhile is waited for too. */
+  /** A check of the current values, done: a pending pause is cut short, and values changed meanwhile checked again. */
   async function settle(): Promise<void> {
-    clearTimeout(timer)
-    for (let p = check(); ; p = latest) {
+    for (;;) {
+      clearTimeout(timer)
+      const start = revision
+      const p = check()
       await p
-      if (p === latest) return
+      if (p === latest && revision === start) return
     }
   }
 
@@ -191,6 +209,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     untrack(() => {
       for (const path of Object.keys(server)) if (read(value, path) !== read(last, path)) delete server[path]
       last = value
+      revision++
       if (roots.size) { refresh(); checkSoon() }
     })
   })
@@ -199,6 +218,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     const field = eventField(e)
     if (!field) return
     dirty.add(field)
+    revision++
     refresh()
     checkSoon()
   }
@@ -258,11 +278,11 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       const at = list.findIndex((s) => s.id === now())
       const step = list[at]
       if (!step) return false
-      const own = fields().filter((f) => step.contains(f.el))
-      for (const f of own) checked.add(f.el) // this step's errors show now
+      for (const f of fields()) if (step.contains(f.el)) checked.add(f.el) // this step's errors show now
       await settle()
       refresh()
-      const bad = own.find((f) => errorsNow[f.path])
+      // The step's fields as they are now: rows may have moved while the check ran.
+      const bad = fields().find((f) => step.contains(f.el) && errorsNow[f.path])
       if (bad) { bad.el.focus(); return false }
       passed.add(step.id)
       if (list[at + 1]) go(list[at + 1]!.id)
@@ -283,9 +303,13 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
         await settle()
         refresh()
         if (!toFirstError()) return false
-        const answer = await options.submit?.(untrack(() => signal.get()))
-        if (answer && answer.errors && Object.keys(answer.errors).length) {
-          engine.setErrors(answer.errors)
+        const sent = untrack(() => signal.get())
+        const answer = await options.submit?.(sent)
+        // Errors for values changed while the server answered are about values no longer there: dropped.
+        const now = untrack(() => signal.get())
+        const errors = Object.entries(answer?.errors ?? {}).filter(([path]) => !path || read(now, path) === read(sent, path))
+        if (errors.length) {
+          engine.setErrors(Object.fromEntries(errors))
           return toFirstError()
         }
         return true

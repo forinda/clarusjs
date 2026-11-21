@@ -40,17 +40,17 @@ test('every [(value)] / [(checked)] field carries its path, without the root nam
   expect(html.match(/data-cl-path="customer\.email"/g)).toHaveLength(2) // a bracket with a string key is a key
 })
 
-test('a component bound two ways carries its path on its island; a field binding its @model itself has an empty path', async () => {
+test('a component bound two ways carries its binding\'s path on its island; a field bound to its @model names it', async () => {
   const field = "@model value: string = ''\n<label><input [(value)]=\"value\"></label>\n"
   const fieldServer = compile(field, { file: 'field.tscl', target: 'server', clientUrl: '/field.js' }).code
-  expect(await importCode(fieldServer, 'forms-f').then((m) => m.render({ value: 'x' }))).toContain('data-cl-path=""')
+  expect(await importCode(fieldServer, 'forms-f').then((m) => m.render({ value: 'x' }))).toContain('data-cl-path="@value"')
   const html = await renderOf(`@import field from './field.tscl'
 <script>
   let order = state({ shipping: { street: '' } })
 </script>
 <field [(value)]="order.shipping.street" />
 `, { './field.tscl?render': fieldServer, './field.tscl': fieldServer })
-  expect(html).toMatch(/<cl-island c="field"[^>]* data-cl-path="shipping\.street"/)
+  expect(html).toMatch(/<cl-island c="field"[^>]* data-cl-path-value="shipping\.street"/)
   expect(html).not.toMatch(/p="[^"]*path/) // not a prop the child sees
 })
 
@@ -80,4 +80,31 @@ test('[engine] needs an island; fields under one [engine] bind one object', () =
   expect(() => client(signup('<form [engine]="f"><input [(value)]="order.name">\n<input [(value)]="other.x"></form>'))).toThrow(/a\.tscl:8:8 fields under \[engine\] bind one object: found order and other/)
   // Outside the [engine] element, another object is fine.
   expect(() => client(signup('<form [engine]="f"><input [(value)]="order.name"></form>\n<input [(value)]="other.x">'))).not.toThrow()
+})
+
+test('review #233 (2): form imported under another name keeps the signal; a local `form` gets the value', () => {
+  const aliased = "<script>\n  import { form as createForm } from 'clarusjs/forms'\n  let order = state({ name: '' })\n  const f = createForm(order)\n</script>\n<p>{{ f.error('name') }}</p>\n"
+  expect(client(aliased)).toContain('const f = createForm(order)')
+  const local = "<script>\n  import { form } from 'clarusjs/forms'\n  let order = state({ name: 'Ada' })\n  const f = form(order)\n  function read(form) { return form(order) }\n</script>\n<p>{{ f.error('name') }}</p>\n"
+  expect(client(local)).toContain('return form(order.get())')
+})
+
+test('review #233 (2): a string-literal key is evaluated for the path (escapes decoded)', async () => {
+  const html = await renderOf(`<script>\n  let order = state({ email: '' })\n</script>\n<input [(value)]="order['\\u0065mail']">\n`)
+  expect(html).toContain('data-cl-path="email"')
+})
+
+test('review #233 (2): a component bound two ways twice carries a path per binding; its fields name their model', async () => {
+  const pair = "@model first: string = ''\n@model last: string = ''\n<div><input [(value)]=\"first\"><input [(value)]=\"last\"></div>\n"
+  const pairServer = compile(pair, { file: 'pair.tscl', target: 'server', clientUrl: '/pair.js' }).code
+  const inner = await importCode(pairServer, 'forms-pair').then((m) => m.render({ first: '', last: '' }))
+  expect(inner).toContain('data-cl-path="@first"')
+  expect(inner).toContain('data-cl-path="@last"')
+  const html = await renderOf(`@import pair from './pair.tscl'
+<script>
+  let user = state({ name: { first: '', last: '' } })
+</script>
+<pair [(first)]="user.name.first" [(last)]="user.name.last" />
+`, { './pair.tscl?render': pairServer, './pair.tscl': pairServer })
+  expect(html).toMatch(/<cl-island c="pair"[^>]* data-cl-path-first="name\.first" data-cl-path-last="name\.last"/)
 })

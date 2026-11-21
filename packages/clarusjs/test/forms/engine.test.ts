@@ -263,3 +263,10 @@ test('on the server, a form made over a store\'s signal is inert too (no effect 
     vi.resetModules()
   }
 })
+
+test('review #233 (2): a field bound to a component\'s model takes that model\'s path from the island', () => {
+  const { f, el } = mount(`<form data-cl-form="0"><cl-island data-cl-path-first="name.first" data-cl-path-last="name.last"><label><input required data-cl-path="@first"><small data-cl-message></small></label><label><input required data-cl-path="@last"><small data-cl-message></small></label></cl-island></form>`, { name: { first: '', last: '' } })
+  for (const input of document.querySelectorAll('input')) leave(input)
+  expect(f.errors.map((e) => e.path)).toEqual(['name.first', 'name.last'])
+  void el
+})

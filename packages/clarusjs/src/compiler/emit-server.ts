@@ -32,7 +32,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
   out += inputsLine(ir)
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   out += ir.stateful
-    ? `  return __cl_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html}, ${stateArg(ir)}, __cl_opts?.attach, __cl_opts?.path)\n`
+    ? `  return __cl_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html}, ${stateArg(ir)}, __cl_opts?.attach, __cl_opts?.paths)\n`
     : `  return ${html}\n`
   return out + '}\n'
 }

@@ -1,4 +1,5 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
+import { parseExpressionAt } from 'acorn'
 import { ClarusError } from './errors.ts'
 import { importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
 import { analyzeScript, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
@@ -10,7 +11,7 @@ export type IRNode =
   // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
   // can re-render it (-1 otherwise).
   // models: [(name)]="path" bindings: each write from the child runs `set` (a statement using __cl_v).
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number; attach?: string; path?: string }
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[] }
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
   | { kind: 'slot'; name: string; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
@@ -45,6 +46,8 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
+  // This component's @model inputs: fields bound to them take their path from the parent (see modelPath).
+  const modelNames = new Set(parsed.inputs.filter((i) => i.model).map((i) => i.name))
   const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
   const signals: Signals = parsed.script ? analyzeScript(split.body, file, source, parsed.script.start) : new Map()
   // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.
@@ -189,7 +192,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       const props: { name: string; expr: string }[] = []
       const models: { name: string; set: string }[] = []
       let attach: string | undefined
-      let path: string | undefined
+      const paths: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
         if (a.kind === 'prop') { checkExpr(a.expr, file, source, a.start); props.push({ name: a.name, expr: a.expr }) }
         else if (a.kind === 'model') {
@@ -198,7 +201,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
           props.push({ name: a.name, expr: a.expr })
           sameRoot(a.expr, a.start)
           // The forms engine's path for this component (the first two-way binding's); island() puts it on the island.
-          if (!models.length) path = modelPath(a.expr)
+          paths.push({ name: a.name, expr: modelPath(a.expr, modelNames) })
           models.push({ name: a.name, set })
         }
         else if (a.kind === 'static' && a.name === 'attach') {
@@ -231,7 +234,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       // Whitespace around @slot blocks is not content for the default slot.
       const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
       scopeKey = parentScope
-      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(path ? { path } : {}) })
+      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(paths.length ? { paths } : {}) })
       return
     }
     if (node.tag === 'slot') {
@@ -260,7 +263,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       sameRoot(a.expr, a.start)
       const event = { kind: 'event' as const, name: type, expr: writeBack(a.expr, `$event.target.${a.name}`, a.name, a.start), start: a.start }
       // Its path, for the forms engine (clarusjs/forms): see docs/architecture.md §5.
-      return [{ kind: 'prop', name: a.name, expr: a.expr, start: a.start }, event, { kind: 'prop', name: 'data-cl-path', expr: modelPath(a.expr), start: a.start }]
+      return [{ kind: 'prop', name: a.name, expr: a.expr, start: a.start }, event, { kind: 'prop', name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start }]
     })
     emitStatic(`<${node.tag}`)
     const elementEvents = attrs.filter((a) => a.kind === 'event')
@@ -359,12 +362,21 @@ function pathSegments(path: string): { root: string; segments: ({ key: string } 
  * The forms engine's path for a two-way binding, as a JS expression: the path without its root name, dotted, with
  * computed indexes evaluated: `order.lines[$index].item` → `"lines." + ($index) + ".item"`, `value` → `""`.
  */
-function modelPath(path: string): string {
-  const parts = (pathSegments(path)?.segments ?? []).map((seg) => {
+function modelPath(path: string, models: Set<string> = new Set()): string {
+  const parsed = pathSegments(path)
+  const parts = (parsed?.segments ?? []).map((seg) => {
     if ('key' in seg) return JSON.stringify(seg.key)
-    const literal = /^(['"])([^'"]*)\1$|^(\d+)$/.exec(seg.index)
-    return literal ? JSON.stringify(literal[2] ?? literal[3]) : `(${seg.index})`
+    // A literal key is its value ('email', "\u0065mail", 2); anything else is computed where it's rendered.
+    let literal: unknown
+    try {
+      const node = parseExpressionAt(seg.index, 0, { ecmaVersion: 'latest' }) as unknown as { type: string; value?: unknown; end: number }
+      if (node.type === 'Literal' && node.end === seg.index.length && (typeof node.value === 'string' || typeof node.value === 'number')) literal = node.value
+    } catch {}
+    return literal !== undefined ? JSON.stringify(String(literal)) : `(${seg.index})`
   })
+  // Bound to one of this component's own @model inputs: its path comes from the parent ('@name', resolved by the
+  // engine through the island's data-cl-path-name).
+  if (parsed && models.has(parsed.root)) parts.unshift(JSON.stringify(`@${parsed.root}`))
   if (!parts.length) return '""'
   return parts.map((p, i) => (i ? `"." + ${p}` : p)).join(' + ')
 }

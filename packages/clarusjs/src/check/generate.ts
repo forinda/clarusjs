@@ -4,7 +4,7 @@
 import { routeFromFile } from '../server/handler.ts'
 import { ClarusError } from '../compiler/errors.ts'
 import { parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
-import { splitImports, untypedParams } from '../compiler/script.ts'
+import { referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
  * [virtual offset, length, source offset, exact, source length]. Exact spans are verbatim copies (offsets map one to
@@ -14,6 +14,8 @@ import { splitImports, untypedParams } from '../compiler/script.ts'
 export type Mapping = [number, number, number, boolean, number?]
 
 // Boolean attributes whose DOM property is spelled differently (the rest match their lowercase name).
+// Enumerated attributes whose DOM property happens to be a boolean: the attribute takes strings ("true"/"false").
+const ENUMERATED = new Set(['draggable', 'spellcheck', 'translate', 'autocorrect', 'contenteditable'])
 const PROPERTY: Record<string, string> = { readonly: 'readOnly', novalidate: 'noValidate', formnovalidate: 'formNoValidate', allowfullscreen: 'allowFullscreen', playsinline: 'playsInline', nomodule: 'noModule', ismap: 'isMap' }
 
 /**
@@ -197,7 +199,12 @@ export function generateTs(source: string, file: string, options: { loader?: str
         copy(node.list, node.listStart)
         emit(') {\n    const $index: number = 0; __cl_use($index)\n')
         if (node.track !== null) use(node.track, node.trackStart)
+        // Inside the loop its item (and $index) shadow outer names: a condition about an outer `row` must not be
+        // repeated where `row` is the loop's.
+        const outer = guards.splice(0)
+        guards.push(...outer.filter((g) => !referencesNames(g, new Set([node.item, '$index']))))
         node.children.forEach(visit)
+        guards.splice(0, guards.length, ...outer)
         emit('  }\n')
         if (node.empty) {
           emit('  {\n')
@@ -246,7 +253,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit('));\n')
           } else if (a.kind === 'prop') {
-            emit(`  __cl_attr<${JSON.stringify(node.tag.toLowerCase())}, ${JSON.stringify(PROPERTY[a.name.toLowerCase()] ?? a.name.toLowerCase())}>((`)
+            emit(`  __cl_attr<${JSON.stringify(node.tag.toLowerCase())}, ${JSON.stringify(ENUMERATED.has(a.name.toLowerCase()) ? '' : PROPERTY[a.name.toLowerCase()] ?? a.name.toLowerCase())}>((`)
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit('));\n')
           }
