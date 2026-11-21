@@ -20,10 +20,13 @@ export async function load({ request }: { request: Request }) {
   await new Promise((r) => setTimeout(r, 150)) // long enough to see the previous page stay while the next loads
   const size = clamp(Number(params.get('size')) || 10, 1, 50)
   const q = (params.get('q') ?? '').toLowerCase().slice(0, 40)
-  let ids = Array.from({ length: TOTAL }, (_, i) => i + 1)
-  if (q) ids = ids.filter((id) => nameOf(id).toLowerCase().includes(q))
-  const pages = Math.max(1, Math.ceil(ids.length / size))
+  // Without a filter the page is computed directly; with one, the matching ids are collected.
+  const ids = q ? Array.from({ length: TOTAL }, (_, i) => i + 1).filter((id) => nameOf(id).toLowerCase().includes(q)) : undefined
+  const total = ids ? ids.length : TOTAL
+  const pages = Math.max(1, Math.ceil(total / size))
   const page = clamp(Number(params.get('page')) || 1, 1, pages)
-  const rows = ids.slice((page - 1) * size, page * size).map((id) => ({ id, name: nameOf(id) }))
-  return Response.json({ page, pages, total: ids.length, rows }, { headers })
+  const from = (page - 1) * size
+  const slice = ids ? ids.slice(from, from + size) : Array.from({ length: Math.min(size, TOTAL - from) }, (_, i) => from + i + 1)
+  const rows = slice.map((id) => ({ id, name: nameOf(id) }))
+  return Response.json({ page, pages, total, rows }, { headers })
 }

@@ -211,3 +211,111 @@ test('an error isn\'t cached: the entry keeps its last value and the next use fe
   await flush()
   expect(again.value).toBe('ok')
 })
+
+test('review P1: an unkeyed fetcher returning { hit } is just a value', async () => {
+  const r = resource(() => ({ hit: 5, other: 1 }))
+  await flush()
+  expect(r.value).toEqual({ hit: 5, other: 1 })
+})
+
+test('review P2: a cached undefined doesn\'t crash; it\'s a hit like any value', async () => {
+  const name = uniq()
+  setData([name], undefined)
+  const f = vi.fn(() => Promise.resolve(1))
+  expect(() => resource(f, { key: () => [name] })).not.toThrow()
+  await flush()
+  expect(f).not.toHaveBeenCalled()
+})
+
+test('review P4: setData during a request wins in every resource, including the one that started the request', async () => {
+  const name = uniq()
+  const answer = deferred<string>()
+  const a = resource(() => answer.promise, { key: () => [name] })
+  setData([name], 'optimistic')
+  answer.resolve('server, older')
+  await flush()
+  expect(a.value).toBe('optimistic')
+})
+
+test('review P5: two refetches on one key finishing out of order: the newest answer wins', async () => {
+  const name = uniq()
+  const answers = [deferred<string>(), deferred<string>(), deferred<string>()]
+  let i = 0
+  const r = resource(() => answers[i++]!.promise, { key: () => [name] })
+  answers[0]!.resolve('first'); await flush()
+  void r.refetch(); void r.refetch()
+  answers[2]!.resolve('newest'); await flush()
+  answers[1]!.resolve('older'); await flush()
+  expect(r.value).toBe('newest')
+})
+
+test('review P3/P6: invalidate makes one request per key, not per resource; a later user never gets the discarded answer', async () => {
+  const name = uniq()
+  let version = 1
+  const f = vi.fn(() => Promise.resolve(`v${version}`))
+  const a = resource(f, { key: () => [name] })
+  const b = resource(f, { key: () => [name] })
+  await flush()
+  version = 2
+  invalidate([name])
+  await flush()
+  expect(f).toHaveBeenCalledTimes(2) // one for both
+  expect([a.value, b.value]).toEqual(['v2', 'v2'])
+  const lone = uniq()
+  const slow = deferred<string>()
+  const answers = [slow.promise, Promise.resolve('fresh')]
+  let j = 0
+  scope(() => { resource(() => answers[j++]!, { key: () => [lone] }) })() // starts a request, then its island goes
+  invalidate([lone]) // no users now, a request in flight
+  slow.resolve('discarded')
+  const later = resource(() => answers[j++]!, { key: () => [lone] })
+  await flush()
+  expect(later.value).toBe('fresh')
+})
+
+test('review P7: a keyed fetcher\'s falsy result is "not ready": nothing cached, no loading', async () => {
+  const name = uniq()
+  const team = state<number | undefined>(undefined)
+  const r = resource(() => team.get() !== undefined && Promise.resolve(team.get()), { key: () => [name] })
+  expect(r.loading).toBe(false)
+  await flush()
+  const g = vi.fn(() => Promise.resolve('fetched'))
+  const other = resource(g, { key: () => [name] })
+  await flush()
+  expect(g).toHaveBeenCalledTimes(1) // nothing was cached for the key
+  expect(other.value).toBe('fetched')
+})
+
+test('review: keep follows the users still there, not the largest ever', async () => {
+  vi.useFakeTimers()
+  const name = uniq()
+  const f = vi.fn(() => Promise.resolve(1))
+  const long = scope(() => { resource(f, { key: () => [name], keep: 60_000 }) })
+  const short = scope(() => { resource(f, { key: () => [name], keep: 1000 }) })
+  await vi.advanceTimersByTimeAsync(0)
+  long()
+  short() // the last user's keep: 1 s
+  await vi.advanceTimersByTimeAsync(1000)
+  resource(f, { key: () => [name] })
+  await vi.advanceTimersByTimeAsync(0)
+  expect(f).toHaveBeenCalledTimes(2)
+})
+
+test('review: a key getter that throws is an error, also with initial', async () => {
+  let r!: ReturnType<typeof resource<number>>
+  expect(() => { r = resource(() => Promise.resolve(1), { key: () => { throw new Error('bad key') }, initial: 0 }) }).not.toThrow()
+  await flush()
+  expect((r.error as Error).message).toBe('bad key')
+})
+
+test('ready(): resolves with the first answer; rejects when the first run fails; at once when there is a value', async () => {
+  const r = resource(() => new Promise<number>((res) => setTimeout(() => res(7), 5)))
+  expect(await r.ready()).toBe(7)
+  expect(await r.ready()).toBe(7)
+  const bad = resource(() => Promise.reject(new Error('down')))
+  await expect(bad.ready()).rejects.toThrow('down')
+  const name = uniq()
+  const page = state(1)
+  const keyed = resource(() => Promise.resolve(page.get() * 10), { key: () => [name, page.get()] })
+  expect(await keyed.ready()).toBe(10)
+})

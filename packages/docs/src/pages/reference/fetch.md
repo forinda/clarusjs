@@ -44,6 +44,7 @@ A `Resource<T>`:
 - **`error`**: the last run's error, or `undefined`. It's cleared when a run starts.
 - **`refetch()`**: run now, cancelling a run in flight. Returns a promise that settles when this run ends (with its retries), or when a newer run replaces it.
 - **`mutate(value)`**: show `value` now, for example an optimistic update. The next run replaces it.
+- **`ready()`**: a promise of the first answer. It resolves with `value` once there is one (at once if there already is), or rejects with the first run's error. On the server it resolves with `initial`. Use it in an event handler or an async function: a script's top level can't `await`.
 
 ### Caveats
 
@@ -106,6 +107,15 @@ const prices = resource(load, { retry: 3, refetch: { interval: 10_000 } })
 const stats = resource(load, { initial: props.stats })
 ```
 
+**Wait for the data in code:**
+
+```ts
+async function exportCsv() {
+  const rows = await items.ready()   // the first answer, fetched or already there
+  download(toCsv(rows))
+}
+```
+
 **Update optimistically, then confirm:**
 
 ```ts
@@ -122,6 +132,8 @@ With `key`, a resource's answers live in a cache shared by the whole page.
 
 - **A key seen before is served without a request,** until `invalidate()` matches it, or it's older than `stale`. `refetch()` always asks.
 - **Keys are compared by value**, object properties in any order: `['items', { page: 2, q: '' }]` and `['items', { q: '', page: 2 }]` are one key. Put in the key everything the request depends on: on a cached answer the fetcher doesn't run.
+- **Keys are plain values:** strings, numbers, booleans, `null`, arrays and plain objects. They're compared as JSON is written: a property set to `undefined` is left out, and a `Map`, `Set` or class instance becomes `{}`, so two of them would share one entry.
+- **One key, one kind of data.** Resources sharing a key share its answer, whatever their fetchers; nothing checks that they fetch the same thing.
 - **One request per key at a time.** Resources asking a key that's already loading wait for that request. It ends even if the resource that started it moves on.
 - **Moving to another key keeps the previous value** on screen, with `loading` true, until the new answer arrives.
 - **`initial` with `key`** fills the entry if it's empty, as fresh: no browser request until it's invalidated.
@@ -143,7 +155,7 @@ Marks every cached answer whose key starts with `prefix` as stale. The resources
 
 ### Caveats
 
-- **A request in flight when you invalidate** isn't stored when it ends: a fresh one replaces it.
+- **A request in flight when you invalidate** isn't stored when it ends: the resources showing the key make a fresh one (one request for all of them), and a resource opening the key later fetches too.
 
 ### Usage
 
@@ -168,7 +180,7 @@ Sets a cached answer, and shows it in every resource using that key. Creates the
 
 ```ts
 async function rename(id, name) {
-  setData(['items', { page }], (data) => ({ ...data, rows: data.rows.map((r) => (r.id === id ? { ...r, name } : r)) }))
+  setData(['items', { page }], (data) => data && { ...data, rows: data.rows.map((r) => (r.id === id ? { ...r, name } : r)) })
   try {
     await fetch(`/api/items/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) })
   } finally {
@@ -183,7 +195,7 @@ async function rename(id, name) {
 prefetch<T>(key: unknown[], fetcher): Promise<void>
 ```
 
-Fetches an answer into the cache ahead of time, unless it's there and fresh. The promise settles when it's stored. Errors are ignored: the resource that opens the key later fetches again.
+Fetches an answer into the cache ahead of time, unless it's there and not invalidated (a resource's `stale` isn't considered here). The promise settles when it's stored. Errors are ignored: the resource that opens the key later fetches again.
 
 ### Usage
 

@@ -100,7 +100,7 @@ const feed = resource(load, {
 })
 ```
 
-`refetch()` runs it now, for a Refresh button or after you've saved something. `mutate(value)` shows a value right away (an optimistic update); the next run replaces it.
+`refetch()` runs it now, for a Refresh button or after you've saved something. In code that needs the data itself, `await items.ready()` waits for the first answer (in a handler or an async function; a script's top level can't `await`). `mutate(value)` shows a value right away (an optimistic update); the next run replaces it.
 
 ## Caching
 
@@ -113,7 +113,7 @@ Give a resource a `key`, and its answers are cached by it: a key seen before com
   import { invalidate, json, prefetch, resource } from 'clarusjs/fetch'
   let page = state(1)
   let q = state('')
-  const list = resource(({ signal }) => json(`/api/records?page=${page}&q=${q}`, { signal }), {
+  const list = resource(({ signal }) => json(`/api/records?page=${page}&q=${encodeURIComponent(q)}`, { signal }), {
     key: () => ['records', { page: page, q: q }],   // one cache entry per page and filter
   })
   async function rename(id, name) {

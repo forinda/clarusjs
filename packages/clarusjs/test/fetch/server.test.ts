@@ -27,3 +27,8 @@ test('on the server, key and the cache functions do nothing', async () => {
   await prefetch(['s'], f)
   expect(f).not.toHaveBeenCalled()
 })
+
+test('ready() on the server resolves with initial (nothing is fetched)', async () => {
+  const { resource } = await import('../../src/fetch/index.ts')
+  expect(await resource(() => Promise.resolve(1), { initial: 3 }).ready()).toBe(3)
+})
