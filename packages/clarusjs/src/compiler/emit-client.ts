@@ -43,6 +43,7 @@ export function emitClient(ir: ComponentIR): string {
     if (usedComponents.has(imp.name)) out += `import { render as ${renderName(imp.name)} } from '${imp.from}?render'\n`
   }
   for (const d of ir.dataImports) out += `import ${d.clause} from '${d.from}'\n`
+  if (all.some((n) => n.kind === 'connect')) out += `import { connect as __cl_connect } from 'clarusjs/forms'\n`
   for (const line of ir.scriptImports) out += `${line}\n`
   out += `\nexport function attach(__cl_root, __cl_props = {}, __cl_state) {\n`
   // Inputs: read-only signals (writes are compile errors), set from props now and by the returned update.
@@ -86,6 +87,7 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
   for (const h of [...holes].sort((a, b) => a.index - b.index)) lines.push(`__cl_text(__cl_h[${h.index}], () => ${wrapExpr(rw.expr(h.expr))})`)
   for (const a of nodes) {
     if (a.kind === 'attr' && a.reactive) lines.push(`__cl_attr(${ctx}, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, rw.expr)}${tagArg(a)})`)
+    if (a.kind === 'connect') lines.push(`__cl_connect(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)
   }
   for (const e of ir.events.filter((ev) => ev.scope === scope)) {
     const body = rewriteClient(e.handler, signals).trim()

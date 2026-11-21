@@ -15,6 +15,8 @@ export type IRNode =
   | { kind: 'slot'; name: string; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
   | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string }
+  // [engine]="f": an element connected to a form from clarusjs/forms (marked data-cl-form="index").
+  | { kind: 'connect'; expr: string; index: number }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
   | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
   // @for / @empty. block = -1 outside islands; inside an island, the list's marker index. `item` and `$index` are in
@@ -101,6 +103,15 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   let holeCount = 0
   let eventElementCount = 0
   let attrElementCount = 0
+  let formCount = 0
+  // Under an [engine] element: the object its fields bind (one per form, so a path can't silently miss).
+  let engineScope: { root: string | null } | null = null
+  const sameRoot = (path: string, at: number) => {
+    const root = pathSegments(path)?.root
+    if (!engineScope || !root) return
+    if (engineScope.root === null) engineScope.root = root
+    else if (engineScope.root !== root) fail(`fields under [engine] bind one object: found ${engineScope.root} and ${root}`, at)
+  }
   let blockCount = 0
   let forCount = 0
   let regionCount = 0
@@ -185,6 +196,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
           const set = writeBack(a.expr, '__cl_v', a.name, a.start)
           checkExpr(a.expr, file, source, a.start)
           props.push({ name: a.name, expr: a.expr })
+          sameRoot(a.expr, a.start)
           // The forms engine's path for this component (the first two-way binding's); island() puts it on the island.
           if (!models.length) path = modelPath(a.expr)
           models.push({ name: a.name, set })
@@ -245,6 +257,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       const bindable = (a.name === 'value' && ['input', 'select', 'textarea'].includes(tag)) || (a.name === 'checked' && tag === 'input')
       if (!bindable) fail(`[(${a.name})] on <${tag}>: an element binds two ways only with [(value)] (input, select, textarea) or [(checked)]`, a.start)
       const type = a.name === 'checked' || tag === 'select' ? 'change' : 'input'
+      sameRoot(a.expr, a.start)
       const event = { kind: 'event' as const, name: type, expr: writeBack(a.expr, `$event.target.${a.name}`, a.name, a.start), start: a.start }
       // Its path, for the forms engine (clarusjs/forms): see docs/architecture.md §5.
       return [{ kind: 'prop', name: a.name, expr: a.expr, start: a.start }, event, { kind: 'prop', name: 'data-cl-path', expr: modelPath(a.expr), start: a.start }]
@@ -252,6 +265,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     emitStatic(`<${node.tag}`)
     const elementEvents = attrs.filter((a) => a.kind === 'event')
     const dynamic: Extract<IRNode, { kind: 'attr' }>[] = []
+    let engine = false
     for (const a of attrs) {
       if (a.kind === 'static') emitStatic(a.value === true ? ` ${a.name}` : ` ${a.name}="${a.value}"`)
       else if (a.kind === 'event') {
@@ -262,6 +276,14 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
           const exprStart = found === -1 ? a.start : found // a generated handler ([(value)]): at the binding
           for (const w of writesTo(a.expr, inputNames)) readOnly(w.name, exprStart + w.start)
         }
+      } else if (a.kind === 'prop' && a.name === 'engine') {
+        // [engine]="f": this element's form (and its fields) belong to the forms engine f (clarusjs/forms).
+        if (!stateful) fail('[engine] needs a <script> (an island): the forms engine runs in the browser', a.start)
+        checkExpr(a.expr, file, source, a.start)
+        const index = formCount++
+        emitStatic(` data-cl-form="${index}"`)
+        out.push({ kind: 'connect', expr: a.expr, index })
+        engine = true
       } else {
         if (/^on/i.test(a.name)) fail(`use (${a.name.slice(2).toLowerCase()}) for events, not an ${a.name} attribute`, a.start)
         // srcdoc is a whole HTML document: binding data into it is HTML injection, so it stays static.
@@ -287,7 +309,10 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       for (const a of elementEvents) events.push({ index, type: a.name, handler: a.kind === 'event' ? a.expr : '', scope: scopeKey })
     }
     emitStatic('>')
+    const outer = engineScope
+    if (engine) engineScope = { root: null }
     node.children.forEach((child) => visit(child, RAW_TEXT.has(node.tag) ? node.tag : rawText))
+    engineScope = outer
     if (!VOID.has(node.tag)) emitStatic(`</${node.tag}>`)
   }
 

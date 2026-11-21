@@ -53,3 +53,31 @@ test('a component bound two ways carries its path on its island; a field binding
   expect(html).toMatch(/<cl-island c="field"[^>]* data-cl-path="shipping\.street"/)
   expect(html).not.toMatch(/p="[^"]*path/) // not a prop the child sees
 })
+
+const signup = (body: string) => `<script>
+  import { form } from 'clarusjs/forms'
+  let order = state({ name: '', lines: [{ item: '' }] })
+  let other = state({ x: '' })
+  const f = form(order)
+</script>
+${body}
+`
+
+test('[engine]="f" marks the element on the server and connects it in the browser', () => {
+  const src = signup('<form [engine]="f"><input [(value)]="order.name"></form>')
+  const out = client(src)
+  expect(out).toContain("import { connect as __cl_connect } from 'clarusjs/forms'")
+  expect(out).toMatch(/__cl_connect\(__cl_root, 0, \(\) => \(?f\)?\)/)
+  const html = server(src)
+  expect(html).toContain('data-cl-form=\\"0\\"')
+  expect(html).not.toContain('engine')
+  // A component without [engine] imports nothing from forms.
+  expect(client("<script>\n  let a = state('')\n</script>\n<input [(value)]=\"a\">\n")).not.toContain('clarusjs/forms')
+})
+
+test('[engine] needs an island; fields under one [engine] bind one object', () => {
+  expect(() => compile('<form [engine]="f"></form>\n', { file: 'a.tscl', target: 'client' })).toThrow(/^a\.tscl:1:7 \[engine\] needs a <script>/)
+  expect(() => client(signup('<form [engine]="f"><input [(value)]="order.name">\n<input [(value)]="other.x"></form>'))).toThrow(/a\.tscl:8:8 fields under \[engine\] bind one object: found order and other/)
+  // Outside the [engine] element, another object is fine.
+  expect(() => client(signup('<form [engine]="f"><input [(value)]="order.name"></form>\n<input [(value)]="other.x">'))).not.toThrow()
+})
