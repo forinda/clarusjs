@@ -830,6 +830,78 @@ test('inputs: a nested island gets new props in place, keeping its own state', a
   expect(await page.evaluate((el) => el!.isConnected, handle)).toBe(true) // the same element, updated in place
 })
 
+test('forms: field components bound two ways update one state object; native selects and checkboxes too; reset goes back', async ({ page }) => {
+  await page.goto('/guide/forms')
+  const form = page.locator('cl-island[c="signup-form"]')
+  await expect(form).toHaveAttribute('data-cl-ready', '')
+  await expect(page.locator('cl-island[c="text-field"]').first()).toHaveAttribute('data-cl-ready', '')
+  const summary = form.locator('.signup-summary')
+  await expect(summary).toHaveText('Someone (no email) on free.')
+  await expect(form.locator('.signup-reset')).toBeDisabled()
+  const name = form.getByLabel('Name')
+  const nameField = await name.elementHandle()
+  await name.fill('Ada')
+  await form.getByLabel('Email').fill('ada@example.com')
+  await form.getByLabel('Plan').selectOption('pro')
+  await form.getByLabel('Send me updates').check()
+  await expect(summary).toHaveText('Ada (ada@example.com) on pro, with updates. Changed.')
+  await form.locator('.signup-reset').click()
+  await expect(summary).toHaveText('Someone (no email) on free.')
+  await expect(name).toHaveValue('') // the field follows the form
+  await expect(form.getByLabel('Send me updates')).not.toBeChecked()
+  expect(await page.evaluate((el) => el!.isConnected, nameField)).toBe(true) // the same field, updated in place
+})
+
+test('events: a custom event from a child island, mouseenter, keys, focus and blur, and submit without a reload', async ({ page }) => {
+  const documents: string[] = []
+  page.on('request', (r) => { if (r.resourceType() === 'document') documents.push(new URL(r.url()).pathname) })
+  await page.goto('/guide/events')
+  const demo = page.locator('cl-island[c="event-demo"]')
+  await expect(demo).toHaveAttribute('data-cl-ready', '')
+  await expect(page.locator('cl-island[c="star-rating"]')).toHaveAttribute('data-cl-ready', '')
+  const third = demo.getByRole('button', { name: '3 stars' })
+  await third.hover()
+  await expect(third).toHaveClass('star on') // (mouseenter), which doesn't bubble
+  await third.click()
+  await expect(demo.locator('.event-rating')).toHaveText('Rating: 3')
+  const note = demo.getByLabel('Note')
+  await note.fill('hello')
+  await note.press('Escape')
+  await expect(note).toHaveValue('')
+  await note.fill('kept')
+  await note.press('Enter')
+  await note.blur()
+  await expect(demo.locator('.event-log li')).toHaveText(['blur', 'submit: kept', 'focus', 'rate: 3'])
+  expect(documents).toEqual(['/guide/events']) // submit was handled, not a page load
+})
+
+test('large forms: a section, lines bound by index, derived total and validation, add and remove, send, reset', async ({ page }) => {
+  await page.goto('/guide/forms')
+  const order = page.locator('cl-island[c="order-form"]')
+  await expect(order).toHaveAttribute('data-cl-ready', '')
+  await expect(order.locator('.order-total')).toHaveText('Total: 4')
+  await order.getByRole('button', { name: 'Send' }).click()
+  await expect(order.locator('.order-error')).toHaveText('Enter a name.')
+  await order.getByLabel('Name').fill('Ada')
+  await order.getByLabel('Quantity 1').fill('3')
+  await expect(order.locator('.order-total')).toHaveText('Total: 12')
+  await order.getByRole('button', { name: 'Add a line' }).click()
+  await expect(order.locator('.order-error')).toHaveText('Every line needs an item.')
+  await order.getByLabel('Item 2').fill('Pen')
+  await order.getByLabel('Price 2').fill('2')
+  await expect(order.locator('.order-total')).toHaveText('Total: 14')
+  await order.getByRole('button', { name: 'Remove line 1' }).click()
+  await expect(order.getByLabel('Item 1')).toHaveValue('Pen')
+  await expect(order.locator('.order-total')).toHaveText('Total: 2')
+  await order.getByRole('button', { name: 'Send' }).click()
+  await expect(order.locator('.order-sent')).toContainText('"name":"Ada"')
+  await expect(order.locator('.order-sent')).toContainText('"item":"Pen"')
+  await order.getByRole('button', { name: 'Reset' }).click()
+  await expect(order.locator('.order-total')).toHaveText('Total: 4')
+  await expect(order.getByLabel('Item 1')).toHaveValue('Notebook')
+  await expect(order.getByLabel('Name')).toHaveValue('')
+})
+
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')
