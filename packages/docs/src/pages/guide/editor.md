@@ -124,3 +124,13 @@ Zed runs language servers through extensions; a clarusjs extension for Zed (regi
 ### Sublime Text
 
 Load the TextMate grammar from the VS Code extension (`packages/vscode/syntaxes`) for highlighting, and add `clarusjs-ls --stdio` with the **LSP** package for the rest.
+
+## File icons and GitHub
+
+The VS Code extension gives `.tscl` files their own icon in VS Code's default icon theme. Support in popular icon themes (Material Icon Theme, vscode-icons, Seti, nvim-web-devicons) is on its way upstream.
+
+On GitHub, a repository's `.gitattributes` can highlight `.tscl` files as HTML until GitHub knows the language:
+
+```text
+*.tscl linguist-language=HTML
+```

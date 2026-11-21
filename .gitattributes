@@ -1,0 +1,3 @@
+# GitHub highlights .tscl files as HTML (templates are HTML with {{ }}, @if and bindings) until Linguist knows
+# the language (#48).
+*.tscl linguist-language=HTML
