@@ -782,7 +782,7 @@ test('progress: a lesson done, its quiz right, XP and badges on the progress pag
   await expect(page.locator('.sidebar ul a[href="/learn/first-page"]')).toHaveAttribute('data-status', 'done')
   // Stored in one versioned key, in this browser only.
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('clarusjs-learn')!).v)).toBe(1)
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+  expect((await (await axe(page)).analyze()).violations).toEqual([])
 
   const reset = board.getByRole('button', { name: 'Reset progress' })
   await reset.click()
