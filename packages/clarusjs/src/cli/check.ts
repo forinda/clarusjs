@@ -48,6 +48,13 @@ function inSource(original: string, converted: string, offset: number): number |
   return null
 }
 
+/** A page's .load.ts that exports load(), as an import specifier: what it returns is checked against the inputs. */
+export function loaderOf(path: string): string | undefined {
+  const loaderPath = path.replace(/\.[^./]+$/, '.load.ts')
+  const hasLoad = existsSync(loaderPath) && /export\s+(async\s+)?function\s+load\b|export\s+(const|let)\s+load\b/.test(readFileSync(loaderPath, 'utf8'))
+  return hasLoad ? `./${basename(loaderPath)}` : undefined
+}
+
 /** Where the project's TypeScript lives (overridable for tests and monorepos). */
 function typescriptDir(root: string, override?: string): string {
   if (override) return override
@@ -84,10 +91,8 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     }
     views.push({ file, source })
     try {
-      // A page's .load.ts that exports load(): what it returns is checked against the page's inputs.
-      const loaderPath = path.replace(/\.[^./]+$/, '.load.ts')
-      const hasLoad = existsSync(loaderPath) && /export\s+(async\s+)?function\s+load\b|export\s+(const|let)\s+load\b/.test(readFileSync(loaderPath, 'utf8'))
-      const { code, mappings, loaderSpan } = generateTs(source, file, hasLoad ? { loader: `./${basename(loaderPath)}` } : {})
+      const loader = loaderOf(path)
+      const { code, mappings, loaderSpan } = generateTs(source, file, loader ? { loader } : {})
       const vpath = resolve(virtualRoot, `${file}.ts`)
       mkdirSync(dirname(vpath), { recursive: true })
       writeFileSync(vpath, code)

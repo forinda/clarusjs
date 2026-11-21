@@ -184,6 +184,30 @@ export function splitImports(code: string, file: string, source: string, offset:
   return { imports, body }
 }
 
+/**
+ * Where type annotations go for type checking: `: any` after the untyped parameters of the script's own functions
+ * (declarations, `const f = (x) => …`, class methods). A script is JavaScript, so nothing else types them, and a strict
+ * project would report each one. Callbacks keep their contextual type; a parameter with a default takes its type.
+ */
+export function untypedParams(code: string): { at: number; text: string }[] {
+  const edits: { at: number; text: string }[] = []
+  print(parseScript(code), code, (node, parent, key) => {
+    const own = node.type === 'FunctionDeclaration' ||
+      ((node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression') &&
+        ((parent?.type === 'VariableDeclarator' && key === 'init') || parent?.type === 'MethodDefinition'))
+    if (!own) return undefined
+    for (const p of node.params as N[]) {
+      if (p.type === 'AssignmentPattern') continue
+      // `x => …` has no parentheses to annotate in.
+      const bare = node.type === 'ArrowFunctionExpression' && !code.slice(node.start, p.start).includes('(')
+      if (bare) edits.push({ at: p.start, text: '(' })
+      edits.push({ at: p.end, text: (p.type === 'RestElement' ? ': any[]' : ': any') + (bare ? ')' : '') })
+    }
+    return undefined
+  })
+  return edits.sort((a, b) => a.at - b.at)
+}
+
 // Globals that only exist on a server runtime. An island's script also runs in the browser and its state() values
 // are written into the page, so reading these would leak server data (or simply fail in the browser).
 const SERVER_GLOBALS = new Set(['process', 'Deno', 'Bun', 'require'])

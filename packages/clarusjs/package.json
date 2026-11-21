@@ -78,6 +78,7 @@
     "happy-dom": "^21.0.4",
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
+    "typescript-beta": "npm:typescript@7.1.0-beta",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
   },
@@ -116,6 +117,15 @@
         "types": "./dist/server/views.d.ts",
         "default": "./dist/server/views.js"
       }
+    }
+  },
+  "typescript": {
+    "contentMapper": {
+      "exec": [
+        "node",
+        "./dist/cli/index.js",
+        "mapper"
+      ]
     }
   }
 }

@@ -7,6 +7,6 @@ Support for [clarusjs](https://clarusjs.com) `.tscl` templates.
 - **Editing:** comment toggling (`{{-- --}}`), bracket matching and auto-closing, Emmet.
 - **File icon** for `.tscl`.
 
-Type errors in templates come from `clarusjs check` today, and in the editor through a TypeScript 7.1 content mapper (coming).
+Type errors in templates come from `clarusjs check`, and as you type from clarusjs's TypeScript 7.1 content mapper (one `contentMappers` line in `tsconfig.json`).
 
 Setup and details: [Editor setup](https://clarusjs.com/guide/editor).
