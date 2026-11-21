@@ -24,7 +24,7 @@
       detail = { ok, done: true, text: ok ? 'Correct.' : 'The answer is: ' + options[answer] + '.' }
       quiz()?.setAttribute('data-answered', ok ? 'right' : 'wrong')
       const details = quiz()?.querySelector('.quiz-answer')
-      if (details) details.open = true
+      if (details instanceof HTMLDetailsElement) details.open = true
     }
     quiz()?.dispatchEvent(new CustomEvent('quiz:result', { bubbles: true, detail }))
   }

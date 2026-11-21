@@ -69,7 +69,7 @@ export type Stats = {
 }
 
 /** XP (10 a step, 50 a lesson, 20 a quiz right the first time), counts and badges, for the lessons of a path. */
-export function stats(p: Progress, lessons: string[]): Stats {
+export function stats(p: Progress, lessons: readonly string[]): Stats {
   const done = lessons.filter((l) => p.done.includes(l)).length
   const steps = lessons.reduce((n, l) => n + (p.steps[l]?.length ?? 0), 0)
   const answers = Object.values(p.quizzes)

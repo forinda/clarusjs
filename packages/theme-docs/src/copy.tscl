@@ -5,7 +5,7 @@
     const block = button.closest('.sample, .code-block')?.querySelector('code')
     // Removed diff lines aren't part of the code to copy.
     const clone = block?.cloneNode(true)
-    clone?.querySelectorAll('.diff.remove').forEach((line) => {
+    if (clone instanceof Element) clone.querySelectorAll('.diff.remove').forEach((line) => {
       if (line.nextSibling?.nodeType === 3 && line.nextSibling.textContent === '\n') line.nextSibling.remove() // its newline too
       line.remove()
     })
