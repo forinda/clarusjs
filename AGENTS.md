@@ -4,13 +4,13 @@ Guidance for AI agents (and humans) working in this repo.
 
 ## What this is
 
-clarusjs compiles `.tscl` components (Vue/Angular-style templates + an optional `<script>` with signals) into:
+clarusjs compiles `.tscl` components (templates with `{{ }}`, `@if`/`@for`, `(event)`, `[prop]`, plus an optional `<script>` with signals) into:
 
 - a **server module**: `render(props) → string`, HTML with markers around reactive holes only;
 - a **client module**, only for stateful components: `attach(root, props)`, which wires signals to the server's HTML without re-rendering it.
 
 A Vite plugin picks the output per Vite environment and serves pages through a `fetch(Request) → Response` handler.
-Design: [docs/architecture.md](docs/architecture.md). Current status: proof of concept (see §16–17 there).
+Design: [docs/architecture.md](docs/architecture.md). Status: early (`0.x`); the API can still change between minor versions.
 
 ## Commands
 
