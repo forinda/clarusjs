@@ -1,10 +1,16 @@
 @import docs from '../../layouts/docs.tscl'
 @import learnProgress from '@clarusjs/theme-docs/learn-progress.tscl'
 @import { theme } from '../../nav.ts'
-
 {{-- In the Learn sidebar under "You" (sidebar.ts orders it there); kept in this browser, never sent anywhere. --}}
-<docs [title]="'Your progress'" [path]="'/learn/progress'" [description]="'Your XP, lessons, quiz answers and badges, kept in this browser.'">
+
+<docs
+  [title]="'Your progress'"
+  [path]="'/learn/progress'"
+  [description]="'Your XP, lessons, quiz answers and badges, kept in this browser.'"
+>
   <h1>Your progress</h1>
-  <p class="lead">Lessons you finish, quiz answers and badges are kept in this browser only: no account, nothing sent anywhere.</p>
+  <p class="lead">
+    Lessons you finish, quiz answers and badges are kept in this browser only: no account, nothing sent anywhere.
+  </p>
   <learnProgress [config]="theme" />
 </docs>

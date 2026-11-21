@@ -59,12 +59,12 @@ test('sidebar: a popover nav with the current page, slots, and the header links 
 
 test('content and "On this page": crumb, both forms of the table of contents, edit link, last updated, pager, footer slot', () => {
   expect(html).toContain('<p class="crumb">Guide › Basics</p>')
-  expect(html).toMatch(/<aside class="toc" aria-label="On this page">.*<a href="#one">One<\/a>.*<li class="sub"><a href="#two">Two<\/a>/s)
+  expect(html).toMatch(/<aside class="toc" aria-label="On this page">.*<a href="#one">One<\/a>.*<li class="sub">\s*<a href="#two">Two<\/a>/s)
   expect(html).toMatch(/<details class="toc-inline">\s*<summary>On this page<\/summary>/)
   expect(html).toContain('<a class="edit" href="https://example.com/edit/guide/start.tscl">')
-  expect(html).toMatch(/<p class="updated">Last updated <time datetime="2023-11-14T22:13:20\.000Z">Nov 14, 2023<\/time><\/p>/)
+  expect(html).toMatch(/<p class="updated">\s*Last updated\s+<time datetime="2023-11-14T22:13:20\.000Z">Nov 14, 2023<\/time>\s*<\/p>/)
   expect(html).toMatch(/<a class="next" href="\/guide\/next"><small>Next<\/small>Next<\/a>/)
-  expect(html).toContain('<footer class="site-footer"><p>Custom footer</p></footer>')
+  expect(html).toMatch(/<footer class="site-footer">\s*<p>Custom footer<\/p>\s*<\/footer>/)
 })
 
 test('a page without a date shows none', async () => {
@@ -89,10 +89,10 @@ test('lesson layout: a focused header (leave, lesson n of N, one segment per ste
   expect(one).toContain('<title>One</title>')
   expect(one).toMatch(/<header class="lesson-header">\s*<a class="leave" href="\/learn\/progress" aria-label="Leave the lesson">/)
   expect(one).toContain('<p class="eyebrow">Learn · Lesson 1 of 2</p>') // the progress page isn't a lesson
-  expect(one).toMatch(/<ol class="segments" aria-label="Steps">\s*<li><a href="#read">Read<\/a><\/li><li><a href="#write">Write<\/a><\/li>\s*<\/ol>/)
+  expect(one).toMatch(/<ol class="segments" aria-label="Steps">\s*<li>\s*<a href="#read">Read<\/a>\s*<\/li>\s*<li>\s*<a href="#write">Write<\/a>\s*<\/li>\s*<\/ol>/)
   expect(one).toContain('<main class="lesson" id="content" tabindex="-1"><h1>One</h1><p>Intro</p><section class="step" aria-labelledby="read">')
   // Hidden until its island attaches: without JavaScript the lesson is a plain page.
-  expect(one).toMatch(/<div class="lesson-bar" role="region" aria-label="Lesson actions" hidden><cl-island c="[^"]*lesson-bar" [^>]*p="[^"]*next[^"]*\/learn\/two/)
+  expect(one).toMatch(/<div class="lesson-bar" role="region" aria-label="Lesson actions" hidden>\s*<cl-island c="[^"]*lesson-bar" [^>]*p="[^"]*next[^"]*\/learn\/two/)
   expect(one).not.toContain('class="sidebar"')
 })
 
@@ -102,8 +102,8 @@ test('quiz: an island whose server HTML works without JavaScript (radio options,
   expect(one).toContain('<p class="quiz-question" id="quiz-0-q">Pick b</p>')
   expect(one).toMatch(/<cl-island c="[^"]*quiz-choices"[^>]*><div class="quiz-choices">/)
   // Markers where the island's inputs are read (inputs are reactive since clarusjs #217).
-  expect(one).toMatch(/<div class="quiz-options" role="radiogroup" aria-labelledby="quiz-0-q"( data-cl-a="\d+")?>.*<input type="radio" name="quiz-0" value="1"[^>]*> (<!--\[\d+-->)?b(<!--\]-->)?(<!--\[b\d+:-1--><!--\]-->)?<\/label>/s)
-  expect(one).toMatch(/<details class="quiz-answer"[^>]*><summary>Show the answer<\/summary><p class="quiz-correct">Answer: b<\/p><p>Because\.<\/p><\/details>/)
+  expect(one).toMatch(/<div class="quiz-options" role="radiogroup" aria-labelledby="quiz-0-q"( data-cl-a="\d+")?>.*<input type="radio" name="quiz-0" value="1"[^>]*>\s+(<!--\[\d+-->)?b(<!--\]-->)?(<!--\[b\d+:-1--><!--\]-->)?<\/label>/s)
+  expect(one).toMatch(/<details class="quiz-answer"[^>]*>\s*<summary>Show the answer<\/summary>\s*<p class="quiz-correct">Answer: b<\/p>\s*<p>Because\.<\/p>\s*<\/details>/)
 })
 
 test('progress: an XP chip (hidden until it knows the XP) in the lesson header and on Learn pages, and the progress page', () => {

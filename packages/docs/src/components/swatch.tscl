@@ -5,4 +5,9 @@
   let pinned = state(false)
 </script>
 
-<span class="swatch" [style]="'--hue: ' + hue"><b class="swatch-hue">{{ hue }}°</b> <button type="button" class="swatch-pin" (click)="pinned = !pinned" [aria-pressed]="pinned ? 'true' : 'false'">{{ pinned ? 'Pinned' : 'Pin' }}</button></span>
+<span class="swatch" [style]="'--hue: ' + hue"
+  ><b class="swatch-hue">{{ hue }}°</b>
+  <button type="button" class="swatch-pin" (click)="pinned = !pinned" [aria-pressed]="pinned ? 'true' : 'false'">
+    {{ pinned ? 'Pinned' : 'Pin' }}
+  </button></span
+>

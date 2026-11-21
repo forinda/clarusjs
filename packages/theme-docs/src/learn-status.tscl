@@ -36,6 +36,8 @@
 </script>
 
 <a class="xp-chip" [href]="progress" [hidden]="!ready" [aria-label]="xp + ' XP: your progress'">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M13 2L4 14h7l-1 8 9-12h-7z"></path>
+  </svg>
   {{ xp }} XP
 </a>

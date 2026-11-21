@@ -1,18 +1,22 @@
 {{-- The Fetching guide's caching demo: 20,000 records, 10 per page. Each page is cached by its key, so pages already
      seen come back without a request; the next page is prefetched; renaming a row invalidates every cached page. --}}
+
 <script>
   import { effect } from 'clarusjs/runtime'
   import { invalidate, json, prefetch, resource } from 'clarusjs/fetch'
   let page = state(1)
   let q = state('')
   const url = (p, query) => `/api/demo-records?page=${p}&size=10&q=${encodeURIComponent(query)}`
-  const list = resource(({ signal }) => json(url(page, q), { signal }), { key: () => ['records', { page: page, q: q }] })
+  const list = resource(({ signal }) => json(url(page, q), { signal }), {
+    key: () => ['records', { page: page, q: q }],
+  })
   // While a page is shown, fetch the next one into the cache, so Next is instant.
   effect(() => {
     const shown = list.value
     const p = page
     const query = q
-    if (shown && p < shown.pages) prefetch(['records', { page: p + 1, q: query }], ({ signal }) => json(url(p + 1, query), { signal }))
+    if (shown && p < shown.pages)
+      prefetch(['records', { page: p + 1, q: query }], ({ signal }) => json(url(p + 1, query), { signal }))
   })
   async function rename() {
     const row = list.value?.rows[0]
@@ -24,20 +28,49 @@
 
 <section class="demo-panel" id="record-list">
   <p class="record-tools">
-    <input aria-label="Filter records" placeholder="Filter, e.g. 42" (input)="q = $event.target.value; page = 1">
-    @if (list.value) { <span class="demo-muted">Page {{ list.value.page }} of {{ list.value.pages }} · {{ list.value.total }} records</span> }
-    @if (list.loading) { <span class="demo-muted">Loading…</span> }
+    <input aria-label="Filter records" placeholder="Filter, e.g. 42" (input)="q = $event.target.value; page = 1" />
+    @if (list.value) {
+      <span class="demo-muted"
+        >Page {{ list.value.page }} of {{ list.value.pages }} · {{ list.value.total }} records</span
+      >
+    }
+    @if (list.loading) {
+      <span class="demo-muted">Loading…</span>
+    }
   </p>
-  @if (list.value) { <ul>@for (row of list.value.rows; track row.id) { <li>{{ row.name }}</li> }</ul> }
-  @else { <p class="demo-muted">Loading records…</p> }
+  @if (list.value) {
+    <ul>
+      @for (row of list.value.rows; track row.id) {
+        <li>{{ row.name }}</li>
+      }
+    </ul>
+  } @else {
+    <p class="demo-muted">Loading records…</p>
+  }
   <button type="button" (click)="page = page - 1" [disabled]="page <= 1">Previous</button>
   <button type="button" (click)="page = page + 1" [disabled]="!list.value || page >= list.value.pages">Next</button>
   <button type="button" (click)="rename()">Rename the first row</button>
 </section>
 
 <style scoped>
-  :scope { border: 1px solid var(--rule); border-radius: 8px; padding: 12px 16px; }
-  .record-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 0; }
-  ul { margin: 0 0 12px; padding-left: 1.2rem; min-height: 15em; }
-  .demo-muted { color: var(--muted); }
+  :scope {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .record-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-top: 0;
+  }
+  ul {
+    margin: 0 0 12px;
+    padding-left: 1.2rem;
+    min-height: 15em;
+  }
+  .demo-muted {
+    color: var(--muted);
+  }
 </style>

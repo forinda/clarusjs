@@ -10,8 +10,12 @@
     lines: order.lines.some((line) => !line.item.trim()) ? 'Every line needs an item.' : '',
   }))
   let sent = state('')
-  function addLine() { order = { ...order, lines: [...order.lines, { item: '', qty: '1', price: '0' }] } }
-  function removeLine(index) { order = { ...order, lines: order.lines.filter((_, i) => i !== index) } }
+  function addLine() {
+    order = { ...order, lines: [...order.lines, { item: '', qty: '1', price: '0' }] }
+  }
+  function removeLine(index) {
+    order = { ...order, lines: order.lines.filter((_, i) => i !== index) }
+  }
   function submit() {
     if (errors.name || errors.lines) return
     sent = JSON.stringify(order)
@@ -23,22 +27,35 @@
     <legend>Customer</legend>
     <textField [label]="'Name'" [(value)]="order.customer.name" />
     <textField [label]="'Email'" [type]="'email'" [(value)]="order.customer.email" />
-    @if (errors.name) {<p class="order-error">{{ errors.name }}</p>}
+    @if (errors.name) {
+      <p class="order-error">{{ errors.name }}</p>
+    }
   </fieldset>
   <fieldset>
     <legend>Lines</legend>
     @for (line of order.lines; track $index) {
       <div class="order-line">
-        <input [aria-label]="'Item ' + ($index + 1)" [(value)]="order.lines[$index].item">
-        <input type="number" min="0" [aria-label]="'Quantity ' + ($index + 1)" [(value)]="order.lines[$index].qty">
-        <input type="number" min="0" step="any" [aria-label]="'Price ' + ($index + 1)" [(value)]="order.lines[$index].price">
+        <input [aria-label]="'Item ' + ($index + 1)" [(value)]="order.lines[$index].item" />
+        <input type="number" min="0" [aria-label]="'Quantity ' + ($index + 1)" [(value)]="order.lines[$index].qty" />
+        <input
+          type="number"
+          min="0"
+          step="any"
+          [aria-label]="'Price ' + ($index + 1)"
+          [(value)]="order.lines[$index].price"
+        />
         <button type="button" [aria-label]="'Remove line ' + ($index + 1)" (click)="removeLine($index)">×</button>
       </div>
     }
     <button type="button" class="order-add" (click)="addLine()">Add a line</button>
-    @if (errors.lines) {<p class="order-error">{{ errors.lines }}</p>}
+    @if (errors.lines) {
+      <p class="order-error">{{ errors.lines }}</p>
+    }
   </fieldset>
   <p class="order-total">Total: {{ total }}</p>
-  <button type="submit">Send</button> <button type="button" class="order-reset" (click)="order = initial; sent = ''">Reset</button>
-  @if (sent) {<pre class="order-sent">{{ sent }}</pre>}
+  <button type="submit">Send</button>
+  <button type="button" class="order-reset" (click)="order = initial; sent = ''">Reset</button>
+  @if (sent) {
+    <pre class="order-sent">{{ sent }}</pre>
+  }
 </form>

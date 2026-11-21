@@ -29,14 +29,19 @@
     quiz()?.dispatchEvent(new CustomEvent('quiz:result', { bubbles: true, detail }))
   }
   if (typeof document !== 'undefined') {
-    document.addEventListener('quiz:check', (event) => { if (event.target === quiz() && !checked) check() })
+    document.addEventListener('quiz:check', (event) => {
+      if (event.target === quiz() && !checked) check()
+    })
   }
 </script>
 
 <div class="quiz-choices">
   <div class="quiz-options" role="radiogroup" [aria-labelledby]="name + '-q'">
     @for (option of options; track $index) {
-      <label [class]="!checked ? false : $index === answer ? 'right' : $index === picked ? 'wrong' : false"><input type="radio" [name]="name" [value]="$index" [disabled]="checked" (change)="picked = $index"> {{ option }}@if (checked && $index === answer) {<span class="mark">✓ Right answer</span>} @else if (checked && $index === picked) {<span class="mark">✗ Your pick</span>}</label>
+      <label [class]="!checked ? false : $index === answer ? 'right' : $index === picked ? 'wrong' : false"
+        ><input type="radio" [name]="name" [value]="$index" [disabled]="checked" (change)="picked = $index" />
+        {{ option }}@if (checked && $index === answer) {<span class="mark">✓ Right answer</span>} @else if (checked && $index === picked) {<span class="mark">✗ Your pick</span>}</label
+      >
     }
   </div>
   <button type="button" class="quiz-check" (click)="check()" [disabled]="checked">Check</button>

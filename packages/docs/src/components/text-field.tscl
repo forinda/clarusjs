@@ -3,4 +3,6 @@
 @input type: string = 'text'
 @model value: string = ''
 
-<label class="text-field"><span>{{ label }}</span> <input [type]="type" [(value)]="value" autocomplete="off"></label>
+<label class="text-field"
+  ><span>{{ label }}</span> <input [type]="type" [(value)]="value" autocomplete="off"
+/></label>

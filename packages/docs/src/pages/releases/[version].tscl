@@ -3,9 +3,18 @@
 @input version: string
 @input release: Release
 
-<docs [title]="'clarusjs ' + version" [path]="'/releases'" [source]="'/releases/[version]'" [url]="'/releases/' + version" [description]="'What changed in clarusjs ' + version + '.'">
+<docs
+  [title]="'clarusjs ' + version"
+  [path]="'/releases'"
+  [source]="'/releases/[version]'"
+  [url]="'/releases/' + version"
+  [description]="'What changed in clarusjs ' + version + '.'"
+>
   <h1>clarusjs {{ version }}</h1>
-  <p class="lead"><a href="/releases">All releases</a> · <a href="https://www.npmjs.com/package/clarusjs/v/{{ version }}">clarusjs@{{ version }} on npm</a></p>
+  <p class="lead">
+    <a href="/releases">All releases</a> ·
+    <a href="https://www.npmjs.com/package/clarusjs/v/{{ version }}">clarusjs@{{ version }} on npm</a>
+  </p>
   @for (group of release.groups; track group.title) {
     <h2>{{ group.title }}</h2>
     <ul class="changes">

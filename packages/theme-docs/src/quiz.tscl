@@ -12,5 +12,9 @@
 <div class="quiz" [data-quiz]="name">
   <p class="quiz-question" [id]="name + '-q'">{{ question }}</p>
   <quizChoices [name]="name" [options]="options" [answer]="answer" />
-  <details class="quiz-answer"><summary>Show the answer</summary><p class="quiz-correct">Answer: {{ options[answer] }}</p><slot /></details>
+  <details class="quiz-answer">
+    <summary>Show the answer</summary>
+    <p class="quiz-correct">Answer: {{ options[answer] }}</p>
+    <slot />
+  </details>
 </div>

@@ -24,10 +24,14 @@
     "release:enter:alpha": "changeset pre enter alpha",
     "release:enter:beta": "changeset pre enter beta",
     "release:enter:rc": "changeset pre enter rc",
-    "release:exit:pre": "changeset pre exit"
+    "release:exit:pre": "changeset pre exit",
+    "format:tscl": "prettier --write \"packages/{docs,theme-docs}/src/**/*.tscl\"",
+    "format:tscl:check": "prettier --check \"packages/{docs,theme-docs}/src/**/*.tscl\""
   },
   "devDependencies": {
     "@changesets/changelog-github": "1.0.1",
-    "@changesets/cli": "3.0.3"
+    "@changesets/cli": "3.0.3",
+    "@clarusjs/prettier-plugin": "workspace:*",
+    "prettier": "3.9.10"
   }
 }

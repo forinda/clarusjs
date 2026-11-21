@@ -1040,8 +1040,8 @@ test('lesson quiz, right answer: the bar turns green', async ({ page }) => {
 test('progress: a lesson done, its quiz right, XP and badges on the progress page, the sidebar marks it, Reset', async ({ page }) => {
   await page.goto('/learn/progress')
   const board = page.locator('.progress-board')
-  await expect(board.locator('.progress-stats')).toContainText('XP0')
-  await expect(board.locator('.progress-stats')).toContainText('Lessons0 of 6')
+  await expect(board.locator('.progress-stats')).toContainText(/XP\s*0/)
+  await expect(board.locator('.progress-stats')).toContainText(/Lessons\s*0 of 6/)
   await expect(board.locator('.progress-stats')).toContainText('no quizzes answered yet')
   await expect(page.locator('.sidebar ul a[href="/learn/first-page"]')).toHaveAttribute('data-status', 'current')
   await expect(page.locator('.sidebar ul a[href="/learn/first-page"] .status-note')).toHaveText(' (up next)')
@@ -1061,8 +1061,8 @@ test('progress: a lesson done, its quiz right, XP and badges on the progress pag
   await expect(page).toHaveURL(/\/learn\/templates$/)
   await page.goto('/learn/progress')
   // 6 steps × 10 + the lesson 50 + a quiz right 20.
-  await expect(board.locator('.progress-stats')).toContainText('XP130')
-  await expect(board.locator('.progress-stats')).toContainText('Lessons1 of 6')
+  await expect(board.locator('.progress-stats')).toContainText(/XP\s*130/)
+  await expect(board.locator('.progress-stats')).toContainText(/Lessons\s*1 of 6/)
   await expect(board.locator('.progress-stats')).toContainText('100% (1 of 1)')
   await expect(board.locator('.badges li.earned strong')).toHaveText(['First lesson'])
   await expect(page.locator('.sidebar ul a[href="/learn/first-page"]')).toHaveAttribute('data-status', 'done')
@@ -1076,7 +1076,7 @@ test('progress: a lesson done, its quiz right, XP and badges on the progress pag
   await reset.click()
   await expect(board.getByRole('button', { name: 'Click again to erase your progress' })).toBeVisible()
   await board.getByRole('button', { name: 'Click again to erase your progress' }).click()
-  await expect(board.locator('.progress-stats')).toContainText('XP0')
+  await expect(board.locator('.progress-stats')).toContainText(/XP\s*0/)
   await expect(page.locator('.site-header .xp-chip')).toHaveText(/0 XP/)
 })
 

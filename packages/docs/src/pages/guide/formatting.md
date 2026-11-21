@@ -36,7 +36,7 @@ npx prettier --check "src/**/*.tscl"   # in CI: fails if a file isn't formatted
 
 - **The template:** elements are indented one level per nesting, as are the contents of `@if`, `@else`, `@for`, `@empty` and `@slot` blocks. Long tags are broken one attribute per line. Expressions in `{{ }}`, `[prop]` and `(event)` are formatted as JavaScript.
 - **`<script>` and `<style>`:** formatted by Prettier's JavaScript and CSS formatters, with your options (`semi`, `singleQuote`, `printWidth` and the rest).
-- **Left as written:** directives (`@import`, `@input`, `@model`, `@type`, `@interface`), `{{-- --}}` comments, the contents of `verbatim` elements, and a block that sits inside a sentence (`Hello @if (x) {<b>world</b>}!`), since putting it on lines of its own would change the spaces on the page. A directive written further down the file moves to the top.
+- **Left as written:** directives (`@import`, `@input`, `@model`, `@type`, `@interface`), `{{-- --}}` comments, the contents of `verbatim` elements, and a block where putting it on lines of its own would add a space on the page: in a sentence (`Hello @if (x) {<b>world</b>}!`), in an `<a>` or `<span>`, or holding inline pieces like `<code>` and `<span>`. Blocks among block-level elements (`<li>`, `<div>`, `<p>`, table rows) are laid out. A directive written further down the file moves to the top.
 - **Files the compiler rejects** aren't formatted: Prettier reports the compiler's error instead.
 
 For example, this:
@@ -65,6 +65,8 @@ becomes:
   }
 </section>
 ```
+
+The indentation reaches your HTML, since whitespace inside elements is kept: on this site, formatting made pages 11% bigger, but only 2% gzipped.
 
 Whitespace is kept where it shows on the page: `<b>a</b> <i>b</i>` keeps its space, and `<b>a</b><i>b</i>` stays without one.
 
