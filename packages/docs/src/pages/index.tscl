@@ -15,6 +15,25 @@
     <p class="actions"><a class="button" href="/guide/getting-started">Get started</a> <a class="button ghost" href="https://github.com/forinda/clarusjs">GitHub</a></p>
   </section>
 
+  {{-- Two ways in: a path to follow once (Learn), or a reference to come back to (Docs). --}}
+  <section class="ways" aria-labelledby="ways-title">
+    <h2 id="ways-title">Two ways in</h2>
+    <div class="ways-cards">
+      <a class="way" href="/learn/first-page">
+        <span class="way-kicker">Learn</span>
+        <strong>Build your first site</strong>
+        <span>Six short lessons, from install to deploy: code to run, quick quizzes, XP and badges. Your progress stays in your browser.</span>
+        <span class="way-go">Start lesson 1 →</span>
+      </a>
+      <a class="way" href="/guide/what-is-clarusjs">
+        <span class="way-kicker">Docs</span>
+        <strong>Look things up</strong>
+        <span>The guide and the reference: every template feature, islands, routing, Markdown and the build, with examples.</span>
+        <span class="way-go">Read the guide →</span>
+      </a>
+    </div>
+  </section>
+
   <h2>This page has one island</h2>
   <p>Everything on this page is static HTML, rendered at build time. The button below is a component with a <code>&lt;script&gt;</code>, so it is the only thing that ships JavaScript. Click it.</p>
   <div class="demo"><counter [start]="0" /></div>
