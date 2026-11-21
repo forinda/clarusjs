@@ -2,17 +2,19 @@
 // The clarusjs command line. Node only: nothing here is reachable from a browser bundle.
 import { Command } from 'commander'
 import { check } from './check.ts'
+import { loadProject } from './project.ts'
 import { explain } from './explain.ts'
 
 const program = new Command('clarusjs').description('clarusjs: clear, compiled views')
 
 program
   .command('check')
-  .description('type-check every .tscl file under src/ and report errors at file.tscl:line:col')
+  .description('type-check every .tscl file under src/ and every page (Markdown pages too), reporting errors where they are written')
   .argument('[dir]', 'project folder', '.')
   .option('--json', 'print diagnostics as JSON')
-  .action((dir: string, options: { json?: boolean }) => {
-    const result = check({ root: dir })
+  .action(async (dir: string, options: { json?: boolean }) => {
+    // The page sources (Markdown, …) and Vite aliases from the app's Vite config, as the build sees them.
+    const result = check({ root: dir, ...(await loadProject(dir)) })
     if (options.json) console.log(result.json)
     else if (result.diagnostics.length) {
       console.log(result.text)

@@ -223,7 +223,7 @@ export function viewsDeclaration(views: { file: string; source: string }[]): str
     for (const input of parsed.inputs) body.push(`    ${input.name}${input.default !== undefined ? '?' : ''}: ${input.type}`)
     body.push('  }')
     lines.push(`declare namespace ${ns} {`, ...body, '}')
-    entries.push(`    ${JSON.stringify(file.replace(/^src\//, '').replace(/\.tscl$/, ''))}: ${ns}.Inputs`)
+    entries.push(`    ${JSON.stringify(file.replace(/^src\//, '').replace(/\.[^./]+$/, ''))}: ${ns}.Inputs`)
   })
   lines.push("declare module 'clarusjs/views' {", '  interface Views {', ...entries, '  }', '}', 'export {}', '')
   return lines.join('\n')

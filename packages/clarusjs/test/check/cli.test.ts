@@ -205,3 +205,32 @@ test('#102: ~/ and tsconfig paths resolve in templates (components, data) as in 
   const result = check({ root, typescript })
   expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:4 TS2339'])
 })
+
+// #142: page sources (Markdown and the like) are checked too, with errors at the source file's own line.
+// A tiny source: its first line is a title the page drops; the rest is template text, passed through.
+const pageSource = { extension: '.page', toTscl: (code: string) => `<h1>generated</h1>\n${code.split('\n').slice(1).join('\n')}` }
+
+test('#142: a page source\'s mistyped component prop is reported at file.page:line:col, like the same .tscl page', () => {
+  const page = "@import note from '../components/note.tscl'\n<p>intro</p>\n<note [count]=\"'x'\" />\n"
+  const root = project({
+    'src/components/note.tscl': '@input count: number\n<b>{{ count }}</b>\n',
+    'src/pages/as-page.page': `Title line\n${page}`,
+    'src/pages/as-tscl.tscl': page,
+    'src/notes/ignored.page': 'Not under src/pages: not a page\n<note [count]="1" />\n',
+  })
+  const result = check({ root, typescript, sources: [pageSource] })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line}:${d.column} ${d.code}`)).toEqual([
+    'src/pages/as-page.page:4:8 TS2322', // the same place as in the .tscl page, one line down (the title line)
+    'src/pages/as-tscl.tscl:3:8 TS2322',
+  ])
+})
+
+test('#142: a page source\'s .load.ts is paired with it, and its views are in the registry', () => {
+  const root = project({
+    'src/pages/data.page': 'Title\n@input name: string\n<p>{{ name }}</p>\n',
+    'src/pages/data.load.ts': 'export function load() {\n  return { name: 42 }\n}\n',
+  })
+  const result = check({ root, typescript, sources: [pageSource] })
+  expect(result.diagnostics.map((d) => `${d.file} ${d.code}`)).toEqual(['src/pages/data.page TS2322'])
+  expect(readFileSync(resolve(root, '.clarusjs/views.d.ts'), 'utf8')).toContain('"pages/data"')
+})

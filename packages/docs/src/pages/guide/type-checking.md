@@ -35,6 +35,7 @@ If your project has a `tsconfig.json` (or, in JavaScript, a `jsconfig.json`), it
 - **Events.** In `(click)="…"`, `$event` has the right event type, such as `MouseEvent`.
 - **Rendering by name.** `render('components/pill', { text })` from `clarusjs/views` is checked against the view's inputs, through the generated `.clarusjs/views.d.ts`.
 - **Scripts and data.** An island's script, and data brought in with `@import`, are ordinary TypeScript.
+- **Markdown pages.** Pages from the plugin's `sources` (Markdown from `@clarusjs/content`) are checked as the build sees them: a component used in a `.md` page is checked like in a `.tscl` page, with errors at `page.md:line:col`. `clarusjs check` reads the sources, and `resolve.alias`, from your `vite.config`.
 
 ```tscl
 {{-- src/pages/index.tscl --}}

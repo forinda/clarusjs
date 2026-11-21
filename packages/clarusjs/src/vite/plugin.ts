@@ -247,6 +247,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   }
   return {
     name: 'clarusjs',
+    // For clarusjs check (src/cli/project.ts): the page sources it should type-check too.
+    api: { sources },
     config(userConfig, env) {
       // The plugin's own component and stylesheet discovery resolves the same aliases Vite does.
       const projectRoot = resolve(userConfig.root ?? process.cwd())
