@@ -222,6 +222,6 @@ Every colour, font and size is a CSS custom property on `:root`, so you can rest
 | `--code-bg`, `--shiki-bg` | inline code, and highlighted code blocks |
 | `--line-highlight`, `--line-add`, `--line-remove` | highlighted and diff lines in code |
 | `--sans`, `--mono` | fonts |
-| `--header-height`, `--sidebar-width`, `--toc-width` | layout sizes |
+| `--header-height`, `--sidebar-width`, `--toc-width`, `--page-width` | layout sizes (`--page-width`: the widest the page gets; the header lines up with it) |
 
 Dark mode redefines the colour tokens under `prefers-color-scheme: dark` and `[data-theme='dark']` (the toggle); redefine yours in the same places.
