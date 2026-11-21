@@ -352,3 +352,8 @@ html[data-cl-navigating]::before {
 }
 @keyframes cl-navigating { from { transform: scaleX(0); } to { transform: scaleX(0.9); } }
 @media (prefers-reduced-motion: reduce) { html[data-cl-navigating]::before { animation: none; transform: scaleX(1); opacity: 0.6; } }
+
+/* View transitions (config.viewTransitions): the default cross-fade, none with reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
+}

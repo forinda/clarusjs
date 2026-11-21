@@ -25,7 +25,7 @@ Then run it:
 
 <pm [commands]="['run check']" />
 
-If your project has a `tsconfig.json`, its settings are used; otherwise strict defaults with browser types.
+If your project has a `tsconfig.json` (or, in JavaScript, a `jsconfig.json`), its settings are used; otherwise strict defaults with browser types. [Getting started](./getting-started.md#typescript-or-javascript) shows both, with the generated `.clarusjs/views.d.ts` and `.clarusjs/routes.d.ts` included for your editor.
 
 ## What it checks
 

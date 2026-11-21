@@ -14,6 +14,8 @@ export const theme: ThemeConfig = {
     { label: 'npm', href: 'https://www.npmjs.com/package/clarusjs', icon: 'npm' },
   ],
   search: true,
+  // Page changes cross-fade where the browser supports view transitions (see the Navigation guide).
+  viewTransitions: true,
   // Lessons are the Learn section's pages; progress stays in the browser.
   learn: { section: 'learn', progress: '/learn/progress' },
   // #region edit

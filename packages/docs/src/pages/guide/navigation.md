@@ -4,8 +4,8 @@ group: "Interactivity"
 order: 8
 description: "Move between pages from islands with navigate(), read the current URL, and hook into navigations: cancel one, react after it, handle errors."
 ---
-@import leaveGuard from '../../components/leave-guard.tscl'
-@import swapDemo from '../../components/swap-demo.tscl'
+@import leaveGuard from '~/components/leave-guard.tscl'
+@import swapDemo from '~/components/swap-demo.tscl'
 
 # Navigation
 
@@ -23,6 +23,20 @@ let here = shared(currentUrl)                     // the current URL, as a store
 ```
 
 `navigate()` resolves once the new page is shown, and also when the navigation is cancelled (a `beforeNavigate` hook, `abort()`) or replaced by a newer one: resolving doesn't prove the page is shown, so check `currentUrl` when that matters. It rejects when the page fails to load. Without the Navigation API it is a normal page load. Island scripts also run on the server, where `currentUrl` is `null` and navigating does nothing.
+
+## Typed routes
+
+`href()` builds a page's URL from its route, as its file names it, with the site's base:
+
+```ts
+import { href } from 'clarusjs/navigation'
+
+href('/guide/holes')                              // '/guide/holes'
+href('/releases/[version]', { version: '0.8.0' }) // '/releases/0.8.0' (params are encoded)
+navigate(href('/tour/[step]', { step: '2' }))
+```
+
+`clarusjs check` writes `.clarusjs/routes.d.ts`, every page's route and its params. With it, a route that doesn't exist or a missing param is a type error, at `file.tscl:line:col` in templates too. Add the file to your `tsconfig.json`'s `include` for the same errors in your editor. The client tour on this site builds its links this way. Plain `<a href="/typo">` links are checked by the build's link check instead.
 
 ## Hooks
 
@@ -57,3 +71,12 @@ afterSwap(() => document.querySelector('h1')?.focus())  // the new page is in, i
 In-between hooks run in order and may return a promise: the page change waits for it. `t.signal` aborts when a newer navigation takes over. A hook that throws makes the page load normally.
 
 <swapDemo />
+
+### View transitions
+
+```ts
+import { viewTransitions } from 'clarusjs/navigation'
+viewTransitions() // once, from any island
+```
+
+Page changes then run as [view transitions](https://developer.mozilla.org/docs/Web/API/View_Transition_API) where the browser has them: a cross-fade by default, changed with `::view-transition-*` rules in your CSS. Elsewhere they stay instant. `beforeSwap` hooks run before the browser's snapshot of the old page, `afterSwap` hooks once the new one is in. The docs theme turns it on with `viewTransitions: true` in its config, as this site does.

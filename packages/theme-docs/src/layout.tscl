@@ -5,6 +5,7 @@
   Slots: sidebar-top, sidebar-bottom, content-top, content-bottom, footer.
 --}}
 @import themeToggle from './theme-toggle.tscl'
+@import pageTransitions from './view-transitions.tscl'
 @import siteSearch from './search.tscl'
 @import pageHead from './page-head.tscl'
 @import learnStatus from './learn-status.tscl'
@@ -60,6 +61,7 @@
         }
         {{-- Kept across fragment navigations: the same element, with its state. --}}
         <span class="persist" data-cl-persist="theme"><themeToggle /></span>
+        @if (config.viewTransitions) {<span class="persist" data-cl-persist="view-transitions"><pageTransitions /></span>}
       </div>
     </header>
     @if (sectionKey(config.sections, path)) {

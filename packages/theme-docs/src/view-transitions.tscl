@@ -1,0 +1,7 @@
+{{-- Turns on view transitions for page changes (config.viewTransitions): no markup of its own, kept across swaps. --}}
+<script>
+  import { viewTransitions } from 'clarusjs/navigation'
+  viewTransitions()
+</script>
+
+<span hidden></span>

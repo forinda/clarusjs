@@ -181,3 +181,43 @@ test('review (#186): a hook whose island is released while an earlier hook runs 
   await step()('swapping', { phase: 'swapping' })
   expect(seen).toEqual(['first'])
 })
+
+// #183: view transitions, from the navigator's steps: no bytes in the navigation scripts.
+test('viewTransitions(): the swap runs inside document.startViewTransition, after beforeSwap; it ends at swapped', async () => {
+  const seen: string[] = []
+  let finished: Promise<unknown> | undefined
+  ;(document as { startViewTransition?: unknown }).startViewTransition = (update: () => Promise<unknown>) => {
+    seen.push('snapshot')
+    finished = Promise.resolve().then(update)
+    return { finished }
+  }
+  const { viewTransitions, beforeSwap } = await import('../../src/runtime/navigation.ts')
+  viewTransitions()
+  beforeSwap(() => { seen.push('beforeSwap') })
+  const t = { phase: 'loading' }
+  await step()('loading', t)
+  await step()('swapping', t)
+  seen.push('swap') // the navigator swaps once the swapping step resolves
+  let ended = false
+  void finished!.then(() => (ended = true))
+  await new Promise((r) => setTimeout(r))
+  expect(ended).toBe(false) // the transition waits for the new page
+  await step()('swapped', t)
+  await step()(undefined, t)
+  await new Promise((r) => setTimeout(r))
+  expect(ended).toBe(true)
+  expect(seen).toEqual(['beforeSwap', 'snapshot', 'swap'])
+  delete (document as { startViewTransition?: unknown }).startViewTransition
+})
+
+test('without viewTransitions(), or without the browser API, swaps are instant as before', async () => {
+  const start = vi.fn()
+  ;(document as { startViewTransition?: unknown }).startViewTransition = start
+  await import('../../src/runtime/navigation.ts')
+  await step()('swapping', { phase: 'swapping' })
+  expect(start).not.toHaveBeenCalled()
+  delete (document as { startViewTransition?: unknown }).startViewTransition
+  const { viewTransitions } = await import('../../src/runtime/navigation.ts')
+  viewTransitions()
+  await expect(step()('swapping', { phase: 'swapping' })).resolves.toBeUndefined()
+})

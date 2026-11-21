@@ -107,10 +107,28 @@ const after: ((t: Transition) => unknown)[] = []
 if (browser) {
   ;(globalThis as { __clNav?: unknown }).__clNav = async (step: string | undefined, t: Transition) => {
     navigating.set(step ? { ...t } : null)
+    if (step != 'swapping') done?.() // the new page is in (or the navigation ended): the transition animates
     const hooks = step == 'swapping' ? before : step == 'swapped' ? after : []
     // Each hook is awaited in turn; one whose island was released meanwhile (by an earlier hook) is skipped.
     for (const hook of [...hooks]) if (hooks.includes(hook)) await hook(t)
+    // A view transition: the browser snapshots this page, then the swap (which waits for this) runs inside it.
+    const start = (document as { startViewTransition?(update: () => Promise<void>): unknown }).startViewTransition
+    if (step == 'swapping' && transitions && start) {
+      await new Promise<void>((snapshot) => start.call(document, () => { snapshot(); return new Promise<void>((r) => (done = r)) }))
+    }
   }
+}
+let transitions = false
+let done: (() => void) | undefined
+
+/**
+ * Page changes run as view transitions where the browser has them (`document.startViewTransition`), so CSS
+ * `::view-transition-*` rules animate them; elsewhere they stay instant. Call it once, from any island's script.
+ * `beforeSwap` hooks run before the browser's snapshot, `afterSwap` hooks once the new page is in.
+ * @see https://clarusjs.com/guide/navigation
+ */
+export function viewTransitions(): void {
+  transitions = true
 }
 
 function inBetween(hooks: ((t: Transition) => unknown)[], fn: (t: Transition) => unknown): void {
@@ -136,4 +154,27 @@ export function beforeSwap(fn: (t: Transition) => unknown): void {
  */
 export function afterSwap(fn: (t: Transition) => unknown): void {
   inBetween(after, fn)
+}
+
+/** Route → params. Filled in by the generated .clarusjs/routes.d.ts (declaration merging; see `clarusjs check`). */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Routes {}
+/** Without the generated routes any path is accepted; with them, only real routes. */
+export type RouteName = [keyof Routes] extends [never] ? string : Extract<keyof Routes, string>
+type ParamsOf<R> = R extends keyof Routes ? Routes[R] : Record<string, string>
+
+/**
+ * A page's URL from its route, as its file names it, with the site's base: `href('/releases/[version]',
+ * { version: '0.8.0' })` is `'/releases/0.8.0'`. With .clarusjs/routes.d.ts (written by `clarusjs check`), a route
+ * that doesn't exist or a missing param is a type error. Params are encoded.
+ * @see https://clarusjs.com/guide/navigation
+ */
+export function href<R extends RouteName>(
+  route: R,
+  // Without the generated routes, params are optional; with them, required exactly when the route has some.
+  ...params: [keyof Routes] extends [never] ? [Record<string, string>?] : keyof ParamsOf<R> extends never ? [] : [ParamsOf<R>]
+): string {
+  const values = (params[0] ?? {}) as Record<string, string>
+  const base = ((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/').replace(/\/$/, '')
+  return base + route.replace(/\[([^\]]+)\]/g, (_, key: string) => encodeURIComponent(values[key] ?? ''))
 }
