@@ -135,6 +135,7 @@ test('tsc 7.1 with the mapper reports template type errors at their .tscl place,
     .stdout.trim().split('\n').map((l) => l.replace(/: error (\w+):.*/, ' $1'))
   expect(tsc()).toEqual([
     'src/card.tscl(3,14) TS2339', // {{ title.nope }}
+    'src/guards.tscl(4,6) TS2304', // once, where the @if is written; picked is narrowed inside its handler
     'src/missing.tscl(2,1) TS2741', // <card />: title is missing
     'src/page.tscl(2,8) TS2322', // <card [title]="1" />: a number for a string input
   ])

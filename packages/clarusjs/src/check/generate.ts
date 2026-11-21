@@ -47,7 +47,10 @@ export function generateTs(source: string, file: string, options: { loader?: str
   emit(`type __cl_AttrOf<T extends string, P extends string> = T extends keyof HTMLElementTagNameMap ? P extends keyof HTMLElementTagNameMap[T] ? (HTMLElementTagNameMap[T][P] extends boolean ? boolean | null | undefined : ${text}) : ${text} : ${text}\n`)
   emit('declare function __cl_attr<T extends string, P extends string>(value: __cl_AttrOf<T, P>): void\n')
   // A name the DOM doesn't know is a custom event (a child island's CustomEvent, with its detail).
-  emit('type __cl_Event<K extends string> = (K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : CustomEvent) & { target: any; currentTarget: any }\n')
+  // currentTarget is the element the handler is on (an unknown tag: HTMLElement). Helper types are exported only so a
+  // file that doesn't use one isn't an unused declaration under noUnusedLocals.
+  emit('export type __cl_El<T extends string> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement\n')
+  emit('export type __cl_Event<K extends string, E = HTMLElement> = (K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : CustomEvent) & { target: any; currentTarget: E }\n')
   for (const t of parsed.typeImports) {
     emit('import type ')
     copy(t.clause, t.clauseStart)
@@ -97,10 +100,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
     const start = code.length
     point('const __cl_from_load: Partial<Inputs> = __cl_loaded', 0)
     loaderSpan = [start, code.length]
+    emit('; __cl_use(__cl_from_load)')
     emit('\n')
   }
   // Inputs are read-only, all the way down: they belong to the parent (copy one into state() to change it here).
-  emit('type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
+  emit('export type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
   emit('\nexport default function __cl_check(__cl_props: __cl_Readonly<Inputs>) {\n')
   // Inputs are constants; @model inputs may be written (the write goes to the parent), so they are `let`.
   for (const [keyword, list] of [['const', parsed.inputs.filter((x) => !x.model)], ['let', parsed.inputs.filter((x) => x.model)]] as const) {
@@ -115,6 +119,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
       }
     })
     emit(' } = __cl_props\n')
+    // An input the template doesn't read isn't an unused variable of this generated code.
+    emit(`  __cl_use([${list.map((x) => x.name).join(', ')}])\n`)
   }
   if (parsed.script && script) {
     // The script in verbatim pieces: its imports (already at the top) are blanked, and untyped parameters annotated.
@@ -140,8 +146,18 @@ export function generateTs(source: string, file: string, options: { loader?: str
   }
   const attrValueStart = (a: Attr) => a.start + a.name.length + (a.kind === 'static' || a.kind === 'interp' ? 2 : a.kind === 'model' ? 6 : 4)
   // [(x)]="path": the path must be assignable (a state variable or a property path; not a read-only input).
+  // The conditions of the @if branches around the current node. A handler or write-back is a function, and TypeScript
+  // drops the narrowing of a variable that can change inside functions, so each repeats them, on a line of its own
+  // under @ts-ignore: the condition's errors are reported once, where it's written (this copy has no place in the
+  // template), and what follows on the next line is checked as usual.
+  const guards: string[] = []
+  const guarded = () => {
+    if (guards.length) emit(`\n    // @ts-ignore\n    if (${guards.join(' && ')})\n    `)
+  }
   const writable = (a: Attr & { expr: string }) => {
-    emit('  ;(() => { (')
+    emit('  ;(() => { ')
+    guarded()
+    emit('(')
     copy(a.expr, at(a.expr, attrValueStart(a)))
     emit(') = (')
     copy(a.expr, at(a.expr, attrValueStart(a)))
@@ -166,7 +182,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
             copy(b.cond, at(b.cond, b.condStart))
             emit(')) {\n')
           }
+          // This branch runs when every earlier condition is false and its own is true.
+          const earlier = node.branches.slice(0, i).map((x) => `!(${x.cond})`)
+          guards.push([...earlier, ...(b.cond === null ? [] : [`(${b.cond})`])].join(' && ') || 'true')
           b.children.forEach(visit)
+          guards.pop()
           emit('  }\n')
         })
         return
@@ -175,7 +195,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
         copy(node.item, node.itemStart)
         emit(' of ')
         copy(node.list, node.listStart)
-        emit(') {\n    const $index: number = 0\n')
+        emit(') {\n    const $index: number = 0; __cl_use($index)\n')
         if (node.track !== null) use(node.track, node.trackStart)
         node.children.forEach(visit)
         emit('  }\n')
@@ -211,6 +231,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
             // What the child writes back (its model's type; a default only makes the input optional) must fit the
             // target, and the target must be writable.
             emit('  ;(() => { ') // no parentheses around the path: TypeScript reports the assignment at its left side
+            guarded()
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit(` = (undefined as unknown as Exclude<${alias(node.tag)}[${JSON.stringify(a.name)}], undefined>) });\n`)
           }
@@ -227,9 +248,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
           else if (a.kind === 'interp') {
             for (const p of a.parts) if (typeof p !== 'string') use(p.expr, p.start + 2)
           } else if (a.kind === 'event') {
-            emit(`  ;(($event: __cl_Event<${JSON.stringify(a.name)}>) => { `)
+            emit(`  ;(($event: __cl_Event<${JSON.stringify(a.name)}, __cl_El<${JSON.stringify(node.tag.toLowerCase())}>>) => { `)
+            guarded()
+            emit('{ ')
             copy(a.expr, at(a.expr, attrValueStart(a)))
-            emit(' });\n')
+            emit(' } });\n')
           }
         }
         node.children.forEach(visit)
