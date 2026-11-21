@@ -12,10 +12,12 @@ test('every template is clean under strict TypeScript with the content mapper', 
   // The mapper from source (the built one needs `pnpm build`), and a tsconfig using it next to it in node_modules.
   const mapper = resolve(pkg, 'node_modules/clarusjs-mapper-src')
   mkdirSync(mapper, { recursive: true })
-  writeFileSync(resolve(mapper, 'package.json'), JSON.stringify({ name: 'clarusjs-mapper-src', typescript: { contentMapper: { exec: [process.execPath, resolve(clarusjs, 'src/cli/index.ts'), 'mapper'] } } }))
+  writeFileSync(resolve(mapper, 'package.json'), JSON.stringify({ name: 'clarusjs-mapper-src', typescript: { contentMapper: { exec: [process.execPath, '--experimental-strip-types', resolve(clarusjs, 'src/cli/index.ts'), 'mapper'] } } }))
   const config = resolve(pkg, 'node_modules/.types-check/tsconfig.json')
   mkdirSync(resolve(config, '..'), { recursive: true })
   writeFileSync(config, JSON.stringify({ extends: '../../tsconfig.json', contentMappers: [{ package: 'clarusjs-mapper-src', extensions: ['.tscl'] }], include: ['../../src'] }))
   const run = spawnSync(process.execPath, [resolve(clarusjs, 'node_modules/typescript-beta/bin/tsc'), '-p', config, '--runExternalCode', '--pretty', 'false'], { cwd: pkg, encoding: 'utf8' })
+  expect(run.error).toBeUndefined()
+  expect(run.status, run.stderr).toBe(0) // tsc ran and passed (an empty stdout alone could be a crash)
   expect(run.stdout.trim()).toBe('')
 }, 60_000)

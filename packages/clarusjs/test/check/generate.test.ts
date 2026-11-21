@@ -240,3 +240,10 @@ test('forms: [engine] takes a form, and paths given to the form are the values\'
     expect.stringMatching(/^src\/a\.tscl:8:16 .*is missing the following properties from type 'Form<any>'/),
   ])
 })
+
+test('review #233: only the script\'s own top-level functions count; a callback for a parameter with a default keeps its type', () => {
+  const nested = generateTs("<script>\n  function outer() { function visit(cb) { cb(1) } return visit }\n  const r = visit((n) => n)\n</script>\n<p>{{ r }}</p>\n", 'a.tscl').code
+  expect(nested).toContain('visit((n) => n)') // `visit` here isn't the nested one: no annotation
+  const withDefault = generateTs("<script>\n  function record(update = (n = 0) => n, other) { return update(1) }\n  const r = record((n) => n, (m) => m)\n</script>\n<p>{{ r }}</p>\n", 'b.tscl').code
+  expect(withDefault).toContain('record((n) => n, (m: any) => m)') // the first is typed by the default; the second isn't
+})

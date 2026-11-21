@@ -74,3 +74,17 @@ test('a component\'s events (the CustomEvents its script dispatches) complete an
   expect(features.hover(tag, page, tag.indexOf('<rating') + 2)?.markdown).toContain('(rate)')
   expect(features.hover(tag, page, tag.indexOf('(rate)') + 2)?.markdown).toContain('$event.detail')
 })
+
+test('review #233: indented directives count; textarea and select get [value]/[(value)]; {{-- comments --}} are not HTML', () => {
+  const indented = "  @import card from '../components/card.tscl'\n<card "
+  expect(features.complete(indented, page, indented.length).map((c) => c.label)).toContain('[title]')
+  const indentedInput = "  @input title: string\n"
+  const useX = "@import x from '../components/x.tscl'\n<x "
+  expect(htmlFeatures((p) => (p === '/app/src/components/x.tscl' ? indentedInput : undefined)).complete(useX, page, useX.length).map((c) => c.label)).toContain('[title]')
+  for (const tag of ['textarea', 'select']) {
+    const text = `<${tag} `
+    expect(features.complete(text, page, text.length).map((c) => c.label), tag).toEqual(expect.arrayContaining(['[value]', '[(value)]']))
+  }
+  const commented = '{{-- <script> --}}\n<button '
+  expect(features.complete(commented, page, commented.length).map((c) => c.label)).toContain('(click)')
+})

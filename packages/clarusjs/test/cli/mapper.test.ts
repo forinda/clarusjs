@@ -80,7 +80,7 @@ test('transform: a template that doesn\'t parse still gives TypeScript for the r
 
 /** One framed JSON-RPC exchange with a `clarusjs mapper` process. */
 async function exchange(requests: object[]): Promise<{ id: number; result?: any; error?: any }[]> {
-  const child = spawn(process.execPath, [cli, 'mapper'], { cwd: pkg })
+  const child = spawn(process.execPath, ['--experimental-strip-types', cli, 'mapper'], { cwd: pkg }) // Node 22.12–22.17 need the flag
   const responses: any[] = []
   let pending = Buffer.alloc(0)
   const done = new Promise<void>((resolve) => child.stdout.on('data', (chunk: Buffer) => {
@@ -130,7 +130,7 @@ test('tsc 7.1 with the mapper reports template type errors at their .tscl place,
   cpSync(resolve(pkg, 'test/fixtures/mapper-app'), dir, { recursive: true })
   // A stand-in for the installed package, running the mapper from source.
   mkdirSync(resolve(dir, 'node_modules/clarusjs'), { recursive: true })
-  writeFileSync(resolve(dir, 'node_modules/clarusjs/package.json'), JSON.stringify({ name: 'clarusjs', typescript: { contentMapper: { exec: [process.execPath, cli, 'mapper'] } } }))
+  writeFileSync(resolve(dir, 'node_modules/clarusjs/package.json'), JSON.stringify({ name: 'clarusjs', typescript: { contentMapper: { exec: [process.execPath, '--experimental-strip-types', cli, 'mapper'] } } }))
   const tsc = () => spawnSync(process.execPath, [resolve(pkg, 'node_modules/typescript-beta/bin/tsc'), '-p', '.', '--runExternalCode', '--pretty', 'false'], { cwd: dir, encoding: 'utf8' })
     .stdout.trim().split('\n').map((l) => l.replace(/: error (\w+):.*/, ' $1'))
   expect(tsc()).toEqual([
