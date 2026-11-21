@@ -52,4 +52,14 @@ export type Form<T> = {
   focus(path: Path<T>): void
   /** Back to the starting values, with touched and errors cleared. */
   reset(): void
+  /** Multi-step forms: the current step's id. */
+  readonly step: string
+  /** Every step, in document order: current, done (left with next() and now without errors), errors shown in it. */
+  readonly steps: { id: string; current: boolean; done: boolean; errors: number }[]
+  /** Check the current step; with errors, stay and focus the first (false); else go to the next step (true). */
+  next(): Promise<boolean>
+  /** The previous step, without checks. */
+  back(): void
+  /** Go to a step by id. */
+  go(id: string): void
 }

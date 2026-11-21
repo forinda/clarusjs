@@ -47,7 +47,18 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   let checkSeq = 0
   let timer: ReturnType<typeof setTimeout> | undefined
   let last = initial
+  const current = state('') // the step shown (multi-step forms)
+  const passed = new Set<string>() // steps left with next()
 
+  const now = () => untrack(() => current.get())
+  /** A field's message element: the first [data-cl-message] in its label, [data-cl-field], fieldset or island. */
+  const boxOf = (el: Element) => el.closest('label, [data-cl-field], fieldset, cl-island')?.querySelector<HTMLElement>('[data-cl-message]')
+  /** The path of the field an event happened on, if it's one of this form's. */
+  const eventPath = (e: Event) => {
+    const field = (e.target as Element).closest?.(FIELDS)
+    const root = field && [...roots.keys()].find((r) => r.contains(field))
+    return field && root ? pathOf(field, root) : undefined
+  }
   const fields = () => [...roots.keys()].flatMap((root) => [...root.querySelectorAll(FIELDS)].map((el) => ({ el: el as HTMLInputElement, path: pathOf(el, root) })))
   const shown = (path: string) => shownAll.on || forced.has(path) || (show === 'input' ? touched.has(path) || dirty.has(path) : show === 'blur' && touched.has(path))
   const dirty = new Set<string>()
@@ -74,7 +85,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
 
   /** A field and its message element, as `message` says. */
   function paint(el: HTMLInputElement, message: string): void {
-    const box = el.closest('label, [data-cl-field], fieldset, cl-island')?.querySelector<HTMLElement>('[data-cl-message]')
+    const box = boxOf(el)
     if (box) {
       if (!box.id) box.id = `cl-msg-${++ids}`
       const described = (el.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
@@ -86,10 +97,10 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     else el.removeAttribute('aria-invalid')
   }
 
-  /** Run the schema (latest check wins). */
-  function check(): void {
+  /** Run the schema (latest check wins); resolves once its result is applied. */
+  function check(): Promise<void> {
     const schema = options.schema
-    if (!schema) return
+    if (!schema) return Promise.resolve()
     const seq = ++checkSeq
     const apply = (result: Awaited<ReturnType<StandardSchema<T>['~standard']['validate']>>) => {
       if (seq !== checkSeq) return // a newer check started
@@ -102,11 +113,35 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       refresh()
     }
     const result = schema['~standard'].validate(untrack(() => signal.get()))
-    if (result instanceof Promise) {
-      pending.set(true)
-      result.then(apply)
-    } else apply(result)
+    if (!(result instanceof Promise)) return Promise.resolve(apply(result))
+    pending.set(true)
+    return result.then(apply)
   }
+
+  // Steps: [data-cl-step][id] sections of the covered form, one shown at a time, the current one in the URL hash.
+  const steps = () => [...roots.keys()].flatMap((root) => [...root.querySelectorAll<HTMLElement>('[data-cl-step][id]')])
+  function showStep(id: string, push: boolean): void {
+    current.set(id)
+    for (const step of steps()) {
+      step.hidden = step.id !== id
+      step.toggleAttribute('data-cl-current', step.id === id)
+    }
+    if (push && location.hash !== `#${id}`) history.pushState(null, '', `#${id}`) // a history entry, no jump
+    refresh()
+  }
+  /** The step in the URL, if it's one of this form's (another hash, like a heading's, isn't the form's business). */
+  const hashStep = () => {
+    let id = ''
+    try { id = decodeURIComponent(location.hash.slice(1)) } catch {}
+    return steps().find((s) => s.id === id)?.id
+  }
+  const onHash = () => { const id = hashStep(); if (id && id !== now()) showStep(id, false) }
+  const go = (id: string) => {
+    showStep(id, true)
+    const step = steps().find((s) => s.id === id)
+    step?.querySelector<HTMLElement>('input, select, textarea, button, [tabindex]')?.focus()
+  }
+  const errorsIn = (step: Element) => new Set(fields().filter((f) => step.contains(f.el) && shown(f.path) && errorsNow[f.path]).map((f) => f.path)).size
   const checkSoon = () => {
     clearTimeout(timer)
     timer = setTimeout(check, 300)
@@ -114,30 +149,30 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
 
   // The values changed (a field, or code: a store, reset()): server errors on changed paths go, the schema re-checks.
   effect(() => {
-    const now = signal.get()
+    const value = signal.get()
     untrack(() => {
-      for (const path of Object.keys(server)) if (read(now, path) !== read(last, path)) delete server[path]
-      last = now
+      for (const path of Object.keys(server)) if (read(value, path) !== read(last, path)) delete server[path]
+      last = value
       if (roots.size) { refresh(); checkSoon() }
     })
   })
 
   const onInput = (e: Event) => {
-    const field = (e.target as Element).closest?.(FIELDS)
-    const root = field && [...roots.keys()].find((r) => r.contains(field))
-    if (!field || !root) return
-    dirty.add(pathOf(field, root))
+    const path = eventPath(e)
+    if (path === undefined) return
+    dirty.add(path)
     refresh()
     checkSoon()
   }
   const onLeave = (e: Event) => {
-    const field = (e.target as Element).closest?.(FIELDS)
-    const root = field && [...roots.keys()].find((r) => r.contains(field))
-    if (!field || !root) return
-    touched.add(pathOf(field, root))
+    const path = eventPath(e)
+    if (path === undefined) return
+    touched.add(path)
     refresh()
-    if (options.schema) check()
+    check()
   }
+  const listeners = [['input', onInput], ['change', onInput], ['focusout', onLeave]] as const
+  const urlEvents = ['popstate', 'hashchange']
 
   const engine: Engine<T> = {
     error(path) { version.get(); return shown(path) ? errorsNow[path] ?? '' : '' },
@@ -146,7 +181,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       const out: FormError[] = []
       for (const { el, path } of fields()) {
         if (out.some((e) => e.path === path) || !shown(path) || !errorsNow[path]) continue
-        const box = el.closest('label, [data-cl-field], fieldset, cl-island')?.querySelector('[data-cl-message]')
+        const box = boxOf(el)
         out.push({ path, message: errorsNow[path]!, id: box?.id || el.id, step: el.closest('[data-cl-step]')?.id ?? null })
       }
       return out
@@ -158,8 +193,38 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     setErrors(errors) { server = { ...errors }; for (const path of Object.keys(errors)) forced.add(path); refresh() },
     focus(path) {
       const group = fields().filter((f) => f.path === path).map((f) => f.el)
-      ;(group.find((el) => el.checked) ?? group[0])?.focus()
+      const el = group.find((x) => x.checked) ?? group[0]
+      const step = el?.closest<HTMLElement>('[data-cl-step][id]')
+      if (step?.hidden) showStep(step.id, true) // open the step it's in
+      el?.focus()
     },
+    get step() { return current.get() },
+    get steps() {
+      version.get()
+      const shownStep = current.get()
+      return steps().map((s) => { const errors = errorsIn(s); return { id: s.id, current: s.id === shownStep, done: passed.has(s.id) && !errors, errors } })
+    },
+    async next() {
+      const list = steps()
+      const at = list.findIndex((s) => s.id === now())
+      const step = list[at]
+      if (!step) return false
+      const own = fields().filter((f) => step.contains(f.el))
+      for (const f of own) forced.add(f.path) // this step's errors show now
+      await check()
+      refresh()
+      const bad = own.find((f) => errorsNow[f.path])
+      if (bad) { bad.el.focus(); return false }
+      passed.add(step.id)
+      if (list[at + 1]) go(list[at + 1]!.id)
+      return true
+    },
+    back() {
+      const list = steps()
+      const prev = list[list.findIndex((s) => s.id === now()) - 1]
+      if (prev) go(prev.id)
+    },
+    go,
     reset() {
       touched.clear(); dirty.clear(); forced.clear(); server = {}; shownAll.on = false
       signal.set(initial)
@@ -172,9 +237,13 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       roots.set(root, count + 1)
       if (!count) {
         if (root instanceof HTMLFormElement) root.noValidate = true
-        root.addEventListener('input', onInput)
-        root.addEventListener('change', onInput)
-        root.addEventListener('focusout', onLeave)
+        for (const [type, fn] of listeners) root.addEventListener(type, fn)
+        if (roots.size === 1) for (const type of urlEvents) addEventListener(type, onHash)
+        const list = steps()
+        if (list.length) {
+          root.setAttribute('data-cl-steps', '')
+          showStep(hashStep() || now() || list[0]!.id, false)
+        }
         refresh()
         check()
       }
@@ -182,9 +251,8 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
         const left = (roots.get(root) ?? 1) - 1
         if (left) return void roots.set(root, left)
         roots.delete(root)
-        root.removeEventListener('input', onInput)
-        root.removeEventListener('change', onInput)
-        root.removeEventListener('focusout', onLeave)
+        for (const [type, fn] of listeners) root.removeEventListener(type, fn)
+        if (!roots.size) for (const type of urlEvents) removeEventListener(type, onHash)
       }
     },
   }
@@ -203,6 +271,6 @@ export function connect(ctx: Ctx, index: number, get: () => Form<any>): void {
 function inert<T>(): Form<T> {
   return {
     error: () => '', errors: [], touched: () => false, changed: () => false, valid: true, pending: false,
-    setErrors() {}, focus() {}, reset() {},
+    setErrors() {}, focus() {}, reset() {}, step: '', steps: [], next: async () => false, back() {}, go() {},
   }
 }
