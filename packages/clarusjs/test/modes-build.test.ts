@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createBuilder, preview } from 'vite'
 import { beforeAll, expect, test } from 'vitest'
+import { unscoped } from './helpers.ts'
 
 const root = resolve(import.meta.dirname, 'fixtures/site-modes')
 beforeAll(async () => {
@@ -21,8 +22,8 @@ test('the built handler renders a server route per request, with load() reading 
   const res = await handler.fetch(new Request('http://x/account/7', { headers: { 'user-agent': 'probe/1' } }))
   expect(res.status).toBe(200)
   const html = await res.text()
-  expect(html).toContain('<h1>Account 7</h1>')
-  expect(html).toContain('<p>probe/1</p>')
+  expect(unscoped(html)).toContain('<h1>Account 7</h1>')
+  expect(unscoped(html)).toContain('<p>probe/1</p>')
 })
 
 test('the manifest records each route\'s mode', () => {
@@ -37,11 +38,11 @@ test('vite preview serves server routes through the built handler', async () => 
     const { port } = server.httpServer.address() as { port: number }
     const res = await fetch(`http://localhost:${port}/account/9`, { headers: { 'user-agent': 'preview/1' } })
     expect(res.status).toBe(200)
-    expect(await res.text()).toContain('<p>preview/1</p>')
-    expect(await (await fetch(`http://localhost:${port}/`)).text()).toContain('<h1>Home</h1>')
+    expect(unscoped(await res.text())).toContain('<p>preview/1</p>')
+    expect(unscoped(await (await fetch(`http://localhost:${port}/`)).text())).toContain('<h1>Home</h1>')
     expect((await fetch(`http://localhost:${port}/nope`)).status).toBe(404)
     // A static dynamic route only has the pages its entries() listed, as on a static host.
-    expect(await (await fetch(`http://localhost:${port}/blog/hello`)).text()).toContain('<h1>Post hello</h1>')
+    expect(unscoped(await (await fetch(`http://localhost:${port}/blog/hello`)).text())).toContain('<h1>Post hello</h1>')
     expect((await fetch(`http://localhost:${port}/blog/other`)).status).toBe(404)
     expect((await fetch(`http://localhost:${port}/account/%E0%A4%A`)).status).toBe(404) // malformed escape: not a crash
   } finally {
@@ -57,7 +58,7 @@ test('#32: adapter netlify writes a function that serves the server routes with 
   expect(fn.config).toEqual({ path: ['/account/:id', '/account/:id/', '/account/:id/index.frag.html'], preferStatic: true })
   const res = await fn.default(new Request('https://site.example/account/3', { headers: { 'user-agent': 'netlify/1' } }))
   expect(res.status).toBe(200)
-  expect(await res.text()).toContain('<p>netlify/1</p>')
+  expect(unscoped(await res.text())).toContain('<p>netlify/1</p>')
 })
 
 test('#32: the adapter config is checked', async () => {
@@ -75,7 +76,7 @@ test('#32: Netlify paths use URLPattern syntax, with literal text escaped', asyn
 
 test('#33: client routes are prerendered as shells, with their data files and render modules', async () => {
   const shell = readFileSync(resolve(root, 'dist/client/app/one/index.html'), 'utf8')
-  expect(shell).not.toContain('<h1>')
+  expect(unscoped(shell)).not.toContain('<h1>')
   const table = JSON.parse(/<script type="application\/json" id="cl-routes"[^>]*>(.*?)<\/script>/.exec(shell)![1]!) as { p: string; r: string }[]
   expect(table.map((t) => t.p)).toEqual(['/app', '/app/[id]'])
   const router = /<script type="module" src="([^"]+)"><\/script><\/head>/.exec(shell)![1]!
@@ -85,7 +86,7 @@ test('#33: client routes are prerendered as shells, with their data files and re
   const props = parse(readFileSync(resolve(root, 'dist/client/app/one/__data.json'), 'utf8')) as object
   expect(props).toEqual({ id: 'one', label: 'Item one' })
   const mod = await import(pathToFileURL(resolve(root, 'dist/client', table[1]!.r.slice(1))).href)
-  expect(mod.render(props)).toContain('<h1>Item one</h1>')
+  expect(unscoped(mod.render(props))).toContain('<h1>Item one</h1>')
   expect(JSON.parse(readFileSync(resolve(root, 'dist/client/app/__data.json'), 'utf8'))).toEqual({})
 })
 
@@ -142,14 +143,14 @@ test('review: client routes under a base list their browser paths', async () => 
 }, 120_000)
 
 test('#35: with fragments on, static pages get index.frag.html; the manifest leaves fragments out', async () => {
-  expect(readFileSync(resolve(root, 'dist/client/index.frag.html'), 'utf8')).toBe('<title>clarusjs</title><body><h1>Home</h1></body>')
-  expect(readFileSync(resolve(root, 'dist/client/blog/hello/index.frag.html'), 'utf8')).toContain('<h1>Post hello</h1>')
+  expect(unscoped(readFileSync(resolve(root, 'dist/client/index.frag.html'), 'utf8'))).toBe('<title>clarusjs</title><body><h1>Home</h1></body>')
+  expect(unscoped(readFileSync(resolve(root, 'dist/client/blog/hello/index.frag.html'), 'utf8'))).toContain('<h1>Post hello</h1>')
   expect(existsSync(resolve(root, 'dist/client/app/one/index.frag.html'))).toBe(false) // client routes render in the browser
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
   expect(Object.keys(manifest.routes).filter((r) => r.includes('frag'))).toEqual([])
   // A server route's fragment comes from the handler.
   const { default: handler } = await import(`${pathToFileURL(resolve(root, 'dist/server/index.mjs')).href}?t=${Date.now()}`)
-  expect(await (await handler.fetch(new Request('http://x/account/7/index.frag.html'))).text()).toContain('<h1>Account 7</h1>')
+  expect(unscoped(await (await handler.fetch(new Request('http://x/account/7/index.frag.html'))).text())).toContain('<h1>Account 7</h1>')
 })
 
 test('#179: the router and the fragment navigator each carry the navigation guard, never a shared chunk', async () => {

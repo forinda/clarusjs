@@ -6,6 +6,7 @@ import { gzipSync } from 'node:zlib'
 import { createBuilder } from 'vite'
 import { beforeAll, expect, test } from 'vitest'
 import { routeToFile } from '../src/vite/build.ts'
+import { unscoped } from './helpers.ts'
 
 const root = resolve(import.meta.dirname, 'fixtures/site')
 const client = resolve(root, 'dist/client')
@@ -37,14 +38,14 @@ test('a page with an island loads the hashed loader, and the island points at it
   const src = html.match(/<cl-island c="counter" src="([^"]+)"/)![1]!
   expect(src).toMatch(/^\/assets\/.+\.js$/)
   expect(read(src.slice(1))).toMatch(/attach/)
-  expect(html).toContain('<h1>Home</h1>')
+  expect(unscoped(html)).toContain('<h1>Home</h1>')
   expect(html).toContain('Hello, site!')
 })
 
 test('a page without islands has no script at all', () => {
   const html = read('about/team/index.html')
-  expect(html).toContain('<h1>Team</h1>')
-  expect(html).not.toContain('<script')
+  expect(unscoped(html)).toContain('<h1>Team</h1>')
+  expect(unscoped(html)).not.toContain('<script')
 })
 
 test('no server code or template source reaches the client assets', () => {
@@ -82,7 +83,7 @@ test('vite preview serves the built pages at their routes, with or without a tra
       const res = await fetch(base + path)
       expect(res.status, path).toBe(200)
       expect(res.headers.get('content-type'), path).toContain('text/html')
-      expect(await res.text(), path).toContain(text)
+      expect(unscoped(await res.text()), path).toContain(text)
     }
     expect((await fetch(`${base}/site.css`)).status).toBe(200)
     expect((await fetch(`${base}/missing`)).status).toBe(404)
@@ -137,14 +138,14 @@ test('#25: writes dist/clarusjs-manifest.json describing every route', () => {
 })
 
 test('#27: a page that reads the manifest is rendered again once it is written', () => {
-  expect(read('explain/index.html')).toContain('<p id="home-islands">counter, panel</p>')
+  expect(unscoped(read('explain/index.html'))).toContain('<p id="home-islands">counter, panel</p>')
 })
 
 test('#30: a dynamic route is prerendered once per entry', () => {
-  expect(read('users/ada/index.html')).toContain('<h1>User Ada</h1>')
-  expect(read('users/linus/index.html')).toContain('<h1>User Linus</h1>')
+  expect(unscoped(read('users/ada/index.html'))).toContain('<h1>User Ada</h1>')
+  expect(unscoped(read('users/linus/index.html'))).toContain('<h1>User Linus</h1>')
   // A value with a space is written to the folder a static host will look in.
-  expect(read('users/grace hopper/index.html')).toContain('<p>grace hopper</p>')
+  expect(unscoped(read('users/grace hopper/index.html'))).toContain('<p>grace hopper</p>')
 })
 
 test('#30: a dynamic route without entries() fails the build, naming the file', async () => {
@@ -160,7 +161,7 @@ test('#30: a dynamic route without entries() fails the build, naming the file', 
 }, 60_000)
 
 test('#31: load() runs at build for each page, and the manifest says so', () => {
-  expect(read('users/ada/index.html')).toContain('<p>ada</p>')
+  expect(unscoped(read('users/ada/index.html'))).toContain('<p>ada</p>')
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
   expect(manifest.routes['/users/ada'].loader).toBe('build')
   expect(manifest.routes['/'].loader).toBeNull()
@@ -190,11 +191,11 @@ test('#39: component styles are bundled into one stylesheet that every page link
   const href = /<link rel="stylesheet" href="(\/assets\/cl-styles-[^"]+\.css)">/.exec(html)?.[1]
   expect(href).toBeDefined()
   const css = read(href!.slice(1))
-  expect(css).toMatch(/@scope ?\(\[data-cl-c="?greeting-[a-z0-9]+"?\]\)/) // minified: quotes and spaces may go
+  expect(css).toMatch(/@scope ?\(\.cl-c-greeting-[a-z0-9]+\)/) // minified: spaces may go
   expect(css).toMatch(/rebeccapurple|#639\b/) // minified to its short hex
   // The greeting's top-level element carries the same scope id as the stylesheet.
-  const id = /data-cl-c="?(greeting-[a-z0-9]+)/.exec(css)![1]
-  expect(html).toContain(`<p data-cl-c="${id}">Hello, site!</p>`)
+  const id = /\.cl-c-(greeting-[a-z0-9]+)/.exec(css)![1]
+  expect(html).toContain(`<p class="cl-c-${id}">Hello, site!</p>`)
   expect(read('about/team/index.html')).toContain(href!)
 })
 

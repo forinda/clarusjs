@@ -34,7 +34,9 @@ export type ParsedFile = {
   types: TypeDecl[]
   dataImports: DataImport[]
   script?: { code: string; start: number } // start = offset of the first char inside <script>
-  styles: { css: string; global: boolean; start: number }[] // top-level <style> blocks; `global` ones aren't scoped
+  // Top-level <style> blocks: `scoped` ones are scoped to the component; `global` and `plain` (no attribute) aren't.
+  // `tag`: where the <style> tag starts.
+  styles: { css: string; mode: 'scoped' | 'global' | 'plain'; start: number; tag: number }[]
   cssImports: { from: string; start: number }[] // @import './x.css': stylesheets the component needs
   nodes: TemplateNode[]
 }
@@ -458,7 +460,8 @@ export function parse(source: string, file: string): ParsedFile {
           if (end === -1) fail('unclosed <style>', start)
           const hole = source.slice(i, end).indexOf('{{')
           if (hole !== -1) fail('{{ }} holes are not supported in a component <style>: set a CSS custom property from the template instead (style="--x: {{ x }}")', i + hole)
-          out.styles.push({ css: source.slice(i, end), global: list.some((a) => a.name === 'global'), start: i })
+          const mode = list.some((a) => a.name === 'scoped') ? 'scoped' : list.some((a) => a.name === 'global') ? 'global' : 'plain'
+          out.styles.push({ css: source.slice(i, end), mode, start: i, tag: start })
           i = end + '</style>'.length
         } else if (list.some((a) => a.name === 'verbatim')) {
           // Everything up to </tag> is text: no holes, tags or directives.

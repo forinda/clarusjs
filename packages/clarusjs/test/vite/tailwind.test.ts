@@ -16,7 +16,7 @@ beforeAll(async () => {
   const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
   w('src/styles/app.css', '@import "tailwindcss";\n')
   w('src/layouts/main.tscl', "@import '../styles/app.css'\n<html><head><title>T</title></head><body class=\"bg-slate-50 p-4\"><slot /></body></html>\n")
-  w('src/components/card.tscl', '<section class="card"><slot /></section>\n<style>\n  @reference "../styles/app.css";\n  :scope { @apply rounded-lg p-6 shadow-md; }\n</style>\n')
+  w('src/components/card.tscl', '<section class="card"><slot /></section>\n<style scoped>\n  @reference "../styles/app.css";\n  :scope { @apply rounded-lg p-6 shadow-md; }\n</style>\n')
   w('src/components/toggle.tscl', "<script>\n  let on = state(false)\n</script>\n<button [class]=\"on ? 'bg-emerald-500 text-white' : 'bg-zinc-200'\" (click)=\"on = !on\">toggle</button>\n")
   w('src/pages/index.tscl', [
     "@import layout from '../layouts/main.tscl'",
@@ -42,8 +42,8 @@ test('classes only in an island binding (client-side branches) are generated too
 })
 
 test('a scoped <style> can @apply utilities through @reference', () => {
-  // Minified: @scope([data-cl-c=card-x]) to ([data-cl-c]){:scope{border-radius:…}}
-  expect(css).toMatch(/@scope\s*\(\[data-cl-c="?card-[a-z0-9]+"?\]\) to \(\[data-cl-c\]\)\s*\{\s*:scope\s*\{[^}]*border-radius/)
+  // Minified: @scope(.cl-c-card-x) to ([class*=cl-c-]:not(.cl-c-card-x)>*){:scope{border-radius:…}}
+  expect(css).toMatch(/@scope\s*\(\.cl-c-card-[a-z0-9]+\)\s*to\s*\(\[class\*="?cl-c-"?\]:not\(\.cl-c-card-[a-z0-9]+\)\s*>\s*\*\)\s*\{\s*:scope\s*\{[^}]*border-radius/)
   expect(css).not.toContain('@apply')
   expect(css).not.toContain('@reference')
 })

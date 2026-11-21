@@ -2,12 +2,14 @@
 title: "Styles"
 group: "Templates"
 order: 9
-description: "Give components their own CSS with a style block scoped with native @scope, and import stylesheets that go through Vite."
+description: "Give components their own CSS with <style scoped>, scoped with native @scope, write global CSS, and import stylesheets that go through Vite."
 ---
+
+@import scopeDemo from '~/components/scope-demo.tscl'
 
 # Styles
 
-<p class="lead">A component can bring its own CSS in a <code>&lt;style&gt;</code> block. It is scoped to the component, so its rules don't reach the rest of the page.</p>
+<p class="lead">A component can bring its own CSS in a <code>&lt;style scoped&gt;</code> block. Its rules reach the component's own elements and stop at the rest of the page.</p>
 
 ```tscl
 {{-- components/card.tscl --}}
@@ -16,7 +18,7 @@ description: "Give components their own CSS with a style block scoped with nativ
   <slot />
 </section>
 
-<style>
+<style scoped>
   :scope { border: 1px solid var(--rule); border-radius: 8px; }
   h2 { margin-top: 0; }
 </style>
@@ -24,21 +26,57 @@ description: "Give components their own CSS with a style block scoped with nativ
 
 ## How scoping works
 
-clarusjs uses the browser's own `@scope`: the component's top-level elements are marked with `data-cl-c`, and its rules apply inside them, stopping at other components.
+clarusjs uses the browser's own `@scope`. Every component's top-level elements carry a class unique to it, like `cl-c-card-1a2b`, merged with their own `class`. A `<style scoped>` block applies inside those elements.
 
-- **The top-level element itself** is `:scope`. A rule like `section {}` matches elements *inside* the component, not the top-level one.
+- **`:scope` is the component's own top-level element.** It's CSS, not clarusjs syntax: a rule like `section {}` matches elements *inside* the component, not the top-level one.
 - **Slot content** sits inside the component, so the component's rules apply to it too.
-- **Child components** are left alone: their own top-level elements stop the scope.
+- **A child component's top-level element is styled by its parent; its inside isn't.** This is Vue's rule. A parent can give a child component a margin or a border through the child's own class, but can't reach the elements inside it, whether or not the child has a `<style>`.
+
+```tscl
+@import card from './card.tscl'
+
+<div class="list">
+  <p>Teal.</p>
+  <card />
+</div>
+
+<style scoped>
+  p { color: teal; }                   /* the parent's own <p>, not any inside the card */
+  .card { margin-block: 1rem; }        /* the card's top-level element: its class is "card" */
+</style>
+```
+
+Pass a class to a component with `class="…"` on its tag: it lands on the component's top-level elements, after their own, so the parent's rules can use it.
+
+```tscl
+<card class="featured" />
+
+<style scoped>
+  .featured { border-color: gold; }
+</style>
+```
+
+Only a static `class` passes through; `[class]` and `{{ }}` in it aren't supported on a component yet.
+
+Rendering only `<card />` and writing `:scope {}` styles nothing: `:scope` is the parent's own top-level element, and a component on its own has none.
+
+<scopeDemo />
+
+The `cl-c-` class prefix is reserved for these marks.
 
 ## Global styles
 
-Add `global` to write CSS that isn't scoped, such as custom properties for the whole site.
+A `<style>` without `scoped` is plain CSS for the whole page, such as custom properties for the site. Write `<style global>` to say so.
 
 ```tscl
 <style global>
   :root { --accent: #0b6e70; }
 </style>
 ```
+
+::: warning
+A plain `<style>` used to be scoped. It is global now, and the compiler warns about one, with its place. Add `scoped` to keep it scoped to its component, or `global` to keep it global without the warning.
+:::
 
 ## Values from the template
 
@@ -47,7 +85,7 @@ A `<style>` block is plain CSS: `{{ }}` holes aren't allowed in it. Pass values 
 ```tscl
 <div class="bar" style="--width: {{ percent }}%"></div>
 
-<style>
+<style scoped>
   :scope { width: var(--width); } /* .bar is the component's top-level element: its :scope */
 </style>
 ```

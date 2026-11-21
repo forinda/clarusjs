@@ -14,8 +14,8 @@ beforeAll(() => {
   // A published package: a real folder in node_modules (not a workspace link), shipping .tscl files.
   w('node_modules/fake-theme/package.json', JSON.stringify({ name: 'fake-theme', version: '1.0.0', type: 'module', exports: { './*': './*' } }))
   w('node_modules/fake-theme/frame.css', '.frame { padding: 7px; }\n')
-  w('node_modules/fake-theme/frame.tscl', "@import toggle from './toggle.tscl'\n@import './frame.css'\n<div class=\"frame\"><toggle /><slot /></div>\n<style>\n  :scope { border: 2px solid teal; }\n</style>\n")
-  w('node_modules/fake-theme/toggle.tscl', "<script>\n  let on = state(false)\n</script>\n<button (click)=\"on = !on\">{{ on ? 'on' : 'off' }}</button>\n<style>\n  :scope { color: crimson; }\n</style>\n")
+  w('node_modules/fake-theme/frame.tscl', "@import toggle from './toggle.tscl'\n@import './frame.css'\n<div class=\"frame\"><toggle /><slot /></div>\n<style scoped>\n  :scope { border: 2px solid teal; }\n</style>\n")
+  w('node_modules/fake-theme/toggle.tscl', "<script>\n  let on = state(false)\n</script>\n<button (click)=\"on = !on\">{{ on ? 'on' : 'off' }}</button>\n<style scoped>\n  :scope { color: crimson; }\n</style>\n")
   w('src/pages/index.tscl', "@import frame from 'fake-theme/frame.tscl'\n<frame><h1>Hi</h1></frame>\n")
   symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
 })

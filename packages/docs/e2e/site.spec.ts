@@ -437,7 +437,7 @@ test('server playground: rendered on every request, reading the request; escaped
   await expect(page.locator('#greeting')).toHaveText('Hello, <img src=x onerror=alert(1)>!')
   await expect(page.locator('#greeting img')).toHaveCount(0)
   // The loader rendered a component by name with render(); its HTML is shown as text, escaped like any value.
-  await expect(page.locator('#pill-html')).toHaveText(/^<span class="pill" data-cl-c="pill-[a-z0-9]+">&lt;img src=x onerror=alert\(1\)&gt;<\/span>$/)
+  await expect(page.locator('#pill-html')).toHaveText(/^<span class="pill cl-c-pill-[a-z0-9]+">&lt;img src=x onerror=alert\(1\)&gt;<\/span>$/)
 })
 
 test('the generated Netlify function serves only the server routes', async () => {
@@ -525,7 +525,7 @@ test('fragment navigation reaches server routes; client routes and failures load
   await page.goto('/guide/rendering-modes')
   await page.locator('a[href="/playground"]').first().click()
   await expect(page.locator('h1')).toHaveText('Server playground')
-  await expect(page.locator('#pill-html')).toHaveText(/^<span class="pill" data-cl-c="pill-[a-z0-9]+">guest<\/span>$/) // rendered by the server for this request
+  await expect(page.locator('#pill-html')).toHaveText(/^<span class="pill cl-c-pill-[a-z0-9]+">guest<\/span>$/) // rendered by the server for this request
   expect(documents).toEqual(['/guide/rendering-modes'])
   // A client route has no fragment: the browser loads it normally, then the router renders it.
   await page.goto('/guide/client-routes')
@@ -545,10 +545,26 @@ test('fragment navigation to a missing page with a #hash loads it normally (no s
   await expect(page.locator('h1')).toHaveText('Page not found') // the Holes page is gone; the 404 page loaded
 })
 
+test('#279: <style scoped>: the scope class; a parent styles a child component\'s top-level element, not its inside', async ({ page }) => {
+  await page.goto('/guide/styles')
+  const demo = page.locator('.scope-demo')
+  await expect(demo).toHaveClass(/\bcl-c-scope-demo-[a-z0-9]+\b/)
+  const color = (el: Element) => getComputedStyle(el).color
+  expect(await demo.locator(':scope > p').evaluate(color)).toBe('rgb(11, 110, 112)') // the parent's own p
+  const child = demo.locator('.scope-child')
+  await expect(child).toHaveClass(/\bcl-c-scope-child-[a-z0-9]+\b/)
+  expect(await child.evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe('3px') // the child's top-level element
+  // class="framed" on the component tag lands on its top-level element, and the parent's .framed rule styles it.
+  await expect(child).toHaveClass(/\bframed\b/)
+  expect(await child.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe('6px')
+  // Inside the child, the parent's p rule doesn't apply, though the child has no <style> of its own.
+  expect(await child.locator('p').evaluate(color)).not.toBe('rgb(11, 110, 112)')
+})
+
 test('component styles: scoped with @scope, from one stylesheet, not leaking', async ({ page }) => {
   await page.goto('/guide/state')
   const warning = page.locator('aside.callout.warning')
-  await expect(warning).toHaveAttribute('data-cl-c', /^callout-/)
+  await expect(warning).toHaveClass(/\bcl-c-callout-[a-z0-9]+\b/)
   expect(await warning.evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe('rgb(201, 138, 18)')
   expect(await warning.locator('p').last().evaluate((el) => getComputedStyle(el).marginBottom)).toBe('0px')
   // The callout's p:last-child rule stays inside callouts.
