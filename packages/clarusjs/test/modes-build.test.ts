@@ -179,3 +179,8 @@ test('#36: with fragments on, static pages load the navigation script, which sta
   expect(nav).toBeDefined()
   expect(gzipSync(readFileSync(resolve(root, 'dist/client', nav!.slice(1))), { level: 9 }).length).toBeLessThanOrEqual(1229)
 })
+
+test('#307: collapseWhitespace: false keeps template text as written at build', () => {
+  const html = readFileSync(resolve(root, 'dist/client/spacing/index.html'), 'utf8')
+  expect(html).toContain('<p>\n        Indented    text\n    </p>')
+})

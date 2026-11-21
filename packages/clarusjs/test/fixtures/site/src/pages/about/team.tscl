@@ -4,3 +4,9 @@
 
 <h1>Team</h1>
 <greeting [name]="'team'" />
+<section id="ws">
+    <p>
+        Indented    text
+    </p>
+    <pre>  kept    as written</pre>
+</section>

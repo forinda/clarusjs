@@ -44,7 +44,7 @@ export type ComponentIR = {
 const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
-export function lower(parsed: ParsedFile, file: string, source: string): ComponentIR {
+export function lower(parsed: ParsedFile, file: string, source: string, options: { collapseWhitespace?: boolean } = {}): ComponentIR {
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
@@ -136,8 +136,13 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
   // Elements whose content is raw text: comment markers inside them would be literal text, not Comment nodes.
   const RAW_TEXT = new Set(['textarea', 'title', 'style'])
 
+  // A whitespace run (not \u00a0) becomes one character, \n if it had one.
+  const KEEP_WHITESPACE = new Set(['pre', 'textarea', 'script', 'style'])
+  let keep = 0
+  const text = (value: string) => options.collapseWhitespace && !keep ? value.replace(/[ \t\n\f\r]+/g, (run) => (run.includes('\n') ? '\n' : ' ')) : value
+
   function visit(node: TemplateNode, rawText?: string): void {
-    if (node.type === 'text') return emitStatic(node.value)
+    if (node.type === 'text') return emitStatic(text(node.value))
     if (node.type === 'fill') return fail('@slot only works directly inside a component tag', node.start)
     if (node.type === 'if') {
       const block = stateful ? blockCount++ : -1
@@ -401,7 +406,10 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     const outer = engineScope
     if (engine) engineScope = { root: null }
     if (tag !== 'select' || !node.attrs.some((x) => x.kind === 'model')) selectModel = tag === 'optgroup' || tag === 'option' ? selectModel : undefined
+    const keeps = KEEP_WHITESPACE.has(node.tag)
+    if (keeps) keep++
     node.children.forEach((child) => visit(child, RAW_TEXT.has(node.tag) ? node.tag : rawText))
+    if (keeps) keep--
     engineScope = outer
     selectModel = outerSelect
     if (!VOID.has(node.tag)) emitStatic(`</${node.tag}>`)

@@ -99,6 +99,12 @@ Leave pages out by path with `exclude`: `['/legal', '/tags/*', '/drafts/**']` (`
 
 With `site` set, `vite build` writes `robots.txt`: every crawler may index everything, and the sitemap's address. A `public/robots.txt` of your own is used instead; `robots: false` writes none.
 
+## collapseWhitespace
+
+**Type:** `boolean` · **Default:** `true`
+
+At `vite build`, each run of whitespace in template text becomes one character: a newline if the run had one, otherwise a space. Browsers show a run of whitespace as one space, so pages look the same, and a formatted template's indentation stays out of the HTML. Text in `<pre>`, `<textarea>`, `<script>` and `<style>`, `verbatim` contents and `{{ }}` values are left as written, and so is a non-breaking space. Whitespace between tags is collapsed, never removed. Development renders text as written. Set `collapseWhitespace: false` if your CSS gives other elements `white-space: pre` (or `pre-wrap`, `break-spaces`), where every space shows.
+
 ## 404 page
 
 `src/pages/404.tscl` (or `404.md`) is the page for any unknown address: in development, in server mode and in `vite preview` it is served with status 404, and `vite build` writes it to `404.html`, which static hosts serve for unknown paths. It is shown at any depth (`/a/b/c`), so its relative links are resolved from the site root: `href="guide"` means `/guide` wherever the visitor is. It is never in the sitemap. Data and fragment requests still get a plain 404.
