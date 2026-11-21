@@ -157,13 +157,16 @@ export function generateTs(source: string, file: string, options: { loader?: str
   const guarded = () => {
     if (guards.length) emit(`\n    // @ts-ignore\n    if (${guards.join(' && ')})\n    `)
   }
-  const writable = (a: Attr & { expr: string }) => {
+  // `value`: what the binding writes, when it's known here (a radio's static value, #267); else itself (writable?).
+  const writable = (a: Attr & { expr: string }, value?: string) => {
     emit('  ;(() => { ')
     guarded()
-    emit('(')
+    // With a known value the target is written bare, so an error lands on it (a parenthesis would be unmapped).
+    emit(value === undefined ? '(' : '')
     copy(a.expr, at(a.expr, attrValueStart(a)))
-    emit(') = (')
-    copy(a.expr, at(a.expr, attrValueStart(a)))
+    emit(value === undefined ? ') = (' : ' = (')
+    if (value === undefined) copy(a.expr, at(a.expr, attrValueStart(a)))
+    else emit(value)
     emit(') });\n')
   }
 
@@ -248,7 +251,14 @@ export function generateTs(source: string, file: string, options: { loader?: str
           return
         }
         for (const a of node.attrs) {
-          if (a.kind === 'model') { use(a.expr, attrValueStart(a)); writable(a) }
+          if (a.kind === 'model') {
+            use(a.expr, attrValueStart(a))
+            // A radio in a group writes its own value: check that value against the bound type.
+            const type = node.attrs.find((x) => x.kind === 'static' && x.name === 'type')
+            const own = node.attrs.find((x) => x.kind === 'static' && x.name === 'value')
+            const radio = node.tag === 'input' && a.name === 'value' && type?.kind === 'static' && type.value === 'radio' && own?.kind === 'static'
+            writable(a, radio ? JSON.stringify(own.value === true ? '' : own.value) : undefined)
+          }
           else if (a.kind === 'prop' && a.name === 'engine') {
             // [engine]="f": a form from clarusjs/forms.
             emit(`  ;((__cl_f: import('clarusjs/forms').Form<any>) => __cl_use(__cl_f))((`)

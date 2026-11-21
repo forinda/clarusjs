@@ -272,3 +272,13 @@ test('#249: a @for row\'s implicit names type-check: $count, $first, $last (bool
   expect(check({ 'src/pages/index.tscl': `@for (n of [1]; track n) {<i>{{ $first.toFixed(0) }}</i>}
 ` })).toEqual([expect.stringMatching(/^src\/pages\/index\.tscl:1:\d+ Property 'toFixed' does not exist on type 'boolean'/)])
 })
+
+test('#267: a radio group bound with [(value)] to a union type-checks (each radio writes its own value)', () => {
+  expect(check({ 'src/components/plan.tscl': `@model plan: 'free' | 'pro' = 'free'
+<input type="radio" value="free" [(value)]="plan"><input type="radio" value="pro" [(value)]="plan">
+` })).toEqual([])
+  // A radio whose value isn't one of the type's is an error at the binding.
+  expect(check({ 'src/components/plan.tscl': `@model plan: 'free' | 'pro' = 'free'
+<input type="radio" value="gold" [(value)]="plan">
+` })).toEqual([expect.stringMatching(/^src\/components\/plan\.tscl:2:\d+ .*'"gold"'.*'"free" \| "pro"'/)])
+})

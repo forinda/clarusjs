@@ -272,6 +272,19 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       if (!bindable) fail(`[(${a.name})] on <${tag}>: an element binds two ways only with [(value)] (input, select, textarea) or [(checked)]`, a.start)
       const type = a.name === 'checked' || tag === 'select' ? 'change' : 'input'
       sameRoot(a.expr, a.start)
+      // A radio group (#267): [(value)] on each radio binds one value: checked when it equals the radio's value, and
+      // picking the radio writes that value (as Vue's v-model on radios).
+      const typeAttr = node.attrs.find((x) => x.kind === 'static' && x.name === 'type')
+      if (a.name === 'value' && tag === 'input' && typeAttr?.kind === 'static' && typeAttr.value === 'radio') {
+        const own = node.attrs.find((x) => x.name === 'value' && (x.kind === 'static' || x.kind === 'prop'))
+        if (!own) return fail("a radio bound with [(value)] needs a value (value=\"…\" or [value]): it's what the radio writes when picked", a.start)
+        const mine = own.kind === 'static' ? JSON.stringify(own.value === true ? '' : own.value) : `(${(own as { expr: string }).expr})`
+        return [
+          { kind: 'prop', name: 'checked', expr: `(${a.expr}) === ${mine}`, start: a.start },
+          { kind: 'event', name: 'change', expr: writeBack(a.expr, mine, a.name, a.start), start: a.start },
+          { kind: 'prop', name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start },
+        ]
+      }
       const event = { kind: 'event' as const, name: type, expr: writeBack(a.expr, `$event.target.${a.name}`, a.name, a.start), start: a.start }
       // Its path, for the forms engine (clarusjs/forms): see docs/architecture.md §5.
       return [{ kind: 'prop', name: a.name, expr: a.expr, start: a.start }, event, { kind: 'prop', name: 'data-cl-path', expr: modelPath(a.expr, modelNames), start: a.start }]

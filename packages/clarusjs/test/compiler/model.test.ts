@@ -121,3 +121,37 @@ test('rows: [(value)]="rows[$index].name" writes back into the list, copy-on-wri
   expect(compileError('<script>let rows = state([{ name: \'a\' }])</script>\n@for (row of rows; track $index) {<input [(value)]="row.name">}\n').message)
     .toBe('x.tscl:2:42 [(value)] can\'t write back to the row variable "row": bind the list by index, like [(value)]="rows[$index].name"')
 })
+
+test('#267: radio groups: [(value)] on radios binds one value; checked when equal, writes its value when picked', async () => {
+  const src = `<script>
+  let plan = state('free')
+  const tiers = ['team', 'enterprise']
+  let tier = state('team')
+</script>
+<div><label><input class="free" type="radio" name="plan" value="free" [(value)]="plan"> Free</label>
+<label><input class="pro" type="radio" name="plan" value="pro" [(value)]="plan"> Pro</label>
+@for (t of tiers; track t) { <input [class]="t" type="radio" name="tier" [value]="t" [(value)]="tier"> }
+<p class="out">{{ plan }}|{{ tier }}</p>
+<button class="reset" (click)="plan = 'free'">reset</button></div>
+`
+  const server = compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js' }).code
+  const s = await importCode(server, 'radio-s', {}, true)
+  const html = s.render({}) as string
+  expect(html).toMatch(/<input class="free[^"]*" type="radio" name="plan" value="free" checked/)
+  expect(html).not.toMatch(/value="pro"[^>]* checked/)
+  expect(html).toContain('data-cl-path=""') // the path without its root name: the whole of plan
+  const c = await importCode(compile(src, { file: 'x.tscl', target: 'client' }).code, 'radio-c')
+  document.body.innerHTML = html
+  c.attach(document.querySelector('cl-island')!, {})
+  ;(document.querySelector('input.pro') as HTMLElement).click()
+  ;(document.querySelector('input.enterprise') as HTMLElement).click()
+  expect(document.querySelector('.out')!.textContent).toBe('pro|enterprise')
+  ;(document.querySelector('.reset') as HTMLElement).click()
+  expect((document.querySelector('input.free') as HTMLInputElement).checked).toBe(true)
+  expect((document.querySelector('input.pro') as HTMLInputElement).checked).toBe(false)
+})
+
+test('#267: a radio bound with [(value)] needs a value (static or [value])', () => {
+  expect(compileError('<script>let plan = state("a")</script>\n<input type="radio" [(value)]="plan">\n').message)
+    .toBe('x.tscl:2:21 a radio bound with [(value)] needs a value (value="…" or [value]): it\'s what the radio writes when picked')
+})

@@ -860,13 +860,15 @@ test('forms: field components bound two ways update one state object; native sel
   const nameField = await name.elementHandle()
   await name.fill('Ada')
   await form.getByLabel('Email').fill('ada@example.com')
-  await form.getByLabel('Plan').selectOption('pro')
+  await expect(form.getByRole('radio', { name: 'Free' })).toBeChecked() // a radio group bound with [(value)] (#267)
+  await form.getByRole('radio', { name: 'Pro' }).check()
   await form.getByLabel('Send me updates').check()
   await expect(summary).toHaveText('Ada (ada@example.com) on pro, with updates. Changed.')
   await form.locator('.signup-reset').click()
   await expect(summary).toHaveText('Someone (no email) on free.')
   await expect(name).toHaveValue('') // the field follows the form
   await expect(form.getByLabel('Send me updates')).not.toBeChecked()
+  await expect(form.getByRole('radio', { name: 'Free' })).toBeChecked() // the group follows the form back
   expect(await page.evaluate((el) => el!.isConnected, nameField)).toBe(true) // the same field, updated in place
 })
 

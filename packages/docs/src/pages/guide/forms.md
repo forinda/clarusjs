@@ -13,14 +13,15 @@ description: "Bind form fields two ways with [(value)] and @model, keep one stat
 
 ## Native fields
 
-`[(value)]` on an `<input>`, `<textarea>` or `<select>`, and `[(checked)]` on a checkbox, show a value and write it back:
+`[(value)]` on an `<input>`, `<textarea>` or `<select>`, and `[(checked)]` on a checkbox, show a value and write it back. On radios, `[(value)]` binds the group to one value: a radio is checked when the value equals its own, and picking it writes its own:
 
 ```tscl
 <script>
   let form = state({ name: '', plan: 'free', updates: false })
 </script>
 <input [(value)]="form.name">
-<select [(value)]="form.plan"><option value="free">Free</option><option value="pro">Pro</option></select>
+<label><input type="radio" name="plan" value="free" [(value)]="form.plan"> Free</label>
+<label><input type="radio" name="plan" value="pro" [(value)]="form.plan"> Pro</label>
 <input type="checkbox" [(checked)]="form.updates">
 ```
 
