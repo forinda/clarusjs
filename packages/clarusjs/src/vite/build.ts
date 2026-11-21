@@ -1,4 +1,5 @@
 // Build-time helpers for the Vite plugin: find components, and prerender every route to static HTML.
+import { resolveAlias, type Alias } from './aliases.ts'
 import { spawnSync } from 'node:child_process'
 import { readdirSync, realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -100,7 +101,7 @@ export function packageOf(file: string): string | undefined {
  * specifiers ('@clarusjs/theme-docs/layout.tscl', resolved as Node would from the app). Real paths, so a workspace
  * package linked into node_modules is one file, not two.
  */
-export function reachableComponents(root: string, start: string[], read: (file: string) => string, extensions: string[]): string[] {
+export function reachableComponents(root: string, start: string[], read: (file: string) => string, extensions: string[], aliases: Alias[] = []): string[] {
   const require = createRequire(resolve(root, 'package.json'))
   const seen = new Set<string>()
   const queue = start.map((f) => realpathSync(f))
@@ -115,7 +116,7 @@ export function reachableComponents(root: string, start: string[], read: (file: 
       if (!extensions.some((e) => spec.endsWith(e))) continue
       let target: string
       try {
-        target = spec.startsWith('.') ? resolve(dirname(file), spec) : spec.startsWith('/') ? resolve(root, spec.slice(1)) : require.resolve(spec)
+        target = spec.startsWith('.') ? resolve(dirname(file), spec) : spec.startsWith('/') ? resolve(root, spec.slice(1)) : resolveAlias(spec, aliases) ?? require.resolve(spec)
         target = realpathSync(target)
       } catch { continue } // an unresolvable import is reported when the component compiles
       if (!seen.has(target)) queue.push(target)

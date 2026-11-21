@@ -115,6 +115,26 @@ test('#192: a load() that may return a Response (a redirect) has only its page i
   ])
 })
 
+test('#184: href() is typed against the routes through the generated routes.d.ts: a wrong route or a missing param is an error', () => {
+  const root = project({
+    'src/pages/index.tscl': '<p>home</p>\n',
+    'src/pages/guide/holes.md': '# Holes\n',
+    'src/pages/releases/[version].tscl': '@input version: string\n<h1>{{ version }}</h1>\n',
+    'src/server/links.ts': [
+      "import { href } from 'clarusjs/navigation'",
+      "export const ok = [href('/'), href('/guide/holes'), href('/releases/[version]', { version: '0.8.0' })]",
+      "export const typo = href('/guid/holes')",
+      "export const missing = href('/releases/[version]')",
+      '',
+    ].join('\n'),
+  })
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  const result = check({ root, typescript })
+  expect(readFileSync(resolve(root, '.clarusjs/routes.d.ts'), 'utf8')).toContain('"/releases/[version]": { version: string }')
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/server/links.ts:3 TS2345', 'src/server/links.ts:4 TS2554'])
+})
+
 test('#22: render() is typed against each view\'s inputs through the generated views.d.ts', () => {
   const root = project({
     'src/components/pill.tscl': '@input text: string\n@input tone: "info" | "tip" = "info"\n<b>{{ text }}</b>\n',
@@ -167,4 +187,21 @@ test('#161: components from packages are type-checked where they are used (their
   })
   const result = check({ root, typescript })
   expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:3 TS2322'])
+})
+
+test('a JavaScript project\'s jsconfig.json is used like a tsconfig.json', () => {
+  const root = project({ 'jsconfig.json': JSON.stringify({ compilerOptions: { strict: true, lib: ['ES2023', 'DOM'] } }), 'src/pages/index.tscl': '<p>hi</p>\n' })
+  check({ root, typescript })
+  expect(JSON.parse(readFileSync(resolve(root, '.clarusjs/tsconfig.check.json'), 'utf8')).extends).toBe('../jsconfig.json')
+})
+
+test('#102: ~/ and tsconfig paths resolve in templates (components, data) as in the build; errors stay in the template', () => {
+  const root = project({
+    'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true, module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2023', 'DOM'], allowImportingTsExtensions: true, noEmit: true, paths: { '@/*': ['./src/*'] } } }),
+    'src/components/card.tscl': '@input title: string\n<b>{{ title }}</b>\n',
+    'src/data/site.ts': "export const name: string = 'x'\n",
+    'src/pages/index.tscl': "@import card from '~/components/card.tscl'\n@import { name } from '@/data/site.ts'\n<card [title]=\"name\" />\n<p>{{ name.nope }}</p>\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:4 TS2339'])
 })
