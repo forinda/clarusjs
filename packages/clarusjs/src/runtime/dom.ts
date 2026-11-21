@@ -303,7 +303,8 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void
     const own: Map<number, Handler[]> = (handlers = new Map())
     types.set(type, own)
     root.addEventListener(type, (e) => {
-      for (let el = e.target as Element | null; el && el !== root.parentElement; el = el.parentElement) {
+      // An event that doesn't bubble (mouseenter, focus) is its target's alone, not its ancestors'.
+      for (let el = e.target as Element | null; el && el !== root.parentElement; el = e.bubbles ? el.parentElement : null) {
         const i = el.getAttribute?.('data-cl-e')
         if (i === null || i === undefined || el.closest('cl-island') !== root) continue
         for (const h of [...(own.get(Number(i)) ?? [])]) if (inside(h.ctx, el)) h.fn(e)
@@ -360,6 +361,8 @@ export function model(ctx: Ctx, index: number, name: string, set: (value: unknow
     const from = event.target as Node
     // Only from inside this region: 4 = the target follows the start marker, 2 = it precedes the end marker.
     if (detail.name !== name || !(r.start.compareDocumentPosition(from) & 4) || !(r.end.compareDocumentPosition(from) & 2)) return
+    // Only the child island this region binds: an island nested in it, which nobody bound, keeps its own value.
+    if ((from as Element).parentElement?.closest('cl-island') !== rootOf(ctx)) return
     event.preventDefault()
     event.stopPropagation()
     set(detail.value)

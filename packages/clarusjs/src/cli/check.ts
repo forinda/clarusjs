@@ -7,7 +7,7 @@ import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { ClarusError } from '../compiler/errors.ts'
 import { generateTs, routesDeclaration, toSourceOffset, viewsDeclaration, type Mapping } from '../check/generate.ts'
 import { findClarusFiles, reachableComponents } from '../vite/build.ts'
-import { projectAliases } from '../vite/aliases.ts'
+import { projectAliases, resolveAlias } from '../vite/aliases.ts'
 import { routeFromFile } from '../server/handler.ts'
 
 export type Diagnostic = { file: string; line: number; column: number; code: string; message: string }
@@ -108,7 +108,11 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
   const appRoot = realpathSync(root)
   const paths: Record<string, string[]> = {}
   const virtualOf = new Map<string, string>()
-  const components = reachableComponents(root, pageFiles, (p) => views.find((v) => resolve(root, v.file) === p)?.source ?? readFileSync(p, 'utf8'), ['.tscl'], aliases)
+  // The text each file is checked as, by real path (a symlinked root gives real paths here): a page source's
+  // generated .tscl, with the imports its conversion adds.
+  const converted = new Map(views.map((v) => [realpathSync(resolve(root, v.file)), v.source]))
+  const textOf = (p: string) => converted.get(realpathSync(p)) ?? readFileSync(p, 'utf8')
+  const components = reachableComponents(root, pageFiles, textOf, ['.tscl'], aliases)
   for (const path of components.filter((p) => !p.startsWith(resolve(appRoot, 'src') + sep))) {
     const pkg = packageInfo(path)
     const vpath = resolve(virtualRoot, '_pkg', pkg.name, `${relative(pkg.dir, path)}.ts`)
@@ -125,12 +129,13 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     }
   }
   const require = createRequire(resolve(root, 'package.json'))
-  // The text each file is checked as: a page source's generated .tscl (with the imports its conversion adds).
-  const textOf = (p: string) => views.find((v) => resolve(root, v.file) === p)?.source ?? readFileSync(p, 'utf8')
   for (const path of components) {
     for (const m of textOf(path).matchAll(/^@import\s+[A-Za-z_$][\w-]*\s+from\s+(['"])([^'"./][^'"]*\.tscl)\1/gm)) {
       try {
-        const target = virtualOf.get(realpathSync(require.resolve(m[2]!)))
+        // An alias (~/, tsconfig paths, resolve.alias) first, as the build resolves it; then a package.
+        const file = realpathSync(resolveAlias(m[2]!, aliases) ?? require.resolve(m[2]!))
+        // A package's (or an outside folder's) component, or one of this project's own .tscl files.
+        const target = virtualOf.get(file) ?? (file.startsWith(appRoot + sep) ? resolve(virtualRoot, `${relative(appRoot, file)}.ts`) : undefined)
         if (target) paths[`${m[2]}.ts`] = [`./${posix(relative(resolve(root, '.clarusjs'), target))}`]
       } catch {} // an unresolvable import is reported by the template compiler
     }

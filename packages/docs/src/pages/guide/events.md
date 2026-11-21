@@ -37,8 +37,11 @@ Events that happen before an island's code has loaded are not lost. A click, key
 Inputs go down; events go up. A child island dispatches a bubbling `CustomEvent`, and the parent handles it on an element around the child:
 
 ```tscl
-{{-- star-rating.tscl --}}
-<button (click)="$event.target.dispatchEvent(new CustomEvent('rate', { bubbles: true, detail: 4 }))">★</button>
+{{-- star-rating.tscl: an island (it has a script), so it can handle events --}}
+<script>
+  let picked = state(0)
+</script>
+<button (click)="picked = 4; $event.target.dispatchEvent(new CustomEvent('rate', { bubbles: true, detail: 4 }))">★</button>
 
 {{-- the parent --}}
 <div (rate)="rating = $event.detail"><starRating /></div>

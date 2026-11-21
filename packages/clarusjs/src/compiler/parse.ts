@@ -82,7 +82,7 @@ export function parse(source: string, file: string): ParsedFile {
   }
 
   /** Where a type ends: the first line end outside brackets ((), [], {}), skipping string and template literals. */
-  function typeEnd(from: number, what: string): number {
+  function typeEnd(from: number, what: string, angles = false): number {
     const open: string[] = []
     for (let j = from; j <= source.length; j++) {
       const c = source[j]
@@ -92,8 +92,8 @@ export function parse(source: string, file: string): ParsedFile {
       }
       if (c === "'" || c === '"' || c === '`') {
         for (j++; j < source.length && source[j] !== c; j++) if (source[j] === '\\') j++
-      } else if (c === '(' || c === '[' || c === '{') open.push(c)
-      else if (c === ')' || c === ']' || c === '}') open.pop()
+      } else if (c === '(' || c === '[' || c === '{' || (angles && c === '<')) open.push(c)
+      else if (c === ')' || c === ']' || c === '}' || (angles && c === '>' && source[j - 1] !== '=')) open.pop()
     }
     return source.length
   }
@@ -171,7 +171,7 @@ export function parse(source: string, file: string): ParsedFile {
       pos++
       while (source[pos] === ' ' || source[pos] === '\t') pos++
     }
-    const end = typeEnd(pos, `@${kind} ${name}`)
+    const end = typeEnd(pos, `@${kind} ${name}`, true) // type arguments (Array<…>) may span lines too
     const type = source.slice(pos, end).trimEnd().replace(/;$/, '').trimEnd()
     if (!type || (kind === 'interface' && !type.includes('{'))) malformed()
     if (out.types.some((t) => t.name === name)) fail(`@type ${name} is declared twice`, i)

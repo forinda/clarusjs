@@ -183,7 +183,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
             emit('  { const ')
             point('__cl_m', a.start + 2) // TypeScript reports a wrong initializer at the variable's name
             emit(`: ${alias(node.tag)}_M = ${JSON.stringify(a.name)}; __cl_use(__cl_m) }\n`)
-            writable(a)
+            // What the child writes back (its model's type; a default only makes the input optional) must fit the
+            // target, and the target must be writable.
+            emit('  ;(() => { ') // no parentheses around the path: TypeScript reports the assignment at its left side
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit(` = (undefined as unknown as Exclude<${alias(node.tag)}[${JSON.stringify(a.name)}], undefined>) });\n`)
           }
           node.children.forEach(visit)
           return

@@ -32,6 +32,22 @@ export function untrack<T>(fn: () => T): T {
   try { return fn() } finally { current = prev }
 }
 
+// Effects waiting for the current batch to end (null outside a batch).
+let queue: Set<Effect> | null = null
+
+/** Run `fn`, then the effects its writes affect, once each: they never see some of its writes without the others. */
+export function batch(fn: () => void): void {
+  if (queue) return fn()
+  queue = new Set()
+  try {
+    fn()
+  } finally {
+    const waiting = queue
+    queue = null
+    for (const e of waiting) if (e.active) e.run()
+  }
+}
+
 export function state<T>(initial: T): Signal<T> {
   let value = initial
   const subs = new Set<Effect>()
@@ -44,7 +60,8 @@ export function state<T>(initial: T): Signal<T> {
     set(v) {
       if (Object.is(v, value)) return
       value = v
-      for (const e of [...subs]) if (e.active) e.run() // an effect disposed earlier in this loop must not run
+      if (queue) for (const e of subs) queue.add(e) // in a batch: run once it ends
+      else for (const e of [...subs]) if (e.active) e.run() // an effect disposed earlier in this loop must not run
     },
   }
 }

@@ -321,6 +321,12 @@ export function writesTo(code: string, names: Set<string>): { name: string; star
     }
     const target = node.type === 'AssignmentExpression' ? node.left : node.type === 'UpdateExpression' ? node.argument : null
     if (target?.type === 'Identifier' && active.has(target.name)) found.push({ name: target.name, start: target.start })
+    // ({ value } = …) and [value] = …: each name the pattern writes.
+    if (target && target.type !== 'Identifier' && target.type !== 'MemberExpression') {
+      const written = new Set<string>()
+      patternNames(target, written)
+      for (const name of written) if (active.has(name)) found.push({ name, start: target.start })
+    }
     return undefined
   }
   print(parseScript(code), code, visit(names, new WeakSet()))
