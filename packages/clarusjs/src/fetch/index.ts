@@ -3,7 +3,7 @@
 // The latest run wins (older runs are aborted and ignored), a disposed island aborts its run, and nothing is fetched
 // on the server. batch() turns keys asked of one endpoint at the same moment into one request.
 // @see https://clarusjs.com/guide/fetching
-import { effect, onDispose, state, untrack } from '../runtime/index.ts'
+import { batch as group, effect, onDispose, state, untrack } from '../runtime/index.ts'
 import { browser } from '../runtime/env.ts'
 
 /**
@@ -19,8 +19,10 @@ export type Resource<T> = {
   readonly error: unknown
   /** Run now, aborting a run in flight. */
   refetch(): Promise<void>
-  /** Set the shown value (e.g. optimistically, before a POST); the next run overwrites it. */
+  /** Set the shown value (e.g. optimistically, before a POST); the next run overwrites it. Keyed: its cache entry. */
   mutate(value: T): void
+  /** The first answer (`value`), or the first run's error. On the server, `initial`. In handlers, not top level. */
+  ready(): Promise<T | undefined>
 }
 
 export type ResourceOptions<T> = {
@@ -33,6 +35,12 @@ export type ResourceOptions<T> = {
    * (default true): run on attach. With `onStart: false` the resource doesn't follow its signals until a first run.
    */
   refetch?: { interval?: number; focus?: boolean; onStart?: boolean }
+  /** Cache answers by this key (`['items', { page }]`), page-wide: seen keys need no request until invalidated. */
+  key?: () => unknown[] | undefined | null | false
+  /** With `key`: refetch cached answers older than this (ms). Unset: fresh until invalidated. */
+  stale?: number
+  /** With `key`: keep an unshown answer this long (ms, default 5 min). */
+  keep?: number
 }
 
 /**
@@ -78,20 +86,69 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
   const retry = typeof options.retry === 'number' ? { count: options.retry } : options.retry ?? { count: 0 }
   const delay = retry.delay ?? ((attempt: number) => Math.min(500 * 2 ** (attempt - 1), 8000))
 
+  const keyed = browser && !!options.key
+  let entry: Entry | undefined // the cache entry this (keyed) resource shows
+  let force = false // refetch(): fetch even when the cache has a fresh answer
+  const user: User = {
+    keep: options.keep ?? KEEP,
+    push: (v) => { if (!disposed) value.set(v as T) }, // answers reach a keyed resource only through its entry
+    rerun: () => { if (stop) tick.set(untrack(tick.get) + 1) }, // invalidated: run again (a miss), not forced
+  }
+  const join = (e?: Entry) => {
+    if (e === entry) return
+    if (entry) { entry.users.delete(user); release(entry, user) }
+    entry = e
+    if (e) { e.users.add(user); clearTimeout(e.drop) }
+  }
+  if (keyed && options.initial !== undefined) {
+    try {
+      const k = untrack(options.key!)
+      if (k) { const e = entryOf(k); if (!e.has) store(e, options.initial, e.seq) } // seeded as fresh: no request
+    } catch {} // a key that throws is an error on the first run
+  }
+
   const run = () => {
     tick.get()
+    const forced = force
+    force = false
     controller?.abort()
     const id = ++runs
     const c = (controller = new AbortController())
-    let out: ReturnType<Fetcher<T>>
+    let state: 'not ready' | 'hit' | 'fetch' = 'fetch'
+    let out: unknown // the fetcher's answer (unkeyed), the entry's request (keyed), or a cached value (a hit)
     inFetcher = true
-    try { out = fetcher({ signal: c.signal }) } catch (err) { out = Promise.reject(err) } finally { inFetcher = false } // reads here are tracked
+    try {
+      if (keyed) {
+        const k = options.key!()
+        if (!k) state = 'not ready'
+        else {
+          const e = entryOf(k)
+          join(e)
+          if (!forced && e.has && !e.invalid && (options.stale === undefined || Date.now() - e.at < options.stale)) {
+            state = 'hit'
+            out = e.value
+          } else if (!forced && e.pending) out = e.pending // the same key asked at the same time: one request
+          else {
+            // ponytail: own signal, so it (and its retries) ends even if this resource goes; abort if nobody awaits.
+            const rc = new AbortController()
+            const first = fetcher({ signal: rc.signal }) // reads here are tracked
+            if (first === undefined || first === null || first === false) state = 'not ready'
+            else out = request(e, retrying(first, () => fetcher({ signal: rc.signal }), rc.signal))
+          }
+        }
+        if (state === 'not ready') join(undefined)
+      } else {
+        out = fetcher({ signal: c.signal }) // reads here are tracked
+        if (out === undefined || out === null || out === false) state = 'not ready'
+      }
+    } catch (err) { out = Promise.reject(err); state = 'fetch' } finally { inFetcher = false }
     pending = untrack(() => {
       const wasQuiet = quiet
       quiet = false
-      if (out === undefined || out === null || out === false) {
+      if (state !== 'fetch') {
         controller = undefined
         busy = false
+        if (state === 'hit') { value.set(out as T); error.set(undefined) }
         loading.set(false) // not ready: keep the last value
         return Promise.resolve()
       }
@@ -99,24 +156,28 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
       if (!wasQuiet) loading.set(true)
       busy = true
       const latest = () => id === runs && !disposed
-      // The first attempt is the tracked call above; retries call the fetcher again (untracked) after a delay.
-      const attempt = async (n: number, first: unknown): Promise<T> => {
-        try { return await (n === 0 ? first : fetcher({ signal: c.signal })) as T } catch (err) {
-          if (n >= retry.count || c.signal.aborted) throw err
-          await sleep(delay(n + 1), c.signal)
-          return attempt(n + 1, undefined)
-        }
-      }
-      return attempt(0, out).then(
-        // An async fetcher can't return "not ready" directly: it resolves to undefined. Same meaning: keep the value.
-        (v) => { if (latest()) { if (v !== undefined) value.set(v); loading.set(false); busy = false } },
+      // Keyed answers arrive through the entry (store → push), only if still its newest.
+      return (keyed ? (out as Promise<T>) : retrying(out, () => fetcher({ signal: c.signal }), c.signal)).then(
+        // An async "not ready" resolves to undefined: keep the value.
+        (v) => { if (latest()) { if (!keyed && v !== undefined) value.set(v); loading.set(false); busy = false } },
         (err) => { if (latest()) { error.set(err); loading.set(false); busy = false } },
       )
     })
   }
 
+  function retrying(first: unknown, again: () => unknown, signal: AbortSignal): Promise<T> {
+    const attempt = async (n: number): Promise<T> => {
+      try { return await (n === 0 ? first : again()) as T } catch (err) {
+        if (n >= retry.count || signal.aborted) throw err
+        await sleep(delay(n + 1), signal)
+        return attempt(n + 1)
+      }
+    }
+    return attempt(0)
+  }
+
   const timers: (() => void)[] = []
-  const dispose = () => { disposed = true; stop?.(); controller?.abort(); for (const t of timers) t() }
+  const dispose = () => { disposed = true; stop?.(); controller?.abort(); for (const t of timers) t(); join(undefined) }
   // Interval and focus refetches don't interrupt a run in flight (it's already fresh); only refetch() does.
   const again = () => { if (!busy && document.visibilityState !== 'hidden') void self.refetch() }
   if (browser) {
@@ -135,14 +196,120 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
     get error() { return read(error) },
     refetch() {
       if (!browser || disposed) return Promise.resolve()
+      force = true
       if (stop) tick.set(untrack(tick.get) + 1)
       else stop = effect(run) // the first run of a resource that didn't start on attach
       // Inside a signals batch() the run starts when the batch ends: wait for that, then for the run.
       return Promise.resolve().then(() => pending)
     },
-    mutate(v) { if (browser) value.set(v) }, // on the server a (module-level) resource stays as it was
+    // Server: unchanged. Keyed: writes the entry.
+    mutate(v) { if (browser) { if (entry) store(entry, v, ++entry.seq); else value.set(v) } },
+    async ready() {
+      for (let p; p !== pending; ) { p = pending; await p } // until no newer run started meanwhile
+      const v = untrack(value.get)
+      if (v === undefined && untrack(error.get) !== undefined) throw untrack(error.get)
+      return v
+    },
   }
   return self
+}
+
+// The keyed cache (#287): one entry per key, shared by every resource on the page. In the browser only.
+type User = { keep: number; push(v: unknown): void; rerun(): void }
+type Entry = {
+  key: unknown[]; value?: unknown; has: boolean; at: number; invalid: boolean
+  seq: number // bumped by each request, invalidate(), setData() and mutate(): only the newest answer is stored
+  pending?: Promise<unknown>; users: Set<User>; keep?: number; drop?: ReturnType<typeof setTimeout>
+}
+const KEEP = 5 * 60_000
+const cache = new Map<string, Entry>()
+/**
+ * A key's hash: JSON with object keys sorted, so { page, q } and { q, page } are one key. Keys are plain values:
+ * like JSON, undefined properties drop out, and Maps and Sets are all `{}`.
+ */
+const hash = (v: unknown) => JSON.stringify(v, (_, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : x))
+const entryOf = (key: unknown[]): Entry => {
+  const h = hash(key)
+  let e = cache.get(h)
+  if (!e) cache.set(h, (e = { key, has: false, at: 0, invalid: false, seq: 0, users: new Set() }))
+  return e
+}
+/** Nothing (else) shows `e`: drop it after its users' keep (the one leaving, if it was the last) unless one comes back. */
+const release = (e: Entry, leaving?: User) => {
+  e.keep = e.users.size ? Math.max(...[...e.users].map((u) => u.keep)) : leaving?.keep ?? e.keep
+  if (e.users.size) return
+  clearTimeout(e.drop)
+  e.drop = setTimeout(() => { if (!e.users.size) cache.delete(hash(e.key)) }, e.keep ?? KEEP)
+}
+/** Store an answer if it's still the entry's newest (no later request, invalidate or setData), and show it. */
+const store = (e: Entry, v: unknown, seq: number) => {
+  if (seq !== e.seq) return
+  Object.assign(e, { value: v, has: true, at: Date.now(), invalid: false })
+  for (const u of e.users) u.push(v)
+}
+/** The entry's newest request: stores what it gets (if still newest). */
+const request = <T>(e: Entry, answer: Promise<T>): Promise<T> => {
+  const seq = ++e.seq
+  const p = answer.then((v) => { if (v !== undefined) store(e, v, seq); return v })
+  e.pending = p
+  const clear = () => { if (e.pending === p) e.pending = undefined }
+  p.then(clear, clear)
+  return p
+}
+
+/**
+ * Mark every cached answer whose key starts with `prefix` (element by element) as stale: the resources showing one
+ * fetch it again now, the others when next used. With no prefix: everything.
+ * @example
+ * ```ts
+ * await fetch(`/api/items/${id}`, { method: 'PATCH', body })
+ * invalidate(['items']) // every cached page of items
+ * ```
+ * @see https://clarusjs.com/reference/fetch#invalidate
+ */
+export function invalidate(prefix: unknown[] = []): void {
+  if (!browser) return
+  const parts = prefix.map(hash)
+  group(() => {
+    for (const e of cache.values()) {
+      if (!parts.every((p, i) => i < e.key.length && hash(e.key[i]) === p)) continue
+      e.seq++ // an answer already on its way is stale
+      e.pending = undefined
+      e.invalid = true
+      for (const u of e.users) u.rerun() // the first starts one request; the others share it
+    }
+  })
+}
+
+/**
+ * Set a cached answer (an optimistic edit) and show it in every resource using that key; creates it if missing.
+ * @example
+ * ```ts
+ * setData(['items', { page }], (rows) => rows.map((r) => (r.id === id ? { ...r, name } : r)))
+ * ```
+ * @see https://clarusjs.com/reference/fetch#setdata
+ */
+export function setData<T>(key: unknown[], value: T | ((prev: T | undefined) => T)): void {
+  if (!browser) return
+  const e = entryOf(key)
+  store(e, typeof value === 'function' ? (value as (prev: T | undefined) => T)(e.value as T | undefined) : value, ++e.seq)
+  release(e)
+}
+
+/**
+ * Fetch an answer into the cache ahead of time (the next page), unless it's there and fresh. Errors are ignored.
+ * @example
+ * ```ts
+ * prefetch(['items', { page: page + 1 }], ({ signal }) => json(`/api/items?page=${page + 1}`, { signal }))
+ * ```
+ * @see https://clarusjs.com/reference/fetch#prefetch
+ */
+export function prefetch<T>(key: unknown[], fetcher: (ctx: { signal: AbortSignal }) => T | Promise<T>): Promise<void> {
+  if (!browser) return Promise.resolve()
+  const e = entryOf(key)
+  const p = e.has && !e.invalid ? Promise.resolve() : e.pending ?? request(e, (async () => fetcher({ signal: new AbortController().signal }))())
+  release(e)
+  return p.then(() => {}, () => {})
 }
 
 /** Wait `ms`; rejects when `signal` aborts first. */

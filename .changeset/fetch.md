@@ -9,4 +9,4 @@
 - `batch(load)` sends the keys asked of one endpoint at the same moment, from any island, as one request.
 - `json(url)` throws on a non-2xx response.
 
-Nothing is fetched on the server. The entry stays within 1.5 KB gzip, and a page that doesn't import it ships none of it. See https://clarusjs.com/guide/fetching.
+Nothing is fetched on the server. The entry stays within 2.5 KB gzip, and a page that doesn't import it ships none of it. See https://clarusjs.com/guide/fetching.
