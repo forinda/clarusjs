@@ -38,14 +38,18 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   // What changes the display; error() and friends read `version` so templates follow.
   const version = state(0)
   const pending = state(false)
-  const touched = new Set<string>()
-  const shownAll = { on: false } // after a submit (or a step check, for its fields: see `forced`)
-  const forced = new Set<string>()
+  // Per field element, not per path: a row removed above shifts paths, and its touched state must not move to the next.
+  let touched = new WeakSet<Element>()
+  let dirty = new WeakSet<Element>()
+  let checked = new WeakSet<Element>() // fields a step check showed
+  const shownAll = { on: false } // after a submit
+  const forced = new Set<string>() // paths of server errors, shown at once
   let server: Record<string, string> = {}
   let schemaIssues: Record<string, string> = {}
   let errorsNow: Record<string, string> = {} // path → message, every source, shown or not
   const roots = new Map<Element, number>() // covered element → how many connections
   let checkSeq = 0
+  let latest: Promise<void> = Promise.resolve()
   let timer: ReturnType<typeof setTimeout> | undefined
   let last = initial
   const current = state('') // the step shown (multi-step forms)
@@ -55,23 +59,26 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   const now = () => untrack(() => current.get())
   /**
    * A field's message element: the first [data-cl-message] in the nearest container around it (label,
-   * [data-cl-field], fieldset, island) that has one. Beside the label is best: inside, it's read as the field's name.
+   * [data-cl-field], fieldset, island) that has one, if that container holds no other field (a radio group's share
+   * one path, so they share it). Beside the label is best: inside, it's read as the field's name.
    */
-  const boxOf = (el: Element) => {
+  const boxOf = (el: Element, path: string, root: Element) => {
     for (let c = el.closest(CONTAINERS); c; c = c.parentElement?.closest(CONTAINERS) ?? null) {
       const box = c.querySelector<HTMLElement>('[data-cl-message]')
-      if (box) return box
+      if (!box) continue
+      return [...c.querySelectorAll(FIELDS)].every((x) => x === el || pathOf(x, root) === path) ? box : undefined
     }
   }
   /** The path of the field an event happened on, if it's one of this form's. */
-  const eventPath = (e: Event) => {
+  const eventField = (e: Event) => {
     const field = (e.target as Element).closest?.(FIELDS)
-    const root = field && [...roots.keys()].find((r) => r.contains(field))
-    return field && root ? pathOf(field, root) : undefined
+    return field && [...roots.keys()].some((r) => r.contains(field)) ? field : undefined
   }
-  const fields = () => [...roots.keys()].flatMap((root) => [...root.querySelectorAll(FIELDS)].map((el) => ({ el: el as HTMLInputElement, path: pathOf(el, root) })))
-  const shown = (path: string) => shownAll.on || forced.has(path) || (show === 'input' ? touched.has(path) || dirty.has(path) : show === 'blur' && touched.has(path))
-  const dirty = new Set<string>()
+  const fields = () => [...roots.keys()].flatMap((root) => [...root.querySelectorAll(FIELDS)].map((el) => ({ el: el as HTMLInputElement, path: pathOf(el, root), root })))
+  /** Is this field's error shown (by the show rule, or because a step check or a submit showed it)? */
+  const shownField = (el: Element, path: string) =>
+    shownAll.on || forced.has(path) || checked.has(el) || (show === 'input' ? touched.has(el) || dirty.has(el) : show === 'blur' && touched.has(el))
+  const shown = (path: string) => shownAll.on || forced.has(path) || fields().some((f) => f.path === path && shownField(f.el, path))
 
   /** Recompute every field's error (sources in order of precedence) and put each on its element. */
   function refresh(): void {
@@ -88,14 +95,16 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       // The browser agrees (and :invalid matches) when the message isn't its own.
       if (server[path] || schemaIssues[path]) el.setCustomValidity(message)
     }
+    // Errors on paths no field shows (a whole-object rule, a server error by another name) still count, and list.
+    for (const path of new Set([...Object.keys(schemaIssues), ...Object.keys(server)])) next[path] ??= server[path] || schemaIssues[path]!
     errorsNow = next
-    for (const { el, path } of fields()) paint(el, shown(path) ? errorsNow[path] ?? '' : '')
+    // ponytail: shown() scans the fields per field (quadratic); fine for forms, a per-refresh set if it ever isn't.
+    for (const { el, path, root } of fields()) paint(el, boxOf(el, path, root), shown(path) ? errorsNow[path] ?? '' : '')
     version.set(untrack(() => version.get()) + 1)
   }
 
   /** A field and its message element, as `message` says. */
-  function paint(el: HTMLInputElement, message: string): void {
-    const box = boxOf(el)
+  function paint(el: HTMLInputElement, box: HTMLElement | undefined, message: string): void {
     if (box) {
       if (!box.id) box.id = `cl-msg-${++ids}`
       const described = (el.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
@@ -123,9 +132,21 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       refresh()
     }
     const result = schema['~standard'].validate(untrack(() => signal.get()))
-    if (!(result instanceof Promise)) return Promise.resolve(apply(result))
+    if (!(result instanceof Promise)) return (latest = Promise.resolve(apply(result)))
     pending.set(true)
-    return result.then(apply)
+    // A schema that fails keeps its last issues: it's a bug to fix, not a reason to let anything through.
+    return (latest = result.then(apply, (err) => {
+      if (seq === checkSeq) pending.set(false)
+      console.error('[clarusjs] the form schema failed', err)
+    }))
+  }
+  /** The newest check, done: a pending pause is cut short, and a check started meanwhile is waited for too. */
+  async function settle(): Promise<void> {
+    clearTimeout(timer)
+    for (let p = check(); ; p = latest) {
+      await p
+      if (p === latest) return
+    }
   }
 
   // Steps: [data-cl-step][id] sections of the covered form, one shown at a time, the current one in the URL hash.
@@ -145,7 +166,11 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     try { id = decodeURIComponent(location.hash.slice(1)) } catch {}
     return steps().find((s) => s.id === id)?.id
   }
-  const onHash = () => { const id = hashStep(); if (id && id !== now()) showStep(id, false) }
+  const onHash = () => {
+    // No hash: the entry the page loaded on, before any step was pushed: the first step.
+    const id = hashStep() ?? (location.hash.length > 1 ? undefined : steps()[0]?.id)
+    if (id && id !== now()) showStep(id, false)
+  }
   const go = (id: string) => {
     showStep(id, true)
     const step = steps().find((s) => s.id === id)
@@ -168,16 +193,16 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   })
 
   const onInput = (e: Event) => {
-    const path = eventPath(e)
-    if (path === undefined) return
-    dirty.add(path)
+    const field = eventField(e)
+    if (!field) return
+    dirty.add(field)
     refresh()
     checkSoon()
   }
   const onLeave = (e: Event) => {
-    const path = eventPath(e)
-    if (path === undefined) return
-    touched.add(path)
+    const field = eventField(e)
+    if (!field) return
+    touched.add(field)
     refresh()
     check()
   }
@@ -187,7 +212,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   const toFirstError = () => {
     const first = fields().find((f) => errorsNow[f.path])
     if (first) engine.focus(first.path as never)
-    return !first
+    return !Object.keys(errorsNow).length // errors with no field count too
   }
   const urlEvents = ['popstate', 'hashchange']
 
@@ -196,16 +221,20 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     get errors(): FormError<T>[] {
       version.get()
       const out: FormError[] = []
-      for (const { el, path } of fields()) {
+      const all = fields()
+      for (const { el, path, root } of all) {
         if (out.some((e) => e.path === path) || !shown(path) || !errorsNow[path]) continue
-        const box = boxOf(el)
-        out.push({ path, message: errorsNow[path]!, id: box?.id || el.id, step: el.closest('[data-cl-step]')?.id ?? null })
+        out.push({ path, message: errorsNow[path]!, id: boxOf(el, path, root)?.id || el.id, step: el.closest('[data-cl-step]')?.id ?? null })
+      }
+      // Errors no field shows, after the rest.
+      for (const [path, message] of Object.entries(errorsNow)) {
+        if (!all.some((f) => f.path === path) && (shownAll.on || forced.has(path))) out.push({ path, message, id: '', step: null })
       }
       return out as FormError<T>[]
     },
-    touched(path) { version.get(); return touched.has(path) },
+    touched(path) { version.get(); return fields().some((f) => f.path === path && touched.has(f.el)) },
     changed(path) { return read(signal.get(), path) !== read(initial, path) },
-    get valid() { version.get(); return !Object.keys(errorsNow).length && !Object.keys(schemaIssues).length },
+    get valid() { version.get(); return !Object.keys(errorsNow).length },
     get pending() { return pending.get() },
     setErrors(errors) { server = { ...errors }; for (const path of Object.keys(errors)) forced.add(path); refresh() },
     focus(path) {
@@ -227,8 +256,8 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       const step = list[at]
       if (!step) return false
       const own = fields().filter((f) => step.contains(f.el))
-      for (const f of own) forced.add(f.path) // this step's errors show now
-      await check()
+      for (const f of own) checked.add(f.el) // this step's errors show now
+      await settle()
       refresh()
       const bad = own.find((f) => errorsNow[f.path])
       if (bad) { bad.el.focus(); return false }
@@ -248,7 +277,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       submitting.set(true)
       try {
         shownAll.on = true // every error shows from now on
-        await check()
+        await settle()
         refresh()
         if (!toFirstError()) return false
         const answer = await options.submit?.(untrack(() => signal.get()))
@@ -262,7 +291,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       }
     },
     reset() {
-      touched.clear(); dirty.clear(); forced.clear(); server = {}; shownAll.on = false
+      touched = new WeakSet(); dirty = new WeakSet(); checked = new WeakSet(); forced.clear(); server = {}; shownAll.on = false
       signal.set(initial)
       refresh()
     },

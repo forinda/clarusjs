@@ -189,3 +189,23 @@ test('the message can sit beside the label (outside it, so it is not part of the
   expect(input.getAttribute('aria-describedby')).toBe(message.id)
   expect(input.closest('label')!.textContent).toBe('Email ') // the label holds the name only
 })
+
+test('review: a field without its own message element doesn\'t take over another field\'s', () => {
+  const { el, f } = mount(`<form data-cl-form="0"><fieldset data-cl-step id="s"><label>A <input required data-cl-path="a"> <small data-cl-message id="ma"></small></label><label>B <input required data-cl-path="b"></label></fieldset></form>`, { a: '', b: '' })
+  for (const input of document.querySelectorAll('input')) leave(input)
+  expect(el('#ma').textContent).toBe(f.error('a'))
+  expect(el('#ma').hidden).toBe(false)
+  expect(document.querySelectorAll('input')[1]!.getAttribute('aria-describedby')).toBeNull()
+})
+
+test('review: touched follows the row, not the index: removing a touched row doesn\'t show the next row\'s error', () => {
+  const { f } = mount(`<form data-cl-form="0"><label><input required data-cl-path="lines.0.item"><small data-cl-message></small></label><label><input required data-cl-path="lines.1.item"><small data-cl-message></small></label></form>`, { lines: [{ item: '' }, { item: '' }] })
+  const [first, second] = [...document.querySelectorAll('input')] as HTMLInputElement[]
+  leave(first!)
+  expect(f.error('lines.0.item')).not.toBe('')
+  first!.closest('label')!.remove()
+  second!.setAttribute('data-cl-path', 'lines.0.item')
+  second!.dispatchEvent(new Event('input', { bubbles: true })) // something makes the form look again
+  expect(f.error('lines.0.item')).toBe('') // the remaining row was never left
+  expect(f.touched('lines.0.item')).toBe(false)
+})
