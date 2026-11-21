@@ -18,14 +18,19 @@ if (!name || !/^@clarusjs\/[a-z0-9-]+$|^clarusjs(-[a-z0-9-]+)?$/.test(name)) {
   process.exit(1)
 }
 
-// Never over an existing package: a placeholder would become its newest version.
-try {
-  execFileSync('npm', ['view', name, 'name'], { stdio: 'pipe' })
+// The public registry, whatever the npm config says (a private registry for @clarusjs wouldn't reserve the name).
+const REGISTRY = 'https://registry.npmjs.org/'
+const scope = name.startsWith('@') ? name.slice(0, name.indexOf('/')) : undefined
+const pinned = [`--registry=${REGISTRY}`, ...(scope ? [`--${scope}:registry=${REGISTRY}`] : [])]
+
+// Never over an existing package: a placeholder would become its newest version. Asked of the registry directly, so
+// no configured dist-tag or registry changes the answer.
+const res = await fetch(REGISTRY + name.replace('/', '%2F'))
+if (res.ok) {
   console.error(`${name} is already on npm: nothing to reserve.`)
   process.exit(1)
-} catch (err) {
-  if (!String(err.stderr).includes('E404')) throw err
 }
+if (res.status !== 404) throw new Error(`${REGISTRY}: ${res.status} ${res.statusText}`)
 
 const dir = mkdtempSync(join(tmpdir(), 'clarusjs-reserve-'))
 try {
@@ -38,7 +43,7 @@ try {
   }, null, 2) + '\n')
   writeFileSync(join(dir, 'README.md'), `# ${name}\n\nPlaceholder. The first release is published from [clarusjs](https://github.com/forinda/clarusjs).\n`)
   writeFileSync(join(dir, 'LICENSE'), readFileSync(new URL('../LICENSE', import.meta.url)))
-  execFileSync('npm', ['publish', '--access', 'public', ...(dryRun ? ['--dry-run'] : [])], { cwd: dir, stdio: 'inherit' })
+  execFileSync('npm', ['publish', '--access', 'public', ...pinned, ...(dryRun ? ['--dry-run'] : [])], { cwd: dir, stdio: 'inherit' })
   if (!dryRun) console.log(`\nReserved ${name}@0.0.0. Next: add its trusted publisher on npmjs.com (RELEASE.md, "Trusted publishing").`)
 } finally {
   rmSync(dir, { recursive: true, force: true })

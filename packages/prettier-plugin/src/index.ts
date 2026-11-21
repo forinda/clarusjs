@@ -83,6 +83,7 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
   const COMMENT = fresh((p) => `<!--cl${p}:`)
   const HOLE = fresh((p) => `__cl${p}_hole`)
   const WORD = fresh((p) => `__cl${p}_word`)
+  const ATTR = fresh((p) => `__cl${p}_attr`)
   const INLINE = fresh((p) => `__cl${p}_inline`) // a word: Prettier never breaks inside one
   const SLOT = fresh((p) => `@defer (__cl${p}_slot__`)
   const saved: string[] = []
@@ -241,11 +242,18 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
       if (n.type === 'text') {
         if (!rawText && source.slice(n.start, n.start + n.value.length) === n.value) textEdits(n.start, n.value, topLevel)
       } else if (n.type === 'raw') {
-        if (n.value && source.slice(n.start, n.start + n.value.length) === n.value) edits.push({ start: n.start, end: n.start + n.value.length, text: `${COMMENT}${save(n.value)}-->` })
+        if (n.value && source.slice(n.start, n.start + n.value.length) === n.value) holds.push({ start: n.start, end: n.start + n.value.length, text: `${COMMENT}${save(n.value)}-->` })
       } else if (n.type === 'expr') {
         if (!rawText && bitwise(n.expr)) holeEdit(n.start)
       } else if (n.type === 'element') {
-        for (const a of n.attrs) if (a.kind === 'interp') for (const p of a.parts) if (typeof p !== 'string' && bitwise(p.expr)) holeEdit(p.start)
+        for (const a of n.attrs) {
+          // Kept as written: a value with an encoded " (Prettier would decode it and switch to single quotes, which
+          // clarusjs doesn't read), and a binding with a bitwise | (Angular reads a pipe and drops parentheses).
+          const v = attrValue(source, a.start)
+          const kept = v && (/&quot;|&#0*34;|&#x0*22;/i.test(source.slice(v.start, v.end)) || ((a.kind === 'prop' || a.kind === 'event' || a.kind === 'model') && bitwise(a.expr)))
+          if (kept) holds.push({ start: v.start, end: v.end, text: `${ATTR}${save(source.slice(v.start, v.end))}_` })
+          else if (a.kind === 'interp') for (const p of a.parts) if (typeof p !== 'string' && bitwise(p.expr)) holeEdit(p.start)
+        }
         visit(n.children, false, rawText || n.tag === 'script' || n.tag === 'style', BLOCK_TAGS.has(n.tag) || OPTION_LISTS.has(n.tag))
       } else {
         const end = blockEnd(n.start)
@@ -281,7 +289,7 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
   const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const back = (_: string, n: string) => saved[Number(n)]!
   return {
-    head: head.map((h) => h.replace(/[ \t]+$/gm, '')).join('\n'),
+    head: head.map((h) => h.replace(/[ \t]+$/, '')).join('\n'), // only the end: a multi-line default keeps its spaces
     text,
     restore: (formatted) => formatted
       .replaceAll(SLOT, '@slot(')
@@ -289,7 +297,8 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
       .replaceAll(LB, '{')
       .replaceAll(RB, '}')
       .replace(new RegExp(`${escape(COMMENT)}(\\d+)-->`, 'g'), back)
-      .replace(new RegExp(`\\{\\{ ${HOLE}(\\d+) \\}\\}`, 'g'), back)
+      .replace(new RegExp(`\\{\\{\\s*${HOLE}(\\d+)\\s*\\}\\}`, 'g'), back) // Prettier may wrap it
+      .replace(new RegExp(`"[^"]*?${ATTR}(\\d+)_[^"]*"`, 'g'), (_, n: string) => `"${saved[Number(n)]}"`) // the whole value (Prettier may wrap it in parentheses)
       .replace(new RegExp(`${WORD}(\\d+)_`, 'g'), back)
       .replace(new RegExp(`${INLINE}(\\d+)_`, 'g'), back),
   }
@@ -351,6 +360,20 @@ function tagEnd(s: string, i: number): number {
     else if (s[j] === '>') return j
   }
   return s.length
+}
+
+/** The value of the attribute written at `at` (between its quotes), or undefined for one without a value. */
+function attrValue(s: string, at: number): { start: number; end: number } | undefined {
+  let i = at
+  while (i < s.length && !/[\s=>/]/.test(s[i]!)) i++
+  while (s[i] === ' ' || s[i] === '\t') i++
+  if (s[i] !== '=') return undefined
+  i++
+  while (s[i] === ' ' || s[i] === '\t') i++
+  const q = s[i]
+  if (q !== '"' && q !== "'") return undefined
+  const end = s.indexOf(q, i + 1)
+  return end === -1 ? undefined : { start: i + 1, end }
 }
 
 /** A JavaScript bitwise | (not ||) outside strings: Angular would read it as a pipe. */

@@ -9,12 +9,14 @@ import { loadFormatter } from '../src/format.ts'
 function project({ plugin = true } = {}): string {
   const root = mkdtempSync(resolve(tmpdir(), 'cl-ls-format-'))
   writeFileSync(resolve(root, 'package.json'), '{"name":"app"}')
+  writeFileSync(resolve(root, '.prettierrc'), '{"semi":false}')
   const prettier = resolve(root, 'node_modules/prettier')
   mkdirSync(prettier, { recursive: true })
   writeFileSync(resolve(prettier, 'package.json'), JSON.stringify({ name: 'prettier', type: 'module', exports: { '.': './index.js' } }))
   writeFileSync(resolve(prettier, 'index.js'), `globalThis.__clPrettier = (globalThis.__clPrettier ?? 0) + 1
 export const resolveConfigFile = async (file) => globalThis.__clConfigFile ?? null
-export const resolveConfig = async (file, opts) => ({ semi: false, from: file, config: opts?.config, editorconfig: opts?.editorconfig, ...(globalThis.__clPlugins ? { plugins: globalThis.__clPlugins } : {}) })
+import { readFileSync } from 'node:fs'
+export const resolveConfig = async (file, opts) => ({ ...JSON.parse(readFileSync(opts.config, 'utf8')), from: file, config: opts?.config, editorconfig: opts?.editorconfig, ...(globalThis.__clPlugins ? { plugins: globalThis.__clPlugins } : {}) })
 export const getFileInfo = async (file, opts) => ({ ignored: globalThis.__clIgnored === true, ignorePath: opts?.ignorePath })
 export const clearConfigCache = async () => { globalThis.__clCleared = (globalThis.__clCleared ?? 0) + 1 }
 export const format = async (text, options) => JSON.stringify({ text, options })`)
@@ -104,4 +106,10 @@ test('as the CLI: .editorconfig counts, a file in .prettierignore is left alone,
   expect(out.options.editorconfig).toBe(true)
   expect((g.__clCleared ?? 0) - before).toBe(1)
   expect((await run({ __clIgnored: true })).out).toBeUndefined()
+})
+
+test('.editorconfig applies with no Prettier config (still never one from outside the folder)', async () => {
+  const { out } = await run({ __clConfigFile: undefined })
+  expect(out.options.editorconfig).toBe(true)
+  expect(out.options.semi).toBeUndefined()
 })

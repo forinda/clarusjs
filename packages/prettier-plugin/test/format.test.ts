@@ -207,3 +207,28 @@ test('a block of options in a <select> is laid out, and formatting is stable (si
   const out = await same('<label><span>L</span> <select multiple [(value)]="v">@for (l of langs; track l.id) {<option [value]="l.id">{{ l.label }}</option>}</select></label>\n')
   expect(out).toContain('@for (l of langs; track l.id) {\n')
 })
+
+// CodeRabbit review of #306.
+test('an attribute value with &quot; keeps its double quotes (clarusjs rejects single-quoted values)', async () => {
+  expect(await same('<a title="it&apos;s &quot;x&quot;">x</a>\n')).toContain('title="it&apos;s &quot;x&quot;"')
+})
+
+test('a {{-- --}} comment inside verbatim contents stays verbatim, with what follows it', async () => {
+  expect(await same('<code verbatim>{{-- note --}}@if (ok) {x}</code>\n')).toContain('<code verbatim>{{-- note --}}@if (ok) {x}</code>')
+})
+
+test('a bitwise | in a binding keeps its parentheses ([prop], (event), [(model)] alike)', async () => {
+  const out = await same('<p [title]="(a || b) | c" (click)="x = (a || b) | c">x</p>\n')
+  expect(out).toContain('[title]="(a || b) | c"')
+  expect(out).toContain('(click)="x = (a || b) | c"')
+})
+
+test('a directive\'s multi-line default keeps its spaces', async () => {
+  expect(await same('@input message: string = `hello  \nworld`\n<p>{{ message }}</p>\n')).toContain('`hello  \nworld`')
+})
+
+test('a kept hole is restored when Prettier wraps it', async () => {
+  const out = await same('<p>{{ (a || b) | c }}</p>\n', { printWidth: 10 })
+  expect(out).toContain('{{ (a || b) | c }}')
+  expect(out).not.toContain('__cl')
+})

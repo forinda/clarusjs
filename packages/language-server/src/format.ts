@@ -2,9 +2,17 @@
 // editor formats as `prettier --write` does. Trusted workspaces only (it runs the project's code), and only from the
 // folder's own node_modules, as for the compiler. Otherwise, no formatting.
 import { createRequire } from 'node:module'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
+
+let empty: string | undefined
+/** A `{}` Prettier config file, written once per server. */
+const emptyConfig = () => {
+  if (!empty) writeFileSync((empty = join(mkdtempSync(join(tmpdir(), 'clarusjs-ls-')), 'prettierrc.json')), '{}')
+  return empty
+}
 
 /** Formats a .tscl file's text (`path` picks the Prettier config). */
 export type Formatter = (text: string, path: string) => Promise<string>
@@ -33,13 +41,15 @@ export async function loadFormatter(root: string, trusted: boolean, log: (messag
         await prettier.clearConfigCache()
         // Only a config inside the trusted folder: Prettier also looks in parent folders, and a config's plugins run.
         const file: string | null = await prettier.resolveConfigFile(path)
-        const config = file && file.startsWith(root + sep) ? ((await prettier.resolveConfig(path, { config: file, editorconfig: true })) ?? {}) : {}
+        // No config inside it: an empty one in its place, so .editorconfig still applies but no search reaches parents.
+        const inside = file && file.startsWith(root + sep) ? file : undefined
+        const config = (await prettier.resolveConfig(path, { config: inside ?? emptyConfig(), editorconfig: true })) ?? {}
         // Plugins named in the config, from the config's folder (Prettier would look in the server's working folder);
         // the clarusjs plugin is added from the project either way.
-        const from = createRequire(file ?? join(root, 'package.json'))
+        const from = createRequire(inside ?? join(root, 'package.json'))
         const plugins = ((config.plugins ?? []) as unknown[]).flatMap((p) => {
           if (typeof p !== 'string') return [p]
-          if (p.startsWith('.')) return [resolve(dirname(file!), p)]
+          if (p.startsWith('.')) return [resolve(dirname(inside!), p)]
           if (p === '@clarusjs/prettier-plugin') return []
           try { return [from.resolve(p)] } catch { return [p] }
         })
