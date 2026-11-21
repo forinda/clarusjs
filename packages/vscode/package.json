@@ -105,5 +105,11 @@
     "vitest": "^5.1.1",
     "vscode-languageclient": "^11.0.0",
     "vscode-uri": "^3.2.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In Restricted Mode the language server uses the clarusjs compiler bundled with it, never the project's own."
+    }
   }
 }

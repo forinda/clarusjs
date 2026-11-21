@@ -4,10 +4,14 @@
 // parses, and this must answer anyway.
 
 export type Range = [number, number]
-export type Scan = { blank: Range[]; styles: Range[] }
+export type Scan = { blank: Range[]; styles: Range[]; scripts: Range[] }
 
 const DIRECTIVE = /^[ \t]*@(import|input|model|type|interface)(?![\w$-])/
-const BLOCK = /^@(else\s+if|if|for|slot|else|empty)(?![\w$-])/
+// As the compiler reads them: @if/@for/@slot need a space or `(` after (an email's @if.com isn't one); @else and
+// @empty only follow a block's closing brace.
+const OPENER = /^@(if|for|slot)(?=[\s(])/
+const FOLLOWER = /^@(else\s+if(?=[\s(])|else(?=[\s{])|empty(?=[\s{]))/
+const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
 /** Index after the quote that closes the string starting at `i` (s[i] is the quote), or the end. */
 function skipString(s: string, i: number): number {
@@ -57,10 +61,13 @@ function directiveEnd(s: string, i: number): number {
 const skipSpace = (s: string, i: number) => { while (i < s.length && /\s/.test(s[i]!)) i++; return i }
 const lineEnd = (s: string, i: number) => { const n = s.indexOf('\n', i); return n === -1 ? s.length : n }
 
-/** Scan a tag starting at `i` (s[i] is `<`): blank binding values and holes in values; script bodies; record styles. */
-function tag(s: string, i: number, out: Scan): number {
+/**
+ * Scan a tag starting at `i` (s[i] is `<`): blank binding values and holes in values; script bodies; record styles.
+ * `depth` is how the tag changes the open-element count (an opening tag +1, a closing one -1, void/self-closing 0).
+ */
+function tag(s: string, i: number, out: Scan): { end: number; depth: number } {
   const m = /^<(\/?)([A-Za-z][\w:.-]*)/.exec(s.slice(i, i + 64))
-  if (!m) return i + 1
+  if (!m) return { end: i + 1, depth: 0 }
   const closing = m[1] === '/'
   const name = m[2]!.toLowerCase()
   let j = i + m[0].length
@@ -83,18 +90,31 @@ function tag(s: string, i: number, out: Scan): number {
     j = stop + 1
   }
   j = Math.min(j + 1, s.length)
-  if (closing || (name !== 'script' && name !== 'style') || s[j - 2] === '/') return j
+  const selfClosing = s[j - 2] === '/' || VOID.has(name)
+  if (closing) return { end: j, depth: -1 }
+  if ((name !== 'script' && name !== 'style') || selfClosing) return { end: j, depth: selfClosing ? 0 : 1 }
   const close = new RegExp(`</${name}(?=[\\s/>])`, 'i').exec(s.slice(j))
   const bodyEnd = close ? j + close.index : s.length
   if (name === 'style') out.styles.push([j, bodyEnd])
-  else out.blank.push([j, bodyEnd])
-  return bodyEnd
+  else { out.blank.push([j, bodyEnd]); out.scripts.push([j, bodyEnd]) }
+  return { end: bodyEnd, depth: 1 } // its close tag follows and takes the 1 back
+}
+
+/** The end of a block opener's head at `j` (after its keyword): the `(…)` if any, then a `{` if any. */
+function blockHead(s: string, i: number, j: number, condition: boolean): { end: number; opened: boolean } {
+  if (condition) {
+    j = skipSpace(s, j)
+    j = s[j] === '(' ? closeBracket(s, j) : lineEnd(s, i)
+  }
+  const k = skipSpace(s, j)
+  return s[k] === '{' ? { end: k + 1, opened: true } : { end: j, opened: false }
 }
 
 /** The ranges to blank, and the `<style>` bodies (for their CSS views). */
 export function scan(s: string): Scan {
-  const out: Scan = { blank: [], styles: [] }
-  let blocks = 0 // template blocks open: their closing `}` is template syntax
+  const out: Scan = { blank: [], styles: [], scripts: [] }
+  const blocks: number[] = [] // open template blocks, each with the element depth it opened at
+  let depth = 0 // open elements
   let atLineStart = true
   for (let i = 0; i < s.length; ) {
     if (atLineStart) {
@@ -117,24 +137,36 @@ export function scan(s: string): Scan {
       continue
     }
     if (c === '@') {
-      const b = BLOCK.exec(s.slice(i, i + 16))
+      const b = OPENER.exec(s.slice(i, i + 8))
       if (b) {
-        let j = i + b[0].length
-        if (b[1] !== 'else' && b[1] !== 'empty') {
-          j = skipSpace(s, j)
-          j = s[j] === '(' ? closeBracket(s, j) : lineEnd(s, i)
-        }
-        const k = skipSpace(s, j)
-        if (s[k] === '{') { j = k + 1; blocks++ }
-        out.blank.push([i, j])
-        i = j
+        const head = blockHead(s, i, i + b[0].length, true)
+        if (head.opened) blocks.push(depth)
+        out.blank.push([i, head.end])
+        i = head.end
         continue
       }
     }
-    if (c === '}' && blocks > 0) { out.blank.push([i, i + 1]); blocks--; i++; continue }
+    // A block's own closing brace: at the element depth it opened at (a `}` inside an element is text).
+    if (c === '}' && blocks.length && blocks.at(-1) === depth) {
+      blocks.pop()
+      out.blank.push([i, i + 1])
+      i++
+      // @else / @else if / @empty follow a block's brace.
+      const k = skipSpace(s, i)
+      const f = FOLLOWER.exec(s.slice(k, k + 12))
+      if (f) {
+        const head = blockHead(s, k, k + f[0].length, f[1]!.startsWith('else ') || /^else\s+if/.test(f[1]!))
+        if (head.opened) blocks.push(depth)
+        out.blank.push([k, head.end])
+        i = head.end
+      }
+      continue
+    }
     if (c === '<') {
       if (s.startsWith('<!--', i)) { const e = s.indexOf('-->', i + 4); i = e === -1 ? s.length : e + 3; continue }
-      i = tag(s, i, out)
+      const t = tag(s, i, out)
+      depth = Math.max(0, depth + t.depth)
+      i = t.end
       continue
     }
     i++
