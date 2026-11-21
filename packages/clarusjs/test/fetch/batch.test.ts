@@ -97,3 +97,30 @@ test('resource + batch: three resources on one batch make one request', async ()
   expect(rs.map((r) => r.value)).toEqual(['X', 'Y', 'Z'])
   expect(load).toHaveBeenCalledTimes(1)
 })
+
+test('review: a load answering null (or forgetting to return) rejects every key, and the keys can be asked again', async () => {
+  let bad = true
+  const b = batch((keys: string[]) => (bad ? (null as unknown as Record<string, string>) : answer(keys)))
+  const results = await Promise.allSettled([b.get('a'), b.get('b')])
+  expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected'])
+  expect((results[0] as PromiseRejectedResult).reason.message).toBe('batch: no answer for "a"')
+  bad = false
+  expect(await b.get('b')).toBe('B') // not stuck on the dead request
+})
+
+test('review: only the answer\'s own keys count (toString isn\'t an answer)', async () => {
+  const b = batch(() => ({}))
+  await expect(b.get('toString')).rejects.toThrow('batch: no answer for "toString"')
+})
+
+test('review: max below 1 is treated as 1', async () => {
+  const load = vi.fn(answer)
+  const b = batch(load, { max: 0 })
+  await Promise.all([b.get('a'), b.get('b')])
+  expect(load.mock.calls.map((c) => c[0])).toEqual([['a'], ['b']])
+})
+
+test('review: json errors carry the status', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('{"error":"gone"}', { status: 404, statusText: 'Not Found' })))
+  await expect(json('/x')).rejects.toMatchObject({ status: 404, message: '/x: 404 Not Found' })
+})

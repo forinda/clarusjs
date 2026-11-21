@@ -56,7 +56,7 @@ const members = resource(({ signal }) => team.value && json(`/api/teams/${team.v
 
 The same goes for any `state`: change a page number, and a resource that reads it fetches that page.
 
-Fetchers can be `async`. Read the signals it depends on **before** its first `await`: those are the ones it follows. To wait, return nothing (`return`), which an async fetcher resolves to `undefined`, meaning "not ready":
+Fetchers can be `async`. Read the signals it depends on **before** its first `await`: those are the ones it follows. To wait, return nothing (`return`), which an async fetcher resolves to `undefined`, meaning "not ready". (For a chain, the `team.value && …` form above is smoother: an async fetcher shows `loading` for a moment even when it isn't ready.)
 
 ```ts
 const members = resource(async ({ signal }) => {
@@ -70,7 +70,7 @@ const members = resource(async ({ signal }) => {
 
 ## One request for many islands
 
-When several islands ask the same endpoint for different keys, `batch()` sends the keys asked at the same moment as one request. Share it from a module:
+When several islands ask the same endpoint for different keys, `batch()` sends the keys asked at the same moment (the islands attaching as the page loads) as one request. Share it from a module:
 
 ```ts
 // src/stores/stats.ts

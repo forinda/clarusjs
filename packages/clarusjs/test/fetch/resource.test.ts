@@ -164,3 +164,39 @@ test('async fetchers: await inside works; resolving to undefined is "not ready" 
   await flush()
   expect(r.value).toBe('members of 2')
 })
+
+test('review: a synchronous throw before any await becomes error, with no uncaught exception', async () => {
+  const r = resource((): Promise<number> => { throw new RangeError('bad id') })
+  await flush()
+  expect(r.error).toBeInstanceOf(RangeError)
+  expect(r.loading).toBe(false)
+})
+
+test('review: a fetcher reading its own resource doesn\'t loop (a guard on loading, a cursor from value)', async () => {
+  // Declared first: the first run happens inside resource(), before a const would be assigned.
+  let calls = 0
+  let guarded: ReturnType<typeof resource<number>> | undefined
+  guarded = resource(() => { calls++; if (guarded?.loading) return undefined; return Promise.resolve(1) })
+  await flush()
+  expect(calls).toBe(1)
+  let pages = 0
+  let list: ReturnType<typeof resource<number[]>> | undefined
+  list = resource(() => { pages++; return Promise.resolve([...(list?.value ?? []), pages]) })
+  await flush()
+  await flush()
+  expect(pages).toBe(1)
+  expect(list!.value).toEqual([1])
+  await list!.refetch() // "load more": reads its own value, untracked
+  expect(list!.value).toEqual([1, 2])
+})
+
+test('review: refetch() resolves when its run ends, also inside a signals batch()', async () => {
+  const { batch: signalsBatch } = await import('../../src/runtime/index.ts')
+  let n = 0
+  const r = resource(() => Promise.resolve(++n))
+  await flush()
+  let done!: Promise<void>
+  signalsBatch(() => { done = r.refetch() })
+  await done
+  expect(r).toMatchObject({ value: 2, loading: false })
+})

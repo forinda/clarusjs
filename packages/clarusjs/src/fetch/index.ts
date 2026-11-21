@@ -74,6 +74,7 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
   let disposed = false
   let quiet = options.initial !== undefined // revalidating initial: no loading state for the first run
   let busy = false // a run is in flight (quietly too): interval and focus skip
+  let inFetcher = false // the fetcher is running: reading this resource there mustn't subscribe it to itself
   const retry = typeof options.retry === 'number' ? { count: options.retry } : options.retry ?? { count: 0 }
   const delay = retry.delay ?? ((attempt: number) => Math.min(500 * 2 ** (attempt - 1), 8000))
 
@@ -83,7 +84,8 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
     const id = ++runs
     const c = (controller = new AbortController())
     let out: ReturnType<Fetcher<T>>
-    try { out = fetcher({ signal: c.signal }) } catch (err) { out = Promise.reject(err) } // reads here are tracked
+    inFetcher = true
+    try { out = fetcher({ signal: c.signal }) } catch (err) { out = Promise.reject(err) } finally { inFetcher = false } // reads here are tracked
     pending = untrack(() => {
       const wasQuiet = quiet
       quiet = false
@@ -125,17 +127,20 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
     if (focus) { document.addEventListener('visibilitychange', again); timers.push(() => document.removeEventListener('visibilitychange', again)) }
   }
 
+  // Read inside its own fetcher (a guard on loading, a cursor from value): untracked, or its own writes would rerun it.
+  const read = <V>(s: { get(): V }) => (inFetcher ? untrack(s.get) : s.get())
   const self: Resource<T> = {
-    get value() { return value.get() },
-    get loading() { return loading.get() },
-    get error() { return error.get() },
+    get value() { return read(value) },
+    get loading() { return read(loading) },
+    get error() { return read(error) },
     refetch() {
       if (!browser || disposed) return Promise.resolve()
       if (stop) tick.set(untrack(tick.get) + 1)
       else stop = effect(run) // the first run of a resource that didn't start on attach
-      return pending
+      // Inside a signals batch() the run starts when the batch ends: wait for that, then for the run.
+      return Promise.resolve().then(() => pending)
     },
-    mutate(v) { value.set(v) },
+    mutate(v) { if (browser) value.set(v) }, // on the server a (module-level) resource stays as it was
   }
   return self
 }
@@ -143,15 +148,17 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
 /** Wait `ms`; rejects when `signal` aborts first. */
 const sleep = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
-    const t = setTimeout(resolve, ms)
-    signal.addEventListener('abort', () => { clearTimeout(t); reject(signal.reason) }, { once: true })
+    const abort = () => { clearTimeout(t); reject(signal.reason) }
+    const t = setTimeout(() => { signal.removeEventListener('abort', abort); resolve() }, ms)
+    signal.addEventListener('abort', abort, { once: true })
   })
 
 /** Keys asked of one endpoint at the same moment, answered by one request. */
 export type Batch<T> = { get(key: string): Promise<T> }
 
 /**
- * One request for the keys asked at the same moment (the same task, or within `wait` ms), from any island:
+ * One request for the keys asked at the same moment (the same task, or within `wait` ms), from the islands asking
+ * then (islands attaching later, such as on idle or when visible, join with a longer `wait`):
  * `load(keys)` answers each key. Concurrent asks for a key share its request; nothing is kept after it settles.
  * `max` splits a large batch. Share it from a module (`export const stats = batch(…)`).
  *
@@ -180,14 +187,15 @@ export function batch<T>(
     Promise.resolve()
       .then(() => load([...keys.keys()], { signal: new AbortController().signal }))
       .then(
-        (answers) => settle((key, w) => (key in answers ? w.resolve(answers[key]!) : w.reject(new Error(`batch: no answer for "${key}"`)))),
+        // Only the answer's own keys count; an answer that isn't an object (null, a forgotten return) answers none.
+        (answers) => settle((key, w) => (answers !== null && typeof answers === 'object' && Object.hasOwn(answers, key) ? w.resolve(answers[key]!) : w.reject(new Error(`batch: no answer for "${key}"`)))),
         (err) => settle((_, w) => w.reject(err)),
       )
   }
   const flush = () => {
     const all = [...queued!]
     queued = undefined
-    const max = options.max ?? all.length
+    const max = Math.max(1, options.max ?? all.length)
     for (let i = 0; i < all.length; i += max) send(new Map(all.slice(i, i + max)))
   }
   return {
@@ -210,8 +218,8 @@ export function batch<T>(
 }
 
 /**
- * `fetch(url, init)`, then the response's JSON. A response that isn't 2xx throws an Error naming the URL and status,
- * so a resource's `retry` and `error` see it.
+ * `fetch(url, init)`, then the response's JSON. A response that isn't 2xx throws an Error naming the URL and status
+ * (its `status` property holds the code), so a resource's `retry` and `error` see it.
  *
  * @example
  * ```ts
@@ -223,7 +231,7 @@ export async function json<T = any>(url: string | URL, init?: RequestInit): Prom
   const res = await fetch(url, init)
   if (!res.ok) {
     await res.text().catch(() => {}) // read it, so the request ends: a browser keeps an unread body's request open
-    throw new Error(`${url}: ${res.status} ${res.statusText}`.trim())
+    throw Object.assign(new Error(`${url}: ${res.status} ${res.statusText}`.trim()), { status: res.status })
   }
   return res.json() as Promise<T>
 }

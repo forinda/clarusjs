@@ -10,3 +10,10 @@ test('on the server nothing is fetched', async () => {
   expect(resource(fetcher, { initial: 7 })).toMatchObject({ value: 7, loading: false })
   expect(fetcher).not.toHaveBeenCalled()
 })
+
+test('review: mutate() is a no-op on the server (a module-level resource must not carry one request\'s value into another)', async () => {
+  const { resource } = await import('../../src/fetch/index.ts')
+  const r = resource(() => Promise.resolve(1), { initial: 0 })
+  r.mutate(5)
+  expect(r.value).toBe(0)
+})

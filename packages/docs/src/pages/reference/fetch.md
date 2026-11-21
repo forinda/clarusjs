@@ -39,7 +39,7 @@ A `Resource<T>`:
 - **`value`**: the last successful answer, or `initial`. It's kept while a refetch runs and after an error.
 - **`loading`**: `true` while a run is in flight (not while revalidating `initial` on attach).
 - **`error`**: the last run's error, or `undefined`. It's cleared when a run starts.
-- **`refetch()`**: run now, cancelling a run in flight. Returns a promise that settles when the run ends.
+- **`refetch()`**: run now, cancelling a run in flight. Returns a promise that settles when this run ends (with its retries), or when a newer run replaces it.
 - **`mutate(value)`**: show `value` now, for example an optimistic update. The next run replaces it.
 
 ### Caveats
@@ -49,7 +49,8 @@ A `Resource<T>`:
 - **On the server the fetcher never runs.** `loading` is `true` without `initial`.
 - **Created in an island,** it stops when the island goes away: the request is aborted and its timers are cleared. **Created in a module** (a store), it lives as long as the page.
 - **With `refetch: { onStart: false }`,** it doesn't follow its signals until its first run.
-- **An `async` fetcher follows the signals it reads before its first `await`.** Signals read after it don't make it run again.
+- **An `async` fetcher follows the signals it reads before its first `await`.** Signals read after it don't make it run again. An async "not ready" still shows `loading` for a moment (the fetcher has to run to say so); for a chain, the synchronous form (`team.value && json(…)`) doesn't.
+- **Reading the resource inside its own fetcher** (a guard on `loading`, a cursor from `value` for "load more") doesn't subscribe it to itself. Declare it with `let` first: the first run happens inside `resource()`, before a `const` is assigned.
 
 ### Usage
 
@@ -133,8 +134,10 @@ Sends the keys asked at the same moment as one request, from any island on the p
 
 ### Caveats
 
+- **The islands asking in the same task share a request** (those attaching as the page loads). Islands that attach later, on idle or when visible, send their own unless `wait` covers them.
 - **Asks for the same key share a request** while it's in flight. After it settles, a new ask goes out again: answers aren't cached.
-- **A key missing from the answer** rejects with `batch: no answer for "key"`. A failed request rejects every key in it.
+- **A key missing from the answer** rejects with `batch: no answer for "key"`, as does every key when the answer isn't an object. A failed request rejects every key in it.
+- **`max` below 1** counts as 1.
 - **Once sent, a request runs to the end,** even if the islands that asked have gone (others may be waiting on it).
 
 ### Usage
@@ -155,7 +158,7 @@ const stat = resource(() => stats.get(key))
 json<T = any>(url, init?): Promise<T>
 ```
 
-`fetch(url, init)`, then the response's JSON. A response that isn't 2xx throws an `Error` naming the URL and the status (`/api/me: 503 Service Unavailable`), so `retry` and `error` see it.
+`fetch(url, init)`, then the response's JSON. A response that isn't 2xx throws an `Error` naming the URL and the status (`/api/me: 503 Service Unavailable`), with the code in its `status` property, so `retry` and `error` see it (`if (user.error?.status === 404) …`). `T` defaults to `any`, as `Response.json()` does.
 
 ```ts
 const me = resource(({ signal }) => json<User>('/api/me', { signal }))
