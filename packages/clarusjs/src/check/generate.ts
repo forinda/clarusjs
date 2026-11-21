@@ -54,6 +54,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
   }
 
   emit('\nexport interface Inputs {\n')
+  // No inputs: one hidden optional member, so Inputs isn't an empty type (which accepts any props unchecked).
+  if (!parsed.inputs.length) emit('  __cl_none?: never\n')
   for (const input of parsed.inputs) {
     emit('  ')
     copy(input.name, input.nameStart)
@@ -220,6 +222,7 @@ export function viewsDeclaration(views: { file: string; source: string }[]): str
       }
     }
     body.push(`  interface Inputs {`)
+    if (!parsed.inputs.length) body.push('    __cl_none?: never') // not empty: unknown props are errors
     for (const input of parsed.inputs) body.push(`    ${input.name}${input.default !== undefined ? '?' : ''}: ${input.type}`)
     body.push('  }')
     lines.push(`declare namespace ${ns} {`, ...body, '}')

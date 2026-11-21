@@ -234,3 +234,16 @@ test('#142: a page source\'s .load.ts is paired with it, and its views are in th
   expect(result.diagnostics.map((d) => `${d.file} ${d.code}`)).toEqual(['src/pages/data.page TS2322'])
   expect(readFileSync(resolve(root, '.clarusjs/views.d.ts'), 'utf8')).toContain('"pages/data"')
 })
+
+test('#213: an unknown prop on a component without inputs is an error, like on one with inputs', () => {
+  const root = project({
+    'src/components/plain.tscl': '<p>plain</p>\n',
+    'src/components/with.tscl': '@input label: string\n<p>{{ label }}</p>\n',
+    'src/pages/index.tscl': "@import plain from '../components/plain.tscl'\n@import withInput from '../components/with.tscl'\n<plain [speed]=\"1\" />\n<withInput [label]=\"'x'\" [speed]=\"1\" />\n<plain />\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line}:${d.column} ${d.code}`)).toEqual([
+    'src/pages/index.tscl:3:9 TS2353',
+    'src/pages/index.tscl:4:27 TS2353',
+  ])
+})
