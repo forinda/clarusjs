@@ -49,7 +49,8 @@ Both work: island scripts are JavaScript either way, and `@input` types are chec
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": { "~/*": ["./src/*"] }
   },
   "include": ["src", ".clarusjs/views.d.ts", ".clarusjs/routes.d.ts"]
 }
@@ -62,7 +63,8 @@ Both work: island scripts are JavaScript either way, and `@input` types are chec
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": { "~/*": ["./src/*"] }
   },
   "include": ["src", ".clarusjs/views.d.ts", ".clarusjs/routes.d.ts"]
 }
@@ -77,6 +79,10 @@ Both work: island scripts are JavaScript either way, and `@input` types are chec
 # .gitignore
 .clarusjs/
 ```
+
+### Path aliases
+
+`~/` is `src/`, built in: `@import card from '~/components/card.tscl'` works from any folder, in templates, island scripts and `.load.ts` files. Other aliases come from your config's `paths` (like `"@/*": ["./src/*"]`) and from Vite's `resolve.alias`; dev, build and `clarusjs check` resolve them the same way. The `paths` entry for `~/*` above is for your editor and plain `tsc`, which don't know the built-in one. An import that no file, package or alias matches is an error at its `@import`.
 
 In JavaScript, `checkJs` turns on type errors in `.js` files, from JSDoc types and the generated ones; leave it out for hints without errors. `clarusjs check` reads either file.
 
