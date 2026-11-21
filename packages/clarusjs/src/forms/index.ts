@@ -1,6 +1,6 @@
 // clarusjs/forms: a headless forms engine. It finds a form's fields by their data-cl-path (written by the compiler
 // for every [(value)]/[(checked)]), validates them (native constraints, a Standard Schema, server errors), shows each
-// error on its field (its [data-cl-error] message element, aria-invalid, aria-describedby), and keeps nothing on the
+// error on its field (its [data-cl-message] message element, aria-invalid, aria-describedby), and keeps nothing on the
 // page it doesn't own. A form's values are any state: a component's or a store's.
 // @see https://clarusjs.com/guide/form-validation
 import { effect, onDispose, state, untrack, type Ctx, type Signal } from '../runtime/index.ts'
@@ -74,9 +74,9 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
 
   /** A field and its message element, as `message` says. */
   function paint(el: HTMLInputElement, message: string): void {
-    const box = el.closest('label, [data-cl-field], fieldset, cl-island')?.querySelector<HTMLElement>('[data-cl-error]')
+    const box = el.closest('label, [data-cl-field], fieldset, cl-island')?.querySelector<HTMLElement>('[data-cl-message]')
     if (box) {
-      if (!box.id) box.id = `cl-err-${++ids}`
+      if (!box.id) box.id = `cl-msg-${++ids}`
       const described = (el.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
       if (!described.includes(box.id)) el.setAttribute('aria-describedby', [...described, box.id].join(' '))
       box.textContent = message
@@ -146,7 +146,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       const out: FormError[] = []
       for (const { el, path } of fields()) {
         if (out.some((e) => e.path === path) || !shown(path) || !errorsNow[path]) continue
-        const box = el.closest('label, [data-cl-field], fieldset, cl-island')?.querySelector('[data-cl-error]')
+        const box = el.closest('label, [data-cl-field], fieldset, cl-island')?.querySelector('[data-cl-message]')
         out.push({ path, message: errorsNow[path]!, id: box?.id || el.id, step: el.closest('[data-cl-step]')?.id ?? null })
       }
       return out

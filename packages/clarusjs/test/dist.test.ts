@@ -92,3 +92,10 @@ test('dependencies are exactly acorn (compiler) and commander (CLI): adding one 
   const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))
   expect(Object.keys(pkg.dependencies).sort()).toEqual(['acorn', 'commander'])
 })
+
+test('the built package has clarusjs/forms, with its types', async () => {
+  const forms = await import(`${dist}/forms/index.js`)
+  expect(typeof forms.form).toBe('function')
+  expect(typeof forms.connect).toBe('function')
+  expect(readFileSync(`${dist}/forms/index.d.ts`, 'utf8')).toContain('export declare function form')
+})

@@ -31,12 +31,12 @@ const schema = (check: (v: any) => { message: string; path: (string | number)[] 
   },
 }) as any
 
-const emailForm = `<form data-cl-form="0"><label>Email <input required data-cl-path="customer.email"> <small data-cl-error></small></label></form>`
+const emailForm = `<form data-cl-form="0"><label>Email <input required data-cl-path="customer.email"> <small data-cl-message></small></label></form>`
 
 test('a native constraint shows in the field\'s message element once the field is left, with ARIA', () => {
   const { el, f } = mount(emailForm, { customer: { email: '' } })
   const input = el('input')
-  const message = el('[data-cl-error]')
+  const message = el('[data-cl-message]')
   expect(el('form').hasAttribute('novalidate')).toBe(true)
   expect(f.error('customer.email')).toBe('') // not shown before the field is left
   expect(message.hidden).toBe(true)
@@ -78,7 +78,7 @@ test('a schema issue lands on its field (and the browser knows it is invalid); s
 })
 
 test('show rules: "input" shows on the first keystroke; "blur" waits for the field to be left', () => {
-  const html = `<form data-cl-form="0"><label><input minlength="3" data-cl-path="name"><small data-cl-error></small></label></form>`
+  const html = `<form data-cl-form="0"><label><input minlength="3" data-cl-path="name"><small data-cl-message></small></label></form>`
   const eager = mount(html, { name: '' }, { show: 'input' })
   type(eager.el('input'), 'a')
   expect(eager.f.error('name')).not.toBe('')
@@ -90,14 +90,14 @@ test('show rules: "input" shows on the first keystroke; "blur" waits for the fie
 })
 
 test('paths join through components: a field inside [data-cl-path="shipping"] is shipping.street', () => {
-  const { el, f } = mount(`<form data-cl-form="0"><cl-island data-cl-path="shipping"><label><input required data-cl-path="street"><small data-cl-error></small></label></cl-island></form>`, { shipping: { street: '' } })
+  const { el, f } = mount(`<form data-cl-form="0"><cl-island data-cl-path="shipping"><label><input required data-cl-path="street"><small data-cl-message></small></label></cl-island></form>`, { shipping: { street: '' } })
   leave(el('input'))
   expect(f.error('shipping.street')).not.toBe('')
   expect(f.errors.map((e) => e.path)).toEqual(['shipping.street'])
 })
 
 test('rows shifting: the error follows the field to its new path', () => {
-  const { el, f } = mount(`<form data-cl-form="0"><label><input data-cl-path="lines.0.item" value="ok"></label><label><input required data-cl-path="lines.1.item"><small data-cl-error></small></label></form>`, { lines: [{ item: 'ok' }, { item: '' }] })
+  const { el, f } = mount(`<form data-cl-form="0"><label><input data-cl-path="lines.0.item" value="ok"></label><label><input required data-cl-path="lines.1.item"><small data-cl-message></small></label></form>`, { lines: [{ item: 'ok' }, { item: '' }] })
   const second = document.querySelectorAll('input')[1]!
   leave(second)
   expect(f.error('lines.1.item')).not.toBe('')
@@ -110,7 +110,7 @@ test('rows shifting: the error follows the field to its new path', () => {
 })
 
 test('a radio group: one path, every radio marked, one message, focus goes to the checked one else the first', () => {
-  const { f } = mount(`<form data-cl-form="0"><fieldset><input type="radio" name="p" value="a" required data-cl-path="plan"><input type="radio" name="p" value="b" data-cl-path="plan"><small data-cl-error></small></fieldset></form>`, { plan: '' })
+  const { f } = mount(`<form data-cl-form="0"><fieldset><input type="radio" name="p" value="a" required data-cl-path="plan"><input type="radio" name="p" value="b" data-cl-path="plan"><small data-cl-message></small></fieldset></form>`, { plan: '' })
   const [a, b] = [...document.querySelectorAll('input')] as HTMLInputElement[]
   leave(a!)
   expect(a!.getAttribute('aria-invalid')).toBe('true')
@@ -127,7 +127,7 @@ test('async schema results arriving late: the latest check wins', async () => {
   vi.useFakeTimers()
   const answers: ((issues: { message: string; path: string[] }[]) => void)[] = []
   const s = schema(() => new Promise((resolve) => answers.push(resolve)))
-  const { el, f } = mount(`<form data-cl-form="0"><label><input data-cl-path="user"><small data-cl-error></small></label></form>`, { user: '' }, { schema: s, show: 'input' })
+  const { el, f } = mount(`<form data-cl-form="0"><label><input data-cl-path="user"><small data-cl-message></small></label></form>`, { user: '' }, { schema: s, show: 'input' })
   type(el('input'), 'a')
   await vi.advanceTimersByTimeAsync(300) // debounced
   type(el('input'), 'ab')
@@ -157,7 +157,7 @@ test('touched, changed, valid and reset', () => {
 })
 
 test('a form made in a store, connected from two islands: one form covered once; fields of both indexed', () => {
-  document.body.innerHTML = `<form><cl-island><fieldset data-cl-form="0"><label><input required data-cl-path="name"><small data-cl-error></small></label></fieldset></cl-island><cl-island id="two"><fieldset data-cl-form="0"><label><input required data-cl-path="email"><small data-cl-error></small></label></fieldset></cl-island></form>`
+  document.body.innerHTML = `<form><cl-island><fieldset data-cl-form="0"><label><input required data-cl-path="name"><small data-cl-message></small></label></fieldset></cl-island><cl-island id="two"><fieldset data-cl-form="0"><label><input required data-cl-path="email"><small data-cl-message></small></label></fieldset></cl-island></form>`
   const store = state({ name: '', email: '' })
   const f = form(store)
   const islands = document.querySelectorAll('cl-island')
