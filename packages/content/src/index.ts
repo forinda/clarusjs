@@ -297,7 +297,22 @@ function pageHead(data: Record<string, unknown>, title: string | undefined): str
 
 /** Markdown output is static HTML: anything a .tscl template would read as syntax ({{ }}, @if …) is escaped. */
 function staticHtml(html: string): string {
-  return html.replace(/\{\{/g, '&#123;&#123;').replace(/@/g, '&#64;')
+  const inertText = (s: string) => s.replace(/\{\{/g, '&#123;&#123;').replace(/@/g, '&#64;')
+  // A verbatim element's content is already shown as text by the compiler: escaping it here would show the entities.
+  // Its opening tag is still escaped (attributes can hold holes), and only an attribute named verbatim counts
+  // (values are dropped before looking). The content ends at the first </tag>, as in the compiler.
+  let out = ''
+  let at = 0
+  for (const m of html.matchAll(/<([\w-]+)(\s[^>]*)?>/g)) {
+    const names = (m[2] ?? '').replace(/=\s*("[^"]*"|'[^']*'|[^\s>]*)/g, '')
+    if (m.index < at || !/(^|\s)verbatim(?=[\s/]|$)/.test(names)) continue
+    const start = m.index + m[0].length
+    const close = html.indexOf(`</${m[1]}>`, start)
+    if (close === -1) continue
+    out += inertText(html.slice(at, start)) + html.slice(start, close)
+    at = close
+  }
+  return out + inertText(html.slice(at))
 }
 
 /**

@@ -222,6 +222,11 @@ test('the sidebar is generated from the pages: each Markdown page sits in its fr
   expect(shown).toContain('Verbatim')
 })
 
+test('a verbatim element in a Markdown page shows its text as written', async ({ page }) => {
+  await page.goto('/guide/holes')
+  await expect(page.locator('.lead code').first()).toHaveText('{{ }}')
+})
+
 test('named slot: a callout shows its filled title, or the fallback from its type', async ({ page }) => {
   await page.goto('/guide/state')
   await expect(page.locator('.callout.warning .callout-title')).toHaveText('Island props and state are public')
