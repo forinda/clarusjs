@@ -16,6 +16,11 @@ const items = (list: typeof sections) => list.flatMap((s) => s.groups.flatMap((g
 const docs = items(docSections)
 const pages = [{ path: '/', title: 'clarusjs' }, ...items(sections)]
 const guides = docs
+// axe reads computed colours: let animations (a lesson step fading in) finish first, or it sees them mid-fade.
+const axe = async (page: Page) => {
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+  return new AxeBuilder({ page })
+}
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** Collect console errors and script requests while visiting a page. */
@@ -642,7 +647,7 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   await expect(dialog).toBeVisible()
   for (let i = 0; i < 4; i++) await page.keyboard.press('Tab')
   expect(await page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true)
-  expect((await new AxeBuilder({ page }).include('dialog.search-dialog').analyze()).violations).toEqual([])
+  expect((await (await axe(page)).include('dialog.search-dialog').analyze()).violations).toEqual([])
 })
 
 test('history.pushState and replaceState belong to the page: the router never turns them into a page load', async ({ page }) => {
@@ -706,7 +711,7 @@ test('lesson: one step at a time, Continue and Back, the URL and the segments fo
   // The bar never covers the lesson's end: the page leaves room for it.
   const room = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('main.lesson')!).paddingBottom))
   expect(room).toBeGreaterThanOrEqual((await bar.boundingBox())!.height)
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+  expect((await (await axe(page)).analyze()).violations).toEqual([])
 })
 
 test('lesson quiz: the bar checks it, says how it went in green or red, then continues', async ({ page }) => {
@@ -732,7 +737,7 @@ test('lesson quiz: the bar checks it, says how it went in green or red, then con
   await expect(page.locator('.quiz-answer')).toHaveAttribute('open', '')
   await expect(page.getByRole('radio', { name: 'src/pages/about.tscl' })).toBeDisabled()
   await expect(primary).toHaveText('Continue')
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+  expect((await (await axe(page)).analyze()).violations).toEqual([])
   await primary.click()
   await expect(page.locator('main .step:visible h2')).toHaveText(/^Done/)
   await expect(page.locator('.lesson-bar')).not.toHaveClass(/\b(ok|bad)\b/)
@@ -780,7 +785,7 @@ test('progress: a lesson done, its quiz right, XP and badges on the progress pag
   await expect(page.locator('.sidebar ul a[href="/learn/ship-it"]')).toHaveAttribute('data-status', 'locked')
   // Stored in one versioned key, in this browser only.
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('clarusjs-learn')!).v)).toBe(1)
-  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+  expect((await (await axe(page)).analyze()).violations).toEqual([])
 
   const reset = board.getByRole('button', { name: 'Reset progress' })
   await reset.click()
@@ -986,7 +991,7 @@ test('a11y: axe finds no violations (landmarks, names, ARIA) on representative p
   for (const path of ['/', '/guide/markdown', '/guide/state', '/reference/vite-plugin', '/no/such/page', '/tour/1']) {
     await page.goto(path)
     await page.waitForLoadState('networkidle')
-    const { violations } = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze() // contrast: #122
+    const { violations } = await (await axe(page)).disableRules(['color-contrast']).analyze() // contrast: #122
     expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`), path).toEqual([])
   }
 })
@@ -1021,7 +1026,7 @@ test('a11y: text and code highlighting meet WCAG AA contrast, in light and dark'
     for (const path of ['/', '/guide/markdown', '/guide/state', '/reference/vite-plugin', '/no/such/page']) {
       await page.goto(path)
       await page.waitForLoadState('networkidle')
-      const { violations } = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze()
+      const { violations } = await (await axe(page)).withRules(['color-contrast']).analyze()
       const found = violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.any[0]?.message.split(' (')[0] ?? ''} ${JSON.stringify(n.any[0]?.data ?? {})}`))
       expect(found, `${scheme} ${path}`).toEqual([])
     }
