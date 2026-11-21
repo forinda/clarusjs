@@ -89,3 +89,17 @@ test('every template in the docs site and the theme tokenizes, with no TypeScrip
     expect(list.at(-2)?.scopes ?? '', file).toMatch(/entity\.name\.tag|punctuation\.definition\.tag/)
   }
 })
+
+test('component tags (<card>, <my-card>) are tags, not unrecognized HTML; HTML tags stay HTML', () => {
+  const src = '<card [title]="x" class="a">hi</card>\n<my-card a="1" />\n<div id="d"><select></select></div>\n'
+  for (const name of ['card', 'my-card']) {
+    const scopes = scopesOf(src, name)
+    expect(scopes).toContain('entity.name.tag')
+    expect(scopes).not.toContain('invalid')
+  }
+  expect(scopesOf(src, 'class')).toContain('entity.other.attribute-name')
+  expect(scopesOf(src, 'title')).toContain('meta.attribute.property.tscl') // bindings still work in components
+  expect(scopesOf(src, 'div')).toContain('entity.name.tag.html')
+  expect(scopesOf(src, 'div')).not.toContain('component')
+  expect(scopesOf(src, 'select')).not.toContain('component')
+})
