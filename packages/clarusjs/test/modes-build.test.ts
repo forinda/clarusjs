@@ -150,6 +150,16 @@ test('#35: with fragments on, static pages get index.frag.html; the manifest lea
   expect(await (await handler.fetch(new Request('http://x/account/7/index.frag.html'))).text()).toContain('<h1>Account 7</h1>')
 })
 
+test('#179: the router and the fragment navigator each carry the navigation guard, never a shared chunk', async () => {
+  const { readdirSync } = await import('node:fs')
+  const assets = readdirSync(resolve(root, 'dist/client/assets')).filter((f) => f.endsWith('.js'))
+  expect(assets.filter((f) => f.startsWith('navigate'))).toEqual([]) // a page loads one of them: a shared chunk is only a cost
+  for (const name of ['cl-router', 'cl-nav']) {
+    const code = readFileSync(resolve(root, 'dist/client/assets', assets.find((f) => f.startsWith(name))!), 'utf8')
+    expect(code, name).toContain('canIntercept')
+  }
+})
+
 test('#36: with fragments on, static pages load the navigation script, which stays within 1 KB gzip', async () => {
   const { gzipSync } = await import('node:zlib')
   const html = readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')

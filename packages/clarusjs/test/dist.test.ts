@@ -48,9 +48,13 @@ test('built Vite plugin points at built runtime files that exist', async () => {
     expect(a.replacement.startsWith(dist)).toBe(true)
     expect(existsSync(a.replacement)).toBe(true)
   }
-  const loader = plugin.resolveId('/cl-loader.js')
+  const loader = plugin.resolveId.handler('/cl-loader.js')
   expect(loader).toBe(`${dist}/runtime/loader.js`)
   expect(existsSync(loader)).toBe(true)
+  // #179: the built router gets its own copy of the built navigation guard.
+  const guard = plugin.resolveId.handler('./navigate.js', `${dist}/runtime/router.js`) as string
+  expect(guard).toBe(`${dist}/runtime/navigate.js?cl-copy=router`)
+  expect(existsSync(guard.replace(/\?.*/, ''))).toBe(true)
   const entry = plugin.load.handler('\0virtual:clarusjs/server-entry') as string
   expect(entry).toContain(`${dist}/server/handler.js`)
 })

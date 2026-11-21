@@ -400,12 +400,18 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       }
       if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
     },
-    resolveId(id) {
+    // order 'pre': before Vite resolves the relative import itself.
+    resolveId: { order: 'pre', handler(id, importer) {
+      // The navigation guard is shared in the source, but a page loads either the router or the fragment navigator,
+      // never both: each gets its own copy, as a shared chunk would cost every page a request and ~200 bytes.
+      if (/^\.\/navigate\.[jt]s$/.test(id) && importer && /[\\/]runtime[\\/](router|fragments)\.[jt]s$/.test(importer)) {
+        return `${here('../runtime/navigate')}?cl-copy=${/router\.[jt]s$/.test(importer) ? 'router' : 'nav'}`
+      }
       if (id === '/cl-loader.js') return here('../runtime/loader')
       if (id === '/cl-router.js') return here('../runtime/router')
       if (id === '/cl-nav.js') return here('../runtime/fragments')
       if (id === ENTRY) return '\0' + ENTRY
-    },
+    } },
     // order 'pre': a page source's file is read as text before Vite's asset loader can claim it (.txt,
     // assetsInclude), so the transform converts the original text, never a URL module.
     load: { order: 'pre', handler(id) {

@@ -3,6 +3,7 @@
 // the island loader attach. Later navigations between client routes are intercepted with the Navigation API;
 // browsers without it simply load pages normally.
 import { parse } from './serialize.ts'
+import { latest, takeOver } from './navigate.ts'
 
 type Entry = { p: string; r: string }
 type Page = { render(props: object): string }
@@ -68,47 +69,14 @@ export async function show(
   return true
 }
 
-type NavigateEvent = Event & {
-  canIntercept: boolean
-  hashChange: boolean
-  downloadRequest: string | null
-  formData: FormData | null
-  destination: { url: string; sameDocument: boolean }
-  navigationType: string
-  signal: AbortSignal
-  intercept(options: { handler(): Promise<void> }): void
-}
-
 const routes = globalThis.document?.getElementById('cl-routes')
 if (routes) {
   const table = JSON.parse(routes.textContent!) as Entry[]
-  // Each navigation gets a number; only the latest may change the document or fall back.
-  let latest = 1 // the first render is navigation 1
-  show(new URL(location.href), table, () => latest === 1).catch((err: Error) => {
-    if (latest !== 1) return
+  // The first render is current until a navigation is taken over.
+  show(new URL(location.href), table, () => !latest).catch((err: Error) => {
+    if (latest) return
     document.body.textContent = err.message.startsWith('404') ? 'Page not found.' : 'Could not load page.'
   })
-  // A URL that failed to render is loaded normally, never intercepted again (no retry loop). canIntercept is
-  // only true for same-origin navigations, so no origin check is needed.
-  let fallback = ''
-  let swapping = false
-  const navigation = (globalThis as { navigation?: EventTarget }).navigation
-  navigation?.addEventListener('navigate', ((e: NavigateEvent) => {
-    // The page's own history.pushState/replaceState is same-document: not a page load. Back/forward between the
-    // router's entries is same-document too, so traversals are still rendered. During a swap, the old page's
-    // replaceState aborts it: that one is rendered, or the old page would stay under the new URL.
-    if (!e.canIntercept || e.hashChange || (e.destination.sameDocument && e.navigationType != 'traverse' && !swapping) || e.downloadRequest != null || e.formData) return
-    const url = new URL(e.destination.url)
-    if (url.href === fallback || !matchRoute(table, url.pathname)) return
-    const id = ++latest
-    const isCurrent = () => latest === id && !e.signal.aborted
-    swapping = true
-    e.intercept({
-      handler: () => show(url, table, isCurrent).catch(() => {
-        if (!isCurrent()) return
-        fallback = url.href
-        location.reload() // the URL is already committed; assign() would stay in the page with a #hash
-      }).finally(() => { if (latest === id) swapping = false }) as Promise<void>,
-    })
-  }) as EventListener)
+  // Later navigations to client routes.
+  takeOver((url) => matchRoute(table, url.pathname) && ((url, isCurrent) => show(url, table, isCurrent)))
 }
