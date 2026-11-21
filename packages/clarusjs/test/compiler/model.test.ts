@@ -98,8 +98,26 @@ test('native inputs: [(value)] on text inputs and selects, [(checked)] on checkb
 
 test('errors: [(x)] needs a variable or property path, a script with state, and a bindable native property', () => {
   expect(compileError("@import f from './f.tscl'\n<script>let a = state(1)</script>\n<f [(value)]=\"a + 1\" />\n").message)
-    .toBe('x.tscl:3:4 [(value)] needs a variable or a property path (form.name) to write back to, not "a + 1"')
+    .toBe('x.tscl:3:4 [(value)] needs a variable or a property path (form.name, rows[$index].name) to write back to, not "a + 1"')
   expect(() => compile("@import f from './f.tscl'\n<f [(value)]=\"x\" />\n", { file: 'x.tscl', target: 'server' })).toThrow('x.tscl:2:4 [(value)] needs a <script> with state to write back to')
   expect(compileError('<script>let a = state(1)</script>\n<div [(title)]="a"></div>\n').message)
     .toBe('x.tscl:2:6 [(title)] on <div>: an element binds two ways only with [(value)] (input, select, textarea) or [(checked)]')
+})
+
+test('rows: [(value)]="rows[$index].name" writes back into the list, copy-on-write; a row variable is a located error', async () => {
+  const src = `<script>
+  let rows = state([{ name: 'a' }, { name: 'b' }])
+  const first = rows
+</script>
+<div>@for (row of rows; track $index) {<input class="row" [(value)]="rows[$index].name">}<p class="out">{{ rows.map((r) => r.name).join(',') }}</p><p class="kept">{{ String(first[1].name) }}</p></div>
+`
+  const s = await importCode(compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js' }).code, 'model-rs')
+  const c = await importCode(compile(src, { file: 'x.tscl', target: 'client' }).code, 'model-rc')
+  document.body.innerHTML = s.render({})
+  c.attach(document.querySelector('cl-island')!, {})
+  type(document.querySelectorAll('.row')[1]!, 'B')
+  expect(document.querySelector('.out')!.textContent).toBe('a,B')
+  expect(document.querySelector('.kept')!.textContent).toBe('b') // the old list is untouched
+  expect(compileError('<script>let rows = state([{ name: \'a\' }])</script>\n@for (row of rows; track $index) {<input [(value)]="row.name">}\n').message)
+    .toBe('x.tscl:2:42 [(value)] can\'t write back to the row variable "row": bind the list by index, like [(value)]="rows[$index].name"')
 })
