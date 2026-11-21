@@ -31,6 +31,12 @@ So releasing is: review the "version packages" pull request, then merge it.
 Each published package needs a trusted-publisher rule on npm (done for `clarusjs`):
 npmjs.com → package → **Settings** → **Trusted publishers** → GitHub Actions, repository `forinda/clarusjs`, workflow
 `.github/workflows/release.yml`, no environment. A new package needs the same rule before its first automated publish.
+npm offers the rule only on a package that exists, so reserve a new package's name first with a `0.0.0` placeholder
+(run by a maintainer logged in to npm; `--dry-run` shows what it would publish):
+
+```sh
+node scripts/reserve-npm.mjs @clarusjs/<name>
+```
 
 ## What gets published
 
