@@ -15,6 +15,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
   const parts = nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
     if (n.kind === 'slot') return `(__cl_slots?.[${JSON.stringify(n.name)}] ?? ${n.fallback.length ? `(${htmlExpr(n.fallback, rw)})` : '""'})`
+    if (n.kind === 'connect') return '""' // its marker is static; the browser connects it
     if (n.kind === 'attr') return `__cl_attrHtml(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, rw.expr)}${tagArg(n)})`
     if (n.kind === 'if') {
       if (n.block === -1) {
@@ -55,7 +56,9 @@ export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rew
     ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw)}`),
   ]
   const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
-  if (n.attach) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { attach: ${JSON.stringify(n.attach)} })`
+  // Render options: when to attach, and (for the forms engine) the path this component is bound to.
+  const opts = [...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.path ? [`path: ${wrapExpr(rw.expr(n.path))}`] : [])]
+  if (opts.length) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { ${opts.join(', ')} })`
   return slotsArg ? `${renderName(n.name)}({ ${props} }, ${slotsArg})` : `${renderName(n.name)}({ ${props} })`
 }
 

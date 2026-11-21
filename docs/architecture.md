@@ -232,6 +232,18 @@ page's stylesheets, and the router keeps the head across navigations. A
 fragment carries its page's links right after its `<title>`; fragment
 navigation adds and waits for any that are missing before the swap.
 
+Form fields carry their paths for the forms engine (`clarusjs/forms`): every
+element bound two ways (`[(value)]`, `[(checked)]`) has `data-cl-path="<path>"`,
+the binding's path without its first name (`order.customer.email` →
+`customer.email`, `order.lines[$index].item` → `lines.2.item`, `value` → ``),
+and a component bound with `[(x)]` has `data-cl-path` on its `<cl-island>`.
+A field's full path joins the non-empty `data-cl-path` values of the elements
+around it, outermost first. In `@for` rows (and wherever the path reads state)
+the attribute is kept up to date like any reactive attribute, so every two-way
+field in a row has one small effect for it, forms or not. An element bound `[engine]="f"` has
+`data-cl-form="<index>"`; the engine sets its own attributes at runtime
+(`novalidate`, `aria-invalid`, `aria-describedby`, `hidden` on steps).
+
 `<cl-head>…</cl-head>`, anywhere in a server-rendered page, holds tags for the
 page's `<head>`. The server moves them there before anything else sees the page
 (fragments included): a tag with the same key as one already in the head

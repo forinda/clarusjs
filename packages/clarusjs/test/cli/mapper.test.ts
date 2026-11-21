@@ -147,4 +147,4 @@ test('tsc 7.1 with the mapper reports template type errors at their .tscl place,
   // A template that doesn't parse is a syntax error: tsc reports it (and, as for any syntax error, stops there).
   writeFileSync(resolve(dir, 'src/broken.tscl'), '<p>ok</p>\n@if (true {\n')
   expect(tsc()).toEqual(['src/broken.tscl(2,5) clarus1'])
-})
+}, 60_000) // three tsc runs; slow while every package's tests run

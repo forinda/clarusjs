@@ -240,7 +240,12 @@ export function generateTs(source: string, file: string, options: { loader?: str
         }
         for (const a of node.attrs) {
           if (a.kind === 'model') { use(a.expr, attrValueStart(a)); writable(a) }
-          else if (a.kind === 'prop') {
+          else if (a.kind === 'prop' && a.name === 'engine') {
+            // [engine]="f": a form from clarusjs/forms.
+            emit(`  ;((__cl_f: import('clarusjs/forms').Form<any>) => __cl_use(__cl_f))((`)
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit('));\n')
+          } else if (a.kind === 'prop') {
             emit(`  __cl_attr<${JSON.stringify(node.tag.toLowerCase())}, ${JSON.stringify(PROPERTY[a.name.toLowerCase()] ?? a.name.toLowerCase())}>((`)
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit('));\n')
