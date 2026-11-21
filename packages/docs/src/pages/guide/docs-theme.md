@@ -152,6 +152,7 @@ steps: true
 
 - **Header:** a ✕ to leave (the section's link), "Learn · Lesson 1 of 6" (the lessons are the items of the config section the page is in), one segment per step, and a `header-end` slot.
 - **One step at a time:** with JavaScript, the bar shows one step, with Back, the step's name and Continue; the URL follows the step (`#write`) and the segments fill in. After the last step, Continue goes to the next lesson. Without JavaScript the bar stays hidden and the lesson is one plain page; the segments jump to each step.
+- **Quizzes:** on a step with a quiz the main button is **Check**: the bar turns green ("Correct!") or red ("Not quite", with the right answer), then Continue. The quiz marks the right option and a wrong pick in words as well as colour.
 - **Code beside the text:** from 1024px, a step's code blocks and `.result` boxes sit in a column to the right of its text.
 - **Reduced motion:** steps change without animation.
 

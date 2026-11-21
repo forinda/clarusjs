@@ -1,0 +1,16 @@
+{{--
+  A quiz (Markdown ::: quiz renders through it): the question, the options (an island: pick, Check, announced), and
+  the answer with its explanation (the content) in a <details>. Without JavaScript the options are radios and the
+  <details> shows the answer.
+--}}
+@import quizChoices from './quiz-choices.tscl'
+@input name: string
+@input question: string
+@input options: string[]
+@input answer: number
+
+<div class="quiz" [data-quiz]="name">
+  <p class="quiz-question" [id]="name + '-q'">{{ question }}</p>
+  <quizChoices [name]="name" [options]="options" [answer]="answer" />
+  <details class="quiz-answer"><summary>Show the answer</summary><p class="quiz-correct">Answer: {{ options[answer] }}</p><slot /></details>
+</div>

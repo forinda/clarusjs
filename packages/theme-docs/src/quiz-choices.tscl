@@ -1,0 +1,44 @@
+{{--
+  The interactive part of a quiz (quiz.tscl wraps it): the options, Check and the announcement. Once checked it opens
+  the quiz's answer and marks the options. In a lesson, the action bar's Check sends a quiz:check event to the quiz;
+  the result goes back as a bubbling quiz:result event ({ ok, done, text }), so the bar can turn green or red.
+--}}
+@input name: string
+@input options: string[]
+@input answer: number
+
+<script>
+  let picked = state(-1)
+  let checked = state(false)
+  let status = state('')
+  const quiz = () => document.querySelector('[data-quiz="' + name + '"]')
+  function check() {
+    let detail
+    if (picked < 0) {
+      status = 'Pick an answer first.'
+      detail = { ok: false, done: false, text: status }
+    } else {
+      checked = true
+      const ok = picked === answer
+      status = ok ? 'Correct.' : 'Not quite. The answer is: ' + options[answer] + '.'
+      detail = { ok, done: true, text: ok ? 'Correct.' : 'The answer is: ' + options[answer] + '.' }
+      quiz()?.setAttribute('data-answered', ok ? 'right' : 'wrong')
+      const details = quiz()?.querySelector('.quiz-answer')
+      if (details) details.open = true
+    }
+    quiz()?.dispatchEvent(new CustomEvent('quiz:result', { bubbles: true, detail }))
+  }
+  if (typeof document !== 'undefined') {
+    document.addEventListener('quiz:check', (event) => { if (event.target === quiz() && !checked) check() })
+  }
+</script>
+
+<div class="quiz-choices">
+  <div class="quiz-options" role="radiogroup" [aria-labelledby]="name + '-q'">
+    @for (option of options; track $index) {
+      <label [class]="!checked ? false : $index === answer ? 'right' : $index === picked ? 'wrong' : false"><input type="radio" [name]="name" [value]="$index" [disabled]="checked" (change)="picked = $index"> {{ option }}@if (checked && $index === answer) {<span class="mark">✓ Right answer</span>} @else if (checked && $index === picked) {<span class="mark">✗ Your pick</span>}</label>
+    }
+  </div>
+  <button type="button" class="quiz-check" (click)="check()" [disabled]="checked">Check</button>
+  <p class="quiz-status" role="status">{{ status }}</p>
+</div>

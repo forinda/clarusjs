@@ -60,6 +60,16 @@ pnpm vite
 
 Change the heading and save: the page updates. Then build the static site with `pnpm vite build`; the page is in `dist/client/index.html`.
 
+## Quiz
+
+::: quiz Where does the page for `/about` live?
+- [ ] `src/about.html`
+- [x] `src/pages/about.tscl`
+- [ ] `pages/about/index.tscl`
+
+A page's path under `src/pages` is its URL: `src/pages/about.tscl` is `/about`, and `src/pages/index.tscl` is `/`.
+:::
+
 ## Done
 
 You have a project, a page, and a build. Next: templates, with inputs, lists and conditions. The [Getting started](/guide/getting-started) guide covers the same ground as a reference.

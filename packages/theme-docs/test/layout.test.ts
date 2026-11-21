@@ -31,7 +31,7 @@ beforeAll(async () => {
   w('src/pages/guide/next.tscl', page('Next', '/guide/next', '<h1>Next</h1>'))
   w('src/pages/index.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../config.ts'\n<layout [config]=\"config\" [title]=\"'Home'\"><h1>Home</h1></layout>\n")
   const lesson = (path: string, body: string) => `@import lesson from '@clarusjs/theme-docs/lesson.tscl'\n@import { config } from '../../config.ts'\n<lesson [config]="config" [title]="'One'" [path]="'${path}'" [headings]="[{ id: 'read', text: 'Read', level: 2 }, { id: 'sub', text: 'Sub', level: 3 }, { id: 'write', text: 'Write', level: 2 }]">${body}</lesson>\n`
-  w('src/pages/learn/one.tscl', lesson('/learn/one', '<h1>One</h1><p>Intro</p><section class="step" aria-labelledby="read"><h2 id="read">Read</h2></section><section class="step" aria-labelledby="write"><h2 id="write">Write</h2></section>'))
+  w('src/pages/learn/one.tscl', '@import quiz from \'@clarusjs/theme-docs/quiz.tscl\'\n' + lesson('/learn/one', '<h1>One</h1><p>Intro</p><section class="step" aria-labelledby="read"><h2 id="read">Read</h2></section><section class="step" aria-labelledby="write"><h2 id="write">Write</h2><quiz [name]="\'quiz-0\'" [question]="\'Pick b\'" [options]="[\'a\', \'b\']" [answer]="1"><p>Because.</p></quiz></section>'))
   w('src/pages/learn/two.tscl', lesson('/learn/two', '<h1>Two</h1>'))
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [themeDocs(), clarusjs()] })).buildApp()
   html = readFileSync(resolve(root, 'dist/client/guide/start/index.html'), 'utf8')
@@ -89,4 +89,13 @@ test('lesson layout: a focused header (leave, lesson n of N, one segment per ste
   // Hidden until its island attaches: without JavaScript the lesson is a plain page.
   expect(one).toMatch(/<div class="lesson-bar" role="region" aria-label="Lesson actions" hidden><cl-island c="[^"]*lesson-bar" [^>]*p="[^"]*next[^"]*\/learn\/two/)
   expect(one).not.toContain('class="sidebar"')
+})
+
+test('quiz: an island whose server HTML works without JavaScript (radio options, the answer in a <details>)', () => {
+  const one = readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8')
+  expect(one).toContain('<div class="quiz" data-quiz="quiz-0">')
+  expect(one).toContain('<p class="quiz-question" id="quiz-0-q">Pick b</p>')
+  expect(one).toMatch(/<cl-island c="[^"]*quiz-choices"[^>]*><div class="quiz-choices">/)
+  expect(one).toMatch(/<div class="quiz-options" role="radiogroup" aria-labelledby="quiz-0-q">.*<input type="radio" name="quiz-0" value="1"[^>]*> (<!--\[0-->)?b(<!--\]-->)?(<!--\[b\d+:-1--><!--\]-->)?<\/label>/s)
+  expect(one).toMatch(/<details class="quiz-answer"[^>]*><summary>Show the answer<\/summary><p class="quiz-correct">Answer: b<\/p><p>Because\.<\/p><\/details>/)
 })
