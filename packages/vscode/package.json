@@ -2,9 +2,9 @@
   "name": "clarusjs-vscode",
   "displayName": "clarusjs",
   "description": "clarusjs .tscl templates: syntax highlighting, HTML hover and completion with your components, snippets, file icon.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
-  "publisher": "clarusjs",
+  "publisher": "forinda",
   "license": "MIT",
   "repository": {
     "type": "git",
