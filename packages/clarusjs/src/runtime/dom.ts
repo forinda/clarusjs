@@ -135,6 +135,12 @@ export function block(ctx: Ctx, index: number, which: () => number, branches: { 
  * values; when anything it read changes, the old HTML is disposed and replaced, and `wire()` wires the island's own
  * holes and events in the child's slot content again. A stateful child is remounted with its new props.
  */
+/** The one <cl-island> among `nodes` (blank text aside), or null. */
+const onlyIsland = (nodes: Node[]): Element | null => {
+  const kept = nodes.filter((n) => n.nodeType !== 3 || n.textContent!.trim())
+  return kept.length === 1 && (kept[0] as Element).localName === 'cl-island' ? (kept[0] as Element) : null
+}
+
 export function region(ctx: Ctx, index: number, html: () => string, wire: () => void): void {
   const r = scan(ctx).regions[index]
   if (!r) return
@@ -145,6 +151,14 @@ export function region(ctx: Ctx, index: number, html: () => string, wire: () => 
     const next = html()
     untrack(() => {
       if (!first) {
+        // A nested island with new props is updated in place (DOM and state kept), not replaced.
+        const t = document.createElement('template')
+        t.innerHTML = next
+        const between: Node[] = []
+        for (let n = r.start.nextSibling; n && n !== r.end; n = n.nextSibling) between.push(n)
+        const old = onlyIsland(between)
+        const fresh = onlyIsland([...t.content.childNodes])
+        if (old && fresh && (globalThis as { __clUpdate?: (el: Element, next: Element) => boolean }).__clUpdate?.(old, fresh)) return
         dispose?.()
         while (r.start.nextSibling && r.start.nextSibling !== r.end) r.start.nextSibling.remove()
         insertHtml(next, r.end)
@@ -269,7 +283,10 @@ export function text(hole: Hole, fn: () => unknown): void {
 type Handler = { fn: (e: Event) => void; ctx: Ctx }
 const registry = new WeakMap<Element, Map<string, Map<number, Handler[]>>>()
 // These don't bubble, so they are caught on the way down instead.
-const CAPTURE = new Set(['focus', 'blur'])
+const CAPTURE = new Set([
+  'focus', 'blur', 'mouseenter', 'mouseleave', 'pointerenter', 'pointerleave', 'load', 'error', 'scroll', 'toggle',
+  'invalid', 'close', 'cancel', 'play', 'pause', 'ended', 'timeupdate', 'volumechange', 'loadedmetadata', 'canplay',
+])
 
 /**
  * Register a handler for elements marked `data-cl-e="index"` inside `ctx`.
@@ -310,5 +327,43 @@ export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, t
     const v = attrValue(name, fn(), tag)
     if (v === null) el.removeAttribute(name)
     else el.setAttribute(name, v === true ? '' : v)
+    // A form field shows its property once someone has typed or clicked in it, not the attribute: set both.
+    if (name === 'value' && 'value' in el) (el as HTMLInputElement).value = v === null || v === true ? '' : v
+    if (name === 'checked' && 'checked' in el) (el as HTMLInputElement).checked = v !== null
   })
+}
+
+/**
+ * A @model input: writing it asks the parent island to update its state (a bubbling, cancelable cl:model event from
+ * the island); when no parent takes it (a top-level island), the input keeps the value itself. New props from the
+ * parent set it with own().
+ */
+export function modelInput<T>(root: Element, name: string, initial: T): Signal<T> & { own(value: T): void } {
+  const value = state(initial)
+  return {
+    initial,
+    get: value.get,
+    own: value.set,
+    set(next) {
+      if (root.dispatchEvent(new CustomEvent('cl:model', { detail: { name, value: next }, bubbles: true, cancelable: true }))) value.set(next)
+    },
+  }
+}
+
+/** [(name)]="…" on a child island in region `index`: the child's writes to its @model name arrive here. */
+export function model(ctx: Ctx, index: number, name: string, set: (value: unknown) => void): void {
+  const r = scan(ctx).regions[index]
+  if (!r) return
+  const host = r.start.parentNode!
+  const listen = (event: Event) => {
+    const detail = (event as CustomEvent<{ name: string; value: unknown }>).detail
+    const from = event.target as Node
+    // Only from inside this region: 4 = the target follows the start marker, 2 = it precedes the end marker.
+    if (detail.name !== name || !(r.start.compareDocumentPosition(from) & 4) || !(r.end.compareDocumentPosition(from) & 2)) return
+    event.preventDefault()
+    event.stopPropagation()
+    set(detail.value)
+  }
+  host.addEventListener('cl:model', listen)
+  onDispose(() => host.removeEventListener('cl:model', listen))
 }

@@ -234,3 +234,118 @@ test('#142: a page source\'s .load.ts is paired with it, and its views are in th
   expect(result.diagnostics.map((d) => `${d.file} ${d.code}`)).toEqual(['src/pages/data.page TS2322'])
   expect(readFileSync(resolve(root, '.clarusjs/views.d.ts'), 'utf8')).toContain('"pages/data"')
 })
+
+test('#213: an unknown prop on a component without inputs is an error, like on one with inputs', () => {
+  const root = project({
+    'src/components/plain.tscl': '<p>plain</p>\n',
+    'src/components/with.tscl': '@input label: string\n<p>{{ label }}</p>\n',
+    'src/pages/index.tscl': "@import plain from '../components/plain.tscl'\n@import withInput from '../components/with.tscl'\n<plain [speed]=\"1\" />\n<withInput [label]=\"'x'\" [speed]=\"1\" />\n<plain />\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line}:${d.column} ${d.code}`)).toEqual([
+    'src/pages/index.tscl:3:9 TS2353',
+    'src/pages/index.tscl:4:27 TS2353',
+  ])
+})
+
+test('#99: @type types a component\'s props: checked in the file and where it is used; errors in the type are located', () => {
+  const root = project({
+    'src/components/card.tscl': '@type User = { name: string; admin: boolean }\n@input user: User\n<p>{{ user.name }} {{ user.nmae }}</p>\n',
+    'src/components/broken.tscl': '@type Id = Strng\n@input id: Id\n<p>{{ id }}</p>\n',
+    'src/pages/index.tscl': "@import card from '../components/card.tscl'\n<card [user]=\"{ name: 'a', admin: true }\" />\n<card [user]=\"{ name: 'b' }\" />\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line}:${d.column} ${d.code}`)).toEqual([
+    'src/components/broken.tscl:1:12 TS2552', // Strng: cannot find name, did you mean String?
+    'src/components/card.tscl:3:28 TS2339', // user.nmae
+    'src/pages/index.tscl:3:8 TS2741', // admin missing
+  ])
+  expect(readFileSync(resolve(root, '.clarusjs/views.d.ts'), 'utf8')).toMatch(/declare namespace __cl_v\d+ \{\n  type User = \{ name: string; admin: boolean \}/)
+})
+
+test('#99: @interface and multi-line mapped, conditional and inferred @type types are checked like any TypeScript', () => {
+  const root = project({
+    'src/components/card.tscl': [
+      '@interface Named { name: string }',
+      '@interface User<Role = string> extends Named {',
+      '  role: Role',
+      '}',
+      "@type Flags<K extends string> = { [P in K]: boolean }",
+      '@type ElementOf<T> = T extends (infer U)[] ? U : never',
+      "@input user: User<'admin' | 'guest'>",
+      "@input flags: Flags<'dark'>",
+      '@input first: ElementOf<number[]>',
+      '<p>{{ user.name }} {{ user.role }} {{ flags.dark }} {{ first.toFixed() }} {{ flags.light }}</p>',
+      '',
+    ].join('\n'),
+    'src/pages/index.tscl': "@import card from '../components/card.tscl'\n<card [user]=\"{ name: 'a', role: 'owner' }\" [flags]=\"{ dark: true }\" [first]=\"1\" />\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
+    'src/components/card.tscl:10 TS2339', // flags.light: not in the mapped type
+    'src/pages/index.tscl:2 TS2322', // role 'owner' isn't 'admin' | 'guest'
+  ])
+})
+
+test('#99: multi-line @input types and function-typed inputs are checked, at their lines', () => {
+  const root = project({
+    'src/components/picker.tscl': "@input options: {\n  size: 'sm' | 'lg'\n  label?: string\n} = { size: 'sm' }\n@input onPick: (id: string) => void\n<p>{{ options.size }} {{ options.colour }}</p>\n",
+    'src/pages/index.tscl': "@import picker from '../components/picker.tscl'\n<picker [options]=\"{ size: 'xl' }\" [onPick]=\"(id: string) => id\" />\n<picker [onPick]=\"(id: number) => id\" />\n",
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
+    'src/components/picker.tscl:6 TS2339', // options.colour
+    'src/pages/index.tscl:2 TS2322', // size 'xl'
+    'src/pages/index.tscl:3 TS2322', // onPick takes a string id
+  ])
+})
+
+test('#217: inputs are deeply readonly: mutating one (or its arrays) is a type error; reading and copying are fine', () => {
+  const root = project({
+    'src/components/c.tscl': [
+      '@input user: { name: string; tags: string[] }',
+      '<script>',
+      '  let copy = state({ ...user, tags: [...user.tags] })',
+      "  function edit() { user.name = 'b'; user.tags.push('x'); copy.name = 'ok' }",
+      '</script>',
+      '<p>{{ user.name }} {{ copy.name }}</p>',
+      '',
+    ].join('\n'),
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line}:${d.column} ${d.code}`)).toEqual([
+    'src/components/c.tscl:4:26 TS2540', // user.name: read-only property
+    'src/components/c.tscl:4:48 TS2339', // push: not on a readonly array
+  ])
+})
+
+test('#219: [(x)] needs @model x and a writable target; a child may assign its @model but not change inside it', () => {
+  const root = project({
+    'src/components/field.tscl': "@input label: string\n@model value: { text: string } = { text: '' }\n<script>\n  function clear() { value = { text: '' } }\n  function bad() { value.text = 'x' }\n</script>\n<p>{{ label }} {{ value.text }}</p>\n",
+    'src/components/form.tscl': [
+      '@import field from \'./field.tscl\'',
+      '@input fixed: { name: { text: string } }',
+      '<script>',
+      "  let form = state({ name: { text: '' } })",
+      '</script>',
+      "<field [label]=\"'ok'\" [(value)]=\"form.name\" />",
+      "<field [(label)]=\"form.name.text\" [value]=\"form.name\" />",
+      "<field [label]=\"'ro'\" [(value)]=\"fixed.name\" />",
+      '<input [(value)]="form.name.text">',
+      '',
+    ].join('\n'),
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
+    'src/components/field.tscl:5 TS2540', // value.text: inside a @model is read-only too
+    'src/components/form.tscl:7 TS2322', // [(label)]: label isn't a @model of field
+    'src/components/form.tscl:8 TS2540', // fixed is a read-only input
+  ])
+})
+
+test('state([]) starts an array of anything (scripts are JavaScript: no state<string[]>); custom events are CustomEvent', () => {
+  const root = project({
+    'src/components/c.tscl': "<script>\n  let log = state([])\n  function add(x) { log = [...log, x] }\n</script>\n<div (rate)=\"add($event.detail)\" (click)=\"add($event.nope)\">{{ log.length }}</div>\n",
+  })
+  expect(check({ root, typescript }).diagnostics.map((d) => `${d.line} ${d.code}`)).toEqual(['5 TS2339']) // only $event.nope on a MouseEvent
+})

@@ -1,4 +1,5 @@
-@input type: 'tip' | 'info' | 'warning' | 'danger' = 'info'
+@type Kind = 'tip' | 'info' | 'warning' | 'danger'
+@input type: Kind = 'info'
 
 <aside role="note" class="callout {{ type }}"><p class="callout-title"><slot name="title">{{ type[0].toUpperCase() + type.slice(1) }}</slot></p><slot /></aside>
 
