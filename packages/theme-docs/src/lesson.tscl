@@ -6,9 +6,10 @@
   Slots: header-end (XP, …).
 --}}
 @import lessonBar from './lesson-bar.tscl'
+@import learnStatus from './learn-status.tscl'
 @import pageHead from './page-head.tscl'
 @import type { ThemeConfig, Heading } from './nav.ts'
-@import { lessonOf } from './nav.ts'
+@import { lessonOf, lessonsOf } from './nav.ts'
 @import './theme.css'
 @import './lesson.css'
 @input config: ThemeConfig
@@ -22,20 +23,21 @@
   <body class="lesson-page">
     <a class="skip-link" href="#content">Skip to content</a>
     <header class="lesson-header">
-      <a class="leave" [href]="lessonOf(config.sections, path).leave" aria-label="Leave the lesson">
+      <a class="leave" [href]="lessonOf(config, path).leave" aria-label="Leave the lesson">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
       </a>
       <div class="lesson-name">
-        @if (lessonOf(config.sections, path).total) {<p class="eyebrow">{{ lessonOf(config.sections, path).label }}</p>}
+        @if (lessonOf(config, path).total) {<p class="eyebrow">{{ lessonOf(config, path).label }}</p>}
         <p class="name">{{ title }}</p>
       </div>
       {{-- Links to each step: jumps without JavaScript, the progress bar with it. --}}
       <ol class="segments" aria-label="Steps">
         @for (h of headings.filter((h) => h.level === 2); track h.id) {<li><a [href]="'#' + h.id">{{ h.text }}</a></li>}
       </ol>
+      @if (config.learn) {<learnStatus [lessons]="lessonsOf(config).map((l) => l.href)" [progress]="config.learn.progress" />}
       <slot name="header-end"></slot>
     </header>
     <main class="lesson" id="content" tabindex="-1"><slot /></main>
-    <div class="lesson-bar" role="region" aria-label="Lesson actions" hidden><lessonBar [prev]="lessonOf(config.sections, path).prev" [next]="lessonOf(config.sections, path).next" [leave]="lessonOf(config.sections, path).leave" /></div>
+    <div class="lesson-bar" role="region" aria-label="Lesson actions" hidden><lessonBar [lesson]="path" [prev]="lessonOf(config, path).prev" [next]="lessonOf(config, path).next" [leave]="lessonOf(config, path).leave" /></div>
   </body>
 </html>
