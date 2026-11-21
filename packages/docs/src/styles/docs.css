@@ -76,3 +76,14 @@
 .eyebrow-step { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent); }
 .tour { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
 .tour .next { margin-left: auto; }
+
+/* Home: two ways in (Learn, Docs). */
+.ways { margin: 8px 0 40px; }
+.ways h2 { margin-top: 0; }
+.ways-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.way { display: flex; flex-direction: column; gap: 8px; padding: 22px; border: 1px solid var(--rule); border-radius: 16px; background: var(--surface); color: var(--fg); text-decoration: none; }
+.way:hover { border-color: var(--accent); }
+.way strong { font-size: 20px; }
+.way-kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); }
+.way > span:not(.way-kicker, .way-go) { color: var(--muted); }
+.way-go { margin-top: auto; font-weight: 700; color: var(--accent); }

@@ -756,7 +756,7 @@ test('progress: a lesson done, its quiz right, XP and badges on the progress pag
   await page.goto('/learn/progress')
   const board = page.locator('.progress-board')
   await expect(board.locator('.progress-stats')).toContainText('XP0')
-  await expect(board.locator('.progress-stats')).toContainText('Lessons0 of 1')
+  await expect(board.locator('.progress-stats')).toContainText('Lessons0 of 6')
   await expect(board.locator('.progress-stats')).toContainText('no quizzes answered yet')
   await expect(page.locator('.sidebar ul a[href="/learn/first-page"]')).toHaveAttribute('data-status', 'current')
   await expect(page.locator('.sidebar ul a[href="/learn/first-page"] .status-note')).toHaveText(' (up next)')
@@ -771,15 +771,18 @@ test('progress: a lesson done, its quiz right, XP and badges on the progress pag
   await page.getByRole('radio', { name: 'src/pages/about.tscl' }).check()
   await primary.click() // Check: right
   await primary.click() // Continue to Done
-  await expect(primary).toHaveText('Finish')
+  await expect(primary).toHaveText('Next lesson')
   await primary.click()
-  await expect(page).toHaveURL(/\/learn\/progress$/)
+  await expect(page).toHaveURL(/\/learn\/templates$/)
+  await page.goto('/learn/progress')
   // 6 steps × 10 + the lesson 50 + a quiz right 20.
   await expect(board.locator('.progress-stats')).toContainText('XP130')
-  await expect(board.locator('.progress-stats')).toContainText('Lessons1 of 1')
+  await expect(board.locator('.progress-stats')).toContainText('Lessons1 of 6')
   await expect(board.locator('.progress-stats')).toContainText('100% (1 of 1)')
-  await expect(board.locator('.badges li.earned strong')).toHaveText(['First lesson', 'Path complete'])
+  await expect(board.locator('.badges li.earned strong')).toHaveText(['First lesson'])
   await expect(page.locator('.sidebar ul a[href="/learn/first-page"]')).toHaveAttribute('data-status', 'done')
+  await expect(page.locator('.sidebar ul a[href="/learn/templates"]')).toHaveAttribute('data-status', 'current')
+  await expect(page.locator('.sidebar ul a[href="/learn/ship-it"]')).toHaveAttribute('data-status', 'locked')
   // Stored in one versioned key, in this browser only.
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('clarusjs-learn')!).v)).toBe(1)
   expect((await (await axe(page)).analyze()).violations).toEqual([])
@@ -810,9 +813,33 @@ test('progress with storage blocked: the page says so, lessons still work; witho
   const noJs = await plain.newPage()
   await noJs.goto('/learn/progress')
   await expect(noJs.locator('.progress-note')).toContainText('with JavaScript on')
-  await expect(noJs.locator('.progress-lessons a')).toHaveText(['Install and a first page'])
+  await expect(noJs.locator('.progress-lessons a')).toHaveText(['Install and a first page', 'Templates', 'Your first island', 'Pages and data', 'Markdown and the head', 'Ship it'])
   await expect(noJs.locator('.xp-chip')).toBeHidden()
   await plain.close()
+})
+
+test('the learning path: six lessons in order, each with steps, a quiz and links to the docs, chained by Next lesson', async ({ page }) => {
+  const lessons = sections.find((s) => s.key === 'learn')!.groups.flatMap((g) => g.items).filter((i) => i.href !== '/learn/progress')
+  expect(lessons.map((l) => l.href)).toEqual(['/learn/first-page', '/learn/templates', '/learn/first-island', '/learn/pages-and-data', '/learn/markdown-and-head', '/learn/ship-it'])
+  for (const [i, lesson] of lessons.entries()) {
+    await page.goto(lesson.href + '#done')
+    await expect(page.locator('.lesson-header .eyebrow'), lesson.href).toHaveText(`Learn · Lesson ${i + 1} of 6`)
+    expect(await page.locator('main .step').count(), lesson.href).toBeGreaterThanOrEqual(4)
+    await expect(page.locator('main .quiz'), lesson.href).toHaveCount(1)
+    // The Done step points to the matching docs pages, and each link lands.
+    const docs = await page.locator('main .step:visible a[href^="/guide/"], main .step:visible a[href^="/reference/"]').evaluateAll((links) => links.map((a) => a.getAttribute('href')!))
+    expect(docs.length, lesson.href).toBeGreaterThan(0)
+    await expect(page.locator('.lesson-bar button.primary'), lesson.href).toHaveText(i < lessons.length - 1 ? 'Next lesson' : 'Finish')
+    for (const href of docs) expect((await page.request.get(href)).status(), `${lesson.href} → ${href}`).toBe(200)
+  }
+})
+
+test('home: two ways in, Learn and Docs', async ({ page }) => {
+  await page.goto('/')
+  const ways = page.getByRole('region', { name: 'Two ways in' })
+  await expect(ways.locator('a.way')).toHaveCount(2)
+  await expect(ways.locator('a.way').first()).toHaveAttribute('href', '/learn/first-page')
+  await expect(ways.locator('a.way').nth(1)).toHaveAttribute('href', '/guide/what-is-clarusjs')
 })
 
 test('lesson with reduced motion: steps change without animation', async ({ browser }) => {
