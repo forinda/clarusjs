@@ -3,7 +3,7 @@
 // folder's own node_modules, as for the compiler. Otherwise, no formatting.
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 /** Formats a .tscl file's text (`path` picks the Prettier config). */
@@ -27,7 +27,9 @@ export async function loadFormatter(root: string, trusted: boolean, log: (messag
     log(`clarusjs: formatting with the project's Prettier (${prettierEntry})`)
     return async (text, path) => {
       try {
-        const config = (await prettier.resolveConfig(path)) ?? {}
+        // Only a config inside the trusted folder: Prettier also looks in parent folders, and a config's plugins run.
+        const file: string | null = await prettier.resolveConfigFile(path)
+        const config = file && file.startsWith(root + sep) ? ((await prettier.resolveConfig(path, { config: file })) ?? {}) : {}
         return await prettier.format(text, { ...config, filepath: path, parser: 'tscl', plugins: [...(config.plugins ?? []), plugin] })
       } catch (err) {
         log(`clarusjs: couldn't format ${path}: ${(err as Error).message}`) // shown in the editor's output, not as an edit

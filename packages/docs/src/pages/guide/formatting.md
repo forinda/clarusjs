@@ -69,7 +69,7 @@ Whitespace between inline elements is kept where it shows on the page: `<b>a</b>
 
 ## In your editor
 
-With the [language server](/guide/editor), **Format Document** (and format on save) formats `.tscl` files with your project's Prettier and the plugin, using the same config as the command line. It needs both installed in the project, and a trusted workspace, since formatting runs your project's code. If a file can't be formatted (a block isn't closed, say), nothing changes, and the reason is in the clarusjs output.
+With the [language server](/guide/editor), **Format Document** (and format on save) formats `.tscl` files with your project's Prettier and the plugin, using the same config as the command line. It needs both installed in the project, and a trusted workspace, since formatting runs your project's code. Only a Prettier config inside the workspace folder is used (one in a parent folder could load plugins from outside it). If a file can't be formatted (a block isn't closed, say), nothing changes, and the reason is in the clarusjs output.
 
 ## oxfmt
 

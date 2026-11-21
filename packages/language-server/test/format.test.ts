@@ -13,7 +13,8 @@ function project({ plugin = true } = {}): string {
   mkdirSync(prettier, { recursive: true })
   writeFileSync(resolve(prettier, 'package.json'), JSON.stringify({ name: 'prettier', type: 'module', exports: { '.': './index.js' } }))
   writeFileSync(resolve(prettier, 'index.js'), `globalThis.__clPrettier = (globalThis.__clPrettier ?? 0) + 1
-export const resolveConfig = async (file) => ({ semi: false, from: file })
+export const resolveConfigFile = async (file) => globalThis.__clConfigFile ?? null
+export const resolveConfig = async (file, opts) => ({ semi: false, from: file, config: opts?.config })
 export const format = async (text, options) => JSON.stringify({ text, options })`)
   if (plugin) {
     const p = resolve(root, 'node_modules/@clarusjs/prettier-plugin')
@@ -28,7 +29,8 @@ test('trusted, with prettier and the plugin: the project\'s Prettier, its config
   const root = project()
   const format = await loadFormatter(root, true, () => {})
   const file = resolve(root, 'src/a.tscl')
-  const out = JSON.parse(await format!('<p>x</p>', file))
+  ;(globalThis as { __clConfigFile?: string }).__clConfigFile = resolve(root, '.prettierrc')
+  const out = JSON.parse(await format!('<p>x</p>', file).finally(() => delete (globalThis as { __clConfigFile?: string }).__clConfigFile))
   expect(out.text).toBe('<p>x</p>')
   expect(out.options).toMatchObject({ semi: false, from: file, filepath: file, parser: 'tscl' })
   expect(out.options.plugins).toEqual([expect.stringContaining('@clarusjs/prettier-plugin')])
@@ -47,4 +49,22 @@ test('trusted, but no plugin (or no prettier): no formatting, and the log says w
   expect(await loadFormatter(empty, true, (m) => logs.push(m))).toBeUndefined()
   expect(logs.join('\n')).toMatch(/@clarusjs\/prettier-plugin/)
   expect(logs.join('\n')).toMatch(/prettier/)
+})
+
+test('a Prettier config outside the trusted folder is never used (its plugins would run): no config then', async () => {
+  const root = project()
+  const format = await loadFormatter(root, true, () => {})
+  const file = resolve(root, 'src/a.tscl')
+  const g = globalThis as { __clConfigFile?: string }
+  try {
+    g.__clConfigFile = resolve(root, '..', '.prettierrc') // found above the folder
+    const outside = JSON.parse(await format!('<p>x</p>', file))
+    expect(outside.options.semi).toBeUndefined()
+    expect(outside.options.plugins).toEqual([expect.stringContaining('@clarusjs/prettier-plugin')])
+    g.__clConfigFile = resolve(root, '.prettierrc') // inside: used, from that file
+    const inside = JSON.parse(await format!('<p>x</p>', file))
+    expect(inside.options).toMatchObject({ semi: false, config: resolve(root, '.prettierrc') })
+  } finally {
+    delete g.__clConfigFile
+  }
 })
