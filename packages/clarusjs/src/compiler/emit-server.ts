@@ -21,7 +21,8 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
   for (const line of ir.scriptImports) out += `${line}\n`
 
   const html = htmlExpr(ir.nodes)
-  const props = `{ ${ir.inputs.map((i) => i.name).join(', ')} }`.replace('{  }', '{}')
+  // An island carries the class its parent passed to the browser, which re-renders its blocks with it.
+  const props = `{ ${[...ir.inputs.map((i) => i.name), '...(__cl_opts?.class && { __cl_class: __cl_opts.class })'].join(', ')} }`
 
   out += `\nexport function render(__cl_props = {}, __cl_slots, __cl_opts) {\n`
   if (ir.stateful) out += `  if (__cl_slots !== undefined) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> does not accept children yet`)})\n`
@@ -30,6 +31,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     out += `  if (__cl_opts?.attach) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> has no <script>, so attach="`)} + __cl_opts.attach + '" does nothing')\n`
   }
   out += inputsLine(ir)
+  out += `  const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""\n`
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   out += ir.stateful
     ? `  return __cl_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html}, ${stateArg(ir)}, __cl_opts?.attach, __cl_opts?.paths)\n`

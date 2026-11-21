@@ -60,17 +60,22 @@ export function scopeId(file: string): string {
 // moves there), scripts.
 const UNMARKED = new Set(['slot', 'cl-head', 'script', 'style', 'html', 'title', 'meta', 'link', 'base'])
 
-/** The component's top-level HTML elements (also inside top-level @if/@for) get the scope class, merged with theirs. */
+/**
+ * The component's top-level HTML elements (also inside top-level @if/@for) get the scope class, merged with theirs,
+ * then the class its parent passed (`<card class="wide">`): `__cl_class`, ' wide' or '', which render() and attach()
+ * define.
+ */
 function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>): void {
   for (const node of nodes) {
     if (node.type === 'element' && !components.has(node.tag) && !UNMARKED.has(node.tag)) {
       const at = node.attrs.findIndex((a) => a.name === 'class')
       const own = node.attrs[at]
-      if (!own) node.attrs.push({ kind: 'static', name: 'class', value: cls, start: node.start })
-      else if (own.kind === 'static') own.value = own.value === true || !own.value ? cls : `${own.value} ${cls}`
-      else if (own.kind === 'interp') own.parts.push(` ${cls}`)
+      const passed = { expr: '__cl_class', start: node.start }
+      if (!own) node.attrs.push({ kind: 'interp', name: 'class', parts: [cls, passed], start: node.start })
+      else if (own.kind === 'static') node.attrs[at] = { kind: 'interp', name: 'class', parts: [own.value === true || !own.value ? cls : `${own.value} ${cls}`, passed], start: own.start }
+      else if (own.kind === 'interp') own.parts.push(` ${cls}`, passed)
       // ponytail: a bound [class] that is null/false still gets the scope class (the class can't go away entirely).
-      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr, start: own.start }, ` ${cls}`], start: own.start }
+      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr, start: own.start }, ` ${cls}`, passed], start: own.start }
     } else if (node.type === 'if') {
       for (const b of node.branches) markRoots(b.children, cls, components)
     } else if (node.type === 'for') {

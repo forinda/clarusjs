@@ -22,6 +22,7 @@ test('counter client output is readable and exact', () => {
 `import { state, derived, holes as __cl_holes, text as __cl_text, on as __cl_on, batch as __cl_batch } from 'clarusjs/runtime'
 
 export function attach(__cl_root, __cl_props = {}, __cl_state) {
+  const __cl_class = __cl_props.__cl_class ? " " + __cl_props.__cl_class : ""
   const start = state(__cl_props.start === undefined ? (0) : __cl_props.start)
   const count = state(__cl_state && "count" in __cl_state ? __cl_state.count : start.get())
   const double = derived(() => count.get() * 2)

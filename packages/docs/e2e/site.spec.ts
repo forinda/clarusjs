@@ -554,6 +554,9 @@ test('#279: <style scoped>: the scope class; a parent styles a child component\'
   const child = demo.locator('.scope-child')
   await expect(child).toHaveClass(/\bcl-c-scope-child-[a-z0-9]+\b/)
   expect(await child.evaluate((el) => getComputedStyle(el).borderLeftWidth)).toBe('3px') // the child's top-level element
+  // class="framed" on the component tag lands on its top-level element, and the parent's .framed rule styles it.
+  await expect(child).toHaveClass(/\bframed\b/)
+  expect(await child.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe('6px')
   // Inside the child, the parent's p rule doesn't apply, though the child has no <style> of its own.
   expect(await child.locator('p').evaluate(color)).not.toBe('rgb(11, 110, 112)')
 })

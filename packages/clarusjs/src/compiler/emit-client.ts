@@ -46,6 +46,7 @@ export function emitClient(ir: ComponentIR): string {
   if (all.some((n) => n.kind === 'connect')) out += `import { connect as __cl_connect } from 'clarusjs/forms'\n`
   for (const line of ir.scriptImports) out += `${line}\n`
   out += `\nexport function attach(__cl_root, __cl_props = {}, __cl_state) {\n`
+  out += `  const __cl_class = __cl_props.__cl_class ? " " + __cl_props.__cl_class : ""\n`
   // Inputs: read-only signals (writes are compile errors), set from props now and by the returned update.
   const inputs = ir.inputs.filter((i) => ir.signals.get(i.name) === 'input' || ir.signals.get(i.name) === 'model')
   const value = (i: (typeof inputs)[number], from: string) =>

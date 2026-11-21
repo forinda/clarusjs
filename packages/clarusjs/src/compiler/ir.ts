@@ -11,7 +11,7 @@ export type IRNode =
   // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
   // can re-render it (-1 otherwise).
   // models: [(name)]="path" bindings: each write from the child runs `set` (a statement using __cl_v).
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[] }
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[]; class?: string }
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
   | { kind: 'slot'; name: string; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
@@ -192,8 +192,15 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       const props: { name: string; expr: string }[] = []
       const models: { name: string; set: string }[] = []
       let attach: string | undefined
+      let cls: string | undefined
       const paths: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
+        if (a.name === 'class') {
+          // Passed through to the component's top-level elements (see markRoots in index.ts).
+          if (a.kind !== 'static' || typeof a.value !== 'string') fail('a component takes a static class="…" only ([class] and {{ }} in it aren\'t supported on a component yet)', a.start)
+          else cls = a.value
+          continue
+        }
         if (a.kind === 'prop') { checkExpr(a.expr, file, source, a.start); props.push({ name: a.name, expr: a.expr }) }
         else if (a.kind === 'model') {
           const set = writeBack(a.expr, '__cl_v', a.name, a.start)
@@ -234,7 +241,7 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
       // Whitespace around @slot blocks is not content for the default slot.
       const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
       scopeKey = parentScope
-      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(paths.length ? { paths } : {}) })
+      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(paths.length ? { paths } : {}), ...(cls ? { class: cls } : {}) })
       return
     }
     if (node.tag === 'slot') {
