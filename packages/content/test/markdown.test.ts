@@ -157,3 +157,10 @@ test('a verbatim element is left as written: its text is already shown as text, 
   const { code } = compile(out.replace(/^@import.*\n/, '').replace(/<\/?cl-layout[^>]*>/g, ''), { file: 'x.tscl', target: 'server' })
   expect(code).toContain('<code>{{ }} @if</code> holes, and &#123;&#123; x }} outside.')
 })
+
+test('only a real verbatim attribute keeps an element as written, and never its opening tag', () => {
+  const out = page('<p verbatim-x="1">{{ a }}</p>\n\n<p title="verbatim">{{ b }}</p>\n\n<code verbatim title="{{ c }} @d">{{ e }}</code>\n')
+  expect(out).toContain('<p verbatim-x="1">&#123;&#123; a }}</p>')
+  expect(out).toContain('<p title="verbatim">&#123;&#123; b }}</p>')
+  expect(out).toContain('<code verbatim title="&#123;&#123; c }} &#64;d">{{ e }}</code>')
+})
