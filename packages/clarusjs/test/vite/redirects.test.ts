@@ -58,3 +58,13 @@ test('dev server: a redirected path answers 301 with Location', async () => {
     await server.close()
   }
 }, 60_000)
+
+test('review (#186): a redirect whose file would replace a generated one, or land outside the output, fails the build', async () => {
+  const root = site({ 'src/pages/about.tscl': '<h1>About</h1>', 'src/pages/app/[id].tscl': '<p>x</p>', 'src/pages/app/[id].load.ts': "export const entries = () => [{ id: '1' }]\n" })
+  const options = (redirects: Record<string, string>): ClarusOptions => ({ routes: { '/app/*': 'client' }, redirects })
+  await expect(build(root, options({ '/%61bout': '/x' }))).rejects.toThrow("clarusjs: redirects['/%61bout'] would replace the page /about")
+  await expect(build(root, options({ '/app/1/__data.json': '/x' }))).rejects.toThrow("clarusjs: redirects['/app/1/__data.json'] would replace the page /app/1/__data.json")
+  await expect(build(root, options({ '/%2e%2e/%2e%2e/public': '/x' }))).rejects.toThrow("clarusjs: redirects['/%2e%2e/%2e%2e/public'] is outside the site")
+  expect(existsSync(resolve(root, 'public/index.html'))).toBe(false)
+  expect(readFileSync(resolve(root, 'dist/client/about/index.html'), 'utf8')).toContain('<h1>About</h1>')
+}, 120_000)

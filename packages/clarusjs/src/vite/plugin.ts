@@ -359,7 +359,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       }
       // Redirect pages exist (links to old paths stay valid); their anchors are the target's, so they go unchecked.
       if (options.redirects) {
-        writeRedirects(out, options.redirects, basePath(builder.config.base).replace(/\/$/, ''))
+        writeRedirects(out, options.redirects, basePath(builder.config.base).replace(/\/$/, ''), routes)
         const moved = Object.keys(options.redirects).map((from) => (from.length > 1 ? from.replace(/\/+$/, '') : from))
         pageRoutes.push(...moved)
         clientRoutes.push(...moved)

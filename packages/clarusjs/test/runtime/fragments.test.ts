@@ -68,3 +68,11 @@ test('#192: a redirected fragment request is an error: the page then loads norma
   await expect(swap(new URL('http://x/old'), async () => redirected)).rejects.toThrow('200: /old/index.frag.html')
   expect(document.body.innerHTML).toBe('<p>old</p>')
 })
+
+test('review (#186): swap() resolves once the arriving islands that attach right away are attached', async () => {
+  document.body.innerHTML = '<p>old</p>'
+  let attached = false
+  ;(globalThis as { __clAttach?: unknown }).__clAttach = () => new Promise<void>((r) => setTimeout(() => { attached = true; r() }, 10))
+  await swap(new URL('http://x/next'), async () => new Response('<title>Next</title><p>new</p>'))
+  expect(attached).toBe(true)
+})

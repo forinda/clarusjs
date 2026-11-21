@@ -443,7 +443,7 @@ flowchart LR
   routes get a prebuilt `index.frag.html` beside `index.html` **(later)**.
 - Islands re-attach on their own after a swap. You never write an `onLoad`
   hook. Mark an element `cl-persist` to keep it across swaps **(later)**.
-- `client` routes: a router (at most 1.4 KB gzip) ships only for them.
+- `client` routes: a router (at most 1.45 KB gzip) ships only for them.
 
 ## 10. Vite integration
 

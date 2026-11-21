@@ -153,10 +153,12 @@ function arrive(): void {
 }
 
 // Islands inserted later (an @if branch, a @for row, a re-rendered child) are attached through this hook. The router
-// and fragment navigation pass navigated = true after replacing the page.
-;(globalThis as { __clAttach?: (root: ParentNode, navigated?: 1) => void }).__clAttach = (root, navigated) => {
-  void attachAll(root)
+// and fragment navigation pass navigated = true after replacing the page, and wait for the returned promise: the
+// islands that attach right away are attached before afterSwap and afterNavigate run.
+;(globalThis as { __clAttach?: (root: ParentNode, navigated?: 1) => Promise<void> }).__clAttach = (root, navigated) => {
+  const done = attachAll(root)
   if (navigated) arrive()
+  return done
 }
 
 
