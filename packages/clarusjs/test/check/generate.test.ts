@@ -159,6 +159,11 @@ test("a script's own functions get `: any` on untyped parameters (scripts are Ja
   expect(code).toContain('const one = (z: any) => z')
   expect(code).toContain('const two = async (c = 1) => c') // a default gives the type
   expect(code).toContain('.map((v) => v)')
+  // A callback given to one of the script's own functions has no context type either.
+  const own = generateTs("<script>\n  function record(update) { return update(1) }\n  const each = (f) => f\n  record((p) => p)\n  each(function (q) { return q })\n  record.call(null, (r) => r)\n</script>\n<p>{{ record((x) => x) }}</p>\n", 'y.tscl').code
+  expect(own).toContain('record((p: any) => p)')
+  expect(own).toContain('each(function (q: any) { return q })')
+  expect(own).toContain('record.call(null, (r) => r)') // not a direct call: left as is
   // Every exact span is the template's own text (the imports are copied once, at the top), so a mapper can call
   // them verbatim.
   for (const [v, length, s, exact] of mappings) if (exact) expect(code.slice(v, v + length)).toBe(source.slice(s, s + length))
