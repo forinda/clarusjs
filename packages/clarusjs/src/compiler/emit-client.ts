@@ -1,7 +1,7 @@
 // IR → client module: `attach(root, props)`. Runs in the browser, only for stateful components.
 import type { ComponentIR, IRNode } from './ir.ts'
 import { attrValueExpr, componentCall, htmlExpr, tagArg, walk, whichExpr, type Rewriter } from './html-expr.ts'
-import { rewriteClient, rewriteClientExpr, wrapExpr, type Signals } from './script.ts'
+import { importsForm, rewriteClient, rewriteClientExpr, wrapExpr, type Signals } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitClient(ir: ComponentIR): string {
@@ -56,7 +56,7 @@ export function emitClient(ir: ComponentIR): string {
       : `  const ${i.name} = state(${value(i, '__cl_props')})\n`
   }
   out += inputsLine({ ...ir, inputs: ir.inputs.filter((i) => !inputs.includes(i)) })
-  if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals, { stateFromServer: true }))
+  if (ir.script) out += indentScript(rewriteClient(ir.script, ir.signals, { stateFromServer: true, forms: importsForm(ir.scriptImports) }))
   const lines = wiring(ir, ir.nodes, undefined, '__cl_root', ir.signals, 0)
   if (lines.length) out += '\n' + lines.map((l) => `  ${l}\n`).join('')
   // New props from a parent island: each input follows (the loader keeps this, and the parent calls it in place).
