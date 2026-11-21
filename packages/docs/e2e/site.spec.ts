@@ -9,10 +9,18 @@ import AxeBuilder from '@axe-core/playwright'
 // The site's sidebar, built the way themeDocs() and nav.ts build it.
 const sections = pagesNav(sidebar, readPages(resolve(import.meta.dirname, '../src/pages')))
 
-// Every page in the sidebar, in sidebar order, plus the home page.
-const docs = sections.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => ({ path: i.href, title: i.title, section: s.key }))))
-const pages = [{ path: '/', title: 'clarusjs' }, ...docs]
+// Docs (Guide, Reference) have the sidebar, edit links and pager; Learn's lessons use the lesson layout.
+const docSections = sections.filter((s) => s.key !== 'learn')
+const items = (list: typeof sections) => list.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => ({ path: i.href, title: i.title, section: s.key }))))
+// Every docs page in the sidebar, in sidebar order; every page there is, plus the home page.
+const docs = items(docSections)
+const pages = [{ path: '/', title: 'clarusjs' }, ...items(sections)]
 const guides = docs
+// axe reads computed colours: let animations (a lesson step fading in) finish first, or it sees them mid-fade.
+const axe = async (page: Page) => {
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+  return new AxeBuilder({ page })
+}
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** Collect console errors and script requests while visiting a page. */
@@ -114,7 +122,7 @@ test('the sidebar marks the current page, the header its section, and each page 
 
 test('every sidebar link lands on a page, and the edit link points at its source', async ({ page }) => {
   await page.goto('/guide/what-is-clarusjs')
-  for (const section of sections) {
+  for (const section of docSections) {
     await page.goto(section.href)
     const hrefs = await page.locator('.sidebar ul a').evaluateAll((links) => links.map((a) => a.getAttribute('href')!))
     expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
@@ -184,7 +192,7 @@ test('home: the list island adds and removes rows by key, with @empty', async ({
 })
 
 test('previous and next follow sidebar order within each section', async ({ page }) => {
-  for (const section of sections) {
+  for (const section of docSections) {
     const items = section.groups.flatMap((g) => g.items)
     for (const [i, item] of items.entries()) {
       await page.goto(item.href)
@@ -625,6 +633,8 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   await input.press('Enter')
   await expect(page).toHaveURL(new RegExp(href!.replace(/[.?#]/g, '\\$&') + '$'))
   await expect(dialog).not.toBeVisible()
+  // The URL commits before the new page is swapped in: wait for it, then search again.
+  await expect(page.locator('h1')).not.toHaveText('Holes')
   // "/" opens it too (outside a text field); Escape closes it and focus goes back to the page.
   await page.keyboard.press('/')
   await expect(dialog).toBeVisible()
@@ -637,7 +647,240 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   await expect(dialog).toBeVisible()
   for (let i = 0; i < 4; i++) await page.keyboard.press('Tab')
   expect(await page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true)
-  expect((await new AxeBuilder({ page }).include('dialog.search-dialog').analyze()).violations).toEqual([])
+  expect((await (await axe(page)).include('dialog.search-dialog').analyze()).violations).toEqual([])
+})
+
+test('history.pushState and replaceState belong to the page: the router never turns them into a page load', async ({ page }) => {
+  await page.goto('/guide/holes')
+  await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
+  const fragments: string[] = []
+  page.on('request', (r) => { if (/\.frag\.html|__data\.json/.test(r.url())) fragments.push(r.url()) })
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>('h1')!.focus()
+    history.replaceState(null, '', '#escaping')
+    history.pushState(null, '', '/guide/holes?tab=2')
+  })
+  await page.waitForTimeout(500)
+  expect(fragments).toEqual([])
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
+})
+
+test('lesson without JavaScript: a plain page, every step shown, segments jump to them, no action bar', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false })
+  const page = await context.newPage()
+  await page.goto('/learn/first-page')
+  await expect(page.locator('.lesson-header .eyebrow')).toHaveText(/^Learn · Lesson 1 of \d+$/)
+  await expect(page.locator('main .step')).toHaveCount(6)
+  for (const step of await page.locator('main .step').all()) await expect(step).toBeVisible()
+  await expect(page.locator('.segments a')).toHaveText(['Read', 'Create', 'Write', 'Run', 'Quiz', 'Done'])
+  // The quiz: radios to pick, and the answer in a <details> to open.
+  const quiz = page.locator('.quiz')
+  await quiz.getByRole('radio', { name: 'src/pages/about.tscl' }).check()
+  await quiz.locator('summary', { hasText: 'Show the answer' }).click()
+  await expect(quiz.locator('.quiz-correct')).toHaveText('Answer: src/pages/about.tscl')
+  await expect(page.locator('.lesson-bar')).toBeHidden()
+  await context.close()
+})
+
+test('lesson: one step at a time, Continue and Back, the URL and the segments follow, focus moves to the step', async ({ page }) => {
+  await page.goto('/learn/first-page')
+  const bar = page.getByRole('region', { name: 'Lesson actions' })
+  await expect(bar).toBeVisible()
+  const visible = page.locator('main .step:visible')
+  await expect(visible).toHaveCount(1)
+  await expect(visible.locator('h2')).toHaveText(/^Read/)
+  await expect(bar.getByRole('status')).toHaveText('Step 1 of 6: Read')
+  await expect(bar.getByRole('button', { name: 'Back' })).toBeDisabled()
+  await bar.getByRole('button', { name: 'Continue' }).click()
+  await expect(visible.locator('h2')).toHaveText(/^Create/)
+  await expect(page).toHaveURL(/#create$/)
+  await expect(page.locator('#create')).toBeFocused()
+  await expect(page.locator('.segments li.done')).toHaveCount(1)
+  await expect(page.locator('.segments li.current a')).toHaveAttribute('aria-current', 'step')
+  await expect(page.locator('.segments a[aria-current]')).toHaveCount(1)
+  await bar.getByRole('button', { name: 'Back' }).click()
+  await expect(visible.locator('h2')).toHaveText(/^Read/)
+  // A segment link (or any #hash in a step) shows that step.
+  await page.locator('.segments a[href="#run"]').click()
+  await expect(visible.locator('h2')).toHaveText(/^Run/)
+  // Opened at a step: that step; the last step's button finishes the lesson.
+  await page.goto('/learn/first-page#done')
+  await expect(visible.locator('h2')).toHaveText(/^Done/)
+  await expect(bar.getByRole('status')).toHaveText('Step 6 of 6: Done')
+  const finish = bar.locator('button.primary')
+  await expect(finish).toHaveText(/^(Next lesson|Finish)$/)
+  // The bar never covers the lesson's end: the page leaves room for it.
+  const room = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('main.lesson')!).paddingBottom))
+  expect(room).toBeGreaterThanOrEqual((await bar.boundingBox())!.height)
+  expect((await (await axe(page)).analyze()).violations).toEqual([])
+})
+
+test('lesson quiz: the bar checks it, says how it went in green or red, then continues', async ({ page }) => {
+  await page.goto('/learn/first-page#quiz')
+  const bar = page.getByRole('region', { name: 'Lesson actions' })
+  await expect(page.locator('cl-island[c="quiz-choices"]')).toHaveAttribute('data-cl-ready', '')
+  const primary = bar.locator('button.primary')
+  await expect(primary).toHaveText('Check')
+  // The quiz's own button and announcement step aside: the bar does both.
+  await expect(page.locator('.quiz-check')).toBeHidden()
+  await primary.click()
+  await expect(bar.getByRole('status')).toContainText('Pick an answer')
+  await expect(primary).toHaveText('Check')
+  await page.getByRole('radio', { name: 'src/about.html' }).check()
+  await primary.click()
+  await expect(bar.getByRole('status')).toContainText('Not quite')
+  await expect(bar.getByRole('status')).toContainText('The answer is: src/pages/about.tscl.')
+  await expect(page.locator('.lesson-bar')).toHaveClass(/\bbad\b/)
+  // Right and wrong are said in words, not only in colour.
+  await expect(page.locator('.quiz-options label.wrong')).toHaveText(/src\/about\.html\s*✗ Your pick/)
+  await expect(page.locator('.quiz-options label.right')).toHaveText(/src\/pages\/about\.tscl\s*✓ Right answer/)
+  expect(await page.locator('.quiz-options label.wrong').evaluate((el) => getComputedStyle(el).borderColor)).not.toBe(await page.locator('.quiz-options label.right').evaluate((el) => getComputedStyle(el).borderColor))
+  await expect(page.locator('.quiz-answer')).toHaveAttribute('open', '')
+  await expect(page.getByRole('radio', { name: 'src/pages/about.tscl' })).toBeDisabled()
+  await expect(primary).toHaveText('Continue')
+  expect((await (await axe(page)).analyze()).violations).toEqual([])
+  await primary.click()
+  await expect(page.locator('main .step:visible h2')).toHaveText(/^Done/)
+  await expect(page.locator('.lesson-bar')).not.toHaveClass(/\b(ok|bad)\b/)
+})
+
+test('lesson quiz, right answer: the bar turns green', async ({ page }) => {
+  await page.goto('/learn/first-page#quiz')
+  await expect(page.locator('cl-island[c="quiz-choices"]')).toHaveAttribute('data-cl-ready', '')
+  await page.getByRole('radio', { name: 'src/pages/about.tscl' }).check()
+  await page.locator('.lesson-bar button.primary').click()
+  await expect(page.locator('.lesson-bar')).toHaveClass(/\bok\b/)
+  await expect(page.getByRole('region', { name: 'Lesson actions' }).getByRole('status')).toContainText('Correct!')
+})
+
+test('progress: a lesson done, its quiz right, XP and badges on the progress page, the sidebar marks it, Reset', async ({ page }) => {
+  await page.goto('/learn/progress')
+  const board = page.locator('.progress-board')
+  await expect(board.locator('.progress-stats')).toContainText('XP0')
+  await expect(board.locator('.progress-stats')).toContainText('Lessons0 of 6')
+  await expect(board.locator('.progress-stats')).toContainText('no quizzes answered yet')
+  await expect(page.locator('.sidebar ul a[href="/learn/first-page"]')).toHaveAttribute('data-status', 'current')
+  await expect(page.locator('.sidebar ul a[href="/learn/first-page"] .status-note')).toHaveText(' (up next)')
+  await expect(page.locator('.site-header .xp-chip')).toHaveText(/0 XP/)
+
+  await page.goto('/learn/first-page')
+  const bar = page.getByRole('region', { name: 'Lesson actions' })
+  const primary = bar.locator('button.primary')
+  await expect(page.locator('cl-island[c="quiz-choices"]')).toHaveAttribute('data-cl-ready', '')
+  for (let i = 0; i < 4; i++) await primary.click() // Read, Create, Write, Run
+  await expect(page.locator('.lesson-header .xp-chip')).toHaveText(/40 XP/) // 10 a step, live
+  await page.getByRole('radio', { name: 'src/pages/about.tscl' }).check()
+  await primary.click() // Check: right
+  await primary.click() // Continue to Done
+  await expect(primary).toHaveText('Next lesson')
+  await primary.click()
+  await expect(page).toHaveURL(/\/learn\/templates$/)
+  await page.goto('/learn/progress')
+  // 6 steps × 10 + the lesson 50 + a quiz right 20.
+  await expect(board.locator('.progress-stats')).toContainText('XP130')
+  await expect(board.locator('.progress-stats')).toContainText('Lessons1 of 6')
+  await expect(board.locator('.progress-stats')).toContainText('100% (1 of 1)')
+  await expect(board.locator('.badges li.earned strong')).toHaveText(['First lesson'])
+  await expect(page.locator('.sidebar ul a[href="/learn/first-page"]')).toHaveAttribute('data-status', 'done')
+  await expect(page.locator('.sidebar ul a[href="/learn/templates"]')).toHaveAttribute('data-status', 'current')
+  await expect(page.locator('.sidebar ul a[href="/learn/ship-it"]')).toHaveAttribute('data-status', 'locked')
+  // Stored in one versioned key, in this browser only.
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('clarusjs-learn')!).v)).toBe(1)
+  expect((await (await axe(page)).analyze()).violations).toEqual([])
+
+  const reset = board.getByRole('button', { name: 'Reset progress' })
+  await reset.click()
+  await expect(board.getByRole('button', { name: 'Click again to erase your progress' })).toBeVisible()
+  await board.getByRole('button', { name: 'Click again to erase your progress' }).click()
+  await expect(board.locator('.progress-stats')).toContainText('XP0')
+  await expect(page.locator('.site-header .xp-chip')).toHaveText(/0 XP/)
+})
+
+test('progress with storage blocked: the page says so, lessons still work; without JavaScript: plain links, no chip', async ({ browser }) => {
+  const blocked = await browser.newContext()
+  await blocked.addInitScript(() => Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('denied', 'SecurityError') } }))
+  const page = await blocked.newPage()
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.goto('/learn/progress')
+  await expect(page.locator('.progress-note')).toContainText('storage is blocked')
+  await page.goto('/learn/first-page')
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await expect(page.locator('main .step:visible h2')).toHaveText(/^Create/)
+  expect(errors).toEqual([])
+  await blocked.close()
+
+  const plain = await browser.newContext({ javaScriptEnabled: false })
+  const noJs = await plain.newPage()
+  await noJs.goto('/learn/progress')
+  await expect(noJs.locator('.progress-note')).toContainText('with JavaScript on')
+  await expect(noJs.locator('.progress-lessons a')).toHaveText(['Install and a first page', 'Templates', 'Your first island', 'Pages and data', 'Markdown and the head', 'Ship it'])
+  await expect(noJs.locator('.xp-chip')).toBeHidden()
+  await plain.close()
+})
+
+test('the learning path: six lessons in order, each with steps, a quiz and links to the docs, chained by Next lesson', async ({ page }) => {
+  const lessons = sections.find((s) => s.key === 'learn')!.groups.flatMap((g) => g.items).filter((i) => i.href !== '/learn/progress')
+  expect(lessons.map((l) => l.href)).toEqual(['/learn/first-page', '/learn/templates', '/learn/first-island', '/learn/pages-and-data', '/learn/markdown-and-head', '/learn/ship-it'])
+  for (const [i, lesson] of lessons.entries()) {
+    await page.goto(lesson.href + '#done')
+    await expect(page.locator('.lesson-header .eyebrow'), lesson.href).toHaveText(`Learn · Lesson ${i + 1} of 6`)
+    expect(await page.locator('main .step').count(), lesson.href).toBeGreaterThanOrEqual(4)
+    await expect(page.locator('main .quiz'), lesson.href).toHaveCount(1)
+    // The Done step points to the matching docs pages, and each link lands.
+    const docs = await page.locator('main .step:visible a[href^="/guide/"], main .step:visible a[href^="/reference/"]').evaluateAll((links) => links.map((a) => a.getAttribute('href')!))
+    expect(docs.length, lesson.href).toBeGreaterThan(0)
+    await expect(page.locator('.lesson-bar button.primary'), lesson.href).toHaveText(i < lessons.length - 1 ? 'Next lesson' : 'Finish')
+    for (const href of docs) expect((await page.request.get(href)).status(), `${lesson.href} → ${href}`).toBe(200)
+  }
+})
+
+test('home: two ways in, Learn and Docs', async ({ page }) => {
+  await page.goto('/')
+  const ways = page.getByRole('region', { name: 'Two ways in' })
+  await expect(ways.locator('a.way')).toHaveCount(2)
+  await expect(ways.locator('a.way').first()).toHaveAttribute('href', '/learn/first-page')
+  await expect(ways.locator('a.way').nth(1)).toHaveAttribute('href', '/guide/what-is-clarusjs')
+})
+
+test('lesson: a #link to something inside a step opens that step and keeps the target', async ({ page }) => {
+  await page.goto('/learn/pages-and-data')
+  await expect(page.locator('.lesson-bar')).toBeVisible()
+  await page.evaluate(() => { location.hash = '#the-page' })
+  await expect(page.locator('main .step:visible h2')).toHaveText(/^Route/)
+  await expect(page).toHaveURL(/#the-page$/)
+  await expect(page.locator('#the-page')).toBeInViewport()
+})
+
+test('lesson: keyboard users see where focus went when a step opens; a mouse click shows no ring', async ({ page }) => {
+  await page.goto('/learn/first-page')
+  const continueButton = page.locator('.lesson-bar button.primary')
+  await continueButton.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('#create')).toBeFocused()
+  expect(await page.locator('#create').evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none')
+  await continueButton.click()
+  await expect(page.locator('#write')).toBeFocused()
+  expect(await page.locator('#write').evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none')
+})
+
+test('fragment navigation: a replaceState while the next page loads still shows that page', async ({ page }) => {
+  await page.route('**/guide/lists/index.frag.html', async (route) => { await new Promise((done) => setTimeout(done, 600)); await route.continue() })
+  await page.goto('/guide/holes')
+  await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
+  await page.locator('.sidebar a[href="/guide/lists"]').click()
+  await expect(page).toHaveURL(/\/guide\/lists$/)
+  await page.evaluate(() => history.replaceState(null, '', location.pathname + '#top'))
+  await expect(page.locator('h1')).toHaveText('Lists')
+})
+
+test('lesson with reduced motion: steps change without animation', async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: 'reduce' })
+  const page = await context.newPage()
+  await page.goto('/learn/first-page')
+  await page.getByRole('button', { name: 'Continue' }).click()
+  expect(await page.locator('main .step:visible').evaluate((el) => getComputedStyle(el).animationName)).toBe('none')
+  await context.close()
 })
 
 test('a Markdown page renders in the layout, with anchors, a component and the right edit link', async ({ page }) => {
@@ -780,7 +1023,7 @@ test('a11y: axe finds no violations (landmarks, names, ARIA) on representative p
   for (const path of ['/', '/guide/markdown', '/guide/state', '/reference/vite-plugin', '/no/such/page', '/tour/1']) {
     await page.goto(path)
     await page.waitForLoadState('networkidle')
-    const { violations } = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze() // contrast: #122
+    const { violations } = await (await axe(page)).disableRules(['color-contrast']).analyze() // contrast: #122
     expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`), path).toEqual([])
   }
 })
@@ -815,7 +1058,7 @@ test('a11y: text and code highlighting meet WCAG AA contrast, in light and dark'
     for (const path of ['/', '/guide/markdown', '/guide/state', '/reference/vite-plugin', '/no/such/page']) {
       await page.goto(path)
       await page.waitForLoadState('networkidle')
-      const { violations } = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze()
+      const { violations } = await (await axe(page)).withRules(['color-contrast']).analyze()
       const found = violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.any[0]?.message.split(' (')[0] ?? ''} ${JSON.stringify(n.any[0]?.data ?? {})}`))
       expect(found, `${scheme} ${path}`).toEqual([])
     }

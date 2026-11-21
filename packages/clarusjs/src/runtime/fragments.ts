@@ -55,7 +55,8 @@ type NavigateEvent = Event & {
   hashChange: boolean
   downloadRequest: string | null
   formData: FormData | null
-  destination: { url: string }
+  destination: { url: string; sameDocument: boolean }
+  navigationType: 'push' | 'replace' | 'reload' | 'traverse'
   signal: AbortSignal
   intercept(options: { handler(): Promise<void> }): void
 }
@@ -65,15 +66,19 @@ const navigation = typeof document !== 'undefined' ? (globalThis as { navigation
 // (the reload of a failed URL is itself a navigation to it, which the fallback check lets through).
 let latest = 0
 let fallback = ''
+let swapping = false
 navigation?.addEventListener('navigate', (event) => {
   const e = event as NavigateEvent
-  if (!e.canIntercept || e.hashChange || e.downloadRequest !== null || e.formData) return
+  // A #hash, and the page's own history.pushState/replaceState (same-document, not back/forward), are never a page
+  // load, except while a swap is still loading: they abort it, so this navigation has to show the new page instead.
+  if (!e.canIntercept || e.hashChange || (e.destination.sameDocument && e.navigationType !== 'traverse' && !swapping) || e.downloadRequest !== null || e.formData) return
   const url = new URL(e.destination.url)
   if (url.href === fallback) return
   const id = ++latest
   const isCurrent = () => latest === id && !e.signal.aborted
+  swapping = true
   e.intercept({
-    handler: () => swap(url, fetch, isCurrent).catch(() => {
+    handler: () => swap(url, fetch, isCurrent).finally(() => { if (latest === id) swapping = false }).catch(() => {
       if (!isCurrent()) return
       fallback = url.href
       // The URL is already committed: reload it (assign() would only move within the page when it has a #hash).

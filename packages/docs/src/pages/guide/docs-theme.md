@@ -131,6 +131,54 @@ Set `search: true` in the config, and keep `themeDocs()` in `vite.config.ts`: af
 
 `themeDocs({ search: false })` skips the index.
 
+## Lessons
+
+`@clarusjs/theme-docs/lesson.tscl` is a layout for tutorials: a focused header, the lesson, and an action bar fixed to the bottom. A lesson is a Markdown page with `steps: true`, so each `##` section is a step:
+
+```md
+---
+title: "Install and a first page"
+layout: /src/layouts/lesson.tscl
+steps: true
+---
+
+# Install and a first page
+
+## Read
+…
+## Write
+…
+```
+
+- **Header:** a ✕ to leave (the section's link), "Learn · Lesson 1 of 6" (the lessons are the items of the config section the page is in), one segment per step, and a `header-end` slot.
+- **One step at a time:** with JavaScript, the bar shows one step, with Back, the step's name and Continue; the URL follows the step (`#write`) and the segments fill in. After the last step, Continue goes to the next lesson. Without JavaScript the bar stays hidden and the lesson is one plain page; the segments jump to each step.
+- **Quizzes:** on a step with a quiz the main button is **Check**: the bar turns green ("Correct!") or red ("Not quite", with the right answer), then Continue. The quiz marks the right option and a wrong pick in words as well as colour.
+- **Code beside the text:** from 1024px, a step's code blocks and `.result` boxes sit in a column to the right of its text.
+- **Reduced motion:** steps change without animation.
+
+## Progress, XP and badges
+
+Tell the theme which section is Learn and where its progress page is, and lessons keep track of what was done:
+
+```ts
+export const config: ThemeConfig = {
+  // …
+  learn: { section: 'learn', progress: '/learn/progress' },
+}
+```
+
+```tscl [src/pages/learn/progress.tscl]
+@import learnProgress from '@clarusjs/theme-docs/learn-progress.tscl'
+…
+<learnProgress [config]="config" />
+```
+
+- **Kept in the browser only:** steps seen, lessons finished and the first answer to each quiz go in one `localStorage` key (`clarusjs-learn`, versioned). Nothing is sent anywhere; there are no accounts.
+- **XP and badges** are computed from it: 10 XP a step, 50 a lesson, 20 a quiz answered right the first time. Badges: First lesson, Halfway, Path complete, Sharp (5 quizzes right).
+- **Where it shows:** an XP chip in the lesson header and on the section's pages; in the Learn sidebar each lesson is marked done, up next or not started (a hint: every lesson stays open); the progress page has XP, lessons, quiz accuracy, badges and a Reset button.
+- **When storage is blocked** the progress page says so and lessons work as usual; without JavaScript the progress page lists the lessons as links.
+- Finishing the last lesson, and ✕ in a lesson, lead to the progress page.
+
 ## Regions at every width
 
 | Width | Sidebar | On this page | Social links |

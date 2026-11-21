@@ -19,9 +19,16 @@ export type MarkdownOptions = {
   titles?: Partial<Record<string, string>>
   /** Put your copy component in every code block: `<tag attach="interaction" />` (it finds the code itself). */
   copy?: { tag: string; from: string }
+  /**
+   * Render `::: quiz` blocks through your quiz component (an island): `<tag [name] [question] [options] [answer]>`
+   * with the explanation as its content. Without it they are static HTML that works without JavaScript.
+   */
+  quiz?: { tag: string; from: string }
+  /** `::: quiz` is for lessons (frontmatter `steps: true`); 'everywhere' allows it on any page. */
+  quizzes?: 'lessons' | 'everywhere'
 }
 
-const TYPES = ['tip', 'info', 'warning', 'danger', 'details', 'code-group'] as const
+const TYPES = ['tip', 'info', 'warning', 'danger', 'details', 'code-group', 'quiz'] as const
 const TITLES: Record<string, string> = { tip: 'Tip', info: 'Info', warning: 'Warning', danger: 'Danger', details: 'Details', note: 'Note', important: 'Important', caution: 'Caution' }
 // GitHub alerts → container type (the alert's name stays its title).
 const ALERTS: Record<string, string> = { note: 'info', tip: 'tip', important: 'info', warning: 'warning', caution: 'danger' }
@@ -95,17 +102,72 @@ function renderer(options: MarkdownOptions): Md {
     }
   })
 
+  // ::: quiz Question: its task list (- [ ] / - [x]) is the options, the rest the explanation. The list becomes one
+  // cl_quiz token (rendered as the options and the start of the answer); the question and options are plain text.
+  // Inline Markdown as plain text (`code` and **bold** keep their words).
+  const plain = (src: string) => (md.parseInline(src, {})[0]?.children ?? []).filter((c) => c.type === 'text' || c.type === 'code_inline').map((c) => c.content).join('')
+  md.core.ruler.after('cl_alerts', 'cl_quiz', (state) => {
+    const t = state.tokens
+    const env = state.env as { file: string; quizzes: number; quizAllowed: boolean }
+    for (let i = 0; i < t.length; i++) {
+      if (t[i]!.type !== 'cl_container_open' || t[i]!.info !== 'quiz') continue
+      if (!env.quizAllowed) throw new Error(`${env.file}: ::: quiz is for lessons (frontmatter steps: true); markdown({ quizzes: 'everywhere' }) allows it on any page`)
+      // Only a list inside this block counts.
+      let close = i + 1
+      for (let depth = 1; close < t.length; close++) {
+        if (t[close]!.type === 'cl_container_open') depth++
+        else if (t[close]!.type === 'cl_container_close' && --depth === 0) break
+      }
+      const start = t.findIndex((tok, j) => j > i && j < close && tok.type === 'bullet_list_open')
+      if (start === -1) throw new Error(`${env.file}: a quiz needs exactly one right answer (- [x]) in its list of options`)
+      let end = start
+      for (let depth = 0; end < t.length; end++) {
+        if (t[end]!.type === 'bullet_list_open') depth++
+        else if (t[end]!.type === 'bullet_list_close' && --depth === 0) break
+      }
+      const options: string[] = []
+      let answer = -1
+      let right = 0
+      for (let j = start; j < end; j++) {
+        if (t[j]!.type !== 'inline' || t[j]!.level !== t[start]!.level + 3) continue
+        const m = /^\[([ xX])\]\s+/.exec(t[j]!.content)
+        if (m && m[1] !== ' ') { answer = options.length; right++ }
+        options.push(plain(t[j]!.content.replace(/^\[[ xX]\]\s+/, '')))
+      }
+      if (right !== 1) throw new Error(`${env.file}: a quiz needs exactly one right answer (- [x]) in its list of options`)
+      const question = (t[i]!.meta as { title: string }).title
+      t[i]!.meta = { title: plain(question), name: `quiz-${env.quizzes++}`, options, answer, html: md.renderInline(question) }
+      const token = new state.Token('cl_quiz', '', 0)
+      token.meta = t[i]!.meta
+      t.splice(start, end - start + 1, token)
+    }
+  })
+
   // env carries the page's placeholder list (see protectTags).
   md.renderer.rules.cl_container_open = (tokens, i, _o, env) => {
     const tags = (env as { tags: string[] }).tags
     const { info: type, meta } = tokens[i]!
     const { title } = meta as { title: string }
     if (type === 'details') return `<details class="custom-block details"><summary>${escapeHtml(title)}</summary>\n`
+    if (type === 'quiz') {
+      const q = meta as { name: string; html: string; options: string[]; answer: number }
+      if (!options.quiz) return `<div class="quiz" data-quiz="${q.name}">`
+      tags.push(`<${options.quiz.tag} [name]="${quote(q.name)}" [question]="${escapeHtml(quote(title))}" [options]="[${q.options.map((o) => escapeHtml(quote(o))).join(', ')}]" [answer]="${q.answer}">`)
+      return `<!--cl-tag-${tags.length - 1}-->`
+    }
     if (options.container) {
       tags.push(`<${options.container.tag} [type]="'${type}'">@slot('title') {${inert(title)}}`)
       return `<!--cl-tag-${tags.length - 1}-->\n`
     }
     return `<div class="custom-block ${type}"><p class="custom-block-title">${escapeHtml(title)}</p>\n`
+  }
+  // A quiz's options and the start of its answer (static HTML; with a quiz component, nothing: it has them as props).
+  md.renderer.rules.cl_quiz = (tokens, i) => {
+    if (options.quiz) return ''
+    const { name, html, options: choices, answer } = tokens[i]!.meta as { name: string; html: string; options: string[]; answer: number }
+    const labels = choices.map((text, n) => `<label><input type="radio" name="${name}" value="${n}"> ${escapeHtml(text)}</label>`).join('')
+    return `<p class="quiz-question" id="${name}-q">${html}</p><div class="quiz-options" role="radiogroup" aria-labelledby="${name}-q">${labels}</div>`
+      + `<details class="quiz-answer"><summary>Show the answer</summary><p class="quiz-correct">Answer: ${escapeHtml(choices[answer]!)}</p>\n`
   }
   // ::: code-group: radio inputs and labels, each followed by its block. CSS shows the checked one's block, so the
   // tabs work without JavaScript.
@@ -150,6 +212,11 @@ function renderer(options: MarkdownOptions): Md {
   md.renderer.rules.cl_container_close = (tokens, i, _o, env) => {
     const tags = (env as { tags: string[] }).tags
     if (tokens[i]!.info === 'details') return '</details>\n'
+    if (tokens[i]!.info === 'quiz') {
+      if (!options.quiz) return '</details></div>\n'
+      tags.push(`</${options.quiz.tag}>`)
+      return `<!--cl-tag-${tags.length - 1}-->\n`
+    }
     if (options.container) {
       tags.push(`</${options.container.tag}>`)
       return `<!--cl-tag-${tags.length - 1}-->\n`
@@ -278,14 +345,32 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       const components = new Set(imports.map((line) => /^@import\s+([A-Za-z_$][\w-]*)\s+from/.exec(line)?.[1]).filter((n): n is string => !!n))
       // cl-layout names the generated layout import (tag names must start with a letter, so not __cl_).
       if (components.has('cl-layout')) throw new Error(`${file}: cl-layout is reserved for the page's layout; import the component under another name`)
+      if (options.quiz && /^\s*:{3,}\s*quiz\b/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.quiz!.tag}\\s+from`).test(line))) {
+        imports.unshift(`@import ${options.quiz.tag} from '${options.quiz.from}'`)
+      }
       if (options.copy && !imports.some((line) => new RegExp(`^@import\\s+${options.copy!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.copy.tag} from '${options.copy.from}'`)
       }
-      const env = { tags: [] as string[], groups: 0, file, root: context.root }
+      const env = { tags: [] as string[], groups: 0, file, root: context.root, quizzes: 0, quizAllowed: data.steps === true || options.quizzes === 'everywhere' }
       const tags = protectTags(body, components, env.tags)
-      const tokens = md.parse(tags.body, env)
+      let tokens = md.parse(tags.body, env)
+      // steps: true (lessons): each h2 and what follows it, up to the next h2, is a <section class="step">; the
+      // layout can show one at a time, and without JavaScript it is a plain page.
+      if (data.steps === true && tokens.length) {
+        const Token = tokens[0]!.constructor as new (type: string, tag: string, nesting: number) => (typeof tokens)[number]
+        const html = (content: string) => Object.assign(new Token('html_block', '', 0), { content })
+        let open = false
+        tokens = tokens.flatMap((t) => {
+          if (t.type !== 'heading_open' || t.tag !== 'h2' || t.level !== 0) return [t]
+          const before = open ? [html('</section>\n')] : []
+          open = true
+          return [...before, html(`<section class="step" aria-labelledby="${escapeHtml(String(t.attrGet('id') ?? ''))}">\n`), t]
+        })
+        if (open) tokens.push(html('</section>\n'))
+      }
       const headings = tokens.flatMap((t, i) => {
-        if (t.type !== 'heading_open' || (t.tag !== 'h2' && t.tag !== 'h3')) return []
+        // Top-level only, like the lesson steps: a heading inside a blockquote or list isn't a section of the page.
+        if (t.type !== 'heading_open' || (t.tag !== 'h2' && t.tag !== 'h3') || t.level !== 0) return []
         const text = (tokens[i + 1]!.children ?? []).filter((c: Tok) => c.type === 'text' || c.type === 'code_inline').map((c: Tok) => c.content).join('')
         return [{ id: String(t.attrGet('id') ?? ''), text, level: t.tag === 'h2' ? 2 : 3 }]
       })

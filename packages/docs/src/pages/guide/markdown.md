@@ -40,6 +40,8 @@ Write **Markdown** as usual.
 
 `title` (or the first `#` heading) and `description` go to the layout, with the page's route as `path`. Set `layout:` in the frontmatter to use another layout, or `layout: false` for none.
 
+`steps: true` (for lessons) wraps each `##` heading and what follows it, up to the next one, in a `<section class="step" aria-labelledby="…">`. The page is still a plain page; a layout can show one step at a time (see [Docs theme](/guide/docs-theme#lessons)).
+
 ## Components in Markdown
 
 Import components at the top, then use them like HTML. Leave blank lines around Markdown inside a component:
@@ -134,6 +136,21 @@ jsonLd:
 ```
 
 They become a `<cl-head>` block, which works in any `.tscl` page too (see the plugin's `head` option).
+
+## Quizzes
+
+In a lesson (frontmatter `steps: true`), `::: quiz` asks a question. Its task list is the options, with the right one ticked; whatever follows is the explanation:
+
+```md
+::: quiz Where does the page for `/about` live?
+- [ ] `src/about.html`
+- [x] `src/pages/about.tscl`
+
+A page's path under `src/pages` is its URL.
+:::
+```
+
+It is static HTML: the options are radio buttons and the answer is in a `<details>`, so it works without JavaScript. With `markdown({ quiz: { tag: 'quiz', from: '@clarusjs/theme-docs/quiz.tscl' } })` it renders through the theme's quiz, whose options are an island: pick one, Check, and the right answer and the explanation show. In a lesson the action bar does the checking (see [Docs theme](/guide/docs-theme#lessons)). A quiz needs exactly one right answer; `markdown({ quizzes: 'everywhere' })` allows quizzes outside lessons.
 
 ## Links
 
