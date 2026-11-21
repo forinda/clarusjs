@@ -318,3 +318,34 @@ test('#217: inputs are deeply readonly: mutating one (or its arrays) is a type e
     'src/components/c.tscl:4:48 TS2339', // push: not on a readonly array
   ])
 })
+
+test('#219: [(x)] needs @model x and a writable target; a child may assign its @model but not change inside it', () => {
+  const root = project({
+    'src/components/field.tscl': "@input label: string\n@model value: { text: string } = { text: '' }\n<script>\n  function clear() { value = { text: '' } }\n  function bad() { value.text = 'x' }\n</script>\n<p>{{ label }} {{ value.text }}</p>\n",
+    'src/components/form.tscl': [
+      '@import field from \'./field.tscl\'',
+      '@input fixed: { name: { text: string } }',
+      '<script>',
+      "  let form = state({ name: { text: '' } })",
+      '</script>',
+      "<field [label]=\"'ok'\" [(value)]=\"form.name\" />",
+      "<field [(label)]=\"form.name.text\" [value]=\"form.name\" />",
+      "<field [label]=\"'ro'\" [(value)]=\"fixed.name\" />",
+      '<input [(value)]="form.name.text">',
+      '',
+    ].join('\n'),
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
+    'src/components/field.tscl:5 TS2540', // value.text: inside a @model is read-only too
+    'src/components/form.tscl:7 TS2322', // [(label)]: label isn't a @model of field
+    'src/components/form.tscl:8 TS2540', // fixed is a read-only input
+  ])
+})
+
+test('state([]) starts an array of anything (scripts are JavaScript: no state<string[]>); custom events are CustomEvent', () => {
+  const root = project({
+    'src/components/c.tscl': "<script>\n  let log = state([])\n  function add(x) { log = [...log, x] }\n</script>\n<div (rate)=\"add($event.detail)\" (click)=\"add($event.nope)\">{{ log.length }}</div>\n",
+  })
+  expect(check({ root, typescript }).diagnostics.map((d) => `${d.line} ${d.code}`)).toEqual(['5 TS2339']) // only $event.nope on a MouseEvent
+})
