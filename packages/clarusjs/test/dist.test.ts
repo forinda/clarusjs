@@ -40,6 +40,12 @@ test('built compiler compiles a component', async () => {
   expect(out.code).toContain('export function attach')
 })
 
+test('built compiler exports parse, declared in the .d.ts', async () => {
+  const { parse } = await import(`${dist}/compiler/index.js`)
+  expect(parse('<b>hi</b>', 'c.tscl').nodes.length).toBeGreaterThan(0)
+  expect(readFileSync(`${dist}/compiler/index.d.ts`, 'utf8')).toMatch(/\bparse\b/)
+})
+
 test('built Vite plugin points at built runtime files that exist', async () => {
   const { default: clarusjs } = await import(`${dist}/vite/plugin.js`)
   const plugin = clarusjs()

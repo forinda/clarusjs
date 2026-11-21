@@ -5,6 +5,8 @@ import { lower } from './ir.ts'
 import { parse, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
+export { parse } from './parse.ts'
+export type { ParsedFile, InputDecl, ImportDecl, TemplateNode, Attr } from './parse.ts'
 
 /**
  * `renderImports`: import child components' render functions with `?render`, for a render module that runs in the
