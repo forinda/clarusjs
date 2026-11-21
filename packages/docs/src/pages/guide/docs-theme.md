@@ -1,5 +1,7 @@
 ---
 title: Docs theme
+group: "Site quality"
+order: 1
 description: Build a documentation site with @clarusjs/theme-docs - header, sidebar, content and on-this-page, configured with props, slots and CSS custom properties.
 ---
 
@@ -54,6 +56,51 @@ export const config: ThemeConfig = {
 ```
 
 A page belongs to the section whose sidebar lists it: the section is marked in the header, its groups fill the sidebar, and previous/next follow its order. Pages in no section, like a home page, get the header and footer only.
+
+## Sidebar from the pages
+
+Instead of listing every page, let the theme read them. Add its Vite plugin, which reads `src/pages` while the site builds (and again in dev when a page changes):
+
+```ts
+// vite.config.ts
+import { themeDocs } from '@clarusjs/theme-docs/vite.js'
+
+export default defineConfig({ plugins: [themeDocs(), clarusjs({ sources: [markdown()] })] })
+```
+
+Then `pagesNav(sections, pages)` fills each section's sidebar from its folder, `src/pages/<section key>/`:
+
+```ts
+import { pagesNav, type ThemeConfig } from '@clarusjs/theme-docs/nav.ts'
+import pages from 'virtual:theme-docs/pages'
+
+export const config: ThemeConfig = {
+  brand: { text: 'acme' },
+  sections: pagesNav([
+    { key: 'guide', title: 'Guide', href: '', groups: [
+      { title: 'Basics', items: [] }, // sets the group order
+      { title: 'More', items: [{ title: 'Playground', href: '/playground', order: 9 }] }, // not under guide/
+    ] },
+  ], pages),
+}
+```
+
+```md
+---
+title: "Start"
+group: "Basics"
+order: 1
+---
+```
+
+- **Group:** the frontmatter `group`, else the page's subfolder (`guide/advanced/x.md` is in "Advanced"), else the section's title.
+- **Title:** the frontmatter `title`, else the first `# ` heading; a `.tscl` page uses its layout's `[title]="'…'"`.
+- **Order:** lowest `order` first, then by title. Groups the config doesn't name come after its own, in the order of their first page.
+- **Left out:** `sidebar: false`, dynamic routes (`[step].tscl`) and files or folders starting with `_`.
+- **The config wins:** an item it lists replaces the page with the same `href`, so it can rename or move a page and add entries that aren't pages.
+- An empty `href` on a section means its first page.
+
+Only the titles, groups and orders reach the browser (for pages it renders itself, like client routes), never the files. For the types, add `/// <reference types="@clarusjs/theme-docs/pages.d.ts" />` to a `.d.ts` in your project. This site's sidebar is built that way: [sidebar.ts](https://github.com/forinda/clarusjs/blob/main/packages/docs/src/sidebar.ts).
 
 ## Regions at every width
 

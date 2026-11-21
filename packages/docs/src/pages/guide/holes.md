@@ -1,5 +1,7 @@
 ---
 title: "Holes"
+group: "Templates"
+order: 3
 description: "Print values in templates with {{ }} holes; they are always escaped."
 ---
 

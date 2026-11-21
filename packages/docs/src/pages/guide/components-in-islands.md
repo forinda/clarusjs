@@ -1,5 +1,7 @@
 ---
 title: "Components inside islands"
+group: "Interactivity"
+order: 4
 description: "Use other components inside an island."
 ---
 

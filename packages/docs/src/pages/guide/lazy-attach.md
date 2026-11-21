@@ -1,5 +1,7 @@
 ---
 title: "Lazy attach"
+group: "Interactivity"
+order: 5
 description: "Load an island's code when the browser is idle, when it is visible or on first use."
 ---
 

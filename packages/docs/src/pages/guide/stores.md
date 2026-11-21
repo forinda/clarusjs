@@ -1,5 +1,7 @@
 ---
 title: "Shared stores"
+group: "Interactivity"
+order: 3
 description: "Share state between islands with stores and shared()."
 ---
 

@@ -1,5 +1,7 @@
 ---
 title: "Islands"
+group: "Interactivity"
+order: 1
 description: "Interactive components that attach to server HTML, and what ships to the browser."
 ---
 

@@ -1,5 +1,7 @@
 ---
 title: "Attributes"
+group: "Templates"
+order: 4
 description: "Bind attributes with [name] or {{ }}; values are escaped and URLs are checked."
 ---
 

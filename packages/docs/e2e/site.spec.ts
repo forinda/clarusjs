@@ -1,6 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
-import { sections } from '../src/nav.ts'
+import { readdirSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { pagesNav } from '@clarusjs/theme-docs/nav.ts'
+import { readPages } from '@clarusjs/theme-docs/vite.js'
+import { sidebar } from '../src/sidebar.ts'
 import AxeBuilder from '@axe-core/playwright'
+
+// The site's sidebar, built the way themeDocs() and nav.ts build it.
+const sections = pagesNav(sidebar, readPages(resolve(import.meta.dirname, '../src/pages')))
 
 // Every page in the sidebar, in sidebar order, plus the home page.
 const docs = sections.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => ({ path: i.href, title: i.title, section: s.key }))))
@@ -189,6 +196,22 @@ test('previous and next follow sidebar order within each section', async ({ page
       else await expect(next, item.href).toHaveAttribute('href', items[i + 1]!.href)
     }
   }
+})
+
+test('the sidebar is generated from the pages: each Markdown page sits in its frontmatter group, in its order', async ({ page }) => {
+  const dir = resolve(import.meta.dirname, '../src/pages/guide')
+  const templates = readdirSync(dir).filter((f) => f.endsWith('.md'))
+    .map((f) => readFileSync(resolve(dir, f), 'utf8'))
+    .filter((text) => /^group: "Templates"$/m.test(text))
+    .map((text) => ({ title: /^title: "?(.*?)"?$/m.exec(text)![1]!, order: Number(/^order: (\d+)$/m.exec(text)![1]) }))
+    .sort((a, b) => a.order - b.order)
+    .map((p) => p.title)
+  await page.goto('/guide/holes')
+  const group = page.locator('.sidebar p.group', { hasText: /^Templates$/ }).locator('xpath=following-sibling::ul[1]')
+  const shown = await group.locator('a').allTextContents()
+  // Verbatim is a .tscl page, placed by nav.ts.
+  expect(shown.filter((t) => t !== 'Verbatim')).toEqual(templates)
+  expect(shown).toContain('Verbatim')
 })
 
 test('named slot: a callout shows its filled title, or the fallback from its type', async ({ page }) => {

@@ -1,5 +1,7 @@
 ---
 title: "Fragment navigation"
+group: "Interactivity"
+order: 6
 description: "Move between server-rendered pages without reloading: swap the page region, keep persisted elements, attach new islands."
 ---
 

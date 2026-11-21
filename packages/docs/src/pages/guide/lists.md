@@ -1,5 +1,7 @@
 ---
 title: "Lists"
+group: "Templates"
+order: 6
 description: "Repeat content with @for, track keys and @empty."
 ---
 

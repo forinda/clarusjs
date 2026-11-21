@@ -1,5 +1,7 @@
 ---
 title: "Rendering modes"
+group: "Introduction"
+order: 5
 description: "Choose per route whether a page is prerendered at build time or rendered on every request."
 ---
 

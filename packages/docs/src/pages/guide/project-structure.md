@@ -1,5 +1,7 @@
 ---
 title: "Project structure"
+group: "Introduction"
+order: 3
 description: "Where pages, layouts, components and stores live in a clarusjs project."
 ---
 

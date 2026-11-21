@@ -1,5 +1,7 @@
 ---
 title: "Slots"
+group: "Templates"
+order: 7
 description: "Wrap content with <slot />, named slots and fallback content."
 ---
 

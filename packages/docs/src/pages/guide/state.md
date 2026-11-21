@@ -1,5 +1,7 @@
 ---
 title: "State"
+group: "Interactivity"
+order: 2
 description: "Reactive state and derived values in islands, starting from the server's values."
 ---
 

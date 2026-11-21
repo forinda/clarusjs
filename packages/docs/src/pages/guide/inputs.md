@@ -1,5 +1,7 @@
 ---
 title: "Inputs"
+group: "Templates"
+order: 2
 description: "Typed inputs with @input, defaults, and types imported with @import type."
 ---
 

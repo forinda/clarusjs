@@ -1,5 +1,7 @@
 ---
 title: "Deploying"
+group: "Build & deploy"
+order: 2
 description: "Upload dist/client to any static host; this site deploys to Netlify."
 ---
 

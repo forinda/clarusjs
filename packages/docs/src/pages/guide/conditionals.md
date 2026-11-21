@@ -1,5 +1,7 @@
 ---
 title: "Conditionals"
+group: "Templates"
+order: 5
 description: "Show one of several branches with @if, @else if and @else."
 ---
 

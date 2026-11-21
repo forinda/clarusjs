@@ -1,5 +1,7 @@
 ---
 title: What is clarusjs?
+group: "Introduction"
+order: 1
 description: clarusjs compiles templates to server HTML and ships JavaScript only for the interactive parts.
 ---
 # What is clarusjs?
