@@ -24,7 +24,13 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     const id = options.scope ?? scopeId(options.file)
     const components = new Set(parsed.imports.map((imp) => imp.name))
     markRoots(parsed.nodes, id, components)
-    for (const s of parsed.styles) css += s.global ? s.css : `@scope ([data-cl-c="${id}"]) to ([data-cl-c]) {${s.css.replace(/\s*$/, '')}\n}\n`
+    for (const s of parsed.styles) {
+      if (s.global) { css += s.css; continue }
+      // Statements that must be top-level (@reference for Tailwind's @apply, @import) go before the @scope block.
+      const head = /^(?:\s*@(?:reference|import)\b[^;{]*;)+/.exec(s.css)?.[0] ?? ''
+      const statements = head.split(';').map((x) => x.trim()).filter(Boolean).map((x) => `${x};\n`).join('')
+      css += `${statements}@scope ([data-cl-c="${id}"]) to ([data-cl-c]) {${s.css.slice(head.length).replace(/\s*$/, '')}\n}\n`
+    }
   } else {
     css = parsed.styles.map((s) => s.css).join('')
   }

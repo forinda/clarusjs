@@ -1,7 +1,9 @@
 // Build-time helpers for the Vite plugin: find components, and prerender every route to static HTML.
 import { spawnSync } from 'node:child_process'
-import { readdirSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readdirSync, realpathSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, resolve } from 'node:path'
+import { parse } from '../compiler/parse.ts'
 
 /** Absolute paths of every component file under `srcDir` (`.tscl`, or any page source extension given). */
 export function findClarusFiles(srcDir: string, extensions: string[] = ['.tscl']): string[] {
@@ -86,4 +88,38 @@ export async function prerender(serverEntry: string, outDir: string, manifestFil
   const result = spawnSync(process.execPath, args, { encoding: 'utf8', env })
   if (result.status !== 0) throw new Error(result.stderr.trim() || `prerender failed (exit ${result.status})`)
   return JSON.parse(result.stdout) as { routes: string[]; readers: string[]; loaded: string[]; server: { route: string; loader: boolean }[] }
+}
+
+/** The package a file belongs to, from its last node_modules segment (pnpm: node_modules/.pnpm/x@1/node_modules/x/…). */
+export function packageOf(file: string): string | undefined {
+  return /.*[\\/]node_modules[\\/]((?:@[^\\/]+[\\/])?[^\\/]+)[\\/]/.exec(file)?.[1]!.replace(/\\/g, '/')
+}
+
+/**
+ * Component files reachable from `start` through @import lines: relative paths, root-relative ('/src/…') and package
+ * specifiers ('@clarusjs/theme-docs/layout.tscl', resolved as Node would from the app). Real paths, so a workspace
+ * package linked into node_modules is one file, not two.
+ */
+export function reachableComponents(root: string, start: string[], read: (file: string) => string, extensions: string[]): string[] {
+  const require = createRequire(resolve(root, 'package.json'))
+  const seen = new Set<string>()
+  const queue = start.map((f) => realpathSync(f))
+  while (queue.length) {
+    const file = queue.shift()!
+    if (seen.has(file)) continue
+    seen.add(file)
+    let imports: { from: string }[]
+    try { imports = parse(read(file), file).imports } catch { continue } // compile errors are reported elsewhere
+    for (const { from } of imports) {
+      const spec = from.replace(/\?.*$/, '')
+      if (!extensions.some((e) => spec.endsWith(e))) continue
+      let target: string
+      try {
+        target = spec.startsWith('.') ? resolve(dirname(file), spec) : spec.startsWith('/') ? resolve(root, spec.slice(1)) : require.resolve(spec)
+        target = realpathSync(target)
+      } catch { continue } // an unresolvable import is reported when the component compiles
+      if (!seen.has(target)) queue.push(target)
+    }
+  }
+  return [...seen]
 }

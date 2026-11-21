@@ -1,4 +1,4 @@
-@import copy from '../../components/copy.tscl'
+@import copy from '@clarusjs/theme-docs/copy.tscl'
 @import docs from '../../layouts/docs.tscl'
 @import { readManifest } from 'clarusjs/manifest'
 
