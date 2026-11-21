@@ -1,0 +1,22 @@
+{{--
+  components/clock.tscl: a live clock. The server renders the time it renders at; in the browser the island catches up
+  at once (a built page can be hours old) and then ticks on each whole second. The timer stops when the island is
+  removed (after a navigation, say), so clocks never pile up.
+--}}
+<script>
+  import { browser, onDispose } from 'clarusjs/runtime'
+  let now = state(Date.now())
+  const time = derived(() => new Date(now).toLocaleTimeString())
+  // The script also runs on the server, which renders once and has no timers to keep.
+  if (browser) {
+    let timer
+    const tick = () => {
+      now = Date.now()
+      timer = setTimeout(tick, 1000 - (now % 1000)) // the next whole second: the display changes when the second does
+    }
+    tick()
+    onDispose(() => clearTimeout(timer))
+  }
+</script>
+
+<time class="clock" [datetime]="new Date(now).toISOString()">{{ time }}</time>

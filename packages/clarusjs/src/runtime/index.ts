@@ -3,3 +3,4 @@ export { state, derived, shared, effect, scope, onDispose, untrack, batch, type 
 export { holes, blocks, text, on, attr, block, forBlock, region, model, modelInput, type Hole, type Block, type Ctx } from './dom.ts'
 export { escape, attrHtml, blockHtml, forHtml, regionHtml } from './html.ts'
 export { parse as parseIslandData } from './serialize.ts'
+export { browser } from './env.ts'

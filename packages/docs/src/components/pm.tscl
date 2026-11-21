@@ -5,13 +5,14 @@
 <script>
   import { pm } from '../stores/pm.ts'
   import { managers, command } from '../pm.ts'
+  import { browser } from 'clarusjs/runtime'
   let manager = shared(pm)
   function pick(m) {
     manager = m
     try { localStorage.setItem('clarusjs-pm', m) } catch {}
   }
   // In the browser, start from the saved choice (the server always renders pnpm).
-  if (typeof document !== 'undefined') {
+  if (browser) {
     try {
       const saved = managers.find((m) => m === localStorage.getItem('clarusjs-pm'))
       if (saved) manager = saved
