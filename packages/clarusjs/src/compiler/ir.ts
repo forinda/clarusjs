@@ -408,7 +408,9 @@ function loadingUrl(tag: string, attr: string, attrs: Attr[]): string | undefine
   const t = tag.toLowerCase()
   const name = attr.toLowerCase()
   if (t === 'link' && name === 'href') {
-    const rel = attrs.find((x) => x.name.toLowerCase() === 'rel')
+    // Exactly one rel, and static: a second one (bound, or later in the tag) could say what really loads.
+    const relAttrs = attrs.filter((x) => x.name.toLowerCase() === 'rel')
+    const rel = relAttrs.length === 1 ? relAttrs[0] : undefined
     const rels = rel?.kind === 'static' && typeof rel.value === 'string' ? rel.value.toLowerCase().split(/\s+/).filter(Boolean) : []
     return rels.length && rels.every((r) => SAFE_RELS.has(r)) ? undefined : 'can load a stylesheet, icon or script (only rel="canonical", "alternate" and other rels that load nothing take an href from data)'
   }

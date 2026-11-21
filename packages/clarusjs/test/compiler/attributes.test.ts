@@ -135,7 +135,7 @@ test('srcset checks every candidate', async () => {
 
 test('#248: a URL that loads a page or resource into this one can\'t come from data: a located build error', () => {
   // § marks the attribute the error points at.
-  for (const marked of ['<iframe §[src]="u"></iframe>', '<iframe §src="{{ u }}"></iframe>', '<frame §[src]="u"></frame>', '<embed §[src]="u">', '<object §[data]="u"></object>', '<object §codebase="{{ u }}"></object>', '<base §[href]="u">', '<link rel="stylesheet" §[href]="u">', '<link §[href]="u">', '<link [rel]="u" §[href]="u">', '<link rel="canonical icon" §[href]="u">']) {
+  for (const marked of ['<iframe §[src]="u"></iframe>', '<iframe §src="{{ u }}"></iframe>', '<frame §[src]="u"></frame>', '<embed §[src]="u">', '<object §[data]="u"></object>', '<object §codebase="{{ u }}"></object>', '<base §[href]="u">', '<link rel="stylesheet" §[href]="u">', '<link §[href]="u">', '<link [rel]="u" §[href]="u">', '<link rel="canonical icon" §[href]="u">', '<link rel="canonical" [rel]="u" §[href]="u">', '<link rel="canonical" rel="stylesheet" §[href]="u">', '<link [rel]="u" rel="canonical" §[href]="u">']) {
     const tag = marked.replace('§', '')
     expect(compileError(`@input u: string\n${tag}`).message, tag).toMatch(new RegExp(`^x\\.tscl:2:${marked.indexOf('§') + 1} .*static`))
   }
