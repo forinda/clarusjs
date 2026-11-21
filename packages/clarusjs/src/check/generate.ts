@@ -12,6 +12,9 @@ import { splitImports, untypedParams } from '../compiler/script.ts'
  */
 export type Mapping = [number, number, number, boolean, number?]
 
+// Boolean attributes whose DOM property is spelled differently (the rest match their lowercase name).
+const PROPERTY: Record<string, string> = { readonly: 'readOnly', novalidate: 'noValidate', formnovalidate: 'formNoValidate', allowfullscreen: 'allowFullscreen', playsinline: 'playsInline', nomodule: 'noModule', ismap: 'isMap' }
+
 /**
  * `loader`: the module specifier of the page's .load.ts when it exports load(); what it returns is checked against
  * the page's inputs. `componentSuffix`: added to component imports ('.ts' for `clarusjs check`'s generated files; ''
@@ -35,6 +38,13 @@ export function generateTs(source: string, file: string, options: { loader?: str
   emit('declare function derived<T>(fn: () => T): T\n')
   emit('declare function shared<T>(store: { get(): T }): T\n')
   emit('declare function __cl_use(value: unknown): void\n')
+  // [prop] on an element sets an attribute: true → bare, false/null → removed, anything else as text. So a boolean
+  // attribute (per the DOM's own types) takes a boolean (a string, even 'false', would switch it on), and any other a
+  // primitive (an object would read "[object Object]").
+  // (The text type is spelled out, not aliased, so errors name it.)
+  const text = 'string | number | boolean | null | undefined'
+  emit(`type __cl_AttrOf<T extends string, P extends string> = T extends keyof HTMLElementTagNameMap ? P extends keyof HTMLElementTagNameMap[T] ? (HTMLElementTagNameMap[T][P] extends boolean ? boolean | null | undefined : ${text}) : ${text} : ${text}\n`)
+  emit('declare function __cl_attr<T extends string, P extends string>(value: __cl_AttrOf<T, P>): void\n')
   // A name the DOM doesn't know is a custom event (a child island's CustomEvent, with its detail).
   emit('type __cl_Event<K extends string> = (K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : CustomEvent) & { target: any; currentTarget: any }\n')
   for (const t of parsed.typeImports) {
@@ -208,7 +218,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
         }
         for (const a of node.attrs) {
           if (a.kind === 'model') { use(a.expr, attrValueStart(a)); writable(a) }
-          else if (a.kind === 'prop') use(a.expr, attrValueStart(a))
+          else if (a.kind === 'prop') {
+            emit(`  __cl_attr<${JSON.stringify(node.tag.toLowerCase())}, ${JSON.stringify(PROPERTY[a.name.toLowerCase()] ?? a.name.toLowerCase())}>((`)
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit('));\n')
+          }
           else if (a.kind === 'interp') {
             for (const p of a.parts) if (typeof p !== 'string') use(p.expr, p.start + 2)
           } else if (a.kind === 'event') {

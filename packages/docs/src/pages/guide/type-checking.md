@@ -33,6 +33,7 @@ If your project has a `tsconfig.json` (or, in JavaScript, a `jsconfig.json`), it
 - **Holes and attributes.** Every `{{ }}` and `[attr]` expression is type-checked against the inputs, script variables and imports it can see.
 - **Control flow.** `@if` narrows types like `if`, and `@for` types the row variable from the list.
 - **Events.** In `(click)="…"`, `$event` has the right event type, such as `MouseEvent`.
+- **Attributes.** `[disabled]="…"` on a boolean attribute takes a boolean: a string, even `'false'`, would switch it on. Any other `[attr]` takes text, a number or a boolean; an object would show as `[object Object]`.
 - **Rendering by name.** `render('components/pill', { text })` from `clarusjs/views` is checked against the view's inputs, through the generated `.clarusjs/views.d.ts`.
 - **Scripts and data.** An island's script, and data brought in with `@import`, are ordinary TypeScript.
 - **Markdown pages.** Pages from the plugin's `sources` (Markdown from `@clarusjs/content`) are checked as the build sees them: a component used in a `.md` page is checked like in a `.tscl` page, with errors at `page.md:line:col`. `clarusjs check` reads the sources, and `resolve.alias`, from your `vite.config`.
