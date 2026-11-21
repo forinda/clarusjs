@@ -5,6 +5,7 @@ import { URI } from 'vscode-uri'
 import type { Project } from '../project.ts'
 import { completions, definition, hover } from '../components.ts'
 import { offsetAt } from '../positions.ts'
+import { fileRenameEdits, references, renameEdits, renameRange } from '../references.ts'
 import { TOKEN_TYPES, tokensOf } from '../tokens.ts'
 import { diagnosticsFor } from './diagnostics.ts'
 
@@ -23,6 +24,9 @@ export function createTsclServicePlugin(projectFor: (path: string) => Project): 
       hoverProvider: true,
       definitionProvider: true,
       semanticTokensProvider: { legend: { tokenTypes: [...TOKEN_TYPES], tokenModifiers: [] } },
+      referencesProvider: true,
+      renameProvider: { prepareProvider: true },
+      fileRenameEditsProvider: true,
     },
     create(context) {
       /** The .tscl document's path, project and text (the project synced to the buffer), or nothing for others. */
@@ -50,6 +54,23 @@ export function createTsclServicePlugin(projectFor: (path: string) => Project): 
         provideDefinition(document, position) {
           const doc = open(document)
           return doc && definition(doc.project, doc.path, doc.text, offsetAt(doc.text, position))
+        },
+        provideReferences(document, position) {
+          const doc = open(document)
+          return doc && references(doc.project, doc.path, doc.text, offsetAt(doc.text, position))
+        },
+        provideRenameRange(document, position) {
+          const doc = open(document)
+          return doc && renameRange(doc.project, doc.path, doc.text, offsetAt(doc.text, position))
+        },
+        provideRenameEdits(document, position, newName) {
+          const doc = open(document)
+          return doc && renameEdits(doc.project, doc.path, doc.text, offsetAt(doc.text, position), newName)
+        },
+        provideFileRenameEdits(oldUri, newUri) {
+          const oldPath = URI.parse(oldUri.toString()).fsPath
+          if (!oldPath.endsWith('.tscl')) return undefined
+          return fileRenameEdits(projectFor(oldPath), [[oldPath, URI.parse(newUri.toString()).fsPath]])
         },
         provideDocumentSemanticTokens(document, range, legend) {
           const doc = open(document)
