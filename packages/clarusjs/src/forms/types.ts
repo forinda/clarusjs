@@ -11,8 +11,8 @@ export type StandardSchema<T = unknown> = {
 export type StandardIssue = { readonly message: string; readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }> }
 export type StandardResult<T> = { readonly value: T; readonly issues?: undefined } | { readonly issues: ReadonlyArray<StandardIssue> }
 
-/** The dotted paths of a form's values: `customer.email`, `lines.0.item`. */
-export type Path<T> = string & {} | PathOf<T, 6>
+/** The dotted paths of a form's values: `customer.email`, `lines.0.item` (any string for values typed `any`). */
+export type Path<T> = 0 extends 1 & T ? string : PathOf<T, 6>
 type Prev = [never, 0, 1, 2, 3, 4, 5]
 type PathOf<T, D extends number> = [D] extends [never] ? never
   : T extends readonly (infer U)[] ? `${number}` | `${number}.${PathOf<U, Prev[D]>}`

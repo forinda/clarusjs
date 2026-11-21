@@ -219,3 +219,24 @@ test('event handlers keep the narrowing of the @if (and @else) around them; curr
     expect.stringMatching(/^src\/a\.tscl:14:6 Cannot find name 'nope'/),
   ])
 })
+
+test('forms: [engine] takes a form, and paths given to the form are the values\' paths', () => {
+  const forms = resolve(import.meta.dirname, '../../src/forms/index.ts')
+  const errors = check({
+    'node_modules/clarusjs/package.json': JSON.stringify({ name: 'clarusjs', exports: { './forms': './forms.ts' } }),
+    'node_modules/clarusjs/forms.ts': `export * from ${JSON.stringify(forms)}\n`,
+    'src/a.tscl': `<script>
+  import { form } from 'clarusjs/forms'
+  let order = state({ customer: { email: '' }, lines: [{ item: '' }] })
+  const f = form(order)
+</script>
+<form [engine]="f"><input [(value)]="order.customer.email"><p>{{ f.error('customer.email') }} {{ f.error('lines.0.item') }}</p></form>
+<p>{{ f.error('customer.emial') }}</p>
+<div [engine]="order"></div>
+`,
+  })
+  expect(errors).toEqual([
+    expect.stringMatching(/^src\/a\.tscl:7:15 .*'"customer\.emial"' is not assignable to parameter of type '"customer" \| "customer\.email"/),
+    expect.stringMatching(/^src\/a\.tscl:8:16 .*is missing the following properties from type 'Form<any>'/),
+  ])
+})
