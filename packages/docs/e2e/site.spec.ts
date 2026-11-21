@@ -692,6 +692,20 @@ test('client tour: arrow keys move between steps with navigate(), rendered by th
   expect(documents).toEqual(['/tour/1'])
 })
 
+test('navigation hooks: beforeNavigate cancels a link click, navigate() leaves anyway, and the hook goes with its island', async ({ page }) => {
+  await page.goto('/guide/navigation')
+  await expect(page.locator('cl-island[c="leave-guard"]')).toHaveAttribute('data-cl-ready', '')
+  await page.locator('#leave-note').fill('draft')
+  await page.locator('.sidebar a[href="/guide/lists"]').click()
+  await expect(page.getByRole('alert')).toContainText('unsaved note')
+  await expect(page).toHaveURL(/\/guide\/navigation$/) // cancelled: still here
+  await page.getByRole('button', { name: 'Leave anyway' }).click()
+  await expect(page.locator('h1')).toHaveText('Lists')
+  // The island was swapped out with its page: its hook no longer stops anything.
+  await page.locator('.sidebar a[href="/guide/holes"]').click()
+  await expect(page.locator('h1')).toHaveText('Holes')
+})
+
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c="theme-toggle"]')).toHaveAttribute('data-cl-ready', '')

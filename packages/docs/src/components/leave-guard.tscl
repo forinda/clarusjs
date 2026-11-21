@@ -1,0 +1,26 @@
+{{-- Navigation hooks, live: while the note has text, beforeNavigate stops links from leaving and asks first. --}}
+<script>
+  import { beforeNavigate, navigate } from 'clarusjs/navigation'
+  let note = state('')
+  let pending = state('')
+  beforeNavigate((to, nav) => {
+    if (!note.trim() || to.pathname === location.pathname) return // links within this page are fine
+    nav.cancel()
+    pending = to.href
+  })
+  function write(value) { note = value }
+  function leave() {
+    const to = pending
+    note = ''
+    pending = ''
+    navigate(to)
+  }
+</script>
+
+<div class="leave-guard">
+  <label for="leave-note">A note you haven’t saved</label>
+  <textarea id="leave-note" rows="3" placeholder="Type something, then click a link in the sidebar" (input)="write($event.target.value)"></textarea>
+  @if (pending) {
+    <p class="leave-ask" role="alert">You have an unsaved note. <button type="button" (click)="leave()">Leave anyway</button> <button type="button" (click)="pending = ''">Stay</button></p>
+  }
+</div>

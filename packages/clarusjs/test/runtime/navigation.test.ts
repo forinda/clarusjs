@@ -61,3 +61,52 @@ test('back() goes back one entry', async () => {
   goBack()
   expect(back).toHaveBeenCalledOnce()
 })
+
+// #181: hooks, released with the island that registered them.
+class Navigate extends Event {
+  navigationType = 'push'
+  destination: { url: string }
+  constructor(url: string, cancelable = true) { super('navigate', { cancelable }); this.destination = { url } }
+}
+
+test('beforeNavigate sees where a navigation goes and can cancel it', async () => {
+  const navigation = new FakeNavigation()
+  vi.stubGlobal('navigation', navigation)
+  const { beforeNavigate } = await import('../../src/runtime/navigation.ts')
+  const seen: string[] = []
+  beforeNavigate((to, nav) => { seen.push(`${nav.type} ${to.pathname}`); if (to.pathname === '/stay') nav.cancel() })
+  const go = new Navigate('http://localhost:3000/go')
+  const stay = new Navigate('http://localhost:3000/stay')
+  navigation.dispatchEvent(go)
+  navigation.dispatchEvent(stay)
+  expect(seen).toEqual(['push /go', 'push /stay'])
+  expect([go.defaultPrevented, stay.defaultPrevented]).toEqual([false, true])
+})
+
+test('afterNavigate runs once the new page is in; onNavigateError gets the error', async () => {
+  const navigation = new FakeNavigation()
+  vi.stubGlobal('navigation', navigation)
+  const { afterNavigate, onNavigateError } = await import('../../src/runtime/navigation.ts')
+  const after: string[] = []
+  const errors: string[] = []
+  afterNavigate((to) => after.push(to.pathname))
+  onNavigateError((to, error) => errors.push(`${to.pathname} ${(error as Error).message}`))
+  history.replaceState(null, '', '/arrived')
+  navigation.dispatchEvent(new Event('navigatesuccess'))
+  navigation.dispatchEvent(Object.assign(new Event('navigateerror'), { error: new Error('500') }))
+  expect(after).toEqual(['/arrived'])
+  expect(errors).toEqual(['/arrived 500'])
+})
+
+test('hooks registered in an island are released with it', async () => {
+  const navigation = new FakeNavigation()
+  vi.stubGlobal('navigation', navigation)
+  const { afterNavigate } = await import('../../src/runtime/navigation.ts')
+  const { scope } = await import('../../src/runtime/signals.ts')
+  let runs = 0
+  const release = scope(() => afterNavigate(() => runs++))
+  navigation.dispatchEvent(new Event('navigatesuccess'))
+  release()
+  navigation.dispatchEvent(new Event('navigatesuccess'))
+  expect(runs).toBe(1)
+})

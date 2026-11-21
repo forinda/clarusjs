@@ -2,7 +2,7 @@
 // Navigations go through the Navigation API, so the page's navigator (fragments or the client router) takes them
 // over exactly like a link click; without it they are normal page loads. Island scripts also run on the server,
 // where this does nothing.
-import { state, type Signal } from './signals.ts'
+import { onDispose, state, type Signal } from './signals.ts'
 
 type Navigation = EventTarget & {
   navigate(url: string, options: { history: 'auto' | 'replace'; state?: unknown }): { finished: Promise<unknown> }
@@ -43,4 +43,36 @@ export async function navigate(to: string | URL, options: { replace?: boolean; s
 /** Back one entry, like the browser's back button. */
 export function back(): void {
   if (browser) history.back()
+}
+
+// A hook listens on the Navigation API for as long as the island that registered it (no-op without the API).
+function hook(type: string, listener: (e: Event & { navigationType?: string; destination?: { url: string }; error?: unknown }) => void): void {
+  if (!navigation) return
+  navigation.addEventListener(type, listener)
+  onDispose(() => navigation.removeEventListener(type, listener))
+}
+
+/**
+ * Before any navigation (links, forms, back/forward, `navigate()`): `nav.cancel()` stops it, for example to keep
+ * unsaved work. Back/forward can only be cancelled where the browser allows it.
+ * @see https://clarusjs.com/guide/navigation
+ */
+export function beforeNavigate(fn: (to: URL, nav: { type: string; cancel(): void }) => void): void {
+  hook('navigate', (e) => fn(new URL(e.destination!.url), { type: e.navigationType!, cancel: () => e.preventDefault() }))
+}
+
+/**
+ * After a navigation within the page finished: the new page is in and its islands attached.
+ * @see https://clarusjs.com/guide/navigation
+ */
+export function afterNavigate(fn: (to: URL) => void): void {
+  hook('navigatesuccess', () => fn(new URL(location.href)))
+}
+
+/**
+ * A navigation failed (a fragment or a client page could not be loaded). The page then loads normally.
+ * @see https://clarusjs.com/guide/navigation
+ */
+export function onNavigateError(fn: (to: URL, error: unknown) => void): void {
+  hook('navigateerror', (e) => fn(new URL(location.href), e.error))
 }

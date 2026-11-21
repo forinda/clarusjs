@@ -87,3 +87,8 @@
 .way-kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); }
 .way > span:not(.way-kicker, .way-go) { color: var(--muted); }
 .way-go { margin-top: auto; font-weight: 700; color: var(--accent); }
+
+/* Navigation guide: the leave-guard demo. */
+.leave-guard { display: grid; gap: 8px; margin: 16px 0; }
+.leave-guard textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--fg); }
+.leave-ask { margin: 0; }

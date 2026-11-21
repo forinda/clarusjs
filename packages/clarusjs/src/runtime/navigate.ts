@@ -41,10 +41,11 @@ export function onNavigate(e: NavigateEvent, pick: Pick): void {
   const isCurrent = () => latest == id && !e.signal.aborted
   swapping = true
   e.intercept({
-    handler: () => render(url, isCurrent).catch(() => {
+    handler: () => render(url, isCurrent).catch((err) => {
       if (!isCurrent()) return
       fallback = url.href
       location.reload() // the URL is already committed; assign() would stay in the page with a #hash
+      throw err // reported as navigateerror (onNavigateError)
     }).finally(() => { if (latest == id) swapping = false }) as Promise<void>,
   })
 }

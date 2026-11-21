@@ -50,11 +50,11 @@ test('back/forward between same-document entries is taken over; URLs the picker 
   expect(rendered).toEqual(['/guide', '/app/7'])
 })
 
-test('a failed render reloads the page once; that URL is then left to the browser', async () => {
+test('a failed render reloads the page once and is reported; that URL is then left to the browser', async () => {
   failing = true
   const e = event('http://x/app/broken')
   nav(e)
-  await e.handler!()
+  await expect(e.handler!()).rejects.toThrow('500') // rejected, so the Navigation API reports it (navigateerror)
   expect(reload).toHaveBeenCalledOnce()
   const again = event('http://x/app/broken')
   nav(again)
