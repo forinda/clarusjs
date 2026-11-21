@@ -7,7 +7,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
-import { findClarusFiles, prerender, routeToFile } from './build.ts'
+import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, routeToFile } from './build.ts'
+export { packageOf } from './build.ts'
 import { writeManifest } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
@@ -44,6 +45,8 @@ const scopeFor = (root: string, file: string) => scopeId(relative(root, file).sp
  */
 function pageStylesheets(root: string, files: Files): Map<string, string[]> {
   const deps = new Map<string, { css: string[]; components: string[] }>()
+  const require = createRequire(resolve(root, 'package.json'))
+  const packageFile = (spec: string) => { try { return realpathSync(require.resolve(spec.replace(/\?.*$/, ''))) } catch { return undefined } }
   const read = (file: string) => {
     if (!deps.has(file)) {
       let parsed
@@ -55,7 +58,8 @@ function pageStylesheets(root: string, files: Files): Map<string, string[]> {
       }
       deps.set(file, {
         css: parsed?.cssImports.map((c) => near(c.from)) ?? [],
-        components: parsed?.imports.filter((imp) => /^[./]/.test(imp.from)).map((imp) => near(imp.from)) ?? [],
+        // Components in packages too ('@clarusjs/theme-docs/layout.tscl'): their stylesheets are the page's as well.
+        components: parsed?.imports.map((imp) => (/^[./]/.test(imp.from) ? near(imp.from) : packageFile(imp.from))).filter((f): f is string => !!f) ?? [],
       })
     }
     return deps.get(file)!
@@ -164,39 +168,6 @@ type Files = {
   components(root: string): string[]
 }
 
-/** The package a file belongs to, from its last node_modules segment (pnpm: node_modules/.pnpm/x@1/node_modules/x/…). */
-export function packageOf(file: string): string | undefined {
-  return /.*[\\/]node_modules[\\/]((?:@[^\\/]+[\\/])?[^\\/]+)[\\/]/.exec(file)?.[1]!.replace(/\\/g, '/')
-}
-
-/**
- * Component files reachable from `start` through @import lines: relative paths, root-relative ('/src/…') and package
- * specifiers ('@clarusjs/theme-docs/layout.tscl', resolved as Node would from the app). Real paths, so a workspace
- * package linked into node_modules is one file, not two.
- */
-export function reachableComponents(root: string, start: string[], read: (file: string) => string, extensions: string[]): string[] {
-  const require = createRequire(resolve(root, 'package.json'))
-  const seen = new Set<string>()
-  const queue = start.map((f) => realpathSync(f))
-  while (queue.length) {
-    const file = queue.shift()!
-    if (seen.has(file)) continue
-    seen.add(file)
-    let imports: { from: string }[]
-    try { imports = parse(read(file), file).imports } catch { continue } // compile errors are reported elsewhere
-    for (const { from } of imports) {
-      const spec = from.replace(/\?.*$/, '')
-      if (!extensions.some((e) => spec.endsWith(e))) continue
-      let target: string
-      try {
-        target = spec.startsWith('.') ? resolve(dirname(file), spec) : spec.startsWith('/') ? resolve(root, spec.slice(1)) : require.resolve(spec)
-        target = realpathSync(target)
-      } catch { continue } // an unresolvable import is reported when the component compiles
-      if (!seen.has(target)) queue.push(target)
-    }
-  }
-  return [...seen]
-}
 
 /** Client-mode pages: route (as the file names it) → absolute file. */
 function clientPages(appRoot: string, modes: ModeTable, files: Files): Map<string, string> {
@@ -277,7 +248,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const shipping = new Set<string>()
       if (!env.isPreview) {
         for (const file of files.components(resolve(userConfig.root ?? process.cwd()))) {
-          const name = packageOf(file)
+          const name = packageOfFile(file)
           if (name) shipping.add(name)
         }
         if (shipping.size) config.ssr = { noExternal: [...shipping] }
@@ -302,7 +273,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       // Stylesheets imported by pages and components: each goes through Vite's CSS pipeline as its own entry.
       for (const sheet of new Set([...pageStylesheets(appRoot, files).values()].flat())) {
         if (!existsSync(sheet)) throw new Error(`clarusjs: imported stylesheet not found: ${relative(appRoot, sheet)}`)
-        input[`css/${relative(appRoot, sheet).split(sep).join('/').replace(/\.css$/, '')}`] = sheet
+        input[`css/${relative(appRoot, sheet).split(sep).join('/').replace(/\.css$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))}`] = sheet
       }
       for (const file of client.values()) input[renderEntry(entryName(appRoot, file))] = `${file}?render`
       config.builder = {}

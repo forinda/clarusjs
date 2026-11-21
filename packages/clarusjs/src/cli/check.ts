@@ -1,18 +1,27 @@
 // `clarusjs check`: type-check every .tscl file in a project (and the .ts it uses) with the project's TypeScript,
 // reporting each error at file.tscl:line:col.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { ClarusError } from '../compiler/errors.ts'
 import { generateTs, toSourceOffset, viewsDeclaration, type Mapping } from '../check/generate.ts'
-import { findClarusFiles } from '../vite/build.ts'
+import { findClarusFiles, reachableComponents } from '../vite/build.ts'
 
 export type Diagnostic = { file: string; line: number; column: number; code: string; message: string }
 export type CheckResult = { diagnostics: Diagnostic[]; exitCode: 0 | 1; text: string; json: string }
 
 const VIRTUAL = '.clarusjs/virtual'
 const posix = (path: string) => path.split(sep).join('/')
+
+/** The package a component outside the app belongs to: its name and folder (from the nearest package.json). */
+function packageInfo(file: string): { name: string; dir: string } {
+  for (let dir = dirname(file); dir !== dirname(dir); dir = dirname(dir)) {
+    const json = resolve(dir, 'package.json')
+    if (existsSync(json)) return { name: JSON.parse(readFileSync(json, 'utf8')).name ?? basename(dir), dir }
+  }
+  return { name: '_', dir: dirname(file) }
+}
 
 /** Line and column (1-based) of an offset in `text`. */
 function position(text: string, offset: number): { line: number; column: number } {
@@ -31,7 +40,7 @@ export function check(options: { root: string; typescript?: string }): CheckResu
   const virtualRoot = resolve(root, VIRTUAL)
   rmSync(virtualRoot, { recursive: true, force: true })
   const diagnostics: Diagnostic[] = []
-  const generated = new Map<string, { file: string; source: string; code: string; mappings: Mapping[]; loaderSpan?: [number, number] }>()
+  const generated = new Map<string, { file: string; source: string; code: string; mappings: Mapping[]; loaderSpan?: [number, number]; fromPackage?: boolean }>()
 
   for (const path of findClarusFiles(resolve(root, 'src'))) {
     const file = posix(relative(root, path))
@@ -49,6 +58,38 @@ export function check(options: { root: string; typescript?: string }): CheckResu
       if (!(err instanceof ClarusError)) throw err
       const message = err.message.slice(`${err.file}:${err.line}:${err.column} `.length)
       diagnostics.push({ file, line: err.line, column: err.column, code: 'clarus', message })
+    }
+  }
+
+  // Components from packages: a virtual file each (mirroring the package's folders, so their imports of each other
+  // resolve), with their other relative imports made absolute, so they reach the real files. Their own errors are
+  // the package's; what's checked is how the app uses them (paths below map each package specifier to its file).
+  const appRoot = realpathSync(root)
+  const paths: Record<string, string[]> = {}
+  const virtualOf = new Map<string, string>()
+  const components = reachableComponents(root, findClarusFiles(resolve(root, 'src')), (p) => readFileSync(p, 'utf8'), ['.tscl'])
+  for (const path of components.filter((p) => !p.startsWith(resolve(appRoot, 'src') + sep))) {
+    const pkg = packageInfo(path)
+    const vpath = resolve(virtualRoot, '_pkg', pkg.name, `${relative(pkg.dir, path)}.ts`)
+    virtualOf.set(path, vpath)
+    const source = readFileSync(path, 'utf8').replace(/^(@import\b.*?\bfrom\s+)(['"])(\.{1,2}\/[^'"]*)\2/gm, (all, head: string, q: string, spec: string) =>
+      spec.endsWith('.tscl') ? all : `${head}${q}${posix(resolve(dirname(path), spec))}${q}`)
+    try {
+      const { code, mappings } = generateTs(source, posix(relative(root, path)))
+      mkdirSync(dirname(vpath), { recursive: true })
+      writeFileSync(vpath, code)
+      generated.set(vpath, { file: posix(relative(root, path)), source, code, mappings, fromPackage: true })
+    } catch (err) {
+      if (!(err instanceof ClarusError)) throw err // a package's own template errors are its own
+    }
+  }
+  const require = createRequire(resolve(root, 'package.json'))
+  for (const path of components) {
+    for (const m of readFileSync(path, 'utf8').matchAll(/^@import\s+[A-Za-z_$][\w-]*\s+from\s+(['"])([^'"./][^'"]*\.tscl)\1/gm)) {
+      try {
+        const target = virtualOf.get(realpathSync(require.resolve(m[2]!)))
+        if (target) paths[`${m[2]}.ts`] = [`./${posix(relative(resolve(root, '.clarusjs'), target))}`]
+      } catch {} // an unresolvable import is reported by the template compiler
     }
   }
 
@@ -70,6 +111,7 @@ export function check(options: { root: string; typescript?: string }): CheckResu
       noImplicitAny: false,
       skipLibCheck: true,
       rootDirs: ['..', './virtual'],
+      paths,
     },
     include: ['../src', './virtual', './views.d.ts'],
   }
@@ -87,6 +129,8 @@ export function check(options: { root: string; typescript?: string }): CheckResu
     if (!m) continue
     const path = resolve(root, m[1]!)
     const g = generated.get(path)
+    // Errors inside a package (its components or its .ts files) are the package's, not the app's.
+    if (g?.fromPackage || (!g && (!resolve(path).startsWith(resolve(root) + sep) || path.includes(`${sep}node_modules${sep}`)))) continue
     if (!g) {
       diagnostics.push({ file: posix(relative(root, path)), line: Number(m[2]), column: Number(m[3]), code: m[4]!, message: m[5]! })
       continue
