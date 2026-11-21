@@ -63,15 +63,15 @@ Keep each class name whole in the source. Tailwind reads the text of your files,
 
 ## @apply in component styles
 
-A component's scoped `<style>` can use `@apply` and theme functions. Start it with `@reference` to your stylesheet, so Tailwind knows your theme without copying its CSS into the component:
+A component's `<style scoped>` can use `@apply` and theme functions. Start it with `@reference` to your stylesheet, so Tailwind knows your theme without copying its CSS into the component:
 
 ```tscl
 <section class="card"><slot /></section>
 
-<style>
+<style scoped>
   @reference "../styles/app.css";
   :scope { @apply rounded-lg p-6 shadow-md; }
 </style>
 ```
 
-`@reference` and `@import` lines at the top of a `<style>` are kept outside the component's `@scope` block, and their paths stay relative to the component file.
+`@reference` and `@import` lines at the top of a `<style scoped>` are kept outside the component's `@scope` block, and their paths stay relative to the component file.

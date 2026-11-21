@@ -35,7 +35,7 @@ test('template comments and script tags inside are text too', async () => {
 
 test('verbatim works inside a stateful component without adding markers', async () => {
   const out = compile('<script>let n = state(0)</script>\n<b (click)="n++">{{ n }}</b><pre verbatim>{{ n }}</pre>', { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code
-  expect(out).toContain('</b><pre>{{ n }}</pre>"') // plain static text: no hole markers, no escape() call
+  expect(out).toMatch(/<\/b><pre class=\\"cl-c-[\w-]+\\">\{\{ n \}\}<\/pre>"/) // plain static text: no hole markers, no escape() call
 })
 
 test('verbatim with a value is a located build error', () => {

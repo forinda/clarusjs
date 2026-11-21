@@ -39,7 +39,7 @@ export function attach(__cl_root, __cl_props = {}, __cl_state) {
 })
 
 test('stateless component compiles to an empty client module', () => {
-  expect(compile(fixture('greeting.tscl'), { file: 'greeting.tscl', target: 'client' })).toEqual({ code: 'export {}\n', stateful: false, css: '' })
+  expect(compile(fixture('greeting.tscl'), { file: 'greeting.tscl', target: 'client' })).toEqual({ code: 'export {}\n', stateful: false, css: '', warnings: [] })
 })
 
 test('attach wires server HTML without re-rendering it', async () => {

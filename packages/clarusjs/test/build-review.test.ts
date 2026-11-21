@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { createBuilder, preview } from 'vite'
 import { expect, test } from 'vitest'
 import clarusjs from '../src/vite/plugin.ts'
+import { unscoped } from './helpers.ts'
 
 const fixtures = resolve(import.meta.dirname, 'fixtures')
 
@@ -13,7 +14,7 @@ test('vite build works for an app whose package.json is not ESM', async () => {
   const builder = await createBuilder({ root, configFile: resolve(root, 'vite.config.ts'), logLevel: 'silent' })
   await builder.buildApp()
   const html = readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')
-  expect(html).toContain('<h1>CJS</h1>')
+  expect(unscoped(html)).toContain('<h1>CJS</h1>')
   expect(html).toMatch(/<cl-island c="counter" src="\/assets\//)
 }, 120_000)
 
@@ -42,7 +43,7 @@ test('with base /docs/, the build and vite preview both serve pages under the ba
     for (const path of ['/docs/', '/docs/about/team', '/docs/about/team/']) {
       const res = await fetch(origin + path)
       expect(res.status, path).toBe(200)
-      expect(await res.text(), path).toContain('<h1>')
+      expect(unscoped(await res.text()), path).toContain('<h1>')
     }
     expect((await fetch(`${origin}/docs/site.css`)).status).toBe(200)
   } finally {
@@ -79,7 +80,7 @@ test('building twice with the same builder uses the new island chunk and the new
   const src = (html: string) => html.match(/<cl-island c="counter" src="([^"]+)"/)![1]
   expect(src(second)).not.toBe(src(first))
   expect(existsSync(resolve(root, 'dist/client', src(second)!.slice(1)))).toBe(true)
-  expect(second).toContain('<h1>Home v2</h1>')
+  expect(unscoped(second)).toContain('<h1>Home v2</h1>')
   expect(second).toContain('Pressed')
 }, 120_000)
 
@@ -94,7 +95,7 @@ test('vite preview resolves a page route that contains a dot', async () => {
     const origin = `http://localhost:${typeof address === 'object' && address ? address.port : 0}`
     const res = await fetch(`${origin}/release.v1`)
     expect(res.status).toBe(200)
-    expect(await res.text()).toContain('<h1>Release 1</h1>')
+    expect(unscoped(await res.text())).toContain('<h1>Release 1</h1>')
     expect((await fetch(`${origin}/site.css`)).status).toBe(200)
   } finally {
     await server.close()

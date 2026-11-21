@@ -1,6 +1,6 @@
 @input name: string
 
 <p>Hello, {{ name }}!</p>
-<style>
+<style scoped>
   :scope { color: rebeccapurple; }
 </style>

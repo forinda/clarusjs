@@ -3,7 +3,7 @@
 
 <aside role="note" class="callout {{ type }}"><p class="callout-title"><slot name="title">{{ type[0].toUpperCase() + type.slice(1) }}</slot></p><slot /></aside>
 
-<style>
+<style scoped>
   /* Scoped to this component: :scope is the <aside>; slot content inside it is styled too. */
   :scope {
     border-left: 3px solid var(--accent);

@@ -36,3 +36,10 @@ test('a correct template has none', async () => {
   const { project, file } = await setup()
   expect(diagnosticsFor(project, file, '<p>hello</p>\n')).toEqual([])
 })
+
+test('#279: compile warnings are warnings at their place (a plain <style> is global now)', async () => {
+  const { project, file } = await setup()
+  const [d] = diagnosticsFor(project, file, '<p>x</p>\n<style>\n  p { color: red; }\n</style>\n')
+  expect(d).toMatchObject({ message: expect.stringMatching(/^a plain <style> is global/), severity: 2, source: 'clarusjs', range: { start: { line: 1, character: 0 } } })
+  expect(diagnosticsFor(project, file, '<p>x</p>\n<style scoped>\n  p { color: red; }\n</style>\n')).toEqual([])
+})

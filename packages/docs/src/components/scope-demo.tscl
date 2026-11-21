@@ -1,0 +1,11 @@
+{{-- The Styles guide's live example: a parent's <style scoped> styles its own elements and a child component's
+     top-level element, not the child's inside. --}}
+@import scopeChild from './scope-child.tscl'
+<div class="scope-demo">
+  <p>The parent's paragraph: teal, from the parent's <code>p</code> rule.</p>
+  <scopeChild />
+</div>
+<style scoped>
+  p { color: rgb(11, 110, 112); }
+  .scope-child { border-left: 3px solid rgb(11, 110, 112); padding-left: 12px; }
+</style>
