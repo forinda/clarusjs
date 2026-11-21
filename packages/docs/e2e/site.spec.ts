@@ -615,7 +615,11 @@ test('last updated: each page shows the last commit date of its source file from
 
 test('search: Ctrl+K opens a modal, results load from small index files, arrows and Enter open one, Escape closes', async ({ page }) => {
   const fetched: string[] = []
-  page.on('request', (r) => { if (r.url().includes('/search/')) fetched.push(new URL(r.url()).pathname) })
+  const documents: string[] = []
+  page.on('request', (r) => {
+    if (r.url().includes('/search/')) fetched.push(new URL(r.url()).pathname)
+    if (r.resourceType() === 'document') documents.push(new URL(r.url()).pathname)
+  })
   await page.goto('/guide/holes')
   const dialog = page.locator('dialog.search-dialog')
   await expect(dialog).not.toBeVisible()
@@ -640,6 +644,7 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   await expect(dialog).not.toBeVisible()
   // The URL commits before the new page is swapped in: wait for it, then search again.
   await expect(page.locator('h1')).not.toHaveText('Holes')
+  expect(documents).toEqual(['/guide/holes']) // Enter navigates with navigate(): a fragment swap, not a page load
   // "/" opens it too (outside a text field); Escape closes it and focus goes back to the page.
   await page.keyboard.press('/')
   await expect(dialog).toBeVisible()
@@ -668,6 +673,23 @@ test('history.pushState and replaceState belong to the page: the router never tu
   await page.waitForTimeout(500)
   expect(fragments).toEqual([])
   expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('H1')
+})
+
+test('client tour: arrow keys move between steps with navigate(), rendered by the router', async ({ page }) => {
+  const documents: string[] = []
+  page.on('request', (r) => { if (r.resourceType() === 'document') documents.push(new URL(r.url()).pathname) })
+  await page.goto('/tour/1')
+  await expect(page.locator('cl-island[c="tour-keys"]')).toHaveAttribute('data-cl-ready', '')
+  await page.keyboard.press('ArrowRight')
+  await expect(page).toHaveURL(/\/tour\/2$/)
+  await expect(page.locator('h1')).toHaveText('The router renders')
+  await expect(page.locator('cl-island[c="tour-keys"]')).toHaveAttribute('data-cl-ready', '')
+  await page.keyboard.press('ArrowLeft')
+  await expect(page.locator('h1')).toHaveText('A shell arrives')
+  await page.keyboard.press('ArrowLeft') // no step before the first
+  await page.waitForTimeout(300)
+  await expect(page).toHaveURL(/\/tour\/1$/)
+  expect(documents).toEqual(['/tour/1'])
 })
 
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {

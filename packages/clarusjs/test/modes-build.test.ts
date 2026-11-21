@@ -160,6 +160,13 @@ test('#179: the router and the fragment navigator each carry the navigation guar
   }
 })
 
+test('#180: clarusjs/navigation ships only with islands that import it', async () => {
+  const { readdirSync } = await import('node:fs')
+  const dir = resolve(root, 'dist/client/assets')
+  const js = readdirSync(dir).filter((f) => f.endsWith('.js')).map((f) => readFileSync(resolve(dir, f), 'utf8'))
+  expect(js.some((code) => code.includes('currententrychange'))).toBe(false) // this site never imports it
+})
+
 test('#36: with fragments on, static pages load the navigation script, which stays within 1 KB gzip', async () => {
   const { gzipSync } = await import('node:zlib')
   const html = readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')
