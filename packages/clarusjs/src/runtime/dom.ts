@@ -3,7 +3,9 @@
 import { attrValue } from './attrs.ts'
 import { effect, onDispose, scope, state, untrack, type Signal } from './signals.ts'
 
+/** @internal Compiled components call this; apps don't. */
 export type Hole = { start: Comment; end: Comment }
+/** @internal Compiled components call this; apps don't. */
 export type Block = { start: Comment; end: Comment; k: number }
 type Range = { start: Comment; end: Comment }
 export type For = Range & { rows: Range[]; empty: Range | null }
@@ -11,6 +13,7 @@ export type For = Range & { rows: Range[]; empty: Range | null }
 /**
  * Where wiring looks for its markers: a whole island, or one @for row inside it. A row template repeats its marker
  * numbers once per row, so code wiring a row only looks between that row's markers.
+ * @internal Compiled components call this; apps don't.
  */
 export type Ctx = Element | { root: Element; start: Comment; end: Comment }
 
@@ -70,12 +73,12 @@ function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[]; regions:
   return { holes, blocks, fors, regions }
 }
 
-/** Hole markers in `ctx`, by index. */
+/** Hole markers in `ctx`, by index. @internal */
 export function holes(ctx: Ctx): Hole[] {
   return scan(ctx).holes
 }
 
-/** @if block markers in `ctx`, by index. */
+/** @if block markers in `ctx`, by index. @internal */
 export function blocks(ctx: Ctx): Block[] {
   return scan(ctx).blocks
 }
@@ -106,6 +109,7 @@ function rangeNodes(start: Node, end: Node): Node[] {
 /**
  * An @if block. `which()` picks the branch (-1 for none). The server-rendered branch is wired in place; a change
  * removes the old branch (disposing its effects and handlers), inserts the new branch's HTML and wires it.
+ * @internal Compiled components call this; apps don't.
  */
 export function block(ctx: Ctx, index: number, which: () => number, branches: { html: () => string; wire: () => void }[]): void {
   const b = blocks(ctx)[index]
@@ -141,6 +145,7 @@ const onlyIsland = (nodes: Node[]): Element | null => {
   return kept.length === 1 && (kept[0] as Element).localName === 'cl-island' ? (kept[0] as Element) : null
 }
 
+/** @internal Compiled components call this; apps don't. */
 export function region(ctx: Ctx, index: number, html: () => string, wire: () => void): void {
   const r = scan(ctx).regions[index]
   if (!r) return
@@ -176,6 +181,7 @@ type Row = Range & { key: unknown; item: Signal<unknown>; index: Signal<number>;
  * kept rows keep their DOM nodes (moved only when out of order) and get the new item and index through their
  * signals; new rows are rendered and wired; removed rows are disposed and removed. `@empty` content is shown while
  * the list is empty.
+ * @internal Compiled components call this; apps don't.
  */
 export function forBlock(
   ctx: Ctx,
@@ -265,7 +271,7 @@ export function forBlock(
   })
 }
 
-/** Keep exactly one text node between the hole's markers, set to `fn()`. */
+/** Keep exactly one text node between the hole's markers, set to `fn()`. @internal */
 export function text(hole: Hole, fn: () => unknown): void {
   effect(() => {
     const value = fn()
@@ -293,6 +299,7 @@ const CAPTURE = new Set([
  * One listener per island per event type; it walks from the target up to the island root, running handlers
  * innermost first and stopping when one calls `stopPropagation()`. A handler registered for a @for row only fires
  * for elements in that row.
+ * @internal Compiled components call this; apps don't.
  */
 export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void): void {
   const root = rootOf(ctx)
@@ -326,7 +333,7 @@ export function marked(ctx: Ctx, selector: string): Element | undefined {
   return [...root.querySelectorAll(selector)].find((e) => e.closest('cl-island') === island && inside(ctx, e))
 }
 
-/** Keep attribute `name` of the element marked `data-cl-a="index"` in `ctx` in sync with `fn()`. */
+/** Keep attribute `name` of the element marked `data-cl-a="index"` in `ctx` in sync with `fn()`. @internal */
 export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, tag?: string): void {
   const el = marked(ctx, `[data-cl-a="${index}"]`)
   if (!el) return
@@ -344,6 +351,7 @@ export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, t
  * A @model input: writing it asks the parent island to update its state (a bubbling, cancelable cl:model event from
  * the island); when no parent takes it (a top-level island), the input keeps the value itself. New props from the
  * parent set it with own().
+ * @internal Compiled components call this; apps don't.
  */
 export function modelInput<T>(root: Element, name: string, initial: T): Signal<T> & { own(value: T): void } {
   const value = state(initial)
@@ -357,7 +365,7 @@ export function modelInput<T>(root: Element, name: string, initial: T): Signal<T
   }
 }
 
-/** [(name)]="…" on a child island in region `index`: the child's writes to its @model name arrive here. */
+/** [(name)]="…" on a child island in region `index`: the child's writes to its @model name arrive here. @internal */
 export function model(ctx: Ctx, index: number, name: string, set: (value: unknown) => void): void {
   const r = scan(ctx).regions[index]
   if (!r) return

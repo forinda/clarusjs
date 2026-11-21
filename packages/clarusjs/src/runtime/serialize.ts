@@ -58,7 +58,7 @@ function encode(value: unknown, path: string, seen: Set<object>): unknown {
   }
 }
 
-/** The inverse of stringify(). */
+/** The inverse of stringify(). @internal */
 export function parse(text: string): unknown {
   return decode(JSON.parse(text))
 }

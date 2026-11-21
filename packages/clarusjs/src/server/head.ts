@@ -2,7 +2,10 @@
 // transform. Page tags win over site tags with the same key (title, meta name/property, canonical link…).
 import { escape, json } from '../runtime/html.ts'
 
-/** A head tag as data: ['meta', { name: 'theme-color', content: '#fff' }], ['script', { src }, ''] */
+/**
+ * A head tag as data: ['meta', { name: 'theme-color', content: '#fff' }], ['script', { src }, ''].
+ * @see https://clarusjs.com/reference/vite-plugin#head
+ */
 export type HeadTag = [tag: string, attrs: Record<string, string | true>, content?: string]
 
 export type HeadOptions = {

@@ -42,17 +42,28 @@ function compile(path: string): { keys: string[]; regex: RegExp } {
 /**
  * A redirect for a server page's `load()` to return: `return redirect('/login')`. 302 by default; 301 or 308 for
  * a page that moved for good, 303 after a form, 307 to keep the method.
- * @see https://clarusjs.com/guide/routing
+ * @example
+ * ```ts
+ * // src/pages/account.load.ts (a server route)
+ * export async function load({ request }: { request: Request }) {
+ *   const user = await userFrom(request)
+ *   if (!user) return redirect('/login')
+ *   return { user }
+ * }
+ * ```
+ * @see https://clarusjs.com/reference/server#redirect
  */
 export function redirect(to: string, status: 301 | 302 | 303 | 307 | 308 = 302): Response {
   return new Response(null, { status, headers: { location: to } })
 }
 
+/** @internal clarusjs's own build and server code call this; apps don't. */
 export function routeFromFile(file: string): string {
   const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.[^./]+$/, '').replace(/\/index$/, '')
   return path || '/'
 }
 
+/** @internal clarusjs's own build and server code call this; apps don't. */
 export function createHandler(
   pages: Record<string, () => Promise<PageModule>>,
   options: {
@@ -324,6 +335,7 @@ function failure(message: string): Response {
 /**
  * A page's fragment: its <title>, then the element marked data-cl-swap (the region fragment navigation replaces), or
  * its <body> when nothing is marked. Comments are ignored when looking; nested tags of the same name are balanced.
+ * @internal clarusjs's own build and server code call this; apps don't.
  */
 export function toFragment(html: string): string {
   // Comments and raw-text contents (scripts, styles, textareas, the title) can hold tag-shaped text: blank them out.
@@ -376,6 +388,7 @@ function fullDocument(html: string, style: string, script: string): string {
 /**
  * The 404 page is served at any depth (/a/b/c), so its relative links (href, src) are resolved from the site root:
  * 'guide' means <base>guide wherever the visitor is.
+ * @internal clarusjs's own build and server code call this; apps don't.
  */
 export function rootLinks(html: string, base: string): string {
   return html.replace(/(\s(?:href|src)=")([^"]*)"/gi, (all, attr: string, url: string) => {

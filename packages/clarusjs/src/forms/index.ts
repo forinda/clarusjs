@@ -43,7 +43,26 @@ function pathOf(field: Element, root: Element): string {
   return parts.join('.')
 }
 
-/** The form's engine. `values`: its state (on the server, where the compiler passes a plain value, it only renders). */
+/**
+ * A form's engine: connect it to a `<form>` with `[engine]`, and it validates the fields bound to `values` (native
+ * constraints, a Standard Schema, server errors), shows each error on its field, and runs `submit` once all is valid.
+ * `values`: the form's state, a component's or a store's (on the server it only renders).
+ * @example
+ * ```tscl
+ * <script>
+ *   import { form } from 'clarusjs/forms'
+ *   let signup = state({ name: '', email: '' })
+ *   const f = form(signup, {
+ *     submit: async (v) => { const res = await post('/api/signup', v); if (!res.ok) return { errors: await res.json() } },
+ *   })
+ * </script>
+ * <form [engine]="f" novalidate>
+ *   <label>Email <input type="email" required [(value)]="signup.email"> <small data-cl-message></small></label>
+ *   <button [disabled]="f.submitting">Sign up</button>
+ * </form>
+ * ```
+ * @see https://clarusjs.com/reference/forms#form
+ */
 export function form<T extends object>(values: Signal<T> | T, options: FormOptions<T> = {}): Form<T> {
   // On the server (a plain value from the compiler, or a store's signal in a module) it only renders.
   if (!browser || !values || typeof (values as Signal<T>).get !== 'function') return inert<T>()
@@ -355,7 +374,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   return engine
 }
 
-/** [engine]="f" (compiled): connect the element marked data-cl-form="index" to its form until the island goes. */
+/** [engine]="f" (compiled): connect the element marked data-cl-form="index" to its form until the island goes. @internal */
 export function connect(ctx: Ctx, index: number, get: () => Form<any>): void {
   const el = marked(ctx, `[data-cl-form="${index}"]`)
   const engine = get() as Engine<any>

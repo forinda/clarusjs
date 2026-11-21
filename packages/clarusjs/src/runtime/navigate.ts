@@ -5,6 +5,11 @@
 /** `signal`: aborts when the navigation does (pass it to the page's requests). */
 export type Render = (url: URL, gate: () => Promise<boolean> | boolean, signal?: AbortSignal) => Promise<unknown>
 /** A navigation in progress, as the in-between hooks and the navigating store see it. */
+/**
+ * A navigation in progress, as the `navigating` store and the swap hooks see it: where it comes from and goes, its
+ * type (push, replace, reload, traverse), its phase, and a signal that aborts when a newer navigation takes over.
+ * @see https://clarusjs.com/reference/navigation#navigating
+ */
 export type Transition = { from: URL; to: URL; type: string; phase: 'loading' | 'swapping'; signal: AbortSignal }
 // Set by clarusjs/navigation, which islands bundle separately: told each step of a navigation (loading, swapping,
 // swapped, then undefined when it ends), it runs the in-between hooks and updates the navigating store. The

@@ -91,7 +91,7 @@ export async function prerender(serverEntry: string, outDir: string, manifestFil
   return JSON.parse(result.stdout) as { routes: string[]; readers: string[]; loaded: string[]; server: { route: string; loader: boolean }[] }
 }
 
-/** The package a file belongs to, from its last node_modules segment (pnpm: node_modules/.pnpm/x@1/node_modules/x/…). */
+/** The package a file belongs to, from its last node_modules segment (pnpm: node_modules/.pnpm/x@1/node_modules/x/…). @internal */
 export function packageOf(file: string): string | undefined {
   return /.*[\\/]node_modules[\\/]((?:@[^\\/]+[\\/])?[^\\/]+)[\\/]/.exec(file)?.[1]!.replace(/\\/g, '/')
 }

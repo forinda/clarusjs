@@ -5,7 +5,20 @@ import type { Manifest } from '../vite/manifest.ts'
 
 export type { Manifest, RouteInfo, IslandInfo } from '../vite/manifest.ts'
 
-/** The built site's manifest, or null outside `vite build` (in dev) and on the first prerender pass. */
+/**
+ * The built site's manifest, or null outside `vite build` (in dev) and on the first prerender pass. A page that
+ * calls it during `vite build` is rendered again once the manifest is written.
+ * @example
+ * ```ts
+ * // src/pages/size.load.ts
+ * import { readManifest } from 'clarusjs/manifest'
+ * export function load() {
+ *   const home = readManifest()?.routes['/']
+ *   return { js: home?.js.gzip ?? 0 }
+ * }
+ * ```
+ * @see https://clarusjs.com/reference/server#readmanifest
+ */
 export function readManifest(): Manifest | null {
   ;(globalThis as { __clManifestRead?: boolean }).__clManifestRead = true
   const file = process.env.CLARUS_MANIFEST

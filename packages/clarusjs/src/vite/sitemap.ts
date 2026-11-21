@@ -8,6 +8,7 @@ const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
  * Newest commit time (unix seconds) of every file under `dir` that git knows, by absolute path. One `git log` lists
  * commits newest first with the files each touched, so a file's first appearance is its last change. Not a git
  * repository (or no git): an empty map.
+ * @internal clarusjs's own build and server code call this; apps don't.
  */
 export function gitDates(root: string, dir: string): Map<string, number> {
   const dates = new Map<string, number>()

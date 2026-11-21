@@ -7,7 +7,15 @@ import { routeToFile } from './build.ts'
 import { matchRoute } from '../runtime/router.ts'
 
 export type Attach = 'load' | 'idle' | 'visible' | 'interaction'
+/**
+ * An island on a page, in the manifest: its component, chunk, attach mode, how many, and its gzip size.
+ * @see https://clarusjs.com/reference/server#readmanifest
+ */
 export type IslandInfo = { component: string; src: string; attach: Attach; count: number; gzip: number }
+/**
+ * A route in the manifest: its mode, islands, JavaScript and CSS.
+ * @see https://clarusjs.com/reference/server#readmanifest
+ */
 export type RouteInfo = {
   /**
    * 'static': prerendered at build. 'server': rendered per request by dist/server/index.mjs (its key is the route as
@@ -23,6 +31,10 @@ export type RouteInfo = {
   js: { files: string[]; gzip: number; initialGzip: number }
   css: string[]
 }
+/**
+ * The built site's route manifest (`dist/clarusjs-manifest.json`).
+ * @see https://clarusjs.com/reference/server#readmanifest
+ */
 export type Manifest = { version: 1; routes: Record<string, RouteInfo> }
 /** Vite's client manifest (dist/client/.vite/manifest.json). */
 export type ChunkGraph = Record<string, { file: string; imports?: string[] }>
