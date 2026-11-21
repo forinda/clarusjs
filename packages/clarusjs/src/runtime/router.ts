@@ -3,6 +3,7 @@
 // the island loader attach. Later navigations between client routes are intercepted with the Navigation API;
 // browsers without it simply load pages normally.
 import { parse } from './serialize.ts'
+import { latest, takeOver } from './navigate.ts'
 
 type Entry = { p: string; r: string }
 type Page = { render(props: object): string }
@@ -31,8 +32,9 @@ export function matchRoute(table: Entry[], pathname: string): { r: string; param
 export async function show(
   url: URL,
   table: Entry[],
-  // False once a newer navigation has started: then this one must not touch the document.
-  isCurrent: () => boolean = () => true,
+  // Awaited right before the swap (where the in-between hooks run): false once a newer navigation has started,
+  // then this one must not touch the document.
+  isCurrent: () => Promise<boolean> | boolean = () => true,
   load: (src: string) => Promise<Page> = (src) => import(/* @vite-ignore */ src),
   get: (url: string) => Promise<Response> = fetch,
 ): Promise<boolean> {
@@ -46,69 +48,46 @@ export async function show(
       return parse(await res.text()) as object
     }),
   ])
-  if (!isCurrent()) return false
-  const doc = new DOMParser().parseFromString(page.render(props), 'text/html')
-  // The head stays (its stylesheets are every client page's, linked by the shell); the title and the page's own
-  // <html> attributes (lang, dir, …) are the new page's.
-  // The site's titleTemplate, from the shell (always set: '%s' without one).
-  document.title = document.getElementById('cl-routes')!.dataset.title!.replace('%s', () => doc.title)
+  if (!(await isCurrent())) return false
+  // The head stays (its stylesheets are every client page's, linked by the shell); the title gets the site's
+  // titleTemplate, from the shell (always set: '%s' without one).
+  await swapIn(page.render(props), (title) => document.getElementById('cl-routes')!.dataset.title!.replace('%s', () => title))
+  return true
+}
+
+/**
+ * Puts a whole page in: its body, its own <html> attributes (lang, dir, …), its title (through `title`, else as
+ * written) and its inline head scripts (such as setting the theme before paint, run once as on a normal load); then
+ * attaches its islands (the loader also releases the old page's). The head stays. Resolves once the islands that
+ * attach right away are attached.
+ */
+export async function swapIn(html: string, title: (title: string) => string = (t) => t): Promise<void> {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
   const root = document.documentElement
   for (const { name } of [...root.attributes]) root.removeAttribute(name)
   for (const { name, value } of [...doc.documentElement.attributes]) root.setAttribute(name, value)
+  document.title = title(doc.title) // before islands attach: the loader announces it
   document.body.replaceWith(doc.body)
-  // The page's inline head scripts (such as setting the theme before paint) run once, as on a normal load.
   for (const old of doc.head.querySelectorAll('script:not([src])')) {
     const script = document.createElement('script')
     script.textContent = old.textContent
     document.head.append(script)
     script.remove()
   }
-  // Attaches the new page's islands; the loader also releases the old page's.
-  ;(globalThis as { __clAttach?: (root: ParentNode, navigated: 1) => void }).__clAttach?.(document.body, 1) // 1: navigated (bytes)
-  return true
-}
-
-type NavigateEvent = Event & {
-  canIntercept: boolean
-  hashChange: boolean
-  downloadRequest: string | null
-  formData: FormData | null
-  destination: { url: string; sameDocument: boolean }
-  navigationType: string
-  signal: AbortSignal
-  intercept(options: { handler(): Promise<void> }): void
+  await (globalThis as { __clAttach?: (root: ParentNode, navigated: 1) => Promise<void> }).__clAttach?.(document.body, 1) // 1: navigated (bytes)
 }
 
 const routes = globalThis.document?.getElementById('cl-routes')
 if (routes) {
   const table = JSON.parse(routes.textContent!) as Entry[]
-  // Each navigation gets a number; only the latest may change the document or fall back.
-  let latest = 1 // the first render is navigation 1
-  show(new URL(location.href), table, () => latest === 1).catch((err: Error) => {
-    if (latest !== 1) return
-    document.body.textContent = err.message.startsWith('404') ? 'Page not found.' : 'Could not load page.'
+  // The first render is current until a navigation is taken over.
+  show(new URL(location.href), table, () => !latest).catch((err: Error) => {
+    if (latest) return
+    // The site's 404 or 500 page, at this same URL (its title as written); plain text when the site has none.
+    fetch(routes.dataset.base! + (/^404/.test(err.message) ? 404 : 500))
+      .then((res) => (res.ok ? res.text() : Promise.reject()))
+      .then((html) => swapIn(html), () => { document.body.textContent = 'Could not load page.' })
   })
-  // A URL that failed to render is loaded normally, never intercepted again (no retry loop). canIntercept is
-  // only true for same-origin navigations, so no origin check is needed.
-  let fallback = ''
-  let swapping = false
-  const navigation = (globalThis as { navigation?: EventTarget }).navigation
-  navigation?.addEventListener('navigate', ((e: NavigateEvent) => {
-    // The page's own history.pushState/replaceState is same-document: not a page load. Back/forward between the
-    // router's entries is same-document too, so traversals are still rendered. During a swap, the old page's
-    // replaceState aborts it: that one is rendered, or the old page would stay under the new URL.
-    if (!e.canIntercept || e.hashChange || (e.destination.sameDocument && e.navigationType != 'traverse' && !swapping) || e.downloadRequest != null || e.formData) return
-    const url = new URL(e.destination.url)
-    if (url.href === fallback || !matchRoute(table, url.pathname)) return
-    const id = ++latest
-    const isCurrent = () => latest === id && !e.signal.aborted
-    swapping = true
-    e.intercept({
-      handler: () => show(url, table, isCurrent).catch(() => {
-        if (!isCurrent()) return
-        fallback = url.href
-        location.reload() // the URL is already committed; assign() would stay in the page with a #hash
-      }).finally(() => { if (latest === id) swapping = false }) as Promise<void>,
-    })
-  }) as EventListener)
+  // Later navigations to client routes.
+  takeOver((url) => matchRoute(table, url.pathname) && ((url, isCurrent, signal) => show(url, table, isCurrent, undefined, (src) => fetch(src, { signal }))))
 }

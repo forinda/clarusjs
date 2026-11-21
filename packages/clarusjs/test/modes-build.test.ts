@@ -96,14 +96,16 @@ test('#33: the manifest marks client routes and leaves data files out', () => {
   expect(manifest.routes['/app/one'].js.files.some((f: string) => f.includes('render/'))).toBe(true)
 })
 
-// 1.1 KB: the router must leave the page's own history.pushState/replaceState alone (#167), which doesn't fit in
-// 1 KB (it was at exactly 1024 bytes).
-test('size budget: the client router stays within 1.1 KB gzip', async () => {
+// 1.45 KB: review fixes on #186 (cleanup when a navigation is cancelled, failures reported before the fallback load,
+// islands attached before afterSwap). 1.4 KB until then: a client route that fails its first render shows the site's
+// 404 or 500 page (#196). 1.35 KB before, for
+// aborting a navigation (#193); 1.2 KB for the transitions of #182; 1.1 KB before; 1 KB before #167.
+test('size budget: the client router stays within 1.45 KB gzip', async () => {
   const { gzipSync } = await import('node:zlib')
   const shell = readFileSync(resolve(root, 'dist/client/app/index.html'), 'utf8')
   const router = /<script type="module" src="([^"]+)"><\/script><\/head>/.exec(shell)![1]!
   const size = gzipSync(readFileSync(resolve(root, 'dist/client', router.slice(1))), { level: 9 }).length
-  expect(size).toBeLessThanOrEqual(1126)
+  expect(size).toBeLessThanOrEqual(1485)
 })
 
 test('review: Netlify parameter names never collide', async () => {
@@ -150,10 +152,29 @@ test('#35: with fragments on, static pages get index.frag.html; the manifest lea
   expect(await (await handler.fetch(new Request('http://x/account/7/index.frag.html'))).text()).toContain('<h1>Account 7</h1>')
 })
 
-test('#36: with fragments on, static pages load the navigation script, which stays within 1 KB gzip', async () => {
+test('#179: the router and the fragment navigator each carry the navigation guard, never a shared chunk', async () => {
+  const { readdirSync } = await import('node:fs')
+  const assets = readdirSync(resolve(root, 'dist/client/assets')).filter((f) => f.endsWith('.js'))
+  expect(assets.filter((f) => f.startsWith('navigate'))).toEqual([]) // a page loads one of them: a shared chunk is only a cost
+  for (const name of ['cl-router', 'cl-nav']) {
+    const code = readFileSync(resolve(root, 'dist/client/assets', assets.find((f) => f.startsWith(name))!), 'utf8')
+    expect(code, name).toContain('canIntercept')
+  }
+})
+
+test('#180: clarusjs/navigation ships only with islands that import it', async () => {
+  const { readdirSync } = await import('node:fs')
+  const dir = resolve(root, 'dist/client/assets')
+  const js = readdirSync(dir).filter((f) => f.endsWith('.js')).map((f) => readFileSync(resolve(dir, f), 'utf8'))
+  expect(js.some((code) => code.includes('currententrychange'))).toBe(false) // this site never imports it
+})
+
+// 1.2 KB: review fixes on #186 (see the router's budget). 1.15 KB before: aborting a navigation (#193) stops its fragment request and can hold the URL until the page is ready (1 KB
+// until then).
+test('#36: with fragments on, static pages load the navigation script, which stays within 1.2 KB gzip', async () => {
   const { gzipSync } = await import('node:zlib')
   const html = readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')
   const nav = /<script type="module" src="(\/assets\/cl-nav-[^"]+)"><\/script>/.exec(html)?.[1]
   expect(nav).toBeDefined()
-  expect(gzipSync(readFileSync(resolve(root, 'dist/client', nav!.slice(1))), { level: 9 }).length).toBeLessThanOrEqual(1024)
+  expect(gzipSync(readFileSync(resolve(root, 'dist/client', nav!.slice(1))), { level: 9 }).length).toBeLessThanOrEqual(1229)
 })

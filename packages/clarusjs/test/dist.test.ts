@@ -43,14 +43,19 @@ test('built compiler compiles a component', async () => {
 test('built Vite plugin points at built runtime files that exist', async () => {
   const { default: clarusjs } = await import(`${dist}/vite/plugin.js`)
   const plugin = clarusjs()
-  const aliases = plugin.config({}, { command: 'serve', mode: 'development' }).resolve.alias as { find: string; replacement: string }[]
-  for (const a of aliases) {
+  const aliases = plugin.config({}, { command: 'serve', mode: 'development' }).resolve.alias as { find: string | RegExp; replacement: string }[]
+  // The runtime's own entries (the project's path aliases, like ~/, point into the project).
+  for (const a of aliases.filter((x) => typeof x.find === 'string' && x.find.startsWith('clarusjs/'))) {
     expect(a.replacement.startsWith(dist)).toBe(true)
     expect(existsSync(a.replacement)).toBe(true)
   }
-  const loader = plugin.resolveId('/cl-loader.js')
+  const loader = plugin.resolveId.handler('/cl-loader.js')
   expect(loader).toBe(`${dist}/runtime/loader.js`)
   expect(existsSync(loader)).toBe(true)
+  // #179: the built router gets its own copy of the built navigation guard.
+  const guard = plugin.resolveId.handler('./navigate.js', `${dist}/runtime/router.js`) as string
+  expect(guard).toBe(`${dist}/runtime/navigate.js?cl-copy=router`)
+  expect(existsSync(guard.replace(/\?.*/, ''))).toBe(true)
   const entry = plugin.load.handler('\0virtual:clarusjs/server-entry') as string
   expect(entry).toContain(`${dist}/server/handler.js`)
 })
@@ -68,10 +73,17 @@ test('the clarusjs command is built, with a shebang', () => {
   expect(readFileSync(bin, 'utf8').startsWith('#!/usr/bin/env node')).toBe(true)
 })
 
-test('size budget: the published package stays small (tarball 70 KB, unpacked 250 KB)', () => {
+// 80 / 290 KB: the navigation module, its shared guard and redirects (#169) took the package past 70 / 250 KB.
+test('size budget: the published package stays small (tarball 80 KB, unpacked 290 KB)', () => {
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
-  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(70 * 1024)
-  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(250 * 1024)
+  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(80 * 1024)
+  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(290 * 1024)
+})
+
+test('#197: sideEffects lists only the browser scripts that start work when loaded (bundlers drop the rest when unused)', () => {
+  const pkg = JSON.parse(readFileSync(`${pkgDir}/package.json`, 'utf8'))
+  const scripts = ['loader', 'router', 'fragments', 'navigation']
+  expect(pkg.sideEffects).toEqual([...scripts.map((s) => `./src/runtime/${s}.ts`), ...scripts.map((s) => `./dist/runtime/${s}.js`)])
 })
 
 test('dependencies are exactly acorn (compiler) and commander (CLI): adding one is a deliberate change', () => {

@@ -2,6 +2,7 @@
 // instead of reloading. Browser only. Each page's fragment is <path>/index.frag.html; elements marked
 // data-cl-persist="key" are kept across swaps, and the island loader attaches whatever islands arrive.
 import './loader.ts'
+import { takeOver } from './navigate.ts'
 
 /** '/guide/lists/' → '/guide/lists/index.frag.html', keeping the query. */
 export function fragmentUrl(url: URL): string {
@@ -14,14 +15,15 @@ const region = (doc: Document) => doc.querySelector('[data-cl-swap]') ?? doc.bod
 export async function swap(
   url: URL,
   get: (url: string) => Promise<Response> = fetch,
-  // False once a newer navigation has started: then this one must not touch the document.
-  isCurrent: () => boolean = () => true,
+  // Awaited right before the swap (where the in-between hooks run): false once a newer navigation has started,
+  // then this one must not touch the document.
+  isCurrent: () => Promise<boolean> | boolean = () => true,
 ): Promise<void> {
   const src = fragmentUrl(url)
   const res = await get(src)
-  if (!res.ok) throw new Error(`${res.status}: ${src}`)
+  // Redirected: the page moved, and the address bar would keep the old URL. Failing loads the page normally.
+  if (!res.ok || res.redirected) throw new Error(`${res.status}: ${src}`)
   const doc = new DOMParser().parseFromString(await res.text(), 'text/html')
-  if (!isCurrent()) return
   const next = region(doc)
   const old = region(document)
   // A body can only replace a body, and a marked region a marked region: otherwise load the page normally.
@@ -39,7 +41,7 @@ export async function swap(
     document.head.append(added)
   }
   await Promise.all(loading)
-  if (!isCurrent()) return
+  if (!(await isCurrent())) return
   // Persisted elements move into the new page as they are, with their state and attached islands.
   for (const old of document.querySelectorAll('[data-cl-persist]')) {
     next.querySelector(`[data-cl-persist="${CSS.escape(old.getAttribute('data-cl-persist')!)}"]`)?.replaceWith(old)
@@ -47,42 +49,8 @@ export async function swap(
   document.title = doc.title
   old.replaceWith(next)
   // Attaches the new islands; the loader also releases those that left with the old region.
-  ;(globalThis as { __clAttach?: (root: ParentNode, navigated: 1) => void }).__clAttach?.(next, 1) // 1: navigated (bytes)
+  await (globalThis as { __clAttach?: (root: ParentNode, navigated: 1) => Promise<void> }).__clAttach?.(next, 1) // 1: navigated (bytes)
 }
 
-type NavigateEvent = Event & {
-  canIntercept: boolean
-  hashChange: boolean
-  downloadRequest: string | null
-  formData: FormData | null
-  destination: { url: string; sameDocument: boolean }
-  navigationType: 'push' | 'replace' | 'reload' | 'traverse'
-  signal: AbortSignal
-  intercept(options: { handler(): Promise<void> }): void
-}
-
-const navigation = typeof document !== 'undefined' ? (globalThis as { navigation?: EventTarget }).navigation : undefined
-// Only the latest navigation may change the document; a URL that failed loads normally, never intercepted again
-// (the reload of a failed URL is itself a navigation to it, which the fallback check lets through).
-let latest = 0
-let fallback = ''
-let swapping = false
-navigation?.addEventListener('navigate', (event) => {
-  const e = event as NavigateEvent
-  // A #hash, and the page's own history.pushState/replaceState (same-document, not back/forward), are never a page
-  // load, except while a swap is still loading: they abort it, so this navigation has to show the new page instead.
-  if (!e.canIntercept || e.hashChange || (e.destination.sameDocument && e.navigationType !== 'traverse' && !swapping) || e.downloadRequest !== null || e.formData) return
-  const url = new URL(e.destination.url)
-  if (url.href === fallback) return
-  const id = ++latest
-  const isCurrent = () => latest === id && !e.signal.aborted
-  swapping = true
-  e.intercept({
-    handler: () => swap(url, fetch, isCurrent).finally(() => { if (latest === id) swapping = false }).catch(() => {
-      if (!isCurrent()) return
-      fallback = url.href
-      // The URL is already committed: reload it (assign() would only move within the page when it has a #hash).
-      location.reload()
-    }),
-  })
-})
+// Every navigation the shared guard takes over.
+takeOver(() => (url, isCurrent, signal) => swap(url, (src) => fetch(src, { signal }), isCurrent))

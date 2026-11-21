@@ -343,3 +343,17 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
 .badges em { margin-left: auto; font-style: normal; font-size: 13px; font-weight: 700; }
 .progress-lessons li[data-status="done"] a::after { content: ' ✓'; color: var(--ok); }
 .progress-reset { margin-top: 16px; min-height: 44px; padding: 0 16px; border: 1px solid var(--bad); border-radius: 10px; background: transparent; color: var(--bad); font: inherit; font-weight: 600; cursor: pointer; }
+
+/* While a page change runs (fragments or the client router set data-cl-navigating on <html>): a thin bar at the top.
+   Shown after a short delay, so fast swaps don't flash it. */
+html[data-cl-navigating]::before {
+  content: ''; position: fixed; inset: 0 auto auto 0; z-index: 20; height: 3px; width: 100%; background: var(--accent);
+  transform-origin: left; animation: cl-navigating 8s cubic-bezier(0.1, 0.7, 0.2, 1) 150ms both;
+}
+@keyframes cl-navigating { from { transform: scaleX(0); } to { transform: scaleX(0.9); } }
+@media (prefers-reduced-motion: reduce) { html[data-cl-navigating]::before { animation: none; transform: scaleX(1); opacity: 0.6; } }
+
+/* View transitions (config.viewTransitions): the default cross-fade, none with reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
+}

@@ -61,3 +61,18 @@ test('#40: stylesheets the new page needs are added once to <head> before the sw
   expect(document.querySelector('main')!.textContent).toBe('new')
   expect(document.querySelector('main link')).toBeNull()
 })
+
+test('#192: a redirected fragment request is an error: the page then loads normally, so the redirect lands on its URL', async () => {
+  document.body.innerHTML = '<p>old</p>'
+  const redirected = { ok: true, status: 200, redirected: true, text: async () => '<html><body><p>moved</p></body></html>' } as unknown as Response
+  await expect(swap(new URL('http://x/old'), async () => redirected)).rejects.toThrow('200: /old/index.frag.html')
+  expect(document.body.innerHTML).toBe('<p>old</p>')
+})
+
+test('review (#186): swap() resolves once the arriving islands that attach right away are attached', async () => {
+  document.body.innerHTML = '<p>old</p>'
+  let attached = false
+  ;(globalThis as { __clAttach?: unknown }).__clAttach = () => new Promise<void>((r) => setTimeout(() => { attached = true; r() }, 10))
+  await swap(new URL('http://x/next'), async () => new Response('<title>Next</title><p>new</p>'))
+  expect(attached).toBe(true)
+})

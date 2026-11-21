@@ -1,9 +1,12 @@
 // Runs on the server for every request (this route is 'server' in vite.config.ts): it can read the request.
 import { render } from 'clarusjs/views'
+import { redirect } from 'clarusjs/server'
 
 export async function load({ request }: { request: Request }) {
   const url = new URL(request.url)
   const name = (url.searchParams.get('name') ?? '').slice(0, 60)
+  // A name of only spaces is no name: send the visitor to the plain page (a redirect, see the Routing guide).
+  if (url.searchParams.has('name') && !name.trim()) return redirect('/playground', 303)
   return {
     name,
     renderedAt: new Date().toISOString(),

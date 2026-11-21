@@ -91,3 +91,14 @@ test('review: entries() is asked once, and prerendering and requests use the sam
   expect((await h.fetch(new Request('http://x/app/1'))).status).toBe(200)
   expect(calls).toBe(1)
 })
+
+test('#196: the shell tells the router the base and links the error pages\' stylesheets, for a failed first render', async () => {
+  const page = async () => ({ render: () => '<p>x</p>' })
+  const h = createHandler(
+    { '/src/pages/app/[id].tscl': page, '/src/pages/404.tscl': page, '/src/pages/500.tscl': page },
+    { modes: { '/app/*': 'client' }, client: { '/app/[id]': '/r.js' }, base: '/docs/', css: { '/app/[id]': ['/app.css'], '/404': ['/err.css'], '/500': ['/err.css', '/five.css'] } },
+  )
+  const shell = await (await h.fetch(new Request('http://x/app/1'))).text()
+  expect(shell).toContain('data-base="/docs/"')
+  for (const href of ['/app.css', '/err.css', '/five.css']) expect(shell.split(`href="${href}"`)).toHaveLength(2) // each once
+})

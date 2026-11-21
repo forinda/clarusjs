@@ -31,6 +31,11 @@ export type ThemeConfig = {
   learn?: { section: string; progress: string }
   /** A search button (and Ctrl/⌘K, /) in the header; the index comes from the themeDocs() Vite plugin. */
   search?: boolean
+  /**
+   * Page changes animate as view transitions where the browser has them (a cross-fade; `::view-transition-*` rules in
+   * the site's CSS change it). Needs fragment navigation or client routes; no animation with reduced motion.
+   */
+  viewTransitions?: boolean
   /** The site footer's text. */
   footer?: string
 }
