@@ -2,17 +2,23 @@
 
 export type Position = { line: number; character: number }
 
-/** Offsets where each line starts. */
+/** Offsets where each line starts (the last text's kept: references and renames ask many times for one text). */
+let last: { text: string; starts: number[] } | undefined
 const lineStarts = (text: string) => {
+  if (last?.text === text) return last.starts
   const starts = [0]
   for (let i = 0; i < text.length; i++) if (text[i] === '\n') starts.push(i + 1)
+  last = { text, starts }
   return starts
 }
 
 export function positionAt(text: string, offset: number): Position {
   const starts = lineStarts(text)
-  let line = 0
-  while (line + 1 < starts.length && starts[line + 1]! <= offset) line++
+  // Binary search: the last line starting at or before the offset.
+  let lo = 0
+  let hi = starts.length - 1
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid]! <= offset) lo = mid; else hi = mid - 1 }
+  const line = lo
   return { line, character: offset - starts[line]! }
 }
 

@@ -43,3 +43,8 @@ test('size budget: the two bundles stay within 3 MB', async () => {
   const total = ['extension.js', 'server.js'].reduce((n, f) => n + statSync(resolve(pkg, 'dist', f)).size, 0)
   expect(total, `${total} B`).toBeLessThanOrEqual(3 * 1024 * 1024)
 })
+
+test('the extension declares limited support for untrusted workspaces (the server then uses its bundled compiler)', () => {
+  const manifest = JSON.parse(readFileSync(resolve(pkg, 'package.json'), 'utf8'))
+  expect(manifest.capabilities?.untrustedWorkspaces?.supported).toBe('limited')
+})
