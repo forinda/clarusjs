@@ -32,8 +32,9 @@ export function matchRoute(table: Entry[], pathname: string): { r: string; param
 export async function show(
   url: URL,
   table: Entry[],
-  // False once a newer navigation has started: then this one must not touch the document.
-  isCurrent: () => boolean = () => true,
+  // Awaited right before the swap (where the in-between hooks run): false once a newer navigation has started,
+  // then this one must not touch the document.
+  isCurrent: () => Promise<boolean> | boolean = () => true,
   load: (src: string) => Promise<Page> = (src) => import(/* @vite-ignore */ src),
   get: (url: string) => Promise<Response> = fetch,
 ): Promise<boolean> {
@@ -47,7 +48,7 @@ export async function show(
       return parse(await res.text()) as object
     }),
   ])
-  if (!isCurrent()) return false
+  if (!(await isCurrent())) return false
   const doc = new DOMParser().parseFromString(page.render(props), 'text/html')
   // The head stays (its stylesheets are every client page's, linked by the shell); the title and the page's own
   // <html> attributes (lang, dir, …) are the new page's.
@@ -78,5 +79,5 @@ if (routes) {
     document.body.textContent = err.message.startsWith('404') ? 'Page not found.' : 'Could not load page.'
   })
   // Later navigations to client routes.
-  takeOver((url) => matchRoute(table, url.pathname) && ((url, isCurrent) => show(url, table, isCurrent)))
+  takeOver((url) => matchRoute(table, url.pathname) && ((url, isCurrent, signal) => show(url, table, isCurrent, undefined, (src) => fetch(src, { signal }))))
 }

@@ -106,6 +106,15 @@ test('#31: what load() returns is checked against the page inputs', () => {
   ])
 })
 
+test('#192: a load() that may return a Response (a redirect) has only its page inputs checked', () => {
+  const page = '@input name: string\n<p>{{ name }}</p>\n'
+  const loader = (value: string) => `export function load({ request }: { request: Request }) {\n  if (request.url.endsWith('?x')) return new Response(null, { status: 302, headers: { location: '/' } })\n  return { name: ${value} }\n}\n`
+  expect(check({ root: project({ 'src/pages/a.tscl': page, 'src/pages/a.load.ts': loader('"a"') }), typescript }).diagnostics).toEqual([])
+  expect(check({ root: project({ 'src/pages/a.tscl': page, 'src/pages/a.load.ts': loader('1') }), typescript }).diagnostics).toEqual([
+    { file: 'src/pages/a.tscl', line: 1, column: 1, code: 'TS2322', message: expect.stringMatching(/^load\(\) returns a value that doesn.t fit/) },
+  ])
+})
+
 test('#22: render() is typed against each view\'s inputs through the generated views.d.ts', () => {
   const root = project({
     'src/components/pill.tscl': '@input text: string\n@input tone: "info" | "tip" = "info"\n<b>{{ text }}</b>\n',
