@@ -2,21 +2,18 @@
 title: "Editor setup"
 group: "Tooling"
 order: 2
-description: "The clarusjs VS Code extension (highlighting, snippets, file icon) and the TypeScript 7.1 content mapper for type errors as you type."
+description: "Editor support for .tscl templates: the clarusjs language server in VS Code, Neovim, Helix, JetBrains and more, and the TypeScript 7.1 content mapper for types."
 ---
 
 # Editor setup
 
-<p class="lead">The clarusjs extension for VS Code highlights <code>.tscl</code> templates, gives them a file icon, and adds snippets for pages, components and template pieces.</p>
+<p class="lead">The clarusjs language server gives <code>.tscl</code> templates their errors, HTML and component support, references and renames in any editor; TypeScript inside templates comes from TypeScript itself. The VS Code extension bundles the server, with highlighting and snippets.</p>
 
 ## VS Code
 
-Install **clarusjs** from the Extensions view. The extension is in this repository as `packages/vscode`; until its first Marketplace release, `pnpm --filter clarusjs-vscode package` builds a `.vsix`, which **Extensions: Install from VSIX…** installs.
-
-What it gives `.tscl` files (hover and completion inside expressions and scripts come from TypeScript: see below):
+Install **clarusjs** (`forinda.clarusjs-vscode`) from the Extensions view. It runs [the language server](#the-language-server) for you, so it gives everything listed there, plus (hover and completion inside expressions and scripts come from TypeScript: see below):
 
 - **Highlighting.** HTML, with TypeScript wherever a template holds code: `{{ }}` holes, `[prop]`, `(event)` and `[(model)]` bindings, `@if`/`@for` conditions, `@input`/`@model` types, `@type`/`@interface` and `<script>`. CSS in `<style>`, and `{{-- comments --}}`.
-- **Hover and completion for HTML.** Tags and attributes, as in `.html` files, with their binding forms: `[disabled]`, `(click)`, and `[(value)]`/`[(checked)]` on fields. And the components the file imports: hover `<card>` for where it comes from, its inputs and its events; inside `<card ` the completions offer `[title]`, `[(value)]` for a `@model`, and `(rate)` for each event its script sends (`new CustomEvent('rate', …)`).
 - **Snippets.** Type the prefix and press Tab:
 
 | Prefix | Inserts |
@@ -29,6 +26,24 @@ What it gives `.tscl` files (hover and completion inside expressions and scripts
 | `clarus-load`, `clarus-entries` | a `.load.ts`: `load()`, or `entries()` and `load()` for a dynamic route |
 
 - **Editing.** **Toggle Block Comment** writes `{{-- --}}`, brackets and quotes close themselves, and Emmet abbreviations work as in HTML.
+
+## The language server
+
+`@clarusjs/language-server` is the same server in every editor. It runs `clarusjs-ls --stdio` and gives `.tscl` files:
+
+- **Template errors as you type,** from the clarusjs compiler, at their place.
+- **HTML, CSS and Emmet** in templates and `<style>`, with the binding forms of attributes: `[disabled]`, `(click)`, and `[(value)]`/`[(checked)]` on fields.
+- **Components:** the components a file imports complete as tags; inside `<card ` the completions offer its inputs (`[title]`), its models (`[(value)]`) and the events its script sends (`(rate)`). Hover `<card>` for where it comes from and what it takes; go to definition from the tag or its `@import`.
+- **References and renames:** Find All References on a component; rename a component in a file; renaming or moving a `.tscl` file updates every `@import` that points to it, Markdown pages included.
+- **Semantic colouring** of the template syntax, for editors without the TextMate grammar.
+
+Install it in the project (or globally) to get the `clarusjs-ls` command:
+
+```sh
+npm install -D @clarusjs/language-server
+```
+
+**Trust.** Started with `initializationOptions: { trusted: true }`, the server uses the project's own `clarusjs` compiler (when it's recent enough), so the editor agrees with the build; otherwise the one bundled with it. VS Code passes your workspace trust; in other editors, set it in the server's options.
 
 ## Type errors as you type
 
@@ -53,4 +68,51 @@ Add it to `tsconfig.json`, next to `compilerOptions`:
 
 ## Other editors
 
-The grammar is a standard TextMate grammar (`packages/vscode/syntaxes`), which editors such as Sublime Text can load. (Zed needs a Tree-sitter grammar, which there isn't yet.) Editors that use TypeScript's language server, Neovim among them, get the same type errors in templates from the content mapper.
+Each editor starts `clarusjs-ls --stdio` for files ending in `.tscl`. For TypeScript inside templates, add the content mapper line above to `tsconfig.json`: editors that use TypeScript 7.1's language server pick it up.
+
+### Neovim
+
+With Neovim 0.11 or later:
+
+```lua
+vim.filetype.add({ extension = { tscl = 'tscl' } })
+vim.treesitter.language.register('html', 'tscl') -- HTML highlighting; the server adds colours for the template syntax
+vim.lsp.config('clarusjs', {
+  cmd = { 'clarusjs-ls', '--stdio' },
+  filetypes = { 'tscl' },
+  root_markers = { 'package.json' },
+  init_options = { trusted = true },
+})
+vim.lsp.enable('clarusjs')
+```
+
+### Helix
+
+In `languages.toml`:
+
+```toml
+[language-server.clarusjs]
+command = "clarusjs-ls"
+args = ["--stdio"]
+config = { trusted = true }
+
+[[language]]
+name = "tscl"
+scope = "text.html.tscl"
+file-types = ["tscl"]
+roots = ["package.json"]
+grammar = "html"
+language-servers = ["clarusjs"]
+```
+
+### JetBrains IDEs
+
+Install the **LSP4IJ** plugin, then add a language server (**Languages & Frameworks → Language Servers → +**): command `clarusjs-ls --stdio`, and under **Mappings → File name patterns** add `*.tscl`. Its initialization options: `{ "trusted": true }`.
+
+### Zed
+
+Zed runs language servers through extensions; a clarusjs extension for Zed (registering `.tscl` and `clarusjs-ls`) is planned.
+
+### Sublime Text
+
+Load the TextMate grammar from the VS Code extension (`packages/vscode/syntaxes`) for highlighting, and add `clarusjs-ls --stdio` with the **LSP** package for the rest.
