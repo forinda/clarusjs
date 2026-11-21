@@ -91,3 +91,8 @@ test('show() applies the title template the shell carries on #cl-routes', async 
   expect(document.title).toBe('Page · Site')
   shell.dataset.title = '%s'
 })
+
+test('#192: a redirected __data.json request (the server sent the page) is an error: the page then loads normally', async () => {
+  const html = async () => new Response('<!doctype html><html><body><p>moved</p></body></html>', { headers: { 'content-type': 'text/html' } })
+  await expect(show(new URL('http://x/app'), table, undefined, async () => ({ render: () => '<p>x</p>' }), html)).rejects.toThrow()
+})

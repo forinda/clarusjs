@@ -8,3 +8,8 @@ test('on the server: currentUrl is null (it is what the server renders) and navi
   await expect(navigate('/x')).resolves.toBeUndefined()
   expect(() => back()).not.toThrow()
 })
+
+test('on the server: abort() does nothing', async () => {
+  const { abort } = await import('../../src/runtime/navigation.ts')
+  expect(() => abort()).not.toThrow()
+})

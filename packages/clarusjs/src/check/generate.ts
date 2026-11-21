@@ -64,7 +64,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
   let loaderSpan: [number, number] | undefined
   if (options.loader) {
     // Params and defaults fill the rest, so load() may return any subset of the inputs, each with the right type.
-    emit('declare const __cl_loaded: Awaited<ReturnType<typeof __cl_load>>\n')
+    // A Response (such as redirect()) is the answer instead of the page: only the rest is checked.
+    emit('declare const __cl_loaded: Exclude<Awaited<ReturnType<typeof __cl_load>>, Response>\n')
     const start = code.length
     point('const __cl_from_load: Partial<Inputs> = __cl_loaded', 0)
     loaderSpan = [start, code.length]

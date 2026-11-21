@@ -92,3 +92,5 @@
 .leave-guard { display: grid; gap: 8px; margin: 16px 0; }
 .leave-guard textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--fg); }
 .leave-ask { margin: 0; }
+.swap-demo { margin: 16px 0; }
+.swap-status { margin: 8px 0 0; color: var(--muted); }

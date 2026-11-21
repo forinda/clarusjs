@@ -10,7 +10,7 @@ class FakeNavigation extends EventTarget {
   }
 }
 
-afterEach(() => { vi.unstubAllGlobals(); vi.resetModules() })
+afterEach(() => { vi.unstubAllGlobals(); vi.resetModules(); delete (globalThis as { __clNav?: unknown }).__clNav })
 
 test('navigate() goes through the Navigation API (so fragments or the router take over), push or replace, with state', async () => {
   const navigation = new FakeNavigation()
@@ -109,4 +109,52 @@ test('hooks registered in an island are released with it', async () => {
   release()
   navigation.dispatchEvent(new Event('navigatesuccess'))
   expect(runs).toBe(1)
+})
+
+// #182: the navigator reports each step to globalThis.__clNav; the module runs the hooks and updates the store.
+type Step = (step: string | undefined, t: object) => Promise<void>
+const step = () => (globalThis as { __clNav?: Step }).__clNav!
+
+test('navigating follows the steps, as a new value each time, and is null when idle', async () => {
+  const { navigating } = await import('../../src/runtime/navigation.ts')
+  expect(navigating.get()).toBeNull()
+  const t = { phase: 'loading', to: new URL('http://x/a') }
+  await step()('loading', t)
+  const first = navigating.get()
+  expect(first).toMatchObject({ phase: 'loading' })
+  t.phase = 'swapping'
+  await step()('swapping', t)
+  expect(navigating.get()).not.toBe(first)
+  expect(navigating.get()).toMatchObject({ phase: 'swapping' })
+  await step()(undefined, t)
+  expect(navigating.get()).toBeNull()
+})
+
+test('beforeSwap and afterSwap run at their step, in order, awaited, and are released with their island', async () => {
+  const { beforeSwap, afterSwap } = await import('../../src/runtime/navigation.ts')
+  const { scope } = await import('../../src/runtime/signals.ts')
+  const seen: string[] = []
+  const release = scope(() => {
+    beforeSwap(async () => { await new Promise((r) => setTimeout(r, 5)); seen.push('before 1') })
+    beforeSwap(() => { seen.push('before 2') })
+    afterSwap(() => { seen.push('after') })
+  })
+  const t = { phase: 'loading' }
+  await step()('loading', t)
+  await step()('swapping', t)
+  await step()('swapped', t)
+  expect(seen).toEqual(['before 1', 'before 2', 'after'])
+  release()
+  await step()('swapping', t)
+  await step()('swapped', t)
+  expect(seen).toHaveLength(3)
+})
+
+// #193
+test('abort() stops the navigation in progress, as the browser’s stop button does', async () => {
+  const stop = vi.fn()
+  vi.stubGlobal('stop', stop)
+  const { abort } = await import('../../src/runtime/navigation.ts')
+  abort()
+  expect(stop).toHaveBeenCalledOnce()
 })
