@@ -60,14 +60,41 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     signals.set(i.name, 'model')
     scriptScope.add(i.name)
   }
-  /** [(x)]="path": the statement writing `value` back to path, copy-on-write (form = { ...form, name: value }). */
+  /**
+   * [(x)]="path": the statement writing `value` back to path, copy-on-write: `form.name` gives
+   * form = { ...form, name: value }, and `rows[$index].name` gives rows = rows.map((r, i) => i === $index ? … : r).
+   */
   const writeBack = (path: string, value: string, name: string, at: number): string => {
     if (!stateful) fail(`[(${name})] needs a <script> with state to write back to`, at)
-    if (!/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/.test(path)) fail(`[(${name})] needs a variable or a property path (form.name) to write back to, not "${path}"`, at)
-    const parts = path.split('.')
+    const invalid = () => fail(`[(${name})] needs a variable or a property path (form.name, rows[$index].name) to write back to, not "${path}"`, at)
+    const root = /^[A-Za-z_$][\w$]*/.exec(path)?.[0] ?? invalid()
+    if (loopNames.has(root)) fail(`[(${name})] can't write back to the row variable "${root}": bind the list by index, like [(${name})]="rows[$index].${path.slice(root.length).replace(/^\./, '') || 'name'}"`, at)
+    const segments: ({ key: string } | { index: string })[] = []
+    for (let rest = path.slice(root.length); rest; ) {
+      const key = /^\.([A-Za-z_$][\w$]*)/.exec(rest)
+      if (key) { segments.push({ key: key[1]! }); rest = rest.slice(key[0].length); continue }
+      if (rest[0] !== '[') invalid()
+      let depth = 0
+      let close = 0
+      for (; close < rest.length; close++) {
+        if (rest[close] === '[') depth++
+        else if (rest[close] === ']' && --depth === 0) break
+      }
+      const index = rest.slice(1, close).trim()
+      if (close >= rest.length || !index) invalid()
+      segments.push({ index })
+      rest = rest.slice(close + 1)
+    }
+    // From the innermost segment out: each level is a copy of its parent with one part replaced.
+    const bases = [root]
+    for (const seg of segments) bases.push('key' in seg ? `${bases.at(-1)}.${seg.key}` : `${bases.at(-1)}[${seg.index}]`)
     let next = value
-    for (let k = parts.length - 1; k >= 1; k--) next = `{ ...${parts.slice(0, k).join('.')}, ${parts[k]}: ${next} }`
-    const statement = `${parts[0]} = ${next}`
+    for (let k = segments.length - 1; k >= 0; k--) {
+      const seg = segments[k]!
+      const parent = bases[k]!
+      next = 'key' in seg ? `{ ...${parent}, ${seg.key}: ${next} }` : `${parent}.map((__cl_x, __cl_i) => __cl_i === (${seg.index}) ? ${next} : __cl_x)`
+    }
+    const statement = `${root} = ${next}`
     for (const w of writesTo(statement, inputNames)) readOnly(w.name, at)
     return statement
   }
