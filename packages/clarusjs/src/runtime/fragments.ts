@@ -53,4 +53,4 @@ export async function swap(
 }
 
 // Every navigation the shared guard takes over.
-takeOver(() => (url, isCurrent) => swap(url, fetch, isCurrent))
+takeOver(() => (url, isCurrent, signal) => swap(url, (src) => fetch(src, { signal }), isCurrent))
