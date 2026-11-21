@@ -43,6 +43,7 @@ export const sections: Section[] = [
         { title: 'Server playground', href: '/playground' },
       ] },
       { title: 'Site quality', items: [
+        { title: 'Docs theme', href: '/guide/docs-theme' },
         { title: 'Accessibility', href: '/guide/accessibility' },
       ] },
       { title: 'Tooling', items: [
@@ -82,6 +83,7 @@ const MARKDOWN = new Set([
   '/guide/components-in-islands',
   '/guide/conditionals',
   '/guide/deploy',
+  '/guide/docs-theme',
   '/guide/fragment-navigation',
   '/guide/getting-started',
   '/guide/holes',
@@ -119,7 +121,10 @@ export const theme: ThemeConfig = {
   brand: { text: 'clarus', accent: '.js', logo: '/logo.svg' },
   siteUrl: 'https://clarusjs.com',
   sections,
-  social: [{ label: 'GitHub', href: 'https://github.com/forinda/clarusjs', icon: 'github' }],
+  social: [
+    { label: 'GitHub', href: 'https://github.com/forinda/clarusjs', icon: 'github' },
+    { label: 'npm', href: 'https://www.npmjs.com/package/clarusjs', icon: 'npm' },
+  ],
   editLink: sourceOf,
   footer: 'MIT licensed. This site is built with clarusjs: its pages are static HTML, and only its interactive parts ship JavaScript.',
 }

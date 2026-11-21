@@ -5,6 +5,8 @@ export type Group = { title: string; items: Item[] }
 /** A top-level part of the docs (Guide, Reference): its own sidebar groups. */
 export type Section = { key: string; title: string; href: string; groups: Group[] }
 export type Social = { label: string; href: string; icon: 'github' | 'npm' | 'link' }
+/** A heading on the page, for "On this page". */
+export type Heading = { id: string; text: string; level: number }
 
 export type ThemeConfig = {
   /** The site's name in the header: `{ text: 'clarus', accent: '.js' }` shows the accent in the brand colour. */

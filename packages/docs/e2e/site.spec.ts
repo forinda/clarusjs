@@ -109,7 +109,7 @@ test('every sidebar link lands on a page, and the edit link points at its source
   await page.goto('/guide/what-is-clarusjs')
   for (const section of sections) {
     await page.goto(section.href)
-    const hrefs = await page.locator('.sidebar a').evaluateAll((links) => links.map((a) => a.getAttribute('href')!))
+    const hrefs = await page.locator('.sidebar ul a').evaluateAll((links) => links.map((a) => a.getAttribute('href')!))
     expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
   }
   await page.goto('/guide/lists')
@@ -198,15 +198,18 @@ test('named slot: a callout shows its filled title, or the fallback from its typ
   await expect(page.locator('.callout.tip .callout-title')).toHaveText('Tip')
 })
 
-test('phone width: the page list opens from the Menu button without JavaScript', async ({ browser }) => {
+test('phone width: the page list is a drawer from ☰ that works without JavaScript (native popover)', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 800 }, javaScriptEnabled: false })
   const page = await context.newPage()
   await page.goto('/guide/lists')
   const sidebar = page.locator('.sidebar')
   await expect(sidebar).toBeHidden()
-  await page.getByText('Menu', { exact: true }).click()
+  await page.getByRole('button', { name: 'Open menu' }).click()
   await expect(sidebar).toBeVisible()
   await expect(sidebar.locator('a[aria-current="page"]')).toHaveText('Lists')
+  await expect(sidebar.locator('.sidebar-links')).toContainText('GitHub') // the header's links live in the drawer
+  await page.keyboard.press('Escape')
+  await expect(sidebar).toBeHidden()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await context.close()
 })
@@ -743,7 +746,7 @@ test('a11y: text and code highlighting meet WCAG AA contrast, in light and dark'
   }
 })
 
-test('a11y: reduced motion turns transitions off; the mobile page list opens in place and leaves the page usable', async ({ page }) => {
+test('a11y: reduced motion turns transitions off; the phone drawer opens over the page and closes', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   const counter = page.locator('.counter').first()
@@ -753,13 +756,12 @@ test('a11y: reduced motion turns transitions off; the mobile page list opens in 
 
   await page.setViewportSize({ width: 375, height: 800 })
   await page.goto('/guide/markdown')
-  await page.getByText('Menu', { exact: true }).click()
+  await page.getByRole('button', { name: 'Open menu' }).click()
   const list = page.getByRole('navigation', { name: 'Pages' })
   await expect(list).toBeVisible()
-  expect(await list.evaluate((el) => getComputedStyle(el).position)).toBe('static') // in the flow, covering nothing
-  await expect(page.locator('main h1')).toBeVisible()
-  await page.locator('main a').first().focus()
-  await expect(page.locator('main a').first()).toBeFocused() // nothing behind it needs to be inert
+  expect(await list.evaluate((el) => getComputedStyle(el).position)).toBe('fixed') // a drawer over the page
+  await page.getByRole('button', { name: 'Close the menu' }).click()
+  await expect(list).toBeHidden()
 })
 
 test('review: a release page\'s TechArticle points at that release, not the release index', async ({ page }) => {
@@ -776,4 +778,33 @@ test('review: after the skip link, keyboard focus on <main> stays visible', asyn
   await page.keyboard.press('Enter')
   await expect(page.locator('main#content')).toBeFocused()
   expect(await page.locator('main#content').evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe('none')
+})
+
+test('theme regions: header, sidebar, content and "On this page" at desktop, laptop and tablet widths', async ({ page }) => {
+  // Desktop: "On this page" is a column, social links are icons.
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/guide/markdown')
+  const toc = page.getByRole('complementary', { name: 'On this page' })
+  await expect(toc).toBeVisible()
+  await expect(toc.getByRole('link', { name: 'Snippets and includes' })).toHaveAttribute('href', '#snippets-and-includes')
+  await expect(page.locator('details.toc-inline')).toBeHidden()
+  await expect(page.locator('.social').getByRole('link', { name: 'npm' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'More links' })).toBeHidden()
+  await expect(page.getByRole('navigation', { name: 'Pages' })).toBeVisible()
+  // Laptop: the column becomes a box above the content; social links fold into ⋯.
+  await page.setViewportSize({ width: 1100, height: 900 })
+  await expect(toc).toBeHidden()
+  await expect(page.locator('details.toc-inline')).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Pages' })).toBeVisible()
+  await page.getByRole('button', { name: 'More links' }).click()
+  await expect(page.locator('#more').getByRole('link', { name: 'GitHub' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  // Tablet: the sidebar is a drawer from ☰.
+  await page.setViewportSize({ width: 820, height: 1100 })
+  await expect(page.getByRole('navigation', { name: 'Pages' })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Open menu' })).toBeVisible()
+  await expect(page.locator('details.toc-inline')).toBeVisible()
+  // The header stays at the top while reading.
+  await page.mouse.wheel(0, 2000)
+  await expect(page.locator('header.site-header')).toBeInViewport()
 })
