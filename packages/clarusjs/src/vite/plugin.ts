@@ -28,7 +28,7 @@ const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js'
 const here = (path: string) => fileURLToPath(new URL(path + ext, import.meta.url))
 const ENTRY = 'virtual:clarusjs/server-entry'
 
-/** Dev URL of a component's client module: root-relative, or Vite's /@fs/ form for files outside the root. */
+/** Dev URL of a component's client module: root-relative, or Vite's /@fs/ form for files outside the root. @internal */
 export function clientUrlFor(root: string, file: string): string {
   const rel = relative(root, file)
   return rel.startsWith('..') || isAbsolute(rel) ? `/@fs${file}?import` : `/${rel}?import`
@@ -122,6 +122,11 @@ const SERVER_OUT = 'dist/server'
 // Outside the app (a workspace package): each leading ../ becomes _/, so chunk names stay inside dist/.
 const entryName = (root: string, file: string) => relative(root, file).split(sep).join('/').replace(/\.[^./\\]+$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))
 
+/**
+ * The Vite plugin's options: when routes render, the deploy adapter, fragment navigation, link checks, head tags, the
+ * site's address, sitemap and robots, redirects, and page sources.
+ * @see https://clarusjs.com/reference/vite-plugin#clarusjs
+ */
 export type ClarusOptions = {
   /** When each route renders: { '/account/*': 'server' }. Routes default to 'static' (prerendered at build). */
   routes?: ModeTable
@@ -162,14 +167,20 @@ export type ClarusOptions = {
   robots?: boolean
 }
 export type { HeadTag }
+/**
+ * How a build reports a broken link: fail (`'error'`), print a warning, or skip the check.
+ * @see https://clarusjs.com/reference/vite-plugin#links
+ */
 export type LinkLevel = 'error' | 'warn' | 'off'
 
 /**
  * A page source: files with another extension (such as Markdown) turned into .tscl text, then compiled like any
  * page. `route` is the page's route when the file is under src/pages.
+ * @see https://clarusjs.com/reference/vite-plugin#page-sources
  */
 export type Source = { extension: string; toTscl(code: string, file: string, context: SourceContext): string }
-/** `root`: the app root. `addDependency(file)`: another file the output depends on (rebuilt when it changes in dev). */
+/** @see https://clarusjs.com/reference/vite-plugin#page-sources
+ * `root`: the app root. `addDependency(file)`: another file the output depends on (rebuilt when it changes in dev). */
 export type SourceContext = { route: string; root: string; addDependency(file: string): void }
 
 /** How the plugin finds and reads component files: .tscl, plus the extensions of its page sources. */
@@ -191,6 +202,21 @@ function clientPages(appRoot: string, modes: ModeTable, files: Files): Map<strin
   return pages
 }
 
+/**
+ * The clarusjs Vite plugin: compiles `.tscl` files, serves pages in development, and on `vite build` builds the
+ * browser code, the server and the prerendered pages.
+ * @example
+ * ```ts
+ * // vite.config.ts
+ * import { defineConfig } from 'vite'
+ * import clarusjs from 'clarusjs/vite'
+ *
+ * export default defineConfig({
+ *   plugins: [clarusjs({ routes: { '/account/*': 'server' }, fragments: true })],
+ * })
+ * ```
+ * @see https://clarusjs.com/reference/vite-plugin#clarusjs
+ */
 export default function clarusjs(options: ClarusOptions = {}): Plugin {
   const modes = options.routes ?? {}
   checkModes(modes)

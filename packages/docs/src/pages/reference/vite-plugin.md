@@ -7,12 +7,22 @@ description: "The clarusjs Vite plugin: its routes option, and what it does in d
 
 # Vite plugin
 
+## clarusjs()
+
+```ts
+clarusjs(options?: ClarusOptions): Plugin
+```
+
+The plugin. It compiles `.tscl` files, serves pages in development, and on `vite build` builds the browser code, the server and the prerendered pages.
+
 ```ts
 import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
 
 export default defineConfig({ plugins: [clarusjs()] })
 ```
+
+Every option is optional. The sections below describe each one.
 
 ## routes
 
@@ -92,6 +102,25 @@ With `site` set, `vite build` writes `robots.txt`: every crawler may index every
 ## 404 page
 
 `src/pages/404.tscl` (or `404.md`) is the page for any unknown address: in development, in server mode and in `vite preview` it is served with status 404, and `vite build` writes it to `404.html`, which static hosts serve for unknown paths. It is shown at any depth (`/a/b/c`), so its relative links are resolved from the site root: `href="guide"` means `/guide` wherever the visitor is. It is never in the sitemap. Data and fragment requests still get a plain 404.
+
+## Page sources
+
+**Type:** `Source[]` (the `sources` option)
+
+Pages in another format, turned into `.tscl` text and then compiled like any page. `@clarusjs/content` is one, for Markdown.
+
+```ts
+type Source = { extension: string; toTscl(code: string, file: string, context: SourceContext): string }
+type SourceContext = { route: string; root: string; addDependency(file: string): void }
+```
+
+- **`extension`**: the file extension it handles, such as `'.md'`.
+- **`toTscl(code, file, context)`**: returns the page as `.tscl` text. `context.route` is the page's route when the file is under `src/pages`, and `context.root` is the app root. Call `context.addDependency(file)` for another file the output depends on, so it's rebuilt when that file changes.
+
+```ts
+import markdown from '@clarusjs/content'
+clarusjs({ sources: [markdown()] })
+```
 
 ## What it does
 

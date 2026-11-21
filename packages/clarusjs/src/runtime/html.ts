@@ -9,7 +9,7 @@ export function escape(value: unknown): string {
   return String(value).replace(/[&<>"']/g, (ch) => ENTITIES[ch]!)
 }
 
-/** A value as JSON for a <script> (JSON-LD): <, >, & and line separators escaped, so it can't end the script. */
+/** A value as JSON for a <script> (JSON-LD): <, >, & and line separators escaped, so it can't end the script. @internal */
 export function json(value: unknown): string {
   return (JSON.stringify(value) ?? 'null').replace(/[<>&\u2028\u2029]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`)
 }
