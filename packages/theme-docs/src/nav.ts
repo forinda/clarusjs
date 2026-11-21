@@ -17,8 +17,15 @@ export type ThemeConfig = {
   sections: Section[]
   /** Icon links at the right of the header (GitHub, npm…). */
   social?: Social[]
-  /** "Edit this page" for a route (and the page's source route, for dynamic pages); none without it. */
-  editLink?: (path: string) => string
+  /**
+   * "Edit this page": a pattern where `:file` is the page's source file under src/pages (`guide/start.md`, found in
+   * `pages`), or a function of the route (the page's source route, for dynamic pages). None without it.
+   */
+  editLink?: string | ((path: string) => string)
+  /** The pages as themeDocs() reads them: source files for `editLink` patterns, and "Last updated" dates. */
+  pages?: PageInfo[]
+  /** A search button (and Ctrl/⌘K, /) in the header; the index comes from the themeDocs() Vite plugin. */
+  search?: boolean
   /** The site footer's text. */
   footer?: string
 }
@@ -51,8 +58,11 @@ export function pager(sections: Section[], path: string): { prev: Item; next: It
   return { prev: items[i - 1] ?? none, next: items[i + 1] ?? none }
 }
 
-/** A page as `themeDocs()` reads it (`import pages from 'virtual:theme-docs/pages'`). */
-export type PageInfo = { href: string; title: string; group?: string; order?: number }
+/**
+ * A page as `themeDocs()` reads it (`import pages from 'virtual:theme-docs/pages'`): its route, source file under
+ * src/pages, last commit time (unix seconds), sidebar entry, and `hidden` when it isn't in the sidebar.
+ */
+export type PageInfo = { href: string; title: string; file: string; group?: string; order?: number; updated?: number; hidden?: boolean }
 
 /**
  * The sections with their sidebar filled from the pages under `/<section key>/`: a page sits in its `group` (else the
@@ -64,7 +74,7 @@ export function pagesNav(sections: Section[], pages: PageInfo[]): Section[] {
     const groups = section.groups.map((g) => ({ title: g.title, items: [...g.items] }))
     const listed = new Set(groups.flatMap((g) => g.items.map((i) => i.href)))
     for (const page of pages) {
-      if (!page.href.startsWith(`/${section.key}/`) || listed.has(page.href)) continue
+      if (page.hidden || !page.href.startsWith(`/${section.key}/`) || listed.has(page.href)) continue
       const title = page.group ?? section.title
       let group = groups.find((g) => g.title === title)
       if (!group) groups.push(group = { title, items: [] })
@@ -77,4 +87,19 @@ export function pagesNav(sections: Section[], pages: PageInfo[]): Section[] {
     const all = [...groups.slice(0, section.groups.length), ...added]
     return { ...section, href: section.href || all[0]?.items[0]?.href || '', groups: all }
   })
+}
+
+/** "Edit this page" for a route (its source route, for dynamic pages): '' when there is none. */
+export function editHref(config: ThemeConfig, route: string): string {
+  if (typeof config.editLink === 'function') return config.editLink(route)
+  const file = config.pages?.find((p) => p.href === route)?.file
+  return config.editLink && file ? config.editLink.replace(':file', file) : ''
+}
+
+/** When the page last changed (its source route, for dynamic pages): `{ iso, text }`, or undefined without a date. */
+export function updatedOf(config: ThemeConfig, route: string): { iso: string; text: string } | undefined {
+  const seconds = config.pages?.find((p) => p.href === route)?.updated
+  if (seconds === undefined) return undefined
+  const date = new Date(seconds * 1000)
+  return { iso: date.toISOString(), text: date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }) }
 }

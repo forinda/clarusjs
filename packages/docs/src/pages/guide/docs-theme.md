@@ -50,7 +50,7 @@ export const config: ThemeConfig = {
     { label: 'GitHub', href: 'https://github.com/acme/acme', icon: 'github' },
     { label: 'npm', href: 'https://www.npmjs.com/package/acme', icon: 'npm' },
   ],
-  editLink: (path) => `https://github.com/acme/acme/edit/main/src/pages${path}.md`,
+  editLink: 'https://github.com/acme/acme/edit/main/src/pages/:file', // see below
   footer: 'MIT licensed.',
 }
 ```
@@ -101,6 +101,35 @@ order: 1
 - An empty `href` on a section means its first page.
 
 Only the titles, groups and orders reach the browser (for pages it renders itself, like client routes), never the files. For the types, add `/// <reference types="@clarusjs/theme-docs/pages.d.ts" />` to a `.d.ts` in your project. This site's sidebar is built that way: [sidebar.ts](https://github.com/forinda/clarusjs/blob/main/packages/docs/src/sidebar.ts).
+
+## Edit links and last updated
+
+Give the theme the pages `themeDocs()` read, and each page's footer gets an "Edit this page" link and the date of the last commit that changed its source file:
+
+```ts
+import pages from 'virtual:theme-docs/pages'
+
+export const config: ThemeConfig = {
+  // …
+  editLink: 'https://github.com/acme/acme/edit/main/src/pages/:file', // :file = guide/start.md
+  pages,
+}
+```
+
+- **`:file`** is the page's source under `src/pages`, with its extension, so Markdown and `.tscl` pages both link right. A dynamic page (`releases/[version].tscl`) passes its route pattern as `source` and links to that file.
+- **Last updated** comes from one `git log` for all pages, the same one the sitemap uses. A page git doesn't know yet (not committed) shows no date. In CI, check out the full history (`fetch-depth: 0` on GitHub Actions): a shallow clone dates every page to the last commit.
+- `editLink` can still be a function of the route, for links that aren't one pattern.
+
+## Search
+
+Set `search: true` in the config, and keep `themeDocs()` in `vite.config.ts`: after the build it reads every built page and writes a search index next to them, in `dist/client/search/`.
+
+- **Sections:** each page is split at its headings (h1 to h3 with an id), so a result links to the part of the page that matches. The theme's own parts (crumb, contents, footer) aren't indexed. Pages with `noindex`, or with `data-search="false"` in their content, are left out.
+- **Small files, loaded on demand:** words are grouped by their first two letters (`t-is.json`), sections in chunks of 64 (`s-0.json`). A query fetches one word file per word it has and the sections of its best results, never the whole index.
+- **Ranking:** every word must match, the last one as a prefix, so results come while typing. A word in a heading counts more than one in the text, and a word repeated all over a long page counts no more than three uses.
+- **The dialog:** the header button, <kbd>Ctrl</kbd>/<kbd>⌘</kbd> <kbd>K</kbd> or <kbd>/</kbd> open it. It's a native modal `<dialog>`: focus stays inside, <kbd>Escape</kbd> closes it, and focus goes back. Arrow keys move through the results, <kbd>Enter</kbd> opens one, and the number of results is announced.
+
+`themeDocs({ search: false })` skips the index.
 
 ## Regions at every width
 

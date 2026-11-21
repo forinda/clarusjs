@@ -1,4 +1,5 @@
 // The sidebar from the files under src/pages: themeDocs() reads them (readPages), pagesNav merges them with the config.
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
@@ -64,6 +65,31 @@ test('themeDocs() serves the pages as virtual:theme-docs/pages', async () => {
   expect(id).toBe('\0virtual:theme-docs/pages')
   const code = (plugin.load as (id: string) => string | undefined)(id)!
   expect(code).toContain('export default [')
-  expect(code).toContain('{"href":"/reference/cli","title":"CLI"}')
-  expect(code).not.toContain('Hidden')
+  expect(code).toContain('{"href":"/reference/cli","title":"CLI","file":"reference/cli.md"}')
+  expect(code).toContain('{"href":"/guide/hidden","title":"Hidden","file":"guide/hidden.md","hidden":true}')
+})
+
+test('each page carries its source file; dynamic routes are listed for edit links but hidden from the sidebar', () => {
+  const pages = readPages(dir)
+  expect(pages.find((p) => p.href === '/guide/start')).toMatchObject({ file: 'guide/start.md' })
+  expect(pages.find((p) => p.href === '/guide/[step]')).toMatchObject({ file: 'guide/[step].tscl', hidden: true })
+  expect(pages.find((p) => p.href === '/guide/hidden')).toMatchObject({ hidden: true })
+  expect(pages.some((p) => p.file.includes('_part'))).toBe(false)
+})
+
+test('updated: the last commit that touched the page (one git log for all pages); none outside git', () => {
+  const repo = mkdtempSync(resolve(tmpdir(), 'theme-git-'))
+  mkdirSync(resolve(repo, 'src/pages/guide'), { recursive: true })
+  writeFileSync(resolve(repo, 'src/pages/guide/a.md'), '# A\n')
+  writeFileSync(resolve(repo, 'src/pages/guide/b.md'), '# B\n')
+  const git = (args: string[], date: string) => execFileSync('git', args, { cwd: repo, env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date } })
+  git(['init', '-q'], '@1700000000 +0000')
+  git(['-c', 'user.name=t', '-c', 'user.email=t@t', 'add', '.'], '@1700000000 +0000')
+  git(['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'one'], '@1700000000 +0000')
+  writeFileSync(resolve(repo, 'src/pages/guide/b.md'), '# B2\n')
+  git(['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qam', 'two'], '@1700100000 +0000')
+  const pages = readPages(resolve(repo, 'src/pages'))
+  expect(pages.find((p) => p.href === '/guide/a')!.updated).toBe(1700000000)
+  expect(pages.find((p) => p.href === '/guide/b')!.updated).toBe(1700100000)
+  expect(readPages(dir).every((p) => p.updated === undefined)).toBe(true)
 })
