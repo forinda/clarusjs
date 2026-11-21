@@ -19,7 +19,7 @@ beforeEach(() => { document.body.innerHTML = '' })
 
 test('counter client output is readable and exact', () => {
   expect(compile(fixture('counter.tscl'), { file: 'counter.tscl', target: 'client' }).code).toBe(
-`import { state, derived, holes as __cl_holes, text as __cl_text, on as __cl_on } from 'clarusjs/runtime'
+`import { state, derived, holes as __cl_holes, text as __cl_text, on as __cl_on, batch as __cl_batch } from 'clarusjs/runtime'
 
 export function attach(__cl_root, __cl_props = {}, __cl_state) {
   const start = state(__cl_props.start === undefined ? (0) : __cl_props.start)
@@ -31,9 +31,9 @@ export function attach(__cl_root, __cl_props = {}, __cl_state) {
   __cl_text(__cl_h[0], () => count.get())
   __cl_text(__cl_h[1], () => double.get())
   __cl_on(__cl_root, 0, "click", ($event) => { add() })
-  return (__cl_p) => {
+  return (__cl_p) => __cl_batch(() => {
     start.set(__cl_p.start === undefined ? (0) : __cl_p.start)
-  }
+  })
 }
 `)
 })

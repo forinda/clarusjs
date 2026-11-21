@@ -161,7 +161,8 @@ function arrive(): void {
 // its DOM and state are kept. False when it can't take them (not attached yet, or another component).
 ;(globalThis as { __clUpdate?: (el: Element, next: Element) => boolean }).__clUpdate = (el, next) => {
   const update = updates.get(el)
-  if (!update || el.getAttribute('c') !== next.getAttribute('c')) return false
+  // The same component: the same name and the same source (two panel.tscl files share a name).
+  if (!update || el.getAttribute('c') !== next.getAttribute('c') || el.getAttribute('src') !== next.getAttribute('src')) return false
   const p = next.getAttribute('p') ?? '{}'
   el.setAttribute('p', p)
   update(parse(p) as Record<string, unknown>)

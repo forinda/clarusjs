@@ -63,7 +63,9 @@ Three rules make the whole system explainable:
    of a `.tscl` file contains no `render`, no loader, no template strings. This
    is by construction, not by tree shaking.
 2. **Only stateful components produce client code.** A component without a
-   `<script>` has no client module at all. Zero bytes, always.
+   `<script>` and without a `@model` input has no client module at all. Zero
+   bytes, always. (A `@model` input makes a component an island: it writes its
+   value back to the parent, so it needs client code even without a script.)
 3. **One handler produces all HTML.** SSR calls it per request. SSG calls the
    same handler at build time and saves the result. They cannot drift apart.
 

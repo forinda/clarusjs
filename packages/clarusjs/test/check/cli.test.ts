@@ -349,3 +349,35 @@ test('state([]) starts an array of anything (scripts are JavaScript: no state<st
   })
   expect(check({ root, typescript }).diagnostics.map((d) => `${d.line} ${d.code}`)).toEqual(['5 TS2339']) // only $event.nope on a MouseEvent
 })
+
+// Review fixes for #212.
+test('review: a symlinked root; a converted page importing a package component is still checked through it', () => {
+  const real = project({
+    'node_modules/ui/package.json': '{ "name": "ui" }',
+    'node_modules/ui/card.tscl': '@input n: number\n<b>{{ n }}</b>\n',
+    'src/pages/a.page': "title\n<card [n]=\"'x'\" />\n",
+  })
+  const link = `${real}-link`
+  symlinkSync(real, link, 'dir')
+  const addsImport = { extension: '.page', toTscl: (code: string) => `@import card from 'ui/card.tscl'\n${code.split('\n').slice(1).join('\n')}` }
+  expect(check({ root: link, typescript, sources: [addsImport] }).diagnostics.map((d) => `${d.file} ${d.code}`)).toEqual(['src/pages/a.page TS2322'])
+})
+
+test('review: aliases to components outside the project, and exact aliases naming a .tscl file, resolve for checking', () => {
+  const root = project({
+    'app/tsconfig.json': JSON.stringify({ compilerOptions: { strict: true, module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2023', 'DOM'], allowImportingTsExtensions: true, noEmit: true, paths: { '@theme/*': ['../theme/*'], '@card.tscl': ['./src/components/card.tscl'] } } }),
+    'app/src/components/card.tscl': '@input n: number\n<b>{{ n }}</b>\n',
+    'theme/badge.tscl': '@input label: string\n<i>{{ label }}</i>\n',
+    'app/src/pages/index.tscl': "@import badge from '@theme/badge.tscl'\n@import card from '@card.tscl'\n<badge [label]=\"1\" />\n<card [n]=\"'x'\" />\n",
+  })
+  const result = check({ root: resolve(root, 'app'), typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:3 TS2322', 'src/pages/index.tscl:4 TS2322'])
+})
+
+test('review: [(x)] checks the child\'s model type can be written back into the parent\'s target', () => {
+  const root = project({
+    'src/components/field.tscl': '@model value: string | number = 0\n<p>{{ value }}</p>\n',
+    'src/pages/index.tscl': "@import field from '../components/field.tscl'\n<script>\n  let form = state({ name: 'a' })\n</script>\n<field [(value)]=\"form.name\" />\n",
+  })
+  expect(check({ root, typescript }).diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:5 TS2322'])
+})

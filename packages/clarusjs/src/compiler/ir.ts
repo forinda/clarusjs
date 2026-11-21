@@ -92,7 +92,10 @@ export function lower(parsed: ParsedFile, file: string, source: string): Compone
     for (let k = segments.length - 1; k >= 0; k--) {
       const seg = segments[k]!
       const parent = bases[k]!
-      next = 'key' in seg ? `{ ...${parent}, ${seg.key}: ${next} }` : `${parent}.map((__cl_x, __cl_i) => __cl_i === (${seg.index}) ? ${next} : __cl_x)`
+      // A bracket picks an array element (a copy with it replaced) or an object property (form['name']).
+      next = 'key' in seg
+        ? `{ ...${parent}, ${seg.key}: ${next} }`
+        : `(Array.isArray(${parent}) ? ${parent}.map((__cl_x, __cl_i) => __cl_i === (${seg.index}) ? ${next} : __cl_x) : { ...${parent}, [${seg.index}]: ${next} })`
     }
     const statement = `${root} = ${next}`
     for (const w of writesTo(statement, inputNames)) readOnly(w.name, at)

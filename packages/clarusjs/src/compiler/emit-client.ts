@@ -26,6 +26,7 @@ export function emitClient(ir: ComponentIR): string {
     hasRegions && 'region as __cl_region',
     all.some((n) => n.kind === 'component' && !!n.models?.length) && 'model as __cl_model',
     kinds.has('model') && 'modelInput as __cl_modelInput',
+    ir.inputs.some((i) => kinds.has('input') || i.model) && 'batch as __cl_batch',
     // Branch and row HTML is rendered in the browser with the same helpers as on the server.
     rendersHtml && 'escape as __cl_escape',
     rendersHtml && all.some((n) => n.kind === 'attr') && 'attrHtml as __cl_attrHtml',
@@ -59,7 +60,8 @@ export function emitClient(ir: ComponentIR): string {
   const lines = wiring(ir, ir.nodes, undefined, '__cl_root', ir.signals, 0)
   if (lines.length) out += '\n' + lines.map((l) => `  ${l}\n`).join('')
   // New props from a parent island: each input follows (the loader keeps this, and the parent calls it in place).
-  if (inputs.length) out += `  return (__cl_p) => {\n${inputs.map((i) => `    ${i.name}.${i.model ? 'own' : 'set'}(${value(i, '__cl_p')})\n`).join('')}  }\n`
+  // All at once (a batch): an effect reading two inputs never sees one updated and the other not.
+  if (inputs.length) out += `  return (__cl_p) => __cl_batch(() => {\n${inputs.map((i) => `    ${i.name}.${i.model ? 'own' : 'set'}(${value(i, '__cl_p')})\n`).join('')}  })\n`
   return out + '}\n'
 }
 

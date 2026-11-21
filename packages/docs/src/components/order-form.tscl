@@ -31,7 +31,7 @@
       <div class="order-line">
         <input [aria-label]="'Item ' + ($index + 1)" [(value)]="order.lines[$index].item">
         <input type="number" min="0" [aria-label]="'Quantity ' + ($index + 1)" [(value)]="order.lines[$index].qty">
-        <input type="number" min="0" [aria-label]="'Price ' + ($index + 1)" [(value)]="order.lines[$index].price">
+        <input type="number" min="0" step="any" [aria-label]="'Price ' + ($index + 1)" [(value)]="order.lines[$index].price">
         <button type="button" [aria-label]="'Remove line ' + ($index + 1)" (click)="removeLine($index)">×</button>
       </div>
     }
