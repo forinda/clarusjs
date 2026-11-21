@@ -8,7 +8,7 @@
 
 <p align="center"><a href="https://clarusjs.com">Documentation</a> · <a href="https://clarusjs.com/guide/getting-started">Getting started</a> · <a href="https://www.npmjs.com/package/clarusjs">npm</a></p>
 
-<p align="center"><a href="https://www.npmjs.com/package/clarusjs"><img src="https://img.shields.io/npm/dm/clarusjs?label=downloads%2Fmonth" alt="clarusjs monthly downloads on npm"></a> <a href="https://www.npmjs.com/package/clarusjs"><img src="https://img.shields.io/npm/v/clarusjs" alt="clarusjs version on npm"></a> <img src="https://img.shields.io/node/v/clarusjs" alt="Node.js versions clarusjs supports"></p>
+<p align="center"><a href="https://www.npmjs.com/package/clarusjs"><img src="https://img.shields.io/npm/dm/clarusjs?label=downloads%2Fmonth" alt="clarusjs monthly downloads on npm"></a> <a href="https://www.npmjs.com/package/clarusjs"><img src="https://img.shields.io/npm/v/clarusjs" alt="clarusjs version on npm"></a> <img src="https://img.shields.io/node/v/clarusjs" alt="Node.js versions clarusjs supports"> <a href="LICENSE"><img src="https://img.shields.io/npm/l/clarusjs" alt="License: MIT"></a></p>
 
 Write components once in a familiar template language. clarusjs compiles them to plain server HTML, and ships
 JavaScript only for the parts that are actually interactive. Static sites, server rendering and client apps share one
