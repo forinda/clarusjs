@@ -59,6 +59,11 @@ test('no server code or template source reaches the client assets', () => {
   }
 })
 
+test('#307: template whitespace is collapsed at build (not in <pre>)', () => {
+  const team = read('about/team/index.html')
+  expect(team).toMatch(/<section[^>]*id="ws"[^>]*>\n<p>\nIndented text\n<\/p>\n<pre>  kept    as written<\/pre>\n<\/section>/)
+})
+
 test('routeToFile maps routes to index.html files', () => {
   expect(routeToFile('/')).toBe('index.html')
   expect(routeToFile('/about/team')).toBe('about/team/index.html')
