@@ -26,6 +26,7 @@ export function createTsclServicePlugin(projectFor: (path: string) => Project): 
       semanticTokensProvider: { legend: { tokenTypes: [...TOKEN_TYPES], tokenModifiers: [] } },
       referencesProvider: true,
       renameProvider: { prepareProvider: true },
+      documentFormattingProvider: true,
     },
     create(context) {
       /** The .tscl document's path, project and text (the project synced to the buffer), or nothing for others. */
@@ -38,6 +39,14 @@ export function createTsclServicePlugin(projectFor: (path: string) => Project): 
         return { path, text, project }
       }
       return {
+        // The whole file through the project's Prettier (see format.ts); nothing while it can't be formatted.
+        async provideDocumentFormattingEdits(document) {
+          const doc = open(document)
+          if (!doc?.project.format) return undefined
+          let out: string
+          try { out = await doc.project.format(doc.text, doc.path) } catch { return undefined }
+          return out === doc.text ? [] : [{ range: { start: document.positionAt(0), end: document.positionAt(doc.text.length) }, newText: out }]
+        },
         provideDiagnostics(document) {
           const doc = open(document)
           return doc && diagnosticsFor(doc.project, doc.path, doc.text)

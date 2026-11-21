@@ -8,6 +8,7 @@ import { create as createHtmlService } from 'volar-service-html'
 import { URI } from 'vscode-uri'
 import { bindingsProvider } from './bindings.ts'
 import { loadCompiler, type Compiler } from './compiler.ts'
+import { loadFormatter } from './format.ts'
 import { createTsclServicePlugin } from './plugin/index.ts'
 import { pickProject, Project } from './project.ts'
 import { fileRenameEdits } from './references.ts'
@@ -23,6 +24,7 @@ export function startServer(): void {
   let loose: Project | undefined // files outside every workspace folder (or with none open)
   let trusted = false
   let folders: string[] = []
+  let watchFolders = false // the editor sends folder changes (asking for them otherwise throws, ending the server)
   const log = (message: string) => connection.console.info(message)
   const projectFor = (path: string) => pickProject(projects, path, loose!)
   /**
@@ -32,6 +34,7 @@ export function startServer(): void {
    */
   const addFolder = async (root: string, mayTrust: boolean) => {
     const project = new Project(root, await loadCompiler(root, trusted && mayTrust, log))
+    project.format = await loadFormatter(root, trusted && mayTrust, log)
     projects.push(project)
     await project.load()
   }
@@ -39,6 +42,7 @@ export function startServer(): void {
   connection.listen()
   connection.onInitialize(async (params) => {
     trusted = (params.initializationOptions as ServerOptions | undefined)?.trusted === true
+    watchFolders = params.capabilities.workspace?.workspaceFolders === true
     folders = params.workspaceFolders?.map((f) => URI.parse(f.uri).fsPath) ?? (params.rootUri ? [URI.parse(params.rootUri).fsPath] : [])
     const compiler: Compiler = await loadCompiler(folders[0] ?? process.cwd(), trusted && folders.length > 0, () => {})
     loose = new Project(process.cwd(), compiler)
@@ -59,7 +63,7 @@ export function startServer(): void {
     for (const root of folders) await addFolder(root, true)
     await server.languageFeatures.requestRefresh(false)
     // Folders added later are indexed too; removed ones dropped.
-    connection.workspace.onDidChangeWorkspaceFolders(async ({ added, removed }) => {
+    if (watchFolders) connection.workspace.onDidChangeWorkspaceFolders(async ({ added, removed }) => {
       for (const f of removed) {
         const root = URI.parse(f.uri).fsPath
         const at = projects.findIndex((p) => p.root === root)

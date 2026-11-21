@@ -8,6 +8,7 @@ import type { ParsedFile } from 'clarusjs/compiler'
 import { projectAliases, resolveAlias, type Alias } from '../../clarusjs/src/vite/aliases.ts' // the build's own rules, bundled
 import { blankFences, blankOut, scan } from './blank.ts'
 import type { Compiler } from './compiler.ts'
+import type { Formatter } from './format.ts'
 
 /** An @import: its name (nameStart..nameStart+name.length) and specifier (start..end, without quotes). */
 export type Import = { name: string; nameStart: number; specifier: string; target?: string; start: number; end: number }
@@ -32,6 +33,9 @@ export class Project {
   private parsed = new Map<string, ParsedFile>()
   private aliases: Alias[] | undefined
   private mapperCache = new Map<string, boolean>()
+
+  /** Format Document: the project's Prettier with the plugin (trusted, and both installed), else none. */
+  format: Formatter | undefined
 
   constructor(readonly root: string, readonly compiler: Compiler) {}
 
