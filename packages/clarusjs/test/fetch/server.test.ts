@@ -17,3 +17,13 @@ test('review: mutate() is a no-op on the server (a module-level resource must no
   r.mutate(5)
   expect(r.value).toBe(0)
 })
+
+test('on the server, key and the cache functions do nothing', async () => {
+  const { resource, invalidate, setData, prefetch } = await import('../../src/fetch/index.ts')
+  const f = vi.fn(() => Promise.resolve(1))
+  expect(resource(f, { key: () => ['s'], initial: 2 }).value).toBe(2)
+  setData(['s'], 3)
+  invalidate(['s'])
+  await prefetch(['s'], f)
+  expect(f).not.toHaveBeenCalled()
+})
