@@ -2,7 +2,9 @@
 // imports the built server). The server entry registers the views; `clarusjs check` writes .clarusjs/views.d.ts,
 // which types each name with that view's inputs.
 
-type View = { render(props?: object): string }
+import { attrHtml, escape, HTML } from '../runtime/html.ts'
+
+type View = { render(props?: object, slots?: Record<string, string>): string }
 type Registry = Record<string, () => Promise<View>>
 
 /**
@@ -52,4 +54,72 @@ export async function render<N extends ViewName>(name: N, props: ViewProps<N>): 
   const load = views.get(name)
   if (!load) throw new Error(`clarusjs: no view "${name}"; views: ${[...views.keys()].sort().join(', ')}`)
   return (await load()).render(props as object)
+}
+
+/**
+ * HTML that `h()` built: a template's `{{ }}` inserts it as it is (any other value is escaped). Only `h()` makes one,
+ * from escaped parts; data (JSON) can't, so an island prop is always text.
+ * @see https://clarusjs.com/reference/server#h
+ */
+export type Html = { readonly [HTML]: true; readonly html: string; toString(): string }
+/**
+ * What `h()` takes as children: text (escaped), `h()` results, numbers, nothing (null, false), and lists of these.
+ * @see https://clarusjs.com/reference/server#h
+ */
+export type Children = Html | string | number | boolean | null | undefined | Promise<Html> | Children[]
+
+const html = (s: string): Html => ({ [HTML]: true, html: s, toString: () => s })
+const VOID = new Set(['area', 'br', 'col', 'hr', 'img', 'input', 'source', 'track', 'wbr'])
+// Tags that load or run things: in a .tscl view, where the compiler's rules apply, not from code.
+const REFUSED = new Set(['script', 'style', 'iframe', 'frame', 'object', 'embed', 'base', 'link', 'meta', 'template'])
+
+async function childrenHtml(children: Children): Promise<string> {
+  const c = await children
+  if (c == null || typeof c === 'boolean') return ''
+  if (Array.isArray(c)) return (await Promise.all(c.map(childrenHtml))).join('')
+  return escape(c) // text escaped; h()'s output inserted as it is
+}
+
+/**
+ * Build HTML in server code: an element (`'p'`, `'div'`), or a view (any `.tscl` under src/, by its path:
+ * `'components/card'`), with props or attributes and children. Text is escaped and attributes are URL-checked, as in
+ * templates; `h()` results nest. Put the result in a page through `load()`: `{{ }}` inserts it as HTML.
+ * @param name An element's tag, or a view's name (it has a `/`).
+ * @param props A view's inputs, or an element's attributes (`on*`, `srcdoc` refused).
+ * @param children The default slot's (or element's) content; for a view, an object fills named slots.
+ * @example
+ * ```ts
+ * // src/pages/index.load.ts
+ * import { h } from 'clarusjs/views'
+ * export async function load() {
+ *   const picked = await getWidgets() // [{ view: 'components/chart', props: {…} }, …]
+ *   return { widgets: await h('div', { class: 'grid' }, picked.map((w) => h(w.view, w.props))) }
+ * }
+ * // src/pages/index.tscl: @input widgets: any … <main>{{ widgets }}</main>
+ * ```
+ * @see https://clarusjs.com/reference/server#h
+ */
+export async function h<N extends ViewName>(name: N | (string & {}), props: (N extends ViewName ? ViewProps<N> : never) | Record<string, unknown> = {}, children: Children | Record<string, Children> = []): Promise<Html> {
+  if (name.includes('/')) {
+    const views = store.__clViews
+    const load = views?.get(name)
+    if (!load) throw new Error(`clarusjs: no view "${name}"${views ? `; views: ${[...views.keys()].sort().join(', ')}` : ' (h() runs in server code, after the server entry has loaded)'}`)
+    const named = children && typeof children === 'object' && !Array.isArray(children) && !(children as { [HTML]?: unknown })[HTML] && !(children instanceof Promise)
+    const slots: Record<string, string> = {}
+    for (const [slot, content] of Object.entries(named ? (children as Record<string, Children>) : { default: children as Children })) {
+      const filled = await childrenHtml(content)
+      if (filled) slots[slot] = filled // only slots with content: a view without a <slot /> takes no children
+    }
+    return html((await load()).render(props as object, Object.keys(slots).length ? slots : undefined))
+  }
+  const tag = name.toLowerCase()
+  if (!/^[a-z][a-z0-9-]*$/.test(tag)) throw new Error(`h(): "${name}" isn't a tag or a view name (views have a /, such as "components/card")`)
+  if (REFUSED.has(tag)) throw new Error(`h(): <${tag}> loads or runs things: write it in a .tscl view, where the compiler checks it`)
+  let attrs = ''
+  for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
+    if (!/^[^\s"'>/=]+$/.test(key)) throw new Error(`h(): "${key}" isn't an attribute name`)
+    if (/^on/i.test(key) || key.toLowerCase() === 'srcdoc') throw new Error(`h(): "${key}" can't be set from code (event handlers and srcdoc run code); use a .tscl view`)
+    attrs += attrHtml(key, value, tag)
+  }
+  return html(VOID.has(tag) ? `<${tag}${attrs}>` : `<${tag}${attrs}>${await childrenHtml(children as Children)}</${tag}>`)
 }

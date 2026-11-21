@@ -1623,3 +1623,11 @@ test('#249 lists: $count, $first, $last, $even and $odd follow the list in an is
   await demo.getByRole('button', { name: 'Add a row' }).click()
   await expect(demo.locator('li')).toHaveText(['1 of 3 · first · even', '2 of 3 · odd', '3 of 3 · last · even'])
 })
+
+test('#259 h(): the playground builds HTML in load() with h(), and the page shows it as HTML (text stays escaped)', async ({ page }) => {
+  await page.goto('/playground?name=%3Cb%3EAda%3C%2Fb%3E')
+  const built = page.locator('#h-built')
+  await expect(built.locator('.pill')).toHaveText('<b>Ada</b>') // a real pill; the name inside it is text
+  await expect(built.locator('b')).toHaveCount(0)
+  await expect(built.locator('em')).toHaveText('built with h()')
+})

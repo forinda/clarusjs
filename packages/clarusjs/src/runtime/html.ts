@@ -1,11 +1,16 @@
 // HTML-string helpers used by compiled code on the server (render) and in the browser (branch HTML for @if).
 import { attrValue } from './attrs.ts'
 
+/** The mark of h()'s output (clarusjs/views). Symbol.for: two copies of the module agree. @internal */
+export const HTML = Symbol.for('clarusjs.html')
+
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 
 /** Escape a value for HTML text or a double-quoted attribute. null/undefined render as ''. @internal */
 export function escape(value: unknown): string {
   if (value == null) return ''
+  // h()'s output (clarusjs/views): HTML built from escaped parts, marked with a symbol data can't carry (JSON can't).
+  if (typeof value === 'object' && (value as { [HTML]?: unknown })[HTML] === true) return (value as { html: string }).html
   return String(value).replace(/[&<>"']/g, (ch) => ENTITIES[ch]!)
 }
 
