@@ -10,9 +10,9 @@ export type ReadFile = (path: string) => string | undefined
 export type HoverResult = { markdown: string; start: number; end: number }
 export type CompletionResult = { label: string; /** LSP CompletionItemKind */ kind?: number; insert: string; snippet: boolean; start: number; end: number; documentation?: string }
 
-const IMPORT = /^@import\s+([A-Za-z_$][\w-]*)\s+from\s+(['"])([^'"]+\.tscl)\2/gm
+const IMPORT = /^[ \t]*@import\s+([A-Za-z_$][\w-]*)\s+from\s+(['"])([^'"]+\.tscl)\2/gm
 // ponytail: the first line of an input's type only; a multi-line type shows its first line.
-const INPUT = /^@(input|model)\s+([A-Za-z_$][\w$]*)\s*:\s*(.+?)(?:\s+=\s+(.*))?\s*$/gm
+const INPUT = /^[ \t]*@(input|model)\s+([A-Za-z_$][\w$]*)\s*:\s*(.+?)(?:\s+=\s+(.*))?\s*$/gm
 // ponytail: events a component dispatches, found by their literal name; a name built at runtime isn't listed.
 const EVENT = /new\s+CustomEvent\(\s*(['"])([^'"]+)\1/g
 
@@ -48,7 +48,9 @@ function bindingsProvider(): IHTMLDataProvider {
   const forTag = (tag: string) => {
     if (!byTag.has(tag)) {
       const own = html.provideAttributes(tag).filter((a) => !globalNames.has(a.name))
-      byTag.set(tag, [...globals, ...bindingForms(own, tag === 'input' || tag === 'textarea' || tag === 'select')])
+      // textarea and select have a value property but no value attribute, so the HTML data doesn't list one.
+      const extra = (tag === 'textarea' || tag === 'select') && !own.some((a) => a.name === 'value') ? [{ name: 'value', description: 'The current value.' }] : []
+      byTag.set(tag, [...globals, ...bindingForms([...own, ...extra], tag === 'input' || tag === 'textarea' || tag === 'select')])
     }
     return byTag.get(tag)!
   }
@@ -83,7 +85,9 @@ export function htmlFeatures(read: ReadFile) {
   const bindings = bindingsProvider()
   function prepare(text: string, file: string) {
     service.setDataProviders(true, [bindings, newHTMLDataProvider('clarusjs-components', { version: 1.1, tags: components(text, file, read) })])
-    const document = TextDocument.create(`file://${file}`, 'html', 0, text)
+    // {{-- comments --}} aren't HTML: blanked (same length, newlines kept), so a tag inside one isn't parsed.
+    const html = text.replace(/\{\{--[\s\S]*?--\}\}/g, (c) => c.replace(/[^\n]/g, ' '))
+    const document = TextDocument.create(`file://${file}`, 'html', 0, html)
     return { document, html: service.parseHTMLDocument(document) }
   }
   return {

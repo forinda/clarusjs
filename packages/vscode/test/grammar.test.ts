@@ -103,3 +103,13 @@ test('component tags (<card>, <my-card>) are tags, not unrecognized HTML; HTML t
   expect(scopesOf(src, 'div')).not.toContain('component')
   expect(scopesOf(src, 'select')).not.toContain('component')
 })
+
+test('review #233: a one-line directive ends at its line; the next line is template', () => {
+  const src = '@input title: string\nHello {{ title }}\n@type Size = \'sm\'\nBye <b>x</b>\n'
+  expect(scopesOf(src, 'Hello')).not.toContain('meta.directive')
+  expect(scopesOf(src, 'Bye')).not.toContain('meta.directive')
+})
+
+test('review #233: language-configuration.json is valid JSON', () => {
+  expect(() => JSON.parse(readFileSync(resolve(import.meta.dirname, '../language-configuration.json'), 'utf8'))).not.toThrow()
+})

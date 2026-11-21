@@ -53,4 +53,4 @@ Add it to `tsconfig.json`, next to `compilerOptions`:
 
 ## Other editors
 
-The grammar is a standard TextMate grammar (`packages/vscode/syntaxes`), which editors such as Sublime Text and Zed can load. Editors that use TypeScript's language server, Neovim among them, get the same type errors in templates from the content mapper.
+The grammar is a standard TextMate grammar (`packages/vscode/syntaxes`), which editors such as Sublime Text can load. (Zed needs a Tree-sitter grammar, which there isn't yet.) Editors that use TypeScript's language server, Neovim among them, get the same type errors in templates from the content mapper.

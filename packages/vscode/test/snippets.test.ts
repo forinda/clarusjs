@@ -14,7 +14,8 @@ function expand(body: string[]): string {
   // Placeholders nest (${3:${1:item}.id}): expand from the inside out.
   for (let previous = ''; previous !== text; ) {
     previous = text
-    text = text.replace(/\$\{\d+:((?:[^${}]|\\\})*)\}/g, (_, value: string) => value.replace(/\\\}/g, '}'))
+    // A placeholder with no placeholder inside (a literal `{` is fine; `\}` and `\$` are escapes).
+    text = text.replace(/\$\{\d+:((?:[^$}\\]|\\.)*)\}/g, (_, value: string) => value.replace(/\\([}$\\])/g, '$1'))
   }
   return text.replace(/\$\{\d+\}|\$\d+/g, '')
 }
@@ -46,4 +47,9 @@ test('the .load.ts snippets are modules exporting load (and entries)', () => {
     // Balanced and plain: no leftover placeholder syntax.
     expect(text, name).not.toMatch(/\$\{|\$\d/)
   }
+})
+
+test('review #233: a literal { in a placeholder default expands like VS Code does', () => {
+  expect(expand(['@type ${1:Name} = ${0:{ \\}}'])).toBe('@type Name = { }')
+  expect(expand(['${3:${1:item}.id}'])).toBe('item.id')
 })

@@ -71,10 +71,10 @@
           ]
         },
         {
-          "comment": "@input name: type = default and @model name: type = default (type and default may span lines)",
+          "comment": "@input name: type = default and @model name: type = default (type and default may span lines) \u2014 ends at its line; a type or default that opens a bracket continues until it closes (nested rules)",
           "name": "meta.directive.input.tscl",
           "begin": "^\\s*(@)(input|model)\\s+([A-Za-z_$][\\w$]*)\\s*(:)",
-          "end": "(?=^\\s*(?:@[a-z]|<|\\{\\{--)|^\\s*$)",
+          "end": "$",
           "beginCaptures": {
             "1": {
               "name": "punctuation.definition.keyword.tscl"
@@ -100,10 +100,10 @@
           ]
         },
         {
-          "comment": "@type Name<T> = \u2026 and @interface Name<T> extends \u2026 { \u2026 }",
+          "comment": "@type Name<T> = \u2026 and @interface Name<T> extends \u2026 { \u2026 } \u2014 ends at its line; a type or default that opens a bracket continues until it closes (nested rules)",
           "name": "meta.directive.type.tscl",
           "begin": "^\\s*(@)(type|interface)\\s+([A-Za-z_$][\\w$]*)",
-          "end": "(?=^\\s*(?:@[a-z]|<|\\{\\{--)|^\\s*$)",
+          "end": "$",
           "beginCaptures": {
             "1": {
               "name": "punctuation.definition.keyword.tscl"

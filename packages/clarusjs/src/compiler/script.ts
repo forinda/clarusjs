@@ -193,17 +193,21 @@ export function splitImports(code: string, file: string, source: string, offset:
 export function untypedParams(code: string): { at: number; text: string }[] {
   const ast = parseScript(code)
   const isFn = (n: N | null | undefined) => !!n && (n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression')
-  // The script's own function names, then the functions to annotate.
-  const own = new Set<string>()
-  print(ast, code, (node) => {
-    if (node.type === 'FunctionDeclaration' && node.id) own.add(node.id.name)
-    if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier' && isFn(node.init)) own.add(node.id.name)
-    return undefined
-  })
+  // The script's own top-level functions, by name, with their parameters. (Top level only: a nested function of the
+  // same name as an import isn't what a top-level call reaches.)
+  // ponytail: a top-level name shadowed inside a nested scope is still taken as the script's own; resolve scopes if
+  // that ever matters.
+  const own = new Map<string, N[]>()
+  for (const stmt of ast.body as N[]) {
+    if (stmt.type === 'FunctionDeclaration' && stmt.id) own.set(stmt.id.name, stmt.params)
+    if (stmt.type === 'VariableDeclaration') for (const d of stmt.declarations as N[]) if (d.id.type === 'Identifier' && isFn(d.init)) own.set(d.id.name, d.init.params)
+  }
   const targets = new Set<N>()
   print(ast, code, (node, parent, key) => {
     if (node.type === 'FunctionDeclaration' || (isFn(node) && ((parent?.type === 'VariableDeclarator' && key === 'init') || parent?.type === 'MethodDefinition'))) targets.add(node)
-    if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && own.has(node.callee.name)) for (const arg of node.arguments as N[]) if (isFn(arg)) targets.add(arg)
+    const params = node.type === 'CallExpression' && node.callee.type === 'Identifier' ? own.get(node.callee.name) : undefined
+    // A callback for a parameter with a default is typed by that default: only the others have no type.
+    if (params) (node.arguments as N[]).forEach((arg, i) => { if (isFn(arg) && params[i]?.type !== 'AssignmentPattern') targets.add(arg) })
     return undefined
   })
   const edits: { at: number; text: string }[] = []
