@@ -1,11 +1,11 @@
-// #284: every public export (what package.json `exports` expose) has JSDoc: a description, an @see link to its
-// reference on https://clarusjs.com, and for functions and values an @example. Helpers only compiled code calls are
-// tagged @internal instead (a description, no example). PENDING lists the exports not done yet; it only shrinks.
+// #284: every public export of the published packages (what each package.json `exports` expose) has JSDoc: a
+// description, an @see link to its reference on https://clarusjs.com, and for functions and values an @example.
+// Helpers only clarusjs's own code calls are tagged @internal instead (a description, no example).
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 
-const pkgDir = resolve(import.meta.dirname, '..')
+const packages = ['clarusjs', 'content'].map((name) => resolve(import.meta.dirname, '../..', name))
 const DECL = (name: string) => new RegExp(`^(export\\s+)?(default\\s+)?(declare\\s+)?(async\\s+)?(function\\*?|const|let|class|type|interface|enum)\\s+${name.replace(/\$/g, '\\$')}\\b`, 'm')
 
 /** The JSDoc block right above `name`'s declaration in `file`, and whether it's a value (function/const/class). */
@@ -43,15 +43,15 @@ function exportsOf(file: string): { name: string; file: string; local: string }[
   return out
 }
 
-const entries = Object.entries(JSON.parse(readFileSync(resolve(pkgDir, 'package.json'), 'utf8')).exports as Record<string, string>)
 
 /** "entry name: problem" for every public export that misses something. */
 function problems(): string[] {
   const out: string[] = []
-  for (const [entry, path] of entries) {
-    for (const ex of exportsOf(resolve(pkgDir, path))) {
+  for (const dir of packages) {
+    const pkg = JSON.parse(readFileSync(resolve(dir, 'package.json'), 'utf8'))
+    for (const [entry, path] of Object.entries(pkg.exports as Record<string, string>)) for (const ex of exportsOf(resolve(dir, path))) {
       const found = docOf(ex.file, ex.local)
-      const id = `${entry} ${ex.name}`
+      const id = `${pkg.name}${entry.slice(1)} ${ex.name}`
       if (!found) { out.push(`${id}: declaration not found`); continue }
       const { doc, value } = found
       if (!doc) { out.push(`${id}: no JSDoc`); continue }
@@ -63,29 +63,7 @@ function problems(): string[] {
   return [...new Set(out)].sort()
 }
 
-// Not done yet (#284): each PR removes what it documents. A name here that's now documented fails too, so the list
-// can't outlive the work.
-const PENDING: string[] = [
-  "./compiler Attr: no JSDoc",
-  "./compiler ClarusError: no @example",
-  "./compiler ClarusError: no @see https://clarusjs.com/…",
-  "./compiler CompileOptions: no @see https://clarusjs.com/…",
-  "./compiler CompileResult: no @see https://clarusjs.com/…",
-  "./compiler ImportDecl: no JSDoc",
-  "./compiler InputDecl: no JSDoc",
-  "./compiler ParsedFile: no JSDoc",
-  "./compiler TemplateNode: no JSDoc",
-  "./compiler compile: no JSDoc",
-  "./compiler parse: no JSDoc",
-  "./compiler scopeId: no @example",
-  "./compiler scopeId: no @see https://clarusjs.com/…",
-]
-
 test('#284: every public export has JSDoc with @see (and @example for values), or is @internal', () => {
-  expect(problems().filter((p) => !PENDING.includes(p))).toEqual([])
+  expect(problems()).toEqual([])
 })
 
-test('#284: the pending list holds only exports still missing something', () => {
-  const now = problems()
-  expect(PENDING.filter((p) => !now.includes(p))).toEqual([])
-})

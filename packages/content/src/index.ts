@@ -7,6 +7,10 @@ import type { Source } from 'clarusjs/vite'
 import { highlight } from './highlight.ts'
 import { expand } from './snippets.ts'
 
+/**
+ * `markdown()`'s options: the layout, components for blocks, code copy and quizzes, and frontmatter schemas.
+ * @see https://clarusjs.com/reference/content#markdown
+ */
 export type MarkdownOptions = {
   /** The layout every page renders in, root-relative (`/src/layouts/docs.tscl`). Frontmatter `layout` overrides it; `false` means none. */
   layout?: string | false
@@ -36,7 +40,10 @@ export type MarkdownOptions = {
   schema?: StandardSchema | Record<string, StandardSchema>
 }
 
-/** The Standard Schema interface (https://standardschema.dev), as much of it as validating frontmatter needs. */
+/**
+ * The Standard Schema interface (https://standardschema.dev), as much of it as validating frontmatter needs.
+ * @see https://clarusjs.com/reference/content#markdown
+ */
 export type StandardSchema<Output = unknown> = {
   readonly '~standard': {
     readonly version: 1
@@ -83,7 +90,14 @@ const ALERTS: Record<string, string> = { note: 'info', tip: 'tip', important: 'i
 /** Text safe inside generated .tscl markup: HTML escaped, and nothing a template would read ({ } @). */
 const inert = (s: string) => escapeHtml(s).replace(/\{/g, '&#123;').replace(/\}/g, '&#125;').replace(/@/g, '&#64;')
 
-/** 'Hello, World!' → 'hello-world'. Shared by heading ids and (later) link checking. */
+/**
+ * 'Hello, World!' → 'hello-world'. Shared by heading ids and (later) link checking.
+ * @example
+ * ```ts
+ * slugify('Getting started!') // 'getting-started'
+ * ```
+ * @see https://clarusjs.com/reference/content#slugify
+ */
 export function slugify(text: string): string {
   return text.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').trim().replace(/[\s_-]+/g, '-') || 'section'
 }
@@ -384,6 +398,22 @@ function protectTags(body: string, components: Set<string>, saved: string[]): { 
   return { body: out, restore: (html) => html.replace(/<!--cl-tag-(\d+)-->/g, (_, i: string) => saved[Number(i)]!) }
 }
 
+/**
+ * Markdown pages as a page source: `src/pages/**\/*.md` become pages, rendered in your layout, with frontmatter, headings
+ * with anchors, highlighted code, `::: tip` blocks, components imported at the top, and (in lessons) quizzes.
+ * Build-time only: nothing of it reaches the browser.
+ * @example
+ * ```ts
+ * // vite.config.ts
+ * import clarusjs from 'clarusjs/vite'
+ * import markdown from '@clarusjs/content'
+ *
+ * export default defineConfig({
+ *   plugins: [clarusjs({ sources: [markdown({ layout: '/src/layouts/docs.tscl' })] })],
+ * })
+ * ```
+ * @see https://clarusjs.com/reference/content#markdown
+ */
 export default function markdown(options: MarkdownOptions = {}): Source {
   const md = renderer(options)
   return {

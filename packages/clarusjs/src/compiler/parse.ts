@@ -1,12 +1,21 @@
 // .tscl source → syntax tree. Pure: no file system, no JS parsing (expressions are kept as raw strings).
 import { ClarusError } from './errors.ts'
 
+/**
+ * An attribute in the syntax tree: static, an event `(x)`, a prop `[x]`, a two-way binding `[(x)]`, or a value with
+ * `{{ }}` holes. `start`: its offset in the source.
+ * @see https://clarusjs.com/reference/compiler#parse
+ */
 export type Attr =
   | { kind: 'static'; name: string; value: string | true; start: number }
   | { kind: 'event'; name: string; expr: string; start: number } // (click)="..."
   | { kind: 'prop'; name: string; expr: string; start: number } // [start]="..."
   | { kind: 'model'; name: string; expr: string; start: number } // [(value)]="form.name": two-way binding
   | { kind: 'interp'; name: string; parts: (string | { expr: string; start: number })[]; start: number } // a="x {{ y }}"
+/**
+ * A node of a template's syntax tree: an element, text, a `{{ }}` hole, an `@if`, an `@for`, a slot fill…
+ * @see https://clarusjs.com/reference/compiler#parse
+ */
 export type TemplateNode =
   | { type: 'element'; tag: string; attrs: Attr[]; children: TemplateNode[]; start: number }
   | { type: 'text'; value: string; start: number }
@@ -16,17 +25,29 @@ export type TemplateNode =
   | { type: 'fill'; name: string; children: TemplateNode[]; start: number } // @slot('name') { … } inside a component tag
   | { type: 'for'; item: string; list: string; track: string | null; headStart: number; itemStart: number; listStart: number; trackStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
 // model: declared with @model, the one kind of input a component may write (two-way binding, [(name)] at the use site).
+/**
+ * An `@input` (or `@model`) declaration: its name, type text, default, and offsets.
+ * @see https://clarusjs.com/reference/compiler#parse
+ */
 export type InputDecl = { name: string; type: string; default?: string; start: number; nameStart: number; typeStart: number; defaultStart?: number; model?: true }
 // @import type { A, B } from '…': types for @input declarations (erased from compiled output, used by type checking).
 export type TypeImport = { clause: string; from: string; start: number; clauseStart: number }
 // @import { a, b } from '…' or @import data from './x.json': values a template uses. Server-only in components
 // without a script; bundled for the browser in islands.
 export type DataImport = { clause: string; from: string; start: number; clauseStart: number }
+/**
+ * A component `@import`: the name it's used by in the template, and where it comes from.
+ * @see https://clarusjs.com/reference/compiler#parse
+ */
 export type ImportDecl = { name: string; from: string; start: number }
 // @type Name = … and @interface Name { … }: types for the file's @input props. Local: other files see them only
 // through the component's props; types to share go in a .ts file. Erased from compiled output, used by type checking.
 // `type`: what follows the name (and its type parameters): the aliased type, or the interface's `extends … { … }`.
 export type TypeDecl = { kind: 'type' | 'interface'; name: string; params?: string; type: string; start: number; nameStart: number; typeStart: number }
+/**
+ * A `.tscl` file's syntax tree, as `parse()` gives it: inputs, imports, the script, styles and template nodes.
+ * @see https://clarusjs.com/reference/compiler#parse
+ */
 export type ParsedFile = {
   inputs: InputDecl[]
   imports: ImportDecl[]
@@ -51,6 +72,17 @@ const CSS_IMPORT_RE = /^@import\s+(['"])(.+?)\1\s*$/
 const typeNames = (clause: string) =>
   clause.startsWith('{') ? clause.slice(1, -1).split(',').map((p) => p.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()!.trim()).filter(Boolean) : [clause.trim()]
 
+/**
+ * Parse a `.tscl` file into its syntax tree, without compiling it: for tools (an editor, a linter, a docs
+ * generator). Throws a located `ClarusError` for a syntax error.
+ * @example
+ * ```ts
+ * import { parse } from 'clarusjs/compiler'
+ * const { inputs, imports } = parse(source, 'src/components/card.tscl')
+ * console.log(inputs.map((i) => `${i.name}: ${i.type}`))
+ * ```
+ * @see https://clarusjs.com/reference/compiler#parse
+ */
 export function parse(source: string, file: string): ParsedFile {
   const out: ParsedFile = { inputs: [], imports: [], typeImports: [], types: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
   let i = 0

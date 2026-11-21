@@ -13,14 +13,31 @@ export type { ParsedFile, InputDecl, ImportDecl, TemplateNode, Attr } from './pa
  * `renderImports`: import child components' render functions with `?render`, for a render module that runs in the
  * browser (a client route's page, or a component re-rendered inside an island).
  */
-/** `scope`: the id that scopes this component's styles (default: from the file name). */
+/**
+ * `compile()`'s options: the file (for errors and the style scope), the target (`'server'` renders HTML, `'client'`
+ * attaches an island), and for the server target the island's client URL.
+ * `scope`: the id that scopes this component's styles (default: from the file name).
+ * @see https://clarusjs.com/reference/compiler#compile
+ */
 export type CompileOptions = { file: string; target: 'server' | 'client'; clientUrl?: string; renderImports?: boolean; scope?: string }
 /**
  * `css`: the component's stylesheet (`<style scoped>` blocks wrapped in @scope, the others as written); '' without
  * <style>. `warnings`: things that compile but likely aren't meant (each a located ClarusError, not thrown).
+ * @see https://clarusjs.com/reference/compiler#compile
  */
 export type CompileResult = { code: string; stateful: boolean; css: string; warnings: ClarusError[] }
 
+/**
+ * Compile a `.tscl` component: for the server, a module whose `render(props)` returns its HTML; for the client, an
+ * island's `attach(root, props)` (or `export {}` when it has no script). Pure: strings in, strings out. Throws a
+ * located `ClarusError` for a template it can't compile.
+ * @example
+ * ```ts
+ * import { compile } from 'clarusjs/compiler'
+ * const { code, css, stateful, warnings } = compile(source, { file: 'src/components/card.tscl', target: 'server', clientUrl: '/card.js' })
+ * ```
+ * @see https://clarusjs.com/reference/compiler#compile
+ */
 export function compile(source: string, options: CompileOptions): CompileResult {
   const parsed = parse(source, options.file)
   const warnings: ClarusError[] = []
@@ -48,7 +65,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
   return { code: emitServer(ir, options.clientUrl ?? '', options.renderImports), stateful: ir.stateful, css, warnings }
 }
 
-/** 'src/components/card.tscl' → 'card-<short hash of the path>'. */
+/** 'src/components/card.tscl' → 'card-<short hash of the path>'. @internal */
 export function scopeId(file: string): string {
   let h = 0x811c9dc5 // FNV-1a
   for (let i = 0; i < file.length; i++) h = Math.imul(h ^ file.charCodeAt(i), 0x01000193)
