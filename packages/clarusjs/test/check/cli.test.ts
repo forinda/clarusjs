@@ -342,3 +342,10 @@ test('#219: [(x)] needs @model x and a writable target; a child may assign its @
     'src/components/form.tscl:8 TS2540', // fixed is a read-only input
   ])
 })
+
+test('state([]) starts an array of anything (scripts are JavaScript: no state<string[]>); custom events are CustomEvent', () => {
+  const root = project({
+    'src/components/c.tscl': "<script>\n  let log = state([])\n  function add(x) { log = [...log, x] }\n</script>\n<div (rate)=\"add($event.detail)\" (click)=\"add($event.nope)\">{{ log.length }}</div>\n",
+  })
+  expect(check({ root, typescript }).diagnostics.map((d) => `${d.line} ${d.code}`)).toEqual(['5 TS2339']) // only $event.nope on a MouseEvent
+})
