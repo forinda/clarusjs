@@ -59,6 +59,11 @@ test('no server code or template source reaches the client assets', () => {
   }
 })
 
+test('#307: template whitespace is collapsed at build (not in <pre>)', () => {
+  const team = read('about/team/index.html')
+  expect(team).toMatch(/<section[^>]*id="ws"[^>]*>\n<p>\nIndented text\n<\/p>\n<pre>  kept    as written<\/pre>\n<\/section>/)
+})
+
 test('routeToFile maps routes to index.html files', () => {
   expect(routeToFile('/')).toBe('index.html')
   expect(routeToFile('/about/team')).toBe('about/team/index.html')
@@ -111,10 +116,12 @@ test('size budget: the browser runtime every island shares stays within 5 KB gzi
   expect(total, `runtime: ${files.join(', ')} = ${total} B gzip`).toBeLessThanOrEqual(5 * KB)
 })
 
-test('size budget: all the JavaScript the fixture site ships stays within 6 KB gzip', () => {
+// 6.5 KB (was 6): #301 adds @for's $count/$first/$last (a count signal per list) and the field fixes of #241
+// (<select multiple>, number fields keeping what's typed, IME) to the runtime every island shares.
+test('size budget: all the JavaScript the fixture site ships stays within 6.5 KB gzip', () => {
   const files = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
   const total = files.reduce((n, f) => n + gz(resolve(client, 'assets', f)), 0)
-  expect(total, `${total} B gzip`).toBeLessThanOrEqual(6 * KB)
+  expect(total, `${total} B gzip`).toBeLessThanOrEqual(6.5 * KB)
 })
 
 test('no compiler or command-line code reaches the browser', () => {

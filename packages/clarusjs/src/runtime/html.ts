@@ -1,11 +1,16 @@
 // HTML-string helpers used by compiled code on the server (render) and in the browser (branch HTML for @if).
 import { attrValue } from './attrs.ts'
 
+/** The mark of h()'s output (clarusjs/views). Symbol.for: two copies of the module agree. @internal */
+export const HTML = Symbol.for('clarusjs.html')
+
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }
 
 /** Escape a value for HTML text or a double-quoted attribute. null/undefined render as ''. @internal */
 export function escape(value: unknown): string {
   if (value == null) return ''
+  // h()'s output (clarusjs/views): HTML built from escaped parts, marked with a symbol data can't carry (JSON can't).
+  if (typeof value === 'object' && (value as { [HTML]?: unknown })[HTML] === true) return (value as { html: string }).html
   return String(value).replace(/[&<>"']/g, (ch) => ENTITIES[ch]!)
 }
 
@@ -26,10 +31,10 @@ export function blockHtml(index: number, k: number, branches: (() => string)[]):
 }
 
 /** A @for list inside an island: one marker pair around the list, one per row, one around @empty content. @internal */
-export function forHtml(index: number, list: unknown, row: (item: any, i: number) => string, empty: (() => string) | null): string {
+export function forHtml(index: number, list: unknown, row: (item: any, i: number, list: unknown[]) => string, empty: (() => string) | null): string {
   const items = [...((list ?? []) as Iterable<unknown>)]
   const body = items.length
-    ? items.map((item, i) => `<!--[r-->${row(item, i)}<!--]-->`).join('')
+    ? items.map((item, i) => `<!--[r-->${row(item, i, items)}<!--]-->`).join('')
     : empty ? `<!--[e-->${empty()}<!--]-->` : ''
   return `<!--[f${index}-->${body}<!--]-->`
 }

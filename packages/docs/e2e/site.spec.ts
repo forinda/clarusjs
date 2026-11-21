@@ -860,13 +860,15 @@ test('forms: field components bound two ways update one state object; native sel
   const nameField = await name.elementHandle()
   await name.fill('Ada')
   await form.getByLabel('Email').fill('ada@example.com')
-  await form.getByLabel('Plan').selectOption('pro')
+  await expect(form.getByRole('radio', { name: 'Free' })).toBeChecked() // a radio group bound with [(value)] (#267)
+  await form.getByRole('radio', { name: 'Pro' }).check()
   await form.getByLabel('Send me updates').check()
   await expect(summary).toHaveText('Ada (ada@example.com) on pro, with updates. Changed.')
   await form.locator('.signup-reset').click()
   await expect(summary).toHaveText('Someone (no email) on free.')
   await expect(name).toHaveValue('') // the field follows the form
   await expect(form.getByLabel('Send me updates')).not.toBeChecked()
+  await expect(form.getByRole('radio', { name: 'Free' })).toBeChecked() // the group follows the form back
   expect(await page.evaluate((el) => el!.isConnected, nameField)).toBe(true) // the same field, updated in place
 })
 
@@ -1611,4 +1613,36 @@ test('#284: every @see link in the packages\' JSDoc lands on a page with that se
     expect(res.status(), link).toBe(200)
     if (anchor) expect(await res.text(), link).toContain(`id="${anchor}"`)
   }
+})
+
+test('#249 lists: $count, $first, $last, $even and $odd follow the list in an island', async ({ page }) => {
+  await page.goto('/guide/lists')
+  const demo = page.locator('#row-names')
+  await expect(page.locator('cl-island[c="row-names"]')).toHaveAttribute('data-cl-ready', '')
+  await expect(demo.locator('li')).toHaveText(['1 of 2 · first · even', '2 of 2 · last · odd'])
+  await demo.getByRole('button', { name: 'Add a row' }).click()
+  await expect(demo.locator('li')).toHaveText(['1 of 3 · first · even', '2 of 3 · odd', '3 of 3 · last · even'])
+})
+
+test('#259 h(): the playground builds HTML in load() with h(), and the page shows it as HTML (text stays escaped)', async ({ page }) => {
+  await page.goto('/playground?name=%3Cb%3EAda%3C%2Fb%3E')
+  const built = page.locator('#h-built')
+  await expect(built.locator('.pill')).toHaveText('<b>Ada</b>') // a real pill; the name inside it is text
+  await expect(built.locator('b')).toHaveCount(0)
+  await expect(built.locator('em')).toHaveText('built with h()')
+})
+
+test('#241 forms: a checkbox group and a <select multiple> bind arrays, starting from the server\'s selection', async ({ page }) => {
+  // Before JavaScript: the server already rendered the choices.
+  const html = await (await page.request.get('/guide/forms')).text()
+  expect(html).toMatch(/<option value="en"[^>]* selected/) // an option from @for, selected by the server
+  await page.goto('/guide/forms')
+  const form = page.locator('form.signup').first()
+  await expect(page.locator('cl-island[c="signup-form"]').first()).toHaveAttribute('data-cl-ready', '')
+  const out = form.locator('.signup-lists')
+  await expect(out).toHaveText("Topics: news · Languages: en")
+  await form.getByRole('checkbox', { name: 'Releases' }).check()
+  await form.getByRole('checkbox', { name: 'News' }).uncheck()
+  await form.getByLabel('Languages').selectOption(['en', 'sw'])
+  await expect(out).toHaveText('Topics: releases · Languages: en, sw')
 })

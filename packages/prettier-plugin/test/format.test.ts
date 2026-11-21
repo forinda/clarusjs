@@ -202,3 +202,8 @@ test('only blocks of block-level elements are laid out; a block of inline pieces
   // Components: their display isn't known, so a block of them stays as written too.
   expect(await same('<div>@for (x of xs; track x) {<card [x]="x" />}</div>\n')).toContain('@for (x of xs; track x) {<card [x]="x" />}')
 })
+
+test('a block of options in a <select> is laid out, and formatting is stable (signup form)', async () => {
+  const out = await same('<label><span>L</span> <select multiple [(value)]="v">@for (l of langs; track l.id) {<option [value]="l.id">{{ l.label }}</option>}</select></label>\n')
+  expect(out).toContain('@for (l of langs; track l.id) {\n')
+})

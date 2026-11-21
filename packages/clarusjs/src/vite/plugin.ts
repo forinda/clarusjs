@@ -165,6 +165,8 @@ export type ClarusOptions = {
   sitemap?: boolean | { exclude?: string[] }
   /** With site.url, vite build writes robots.txt (allow all, and the sitemap), unless public/robots.txt exists. */
   robots?: boolean
+  /** Collapse whitespace in template text at build (default true). */
+  collapseWhitespace?: boolean
 }
 export type { HeadTag }
 /**
@@ -575,7 +577,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           // A ?render module runs in the browser: its child components must be render modules too.
           const renderImports = renderQuery && this.environment.config.consumer !== 'server'
           // moduleType: a source extension may have its own built-in type in Rolldown (.txt is text); the output is JS.
-          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file) })
+          const collapseWhitespace = command === 'build' && options.collapseWhitespace !== false
+          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace })
           // Every component compiles for the server once: warnings from there, so each is said once.
           if (consumer === 'server' && !renderQuery) for (const w of out.warnings) this.warn(w.message)
           return { code: out.code, map: null, moduleType: 'js' }

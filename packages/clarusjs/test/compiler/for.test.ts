@@ -150,3 +150,29 @@ test('@if inside a row and component state in a row both update', async () => {
   click(island.querySelector('.up'))
   expect(texts(island, 'i')).toEqual(['small', 'small', 'big'])
 })
+
+test('#249: $first, $last, $even, $odd and $count in rows (server HTML, and a plain loop)', async () => {
+  const src = '@input xs: string[] = ["a", "b", "c"]\n<ul>@for (x of xs; track x) { <li [class]="$even ? \'even\' : \'odd\'">{{ $index + 1 }}/{{ $count }} {{ x }}{{ $first ? \' first\' : \'\' }}{{ $last ? \' last\' : \'\' }}</li> }</ul>'
+  expect(await render(src)).toBe('<ul> <li class="even">1/3 a first</li>  <li class="odd">2/3 b</li>  <li class="even">3/3 c last</li> </ul>')
+  expect(await render(src.replace('"a", "b", "c"', '"a"'))).toBe('<ul> <li class="even">1/1 a first last</li> </ul>')
+})
+
+test('#249: in an island the derived names follow the list: adding a row moves $last and updates $count', async () => {
+  const island = await mount('<script>\n  let xs = state(["a", "b"])\n</script>\n<ul>@for (x of xs; track x) { <li>{{ x }}{{ $last ? "!" : "" }} of {{ $count }}{{ $odd ? " odd" : "" }}</li> }</ul>\n<button (click)="xs = [...xs, \'c\']">add</button>')
+  const items = () => [...island.querySelectorAll('li')].map((li) => li.textContent)
+  expect(items()).toEqual(['a of 2', 'b! of 2 odd'])
+  click(island.querySelector('button'))
+  expect(items()).toEqual(['a of 3', 'b of 3 odd', 'c! of 3'])
+})
+
+test('#249: clearer @for errors: an item named like an implicit variable, two @empty blocks, two tracks', () => {
+  expect(compileError('<ul>@for ($index of xs; track $index) { <li></li> }</ul>').message).toMatch(/^x\.tscl:1:11 .*\$index.*implicit/)
+  expect(compileError('<ul>@for (x of xs; track x) { <li></li> } @empty { <li>none</li> } @empty { <li>none</li> }</ul>').message).toMatch(/only one @empty/)
+  expect(compileError('<ul>@for (x of xs; track x; track x.id) { <li></li> }</ul>').message).toMatch(/only one track/)
+})
+
+test('#249: an island @for without track warns (rows are matched by position)', () => {
+  const out = compile('<script>\n  let xs = state([1])\n</script>\n<ul>@for (x of xs) { <li>{{ x }}</li> }</ul>', { file: 'x.tscl', target: 'client' })
+  expect(out.warnings.map((w) => w.message)).toEqual([expect.stringMatching(/^x\.tscl:4:5 @for without track/)])
+  expect(compile('<ul>@for (x of [1]) { <li>{{ x }}</li> }</ul>', { file: 'x.tscl', target: 'client' }).warnings).toEqual([]) // not an island: nothing to match
+})

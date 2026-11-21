@@ -246,7 +246,7 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
         if (!rawText && bitwise(n.expr)) holeEdit(n.start)
       } else if (n.type === 'element') {
         for (const a of n.attrs) if (a.kind === 'interp') for (const p of a.parts) if (typeof p !== 'string' && bitwise(p.expr)) holeEdit(p.start)
-        visit(n.children, false, rawText || n.tag === 'script' || n.tag === 'style', BLOCK_TAGS.has(n.tag))
+        visit(n.children, false, rawText || n.tag === 'script' || n.tag === 'style', BLOCK_TAGS.has(n.tag) || OPTION_LISTS.has(n.tag))
       } else {
         const end = blockEnd(n.start)
         if (!canLayout(n, nodes[k - 1], nodes[k + 1], edgeOk || topLevel) && end !== -1) {
@@ -297,6 +297,9 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
 
 /** Elements laid out as blocks (or rows, cells, options): whitespace next to them doesn't show. */
 const BLOCK_TAGS = new Set(['address', 'article', 'aside', 'blockquote', 'body', 'caption', 'col', 'colgroup', 'dd', 'details', 'dialog', 'div', 'dl', 'dt', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'legend', 'li', 'link', 'main', 'menu', 'meta', 'nav', 'ol', 'optgroup', 'option', 'p', 'pre', 'script', 'search', 'section', 'style', 'summary', 'table', 'tbody', 'td', 'template', 'tfoot', 'th', 'thead', 'title', 'tr', 'ul'])
+
+/** Lists of options (themselves inline): whitespace among their options never shows, and Prettier lays them out. */
+const OPTION_LISTS = new Set(['select', 'datalist'])
 
 /** Whitespace-only text (comments allowed): Angular's line breaks there change nothing. */
 const blank = (n: TemplateNode) => n.type === 'text' && !n.value.replace(/<!--[\s\S]*?-->/g, '').trim()

@@ -3,7 +3,7 @@
 // every copied span is recorded so tsc's errors can be mapped back to the template. Pure: string in, string out.
 import { routeFromFile } from '../server/handler.ts'
 import { ClarusError } from '../compiler/errors.ts'
-import { parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
+import { FOR_IMPLICIT, parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
 import { referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
@@ -41,6 +41,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   emit('declare function derived<T>(fn: () => T): T\n')
   emit('declare function shared<T>(store: { get(): T }): T\n')
   emit('declare function __cl_use(value: unknown): void\n')
+  emit('declare const __cl_bool: boolean\n') // a row's $first…: boolean, not narrowed to false
   // [prop] on an element sets an attribute: true → bare, false/null → removed, anything else as text. So a boolean
   // attribute (per the DOM's own types) takes a boolean (a string, even 'false', would switch it on), and any other a
   // primitive (an object would read "[object Object]").
@@ -156,13 +157,16 @@ export function generateTs(source: string, file: string, options: { loader?: str
   const guarded = () => {
     if (guards.length) emit(`\n    // @ts-ignore\n    if (${guards.join(' && ')})\n    `)
   }
-  const writable = (a: Attr & { expr: string }) => {
+  // `value`: what the binding writes, when it's known here (a radio's static value, #267); else itself (writable?).
+  const writable = (a: Attr & { expr: string }, value?: string) => {
     emit('  ;(() => { ')
     guarded()
-    emit('(')
+    // With a known value the target is written bare, so an error lands on it (a parenthesis would be unmapped).
+    emit(value === undefined ? '(' : '')
     copy(a.expr, at(a.expr, attrValueStart(a)))
-    emit(') = (')
-    copy(a.expr, at(a.expr, attrValueStart(a)))
+    emit(value === undefined ? ') = (' : ' = (')
+    if (value === undefined) copy(a.expr, at(a.expr, attrValueStart(a)))
+    else emit(value)
     emit(') });\n')
   }
 
@@ -197,12 +201,13 @@ export function generateTs(source: string, file: string, options: { loader?: str
         copy(node.item, node.itemStart)
         emit(' of ')
         copy(node.list, node.listStart)
-        emit(') {\n    const $index: number = 0; __cl_use($index)\n')
+        // The row's implicit names: $index and $count numbers; $first, $last, $even, $odd booleans.
+        emit(') {\n    const $index: number = 0, $count: number = 0, $first = __cl_bool, $last = __cl_bool, $even = __cl_bool, $odd = __cl_bool; __cl_use([$index, $count, $first, $last, $even, $odd])\n')
         if (node.track !== null) use(node.track, node.trackStart)
         // Inside the loop its item (and $index) shadow outer names: a condition about an outer `row` must not be
         // repeated where `row` is the loop's.
         const outer = guards.splice(0)
-        guards.push(...outer.filter((g) => !referencesNames(g, new Set([node.item, '$index']))))
+        guards.push(...outer.filter((g) => !referencesNames(g, new Set([node.item, ...FOR_IMPLICIT]))))
         node.children.forEach(visit)
         guards.splice(0, guards.length, ...outer)
         emit('  }\n')
@@ -246,7 +251,14 @@ export function generateTs(source: string, file: string, options: { loader?: str
           return
         }
         for (const a of node.attrs) {
-          if (a.kind === 'model') { use(a.expr, attrValueStart(a)); writable(a) }
+          if (a.kind === 'model') {
+            use(a.expr, attrValueStart(a))
+            // A radio in a group writes its own value: check that value against the bound type.
+            const type = node.attrs.find((x) => x.kind === 'static' && x.name === 'type')
+            const own = node.attrs.find((x) => x.kind === 'static' && x.name === 'value')
+            const radio = node.tag === 'input' && a.name === 'value' && type?.kind === 'static' && String(type.value).toLowerCase() === 'radio' && own?.kind === 'static'
+            writable(a, radio ? JSON.stringify(own.value === true ? '' : own.value) : undefined)
+          }
           else if (a.kind === 'prop' && a.name === 'engine') {
             // [engine]="f": a form from clarusjs/forms.
             emit(`  ;((__cl_f: import('clarusjs/forms').Form<any>) => __cl_use(__cl_f))((`)

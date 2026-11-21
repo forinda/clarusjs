@@ -1,5 +1,6 @@
 // One JS string expression for a list of IR nodes, shared by the server emitter (render) and the client emitter
 // (HTML for @if branches and @for rows rendered in the browser).
+import { FOR_IMPLICIT } from './parse.ts'
 import type { IRNode } from './ir.ts'
 import { renderName } from './shared.ts'
 import { wrapExpr } from './script.ts'
@@ -31,7 +32,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
     }
     if (n.kind === 'for') {
       const list = wrapExpr(rw.expr(n.list))
-      const row = `(${n.item}, $index) => ${htmlExpr(n.nodes, rw.without([n.item, '$index']))}`
+      const row = `(${rowParams(n)}) => ${htmlExpr(n.nodes, rw.without([n.item, ...FOR_IMPLICIT]))}`
       const empty = n.empty ? `() => ${htmlExpr(n.empty, rw)}` : 'null'
       if (n.block >= 0) return `__cl_forHtml(${n.block}, ${list}, ${row}, ${empty})`
       // Outside islands: a plain loop, no markers.
@@ -93,4 +94,34 @@ export function walk(nodes: IRNode[]): IRNode[] {
       : n.kind === 'slot' ? walk(n.fallback)
       : []),
   ])
+}
+
+const DERIVED: Record<string, string> = {
+  $first: '$index === 0',
+  $last: '$index === $count - 1',
+  $even: '$index % 2 === 0',
+  $odd: '$index % 2 === 1',
+}
+/** The @for implicit names a row's template uses, besides `$index`: `$count` and those derived from it. */
+export function rowNames(n: Extract<IRNode, { kind: 'for' }>, events: { handler: string; scope?: string }[] = []): string[] {
+  // Its template, and (in an island) the event handlers inside its rows: f<block>, f<block>.<nested>…
+  const rowEvents = events.filter((e) => e.scope === `f${n.block}` || e.scope?.startsWith(`f${n.block}.`)).map((e) => e.handler)
+  const text = JSON.stringify(n.nodes) + JSON.stringify(rowEvents)
+  // As names, not inside others ($lastName) or after a dot (user.$first).
+  const has = (name: string) => new RegExp(`(?<![\\w$.])\\${name}(?![\\w$])`).test(text)
+  const used = Object.keys(DERIVED).filter(has)
+  return has('$count') || used.includes('$last') ? ['$count', ...used] : used
+}
+/**
+ * A row's parameters: the item and `$index`, then (when used) the list, `$count` and the names derived from them as
+ * default values, so every caller passes (item, index, list) and a plain Array.map works too.
+ */
+export function rowParams(n: Extract<IRNode, { kind: 'for' }>): string {
+  const names = rowNames(n)
+  if (!names.length) return `${n.item}, $index`
+  return [n.item, '$index', '__cl_list', '$count = __cl_list.length', ...names.filter((x) => x !== '$count').map((x) => `${x} = ${DERIVED[x]}`)].join(', ')
+}
+/** In a row's wiring: the derived names, from the row's $index and the list's $count signals. */
+export function rowDerived(n: Extract<IRNode, { kind: 'for' }>, events: { handler: string; scope?: string }[] = []): string[] {
+  return rowNames(n, events).filter((x) => x !== '$count').map((x) => `const ${x} = __cl_derived(() => ${DERIVED[x]!.replace(/\$index/g, '$index.get()').replace(/\$count/g, '$count.get()')})`)
 }

@@ -13,16 +13,26 @@ description: "Bind form fields two ways with [(value)] and @model, keep one stat
 
 ## Native fields
 
-`[(value)]` on an `<input>`, `<textarea>` or `<select>`, and `[(checked)]` on a checkbox, show a value and write it back:
+`[(value)]` on an `<input>`, `<textarea>` or `<select>`, and `[(checked)]` on a checkbox, show a value and write it back. On radios, `[(value)]` binds the group to one value: a radio is checked when the value equals its own, and picking it writes its own:
 
 ```tscl
 <script>
   let form = state({ name: '', plan: 'free', updates: false })
 </script>
 <input [(value)]="form.name">
-<select [(value)]="form.plan"><option value="free">Free</option><option value="pro">Pro</option></select>
+<label><input type="radio" name="plan" value="free" [(value)]="form.plan"> Free</label>
+<label><input type="radio" name="plan" value="pro" [(value)]="form.plan"> Pro</label>
 <input type="checkbox" [(checked)]="form.updates">
 ```
+
+More kinds of fields:
+
+- **A group of checkboxes** binds an array with `[(value)]` on each: a checkbox is checked when the array includes its value, and toggling adds or removes it (`<input type="checkbox" value="news" [(value)]="form.topics">`). A single checkbox is a boolean, with `[(checked)]`.
+- **`<select multiple>`** with `[(value)]` binds an array of the selected values.
+- **Number and range inputs** write numbers. A field that isn't a number, such as an empty one, stays a string.
+- **While an input method composes text** (Japanese, Chinese, Korean…), nothing is written; the composed text is, when it's done.
+- **A bound `<select>`'s options** render `selected` on the server, so the choice shows before any JavaScript.
+- **Radios, checkboxes and number fields need a static `type`** to bind this way; a field whose `[type]` is bound (text or email) binds as text.
 
 The target is a state variable or a property path of one. A write replaces the state, copy-on-write: typing in the first field runs `form = { ...form, name: value }`. Nothing is changed in place.
 

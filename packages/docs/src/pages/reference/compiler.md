@@ -30,6 +30,7 @@ Compiles a `.tscl` component. For the server target, the result is a module whos
   - **`clientUrl`**: for the server target of an island, the URL its client module is served at.
   - **`renderImports`**: import child components' render functions with `?render`, for a render module that runs in the browser.
   - **`scope`**: the id that scopes the component's `<style scoped>` (default: derived from `file`).
+  - **`collapseWhitespace`**: each run of whitespace in template text becomes one character (a newline if it had one), except in `<pre>`, `<textarea>`, `<script>` and `<style>`. The Vite plugin turns it on for `vite build`.
 
 ### Returns
 

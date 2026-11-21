@@ -1,5 +1,6 @@
 // <script> analysis and signal rewrites. Reads `count` → `count.get()`, writes `count++` → `count.set(count.get() + 1)`.
 import { parse as acornParse, parseExpressionAt } from 'acorn'
+import { FOR_IMPLICIT } from './parse.ts'
 import { ClarusError } from './errors.ts'
 
 // state(): local state; derived(): computed; shared(store): a local name for a store's signal (see runtime/signals.ts).
@@ -239,6 +240,13 @@ export function analyzeScript(code: string, file: string, source: string, offset
     }
     return undefined
   })
+  // @for row names ($count, $first…) would be shadowed by a row's own: refused as script names.
+  for (const stmt of ast.body as N[]) {
+    const ids: N[] = stmt.type === 'VariableDeclaration' ? (stmt.declarations as N[]).map((d) => d.id as N) : stmt.type === 'FunctionDeclaration' && stmt.id ? [stmt.id as N] : []
+    for (const id of ids) {
+      if (id.type === 'Identifier' && FOR_IMPLICIT.includes(id.name as string)) throw new ClarusError(`"${id.name}" is a @for row name: name it something else`, file, source, offset + id.start)
+    }
+  }
   // render() and attach() are synchronous: an await outside any function would be invalid JavaScript in them.
   const tla = topLevelAwait(ast)
   if (tla) throw new ClarusError("top-level await isn't supported in a <script> (rendering is synchronous): await inside a function, such as a resource's fetcher or an event handler", file, source, offset + tla.start)

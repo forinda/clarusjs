@@ -1,7 +1,7 @@
 // Attach helpers: find markers in server HTML and keep them updated. Browser only. Never re-renders existing HTML;
 // only @if branches and @for rows that did not exist on the server are rendered here.
 import { attrValue } from './attrs.ts'
-import { effect, onDispose, scope, state, untrack, type Signal } from './signals.ts'
+import { batch, effect, onDispose, scope, state, untrack, type Signal } from './signals.ts'
 
 /** @internal Compiled components call this; apps don't. */
 export type Hole = { start: Comment; end: Comment }
@@ -188,7 +188,7 @@ export function forBlock(
   index: number,
   list: () => unknown,
   keyOf: (item: any, i: number) => unknown,
-  row: { html: (item: any, i: number) => string; wire: (ctx: Ctx, item: Signal<any>, index: Signal<number>) => void },
+  row: { html: (item: any, i: number, list: unknown[]) => string; wire: (ctx: Ctx, item: Signal<any>, index: Signal<number>, count: Signal<number>) => void },
   empty: { html: () => string; wire: (ctx: Ctx) => void } | null,
 ): void {
   const f = scan(ctx).fors[index]
@@ -197,11 +197,12 @@ export function forBlock(
   let rows: Row[] = []
   let emptyRange: (Range & { dispose: () => void }) | null = null
   let first = true
+  const count = state(0) // the list's length, for rows using $count, $last…
 
   const wireRow = (range: Range, key: unknown, item: unknown, i: number): Row => {
     const itemS = state(item)
     const indexS = state(i)
-    const dispose = scope(() => row.wire({ root, ...range }, itemS, indexS))
+    const dispose = scope(() => row.wire({ root, ...range }, itemS, indexS, count))
     return { ...range, key, item: itemS, index: indexS, dispose }
   }
   const wireEmpty = (range: Range) => ({ ...range, dispose: empty ? scope(() => empty.wire({ root, ...range })) : () => {} })
@@ -213,7 +214,8 @@ export function forBlock(
 
   effect(() => {
     const items = [...((list() ?? []) as Iterable<unknown>)]
-    untrack(() => {
+    untrack(() => batch(() => {
+      count.set(items.length) // with the rows' new indices below, in one batch: $last doesn't flip on the way
       // Keys, made unique: a repeated key would make two rows share one identity.
       const seen = new Set<unknown>()
       const keys = items.map((item, i) => {
@@ -244,7 +246,7 @@ export function forBlock(
           kept.index.set(i)
           return kept
         }
-        const { first: start, last: end } = insertHtml(`<!--[r-->${row.html(item, i)}<!--]-->`, f.end)
+        const { first: start, last: end } = insertHtml(`<!--[r-->${row.html(item, i, items)}<!--]-->`, f.end)
         return wireRow({ start: start as Comment, end: end as Comment }, keys[i], item, i)
       })
       for (const r of old.values()) {
@@ -267,7 +269,7 @@ export function forBlock(
         const { first: start, last: end } = insertHtml(`<!--[e-->${empty.html()}<!--]-->`, f.end)
         emptyRange = wireEmpty({ start: start as Comment, end: end as Comment })
       }
-    })
+    }))
   })
 }
 
@@ -338,11 +340,23 @@ export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, t
   const el = marked(ctx, `[data-cl-a="${index}"]`)
   if (!el) return
   effect(() => {
-    const v = attrValue(name, fn(), tag)
+    const raw = fn()
+    // <select multiple> bound to an array: each option selected when the array has its value.
+    if (name === 'value' && Array.isArray(raw) && el.tagName === 'SELECT' && (el as HTMLSelectElement).multiple) {
+      const values = raw.map(String) // option values are text: [1, 2] selects "1" and "2"
+      for (const o of (el as HTMLSelectElement).options) o.selected = values.includes(o.value)
+      return
+    }
+    const v = attrValue(name, raw, tag)
     if (v === null) el.removeAttribute(name)
     else el.setAttribute(name, v === true ? '' : v)
     // A form field shows its property once someone has typed or clicked in it, not the attribute: set both.
-    if (name === 'value' && 'value' in el) (el as HTMLInputElement).value = v === null || v === true ? '' : v
+    if (name === 'value' && 'value' in el) {
+      const field = el as HTMLInputElement
+      const next = v === null || v === true ? '' : v
+      // A number field showing the same number keeps what was typed ("1.0" isn't rewritten to "1" mid-typing).
+      if (field.value !== next && !(/^(number|range)$/.test(field.type) && field.value !== '' && Number(field.value) === Number(raw))) field.value = next
+    }
     if (name === 'checked' && 'checked' in el) (el as HTMLInputElement).checked = v !== null
   })
 }

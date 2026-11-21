@@ -4,6 +4,7 @@
 @input renderedAt: string = ''
 @input agent: string = ''
 @input pillHtml: string = ''
+@input built: any = ''
 
 <docs
   [title]="'Server playground'"
@@ -39,6 +40,14 @@
     it returned, shown as text:
   </p>
   <pre tabindex="0"><code id="pill-html">{{ pillHtml }}</code></pre>
+
+  <h2>Building HTML with h()</h2>
+  <p>
+    With <code>h()</code> from <code>clarusjs/views</code>, the loader built a paragraph holding the same
+    <code>pill</code> and an <code>em</code>. Its result goes in the page with <code>{{ '{{' }} built {{ '}}' }}</code>,
+    as HTML: <code>h()</code> escaped every piece of text it was given.
+  </p>
+  <div id="h-built">{{ built }}</div>
 
   <callout [type]="'info'"
     >@slot('title') {How it works}
