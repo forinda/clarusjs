@@ -11,6 +11,8 @@ export function frameDoc(runtime: string): string {
 <style>
   :root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.5 }
   body { margin: 16px; background: Canvas; color: CanvasText }
+  button, input, select, textarea { font: inherit; font-size: 14px; padding: 4px 10px; border: 1px solid color-mix(in srgb, CanvasText 30%, transparent); border-radius: 6px; background: Canvas; color: CanvasText }
+  button { cursor: pointer }
   .cl-repl-error { color: #b3261e; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 13px }
 </style>
 </head>

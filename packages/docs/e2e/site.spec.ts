@@ -9,8 +9,9 @@ import AxeBuilder from '@axe-core/playwright'
 // The site's sidebar, built the way themeDocs() and nav.ts build it.
 const sections = pagesNav(sidebar, readPages(resolve(import.meta.dirname, '../src/pages')))
 
-// Docs (Guide, Reference) have the sidebar, edit links and pager; Learn's lessons use the lesson layout.
-const docSections = sections.filter((s) => s.key !== 'learn')
+// Docs (Guide, Reference) have the sidebar, edit links and pager; Learn's lessons use the lesson layout, and the
+// playground is an app (the theme's `app` layout: no sidebar). Both are still among `pages` below.
+const docSections = sections.filter((s) => s.key !== 'learn' && s.key !== 'repl')
 const items = (list: typeof sections) => list.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => ({ path: i.href, title: i.title, section: s.key }))))
 // Every docs page in the sidebar, in sidebar order; every page there is, plus the home page.
 const docs = items(docSections)

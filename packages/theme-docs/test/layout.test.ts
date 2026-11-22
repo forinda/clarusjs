@@ -38,6 +38,7 @@ beforeAll(async () => {
   w('src/pages/learn/one.tscl', '@import quiz from \'@clarusjs/theme-docs/quiz.tscl\'\n' + lesson('/learn/one', '<h1>One</h1><p>Intro</p><section class="step" aria-labelledby="read"><h2 id="read">Read</h2></section><section class="step" aria-labelledby="write"><h2 id="write">Write</h2><quiz [name]="\'quiz-0\'" [question]="\'Pick b\'" [options]="[\'a\', \'b\']" [answer]="1"><p>Because.</p></quiz></section>'))
   w('src/pages/learn/two.tscl', lesson('/learn/two', '<h1>Two</h1>'))
   w('src/pages/learn/progress.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import learnProgress from '@clarusjs/theme-docs/learn-progress.tscl'\n@import { config } from '../../config.ts'\n<layout [config]=\"config\" [title]=\"'Progress'\" [path]=\"'/learn/progress'\"><h1>Progress</h1><learnProgress [config]=\"config\" /></layout>\n")
+  w('src/pages/guide/tool.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../../config.ts'\n<layout [config]=\"config\" [title]=\"'Tool'\" [path]=\"'/guide/start'\" [app]=\"true\"><div class=\"tool\">Tool</div></layout>\n")
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [themeDocs(), clarusjs()] })).buildApp()
   html = unscoped(readFileSync(resolve(root, 'dist/client/guide/start/index.html'), 'utf8'))
 }, 120_000)
@@ -115,4 +116,15 @@ test('progress: an XP chip (hidden until it knows the XP) in the lesson header a
   // The page lists the lessons (not itself); its numbers fill in in the browser.
   expect(progress).toMatch(/<cl-island c="[^"]*progress-board"[^>]*>.*<ol class="progress-lessons">.*href="\/learn\/one".*href="\/learn\/two".*<\/ol>/s)
   expect(progress).not.toMatch(/progress-lessons.*href="\/learn\/progress"/s)
+})
+
+test('app: the header and a full-height main for a tool (a playground), without sidebar, crumb, pager or footer', () => {
+  const tool = unscoped(readFileSync(resolve(root, 'dist/client/guide/tool/index.html'), 'utf8'))
+  expect(tool).toContain('<a href="/guide/start" aria-current="true">Guide</a>') // its section is still current
+  expect(tool).toMatch(/<main class="content app" id="content" tabindex="-1">\s*<div class="tool">Tool<\/div>\s*<\/main>/)
+  expect(tool).not.toContain('id="sidebar"')
+  expect(tool).not.toContain('class="crumb"')
+  expect(tool).not.toContain('class="page-footer"')
+  expect(tool).not.toContain('class="site-footer"')
+  expect(tool).not.toContain('popovertarget="sidebar"') // no drawer to open
 })

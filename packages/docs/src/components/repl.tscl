@@ -25,6 +25,7 @@
   let status = state('')
   let tab = state('preview')
   let output = state({ server: '', client: '', html: '' })
+  let split = state(50) // the editor's share of the width, in %
   const code = derived(() =>
     tab === 'server'
       ? output.server
@@ -63,11 +64,37 @@
     document.getElementById('repl-tab-' + tab)?.focus()
   }
 
+  // The divider between the panes: dragged (the pointer is captured, so the preview frame doesn't take the moves) or
+  // moved with the arrow keys.
+  const clamp = (n) => Math.min(80, Math.max(20, Math.round(n)))
+  function drag(event) {
+    const handle = event.currentTarget
+    const box = handle.parentElement.getBoundingClientRect()
+    handle.setPointerCapture(event.pointerId)
+    const move = (e) => {
+      split = clamp(((e.clientX - box.left) / box.width) * 100)
+    }
+    const up = () => {
+      handle.removeEventListener('pointermove', move)
+      handle.removeEventListener('pointerup', up)
+    }
+    handle.addEventListener('pointermove', move)
+    handle.addEventListener('pointerup', up)
+  }
+  function nudge(event) {
+    const by = { ArrowLeft: -5, ArrowRight: 5, Home: -100, End: 100 }[event.key]
+    if (by === undefined) return
+    event.preventDefault()
+    split = clamp(split + by)
+  }
+
   if (browser) {
     const area = document.getElementById('repl-code')
     const shown = document.getElementById('repl-highlight')
+    const lines = document.getElementById('repl-lines')
     const box = document.getElementById('repl-preview')
-    if (!(area instanceof HTMLTextAreaElement) || !shown || !box) throw new Error('playground: its markup is missing')
+    if (!(area instanceof HTMLTextAreaElement) || !shown || !lines || !box)
+      throw new Error('playground: its markup is missing')
 
     const worker = new CompileWorker()
     let seq = 0 // each run's number; only the latest one counts
@@ -80,9 +107,14 @@
     const sync = () => {
       shown.scrollTop = area.scrollTop
       shown.scrollLeft = area.scrollLeft
+      lines.scrollTop = area.scrollTop
     }
+    let count = 0
     const paint = () => {
       shown.innerHTML = highlightTscl(area.value)
+      // The gutter: one number per line, rewritten only when the count changes.
+      const n = area.value.split('\n').length
+      if (n !== count) lines.textContent = Array.from({ length: (count = n) }, (_, i) => i + 1).join('\n')
       sync()
     }
 
@@ -185,30 +217,56 @@
 
 <div class="repl">
   <div class="repl-bar">
-    <label>
+    <h1 class="repl-title">Playground</h1>
+    <label class="repl-examples">
       Example
       <select (change)="pick($event.target)">
-        <option value="">Choose an example…</option>
+        <option value="">Choose…</option>
         @for (s of starters; track s.name) {
           <option [value]="s.name">{{ s.name }}</option>
         }
       </select>
     </label>
-    <button type="button" (click)="share()">Share</button>
+    <button type="button" class="repl-button" (click)="share()">Share</button>
     <p class="repl-status" role="status">{{ status }}</p>
+    <p id="repl-keys" class="repl-help">Tab indents · Esc, then Tab, leaves the editor</p>
   </div>
-  <div class="repl-panes">
-    <div class="repl-editor">
-      <pre id="repl-highlight" aria-hidden="true"></pre>
-      <textarea
-        id="repl-code"
-        aria-label="Component source"
-        aria-describedby="repl-keys"
-        spellcheck="false"
-        autocapitalize="off"
-        autocomplete="off"
-      ></textarea>
+  <div class="repl-panes" [style]="'--split: ' + split + '%'">
+    <div class="repl-editor-pane">
+      <div class="repl-editor">
+        <pre id="repl-lines" class="repl-lines" aria-hidden="true">1</pre>
+        <pre id="repl-highlight" aria-hidden="true"></pre>
+        <textarea
+          id="repl-code"
+          aria-label="Component source"
+          aria-describedby="repl-keys"
+          spellcheck="false"
+          autocapitalize="off"
+          autocomplete="off"
+        ></textarea>
+      </div>
+      <div aria-live="polite">
+        @if (errors.length) {
+          <ul class="repl-errors">
+            @for (e of errors; track $index) {
+              <li>{{ e }}</li>
+            }
+          </ul>
+        }
+      </div>
     </div>
+    <div
+      class="repl-divider"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize the editor and the output"
+      aria-valuemin="20"
+      aria-valuemax="80"
+      [aria-valuenow]="split"
+      tabindex="0"
+      (pointerdown)="drag($event)"
+      (keydown)="nudge($event)"
+    ></div>
     <div class="repl-output">
       <div class="repl-tabs" role="tablist" aria-label="Output" (keydown)="arrows($event)">
         @for (t of TABS; track t.key) {
@@ -225,23 +283,25 @@
           </button>
         }
       </div>
-      <div id="repl-panel-preview" role="tabpanel" aria-labelledby="repl-tab-preview" [hidden]="tab !== 'preview'">
+      <div
+        id="repl-panel-preview"
+        class="repl-panel"
+        role="tabpanel"
+        aria-labelledby="repl-tab-preview"
+        [hidden]="tab !== 'preview'"
+      >
         <div id="repl-preview" class="repl-preview"></div>
       </div>
-      <div id="repl-panel-code" role="tabpanel" [aria-labelledby]="'repl-tab-' + tab" [hidden]="tab === 'preview'">
+      <div
+        id="repl-panel-code"
+        class="repl-panel"
+        role="tabpanel"
+        [aria-labelledby]="'repl-tab-' + tab"
+        [hidden]="tab === 'preview'"
+      >
         <pre class="repl-out" tabindex="0"><code>{{ code }}</code></pre>
       </div>
     </div>
   </div>
-  <div aria-live="polite">
-    @if (errors.length) {
-      <ul class="repl-errors">
-        @for (e of errors; track $index) {
-          <li>{{ e }}</li>
-        }
-      </ul>
-    }
-  </div>
-  <p id="repl-keys" class="repl-help">Tab indents. To leave the editor with the keyboard, press Esc, then Tab.</p>
   <noscript><p>The playground needs JavaScript: it compiles your component in the page.</p></noscript>
 </div>
