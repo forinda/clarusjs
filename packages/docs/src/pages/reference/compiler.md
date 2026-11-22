@@ -31,6 +31,7 @@ Compiles a `.tscl` component. For the server target, the result is a module whos
   - **`renderImports`**: import child components' render functions with `?render`, for a render module that runs in the browser.
   - **`scope`**: the id that scopes the component's `<style scoped>` (default: derived from `file`).
   - **`collapseWhitespace`**: each run of whitespace in template text becomes one character (a newline if it had one), except in `<pre>`, `<textarea>`, `<script>` and `<style>`. The Vite plugin turns it on for `vite build`.
+  - **`icon`**: `(name) => IconLookup`, finds the icons of [`<icon name="set:name" />`](/guide/icons). Pass `(name) => resolveIcon(name, file)` from `clarusjs/icons`; without it, `<icon>` is an error. The Vite plugin, `clarusjs check` and the editor pass it.
 
 ### Returns
 
@@ -115,3 +116,19 @@ try {
   else throw err
 }
 ```
+
+## clarusjs/icons
+
+Node only: it reads the [Iconify](https://icon-sets.iconify.design/) sets a project installs (`@iconify-json/<set>`), from the nearest `package.json` above a file. Sets found are cached; a missing one isn't, so installing it is enough.
+
+```ts
+import { resolveIcon, iconSets, iconNames, iconSvg } from 'clarusjs/icons'
+```
+
+- **`resolveIcon(name, fromFile)`**: `{ data }` for `set:name` (`{ body, width, height, left, top }`), or `{ missing: 'set', set }`, or `{ missing: 'icon', set, suggestions }` with the closest names. Throws for an alias that flips or rotates its icon (not supported yet).
+- **`iconSets(fromFile)`**: the installed sets, `{ prefix, name, total }`.
+- **`iconNames(set, fromFile)`**: the names in a set, sorted (none when it isn't installed).
+- **`iconSvg(data, attrs?)`**: a standalone `<svg>` for an icon.
+
+`checkIcons(parsed, file, source, icon)` from `clarusjs/compiler` returns every `<icon>` error in a file (compiling stops at the first).
+
