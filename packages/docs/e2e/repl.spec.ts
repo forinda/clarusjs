@@ -74,3 +74,124 @@ test.describe('the preview frame', () => {
     await expect(page.frameLocator('iframe').locator('#out')).toContainText('boom in the script')
   })
 })
+
+// The page.
+test.describe('/repl', () => {
+  const code = (page: import('@playwright/test').Page) => page.locator('#repl-code')
+  const preview = (page: import('@playwright/test').Page) => page.frameLocator('#repl-preview iframe')
+  const type = (page: import('@playwright/test').Page, source: string) => code(page).fill(source)
+  /** Open the playground and wait until it's attached (its compiler chunk is large; under load that takes a while). */
+  const open = async (page: import('@playwright/test').Page, url = '/repl') => {
+    await page.goto(url)
+    await expect(page.locator('.repl[data-ready]')).toBeAttached({ timeout: 20_000 })
+  }
+
+  test('opens with the first starter running', async ({ page }) => {
+    await open(page)
+    await expect(page).toHaveTitle(/Playground/)
+    await expect(preview(page).locator('button')).toBeVisible()
+  })
+
+  test('type a component: the preview shows it, its button works', async ({ page }) => {
+    await open(page)
+    await type(page, counter)
+    await expect(preview(page).locator('button')).toHaveText('Clicked 0')
+    await preview(page).locator('button').click()
+    await expect(preview(page).locator('button')).toHaveText('Clicked 1')
+    // The highlighting behind the textarea follows the source.
+    await expect(page.locator('#repl-highlight')).toContainText('let n = state(0)')
+  })
+
+  test('a syntax error shows line:col and keeps the last preview', async ({ page }) => {
+    await open(page)
+    await type(page, counter)
+    await expect(preview(page).locator('button')).toHaveText('Clicked 0')
+    await type(page, counter + '<p>\n')
+    await expect(page.locator('.repl-errors')).toContainText(/\d+:\d+ /)
+    await expect(preview(page).locator('button')).toHaveText('Clicked 0')
+    await type(page, counter)
+    await expect(page.locator('.repl-errors')).toHaveCount(0)
+  })
+
+  test('typing fast: the preview matches the last source', async ({ page }) => {
+    await open(page)
+    for (let i = 1; i <= 10; i++) await type(page, counter.replace('Clicked', `Version ${i}`))
+    await expect(preview(page).locator('button')).toHaveText('Version 10 0')
+  })
+
+  test('a script that throws: the error shows; the next good edit recovers', async ({ page }) => {
+    await open(page)
+    await type(page, thrower)
+    await expect(page.locator('.repl-errors')).toContainText('boom in the script')
+    await type(page, counter)
+    await expect(preview(page).locator('button')).toHaveText('Clicked 0')
+    await expect(page.locator('.repl-errors')).toHaveCount(0)
+  })
+
+  test("the preview can't read the site's storage", async ({ page }) => {
+    await open(page)
+    await page.evaluate(() => localStorage.setItem('secret', 'site data'))
+    await type(page, "<script>\nlet v = state('')\ntry { v = String(localStorage.getItem('secret')) } catch { v = 'blocked' }\n</script>\n<p id=\"v\">{{ v }}</p>\n")
+    await expect(preview(page).locator('#v')).toHaveText('blocked')
+  })
+
+  test('a share link reopens the code; a broken hash opens the first starter', async ({ page }) => {
+    await open(page)
+    await type(page, counter.replace('Clicked', 'Shared'))
+    await page.getByRole('button', { name: 'Share' }).click()
+    await expect(page.locator('.repl-status')).toContainText('link')
+    const url = page.url()
+    expect(url).toMatch(/#[A-Za-z0-9_-]+$/)
+    await page.goto('/')
+    await open(page, url)
+    await expect(code(page)).toHaveValue(counter.replace('Clicked', 'Shared'))
+    await expect(preview(page).locator('button')).toHaveText('Shared 0')
+    await open(page, '/repl#not-a-valid-share-link')
+    await expect(preview(page).locator('button')).toBeVisible()
+    await expect(page.locator('.repl-errors')).toHaveCount(0)
+  })
+
+  test('keyboard: Tab indents, Esc then Tab leaves the editor', async ({ page }) => {
+    await open(page)
+    await type(page, '')
+    await code(page).focus()
+    await page.keyboard.press('Tab')
+    await page.keyboard.type('x')
+    await expect(code(page)).toHaveValue('  x')
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Tab')
+    await expect(code(page)).not.toBeFocused()
+  })
+
+  test('the starter picker switches examples', async ({ page }) => {
+    await open(page)
+    await page.getByLabel('Example').selectOption('Todo list')
+    await expect(code(page)).toHaveValue(/@for/)
+    await expect(preview(page).locator('li').first()).toBeVisible()
+  })
+
+  test('only /repl loads the compiler', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const dist = resolve(import.meta.dirname, '../dist')
+    const manifest = JSON.parse(readFileSync(resolve(dist, 'clarusjs-manifest.json'), 'utf8'))
+    expect(manifest.routes['/repl'].islands.map((i: { component: string }) => i.component)).toContain('repl')
+    for (const [route, info] of Object.entries<{ js: { files: string[] } }>(manifest.routes)) {
+      if (route === '/repl') continue
+      for (const file of info.js.files) expect(readFileSync(resolve(dist, 'client', file.replace(/^\//, '')), 'utf8'), `${route}: ${file}`).not.toContain('unexpected closing tag')
+    }
+  })
+})
+
+test('text typed before the playground attaches is kept', async ({ page }) => {
+  // Hold the island's script back, type, then let it load.
+  let release = () => {}
+  const held = new Promise<void>((r) => (release = r))
+  await page.route(/\/assets\/.*\.js$/, async (route) => { await held; await route.continue() })
+  await page.goto('/repl', { waitUntil: 'commit' }) // the held script holds DOMContentLoaded back too
+  await page.locator('#repl-code').fill('<p id="early">typed early</p>\n')
+  release()
+  await expect(page.locator('.repl[data-ready]')).toBeAttached({ timeout: 20_000 })
+  await expect(page.locator('#repl-code')).toHaveValue('<p id="early">typed early</p>\n')
+  await expect(page.frameLocator('#repl-preview iframe').locator('#early')).toHaveText('typed early')
+})

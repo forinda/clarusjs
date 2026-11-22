@@ -15,7 +15,8 @@ const items = (list: typeof sections) => list.flatMap((s) => s.groups.flatMap((g
 // Every docs page in the sidebar, in sidebar order; every page there is, plus the home page.
 const docs = items(docSections)
 const pages = [{ path: '/', title: 'clarusjs' }, ...items(sections)]
-const guides = docs
+// The playground (/repl) ships its compiler on purpose (e2e/repl.spec.ts checks no other page does).
+const guides = docs.filter((d) => d.path !== '/repl')
 // axe reads computed colours: let animations (a lesson step fading in) finish first, or it sees them mid-fade.
 const axe = async (page: Page) => {
   await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
@@ -526,7 +527,7 @@ test('fragment navigation reaches server routes; client routes and failures load
   page.on('request', (req) => { if (req.resourceType() === 'document') documents.push(new URL(req.url()).pathname) })
   await page.goto('/guide/rendering-modes')
   await page.locator('a[href="/playground"]').first().click()
-  await expect(page.locator('h1')).toHaveText('Server playground')
+  await expect(page.locator('h1')).toHaveText('Server demo')
   await expect(page.locator('#pill-html')).toHaveText(/^<span class="pill cl-c-pill-[a-z0-9]+">guest<\/span>$/) // rendered by the server for this request
   expect(documents).toEqual(['/guide/rendering-modes'])
   // A client route has no fragment: the browser loads it normally, then the router renders it.
@@ -771,7 +772,7 @@ test('redirects: a static redirect forwards to its page; a server page\'s load()
   await page.evaluate(() => { const a = document.createElement('a'); a.href = '/playground?name=%20'; a.id = 'to-playground'; a.textContent = 'go'; document.querySelector('main')!.append(a) })
   await page.locator('#to-playground').click()
   await expect(page).toHaveURL(/\/playground$/)
-  await expect(page.locator('h1')).toHaveText('Server playground')
+  await expect(page.locator('h1')).toHaveText('Server demo')
 })
 
 test('abort: the URL is held while a page loads; Stop cancels its request and leaves page and URL as they were', async ({ page }) => {

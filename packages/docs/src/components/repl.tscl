@@ -1,0 +1,168 @@
+{{--
+  The playground (#243): a .tscl editor (a textarea over its highlighting) compiled in the page on each edit, and a
+  sandboxed preview frame that renders and runs the result. The visitor's code only ever runs in the frame.
+--}}
+
+<script>
+  import { browser, onDispose } from 'clarusjs/runtime'
+  import { ClarusError, compile } from 'clarusjs/compiler'
+  import runtime from 'virtual:repl-runtime'
+  import { frameDoc } from '../repl/frame.ts'
+  import { highlightTscl } from '../repl/highlight.ts'
+  import { decode, encode } from '../repl/share.ts'
+  import { starters } from '../repl/starters.ts'
+
+  let errors = state([])
+  let status = state('')
+  let picked = state(starters[0].name)
+
+  // Set in the browser below.
+  let setSource = (source) => {}
+  let currentSource = () => ''
+
+  function pick(name) {
+    const starter = starters.find((s) => s.name === name)
+    if (!starter) return
+    picked = name
+    history.replaceState(null, '', location.pathname)
+    setSource(starter.source)
+  }
+
+  async function share() {
+    history.replaceState(null, '', '#' + (await encode(currentSource())))
+    status = 'The link to this code is in the address bar.'
+  }
+
+  if (browser) {
+    const area = document.getElementById('repl-code')
+    const shown = document.getElementById('repl-highlight')
+    const box = document.getElementById('repl-preview')
+    if (!(area instanceof HTMLTextAreaElement) || !shown || !box) throw new Error('playground: its markup is missing')
+    const frame = document.createElement('iframe')
+    frame.setAttribute('sandbox', 'allow-scripts')
+    frame.title = 'Preview'
+    frame.srcdoc = frameDoc(runtime)
+
+    let seq = 0 // each compile's number; only the latest one's reply counts
+    let timer
+    let escaped = false // Esc pressed: the next Tab leaves the editor instead of indenting
+    let typed = false // the visitor has typed: the initial source (decoded asynchronously) mustn't replace that
+    const ready = new Promise((resolve) => frame.addEventListener('load', resolve, { once: true }))
+
+    const paint = () => {
+      shown.innerHTML = highlightTscl(area.value)
+      shown.scrollTop = area.scrollTop
+      shown.scrollLeft = area.scrollLeft
+    }
+
+    const run = async () => {
+      const source = area.value
+      const id = ++seq
+      let server = ''
+      let client = ''
+      try {
+        server = compile(source, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' }).code
+        const c = compile(source, { file: 'App.tscl', target: 'client' })
+        client = c.stateful ? c.code : ''
+      } catch (err) {
+        // A compile error keeps the last preview: show where, as line:col.
+        errors = [
+          err instanceof ClarusError
+            ? `${err.line}:${err.column} ${err.message.slice(err.message.indexOf(' ') + 1)}`
+            : err instanceof Error
+              ? err.message
+              : String(err),
+        ]
+        return
+      }
+      await ready
+      if (id === seq) frame.contentWindow?.postMessage({ id, server, client: client || null }, '*')
+    }
+
+    const onMessage = (event) => {
+      if (event.source !== frame.contentWindow || event.data?.id !== seq) return
+      errors = event.data.error ? [event.data.error] : []
+    }
+
+    setSource = (source) => {
+      area.value = source
+      paint()
+      run()
+    }
+    currentSource = () => area.value
+
+    area.addEventListener('input', () => {
+      typed = true
+      paint()
+      clearTimeout(timer)
+      timer = setTimeout(run, 250)
+    })
+    area.addEventListener('scroll', paint)
+    area.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        escaped = true
+        return
+      }
+      if (event.key === 'Tab' && !escaped && !event.shiftKey) {
+        event.preventDefault()
+        area.setRangeText('  ', area.selectionStart, area.selectionEnd, 'end')
+        area.dispatchEvent(new Event('input'))
+      }
+      escaped = false
+    })
+    addEventListener('message', onMessage)
+    onDispose(() => {
+      removeEventListener('message', onMessage)
+      clearTimeout(timer)
+    })
+
+    box.append(frame)
+    // Text typed before this ran (a slow load) is kept; otherwise the shared code, or the first example.
+    if (area.value) {
+      typed = true
+      setSource(area.value)
+    }
+    decode(location.hash.slice(1)).then((shared) => {
+      if (!typed) setSource(shared ?? starters[0].source)
+      area.closest('.repl')?.setAttribute('data-ready', '')
+    })
+  }
+</script>
+
+<div class="repl">
+  <div class="repl-bar">
+    <label>
+      Example
+      <select (change)="pick($event.target.value)">
+        @for (s of starters; track s.name) {
+          <option [value]="s.name" [selected]="s.name === picked">{{ s.name }}</option>
+        }
+      </select>
+    </label>
+    <button type="button" (click)="share()">Share</button>
+    <p class="repl-status" role="status">{{ status }}</p>
+  </div>
+  <div class="repl-panes">
+    <div class="repl-editor">
+      <pre id="repl-highlight" aria-hidden="true"></pre>
+      <textarea
+        id="repl-code"
+        aria-label="Component source"
+        aria-describedby="repl-keys"
+        spellcheck="false"
+        autocapitalize="off"
+        autocomplete="off"
+      ></textarea>
+    </div>
+    <div id="repl-preview" class="repl-preview"></div>
+  </div>
+  @if (errors.length) {
+    <ul class="repl-errors" role="alert">
+      @for (e of errors; track $index) {
+        <li>{{ e }}</li>
+      }
+    </ul>
+  }
+  <p id="repl-keys" class="repl-help">Tab indents. To leave the editor with the keyboard, press Esc, then Tab.</p>
+  <noscript><p>The playground needs JavaScript: it compiles your component in the page.</p></noscript>
+</div>

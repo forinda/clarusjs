@@ -96,3 +96,17 @@ describe('frameDoc', () => {
     expect(doc).toContain('const s = "<\\/script><p>x</p>"')
   })
 })
+
+describe('starters', () => {
+  test('counter, todo, form and conditional; each compiles for server and client without warnings', async () => {
+    const { starters } = await import('../src/repl/starters.ts')
+    const { compile } = await import('clarusjs/compiler')
+    expect(starters.map((s) => s.name)).toEqual(['Counter', 'Todo list', 'Form', 'Conditional'])
+    for (const s of starters) {
+      const server = compile(s.source, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' })
+      const client = compile(s.source, { file: 'App.tscl', target: 'client' })
+      expect(server.warnings, s.name).toEqual([])
+      expect(client.stateful, s.name).toBe(true)
+    }
+  })
+})

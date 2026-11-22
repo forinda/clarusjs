@@ -19,11 +19,17 @@ export const sidebar: Section[] = [
       { title: 'Interactivity', items: [] },
       { title: 'Build & deploy', items: [
         { title: 'This site, explained', href: '/guide/explained', order: 3 },
-        { title: 'Server playground', href: '/playground', order: 4 },
+        { title: 'Server demo', href: '/playground', order: 4 },
       ] },
       { title: 'Site quality', items: [] },
       { title: 'Tooling', items: [] },
     ],
+  },
+  {
+    key: 'repl',
+    title: 'Playground',
+    href: '/repl',
+    groups: [{ title: 'Playground', items: [{ title: 'Playground', href: '/repl' }] }],
   },
   {
     key: 'reference',

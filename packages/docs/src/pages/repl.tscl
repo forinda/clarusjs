@@ -1,0 +1,15 @@
+@import docs from '../layouts/docs.tscl'
+@import repl from '../components/repl.tscl'
+
+<docs
+  [title]="'Playground'"
+  [path]="'/repl'"
+  [description]="'Write a clarusjs component and see it run: compiled in your browser, previewed in a sandbox.'"
+>
+  <h1>Playground</h1>
+  <p class="lead">
+    Write a component and see it run. It is compiled in this page as you type, and runs in a sandboxed preview that
+    can't reach this site's data.
+  </p>
+  <repl />
+</docs>

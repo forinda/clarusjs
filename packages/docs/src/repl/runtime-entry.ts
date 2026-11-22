@@ -17,14 +17,20 @@ async function load(code: string): Promise<Record<string, any>> {
   }
 }
 
+// The newest message seen: an older one still loading when a newer arrives is dropped (typing outpaces importing).
+let latest = 0
+
 addEventListener('message', async (event: MessageEvent<Message>) => {
   const { id, server: serverCode, client } = event.data ?? ({} as Message)
   if (typeof id !== 'number' || typeof serverCode !== 'string') return
+  latest = Math.max(latest, id)
+  const stale = () => id !== latest
   // A fresh #out each time: the previous preview's DOM, and the listeners on it, go with the old element.
   const out = document.createElement('div')
   out.id = 'out'
   try {
     const rendered = await (await load(serverCode)).render({})
+    if (stale()) return
     out.innerHTML = rendered
     document.getElementById('out')!.replaceWith(out)
     if (client) {
@@ -32,11 +38,14 @@ addEventListener('message', async (event: MessageEvent<Message>) => {
       if (island) {
         const props = runtime.parseIslandData(island.getAttribute('p') ?? '{}') as Record<string, unknown>
         const s = island.getAttribute('s')
-        ;(await load(client)).attach(island, props, s === null ? undefined : runtime.parseIslandData(s))
+        const mod = await load(client)
+        if (stale()) return
+        mod.attach(island, props, s === null ? undefined : runtime.parseIslandData(s))
       }
     }
     parent.postMessage({ id, ok: true }, '*')
   } catch (err) {
+    if (stale()) return
     const message = err instanceof Error ? err.message : String(err)
     const p = document.createElement('p')
     p.className = 'cl-repl-error'
