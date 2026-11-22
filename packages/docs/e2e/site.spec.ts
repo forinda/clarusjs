@@ -1813,3 +1813,26 @@ test('#371: a lesson has the Learn path: progress, done / next / locked, XP, its
   await page.setViewportSize({ width: 390, height: 800 })
   await expect(path).toBeHidden()
 })
+
+test('#372: the home is a bento grid: live islands in cards, columns on desktop, one column on phones', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/')
+  const bento = page.getByRole('region', { name: 'What you get' })
+  const cards = bento.locator('.bento-card')
+  expect(await cards.count()).toBeGreaterThanOrEqual(7)
+  for (const card of await cards.all()) await expect(card.locator('h3')).toHaveCount(1) // each card is titled
+  // The live demos are cards: the counter (with what ships) and the list.
+  await expect(bento.locator('.bento-card cl-island[c="counter"]')).toHaveCount(1)
+  await expect(bento.locator('.bento-card cl-island[c="what-ships"]')).toHaveCount(1)
+  await expect(bento.locator('.bento-card cl-island[c="todo"]')).toHaveCount(1)
+  // Desktop: cards share rows, and the islands card spans more than the others.
+  const tops = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)))
+  expect(new Set(tops).size).toBeLessThan(tops.length)
+  const width = (i: number) => cards.nth(i).evaluate((el) => el.getBoundingClientRect().width)
+  expect(await width(0)).toBeGreaterThan(await width(1))
+  // Phones: one column, nothing wider than the screen.
+  await page.setViewportSize({ width: 390, height: 800 })
+  const lefts = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)))
+  expect(new Set(lefts).size).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})
