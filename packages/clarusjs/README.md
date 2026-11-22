@@ -6,6 +6,8 @@
 
 <p align="center"><strong>Clear, compiled views.</strong></p>
 
+<p align="center">Pronounced <strong>KLAIR-us</strong> (/ˈklɛər.əs/), from the Latin <em>clarus</em>, “clear, bright”.</p>
+
 <p align="center"><a href="https://clarusjs.com">Documentation</a> · <a href="https://clarusjs.com/guide/getting-started">Getting started</a> · <a href="https://www.npmjs.com/package/clarusjs">npm</a></p>
 
 Write components in a familiar template language. clarusjs compiles them to plain server HTML and ships JavaScript
