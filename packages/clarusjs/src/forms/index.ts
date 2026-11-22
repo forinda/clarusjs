@@ -197,7 +197,9 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       step.hidden = step.id !== id
       step.toggleAttribute('data-cl-current', step.id === id)
     }
-    if (push && location.hash !== `#${id}`) history.pushState(null, '', `#${id}`) // a history entry, no jump
+    // A history entry, no jump. Where history can't be written (a sandboxed srcdoc frame: an opaque origin), the step
+    // still moves, without the hash.
+    if (push && location.hash !== `#${id}`) try { history.pushState(null, '', `#${id}`) } catch {}
     refresh()
   }
   /** The step in the URL, if it's one of this form's (another hash, like a heading's, isn't the form's business). */
