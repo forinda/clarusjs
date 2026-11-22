@@ -169,3 +169,7 @@ test('#390: frontmatter lastmod becomes the sitemap:lastmod marker (the build us
   expect(page('---\ntitle: News\nlastmod: 2026-11-01\n---\n# News\n')).toContain('<cl-head><meta name="sitemap:lastmod" content="2026-11-01"></cl-head>')
   expect(page("---\ntitle: News\nlastmod: '2026-11-01T09:30:00Z'\n---\n# News\n")).toContain('content="2026-11-01T09:30:00Z"')
 })
+
+test('#396 review: an empty lastmod still becomes a marker, so the build rejects it rather than using git\'s date', () => {
+  expect(page("---\ntitle: News\nlastmod: ''\n---\n# News\n")).toContain('<meta name="sitemap:lastmod" content="">')
+})

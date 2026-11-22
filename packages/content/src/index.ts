@@ -367,7 +367,7 @@ function pageHead(data: Record<string, unknown>, title: string | undefined): str
   if (data.sitemap === false) tags.push('<meta name="sitemap" content="false">')
   // lastmod: the page's date in the sitemap (over git's). YAML may read a bare date as a Date.
   const lastmod = data.lastmod instanceof Date ? data.lastmod.toISOString().slice(0, 10) : typeof data.lastmod === 'string' ? data.lastmod : undefined
-  if (lastmod) tags.push(`<meta name="sitemap:lastmod" content="${escapeHtml(lastmod)}">`)
+  if (lastmod !== undefined) tags.push(`<meta name="sitemap:lastmod" content="${escapeHtml(lastmod)}">`)
   if (typeof data.image === 'string') tags.push(`<meta property="og:image" content="${escapeHtml(data.image)}">`)
   const raws: string[] = [] // scripts: raw text, kept out of staticHtml
   for (const entry of Array.isArray(data.head) ? data.head : []) {

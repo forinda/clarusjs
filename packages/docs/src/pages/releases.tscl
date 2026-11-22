@@ -1,12 +1,17 @@
 @import docs from '../layouts/docs.tscl'
 @import latestRelease from '../components/latest-release.tscl'
 @import { releases } from '../releases.ts'
+@import { changelogUpdated } from '../changelog-date.ts'
 
 <docs
   [title]="'Release notes'"
   [path]="'/releases'"
   [description]="'Every clarusjs release and what changed in it, from the package changelog.'"
 >
+  {{-- In the sitemap, dated by the changelog it's built from, not by this file. --}}
+  @if (changelogUpdated) {
+    <cl-head><meta name="sitemap:lastmod" [content]="changelogUpdated" /></cl-head>
+  }
   <h1>Release notes</h1>
   <p class="lead">
     Every release of the <code>clarusjs</code> package, newest first. Each page is generated from the changelog when

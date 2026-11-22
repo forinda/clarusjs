@@ -1886,3 +1886,11 @@ test('icons: <icon> is inline SVG, 1em high, hidden from screen readers, with no
   await page.goto('/')
   await expect(page.locator('.bento-kicker svg').first()).toHaveAttribute('aria-hidden', 'true')
 })
+
+test('sitemap: /releases is dated by the changelog it is built from (its own lastmod), and the marker is gone from the page', async () => {
+  const { execFileSync } = await import('node:child_process')
+  const changelog = execFileSync('git', ['log', '-1', '--format=%cs', '--', '../clarusjs/CHANGELOG.md'], { encoding: 'utf8' }).trim()
+  const sitemap = readFileSync(new URL('../dist/client/sitemap.xml', import.meta.url), 'utf8')
+  expect(sitemap).toContain(`<url><loc>https://clarusjs.com/releases</loc><lastmod>${changelog}</lastmod>`)
+  expect(readFileSync(new URL('../dist/client/releases/index.html', import.meta.url), 'utf8')).not.toContain('sitemap:lastmod')
+})

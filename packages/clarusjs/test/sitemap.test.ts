@@ -242,3 +242,56 @@ test('#395: vite build reads each page\'s <link rel="alternate" hreflang> (in an
   expect(xml).not.toContain('feed.xml') // an alternate without hreflang isn't a translation
   expect(readFileSync(resolve(root, 'dist/client/guide/index.html'), 'utf8')).toContain('hreflang="fr"')
 }, 120_000)
+
+test('#396 review: lastmod must be a real calendar date (2026-02-30 is not); leap days and times with a zone are', async () => {
+  const build = async (value: string) => {
+    const { root, w } = repo()
+    w('src/pages/index.tscl', `<cl-head><meta name="sitemap:lastmod" content="${value}"></cl-head><h1>Home</h1>`)
+    mkdirSync(resolve(root, 'node_modules'))
+    symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+    await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
+    return readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  }
+  await expect(build('2026-02-30')).rejects.toThrow(/sitemap:lastmod '2026-02-30' isn't a date/)
+  await expect(build('2026-13-01')).rejects.toThrow(/isn't a date/)
+  expect(await build('2028-02-29')).toContain('<lastmod>2028-02-29</lastmod>')
+  expect(await build('2026-11-01T23:30:00-05:00')).toContain('<lastmod>2026-11-02</lastmod>') // as UTC
+}, 240_000)
+
+test('#396 review: the markers are removed from every built page, also 404, 500 and client routes', async () => {
+  const { root, w } = repo()
+  const marked = '<cl-head><meta name="sitemap:lastmod" content="2026-11-01"><meta name="sitemap" content="false"></cl-head>'
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  w('src/pages/404.tscl', `${marked}<h1>Not found</h1>`)
+  w('src/pages/500.tscl', `${marked}<h1>Error</h1>`)
+  w('src/pages/app.tscl', `${marked}<h1>App</h1>`)
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' }, routes: { '/app': 'client' } })] })).buildApp()
+  for (const file of ['404/index.html', '404.html', '500/index.html', '500.html', 'app/index.html']) {
+    const path = resolve(root, 'dist/client', file)
+    if (existsSync(path)) expect(readFileSync(path, 'utf8'), file).not.toMatch(/name="sitemap(:lastmod)?"/)
+  }
+}, 120_000)
+
+test('#396 review: include doesn\'t bring back a page that exclude, its own opt-out or noindex keeps out', async () => {
+  const { root, w } = repo()
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  w('src/pages/private.tscl', '<cl-head><meta name="sitemap" content="false"></cl-head><p>p</p>')
+  w('src/pages/hidden.tscl', '<cl-head><meta name="robots" content="noindex"></cl-head><p>h</p>')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  const plugin = clarusjs({ site: { url: 'https://example.com' }, sitemap: { exclude: ['/drafts/**'], include: ['/drafts/x', '/private', '/hidden', '/shop/a'] } })
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [plugin] })).buildApp()
+  const locs = [...readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8').matchAll(/<loc>https:\/\/example\.com([^<]*)<\/loc>/g)].map((m) => m[1])
+  expect(locs).toEqual(['/', '/shop/a'])
+}, 120_000)
+
+test('#396 review: files split by size as well as by count (50 MB each, uncompressed), with the index', () => {
+  const pages = ['/a', '/b', '/c'].map((path) => ({ path, lastmod: undefined, images: Array.from({ length: 20 }, (_, i) => `/img/${path.slice(1)}-${i}.png`) }))
+  const one = sitemapXml('https://example.com', '/', pages.slice(0, 1)).length
+  const files = sitemapFiles('https://example.com', '/', pages, 50_000, one + 10) // room for one page a file
+  expect(files.map((f) => f.file)).toEqual(['sitemap-1.xml', 'sitemap-2.xml', 'sitemap-3.xml', 'sitemap.xml'])
+  for (const f of files.slice(0, 3)) expect(Buffer.byteLength(f.xml)).toBeLessThanOrEqual(one + 10)
+  expect(sitemapFiles('https://example.com', '/', pages).map((f) => f.file)).toEqual(['sitemap.xml']) // 50 MB by default
+})

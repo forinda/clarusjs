@@ -245,6 +245,24 @@ function clientPages(appRoot: string, modes: ModeTable, files: Files): Map<strin
   return pages
 }
 
+/** An attribute of a built <meta> or <link> in any valid form: "x", 'x' or unquoted (transformHead output isn't normalized). */
+function metaAttr(tag: string, name: string): string | undefined {
+  return new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag)?.slice(1).find((v) => v !== undefined)
+}
+
+/**
+ * A sitemap lastmod's time (ms), or NaN: a calendar date (2026-02-30 isn't one, though Date.parse rolls it over to
+ * March 2), optionally with a time and a zone, as sitemaps allow.
+ */
+function lastmodTime(value: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2}))?$/.exec(value)
+  if (!m) return NaN
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  const day = new Date(Date.UTC(y, mo - 1, d))
+  if (day.getUTCFullYear() !== y || day.getUTCMonth() !== mo - 1 || day.getUTCDate() !== d) return NaN
+  return Date.parse(m[4] ? value : `${value}T00:00:00Z`)
+}
+
 /** Vite's plugins option, flattened: nested arrays followed, falsy entries and promises (not resolved yet) left out. */
 function pluginsOf(list: unknown): Plugin[] {
   if (Array.isArray(list)) return list.flatMap(pluginsOf)
@@ -448,6 +466,26 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         // Links between pages and to anchors, checked against what was written.
         const pageRoutes = routes.filter((r) => !/\/(__data\.json|index\.frag\.html)$/.test(r))
         const clientRoutes = pageRoutes.filter((r) => routes.includes(r === '/' ? '/__data.json' : `${r}/__data.json`))
+        // A page's own sitemap markers (opt-out, lastmod): read, then removed from every built page (error pages and
+        // client routes too, before 404.html and 500.html are copied), whether a sitemap is written or not.
+        const markers = new Map<string, { out: boolean; lastmod?: number }>()
+        for (const page of pageRoutes) {
+          const file = resolve(out, routeToFile(page))
+          let html = readFileSync(file, 'utf8')
+          const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
+          const optOut = tags.find((tag) => metaAttr(tag, 'name')?.toLowerCase() === 'sitemap' && metaAttr(tag, 'content') === 'false')
+          const dated = tags.find((tag) => metaAttr(tag, 'name')?.toLowerCase() === 'sitemap:lastmod')
+          let lastmod: number | undefined
+          if (dated) {
+            const value = metaAttr(dated, 'content') ?? ''
+            const time = lastmodTime(value)
+            if (Number.isNaN(time)) throw new Error(`clarusjs: ${page}: sitemap:lastmod '${value}' isn't a date (YYYY-MM-DD)`)
+            lastmod = time / 1000
+          }
+          for (const marker of [optOut, dated]) if (marker) html = html.replace(marker, '')
+          if (optOut || dated) writeFileSync(file, html)
+          markers.set(page, { out: !!optOut, ...(lastmod === undefined ? {} : { lastmod }) })
+        }
         // 404.html, which static hosts serve for unknown paths at any depth: the 404 page with its relative links
         // resolved from the site root (also at /404 itself, so the link check sees what visitors get).
         if (pageRoutes.includes('/404') && !clientRoutes.includes('/404')) {
@@ -504,28 +542,14 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const epoch = process.env.SOURCE_DATE_EPOCH ? Number(process.env.SOURCE_DATE_EPOCH) : undefined
           const exclude = (typeof options.sitemap === 'object' ? options.sitemap.exclude ?? [] : [])
             .map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*|\*/g, (s) => (s === '**' ? '.*' : '[^/]+'))}$`))
-          // A page's own sitemap markers (opt-out, lastmod) are read, then removed from the built page; noindex pages
-          // aren't listed either.
+          // Pages that opted out (markers, read above) or are noindex aren't listed.
           const images = typeof options.sitemap !== 'object' || options.sitemap.images !== false
           const sitemapMeta = (page: string): { out: boolean; lastmod?: number; images: string[]; alternates: { hreflang: string; href: string }[] } => {
             const file = resolve(out, routeToFile(page))
-            let html = readFileSync(file, 'utf8')
+            const html = readFileSync(file, 'utf8')
             const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
-            // Attribute values in any valid form: "x", 'x' or unquoted (transformHead output isn't normalized).
-            const attr = (tag: string, name: string) => new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag)?.slice(1).find((v) => v !== undefined)
-            const named = (name: string) => tags.find((tag) => attr(tag, 'name')?.toLowerCase() === name)
-            const optOut = tags.find((tag) => attr(tag, 'name')?.toLowerCase() === 'sitemap' && attr(tag, 'content') === 'false')
-            const dated = named('sitemap:lastmod')
-            let lastmod: number | undefined
-            if (dated) {
-              const value = attr(dated, 'content') ?? ''
-              // A date, or a full W3C datetime (2026-11-01T09:00:00Z), as sitemaps allow.
-              const time = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2}))?$/.test(value) ? Date.parse(value) : NaN
-              if (Number.isNaN(time)) throw new Error(`clarusjs: ${page}: sitemap:lastmod '${value}' isn't a date (YYYY-MM-DD)`)
-              lastmod = time / 1000
-            }
-            for (const marker of [optOut, dated]) if (marker) html = html.replace(marker, '')
-            if (optOut || dated) writeFileSync(file, html)
+            const attr = metaAttr
+            const { out: optOut, lastmod } = markers.get(page) ?? { out: false }
             // The page's images, as written (sitemapXml resolves them): not decorative ones (alt=""), not data: URLs.
             const decode = (v: string) => v.replace(/&(amp|quot|#39|lt|gt);/g, (_, e: string) => ({ amp: '&', quot: '"', '#39': "'", lt: '<', gt: '>' })[e]!)
             const pics = images ? [...new Set([...html.matchAll(/<img\b[^>]*>/gi)].map(([tag]) => tag)
@@ -536,23 +560,25 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             const alternates = [...html.matchAll(/<link\b[^>]*>/gi)].map(([tag]) => tag)
               .filter((tag) => /(^|\s)alternate(\s|$)/i.test(attr(tag, 'rel') ?? '') && attr(tag, 'hreflang') && attr(tag, 'href'))
               .map((tag) => ({ hreflang: attr(tag, 'hreflang')!, href: decode(attr(tag, 'href')!) }))
-            return { out: !!optOut || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? '')), ...(lastmod === undefined ? {} : { lastmod }), images: pics, alternates }
+            return { out: optOut || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? '')), ...(lastmod === undefined ? {} : { lastmod }), images: pics, alternates }
           }
-          // Every page's markers are read (and stripped), excluded or not.
           const pages = pageRoutes.filter((page) => page !== '/404' && page !== '/500' && !clientRoutes.includes(page))
             .map((path) => ({ path, meta: sitemapMeta(path) }))
-            .filter(({ path, meta }) => !meta.out && !exclude.some((re) => re.test(path)))
-            .map(({ path, meta }) => ({ path, lastmod: meta.lastmod ?? dates.get(fileOf(path) ?? '') ?? epoch, images: meta.images, alternates: meta.alternates }))
+          // Pages kept out (exclude, their own opt-out, noindex): include doesn't bring them back.
+          const keptOut = new Set(pages.filter(({ path, meta }) => meta.out || exclude.some((re) => re.test(path))).map((p) => p.path))
+          const listedPages = pages.filter(({ path }) => !keptOut.has(path))
+          const entries = listedPages.map(({ path, meta }) => ({ path, lastmod: meta.lastmod ?? dates.get(fileOf(path) ?? '') ?? epoch, images: meta.images, alternates: meta.alternates }))
           // URLs the build can't list (server routes, client routes): from the config, an array or a function.
           const include = typeof options.sitemap === 'object' ? options.sitemap.include : undefined
           const extra = typeof include === 'function' ? await include() : include ?? []
-          const listed = new Set(pages.map((p) => p.path))
+          const listed = new Set(entries.map((p) => p.path))
           for (const path of extra) {
             if (typeof path !== 'string' || !path.startsWith('/')) throw new Error(`clarusjs: sitemap.include: '${String(path)}' isn't a path (start it with /)`)
-            if (!listed.has(path)) pages.push({ path, lastmod: undefined, images: [], alternates: [] })
+            if (listed.has(path) || keptOut.has(path) || exclude.some((re) => re.test(path))) continue
+            entries.push({ path, lastmod: undefined, images: [], alternates: [] })
             listed.add(path)
           }
-          for (const { file, xml } of sitemapFiles(options.site.url, builder.config.base, pages)) writeFileSync(resolve(out, file), xml)
+          for (const { file, xml } of sitemapFiles(options.site.url, builder.config.base, entries)) writeFileSync(resolve(out, file), xml)
         }
         // robots.txt: allow everything, and point at the sitemap. A robots.txt in public/ (already copied) wins.
         if (options.site && options.robots !== false && !existsSync(resolve(out, 'robots.txt'))) {

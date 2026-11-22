@@ -93,7 +93,7 @@ With `site` set, `vite build` writes `sitemap.xml`: every prerendered static pag
 
 Leave pages out by path with `exclude`: `['/legal', '/tags/*', '/drafts/**']` (`*` is one path segment, `**` any depth). A page leaves itself out with `<cl-head><meta name="sitemap" content="false"></cl-head>`, or `sitemap: false` in Markdown frontmatter; the marker is removed from the built page.
 
-A page sets its own date with `<cl-head><meta name="sitemap:lastmod" content="2026-11-01"></cl-head>`, or `lastmod: 2026-11-01` in Markdown frontmatter: it wins over the git date, for a page whose content changes without a commit to its file (it reads data, say). A full time works too (`2026-11-01T09:30:00Z`); anything else fails the build, naming the page. The marker is removed from the built page.
+A page sets its own date with `<cl-head><meta name="sitemap:lastmod" content="2026-11-01"></cl-head>`, or `lastmod: 2026-11-01` in Markdown frontmatter: it wins over the git date, for a page whose content changes without a commit to its file (it reads data, say). A full time works too (`2026-11-01T09:30:00Z`); anything else, including a day that doesn't exist (`2026-02-30`), fails the build, naming the page. This site's release notes do this: they're dated by the changelog they're built from. The marker is removed from the built page.
 
 Each page's images are listed with it, in [Google's image extension](https://developers.google.com/search/docs/crawling-indexing/sitemaps/image-sitemaps) (`<image:image>`), so they're found with their page: every `<img>` with a `src`, resolved to an absolute URL (images on another domain, a CDN, included). Decorative images (`alt=""`) and `data:` URLs aren't listed, and at most 1,000 per page are. `sitemap: { images: false }` leaves images out.
 
@@ -107,7 +107,7 @@ clarusjs({
 })
 ```
 
-Each path starts with `/`; one the build already listed isn't repeated.
+Each path starts with `/`; one the build already listed isn't repeated, and one that `exclude`, a page's own opt-out or `noindex` keeps out stays out.
 
 A translated page lists its translations in its head, as search engines ask, and the sitemap repeats them as `<xhtml:link rel="alternate">` entries:
 
@@ -121,7 +121,7 @@ A translated page lists its translations in its head, as search engines ask, and
 
 Each `href` becomes an absolute URL; the links stay in the page too. A `<link rel="alternate">` without `hreflang` (a feed) isn't a translation and isn't listed.
 
-A sitemap holds at most 50,000 URLs. Past that, the build writes `sitemap-1.xml`, `sitemap-2.xml`… and `sitemap.xml` becomes their index, so `robots.txt` and search consoles keep the one address.
+A sitemap file holds at most 50,000 URLs and 50 MB (uncompressed). Past either, the build writes `sitemap-1.xml`, `sitemap-2.xml`… and `sitemap.xml` becomes their index, so `robots.txt` and search consoles keep the one address.
 
 ## robots
 
