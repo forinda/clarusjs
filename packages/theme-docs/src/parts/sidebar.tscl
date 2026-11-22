@@ -32,12 +32,12 @@
       </svg>
     </button>
   </div>
-  <div class="sidebar-switch tw:mb-3 tw:auto-cols-fr tw:grid-flow-col tw:gap-1 tw:rounded-xl tw:bg-surface tw:p-1">
+  <div class="sidebar-switch mb-3 auto-cols-fr grid-flow-col gap-1 rounded-xl bg-surface p-1">
     @for (s of config.sections.filter((s) => s.switch !== false); track s.key) {
       <a
         [href]="s.href"
         [aria-current]="s.key === sectionKey(config.sections, path) ? 'true' : false"
-        class="tw:rounded-lg tw:py-2 tw:text-center tw:text-sm tw:font-semibold tw:text-muted tw:no-underline tw:aria-[current=true]:bg-bg tw:aria-[current=true]:text-accent tw:aria-[current=true]:shadow-sm"
+        class="rounded-lg py-2 text-center text-sm font-semibold text-muted no-underline aria-[current=true]:bg-bg aria-[current=true]:text-accent aria-[current=true]:shadow-sm"
         >{{ s.title }}</a
       >
     }
@@ -48,7 +48,7 @@
       type="button"
       data-search-open
       aria-haspopup="dialog"
-      class="sidebar-search tw:mb-4 tw:flex tw:h-9 tw:w-full tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-rule tw:bg-bg tw:px-2.5 tw:text-left tw:text-[13px] tw:text-muted tw:transition-colors tw:hover:border-accent tw:hover:text-fg"
+      class="sidebar-search mb-4 flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg border border-rule bg-bg px-2.5 text-left text-[13px] text-muted transition-colors hover:border-accent hover:text-fg"
     >
       <svg
         width="14"
@@ -63,9 +63,8 @@
         <circle cx="11" cy="11" r="7"></circle>
         <path d="m20 20-3.5-3.5"></path>
       </svg>
-      <span class="tw:flex-1">Search</span>
-      <kbd
-        class="tw:rounded tw:border tw:border-rule tw:bg-surface tw:px-1.5 tw:py-px tw:font-sans tw:text-[11px] tw:leading-4 tw:text-muted"
+      <span class="flex-1">Search</span>
+      <kbd class="rounded border border-rule bg-surface px-1.5 py-px font-sans text-[11px] leading-4 text-muted"
         >⌘K</kbd
       >
     </button>
@@ -73,20 +72,19 @@
   <slot name="top"></slot>
   @for (group of groupsOf(config.sections, path); track group.title) {
     <details
-      class="tw:group tw:mb-1.5"
+      class="group mb-1.5"
       [data-group]="group.title"
       [open]="!group.collapsed || group.items.some((i) => i.href === path)"
     >
       <summary
-        class="tw:flex tw:cursor-pointer tw:list-none tw:items-center tw:gap-2.5 tw:rounded-md tw:py-1.5 tw:pr-1 tw:text-[13px] tw:font-semibold tw:text-fg tw:select-none tw:[&::-webkit-details-marker]:hidden"
+        class="flex cursor-pointer list-none items-center gap-2.5 rounded-md py-1.5 pr-1 text-[13px] font-semibold text-fg select-none [&::-webkit-details-marker]:hidden"
       >
-        <span
-          class="group-icon tw:grid tw:size-[22px] tw:flex-none tw:place-items-center tw:rounded-md tw:bg-accent-soft tw:text-accent"
+        <span class="group-icon grid size-[22px] flex-none place-items-center rounded-md bg-accent-soft text-accent"
           >@if (group.icon) {<groupIcon [name]="group.icon" />}</span
         >
-        <span class="tw:flex-1">{{ group.title }}</span>
+        <span class="flex-1">{{ group.title }}</span>
         <svg
-          class="tw:flex-none tw:text-muted tw:transition-transform tw:group-open:rotate-90"
+          class="flex-none text-muted transition-transform group-open:rotate-90"
           width="12"
           height="12"
           viewBox="0 0 24 24"
@@ -100,20 +98,19 @@
           <path d="m9 6 6 6-6 6"></path>
         </svg>
       </summary>
-      <ul class="tw:my-1 tw:ml-[10px] tw:list-none tw:border-l tw:border-rule tw:p-0">
+      <ul class="my-1 ml-[10px] list-none border-l border-rule p-0">
         @for (item of group.items; track item.href) {
-          <li class="tw:m-0">
+          <li class="m-0">
             <a
               [href]="item.href"
               [aria-current]="item.href === path ? 'page' : false"
-              class="tw:-ml-px tw:flex tw:items-center tw:gap-2 tw:rounded-r-md tw:border-l-2 tw:border-transparent tw:py-[5px] tw:pr-2 tw:pl-3 tw:text-[13px] tw:text-fg/80 tw:no-underline tw:transition-colors tw:hover:text-fg tw:aria-[current=page]:border-accent tw:aria-[current=page]:bg-accent-soft tw:aria-[current=page]:font-semibold tw:aria-[current=page]:text-accent"
+              class="-ml-px flex items-center gap-2 rounded-r-md border-l-2 border-transparent py-[5px] pr-2 pl-3 text-[13px] text-fg/80 no-underline transition-colors hover:text-fg aria-[current=page]:border-accent aria-[current=page]:bg-accent-soft aria-[current=page]:font-semibold aria-[current=page]:text-accent"
             >
-              <span class="tw:flex-1">{{ item.title }}</span>
+              <span class="flex-1">{{ item.title }}</span>
               @if (item.badge) {
-                <span
-                  class="badge tw:rounded tw:bg-xp-soft tw:px-1.5 tw:py-px tw:text-[10.5px] tw:font-bold tw:text-xp"
-                  >{{ item.badge }}</span
-                >
+                <span class="badge rounded bg-xp-soft px-1.5 py-px text-[10.5px] font-bold text-xp">{{
+                  item.badge
+                }}</span>
               }
             </a>
           </li>
@@ -124,7 +121,7 @@
   <slot name="bottom"></slot>
   {{-- The drawer's links row: config.menuLinks, then the social links. --}}
   <div
-    class="sidebar-links tw:mt-auto tw:justify-between tw:gap-x-3 tw:gap-y-1 tw:border-t tw:border-rule tw:pt-3 tw:text-[13px] tw:font-medium tw:[&_a]:text-accent tw:[&_a]:no-underline"
+    class="sidebar-links mt-auto justify-between gap-x-3 gap-y-1 border-t border-rule pt-3 text-[13px] font-medium [&_a]:text-accent [&_a]:no-underline"
   >
     @for (link of [...(config.menuLinks ?? []), ...(config.social ?? [])]; track link.href) {
       <a [href]="link.href">{{ link.label }}</a>

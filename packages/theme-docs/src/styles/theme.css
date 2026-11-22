@@ -5,13 +5,14 @@
    - Utilities are unlayered, like the rules below: ordinary specificity decides, so a utility (a class) wins over a
      base rule for an element (a, li). In a layer, every unlayered rule would win over it.
    - The tokens (--bg, --accent…) stay the public way to restyle the theme; Tailwind's colours and fonts are built on
-     them (tw:bg-surface, tw:text-muted, tw:border-rule, tw:bg-accent-soft, tw:font-mono…), so utilities follow light and dark.
-   - Classes are found in the theme's own components only (source(none), then the .tscl files), and carry a prefix
-     (tw:flex, tw:bg-surface): only prefixed words become utilities, and they never meet a site's own class names. */
+     them (bg-surface, text-muted, border-rule, bg-accent-soft, font-mono…), so utilities follow light and dark.
+   - Classes come from the theme's own templates only, and only from their class="…" attributes: scripts/classes.js
+     lists them for Tailwind (reading the templates, every word would be a candidate: .hidden, .block…). A test keeps
+     the theme's own class names (.sidebar, .step…) from also being utilities. */
 @layer theme;
-@import 'tailwindcss/theme.css' layer(theme) source(none) prefix(tw);
+@import 'tailwindcss/theme.css' layer(theme) source(none);
 @import 'tailwindcss/utilities.css' source(none);
-@source '../**/*.tscl';
+@source '../../node_modules/.cache/theme-docs/classes.txt'; /* the templates' class names: scripts/classes.js */
 
 @theme inline {
   --color-bg: var(--bg);

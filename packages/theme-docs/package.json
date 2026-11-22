@@ -20,7 +20,7 @@
     "prepack": "pnpm types",
     "test": "vitest run",
     "typecheck": "pnpm types && tsc --noEmit",
-    "css": "tailwindcss -i src/styles/theme.css -o src/theme.css"
+    "css": "node scripts/classes.js && tailwindcss -i src/styles/theme.css -o src/theme.css"
   },
   "peerDependencies": {
     "clarusjs": "workspace:^"

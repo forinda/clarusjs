@@ -287,4 +287,4 @@ Every colour, font and size is a CSS custom property on `:root`, so you can rest
 
 Dark mode redefines the colour tokens under `prefers-color-scheme: dark` and `[data-theme='dark']` (the toggle); redefine yours in the same places.
 
-The theme's styles are written with Tailwind and shipped as a built stylesheet, so your site needs no Tailwind to use it. Its utilities are built on these tokens, so changing a token restyles them too.
+The theme's styles are written with Tailwind and shipped as a built stylesheet, so your site needs no Tailwind to use it. Its utilities are built on these tokens, so changing a token restyles them too. Only the utilities its own parts use are in it (`flex`, `bg-surface`…), with Tailwind's names: a site using Tailwind gets the same meaning for the same class.
