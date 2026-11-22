@@ -13,3 +13,9 @@ test('docs_search results link to real pages and headings', async ({ page, reque
     if (hash) await expect(page.locator(hash), url).toHaveCount(1)
   }
 })
+
+test('the clarusjs skill is published at /skills/clarusjs/SKILL.md', async ({ request }) => {
+  const res = await request.get('/skills/clarusjs/SKILL.md')
+  expect(res.status()).toBe(200)
+  expect(await res.text()).toMatch(/^---\nname: clarusjs\ndescription: .+\.tscl/)
+})
