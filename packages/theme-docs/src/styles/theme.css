@@ -1,0 +1,389 @@
+/* The source of src/theme.css, written with Tailwind (v4) and built by `pnpm css` (#368). Edit this file, not the
+   built one; a test fails when they differ. Sites using the theme get the built, plain CSS: they need no Tailwind.
+
+   - No preflight: the theme keeps its own base styles below, and a site its own.
+   - The tokens (--bg, --accent…) stay the public way to restyle the theme; Tailwind's colours and fonts are built on
+     them (tw:bg-surface, tw:text-muted, tw:border-rule, tw:bg-accent-soft, tw:font-mono…), so utilities follow light and dark.
+   - Classes are found in the theme's own components only (source(none), then the .tscl files), and carry a prefix
+     (tw:flex, tw:bg-surface): only prefixed words become utilities, and they never meet a site's own class names. */
+@layer theme, utilities;
+@import 'tailwindcss/theme.css' layer(theme) source(none) prefix(tw);
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+@source '../**/*.tscl';
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-code: var(--code-bg);
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+}
+
+/* The theme's own rules: unlayered, as before (in a layer, any rule of a site's would win over them). */
+/* @clarusjs/theme-docs: a quiet reading layout. Every colour, font and size is a custom property on :root (tokens). */
+:root {
+  --header-height: 64px;
+  --page-width: 1440px; /* the header, sidebar, content and contents columns together */
+  --sidebar-width: 260px;
+  --toc-width: 220px;
+  --bg: #fbfcfc;
+  --surface: #f1f5f5;
+  --fg: #1a2526;
+  --muted: #566768;
+  --rule: #dbe4e4;
+  --accent: #0b6e70;
+  --accent-soft: rgba(11, 110, 112, 0.1);
+  --code-bg: #f1f5f5;
+  /* Highlighted code: the theme's own background, and line tints light enough that every token keeps WCAG AA. */
+  --shiki-bg: #ffffff;
+  --line-highlight: rgba(11, 110, 112, 0.07);
+  --line-add: rgba(47, 158, 110, 0.1);
+  --line-remove: rgba(208, 69, 59, 0.08);
+  --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+/* Dark: when the system is dark and light wasn't chosen, or when dark was chosen (theme toggle). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0c1213;
+    --surface: #121b1c;
+    --fg: #e3eded;
+    --muted: #93a6a7;
+    --rule: #223031;
+    --accent: #4cc9cb;
+    --accent-soft: rgba(76, 201, 203, 0.12);
+    --code-bg: #121b1c;
+  --shiki-bg: var(--code-bg);
+  --line-highlight: rgba(76, 201, 203, 0.12);
+  --line-add: rgba(47, 158, 110, 0.14);
+  --line-remove: rgba(208, 69, 59, 0.14);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #0c1213;
+  --surface: #121b1c;
+  --fg: #e3eded;
+  --muted: #93a6a7;
+  --rule: #223031;
+  --accent: #4cc9cb;
+  --accent-soft: rgba(76, 201, 203, 0.12);
+  --code-bg: #121b1c;
+  --shiki-bg: var(--code-bg);
+  --line-highlight: rgba(76, 201, 203, 0.12);
+  --line-add: rgba(47, 158, 110, 0.14);
+  --line-remove: rgba(208, 69, 59, 0.14);
+  color-scheme: dark;
+}
+:root[data-theme='light'] { color-scheme: light; }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 var(--sans);
+}
+a { color: var(--accent); text-underline-offset: 3px; }
+/* Skip link: off screen until it has keyboard focus. */
+.skip-link { position: absolute; left: 12px; top: -48px; z-index: 100; padding: 8px 14px; border-radius: 8px; background: var(--accent); color: var(--bg); font-weight: 600; text-decoration: none; }
+.skip-link:focus { top: 12px; }
+/* Focused by the skip link and after navigation (the new page's heading or <main>), not controls: no ring after a
+   click; keyboard users keep it so they can see where they are. */
+[tabindex="-1"]:focus:not(:focus-visible) { outline: none; } /* keyboard focus (the skip link) keeps its ring */
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px 24px;
+  background: var(--bg);
+  /* Its content lines up with the page below (.docs, at most --page-width wide), not the window's edges. */
+  box-sizing: border-box;
+  min-height: var(--header-height); /* what the sticky sidebar and contents sit under */
+  padding: 0 max(16px, env(safe-area-inset-right, 0px), calc((100% - var(--page-width)) / 2 + 16px)) 0 max(16px, env(safe-area-inset-left, 0px), calc((100% - var(--page-width)) / 2 + 16px));
+  border-bottom: 1px solid var(--rule);
+}
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; font-weight: 650; font-size: 18px; }
+.js { color: var(--accent); font-weight: 500; }
+.site-header nav { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.site-header nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+.site-header nav a:hover { color: var(--fg); }
+.site-header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+
+.content {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px max(16px, env(safe-area-inset-right, 0px)) 56px max(16px, env(safe-area-inset-left, 0px));
+}
+/* app: a tool that fills the window under the header (a playground); it lays itself out. */
+.content.app { max-width: none; margin: 0; padding: 0; height: calc(100dvh - var(--header-height)); display: flex; flex-direction: column; }
+@media (max-width: 899px) { .content.app { height: auto; } }
+h1, h2 { line-height: 1.2; text-wrap: balance; }
+h1 { font-size: clamp(30px, 5vw, 40px); margin: 0 0 16px; letter-spacing: -0.01em; }
+h2 { font-size: 22px; margin: 40px 0 12px; }
+p, ul, ol { margin: 0 0 16px; }
+li { margin-bottom: 6px; }
+
+code { font: 0.9em var(--mono); background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 0 0 20px;
+}
+pre code { background: none; padding: 0; font-size: 14px; line-height: 1.55; }
+
+
+.site-footer {
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px max(16px, env(safe-area-inset-right, 0px)) 28px max(16px, env(safe-area-inset-left, 0px));
+}
+
+.sample { position: relative; }
+.sample pre { padding-right: 72px; }
+.copy {
+  position: absolute; top: 8px; right: 8px;
+  font: 600 12px var(--sans); padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--rule); background: var(--bg); color: var(--muted); cursor: pointer;
+}
+.copy:hover { color: var(--accent); border-color: var(--accent); }
+.theme-toggle {
+  font-size: 16px; line-height: 1; width: 30px; height: 30px; border-radius: 8px;
+  border: 1px solid var(--rule); background: transparent; color: var(--fg); cursor: pointer;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.site-header nav { align-items: center; }
+
+/* Docs pages: sidebar, content and "On this page" (from 1280px a column, below that a box above the content). */
+.docs { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--toc-width); max-width: var(--page-width); margin: 0 auto; }
+.docs .content { margin: 0; max-width: 760px; min-width: 0; }
+.sidebar { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 28px 16px 40px max(16px, env(safe-area-inset-left, 0px)); border-right: 1px solid var(--rule); }
+.sidebar .group { margin: 20px 0 6px; font-size: 13px; font-weight: 650; color: var(--fg); }
+.sidebar .group:first-child { margin-top: 0; }
+.sidebar ul { list-style: none; padding: 0; margin: 0; }
+.sidebar li { margin: 0; }
+.sidebar a { display: block; padding: 4px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 14px; }
+.sidebar a:hover { color: var(--fg); }
+.sidebar a[aria-current='page'] { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.crumb { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent); }
+.lead { font-size: 18px; color: var(--muted); }
+.page-footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.edit { font-size: 14px; }
+.updated { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.pager { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+.pager a { display: block; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; text-decoration: none; font-weight: 600; }
+.pager a:hover { border-color: var(--accent); }
+.pager small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.pager .next { grid-column: 2; text-align: right; }
+table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 15px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.content table { display: block; overflow-x: auto; }
+
+
+.persist { display: contents; }
+
+/* Header: section links, then (pushed right) social icons, the ⋯ overflow menu and the theme toggle. */
+.top-nav { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.header-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.social { display: flex; align-items: center; gap: 2px; }
+.social a, .more-button, .menu-button { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; text-decoration: none; }
+.social a:hover, .more-button:hover, .menu-button:hover { color: var(--fg); background: var(--accent-soft); }
+.npm { padding: 1px 5px; border: 1.8px solid currentColor; border-radius: 4px; font: 700 11px/1.3 var(--mono); }
+.more-button, .menu-button { display: none; }
+.more { inset: auto; margin: 0; padding: 6px; min-width: 200px; border: 1px solid var(--rule); border-radius: 12px; background: var(--bg); color: var(--fg); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18); position-area: bottom span-left; }
+.more a { display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 8px; color: var(--fg); text-decoration: none; }
+.more a:hover { background: var(--accent-soft); }
+
+/* Search: a button in the header, a modal dialog with the results. */
+.search-button { display: inline-flex; align-items: center; gap: 8px; height: 40px; min-width: 40px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--bg); color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; }
+.search-button:hover { color: var(--fg); border-color: var(--accent); }
+.search-button kbd { padding: 1px 6px; border: 1px solid var(--rule); border-radius: 6px; font: 12px var(--mono); }
+.search-dialog { width: min(640px, calc(100vw - 32px)); max-height: min(560px, calc(100vh - 96px)); margin: 72px auto auto; padding: 0; border: 1px solid var(--rule); border-radius: 14px; background: var(--bg); color: var(--fg); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3); }
+.search-dialog::backdrop { background: rgba(15, 23, 25, 0.45); }
+.search-box { display: flex; flex-direction: column; max-height: inherit; }
+.search-box input { height: 52px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--rule); background: transparent; color: inherit; font: inherit; font-size: 17px; }
+.search-box input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.search-status { margin: 0; padding: 8px 16px 0; font-size: 13px; color: var(--muted); }
+.search-status:empty { display: none; }
+#search-results { list-style: none; margin: 0; padding: 8px; overflow-y: auto; }
+#search-results a { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; color: var(--fg); text-decoration: none; }
+#search-results [aria-selected="true"] a, #search-results a:hover { background: var(--accent-soft); }
+.search-heading { font-weight: 650; }
+.search-page { font-size: 13px; color: var(--accent); }
+.search-text { font-size: 13px; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* The sidebar is a popover (so it can be a drawer on small screens): shown in place from 1024px. */
+/* inset first: it would reset top. */
+.sidebar[popover] { display: block; position: sticky; inset: auto; top: var(--header-height); width: auto; height: auto; max-height: calc(100vh - var(--header-height)); margin: 0; border: 0; border-right: 1px solid var(--rule); background: transparent; color: inherit; overflow-y: auto; }
+.sidebar-head, .sidebar-links { display: none; }
+
+/* On this page */
+.toc { position: sticky; top: var(--header-height); align-self: start; max-height: calc(100vh - var(--header-height)); overflow-y: auto; padding: 36px 16px; font-size: 14px; }
+.toc p { margin: 0 0 8px; font-weight: 650; }
+.toc ul, .toc-inline ul { list-style: none; margin: 0; padding: 0; }
+.toc li, .toc-inline li { margin: 0 0 6px; }
+.toc li.sub, .toc-inline li.sub { padding-left: 14px; }
+.toc a, .toc-inline a { color: var(--muted); text-decoration: none; }
+.toc a:hover, .toc-inline a:hover { color: var(--accent); }
+.toc-inline { display: none; margin: 0 0 24px; border: 1px solid var(--rule); border-radius: 10px; }
+.toc-inline > summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px; font-size: 14px; font-weight: 650; cursor: pointer; }
+.toc-inline ul { padding: 0 14px 12px; font-size: 14px; }
+
+/* Below 1280px: no room for the column; "On this page" is a box above the content, social links fold into ⋯. */
+@media (max-width: 1279px) {
+  .docs { grid-template-columns: var(--sidebar-width) minmax(0, 1fr); }
+  .toc { display: none; }
+  .toc-inline { display: block; }
+  .social { display: none; }
+  .more-button { display: inline-flex; }
+}
+
+/* Below 1024px: the sidebar is a drawer from the ☰ button; the page takes the full width. */
+@media (max-width: 1023px) {
+  .docs { display: block; }
+  .menu-button { display: inline-flex; }
+  .sidebar[popover] { display: none; }
+  .sidebar[popover]:popover-open { display: flex; flex-direction: column; position: fixed; inset: 0 auto 0 0; width: min(340px, 86vw); height: 100%; max-height: none; padding: 0 12px 16px; border-right: 1px solid var(--rule); background: var(--bg); box-shadow: 8px 0 32px rgba(0, 0, 0, 0.25); }
+  .sidebar[popover]::backdrop { background: rgba(15, 23, 25, 0.45); }
+  .sidebar-head { display: flex; align-items: center; justify-content: space-between; min-height: 60px; font-weight: 700; border-bottom: 1px solid var(--rule); margin: 0 -12px 8px; padding: 0 8px 0 16px; }
+  .sidebar-head button { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+  .sidebar a { padding: 9px 10px; font-size: 15px; }
+  .sidebar-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--rule); }
+  .more-button, .social { display: none; }
+  .search-label, .search-button kbd { display: none; }
+}
+
+/* Phones: the section links move into the drawer. */
+@media (max-width: 699px) {
+  .site-header .top-nav { display: none; }
+}
+
+/* ::: details blocks from Markdown: a native <details>. */
+details.custom-block { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px; margin: 20px 0; }
+details.custom-block > summary { cursor: pointer; font-weight: 600; }
+details.custom-block[open] > summary { margin-bottom: 8px; }
+
+/* Highlighted code from Markdown (Shiki, build time). Tokens carry both themes as variables; the page picks one. */
+.code-block { position: relative; margin: 0 0 20px; }
+.code-block pre { margin: 0; padding-right: 72px; }
+.code-block .lang { position: absolute; top: 8px; right: 64px; font: 12px var(--mono); color: var(--muted); pointer-events: none; }
+.code-block .code-title { margin: 0; padding: 6px 12px; font: 600 13px/20px var(--mono); border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--code-bg); }
+.code-block .code-title + .lang + pre { border-top-left-radius: 0; border-top-right-radius: 0; }
+.shiki span { color: var(--shiki-light); }
+.shiki { background: var(--shiki-bg); border: 1px solid var(--rule); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .shiki span { color: var(--shiki-dark); } }
+:root[data-theme='dark'] .shiki span { color: var(--shiki-dark); }
+.shiki code { display: block; }
+.shiki .line { display: inline-block; width: 100%; }
+.shiki .line.highlighted { background: var(--line-highlight); }
+.shiki .line.diff.add { background: var(--line-add); }
+.shiki .line.diff.remove { background: var(--line-remove); }
+.shiki .line.diff.add::before { content: '+ '; }
+.shiki .line.diff.remove::before { content: '- '; }
+.shiki.has-focused .line:not(.focused) { opacity: 0.45; filter: blur(0.5px); }
+.shiki.has-focused:hover .line { opacity: 1; filter: none; }
+.code-block.line-numbers pre { padding-left: 44px; }
+.line-numbers-column { position: absolute; top: 14px; left: 0; width: 32px; display: flex; flex-direction: column; text-align: right; font: 14px/1.55 var(--mono); color: var(--muted); }
+/* Below a title (6 + 20 + 6 px, and its 1px top border) the code, and so the numbers, start lower. */
+.code-block .code-title ~ .line-numbers-column { top: calc(14px + 33px); }
+
+/* ::: code-group: radio tabs, no JavaScript. The checked tab's label is followed by its block. */
+.code-group { display: flex; flex-wrap: wrap; margin: 0 0 20px; }
+.code-group > input { position: absolute; opacity: 0; pointer-events: none; }
+.code-group > label { order: 0; font: 600 13px var(--mono); padding: 6px 12px; border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; color: var(--muted); cursor: pointer; }
+.code-group > input:checked + label { color: var(--accent); background: var(--code-bg); }
+.code-group > input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.code-group > .code-block { order: 1; width: 100%; display: none; margin: 0; }
+.code-group > input:checked + label + .code-block { display: block; }
+.code-group > .code-block pre { border-top-left-radius: 0; }
+
+/* Visitors who ask for less motion get none: transitions and animations end at once, scrolling jumps. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Right and wrong (quizzes, the lesson bar): green and red that keep their contrast in both themes. */
+:root { --ok: #17703c; --ok-soft: rgba(23, 112, 60, 0.1); --bad: #b42318; --bad-soft: rgba(180, 35, 24, 0.08); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { --ok: #4ade80; --ok-soft: rgba(74, 222, 128, 0.12); --bad: #f87171; --bad-soft: rgba(248, 113, 113, 0.12); }
+}
+:root[data-theme='dark'] { --ok: #4ade80; --ok-soft: rgba(74, 222, 128, 0.12); --bad: #f87171; --bad-soft: rgba(248, 113, 113, 0.12); }
+
+/* Quizzes: big options to tap, then the right one green and a wrong pick red. */
+.quiz { margin: 24px 0; padding: 18px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); }
+.quiz-question { font-weight: 650; margin: 0 0 12px; }
+.quiz-options { display: grid; gap: 8px; }
+.quiz-options label { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border: 1.5px solid var(--rule); border-radius: 12px; background: var(--bg); cursor: pointer; }
+.quiz-options label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.quiz-options label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.quiz .quiz-options label.right { border-color: var(--ok); background: var(--ok-soft); }
+.quiz .quiz-options label.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.quiz-options .mark { margin-left: auto; font-size: 13px; font-weight: 700; }
+.quiz-options .right .mark { color: var(--ok); }
+.quiz-options .wrong .mark { color: var(--bad); }
+.quiz-options input { accent-color: var(--accent); width: 18px; height: 18px; }
+.quiz-check { margin-top: 12px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--accent); color: var(--bg); font: inherit; font-weight: 700; cursor: pointer; }
+.quiz-check:disabled { opacity: 0.5; cursor: default; }
+.quiz-status { margin: 8px 0 0; font-size: 14px; }
+.quiz-status:empty { display: none; }
+.quiz-answer { margin-top: 12px; font-size: 15px; }
+.quiz-answer > summary { cursor: pointer; color: var(--muted); }
+.quiz-correct { font-weight: 650; margin: 8px 0; }
+
+/* Learn: the XP chip, lesson states in the sidebar (a hint: every lesson stays open), the progress page. */
+.xp-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--bg); color: var(--fg); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.xp-chip[hidden] { display: none; }
+.xp-chip svg { color: #c99400; }
+.xp-chip:hover { border-color: var(--accent); }
+.sidebar a[data-status]::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--rule); vertical-align: -1px; }
+.sidebar a[data-status="done"]::before { background: var(--ok); border-color: var(--ok); }
+.sidebar a[data-status="current"]::before { border-color: var(--accent); }
+.sidebar a[data-status="locked"] { color: var(--muted); }
+.status-note { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.progress-board .status-note { position: static; width: auto; height: auto; clip-path: none; color: var(--muted); font-size: 14px; }
+.progress-note { padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+.progress-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 0 0 24px; }
+.progress-stats div { padding: 14px 16px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); }
+.progress-stats dt { font-size: 13px; color: var(--muted); }
+.progress-stats dd { margin: 4px 0 0; font-size: 22px; font-weight: 800; }
+.badges { display: grid; gap: 8px; padding: 0; list-style: none; }
+.badges li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; padding: 12px 14px; border: 1px dashed var(--rule); border-radius: 12px; color: var(--muted); }
+.badges li.earned { border-style: solid; border-color: var(--ok); color: var(--fg); background: var(--ok-soft); }
+.badges em { margin-left: auto; font-style: normal; font-size: 13px; font-weight: 700; }
+.progress-lessons li[data-status="done"] a::after { content: ' ✓'; color: var(--ok); }
+.progress-reset { margin-top: 16px; min-height: 44px; padding: 0 16px; border: 1px solid var(--bad); border-radius: 10px; background: transparent; color: var(--bad); font: inherit; font-weight: 600; cursor: pointer; }
+
+/* While a page change runs (fragments or the client router set data-cl-navigating on <html>): a thin bar at the top.
+   Shown after a short delay, so fast swaps don't flash it. */
+html[data-cl-navigating]::before {
+  content: ''; position: fixed; inset: 0 auto auto 0; z-index: 20; height: 3px; width: 100%; background: var(--accent);
+  transform-origin: left; animation: cl-navigating 8s cubic-bezier(0.1, 0.7, 0.2, 1) 150ms both;
+}
+@keyframes cl-navigating { from { transform: scaleX(0); } to { transform: scaleX(0.9); } }
+@media (prefers-reduced-motion: reduce) { html[data-cl-navigating]::before { animation: none; transform: scaleX(1); opacity: 0.6; } }
+
+/* View transitions (config.viewTransitions): the default cross-fade, none with reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
+}

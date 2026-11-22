@@ -19,7 +19,8 @@
     "types": "node scripts/types.mjs",
     "prepack": "pnpm types",
     "test": "vitest run",
-    "typecheck": "pnpm types && tsc --noEmit"
+    "typecheck": "pnpm types && tsc --noEmit",
+    "css": "tailwindcss -i src/styles/theme.css -o src/theme.css"
   },
   "peerDependencies": {
     "clarusjs": "workspace:^"

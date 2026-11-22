@@ -280,3 +280,5 @@ Every colour, font and size is a CSS custom property on `:root`, so you can rest
 | `--header-height`, `--sidebar-width`, `--toc-width`, `--page-width` | layout sizes (`--page-width`: the widest the page gets; the header lines up with it) |
 
 Dark mode redefines the colour tokens under `prefers-color-scheme: dark` and `[data-theme='dark']` (the toggle); redefine yours in the same places.
+
+The theme's styles are written with Tailwind and shipped as a built stylesheet, so your site needs no Tailwind to use it. Its utilities are built on these tokens, so changing a token restyles them too.
