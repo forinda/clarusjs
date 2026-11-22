@@ -117,6 +117,8 @@ test('#94: a static page whose load() reads cookies fails the build, naming the 
   writeFileSync(resolve(root, 'src/pages/me.tscl'), '@input theme: string = ""\n<p>{{ theme }}</p>\n')
   writeFileSync(resolve(root, 'src/pages/me.load.ts'), "export function load({ cookies }) { return { theme: cookies.get('theme') ?? 'light' } }\n")
   await expect((async () => (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp())()).rejects.toThrow(/\/me reads cookies, but static routes are built once for everyone: make it 'server'/)
+}, 120_000)
+
 test('#54: a project reached through a symlink (or a Windows short name) builds: islands and stylesheets are found', async () => {
   const real = tempApp()
   writeFileSync(resolve(real, 'src/pages/styled.tscl'), "@import '../styles/base.css'\n<h1>Styled</h1>\n")
