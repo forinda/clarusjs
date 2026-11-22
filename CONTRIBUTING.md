@@ -40,6 +40,9 @@ pnpm dev         # serves examples/counter at http://localhost:5173
 3. Keep the compiler pure (strings in, strings out), escape everything dynamic, and keep compiled output readable.
    If you change what the compiler emits, update the exact-output tests on purpose.
 4. Run `pnpm test` and `pnpm typecheck`. Both must pass.
+   For the docs site, `pnpm docs:test` builds it and runs its browser tests. A failing browser test keeps a trace in
+   `packages/docs/test-results/` (CI uploads that folder as the `playwright-report` artifact); replay it with
+   `pnpm --filter @clarusjs/docs exec playwright show-trace <path to trace.zip>`.
 5. **Add a changeset** if the change affects the published `clarusjs` package:
    ```sh
    pnpm changeset
