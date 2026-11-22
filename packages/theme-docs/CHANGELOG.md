@@ -1,5 +1,13 @@
 # @clarusjs/theme-docs
 
+## 0.1.3
+
+### Patch Changes
+
+- [#306](https://github.com/forinda/clarusjs/pull/306) [`f7d1b9a`](https://github.com/forinda/clarusjs/commit/f7d1b9a1e9f3604535f5cf4cca03cb918a93ab69) Thanks [@forinda](https://github.com/forinda)! - The theme's components are formatted with `@clarusjs/prettier-plugin`; what they render is unchanged (extra whitespace only where it doesn't show).
+- Updated dependencies [[`efb8968`](https://github.com/forinda/clarusjs/commit/efb89684964711686781c7b4774f184b93f95f9f), [`40815e7`](https://github.com/forinda/clarusjs/commit/40815e7afe1d77a618ebb97e3216e89a354d332f), [`ff3b28c`](https://github.com/forinda/clarusjs/commit/ff3b28cf3b87ec28fd2f0c623a20cab7e2962ab3), [`60852d9`](https://github.com/forinda/clarusjs/commit/60852d9afcfb60075bb5883df584ddbfb3baf1b9), [`58fb1e6`](https://github.com/forinda/clarusjs/commit/58fb1e6affe9a17db0c365a33916c8b7c7779c2b), [`dcd5683`](https://github.com/forinda/clarusjs/commit/dcd5683000ea50a7b422ab812941fb501f258737), [`acedce0`](https://github.com/forinda/clarusjs/commit/acedce0ecd1d7140a119da47a140ac4857e143a9), [`69fa594`](https://github.com/forinda/clarusjs/commit/69fa5943f84c5386a340758836c7571608e7eab0), [`d99b7bc`](https://github.com/forinda/clarusjs/commit/d99b7bcf28d92f3714cb0095d860d533567c5db9), [`435cbaa`](https://github.com/forinda/clarusjs/commit/435cbaa88a8bc16f7a9996d4ca1faf73ab0bd89e), [`2574332`](https://github.com/forinda/clarusjs/commit/25743326322c9bc31f4da6e6c0301ed2df31b575), [`516a33c`](https://github.com/forinda/clarusjs/commit/516a33cc5ff28099d16ead9afafd058a820b499d), [`24543cd`](https://github.com/forinda/clarusjs/commit/24543cdace11661cf56c96fa5ecc1be76a09a2cd), [`3f6853c`](https://github.com/forinda/clarusjs/commit/3f6853c795dedbabed1d776ead9f56b3961b49e5)]:
+  - clarusjs@0.10.0
+
 ## 0.1.2
 
 ### Patch Changes
@@ -33,7 +41,7 @@
 - [#168](https://github.com/forinda/clarusjs/pull/168) [`c37358e`](https://github.com/forinda/clarusjs/commit/c37358e587c632c56e1b51e5fc4c6fc79e69225c) Thanks [@forinda](https://github.com/forinda)! - Lessons: `lesson.tscl`, a layout with a focused header (leave, "Lesson n of N", step segments, a `header-end` slot), one step at a time with Back/Continue in a fixed action bar, code and results beside the text on wide screens, and a plain page without JavaScript. The page `<head>` is shared by both layouts.
 
 - [#163](https://github.com/forinda/clarusjs/pull/163) [`750d65f`](https://github.com/forinda/clarusjs/commit/750d65f945a755bc2988ae8ceb659f559ac0097a) Thanks [@forinda](https://github.com/forinda)! - First release: the docs layout from clarusjs.com as a theme.
-  
+
   - **Regions at every width:** a header (brand, section links, social icons, a ⋯ overflow menu, a theme toggle), a sidebar that is a native-popover drawer below 1024 px, the content, and "On this page" as a column from 1280 px or a collapsible box below.
   - **Customizing:** configured with a `config` prop, extended through slots, restyled with CSS custom properties.
   - **Built in:** light and dark modes without a flash, copy buttons and callouts.

@@ -1,5 +1,87 @@
 # clarusjs
 
+## 0.10.0
+
+### Minor Changes
+
+- [#301](https://github.com/forinda/clarusjs/pull/301) [`efb8968`](https://github.com/forinda/clarusjs/commit/efb89684964711686781c7b4774f184b93f95f9f) Thanks [@forinda](https://github.com/forinda)! - Fields and attributes, checked against Vue's exceptions ([#241](https://github.com/forinda/clarusjs/issues/241)):
+
+  - **`false` is now a value** on the enumerated `spellcheck`, `draggable` and `contenteditable` (and `translate`: yes/no), and on the ARIA states `aria-expanded`, `aria-pressed`, `aria-checked` and `aria-selected`. Before, `[aria-expanded]="false"` removed the attribute. Other attributes keep "false removes it".
+  - **A field's `value` and `checked` are set last,** after `type`, `min`, `max` and `step`, so a browser doesn't clamp them.
+  - **`[(value)]`:**
+    - text fields don't write while an input method composes (IME);
+    - number and range inputs write numbers;
+    - checkboxes with a value bind an array (checked when it includes the value);
+    - `<select multiple>` (static or `[multiple]`) binds an array of the selected values;
+    - a bound `<select>`'s options render `selected` on the server, so the choice shows before any JavaScript (values compare as text);
+    - a number field keeps what's being typed (`1.0` isn't rewritten to `1`);
+    - a checkbox group bound to a missing array starts an empty one.
+
+    Radio, checkbox and number bindings need a static `type`; with a bound `[type]` the field binds as text.
+
+  - **Already right, now tested:** `form`, `list`, `width`/`height`, textarea `type`, and SVG attributes (case kept) are always attributes; `<option [value]>` works; a `null` value is an empty field.
+
+- [#308](https://github.com/forinda/clarusjs/pull/308) [`40815e7`](https://github.com/forinda/clarusjs/commit/40815e7afe1d77a618ebb97e3216e89a354d332f) Thanks [@forinda](https://github.com/forinda)! - At `vite build`, each run of whitespace in template text becomes one character (a newline if it had one), so a formatted template's indentation stays out of the HTML. `<pre>`, `<textarea>`, `<script>`, `<style>`, `verbatim` contents and `{{ }}` values are untouched; `clarusjs({ collapseWhitespace: false })` turns it off. Also a `compile()` option, `collapseWhitespace`.
+
+- [#290](https://github.com/forinda/clarusjs/pull/290) [`ff3b28c`](https://github.com/forinda/clarusjs/commit/ff3b28cf3b87ec28fd2f0c623a20cab7e2962ab3) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/fetch` caches answers by key ([#287](https://github.com/forinda/clarusjs/issues/287)), for paginated lists and other data shown again and again:
+
+  - `resource(fetcher, { key: () => ['items', { page }] })` shares one cache entry per key across the page's islands. A key seen before is served without a request until it's invalidated, or `stale` ms old. The previous value stays on screen while a new key loads. Requests for the same key at the same time share one request.
+  - `invalidate(['items'])`: every cached answer whose key starts with that prefix is marked stale. The ones on screen refetch now; the others refetch when next used.
+  - `setData(key, value | fn)` for optimistic edits, and `prefetch(key, fetcher)` for the next page.
+  - An answer nothing shows is dropped after `keep` ms (default 5 minutes).
+
+- [#286](https://github.com/forinda/clarusjs/pull/286) [`60852d9`](https://github.com/forinda/clarusjs/commit/60852d9afcfb60075bb5883df584ddbfb3baf1b9) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/fetch`: data an island fetches itself, in the browser ([#258](https://github.com/forinda/clarusjs/issues/258)).
+
+  - `resource(fetcher, options)` gives `value`, `loading`, `error`, `refetch()` and `mutate()`. It re-runs when a signal the fetcher reads changes, so requests chain. The latest run wins, and a disposed island aborts its run.
+  - Options: retry with backoff; refetch on an interval or when the tab regains focus; a starting value from `load()`, revalidated in the browser unless `refetch: { onStart: false }`.
+  - `batch(load)` sends the keys asked of one endpoint at the same moment, from any island, as one request.
+  - `json(url)` throws on a non-2xx response.
+
+  Nothing is fetched on the server. The entry stays within 2.5 KB gzip, and a page that doesn't import it ships none of it. See https://clarusjs.com/guide/fetching.
+
+- [#301](https://github.com/forinda/clarusjs/pull/301) [`58fb1e6`](https://github.com/forinda/clarusjs/commit/58fb1e6affe9a17db0c365a33916c8b7c7779c2b) Thanks [@forinda](https://github.com/forinda)! - `@for` rows have `$count`, `$first`, `$last`, `$even` and `$odd` besides `$index` ([#249](https://github.com/forinda/clarusjs/issues/249)). In an island they follow the list: add a row, and the old last row isn't `$last` any more. Type checking knows them (`$count` a number, the others booleans).
+
+  Clearer `@for` errors:
+
+  - an item named like one of those names;
+  - a second `track`;
+  - a second `@empty`.
+
+  An island `@for` without `track` now warns: rows are matched by position, so a row's state can move to another item. Matching by position on purpose? Write `track $index`. A script can't declare a variable named like one of the row names.
+
+- [#301](https://github.com/forinda/clarusjs/pull/301) [`dcd5683`](https://github.com/forinda/clarusjs/commit/dcd5683000ea50a7b422ab812941fb501f258737) Thanks [@forinda](https://github.com/forinda)! - `h()` in `clarusjs/views` ([#259](https://github.com/forinda/clarusjs/issues/259)) builds HTML in server code from elements and views: for components picked at runtime, wrappers, generated layouts and tests (`h('components/card', { title }, [h('p', {}, ['Body'])])`).
+
+  - Text is escaped and attributes are URL-checked, as in templates, and `h()` results nest.
+  - A template's `{{ }}` inserts `h()` output as HTML; every other value is escaped as before.
+  - Only `h()` can make that output (data such as JSON can't). It's for server-rendered pages: sending it in an island's props or a client route's data is an error naming it.
+  - `on*` attributes, `srcdoc`, tags that load or run things, and clarusjs's own `cl-*` tags are refused from code. Take view and tag names from your own list, never from request data.
+
+- [#301](https://github.com/forinda/clarusjs/pull/301) [`516a33c`](https://github.com/forinda/clarusjs/commit/516a33cc5ff28099d16ead9afafd058a820b499d) Thanks [@forinda](https://github.com/forinda)! - Radio groups bind two ways ([#267](https://github.com/forinda/clarusjs/issues/267)). `[(value)]` on `<input type="radio" value="pro">` is checked when the bound value equals the radio's value, and picking it writes that value: `plan: 'free' | 'pro'` binds to a group of radios, as Vue's `v-model` does. The value can be static or `[value]`. A bound radio without a value is a compile error. Type checking checks each radio's static value against the bound type.
+
+- [#283](https://github.com/forinda/clarusjs/pull/283) [`24543cd`](https://github.com/forinda/clarusjs/commit/24543cdace11661cf56c96fa5ecc1be76a09a2cd) Thanks [@forinda](https://github.com/forinda)! - URLs that load a page, plugin, stylesheet or base URL into the page can't come from data ([#248](https://github.com/forinda/clarusjs/issues/248)). It is a located build error, like `srcdoc`:
+
+  - `src` on `<iframe>`, `<frame>` and `<embed>`;
+  - `data` and `codebase` on `<object>`;
+  - `href` on `<base>`;
+  - `href` on a `<link>`, unless its static `rel` loads nothing (`canonical`, `alternate`, `prev`, `next`…);
+  - `sandbox`, `allow` and `referrerpolicy` on `<iframe>`.
+
+  Write these as static attributes. Links and images from data are unchanged: they keep the URL check.
+
+### Patch Changes
+
+- [#295](https://github.com/forinda/clarusjs/pull/295) [`acedce0`](https://github.com/forinda/clarusjs/commit/acedce0ecd1d7140a119da47a140ac4857e143a9) Thanks [@forinda](https://github.com/forinda)! - Editor hovers for `clarusjs/compiler` (`compile()`, `parse()`, `ClarusError` and the syntax-tree types) and `@clarusjs/content` (`markdown()`, its options, `slugify()`): JSDoc with examples, linking new reference pages (https://clarusjs.com/reference/compiler, https://clarusjs.com/reference/content). Every public export of both packages is now documented.
+
+- [#295](https://github.com/forinda/clarusjs/pull/295) [`69fa594`](https://github.com/forinda/clarusjs/commit/69fa5943f84c5386a340758836c7571608e7eab0) Thanks [@forinda](https://github.com/forinda)! - Editor hovers for `clarusjs/forms`: `form()` and its types (`Form`, `FormOptions`, `FormError`, `Path`, `StandardSchema`) now have JSDoc with an example and links to the new forms reference (https://clarusjs.com/reference/forms).
+
+- [#295](https://github.com/forinda/clarusjs/pull/295) [`d99b7bc`](https://github.com/forinda/clarusjs/commit/d99b7bcf28d92f3714cb0095d860d533567c5db9) Thanks [@forinda](https://github.com/forinda)! - Editor hovers for `clarusjs/navigation`, `clarusjs/views` and `clarusjs/manifest`: every function has an example, and every export links to its section in the new navigation reference (https://clarusjs.com/reference/navigation) or the server reference (`render()`, `readManifest()` and their types). `Transition` and `HeadTag` are documented too.
+
+- [#295](https://github.com/forinda/clarusjs/pull/295) [`435cbaa`](https://github.com/forinda/clarusjs/commit/435cbaa88a8bc16f7a9996d4ca1faf73ab0bd89e) Thanks [@forinda](https://github.com/forinda)! - Editor hovers for the runtime: `state`, `derived`, `shared`, `effect`, `batch`, `untrack`, `scope`, `onDispose`, `browser`, `Signal` and `ReadSignal` now have JSDoc, each with an example and a link to its section in the reference (https://clarusjs.com/reference/runtime). Helpers only compiled components call are marked `@internal`.
+
+- [#295](https://github.com/forinda/clarusjs/pull/295) [`2574332`](https://github.com/forinda/clarusjs/commit/25743326322c9bc31f4da6e6c0301ed2df31b575) Thanks [@forinda](https://github.com/forinda)! - Editor hovers for `clarusjs/vite` and `clarusjs/server`: the plugin, its options, `LinkLevel`, the page-source types and `redirect()` now have JSDoc with examples and links to their reference sections. There's a new Server reference page (https://clarusjs.com/reference/server). Build and server internals are marked `@internal`.
+
+- [#289](https://github.com/forinda/clarusjs/pull/289) [`3f6853c`](https://github.com/forinda/clarusjs/commit/3f6853c795dedbabed1d776ead9f56b3961b49e5) Thanks [@forinda](https://github.com/forinda)! - An `await` (or `for await`) at the top level of a component's `<script>` is now a compile error with its place. Before, it compiled into JavaScript that doesn't run, because `render()` and `attach()` are synchronous. Await inside a function instead, such as a resource's fetcher or an event handler.
+
 ## 0.9.0
 
 ### Minor Changes
@@ -21,7 +103,7 @@
 - [#271](https://github.com/forinda/clarusjs/pull/271) [`ade6f06`](https://github.com/forinda/clarusjs/commit/ade6f0677169a74ff2c4c4f5204bd4d7ecb45067) Thanks [@forinda](https://github.com/forinda)! - `parse` (and the `ParsedFile`, `InputDecl`, `ImportDecl`, `TemplateNode`, `Attr` types) from `clarusjs/compiler`, so tools such as a language server can read a `.tscl` file's syntax tree.
 
 - [#280](https://github.com/forinda/clarusjs/pull/280) [`bcbda7d`](https://github.com/forinda/clarusjs/commit/bcbda7da92db7c10d823949d5f4fc8c2d2049cad) Thanks [@forinda](https://github.com/forinda)! - Explicit `<style scoped>` and unique scope classes ([#279](https://github.com/forinda/clarusjs/issues/279)).
-  
+
   - **Breaking:** a plain `<style>` is now global, plain CSS. Add `scoped` to keep a component's styles scoped to it. For now the compiler warns about a plain `<style>`, with its place; write `<style global>` to keep one global without the warning.
   - Every component's top-level elements carry a class unique to the component (`cl-c-<name>-<hash>`), merged with their own `class`. It replaces the `data-cl-c` attribute. `cl-c-` is a reserved class prefix.
   - A parent's `<style scoped>` styles a child component's top-level element (by its class or tag), but not its inside. Parent rules no longer leak into a child component that has no `<style>` of its own.
@@ -50,7 +132,7 @@
   - No errors from generated code under `noUnusedLocals` (unread inputs, `$index`, helper types).
 
 - [#216](https://github.com/forinda/clarusjs/pull/216) [`358f9ae`](https://github.com/forinda/clarusjs/commit/358f9ae3a087fa6ab5193f61151223dd998e81f1) Thanks [@forinda](https://github.com/forinda)! - Types in a `.tscl` file: `@type Name<T> = …` and `@interface Name<T> extends … { … }`, for the file's `@input` props. Any TypeScript type (unions, generics with defaults, mapped and conditional types, `infer`), continuing onto following lines while a bracket is open. Erased from compiled output; checked by `clarusjs check`, with errors at their line. Local to the file: other files see them only through the component's inputs.
-  
+
   `@input` types and defaults can span lines too (an object type, a default object), and function types keep their `=>`: `@input onPick: (id: string) => void` (the `=` of `=>` was read as the start of a default).
 
 - [#244](https://github.com/forinda/clarusjs/pull/244) [`44fd0fb`](https://github.com/forinda/clarusjs/commit/44fd0fb0c373a758c0ac99548f47563696a6fbc0) Thanks [@forinda](https://github.com/forinda)! - Content mapper: an error on a whole construct underlines all of it (a missing prop underlines `<card`, a two-way binding check `[(open)]`), not one character; and generated stand-ins (`__cl_p`) take no part in hover, completion or rename.
@@ -134,7 +216,7 @@
 - [#151](https://github.com/forinda/clarusjs/pull/151) [`ed45e75`](https://github.com/forinda/clarusjs/commit/ed45e7503b0769cf6f15606e1764b205ec37c035) Thanks [@forinda](https://github.com/forinda)! - Focus and announcements on navigation. After a fragment swap or a client route render, focus moves to the new content: the `#hash` target, else the page's `<h1>`, else `<main>`. The new title is announced in a polite live region. The router and the navigation script stay within their 1 KB budgets: the work is in the loader.
 
 - [#144](https://github.com/forinda/clarusjs/pull/144) [`1697023`](https://github.com/forinda/clarusjs/commit/1697023ecd5015f40f4ea7ad6a68777d05afd16a) Thanks [@forinda](https://github.com/forinda)! - Every page's `<head>`:
-  
+
   - `head: { titleTemplate, tags, jsonLd }` in the plugin. `titleTemplate` (`%s · Site`) wraps each title, client routes included. `tags` (`[tag, attrs, content?]`) go on every page, for example icons, theme colour or analytics scripts such as gtag. `jsonLd` is site-wide schema.org data.
   - `<cl-head>…</cl-head>` anywhere in a page adds tags to its `<head>`. They win over site tags with the same key (title, meta name/property, canonical…), and a `<title>` there is used as written.
   - `transformHead(head, page)` exported from `src/head.ts` runs last on every page.
@@ -143,7 +225,7 @@
 - [#162](https://github.com/forinda/clarusjs/pull/162) [`5c0509e`](https://github.com/forinda/clarusjs/commit/5c0509e91117e7f8931e46cd939cb6d4c64e1514) Thanks [@forinda](https://github.com/forinda)! - Components from packages: `@import x from 'some-package/x.tscl'` works like a component in `src/`. clarusjs follows `@import` lines into packages, so their islands get client chunks and their scoped styles are bundled, in dev and build. Packages that ship `.tscl` files are bundled for server rendering.
 
 - [#149](https://github.com/forinda/clarusjs/pull/149) [`e55fc99`](https://github.com/forinda/clarusjs/commit/e55fc99a48e30153bcb33aad6747f39d19ab8ad6) Thanks [@forinda](https://github.com/forinda)! - `robots.txt` and a 404 page.
-  
+
   - With `site` set, `vite build` writes `robots.txt` that allows all crawlers and points at the sitemap. A `public/robots.txt` of your own wins, and `robots: false` turns it off.
   - `src/pages/404.tscl` (or `404.md`) is served for unknown addresses with status 404 in dev, in server mode and in `vite preview`.
   - `vite build` writes it to `404.html` for static hosts. Its relative links are resolved from the site root, so they work at any depth, and it is never in the sitemap.
