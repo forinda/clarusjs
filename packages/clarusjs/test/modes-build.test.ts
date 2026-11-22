@@ -1,8 +1,10 @@
 // #29: a build with server routes: static routes are files, server routes render per request from dist/server.
 import { existsSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { request } from 'node:http'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createBuilder, preview } from 'vite'
+import { acceptsEncoding } from '../src/vite/node.ts'
 import { beforeAll, expect, test } from 'vitest'
 import { unscoped } from './helpers.ts'
 
@@ -204,6 +206,44 @@ test('#98: compress writes .br and .gz next to the text files of dist/client, ea
   }
 })
 
+test('#421: vite preview sends the precompressed file the browser accepts, as nginx gzip_static would', async () => {
+  const { brotliDecompressSync, gunzipSync } = await import('node:zlib')
+  const { readdirSync } = await import('node:fs')
+  const client = resolve(root, 'dist/client')
+  const js = '/' + (readdirSync(client, { recursive: true }) as string[]).find((f) => f.endsWith('.js') && existsSync(resolve(client, f + '.br')))!.replace(/\\/g, '/')
+  const server = await preview({ root, configFile: resolve(root, 'vite.config.ts'), logLevel: 'silent', preview: { port: 0 } })
+  try {
+    const { port } = server.httpServer.address() as { port: number }
+    const get = (path: string, headers: Record<string, string>) => {
+      // node:http, not fetch: fetch would decode the body and hide what was sent.
+      return new Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: Buffer }>((done, fail) => {
+        request({ port, path, headers }, (res) => {
+          const chunks: Buffer[] = []
+          res.on('data', (c: Buffer) => chunks.push(c)).on('end', () => done({ status: res.statusCode!, headers: res.headers, body: Buffer.concat(chunks) }))
+        }).on('error', fail).end()
+      })
+    }
+    const page = readFileSync(resolve(client, 'index.html'))
+    const br = await get('/', { 'accept-encoding': 'gzip, deflate, br' })
+    expect(br.headers['content-encoding']).toBe('br')
+    expect(br.headers['content-type']).toMatch(/^text\/html/)
+    expect(br.headers.vary).toMatch(/accept-encoding/i)
+    expect(brotliDecompressSync(br.body).equals(page)).toBe(true)
+    const gz = await get(js, { 'accept-encoding': 'gzip' })
+    expect(gz.headers['content-encoding']).toBe('gzip')
+    expect(gz.headers['content-type']).toMatch(/javascript/)
+    expect(gunzipSync(gz.body).equals(readFileSync(resolve(client, js.slice(1))))).toBe(true)
+    // Nothing accepted, or a byte range of the file as stored: the original. (Vite's own on-the-fly gzip, which
+    // ignores q=0, would answer a gzip request without a copy; acceptsEncoding's q=0 is tested on its own.)
+    for (const headers of [{}, { 'accept-encoding': 'br', range: 'bytes=0-9' }] as Record<string, string>[]) {
+      const plain = await get(js, headers)
+      expect(plain.headers['content-encoding'], JSON.stringify(headers)).toBeUndefined()
+    }
+  } finally {
+    await server.close()
+  }
+})
+
 test('#93: src/server.ts handle() resolves the session for every load(); Set-Cookie reaches the answer', async () => {
   const { default: app } = await import(pathToFileURL(resolve(root, 'dist/server/index.mjs')).href + '?t=' + Date.now())
   const signedIn = await app.fetch(new Request('https://x.test/account/1', { headers: { cookie: 'session=42' } }))
@@ -230,4 +270,14 @@ test('#95: an endpoint is served by the built handler (CSRF-checked) and listed 
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
   expect(manifest.routes['/api/hello'].mode).toBe('server')
   expect(existsSync(resolve(root, 'dist/client/api/hello/index.html'))).toBe(false) // not prerendered
+})
+
+test('#421: acceptsEncoding reads Accept-Encoding as RFC 9110 says: named or *, never q=0', () => {
+  expect(acceptsEncoding('gzip, deflate, br', 'br')).toBe(true)
+  expect(acceptsEncoding('gzip', 'br')).toBe(false)
+  expect(acceptsEncoding('br;q=0, gzip', 'br')).toBe(false)
+  expect(acceptsEncoding('BR; q=0.5', 'br')).toBe(true)
+  expect(acceptsEncoding('*', 'gzip')).toBe(true)
+  expect(acceptsEncoding('*, gzip;q=0', 'gzip')).toBe(false)
+  expect(acceptsEncoding('', 'gzip')).toBe(false)
 })
