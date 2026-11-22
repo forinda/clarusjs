@@ -395,17 +395,17 @@ test('package-manager tabs: one choice switches every group and is remembered ac
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.goto('/guide/getting-started')
   const groups = page.locator('cl-island[c="pm"]')
-  await expect(groups).toHaveCount(2)
+  await expect(groups).toHaveCount(3)
   await expect(groups.first()).toHaveAttribute('data-cl-ready', '')
-  await expect(groups.first().locator('code')).toHaveText('pnpm add clarusjs\npnpm add -D vite')
+  await expect(groups.first().locator('code')).toHaveText('mkdir my-site && cd my-site\npnpm init\npnpm add clarusjs\npnpm add -D vite')
   await groups.first().getByRole('tab', { name: 'npm', exact: true }).click()
-  await expect(groups.first().locator('code')).toHaveText('npm install clarusjs\nnpm install -D vite')
-  await expect(groups.nth(1).locator('code')).toHaveText(/^npx vite /) // the other group followed
+  await expect(groups.first().locator('code')).toHaveText('mkdir my-site && cd my-site\nnpm init -y\nnpm install clarusjs\nnpm install -D vite')
+  await expect(groups.nth(1).locator('code')).toHaveText(/^npm run dev /) // the other group followed
   await expect(groups.nth(1).getByRole('tab', { name: 'npm', exact: true })).toHaveAttribute('aria-selected', 'true')
   // The copy button copies what is shown.
   await groups.first().locator('button.copy').click()
   await expect(groups.first().locator('button.copy')).toHaveText('Copied')
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('npm install clarusjs\nnpm install -D vite')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('mkdir my-site && cd my-site\nnpm init -y\nnpm install clarusjs\nnpm install -D vite')
   // Remembered on the next page.
   await page.goto('/guide/type-checking')
   const next = page.locator('cl-island[c="pm"]').first()
@@ -417,7 +417,7 @@ test('package-manager tabs without JavaScript show the pnpm commands', async ({ 
   const context = await browser.newContext({ javaScriptEnabled: false })
   const page = await context.newPage()
   await page.goto('/guide/getting-started')
-  await expect(page.locator('cl-island[c="pm"] code').first()).toHaveText('pnpm add clarusjs\npnpm add -D vite')
+  await expect(page.locator('cl-island[c="pm"] code').first()).toHaveText('mkdir my-site && cd my-site\npnpm init\npnpm add clarusjs\npnpm add -D vite')
   await context.close()
 })
 
@@ -1182,7 +1182,7 @@ test('a Markdown page renders in the layout, with anchors, a component and the r
   await expect(page).toHaveTitle('What is clarusjs? · clarusjs')
   await expect(page.locator('h2#what-makes-it-different a.header-anchor')).toHaveAttribute('href', '#what-makes-it-different')
   await expect(page.locator('.sidebar a[aria-current="page"]')).toHaveText('What is clarusjs?')
-  await expect(page.locator('aside.callout.info').filter({ hasText: 'proving ground' })).toContainText('This page is written in Markdown.')
+  await expect(page.locator('aside.callout.info').filter({ hasText: 'built with clarusjs' })).toContainText('This page is written in Markdown.')
   await expect(page.locator('main li code').first()).toHaveText('<script>')
   await expect(page.locator('a.edit')).toHaveAttribute('href', /\/src\/pages\/guide\/what-is-clarusjs\.md$/)
 })
@@ -1677,11 +1677,11 @@ test('#50: llms.txt lists the docs for AI tools, and llms-full.txt has their tex
   const index = await (await request.get('/llms.txt')).text()
   expect(index.startsWith('# clarusjs\n\n> A compiler for .tscl components')).toBe(true)
   expect(index).toMatch(/^## Introduction$/m)
-  expect(index).toContain('- [Getting started](https://clarusjs.com/guide/getting-started): Install clarusjs, configure Vite and write your first page.')
+  expect(index).toContain('- [Getting started](https://clarusjs.com/guide/getting-started): Create a clarusjs project with Vite (or from a Vite template), write your first page and run it.')
   expect(index).not.toContain('/404')
   const full = await (await request.get('/llms-full.txt')).text()
   expect(full).toContain('Source: https://clarusjs.com/guide/getting-started\n\n# Getting started')
-  expect(full).not.toContain('description: "Install clarusjs, configure Vite') // no frontmatter
+  expect(full).not.toContain('description: "Create a clarusjs project') // no frontmatter
   expect(full).toContain('Source: https://clarusjs.com/guide/explained') // a template page, as its text
 })
 
@@ -1893,4 +1893,21 @@ test('sitemap: /releases is dated by the changelog it is built from (its own las
   const sitemap = readFileSync(new URL('../dist/client/sitemap.xml', import.meta.url), 'utf8')
   expect(sitemap).toContain(`<url><loc>https://clarusjs.com/releases</loc><lastmod>${changelog}</lastmod>`)
   expect(readFileSync(new URL('../dist/client/releases/index.html', import.meta.url), 'utf8')).not.toContain('sitemap:lastmod')
+})
+
+test('getting started: create the project, its scripts and files, run it; from a Vite template too', async ({ page }) => {
+  await page.goto('/guide/getting-started')
+  const content = page.locator('main')
+  await expect(content.getByRole('heading', { name: 'Create a project' })).toBeVisible()
+  await expect(content.locator('pre').filter({ hasText: '"dev": "vite"' })).toContainText('"build": "vite build"')
+  await expect(content.locator('pre').filter({ hasText: '├── vite.config.ts' }).filter({ hasText: 'index.tscl' }).first()).toBeVisible() // the file tree
+  await expect(content.getByRole('heading', { name: 'From a Vite template' })).toBeVisible()
+  await expect(content).toContainText('index.html')
+})
+
+test("what clarusjs is: no 'early, proving ground' note on the intro or the home", async ({ page }) => {
+  for (const path of ['/guide/what-is-clarusjs', '/']) {
+    await page.goto(path)
+    await expect(page.locator('main')).not.toContainText('proving ground')
+  }
 })

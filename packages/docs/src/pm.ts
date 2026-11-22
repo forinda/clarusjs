@@ -4,7 +4,8 @@ export const managers = ['pnpm', 'npm', 'yarn', 'bun'] as const
 export type Manager = (typeof managers)[number]
 
 /**
- * 'add x' · 'add -D x' · 'run script' · 'exec bin' · 'create x'. Anything after two spaces and '#' is kept as a
+ * 'add x' · 'add -D x' · 'run script' · 'exec bin' · 'create x' · 'init' (a package.json, no questions) · 'sh line'
+ * (a shell line, the same for every manager). Anything after two spaces and '#' is kept as a
  * comment. Unknown verbs pass through unchanged after the manager's name.
  */
 export function command(manager: Manager, neutral: string): string {
@@ -13,7 +14,11 @@ export function command(manager: Manager, neutral: string): string {
   const dev = rest[0] === '-D'
   const args = (dev ? rest.slice(1) : rest).join(' ')
   let out: string
-  if (verb === 'add') {
+  if (verb === 'sh') {
+    out = cmd.trim().slice(3)
+  } else if (verb === 'init') {
+    out = manager === 'pnpm' ? 'pnpm init' : `${manager} init -y`
+  } else if (verb === 'add') {
     const flag = dev ? (manager === 'bun' ? ' -d' : ' -D') : ''
     out = `${manager === 'npm' ? 'npm install' : `${manager} add`}${flag} ${args}`
   } else if (verb === 'run') {
