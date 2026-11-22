@@ -465,6 +465,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         writeFileSync(resolve(out, 'robots.txt'), `User-agent: *\nAllow: /\n${sitemap}`)
       }
       if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
+      // Vite's manifest was for this build (island URLs, clarusjs-manifest.json); it isn't part of the site.
+      rmSync(resolve(out, '.vite'), { recursive: true, force: true })
     },
     // order 'pre': before Vite resolves the relative import itself.
     resolveId: { order: 'pre', handler(id, importer) {
@@ -592,18 +594,21 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     configurePreviewServer(server) {
       const outDir = resolve(server.config.root, server.config.build.outDir)
       const base = server.config.base // e.g. '/' or '/docs/'; Vite strips it after this middleware
-      server.middlewares.use((req, _res, next) => {
+      server.middlewares.use((req, res, next) => {
         let url: string
         try {
           url = decodeURIComponent((req.url ?? '/').split('?')[0]!)
         } catch {
-          return next() // a malformed %-escape names no built page
+          // A malformed %-escape: the client's error, said plainly (not a 500 with a stack from further down).
+          res.statusCode = 400
+          res.setHeader('content-type', 'text/plain; charset=utf-8')
+          return res.end('Bad Request: malformed URL')
         }
         const inBase = url === base.slice(0, -1) ? '/' : url.startsWith(base) ? '/' + url.slice(base.length) : undefined
         if (inBase !== undefined) {
           // A built page wins; anything else (assets, /x.css) falls through to Vite's static files.
           const file = resolve(outDir, `.${inBase.replace(/\/?$/, '/')}index.html`)
-          if (file.startsWith(outDir) && existsSync(file)) req.url = base + file.slice(outDir.length + 1).replace(/\\/g, '/')
+          if (file.startsWith(outDir + sep) && existsSync(file)) req.url = base + file.slice(outDir.length + 1).replace(/\\/g, '/')
         }
         next()
       })

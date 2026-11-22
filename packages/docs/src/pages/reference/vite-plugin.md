@@ -131,5 +131,5 @@ clarusjs({ sources: [markdown()] })
 ## What it does
 
 - **vite**: renders `src/pages/**/*.tscl` on each request.
-- **vite build**: builds the client, then the server, then prerenders every static page to `dist/client`. Server routes are left to `dist/server/index.mjs`.
-- **vite preview**: serves the built pages at their routes, and server routes through the built handler.
+- **vite build**: builds the client, then the server, then prerenders every static page to `dist/client`. Server routes are left to `dist/server/index.mjs`. `dist/client` holds only the site: Vite's own manifest is removed once the build has used it.
+- **vite preview**: serves the built pages at their routes, and server routes through the built handler. A malformed URL gets a 400, and no path reaches outside `dist/client`.

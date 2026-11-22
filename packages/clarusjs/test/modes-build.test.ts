@@ -44,7 +44,7 @@ test('vite preview serves server routes through the built handler', async () => 
     // A static dynamic route only has the pages its entries() listed, as on a static host.
     expect(unscoped(await (await fetch(`http://localhost:${port}/blog/hello`)).text())).toContain('<h1>Post hello</h1>')
     expect((await fetch(`http://localhost:${port}/blog/other`)).status).toBe(404)
-    expect((await fetch(`http://localhost:${port}/account/%E0%A4%A`)).status).toBe(404) // malformed escape: not a crash
+    expect((await fetch(`http://localhost:${port}/account/%E0%A4%A`)).status).toBe(400) // malformed escape: a 400, not a crash (#55)
   } finally {
     await server.close()
   }
