@@ -4,7 +4,6 @@ group: "Interactivity"
 order: 4
 description: "Use other components inside an island: nested islands get new props in place, and inputs are read-only."
 ---
-@import huePicker from '~/components/hue-picker.tscl'
 
 # Components inside islands
 

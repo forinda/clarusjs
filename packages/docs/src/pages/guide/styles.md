@@ -5,7 +5,6 @@ order: 9
 description: "Give components their own CSS with <style scoped>, scoped with native @scope, write global CSS, and import stylesheets that go through Vite."
 ---
 
-@import scopeDemo from '~/components/scope-demo.tscl'
 
 # Styles
 

@@ -70,6 +70,17 @@ Markdown **inside** a component.
 </callout>
 ```
 
+Components in your own folders don't need the import. Name the folders in `markdown()`, and a tag that names a file there is imported for you:
+
+```ts
+markdown({ layout: '/src/layouts/docs.tscl', components: '/src/components' }) // or several: ['/src/components', '/src/ui']
+```
+
+- `<counter />` imports `counter.tscl`, and `<todoSummary />` imports `todo-summary.tscl`. The first folder that has the file wins.
+- An explicit `@import` wins over a folder.
+- HTML's own elements are never taken for components, and tags inside code stay text.
+- A camelCase tag that matches no file fails the build, naming the page and the tag. No HTML element has capitals, so it's a typo or a missing component. An unknown tag with a dash is left alone: it can be a custom element.
+
 ## Headings and text
 
 - Every heading gets an `id` and an anchor link, so `#install` links straight to it.

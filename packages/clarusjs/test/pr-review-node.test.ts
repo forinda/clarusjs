@@ -35,3 +35,10 @@ test('island URLs for files outside the Vite root use /@fs/', () => {
   expect(clientUrlFor('/app', '/app/src/components/c.tscl')).toBe('/src/components/c.tscl?import')
   expect(clientUrlFor('/app', '/libs/ui/c.tscl')).toBe('/@fs/libs/ui/c.tscl?import')
 })
+
+test('#54: on Windows, island URLs use forward slashes, and /@fs/ takes the drive', async () => {
+  const { win32 } = await import('node:path')
+  expect(clientUrlFor('C:\\app', 'C:\\app\\src\\components\\c.tscl', win32)).toBe('/src/components/c.tscl?import')
+  expect(clientUrlFor('C:\\app', 'C:\\libs\\ui\\c.tscl', win32)).toBe('/@fs/C:/libs/ui/c.tscl?import')
+  expect(clientUrlFor('C:\\app', 'D:\\ui\\c.tscl', win32)).toBe('/@fs/D:/ui/c.tscl?import')
+})

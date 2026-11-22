@@ -7,14 +7,21 @@ import { replRuntime } from './src/repl/bundle.ts'
 
 export default defineConfig({
   plugins: [
-    themeDocs(),
+    // The sidebar from src/pages, search, and llms.txt / llms-full.txt for AI tools (llmstxt.org).
+    themeDocs({
+      llms: {
+        title: 'clarusjs',
+        summary: 'A compiler for .tscl components: HTML rendered on the server, and small islands that attach to it in the browser, with Vite.',
+        site: 'https://clarusjs.com',
+      },
+    }),
     // The playground's preview runtime, bundled into one string (src/repl/bundle.ts).
     replRuntime(),
     // Code blocks in .tscl pages highlighted like Markdown's (before clarusjs compiles them).
     highlightTemplates(),
     clarusjs({
       // Rendered on every request; on Netlify, by a function (see the Server playground page).
-      routes: { '/playground': 'server', '/api/demo-stats': 'server', '/api/demo-records': 'server', '/tour/*': 'client' },
+      routes: { '/playground': 'server', '/tour/*': 'client' },
       adapter: 'netlify',
       // Moving between pages swaps the page instead of reloading it (see the Fragment navigation guide).
       fragments: true,
@@ -35,6 +42,8 @@ export default defineConfig({
       // Markdown pages (src/pages/**/*.md), rendered in the docs layout.
       sources: [markdown({
         layout: '/src/layouts/docs.tscl',
+        // Components in src/components are used by tag, no @import needed (explicit imports still win).
+        components: '/src/components',
         // ::: tip blocks and > [!NOTE] alerts render through the site's callout component.
         container: { tag: 'callout', from: '@clarusjs/theme-docs/callout.tscl' },
         // Every highlighted code block gets the site's copy button (an island that loads on first use).

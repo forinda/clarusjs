@@ -2,7 +2,7 @@
 // and stylesheet discovery, clarusjs check): built-in ~/ → src/, the project's tsconfig.json (or jsconfig.json)
 // `paths`, and Vite's `resolve.alias` entries with a string `find`.
 import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { normalize, resolve } from 'node:path'
 
 /** `find` ending in '/' is a prefix; otherwise it matches itself, and (unless `exact`) itself followed by '/…'. */
 export type Alias = { find: string; replacement: string; exact?: boolean }
@@ -41,8 +41,9 @@ export function projectAliases(root: string, vite: unknown = []): Alias[] {
 /** Where `spec` points when an alias matches it (an absolute path), else undefined. */
 export function resolveAlias(spec: string, aliases: Alias[]): string | undefined {
   for (const { find, replacement, exact } of aliases) {
-    if (find.endsWith('/') ? spec.startsWith(find) : spec === find) return spec === find ? replacement : replacement + spec.slice(find.length)
-    if (!exact && !find.endsWith('/') && spec.startsWith(find + '/')) return replacement + spec.slice(find.length)
+    // normalize: one separator style on Windows ('C:\\app\\src' + '/a.tscl'); a no-op elsewhere.
+    if (find.endsWith('/') ? spec.startsWith(find) : spec === find) return normalize(spec === find ? replacement : replacement + spec.slice(find.length))
+    if (!exact && !find.endsWith('/') && spec.startsWith(find + '/')) return normalize(replacement + spec.slice(find.length))
   }
   return undefined
 }

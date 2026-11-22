@@ -4,10 +4,6 @@ group: "Interactivity"
 order: 9
 description: "clarusjs/fetch: islands fetch their own data in the browser, in parallel, chained or batched into one request, with retry and refetch."
 ---
-@import statCard from '~/components/stat-card.tscl'
-@import userPanel from '~/components/user-panel.tscl'
-@import activityFeed from '~/components/activity-feed.tscl'
-@import recordList from '~/components/record-list.tscl'
 
 # Fetching data
 

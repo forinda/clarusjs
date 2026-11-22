@@ -4,7 +4,6 @@ group: "Introduction"
 order: 2
 description: "Install clarusjs, configure Vite and write your first page."
 ---
-@import pm from '../../components/pm.tscl'
 
 # Getting started
 

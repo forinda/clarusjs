@@ -15,7 +15,7 @@ test('Markdown pages build to static HTML in their layout, with components, styl
   w('src/components/note.tscl', '@input kind: string = "info"\n<aside class="note {{ kind }}"><slot /></aside>\n<style scoped>\n  :scope { padding: 1rem; }\n</style>\n')
   w('src/pages/guide/intro.md', "---\ntitle: Intro\n---\n@import note from '../../components/note.tscl'\n\n# Hello\n\nUse `{{ x }}` in templates.\n\n<note [kind]=\"'tip'\">\n\nA **tip**.\n\n</note>\n")
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../../clarusjs'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../../clarusjs'), resolve(root, 'node_modules/clarusjs'), 'junction')
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ sources: [markdown({ layout: '/src/layouts/docs.tscl' })] })] })).buildApp()
   const html = readFileSync(resolve(root, 'dist/client/guide/intro/index.html'), 'utf8')
   expect(html).toContain('<title>Intro</title>')

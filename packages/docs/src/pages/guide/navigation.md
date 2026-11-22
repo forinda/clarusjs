@@ -4,8 +4,6 @@ group: "Interactivity"
 order: 8
 description: "Move between pages from islands with navigate(), read the current URL, and hook into navigations: cancel one, react after it, handle errors."
 ---
-@import leaveGuard from '~/components/leave-guard.tscl'
-@import swapDemo from '~/components/swap-demo.tscl'
 
 # Navigation
 

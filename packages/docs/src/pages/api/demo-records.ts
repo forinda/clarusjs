@@ -1,22 +1,26 @@
-// The Fetching guide's caching demo (a server route, see vite.config.ts): 20,000 records, a page at a time.
-// ?page=&size=&q= answers { page, pages, total, rows }; ?rename=<id> marks that record renamed (a demo edit, kept in
-// this process's memory).
+// The Fetching guide's caching demo (an endpoint: GET and POST): 20,000 records, a page at a time.
+// GET ?page=&size=&q= answers { page, pages, total, rows }; POST { "rename": <id> } marks that record renamed (a demo
+// edit, kept in this process's memory). A POST from another site is refused before it gets here (CSRF).
+import type { RequestHandler } from 'clarusjs/server'
+
 const TOTAL = 20_000
 const renamed = new Set<number>()
 const headers = { 'cache-control': 'no-store' }
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
 const nameOf = (id: number) => (renamed.has(id) ? `Record ${id} (renamed)` : `Record ${id}`)
 
-export async function load({ request }: { request: Request }) {
-  const params = new URL(request.url).searchParams
-  if (params.has('rename')) {
-    const id = Number(params.get('rename'))
-    if (Number.isInteger(id) && id >= 1 && id <= TOTAL) {
-      if (renamed.size > 1000) renamed.clear() // a demo: keep the memory small
-      renamed.add(id)
-    }
-    return Response.json({ ok: true }, { headers })
+export const POST: RequestHandler = async ({ request }) => {
+  const body = (await request.json().catch(() => ({}))) as { rename?: unknown }
+  const id = Number(body.rename)
+  if (Number.isInteger(id) && id >= 1 && id <= TOTAL) {
+    if (renamed.size > 1000) renamed.clear() // a demo: keep the memory small
+    renamed.add(id)
   }
+  return Response.json({ ok: true }, { headers })
+}
+
+export const GET: RequestHandler = async ({ request }) => {
+  const params = new URL(request.url).searchParams
   await new Promise((r) => setTimeout(r, 150)) // long enough to see the previous page stay while the next loads
   const size = clamp(Number(params.get('size')) || 10, 1, 50)
   const q = (params.get('q') ?? '').toLowerCase().slice(0, 40)
