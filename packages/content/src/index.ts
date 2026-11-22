@@ -8,7 +8,7 @@ import type { Source } from 'clarusjs/vite'
 import { highlight } from './highlight.ts'
 import { expand } from './snippets.ts'
 
-/** Shell languages: never numbered by `lineNumbers`. */
+/** Shell languages: `lineNumbers` leaves their commands unnumbered (a script, with a title or a #! line, is numbered). */
 const SHELL = new Set(['sh', 'bash', 'shell', 'zsh', 'console', 'powershell', 'ps1'])
 
 /**
@@ -33,8 +33,9 @@ export type MarkdownOptions = {
    */
   quiz?: { tag: string; from: string }
   /**
-   * Number the lines of every code block, except shell ones (sh, bash, shell, zsh, console, powershell, ps1): a
-   * command is copied, not referred to by line. `:no-line-numbers` turns one block off, `:line-numbers` one on.
+   * Number the lines of every code block except shell commands (sh, bash, shell, zsh, console, powershell, ps1): a
+   * command is copied, not referred to by line. A shell script is numbered: a block with a file title
+   * (```bash [deploy.sh]) or a `#!` first line. `:no-line-numbers` turns one block off, `:line-numbers` one on.
    * @see https://clarusjs.com/guide/markdown#code
    */
   lineNumbers?: boolean
@@ -269,10 +270,12 @@ function renderer(options: MarkdownOptions): Md {
     const info = tokens[i]!.info.trim()
     const lang = /^[^\s{[:]+/.exec(info)?.[0] ?? 'text'
     const title = /\[([^\]]+)\]/.exec(info)?.[1]
+    const code = tokens[i]!.content
+    // Shell commands aren't numbered; a shell script (a file title, or a #! line) is.
+    const command = SHELL.has(lang.toLowerCase()) && !title && !code.startsWith('#!')
     const lineNumbers =
       /(^|\s):line-numbers\b/.test(info) ||
-      (!!options.lineNumbers && !SHELL.has(lang.toLowerCase()) && !/(^|\s):no-line-numbers\b/.test(info))
-    const code = tokens[i]!.content
+      (!!options.lineNumbers && !command && !/(^|\s):no-line-numbers\b/.test(info))
     let out = ''
     if (e.group) {
       const id = `cl-group-${e.group.id}-${e.group.n}`

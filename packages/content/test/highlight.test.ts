@@ -69,3 +69,10 @@ test('lineNumbers: true numbers every code block but shell ones; :no-line-number
   // Off by default: only :line-numbers numbers a block.
   expect(md('```ts\na()\n```\n').includes('line-numbers-column')).toBe(false)
 })
+
+test('lineNumbers: a shell script is numbered (a file title, or a #! line); a command is not', () => {
+  const numbered = (code: string) => md(code, { lineNumbers: true }).includes('line-numbers-column')
+  expect(numbered('```bash [deploy.sh]\nset -e\npnpm build\n```\n')).toBe(true)
+  expect(numbered('```bash\n#!/usr/bin/env bash\nset -e\n```\n')).toBe(true)
+  expect(numbered('```sh\npnpm add clarusjs\n```\n')).toBe(false)
+})
