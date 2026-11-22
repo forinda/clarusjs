@@ -141,3 +141,28 @@ test("where history can't be written (a sandboxed srcdoc frame), next() still mo
     history.pushState = pushState
   }
 })
+
+test('next() after a schema error is fixed moves on (a sync schema, fields bound to state as [(value)] binds them)', async () => {
+  document.body.innerHTML = `<form data-cl-form="0">
+    <fieldset id="ship" data-cl-step><label>Postal <input required data-cl-path="postal"><small data-cl-message></small></label></fieldset>
+    <fieldset id="pay" data-cl-step><button>Send</button></fieldset>
+  </form>`
+  const values = state({ postal: '' })
+  const schema = { '~standard': { version: 1 as const, vendor: 't', validate: (v: unknown) => {
+    const postal = (v as { postal: string }).postal
+    return postal && !/^\d{5}$/.test(postal) ? { issues: [{ message: 'Five digits.', path: ['postal'] }] } : { value: v as { postal: string } }
+  } } }
+  const f = form(values, { schema })
+  const input = document.querySelector('input')!
+  // What a compiled [(value)]="order.postal" does: the input writes the state, copy-on-write.
+  input.addEventListener('input', () => values.set({ ...values.get(), postal: input.value }))
+  const dispose = scope(() => connect(document.body, 0, () => f))
+  const within = <T>(p: Promise<T>) => Promise.race([p, new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), 1000))])
+  fill(input, '12')
+  expect(await within(f.next())).toBe(false)
+  expect(document.querySelector('[data-cl-message]')!.textContent).toBe('Five digits.')
+  fill(input, '12345')
+  expect(await within(f.next())).toBe(true)
+  expect(f.step).toBe('pay')
+  dispose()
+})

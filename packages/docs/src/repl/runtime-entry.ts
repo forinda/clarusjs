@@ -3,12 +3,17 @@
 // imports pointed at the copies below, loops guarded); this imports it from blob URLs, renders and attaches.
 import * as runtime from 'clarusjs/runtime'
 import * as server from 'clarusjs/runtime/server'
+import * as forms from 'clarusjs/forms'
 
-type Message = { id: number; server: string; client: string | null }
+type Message = { id: number; server: string; client: string | null; css?: string }
 
-;(globalThis as { __cl_repl?: object }).__cl_repl = { 'clarusjs/runtime': runtime, 'clarusjs/runtime/server': server }
+;(globalThis as { __cl_repl?: object }).__cl_repl = { 'clarusjs/runtime': runtime, 'clarusjs/runtime/server': server, 'clarusjs/forms': forms }
 
 let current = 0 // the run's id, for errors thrown later (an event handler, a timer)
+
+// A form in a preview has nowhere to go: its default action (navigating this frame away, and the preview with it) is
+// stopped here, on the window, after the component's own handlers have run.
+addEventListener('submit', (event) => event.preventDefault())
 
 const report = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error)
@@ -53,10 +58,12 @@ addEventListener('unhandledrejection', (event) => report(event.reason))
 addEventListener('message', async (event: MessageEvent<Message>) => {
   // Only the page that made this frame: never a sibling frame or a window that got hold of this one.
   if (event.source !== parent) return
-  const { id, server: serverCode, client } = event.data ?? ({} as Message)
+  const { id, server: serverCode, client, css } = event.data ?? ({} as Message)
   if (typeof id !== 'number' || typeof serverCode !== 'string' || current) return // one run per frame
   current = id
   const out = document.getElementById('out')!
+  // The component's <style> (scoped by the compiler, as in a build), as a text node: never parsed as HTML.
+  if (typeof css === 'string' && css) document.head.append(Object.assign(document.createElement('style'), { textContent: css }))
   try {
     const html = await (await load(serverCode)).render({})
     out.innerHTML = html
