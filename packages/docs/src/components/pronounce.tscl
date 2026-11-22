@@ -1,0 +1,43 @@
+{{-- Says "clarus" with the browser's own voice (the Web Speech API: no audio file). Speech guesses from spelling, so it
+     gets "Klair-us". Hidden until it attaches in a browser that can speak, so nobody sees a button that does nothing. --}}
+
+<script>
+  import { browser } from 'clarusjs/runtime'
+  let can = state(false)
+  if (browser) can = 'speechSynthesis' in window
+  function say() {
+    const u = new SpeechSynthesisUtterance('Klair-us')
+    u.lang = 'en-US'
+    u.rate = 0.85
+    speechSynthesis.cancel()
+    speechSynthesis.speak(u)
+  }
+</script>
+
+<button type="button" class="pronounce" [hidden]="!can" (click)="say()">
+  <icon name="lucide:volume-2" /> Hear “clarus”
+</button>
+<style scoped>
+  .pronounce {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+    padding: 2px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.9em;
+    font-weight: 600;
+    vertical-align: 1px;
+    cursor: pointer;
+  }
+  .pronounce:hover {
+    border-color: var(--accent);
+  }
+  .pronounce[hidden] {
+    display: none;
+  }
+</style>

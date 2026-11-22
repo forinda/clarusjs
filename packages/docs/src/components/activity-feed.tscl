@@ -4,7 +4,7 @@
 <script>
   import { browser } from 'clarusjs/runtime'
   import { json, resource } from 'clarusjs/fetch'
-  import { user } from '../stores/dashboard.ts'
+  import { user } from '~/stores/dashboard.ts'
   const once = browser ? Math.random().toString(36).slice(2) : ''
   const feed = resource(
     ({ signal }) => {

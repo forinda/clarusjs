@@ -1,4 +1,4 @@
-import { steps } from '../../tour.ts'
+import { steps } from '~/tour.ts'
 
 export function entries() {
   return steps.map((s) => ({ step: String(s.n) }))

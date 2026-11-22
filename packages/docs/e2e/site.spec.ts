@@ -339,6 +339,8 @@ test('this site, explained: the table is generated from the manifest at build ti
   const { readFileSync } = await import('node:fs')
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
   await page.goto('/guide/explained')
+  await expect(page.locator('cl-island[c="explained-table"]')).toHaveAttribute('data-cl-ready', '')
+  await page.getByLabel('Rows').selectOption('all')
   const rows = page.locator('table.explained tbody tr')
   await expect(rows).toHaveCount(Object.keys(manifest.routes).length)
   const home = rows.filter({ has: page.locator('a[href="/"]') })
@@ -1889,7 +1891,9 @@ test('icons: <icon> is inline SVG, 1em high, hidden from screen readers, with no
 
 test('sitemap: /releases is dated by the changelog it is built from (its own lastmod), and the marker is gone from the page', async () => {
   const { execFileSync } = await import('node:child_process')
-  const changelog = execFileSync('git', ['log', '-1', '--format=%cs', '--', '../clarusjs/CHANGELOG.md'], { encoding: 'utf8' }).trim()
+  // The commit's time as a UTC date, as the build writes it (%cs would be the committer's own timezone's date).
+  const seconds = Number(execFileSync('git', ['log', '-1', '--format=%ct', '--', '../clarusjs/CHANGELOG.md'], { encoding: 'utf8' }).trim())
+  const changelog = new Date(seconds * 1000).toISOString().slice(0, 10)
   const sitemap = readFileSync(new URL('../dist/client/sitemap.xml', import.meta.url), 'utf8')
   expect(sitemap).toContain(`<url><loc>https://clarusjs.com/releases</loc><lastmod>${changelog}</lastmod>`)
   expect(readFileSync(new URL('../dist/client/releases/index.html', import.meta.url), 'utf8')).not.toContain('sitemap:lastmod')
@@ -1912,9 +1916,81 @@ test("what clarusjs is: no 'early, proving ground' note on the intro or the home
   }
 })
 
+test('this site, explained: one table to filter, sort by any column, sample and trim to some columns', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  const routes = Object.entries(JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8')).routes) as [string, { mode: string; js: { initialGzip: number } }][]
+  await page.goto('/guide/explained')
+  await expect(page.locator('.explained-stats li strong').first()).toHaveText(String(routes.length))
+  const table = page.locator('table.explained')
+  const rows = table.locator('tbody tr')
+  const loads = async () => (await rows.locator('td:nth-child(3)').allTextContents()).map((t) => parseFloat(t))
+  // Heaviest first, 10 rows, until JavaScript runs too: the server renders the default view.
+  await expect(rows).toHaveCount(10)
+  await expect(page.locator('cl-island[c="explained-table"]')).toHaveAttribute('data-cl-ready', '')
+  const heavy = await loads()
+  expect(heavy).toEqual([...heavy].sort((a, b) => b - a))
+  // Smallest first; then a header sorts by its column, and again reverses it.
+  await page.getByLabel('Show').selectOption('smallest')
+  const light = await loads()
+  expect(light).toEqual([...light].sort((a, b) => a - b))
+  await table.getByRole('button', { name: 'Route' }).click()
+  await expect(table.locator('th').first()).toHaveAttribute('aria-sort', 'ascending')
+  const names = (await rows.locator('td:first-child').allTextContents()).map((t) => t.trim())
+  expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
+  await table.getByRole('button', { name: 'Route' }).click()
+  await expect(table.locator('th').first()).toHaveAttribute('aria-sort', 'descending')
+  // Filters: a section and a search; no JavaScript on load.
+  await page.getByLabel('Section').selectOption('Reference')
+  await page.getByLabel('Rows').selectOption('all')
+  for (const r of (await rows.locator('td:first-child').allTextContents()).map((t) => t.trim())) expect(r).toMatch(/^\/reference/)
+  await page.getByLabel('Find').fill('template')
+  await expect(rows).toHaveCount(1)
+  await page.getByLabel('Find').fill('')
+  await page.getByLabel('Section').selectOption('All')
+  await page.getByLabel('Show').selectOption('nojs')
+  await expect(rows).toHaveCount(routes.filter(([, r]) => r.mode !== 'server' && r.js.initialGzip === 0).length || 1)
+  await expect(page.locator('.explained-count')).toContainText(`(${routes.length} pages)`)
+  // Nothing matches: an empty state that says so, with a way back.
+  await page.getByLabel('Show').selectOption('heaviest')
+  await page.getByLabel('Find').fill('zzzz')
+  const empty = page.locator('.explained-empty')
+  await expect(empty).toBeVisible()
+  await expect(empty).toContainText('No page matches')
+  await expect(empty).toContainText('"zzzz"')
+  await empty.getByRole('button', { name: 'Clear filters' }).click()
+  await expect(page.getByLabel('Find')).toHaveValue('')
+  await expect(rows).toHaveCount(routes.length) // Rows is still All: only the filters were cleared
+  // A server route's JavaScript is decided per request: said so, and never counted as none.
+  await page.getByLabel('Show').selectOption('route')
+  await page.getByLabel('Find').fill('/playground')
+  await expect(rows.first()).toContainText('per request')
+  await page.getByLabel('Show').selectOption('nojs')
+  await expect(page.locator('.explained-empty')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear filters' }).click()
+  // Columns: unchecked, gone.
+  await page.getByLabel('Show').selectOption('heaviest')
+  await page.getByRole('checkbox', { name: 'Islands' }).uncheck()
+  await expect(table.locator('thead th')).toHaveText(['Route', 'JS on load', 'JS in all'])
+})
+
 test('what clarusjs is: where the name comes from, and how to say it', async ({ page }) => {
   await page.goto('/guide/what-is-clarusjs')
   await expect(page.getByRole('heading', { name: 'The name' })).toBeVisible()
   await expect(page.locator('main')).toContainText('KLAIR-us')
   await expect(page.locator('main')).toContainText('Latin for "clear"')
+})
+
+test('what clarusjs is: a button says the name (the browser\'s speech, KLAIR-us in English)', async ({ page }) => {
+  await page.addInitScript(() => {
+    const said: { text: string; lang: string }[] = []
+    ;(window as unknown as { __said: typeof said }).__said = said
+    // A stand-in for the browser's voice: records what would be said.
+    window.speechSynthesis.speak = (u: SpeechSynthesisUtterance) => { said.push({ text: u.text, lang: u.lang }) }
+    window.speechSynthesis.cancel = () => {}
+  })
+  await page.goto('/guide/what-is-clarusjs')
+  const button = page.getByRole('button', { name: 'Hear “clarus”' })
+  await expect(button).toBeVisible()
+  await button.click()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __said: unknown[] }).__said)).toEqual([{ text: 'Klair-us', lang: 'en-US' }])
 })

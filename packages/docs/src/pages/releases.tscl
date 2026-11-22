@@ -1,7 +1,7 @@
-@import docs from '../layouts/docs.tscl'
-@import latestRelease from '../components/latest-release.tscl'
-@import { releases } from '../releases.ts'
-@import { changelogUpdated } from '../changelog-date.ts'
+@import docs from '~/layouts/docs.tscl'
+@import latestRelease from '~/components/latest-release.tscl'
+@import { releases } from '~/releases.ts'
+@import { changelogUpdated } from '~/changelog-date.ts'
 
 <docs
   [title]="'Release notes'"

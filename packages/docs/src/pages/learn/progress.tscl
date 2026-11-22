@@ -1,6 +1,6 @@
-@import docs from '../../layouts/docs.tscl'
+@import docs from '~/layouts/docs.tscl'
 @import learnProgress from '@clarusjs/theme-docs/learn-progress.tscl'
-@import { theme } from '../../nav.ts'
+@import { theme } from '~/nav.ts'
 {{-- In the Learn sidebar under "You" (sidebar.ts orders it there); kept in this browser, never sent anywhere. --}}
 
 <docs

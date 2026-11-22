@@ -1,4 +1,4 @@
-import { release, releases } from '../../releases.ts'
+import { release, releases } from '~/releases.ts'
 
 /** One release-notes page per version in the CHANGELOG. */
 export function entries() {

@@ -1,5 +1,5 @@
 {{-- Served for any unknown path, at any depth: relative links here are resolved from the site root. --}}
-@import docs from '../layouts/docs.tscl'
+@import docs from '~/layouts/docs.tscl'
 
 <docs [title]="'Page not found'" [path]="'/404'" [description]="'This page does not exist.'">
   <h1>Page not found</h1>
