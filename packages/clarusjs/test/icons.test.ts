@@ -78,3 +78,9 @@ test('iconSvg: a standalone <svg> for an icon (the editor previews it)', () => {
   const data = { body: '<path/>', width: 48, height: 24, left: 2, top: 3 }
   expect(iconSvg(data, 'width="48"')).toBe('<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 3 48 24" width="48"><path/></svg>')
 })
+
+test("names of built-in object properties aren't icons (constructor, toString, __proto__)", () => {
+  const { file } = project({ test: TEST })
+  for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) expect(resolveIcon(`test:${name}`, file), name).toMatchObject({ missing: 'icon' })
+  expect(iconNames('test', file)).not.toContain('constructor')
+})
