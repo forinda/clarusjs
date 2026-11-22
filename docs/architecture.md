@@ -101,6 +101,17 @@ flowchart TD
   IR --> META["meta<br/>stateful? children? bytes?"]
 ```
 
+### Built-in tags: `<icon>`
+
+`<icon name="set:name" />` is the one tag the compiler knows by name (a component imported as `icon` wins over it).
+The compiler stays pure: the caller passes `CompileOptions.icon`, which finds the icon (the Vite plugin, `clarusjs
+check`, the language server and the MCP server pass `resolveIcon` from `clarusjs/icons`, which reads the
+`@iconify-json/*` sets the project installs). `lower()` rewrites the tag into a plain `<svg>` element (1em high, the
+icon's `viewBox`, `aria-hidden` unless labelled) with the icon's body inside, so it adds no HTML-contract marker: in an
+island it behaves like any element (bound attributes get `data-cl-a`, and inside `@if` / `@for` its markup is part of
+the client code). The name must be static; a bound name, content inside `<icon>`, or an unknown set or icon is a
+located error.
+
 ### 4.1 Why TypeScript, not Rust or Go
 
 - Vite 8 already does parsing, bundling and minifying in Rust. Compiling

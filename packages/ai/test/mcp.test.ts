@@ -224,3 +224,15 @@ test("from the repository's root, as .mcp.json starts it: check runs on a projec
   expect(text(r)).not.toContain("isn't installed")
   expect(text(r)).toMatch(/No errors|warning|error/)
 }, 60_000)
+
+test('compile: <icon> is drawn from the sets installed in the project', async () => {
+  const root = project({ 'package.json': '{}' })
+  mkdirSync(resolve(root, 'node_modules/@iconify-json/test'), { recursive: true })
+  writeFileSync(resolve(root, 'node_modules/@iconify-json/test/package.json'), JSON.stringify({ name: '@iconify-json/test', exports: { './icons.json': './icons.json' } }))
+  writeFileSync(resolve(root, 'node_modules/@iconify-json/test/icons.json'), JSON.stringify({ prefix: 'test', width: 24, height: 24, icons: { rocket: { body: '<path d="M4 20 20 4"/>' } } }))
+  const ok = await call(mcp(root), 'compile', { source: '<p><icon name="test:rocket" /></p>\n', file: 'src/components/c.tscl' })
+  expect(ok.result.isError).toBeFalsy()
+  expect(text(ok)).toContain('M4 20 20 4')
+  const bad = await call(mcp(root), 'compile', { source: '<p><icon name="test:rockt" /></p>\n', file: 'src/components/c.tscl' })
+  expect(text(bad)).toContain("no icon 'rockt' in test (did you mean 'rocket'?)")
+})

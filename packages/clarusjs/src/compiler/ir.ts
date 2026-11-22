@@ -1,5 +1,6 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
 import { parseExpressionAt } from 'acorn'
+import { iconElement, type IconResolver } from './icon.ts'
 import { ClarusError } from './errors.ts'
 import { FOR_IMPLICIT, importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
 import { analyzeScript, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
@@ -44,7 +45,14 @@ export type ComponentIR = {
 const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
-export function lower(parsed: ParsedFile, file: string, source: string, options: { collapseWhitespace?: boolean } = {}): ComponentIR {
+/**
+ * The body of each <svg> an <icon> became, emitted right after its open tag. Keyed by the element object itself, so
+ * visit() must emit the open tag of the node it was given: a pass that copies the element first ({ ...node, attrs })
+ * would lose the body (the icon tests catch that: the svg would come out empty).
+ */
+const iconBodies = new WeakMap<object, string>()
+
+export function lower(parsed: ParsedFile, file: string, source: string, options: { collapseWhitespace?: boolean; icon?: IconResolver } = {}): ComponentIR {
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
@@ -203,7 +211,14 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       out.push({ kind: 'hole', expr: node.expr, reactive, index: reactive ? holeCount++ : -1 })
       return
     }
-    if (components.has(node.tag)) {
+    // <icon name="set:name" />: the icon as an <svg>, drawn now (a component imported as icon wins).
+    if (node.tag === 'icon' && !components.has('icon')) {
+      const { svg, body } = iconElement(node, file, source, options.icon)
+      iconBodies.set(svg, body)
+      return visit(svg, rawText)
+    }
+    // The <svg> an <icon> became is always the element, even when a component named svg is imported.
+    if (components.has(node.tag) && !iconBodies.has(node)) {
       const props: { name: string; expr: string }[] = []
       const models: { name: string; set: string }[] = []
       let attach: string | undefined
@@ -407,6 +422,8 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       for (const a of elementEvents) events.push({ index, type: a.name, handler: a.kind === 'event' ? a.expr : '', scope: scopeKey })
     }
     emitStatic('>')
+    const iconBody = iconBodies.get(node)
+    if (iconBody !== undefined) emitStatic(iconBody)
     const outer = engineScope
     if (engine) engineScope = { root: null }
     if (tag !== 'select' || !node.attrs.some((x) => x.kind === 'model')) selectModel = tag === 'optgroup' || tag === 'option' ? selectModel : undefined

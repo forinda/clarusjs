@@ -14,14 +14,15 @@
     "lint": "eslint \"src/**/*.tscl\""
   },
   "dependencies": {
-    "clarusjs": "workspace:*",
-    "@clarusjs/theme-docs": "workspace:*"
+    "@clarusjs/theme-docs": "workspace:*",
+    "clarusjs": "workspace:*"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@clarusjs/ai": "workspace:*",
     "@clarusjs/content": "workspace:*",
     "@clarusjs/eslint-plugin": "workspace:*",
+    "@iconify-json/lucide": "^1.2.158",
     "@playwright/test": "1.65.1",
     "@types/node": "^26.6.6",
     "acorn": "^8.19.0",

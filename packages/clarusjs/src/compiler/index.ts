@@ -7,6 +7,8 @@ import { parse, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
+export { checkIcons, type IconResolver } from './icon.ts'
+import type { IconResolver } from './icon.ts'
 export { lint, lintRules, type LintRule, type LintLevel, type LintConfig, type LintMessage, type LintRuleDef, type LintContext, type LintElement } from './lint.ts'
 export type { ParsedFile, InputDecl, ImportDecl, TemplateNode, Attr } from './parse.ts'
 
@@ -20,7 +22,18 @@ export type { ParsedFile, InputDecl, ImportDecl, TemplateNode, Attr } from './pa
  * `scope`: the id that scopes this component's styles (default: from the file name).
  * @see https://clarusjs.com/reference/compiler#compile
  */
-export type CompileOptions = { file: string; target: 'server' | 'client'; clientUrl?: string; renderImports?: boolean; scope?: string; collapseWhitespace?: boolean; loader?: string; hot?: string }
+export type CompileOptions = {
+  file: string
+  target: 'server' | 'client'
+  clientUrl?: string
+  renderImports?: boolean
+  scope?: string
+  collapseWhitespace?: boolean
+  loader?: string
+  hot?: string
+  /** Finds `<icon name="set:name">` icons: `(name) => resolveIcon(name, file)` from clarusjs/icons. Without it, `<icon>` is an error. */
+  icon?: IconResolver
+}
 /**
  * `css`: the component's stylesheet (`<style scoped>` blocks wrapped in @scope, the others as written); '' without
  * <style>. `warnings`: things that compile but likely aren't meant (each a located ClarusError, not thrown).
@@ -60,7 +73,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     const statements = head.split(';').map((x) => x.trim()).filter(Boolean).map((x) => `${x};\n`).join('')
     css += `${statements}@scope (.cl-c-${id}) to ([class*="cl-c-"]:not(.cl-c-${id}) > *) {${s.css.slice(head.length).replace(/\s*$/, '')}\n}\n`
   }
-  const ir = lower(parsed, options.file, source, { collapseWhitespace: options.collapseWhitespace })
+  const ir = lower(parsed, options.file, source, { collapseWhitespace: options.collapseWhitespace, icon: options.icon })
   warnings.push(...ir.warnings)
   if (options.target === 'client') return { code: emitClient(ir, options.hot), stateful: ir.stateful, css, warnings }
   if (ir.stateful && !options.clientUrl) throw new Error(`[clarusjs] ${options.file}: clientUrl is required to compile a stateful component for the server`)
