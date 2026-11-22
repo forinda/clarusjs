@@ -321,8 +321,9 @@ export function viewsDeclaration(views: { file: string; source: string }[]): str
     const ns = `__cl_v${i}`
     const body: string[] = []
     for (const t of parsed.typeImports) {
-      // Relative paths are written from .clarusjs/, one level below the project root.
-      const from = t.from.startsWith('.') ? `../${joinPath(file.split('/').slice(0, -1).join('/'), t.from)}` : t.from
+      // Relative paths are written from .clarusjs/, one level below the project root; so is the built-in ~/ (src/), which
+      // needs no paths entry. Other aliases stay as written: the project's own paths resolve them.
+      const from = t.from.startsWith('.') ? `../${joinPath(file.split('/').slice(0, -1).join('/'), t.from)}` : t.from.startsWith('~/') ? `../src/${t.from.slice(2)}` : t.from
       const clause = t.clause.trim()
       if (clause.startsWith('{')) {
         for (const part of clause.slice(1, -1).split(',').map((p) => p.trim().replace(/^type\s+/, '')).filter(Boolean)) {
