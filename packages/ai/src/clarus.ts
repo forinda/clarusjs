@@ -13,7 +13,7 @@ function clarusDir(root: string): string | undefined {
   }
 }
 
-/** Run `clarusjs <args>` for the project at `root`. */
+/** Run `clarusjs <args>` with the clarusjs installed for `root` (the server's folder: never a folder from a tool call). */
 export function runClarus(args: string[], root: string): { status: number; stdout: string; stderr: string } {
   const dir = clarusDir(root)
   if (!dir) return { status: 1, stdout: '', stderr: `clarusjs isn't installed in ${root} (no node_modules/clarusjs): install it, or pass the project's folder as root.` }

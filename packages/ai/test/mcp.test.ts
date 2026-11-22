@@ -134,3 +134,19 @@ test('over stdio: newline-delimited JSON-RPC, as MCP clients start it (npx @clar
   child.kill()
   expect(lines).toMatchObject([{ id: 1, result: { serverInfo: { name: 'clarusjs' } } }, { id: 2, result: { tools: expect.any(Array) } }])
 }, 20_000)
+
+test('root stays inside the server\'s folder: no running a clarusjs planted elsewhere (.., absolute, or a symlink out)', async () => {
+  const inside = project({ 'src/pages/index.tscl': '<h1>Hi</h1>\n' })
+  const outside = project({ 'src/pages/index.tscl': '<h1>Hi</h1>\n' })
+  symlinkSync(outside, resolve(inside, 'linked'), 'junction')
+  const server = mcp(inside)
+  for (const root of ['..', outside, 'linked']) {
+    for (const tool of ['check', 'explain']) {
+      const r = await call(server, tool, { root })
+      expect(r.result.isError, `${tool} ${root}`).toBe(true)
+      expect(text(r)).toContain("outside the server's folder")
+    }
+  }
+  // A folder inside is fine.
+  expect(text(await call(server, 'check', { root: 'src' }))).not.toContain("outside the server's folder")
+}, 60_000)

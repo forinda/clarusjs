@@ -2,8 +2,9 @@
 // built route's parts run), compile (one component, without a project), docs_search (clarusjs.com).
 // MCP over stdio is newline-delimited JSON-RPC 2.0: written out here rather than with an SDK, so the package has no
 // dependencies. https://modelcontextprotocol.io/specification
+import { realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { resolve } from 'node:path'
+import { relative, resolve, isAbsolute } from 'node:path'
 import { compile, lint, ClarusError } from 'clarusjs/compiler'
 import { runClarus } from './clarus.ts'
 import { loadDocs, search } from './docs.ts'
@@ -15,6 +16,9 @@ type Message = { jsonrpc: '2.0'; id?: number | string; method: string; params?: 
 type Result = { content: { type: 'text'; text: string }[]; isError?: boolean }
 type Tool = { name: string; description: string; inputSchema: object; run(args: Record<string, unknown>): Result | Promise<Result> }
 
+/** A tool call the server won't run, said to the agent as a tool error. */
+class Refused extends Error {}
+
 const reply = (text: string, isError = false): Result => ({ content: [{ type: 'text', text }], ...(isError ? { isError } : {}) })
 const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined)
 
@@ -22,7 +26,16 @@ export type McpOptions = { cwd: string; fetch?: typeof fetch; cacheDir?: string 
 
 /** The server's message handler: a request's response, or undefined for a notification. */
 export function createMcp(options: McpOptions): { handle(message: Message): Promise<object | undefined> } {
-  const rootOf = (args: Record<string, unknown>) => resolve(options.cwd, str(args.root) ?? '.')
+  // `root` comes from the agent (so possibly from text it read): only a folder inside the server's own, by real path, so
+  // .. and symlinks can't lead out. The clarusjs that runs is always the server folder's.
+  const rootOf = (args: Record<string, unknown>): string => {
+    const base = realpathSync(options.cwd)
+    let root: string
+    try { root = realpathSync(resolve(base, str(args.root) ?? '.')) } catch { throw new Refused(`root ${String(args.root)} doesn't exist`) }
+    const rel = relative(base, root)
+    if (rel.startsWith('..') || isAbsolute(rel)) throw new Refused(`root ${String(args.root)} is outside the server's folder (${base})`)
+    return root
+  }
   const cacheDir = options.cacheDir ?? resolve(homedir(), '.cache', 'clarusjs')
   let docs: Promise<string> | undefined
 
@@ -30,9 +43,9 @@ export function createMcp(options: McpOptions): { handle(message: Message): Prom
     {
       name: 'check',
       description: 'Type-check and lint the clarusjs project (every .tscl file and page, and the .ts they use): errors and warnings at file:line:col, as `clarusjs check` reports them. Run it after editing.',
-      inputSchema: { type: 'object', properties: { root: { type: 'string', description: "The project's folder (default: the server's working folder)" } } },
+      inputSchema: { type: 'object', properties: { root: { type: 'string', description: "The project's folder, inside the server's folder (default: the server's folder)" } } },
       run(args) {
-        const run = runClarus(['check', rootOf(args), '--json'], rootOf(args))
+        const run = runClarus(['check', rootOf(args), '--json'], options.cwd)
         let diagnostics: { file: string; line: number; column: number; severity: string; code: string; message: string }[]
         try { diagnostics = JSON.parse(run.stdout) } catch { return reply(run.stderr || run.stdout || 'clarusjs check failed', true) }
         if (!diagnostics.length) return reply('No errors.')
@@ -44,9 +57,9 @@ export function createMcp(options: McpOptions): { handle(message: Message): Prom
     {
       name: 'explain',
       description: "Where each part of a built route runs: rendering (build, server, browser), data, islands with their size and attach mode, JavaScript and CSS. Needs `vite build` first. Without a route, lists the routes.",
-      inputSchema: { type: 'object', properties: { route: { type: 'string', description: 'A route such as /guide/intro' }, root: { type: 'string', description: "The project's folder" } } },
+      inputSchema: { type: 'object', properties: { route: { type: 'string', description: 'A route such as /guide/intro' }, root: { type: 'string', description: "The project's folder, inside the server's folder" } } },
       run(args) {
-        const run = runClarus(['explain', ...(str(args.route) ? [str(args.route)!] : []), '--root', rootOf(args)], rootOf(args))
+        const run = runClarus(['explain', ...(str(args.route) ? [str(args.route)!] : []), '--root', rootOf(args)], options.cwd)
         return run.status ? reply(run.stderr.trim() || run.stdout.trim(), true) : reply(run.stdout.trim())
       },
     },
@@ -114,7 +127,7 @@ export function createMcp(options: McpOptions): { handle(message: Message): Prom
         try {
           return ok(await tool.run((params.arguments ?? {}) as Record<string, unknown>))
         } catch (err) {
-          return ok(reply(`${tool.name} failed: ${(err as Error).message}`, true))
+          return ok(reply(err instanceof Refused ? err.message : `${tool.name} failed: ${(err as Error).message}`, true))
         }
       }
       return fail(-32601, `Method not found: ${method}`)
