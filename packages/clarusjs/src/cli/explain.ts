@@ -19,7 +19,7 @@ function describe(path: string, r: RouteInfo): string {
     return [
       path,
       ...row('Rendered', ['on every request, by dist/server/index.mjs']),
-      ...row('Data', [r.loader === 'request' ? 'load() runs on every request' : 'no loader']),
+      ...row('Data', [r.loader === 'request' ? `load() runs on every request${r.cookies ? ', and reads cookies' : ''}` : 'no loader']),
       ...row('Islands', ['decided per request']),
     ].join('\n')
   }

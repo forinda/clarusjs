@@ -62,6 +62,28 @@ describe('full-document pages', () => {
       island + '<script type="module" src="/assets/loader.js"></script>'))
   })
 
+  // #56
+  test('a BOM or a comment before the doctype: still one doctype', async () => {
+    for (const before of ['\uFEFF', '<!-- built by clarusjs -->\n', '\uFEFF<!-- a -->\n']) {
+      const html = before + '<!doctype html>' + doc('<title>T</title>', '<p>x</p>')
+      const out = await get(html)
+      expect(out.match(/<!doctype/gi), JSON.stringify(before)).toHaveLength(1)
+      expect(out).toBe(html.replace(/^\uFEFF/, '')) // the BOM is dropped: the response declares UTF-8
+    }
+  })
+
+  test('<html> inside an inline script is not a document: the page still gets the shell', async () => {
+    const out = await get('<script inline>document.write("<html><body></body></html>")</script><p>x</p>')
+    expect(out.startsWith('<!doctype html><html><head><meta charset="utf-8"><title>clarusjs</title></head><body>')).toBe(true)
+    expect(out).toContain('<body><script>document.write("<html><body></body></html>")</script><p>x</p></body></html>'.replace('<script>', '<script inline>'))
+  })
+
+  test('</body> or </head> inside a script: the loader and style still go in the real ones', async () => {
+    const out = await get(doc('<script inline>const s = "</head>"</script>', island + '<script inline>const t = "</body>"</script>'))
+    expect(out).toContain('const s = "</head>"</script><style>cl-island{display:contents}</style></head>')
+    expect(out).toContain('const t = "</body>"</script><script type="module" src="/assets/loader.js"></script></body>')
+  })
+
   test('uppercase tags are handled', async () => {
     const out = await get(`<HTML><HEAD></HEAD><BODY>${island}</BODY></HTML>`)
     expect(out).toContain('<style>cl-island{display:contents}</style></HEAD>')

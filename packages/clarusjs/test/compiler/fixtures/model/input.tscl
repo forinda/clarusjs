@@ -1,0 +1,14 @@
+<script>
+  let form = state({ name: '', plan: 'free', agree: false, size: 1 })
+</script>
+
+<form>
+  <input [(value)]="form.name" />
+  <input type="number" [(value)]="form.size" />
+  <select [(value)]="form.plan">
+    <option value="free">Free</option>
+    <option value="pro">Pro</option>
+  </select>
+  <input type="checkbox" [(checked)]="form.agree" />
+  <p>{{ form.name }} {{ form.plan }}</p>
+</form>

@@ -1,0 +1,8 @@
+@input count: number
+
+<script>
+  let n = state(0)
+</script>
+
+<p>{{ count.toUpperCase() }}</p>
+<button (click)="n.push(1)">{{ n }}</button>

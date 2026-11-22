@@ -1,0 +1,2 @@
+7:13 TS2339 Property 'toUpperCase' does not exist on type 'number'.
+8:20 TS2339 Property 'push' does not exist on type 'number'.

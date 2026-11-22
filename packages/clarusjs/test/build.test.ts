@@ -78,6 +78,44 @@ test('a page that throws while prerendering fails the build, naming the route', 
   await expect(build(resolve(import.meta.dirname, 'fixtures/site-broken'))).rejects.toThrow(/src\/pages\/index\.tscl: render failed: boom\nprerender \/: status 500/)
 }, 120_000)
 
+// #55
+test('the Vite manifest is not published with the site', () => {
+  expect(existsSync(resolve(client, '.vite'))).toBe(false)
+  expect(existsSync(resolve(root, 'dist/clarusjs-manifest.json'))).toBe(true) // clarusjs's own, outside client/
+})
+
+/** GET with the path sent exactly as written (fetch would normalize %2e%2e and the like). */
+async function rawGet(port: number, path: string): Promise<{ status: number; body: string }> {
+  const { request } = await import('node:http')
+  return new Promise((done, fail) => {
+    request({ host: 'localhost', port, path }, (res) => {
+      let body = ''
+      res.on('data', (c) => (body += c)).on('end', () => done({ status: res.statusCode ?? 0, body }))
+    }).on('error', fail).end()
+  })
+}
+
+test("vite preview: a malformed URL is a 400 (no stack); a path can't reach a sibling of the output folder", async () => {
+  const { preview } = await import('vite')
+  const sibling = resolve(root, 'dist/clientx') // a name that starts with the output folder's
+  mkdirSync(sibling, { recursive: true })
+  writeFileSync(resolve(sibling, 'index.html'), '<p>outside the site</p>')
+  const server = await preview({ root, configFile: resolve(root, 'vite.config.ts'), logLevel: 'silent', preview: { port: 0 } })
+  try {
+    const address = server.httpServer.address()
+    const port = typeof address === 'object' && address ? address.port : 0
+    const bad = await rawGet(port, '/%E0%A4%A')
+    expect(bad.status).toBe(400)
+    expect(bad.body).not.toMatch(/at .*\.(ts|js):\d+/)
+    const escaped = await rawGet(port, '/%2e%2e/clientx/')
+    expect(escaped.body).not.toContain('outside the site')
+    expect(escaped.status).toBe(404) // not some page of the site the path was mis-sliced into
+  } finally {
+    await server.close()
+    rmSync(sibling, { recursive: true, force: true })
+  }
+})
+
 test('vite preview serves the built pages at their routes, with or without a trailing slash', async () => {
   const { preview } = await import('vite')
   const server = await preview({ root, configFile: resolve(root, 'vite.config.ts'), logLevel: 'silent', preview: { port: 0 } })
@@ -160,7 +198,7 @@ test('#30: a dynamic route without entries() fails the build, naming the file', 
   cpSync(root, dir, { recursive: true, filter: (src) => !src.includes('/dist') })
   rmSync(resolve(dir, 'src/pages/users/[id].load.ts'))
   mkdirSync(resolve(dir, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'junction')
   const plugin = resolve(import.meta.dirname, '../src/vite/plugin.ts')
   // No bare 'vite' import: a temp folder outside the workspace has no node_modules to resolve it from.
   writeFileSync(resolve(dir, 'vite.config.ts'), `import clarusjs from ${JSON.stringify(plugin)}\nexport default { plugins: [clarusjs()] }\n`)

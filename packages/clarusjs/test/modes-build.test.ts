@@ -1,5 +1,5 @@
 // #29: a build with server routes: static routes are files, server routes render per request from dist/server.
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createBuilder, preview } from 'vite'
@@ -29,7 +29,7 @@ test('the built handler renders a server route per request, with load() reading 
 test('the manifest records each route\'s mode', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
   expect(manifest.routes['/'].mode).toBe('static')
-  expect(manifest.routes['/account/[id]']).toEqual({ mode: 'server', html: null, loader: 'request', islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] })
+  expect(manifest.routes['/account/[id]']).toEqual({ mode: 'server', html: null, loader: 'request', cookies: true, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] })
 })
 
 test('vite preview serves server routes through the built handler', async () => {
@@ -44,7 +44,7 @@ test('vite preview serves server routes through the built handler', async () => 
     // A static dynamic route only has the pages its entries() listed, as on a static host.
     expect(unscoped(await (await fetch(`http://localhost:${port}/blog/hello`)).text())).toContain('<h1>Post hello</h1>')
     expect((await fetch(`http://localhost:${port}/blog/other`)).status).toBe(404)
-    expect((await fetch(`http://localhost:${port}/account/%E0%A4%A`)).status).toBe(404) // malformed escape: not a crash
+    expect((await fetch(`http://localhost:${port}/account/%E0%A4%A`)).status).toBe(400) // malformed escape: a 400, not a crash (#55)
   } finally {
     await server.close()
   }
@@ -55,7 +55,8 @@ test('#32: adapter netlify writes a function that serves the server routes with 
   expect(existsSync(file)).toBe(true)
   const fn = await import(`${pathToFileURL(file).href}?t=${Date.now()}`)
   // Static routes stay files: Netlify serves them first, and only the server routes reach the function.
-  expect(fn.config).toEqual({ path: ['/account/:id', '/account/:id/', '/account/:id/index.frag.html'], preferStatic: true })
+  // Endpoints (#95) are server routes too. (Their index.frag.html path is a 404: only pages have fragments.)
+  expect(fn.config).toEqual({ path: ['/account/:id', '/account/:id/', '/account/:id/index.frag.html', '/api/hello', '/api/hello/', '/api/hello/index.frag.html'], preferStatic: true })
   const res = await fn.default(new Request('https://site.example/account/3', { headers: { 'user-agent': 'netlify/1' } }))
   expect(res.status).toBe(200)
   expect(unscoped(await res.text())).toContain('<p>netlify/1</p>')
@@ -132,7 +133,7 @@ test('review: client routes under a base list their browser paths', async () => 
   const dir = mkdtempSync(resolve(tmpdir(), 'clarusjs-client-base-'))
   cpSync(resolve(root, 'src'), resolve(dir, 'src'), { recursive: true })
   mkdirSync(resolve(dir, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'junction')
   const config = { root: dir, configFile: false as const, base: '/docs/', logLevel: 'silent' as const, plugins: [clarusjs({ routes: { '/account/*': 'server', '/app/*': 'client' } })] }
   await (await createBuilder(config)).buildApp()
   const shell = readFileSync(resolve(dir, 'dist/client/app/one/index.html'), 'utf8')
@@ -183,4 +184,50 @@ test('#36: with fragments on, static pages load the navigation script, which sta
 test('#307: collapseWhitespace: false keeps template text as written at build', () => {
   const html = readFileSync(resolve(root, 'dist/client/spacing/index.html'), 'utf8')
   expect(html).toContain('<p>\n        Indented    text\n    </p>')
+})
+
+test('#98: compress writes .br and .gz next to the text files of dist/client, each the same content', async () => {
+  const { brotliDecompressSync, gunzipSync } = await import('node:zlib')
+  const { readdirSync } = await import('node:fs')
+  const client = resolve(root, 'dist/client')
+  const html = readFileSync(resolve(client, 'index.html'))
+  expect(gunzipSync(readFileSync(resolve(client, 'index.html.gz'))).equals(html)).toBe(true)
+  expect(brotliDecompressSync(readFileSync(resolve(client, 'index.html.br'))).equals(html)).toBe(true)
+  const files = readdirSync(client, { recursive: true }) as string[]
+  const js = files.find((f) => f.endsWith('.js'))!
+  expect(files).toContain(js + '.br')
+  // Only text files, and only when compressing makes them smaller; never a compressed file of a compressed file.
+  expect(files.some((f) => /\.(br|gz)\.(br|gz)$/.test(f))).toBe(false)
+  for (const f of files.filter((f) => /\.(br|gz)$/.test(f))) {
+    expect(f).toMatch(/\.(html|js|css|svg|json|xml)\.(br|gz)$/)
+    expect(statSync(resolve(client, f)).size).toBeLessThan(statSync(resolve(client, f.replace(/\.(br|gz)$/, ''))).size)
+  }
+})
+
+test('#93: src/server.ts handle() resolves the session for every load(); Set-Cookie reaches the answer', async () => {
+  const { default: app } = await import(pathToFileURL(resolve(root, 'dist/server/index.mjs')).href + '?t=' + Date.now())
+  const signedIn = await app.fetch(new Request('https://x.test/account/1', { headers: { cookie: 'session=42' } }))
+  expect(unscoped(await signedIn.text())).toContain('<p id="user">user 42</p>')
+  expect(signedIn.headers.get('set-cookie')).toBe('last-account=seen; Path=/; HttpOnly; SameSite=Lax; Secure')
+  const anonymous = await app.fetch(new Request('https://x.test/account/1'))
+  expect(unscoped(await anonymous.text())).toContain('<p id="user">nobody</p>')
+})
+
+test('#94: the manifest and clarusjs explain say which server routes read cookies', async () => {
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  expect(manifest.routes['/account/[id]'].cookies).toBe(true)
+  const { explain } = await import('../src/cli/explain.ts')
+  expect(explain({ root, route: '/account/[id]' }).text).toContain('load() runs on every request, and reads cookies')
+})
+
+test('#95: an endpoint is served by the built handler (CSRF-checked) and listed as a server route', async () => {
+  const { default: app } = await import(pathToFileURL(resolve(root, 'dist/server/index.mjs')).href + '?e=' + Date.now())
+  const get = await app.fetch(new Request('https://x.test/api/hello', { headers: { cookie: 'session=5' } }))
+  expect(await get.json()).toEqual({ hello: 'user 5' })
+  const post = await app.fetch(new Request('https://x.test/api/hello', { method: 'POST', headers: { origin: 'https://x.test', 'content-type': 'application/json' }, body: '{"a":1}' }))
+  expect(post.status).toBe(201)
+  expect((await app.fetch(new Request('https://x.test/api/hello', { method: 'POST', headers: { origin: 'https://evil.test' }, body: '{}' }))).status).toBe(403)
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  expect(manifest.routes['/api/hello'].mode).toBe('server')
+  expect(existsSync(resolve(root, 'dist/client/api/hello/index.html'))).toBe(false) // not prerendered
 })

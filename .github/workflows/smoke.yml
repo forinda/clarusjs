@@ -1,0 +1,28 @@
+# Release smoke test (#227): the packages as published. Packs clarusjs, @clarusjs/content and @clarusjs/theme-docs,
+# installs the tarballs (not the workspace) into a scratch site, and runs clarusjs check, vite build and vite preview
+# on it. Fails when an export, a file in `files` or a dependency is missing from a published package.
+name: Smoke
+
+on:
+  pull_request:
+    paths: ['packages/clarusjs/**', 'packages/content/**', 'packages/theme-docs/**', 'scripts/smoke.mjs', 'scripts/build-package.mjs', 'pnpm-lock.yaml']
+  push:
+    branches: [main]
+    paths: ['packages/clarusjs/**', 'packages/content/**', 'packages/theme-docs/**', 'scripts/smoke.mjs', 'scripts/build-package.mjs', 'pnpm-lock.yaml']
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Published packages build a site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm smoke

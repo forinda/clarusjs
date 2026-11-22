@@ -7,11 +7,11 @@
 @input built: any = ''
 
 <docs
-  [title]="'Server playground'"
+  [title]="'Server demo'"
   [path]="'/playground'"
   [description]="'A page this site renders on every request, on a Netlify Function, from the same handler that builds the static pages.'"
 >
-  <h1>Server playground</h1>
+  <h1>Server demo</h1>
   <p class="lead">
     Every other page on this site is a file built in advance. This one is rendered on the server each time you load it.
   </p>

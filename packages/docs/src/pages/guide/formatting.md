@@ -4,7 +4,6 @@ group: "Tooling"
 order: 3
 description: "Format .tscl components with Prettier and @clarusjs/prettier-plugin: templates, <script> and <style>, from the command line and in your editor."
 ---
-@import pm from '../../components/pm.tscl'
 
 # Formatting
 

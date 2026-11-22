@@ -6,7 +6,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? 'github' : 'list',
-  use: { baseURL: 'http://localhost:4321' },
+  // A failing test keeps its trace in test-results/ (CI uploads that folder): open it with `npx playwright show-trace`.
+  use: { baseURL: 'http://localhost:4321', trace: 'retain-on-failure' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'pnpm build && pnpm preview --port 4321 --strictPort',

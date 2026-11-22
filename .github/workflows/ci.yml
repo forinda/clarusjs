@@ -32,6 +32,21 @@ jobs:
       # The VS Code extension packages (its grammar and snippet tests ran with pnpm test).
       - run: pnpm --filter clarusjs-vscode package
 
+  windows:
+    # #54: paths with backslashes and drive letters (island entry names, dev URLs, /@fs/). The framework's own tests.
+    name: clarusjs on Windows
+    runs-on: windows-latest
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter clarusjs test
+
   docs:
     name: Docs site (build + browser tests)
     runs-on: ubuntu-latest

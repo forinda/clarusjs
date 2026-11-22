@@ -12,7 +12,7 @@ test('dev server: unknown addresses get the 404 page with status 404, as static 
   w('src/pages/index.tscl', '<h1>Home</h1>')
   w('src/pages/404.tscl', '<html><head><title>Not found</title></head><body><h1>Lost</h1></body></html>')
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const server = await createServer({ root, configFile: false, logLevel: 'silent', server: { port: 0 }, plugins: [clarusjs()] })
   await server.listen()
   try {

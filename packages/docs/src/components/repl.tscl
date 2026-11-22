@@ -1,0 +1,247 @@
+{{--
+  The playground (#243, #230): a .tscl editor (a textarea over its highlighting), compiled in a Web Worker on each edit
+  (typing stays smooth), and a sandboxed preview frame that renders and runs the result. The visitor's code only ever
+  runs in a frame, a fresh one per run (so a run's timers and listeners end with it), and its loops are guarded (the
+  frame shares this page's thread). Tabs show what the compiler made: the server and client modules and the HTML.
+--}}
+
+<script>
+  import { browser, onDispose } from 'clarusjs/runtime'
+  import runtime from 'virtual:repl-runtime'
+  import CompileWorker from '../repl/compile.worker.ts?worker'
+  import { frameDoc } from '../repl/frame.ts'
+  import { highlightTscl } from '../repl/highlight.ts'
+  import { decode, encode } from '../repl/share.ts'
+  import { starters } from '../repl/starters.ts'
+
+  const TABS = [
+    { key: 'preview', label: 'Preview' },
+    { key: 'server', label: 'Server code' },
+    { key: 'client', label: 'Client code' },
+    { key: 'html', label: 'HTML' },
+  ]
+
+  let errors = state([])
+  let status = state('')
+  let tab = state('preview')
+  let output = state({ server: '', client: '', html: '' })
+  const code = derived(() =>
+    tab === 'server'
+      ? output.server
+      : tab === 'client'
+        ? output.client || 'No client code: this component ships no JavaScript.'
+        : output.html,
+  )
+
+  // Set in the browser below.
+  let setSource = (source) => {}
+  let currentSource = () => ''
+  let loaded = '' // the source last loaded (an example, a shared link): replacing anything else asks first
+
+  function pick(select) {
+    const starter = starters.find((s) => s.name === select.value)
+    select.value = '' // back to the prompt, so the same example can be picked again
+    if (!starter) return
+    if (currentSource() !== loaded && !confirm(`Replace your code with the ${starter.name} example?`)) return
+    history.replaceState(null, '', location.pathname)
+    loaded = starter.source
+    setSource(starter.source)
+  }
+
+  async function share() {
+    history.replaceState(null, '', '#' + (await encode(currentSource())))
+    status = 'The link to this code is in the address bar.'
+  }
+
+  // The tabs pattern: arrows (and Home/End) move between tabs, selecting as they go.
+  function arrows(event) {
+    const at = TABS.findIndex((t) => t.key === tab)
+    const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: TABS.length - 1 }[event.key]
+    if (to === undefined) return
+    event.preventDefault()
+    tab = TABS[(to + TABS.length) % TABS.length].key
+    document.getElementById('repl-tab-' + tab)?.focus()
+  }
+
+  if (browser) {
+    const area = document.getElementById('repl-code')
+    const shown = document.getElementById('repl-highlight')
+    const box = document.getElementById('repl-preview')
+    if (!(area instanceof HTMLTextAreaElement) || !shown || !box) throw new Error('playground: its markup is missing')
+
+    const worker = new CompileWorker()
+    let seq = 0 // each run's number; only the latest one counts
+    let visible = { frame: document.createElement('iframe'), id: 0 } // the preview on screen
+    let pending = { frame: document.createElement('iframe'), id: 0 } // a run still rendering, shown once it replies
+    let timer = setTimeout(() => {})
+    let escaped = false // Esc pressed: the next Tab leaves the editor instead of indenting
+    let typed = false // the visitor has typed: the initial source (decoded asynchronously) mustn't replace that
+
+    const sync = () => {
+      shown.scrollTop = area.scrollTop
+      shown.scrollLeft = area.scrollLeft
+    }
+    const paint = () => {
+      shown.innerHTML = highlightTscl(area.value)
+      sync()
+    }
+
+    const run = () => worker.postMessage({ id: ++seq, source: area.value })
+
+    worker.addEventListener('message', (event) => {
+      const reply = event.data
+      if (reply.id !== seq) return // a newer edit is on its way
+      // A compile error keeps the last preview and output.
+      if (reply.error) {
+        errors = [reply.error]
+        return
+      }
+      output = { server: reply.server, client: reply.client ?? '', html: output.html }
+      // A fresh frame, hidden until it has rendered; a run still rendering is dropped for this one.
+      pending.frame.remove()
+      const frame = document.createElement('iframe')
+      frame.setAttribute('sandbox', 'allow-scripts')
+      frame.title = 'Component preview'
+      frame.hidden = true
+      frame.addEventListener(
+        'load',
+        () =>
+          frame.contentWindow?.postMessage(
+            { id: reply.id, server: reply.preparedServer, client: reply.preparedClient },
+            '*',
+          ),
+        { once: true },
+      )
+      frame.srcdoc = frameDoc(runtime)
+      pending = { frame, id: reply.id }
+      box.append(frame)
+    })
+
+    const onMessage = (event) => {
+      const data = event.data
+      if (event.source === pending.frame.contentWindow && data?.id === pending.id) {
+        // The run has rendered (or failed): it becomes the preview.
+        visible.frame.remove()
+        visible = pending
+        visible.frame.hidden = false
+        pending = { frame: document.createElement('iframe'), id: 0 }
+        errors = data.error ? [data.error] : []
+        output = { ...output, html: data.html ?? '' }
+      } else if (event.source === visible.frame.contentWindow && data?.id === visible.id && data.error) {
+        errors = [data.error] // thrown later: an event handler, a timer
+      }
+    }
+
+    setSource = (source) => {
+      area.value = source
+      paint()
+      run()
+    }
+    currentSource = () => area.value
+
+    area.addEventListener('input', () => {
+      typed = true
+      paint()
+      clearTimeout(timer)
+      timer = setTimeout(run, 250)
+    })
+    area.addEventListener('scroll', sync)
+    area.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        escaped = true
+        return
+      }
+      if (event.key === 'Tab' && !escaped && !event.shiftKey) {
+        event.preventDefault()
+        // insertText keeps the browser's undo history; setRangeText where it isn't supported.
+        if (!document.execCommand('insertText', false, '  ')) {
+          area.setRangeText('  ', area.selectionStart, area.selectionEnd, 'end')
+          area.dispatchEvent(new Event('input'))
+        }
+      }
+      escaped = false
+    })
+    addEventListener('message', onMessage)
+    onDispose(() => {
+      removeEventListener('message', onMessage)
+      clearTimeout(timer)
+      worker.terminate()
+    })
+
+    // Text typed before this ran (a slow load) is kept; otherwise the shared code, or the first example.
+    if (area.value) {
+      typed = true
+      setSource(area.value)
+    }
+    decode(location.hash.slice(1)).then((shared) => {
+      if (!typed) {
+        loaded = shared ?? starters[0].source
+        setSource(loaded)
+      }
+      area.closest('.repl')?.setAttribute('data-ready', '')
+    })
+  }
+</script>
+
+<div class="repl">
+  <div class="repl-bar">
+    <label>
+      Example
+      <select (change)="pick($event.target)">
+        <option value="">Choose an example…</option>
+        @for (s of starters; track s.name) {
+          <option [value]="s.name">{{ s.name }}</option>
+        }
+      </select>
+    </label>
+    <button type="button" (click)="share()">Share</button>
+    <p class="repl-status" role="status">{{ status }}</p>
+  </div>
+  <div class="repl-panes">
+    <div class="repl-editor">
+      <pre id="repl-highlight" aria-hidden="true"></pre>
+      <textarea
+        id="repl-code"
+        aria-label="Component source"
+        aria-describedby="repl-keys"
+        spellcheck="false"
+        autocapitalize="off"
+        autocomplete="off"
+      ></textarea>
+    </div>
+    <div class="repl-output">
+      <div class="repl-tabs" role="tablist" aria-label="Output" (keydown)="arrows($event)">
+        @for (t of TABS; track t.key) {
+          <button
+            type="button"
+            role="tab"
+            [id]="'repl-tab-' + t.key"
+            [aria-selected]="tab === t.key"
+            [aria-controls]="t.key === 'preview' ? 'repl-panel-preview' : 'repl-panel-code'"
+            [tabindex]="tab === t.key ? 0 : -1"
+            (click)="tab = t.key"
+          >
+            {{ t.label }}
+          </button>
+        }
+      </div>
+      <div id="repl-panel-preview" role="tabpanel" aria-labelledby="repl-tab-preview" [hidden]="tab !== 'preview'">
+        <div id="repl-preview" class="repl-preview"></div>
+      </div>
+      <div id="repl-panel-code" role="tabpanel" [aria-labelledby]="'repl-tab-' + tab" [hidden]="tab === 'preview'">
+        <pre class="repl-out" tabindex="0"><code>{{ code }}</code></pre>
+      </div>
+    </div>
+  </div>
+  <div aria-live="polite">
+    @if (errors.length) {
+      <ul class="repl-errors">
+        @for (e of errors; track $index) {
+          <li>{{ e }}</li>
+        }
+      </ul>
+    }
+  </div>
+  <p id="repl-keys" class="repl-help">Tab indents. To leave the editor with the keyboard, press Esc, then Tab.</p>
+  <noscript><p>The playground needs JavaScript: it compiles your component in the page.</p></noscript>
+</div>
