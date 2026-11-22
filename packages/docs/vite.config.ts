@@ -10,6 +10,8 @@ export default defineConfig({
   plugins: [
     // The sidebar from src/pages, search, and llms.txt / llms-full.txt for AI tools (llmstxt.org).
     themeDocs({
+      // This site's footer, in place of the theme's (a part replaced: see the Docs theme guide).
+      components: { footer: '/src/theme/footer.tscl' },
       llms: {
         title: 'clarusjs',
         summary: 'A compiler for .tscl components: HTML rendered on the server, and small islands that attach to it in the browser, with Vite.',
