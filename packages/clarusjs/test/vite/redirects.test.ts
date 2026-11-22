@@ -11,7 +11,7 @@ function site(pages: Record<string, string>) {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-redirects-'))
   for (const [path, text] of Object.entries(pages)) { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   return root
 }
 const quiet = { info() {}, warn() {}, warnOnce() {}, error() {}, clearScreen() {}, hasErrorLogged: () => false, hasWarned: false }

@@ -307,8 +307,8 @@ test('the route manifest matches what the browser loads', async ({ page }) => {
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
   // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour), 404 and 500.
   const routes = Object.keys(manifest.routes)
-  // /api/demo-stats is the Fetching guide's JSON endpoint (a server route), not a page in the sidebar.
-  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500' || r === '/api/demo-stats' || r === '/api/demo-records'
+  // /api/demo-stats and /api/demo-records are the Fetching guide's endpoints (server routes), not sidebar pages.
+  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500' || r.startsWith('/api/')
   expect(routes.filter((r) => !generated(r)).sort()).toEqual(pages.map((p) => p.path).sort())
   for (const path of ['/', '/guide/state']) {
     const route = manifest.routes[path]
@@ -447,8 +447,8 @@ test('the generated Netlify function serves only the server routes', async () =>
   const { readFileSync } = await import('node:fs')
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
-  // The page, and its fragment for fragment navigation.
-  expect(fn).toContain('export const config = {"path":["/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
+  // The pages and endpoints, each with its fragment path (endpoints have none: a 404).
+  expect(fn).toContain('export const config = {"path":["/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -1562,7 +1562,7 @@ test('#258 fetching: cards batch into one request, the feed waits on the user an
 
 test('#287 caching: seen pages make no request, invalidate refetches what\'s shown', async ({ page }) => {
   const asked: string[] = [] // the page param of each list request (renames are left out)
-  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-records' && !u.searchParams.has('rename')) asked.push(u.searchParams.get('page')!) })
+  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-records' && r.method() === 'GET') asked.push(u.searchParams.get('page')!) })
   await page.goto('/guide/fetching#caching')
   const list = page.locator('#record-list')
   await expect(list.locator('li').first()).toHaveText('Record 1')
@@ -1669,4 +1669,58 @@ test('#145: Markdown pages use components by tag, without importing them', async
   await expect(page.locator('cl-island[c="statCard"], cl-island[c="stat-card"]').first()).toBeAttached()
   await page.goto('/guide/getting-started')
   await expect(page.locator('.pm-tabs').first()).toBeVisible() // the package-manager tabs, imported by their tag
+})
+
+test('#50: llms.txt lists the docs for AI tools, and llms-full.txt has their text', async ({ request }) => {
+  const index = await (await request.get('/llms.txt')).text()
+  expect(index.startsWith('# clarusjs\n\n> A compiler for .tscl components')).toBe(true)
+  expect(index).toMatch(/^## Introduction$/m)
+  expect(index).toContain('- [Getting started](https://clarusjs.com/guide/getting-started): Install clarusjs, configure Vite and write your first page.')
+  expect(index).not.toContain('/404')
+  const full = await (await request.get('/llms-full.txt')).text()
+  expect(full).toContain('Source: https://clarusjs.com/guide/getting-started\n\n# Getting started')
+  expect(full).not.toContain('description: "Install clarusjs, configure Vite') // no frontmatter
+  expect(full).toContain('Source: https://clarusjs.com/guide/explained') // a template page, as its text
+})
+
+test('#93: the server demo remembers your name in a cookie, set by its load()', async ({ page, context }) => {
+  await page.goto('/playground?name=Ada')
+  await expect(page.locator('#greeting')).toHaveText('Hello, Ada!')
+  const cookie = (await context.cookies()).find((c) => c.name === 'playground-name')
+  expect(cookie?.value).toBe('Ada')
+  expect(cookie?.httpOnly).toBe(true)
+  expect(cookie?.sameSite).toBe('Lax')
+  await page.goto('/playground')
+  await expect(page.locator('#greeting')).toHaveText('Hello, Ada!')
+  // A blank name forgets it.
+  await page.goto('/playground?name=%20')
+  await expect(page.locator('#greeting')).toContainText('Type a name')
+  expect((await context.cookies()).some((c) => c.name === 'playground-name')).toBe(false)
+})
+
+test('#95: the demo endpoints answer reads and same-site writes, and refuse a cross-site write', async ({ request }) => {
+  const stats = await request.get('/api/demo-stats?keys=visits')
+  expect(await stats.json()).toEqual({ visits: 12400 })
+  const base = new URL(test.info().project.use.baseURL!).origin
+  const ok = await request.post('/api/demo-records', { headers: { origin: base }, data: { rename: 3 } })
+  expect(await ok.json()).toEqual({ ok: true })
+  const evil = await request.post('/api/demo-records', { headers: { origin: 'https://evil.example' }, data: { rename: 4 } })
+  expect(evil.status()).toBe(403)
+  expect((await request.put('/api/demo-records', { headers: { origin: base } })).status()).toBe(405)
+})
+
+test('#96: the auth guide signs in through an endpoint; the HttpOnly cookie keeps you signed in; sign out', async ({ page, context }) => {
+  await page.goto('/guide/auth')
+  const demo = page.locator('.sign-in-demo')
+  await demo.getByLabel('Name').fill('Grace')
+  await demo.getByRole('button', { name: 'Sign in' }).click()
+  await expect(demo.locator('.signed-in')).toHaveText('Signed in as Grace.')
+  const cookie = (await context.cookies()).find((c) => c.name === 'demo-user')
+  expect(cookie?.httpOnly).toBe(true)
+  expect(await page.evaluate(() => document.cookie)).not.toContain('demo-user') // scripts can't read it
+  await page.reload()
+  await expect(demo.locator('.signed-in')).toHaveText('Signed in as Grace.')
+  await demo.getByRole('button', { name: 'Sign out' }).click()
+  await expect(demo.getByRole('button', { name: 'Sign in' })).toBeVisible()
+  expect((await context.cookies()).some((c) => c.name === 'demo-user')).toBe(false)
 })
