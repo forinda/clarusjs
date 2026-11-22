@@ -287,6 +287,9 @@ importers:
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
+      acorn:
+        specifier: ^8.19.0
+        version: 8.19.0
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

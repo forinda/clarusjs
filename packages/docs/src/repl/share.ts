@@ -14,11 +14,32 @@ export async function encode(source: string): Promise<string> {
   return s
 }
 
+// A shared component is small: a longer hash, or one inflating past this, isn't one (a decompression bomb, say).
+const MAX_HASH = 200_000
+const MAX_SOURCE = 256 * 1024
+
 /** The source a hash holds, or undefined for anything it can't read. */
 export async function decode(hash: string): Promise<string | undefined> {
-  if (!hash || !/^[A-Za-z0-9_-]+$/.test(hash)) return undefined
+  if (!hash || hash.length > MAX_HASH || !/^[A-Za-z0-9_-]+$/.test(hash)) return undefined
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(await pipe(unb64url(hash), new DecompressionStream('deflate-raw')))
+    // Read the inflated bytes with a budget, stopping as soon as it's exceeded.
+    const reader = new Blob([unb64url(hash) as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader()
+    const chunks: Uint8Array[] = []
+    let size = 0
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.length
+      if (size > MAX_SOURCE) {
+        await reader.cancel()
+        return undefined
+      }
+      chunks.push(value)
+    }
+    const bytes = new Uint8Array(size)
+    let at = 0
+    for (const c of chunks) { bytes.set(c, at); at += c.length }
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
   } catch {
     return undefined
   }

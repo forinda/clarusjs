@@ -1,7 +1,7 @@
 // #243: the playground's pure building blocks.
 import { describe, expect, test } from 'vitest'
 import { highlightTscl } from '../src/repl/highlight.ts'
-import { rewriteImports } from '../src/repl/rewrite.ts'
+import { prepare } from '../src/repl/prepare.ts'
 import { decode, encode } from '../src/repl/share.ts'
 
 const text = (html: string) => html.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&')
@@ -24,6 +24,17 @@ describe('highlightTscl', () => {
     expect(text(highlightTscl(sample))).toBe(sample + '\n')
     expect(text(highlightTscl(''))).toBe('\n')
     expect(text(highlightTscl('a\n\n\t b\n'))).toBe('a\n\n\t b\n\n')
+  })
+
+  test('time grows linearly with a long line (it was quadratic: 4x the line took 16x the time)', () => {
+    const time = (n: number) => {
+      const line = '<p class="a">' + 'word '.repeat(n) + '</p>'
+      highlightTscl(line) // warm up
+      const t = performance.now()
+      for (let i = 0; i < 3; i++) highlightTscl(line)
+      return performance.now() - t
+    }
+    expect(time(40_000) / time(10_000)).toBeLessThan(8)
   })
 
   test('escapes <, & and quotes', () => {
@@ -49,17 +60,44 @@ describe('highlightTscl', () => {
   })
 })
 
-describe('rewriteImports', () => {
+describe('prepare (the page, before posting to the frame)', () => {
+  const run = async (code: string) => import('data:text/javascript;base64,' + Buffer.from(prepare(code)).toString('base64'))
+
   test('the server and client imports compile() prints, aliases kept', () => {
     const server = "import { escape as __cl_escape, island as __cl_island } from 'clarusjs/runtime/server'\nexport function render() {}"
-    expect(rewriteImports(server)).toBe("const { escape: __cl_escape, island: __cl_island } = globalThis.__cl_repl['clarusjs/runtime/server']\nexport function render() {}")
+    expect(prepare(server)).toBe("const { escape: __cl_escape, island: __cl_island } = globalThis.__cl_repl['clarusjs/runtime/server']\nexport function render() {}")
     const client = "import { state, holes as __cl_holes } from 'clarusjs/runtime'\nexport function attach() {}"
-    expect(rewriteImports(client)).toBe("const { state, holes: __cl_holes } = globalThis.__cl_repl['clarusjs/runtime']\nexport function attach() {}")
+    expect(prepare(client)).toBe("const { state, holes: __cl_holes } = globalThis.__cl_repl['clarusjs/runtime']\nexport function attach() {}")
   })
 
-  test('other imports are refused', () => {
-    expect(() => rewriteImports("import x from 'lodash'\n")).toThrow('the playground supports imports from clarusjs/runtime only')
-    expect(() => rewriteImports("import { resource } from 'clarusjs/fetch'\n")).toThrow('the playground supports imports from clarusjs/runtime only')
+  test('double quotes and multi-line imports (copied as written from the script)', () => {
+    expect(prepare('import { onDispose } from "clarusjs/runtime"\n')).toBe("const { onDispose } = globalThis.__cl_repl['clarusjs/runtime']\n")
+    expect(prepare("import {\n  onDispose,\n  effect as fx,\n} from 'clarusjs/runtime'\n")).toBe("const { onDispose, effect: fx } = globalThis.__cl_repl['clarusjs/runtime']\n")
+  })
+
+  test('a line inside a string that looks like an import is left alone', () => {
+    const code = "export const s = `\nimport { x } from 'lodash'\n`\n"
+    expect(prepare(code)).toBe(code)
+  })
+
+  test('other imports are refused, naming the module', () => {
+    expect(() => prepare("import x from 'lodash'\n")).toThrow("the playground supports imports from clarusjs/runtime only, not 'lodash'")
+    expect(() => prepare("import { resource } from 'clarusjs/fetch'\n")).toThrow("not 'clarusjs/fetch'")
+    expect(() => prepare("import * as r from 'clarusjs/runtime'\n")).toThrow('import { … } from')
+  })
+
+  test('a loop that runs too long throws instead of hanging the page', async () => {
+    const mod = await run('export function spin() { let i = 0; while (true) { i++ } }\nexport function bare() { for (;;) void 0 }\nexport function doer() { do {} while (true) }')
+    const t = Date.now()
+    expect(() => mod.spin()).toThrow(/a loop ran for more than 1 second/)
+    expect(() => mod.bare()).toThrow(/a loop ran for more than 1 second/)
+    expect(() => mod.doer()).toThrow(/a loop ran for more than 1 second/)
+    expect(Date.now() - t).toBeLessThan(5000)
+  })
+
+  test('guarded loops still work: labels, continue, break, for-of, nested', async () => {
+    const mod = await run('export function f() { let n = 0\n outer: for (let i = 0; i < 3; i++) { for (const j of [1, 2, 3]) { if (j === 2) continue outer; n += j } }\n while (n < 10) n++\n if (n) for (let k = 0; k < 2; k++) n++\n return n }')
+    expect(mod.f()).toBe(12)
   })
 })
 
@@ -78,6 +116,12 @@ describe('share links', () => {
     expect(await decode(await encode(random))).toBe(random)
   })
 
+  test('a hash that inflates past 256 KB, or is very long, decodes to undefined (no memory blow-up)', async () => {
+    expect(await decode(await encode('x'.repeat(300_000)))).toBeUndefined()
+    expect(await decode('A'.repeat(200_001))).toBeUndefined()
+    expect(await decode(await encode('x'.repeat(200_000)))).toHaveLength(200_000)
+  })
+
   test('anything unreadable decodes to undefined', async () => {
     expect(await decode('')).toBeUndefined()
     expect(await decode('garbage!!')).toBeUndefined()
@@ -86,14 +130,16 @@ describe('share links', () => {
 })
 
 describe('frameDoc', () => {
-  test('a whole document, the runtime in one module script, </script> in it escaped', async () => {
+  test('a whole document, the runtime as one module script from a data: URL', async () => {
     const { frameDoc } = await import('../src/repl/frame.ts')
     const doc = frameDoc('const s = "</script><p>x</p>"; console.log(s)')
     expect(doc.startsWith('<!doctype html>')).toBe(true)
     expect(doc).toContain('<meta charset="utf-8">')
     expect(doc).toContain('<div id="out"></div>')
-    expect(doc.match(/<\/script>/g)).toHaveLength(1) // only the one closing its own script
-    expect(doc).toContain('const s = "<\\/script><p>x</p>"')
+    // The runtime isn't inlined (no HTML parsing of it at all): it's the module script's data: URL.
+    expect(doc).not.toContain('</script><p>x</p>')
+    const src = /<script type="module" src="data:text\/javascript;base64,([^"]+)"><\/script>/.exec(doc)![1]!
+    expect(new TextDecoder().decode(Uint8Array.from(atob(src), (c) => c.charCodeAt(0)))).toBe('const s = "</script><p>x</p>"; console.log(s)')
   })
 })
 

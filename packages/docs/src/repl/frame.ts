@@ -1,7 +1,7 @@
 // The playground's preview: a whole document for a sandboxed <iframe srcdoc>. Its one module script is the runtime
 // (runtime-entry.ts, bundled); the page then posts it compiled code. Opaque origin: no access to the site's storage.
 
-/** The preview document, `runtime` inlined (a `</script` in it can't end the script early). */
+/** The preview document, `runtime` its module script as a data: URL (never parsed as HTML, so no escaping to get wrong). */
 export function frameDoc(runtime: string): string {
   return `<!doctype html>
 <html lang="en">
@@ -16,8 +16,16 @@ export function frameDoc(runtime: string): string {
 </head>
 <body>
 <div id="out"></div>
-<script type="module">${runtime.replace(/<\/script/gi, '<\\/script')}</script>
+<script type="module" src="data:text/javascript;base64,${base64(runtime)}"></script>
 </body>
 </html>
 `
+}
+
+/** UTF-8 base64 (btoa takes Latin-1 only). */
+function base64(text: string): string {
+  const bytes = new TextEncoder().encode(text)
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(s)
 }

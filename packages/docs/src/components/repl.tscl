@@ -1,6 +1,7 @@
 {{--
   The playground (#243): a .tscl editor (a textarea over its highlighting) compiled in the page on each edit, and a
-  sandboxed preview frame that renders and runs the result. The visitor's code only ever runs in the frame.
+  sandboxed preview frame that renders and runs the result. The visitor's code only ever runs in a frame, a fresh one
+  per run (so a run's timers and listeners end with it), and its loops are guarded (the frame shares this page's thread).
 --}}
 
 <script>
@@ -9,22 +10,25 @@
   import runtime from 'virtual:repl-runtime'
   import { frameDoc } from '../repl/frame.ts'
   import { highlightTscl } from '../repl/highlight.ts'
+  import { prepare } from '../repl/prepare.ts'
   import { decode, encode } from '../repl/share.ts'
   import { starters } from '../repl/starters.ts'
 
   let errors = state([])
   let status = state('')
-  let picked = state(starters[0].name)
 
   // Set in the browser below.
   let setSource = (source) => {}
   let currentSource = () => ''
+  let loaded = '' // the source last loaded (an example, a shared link): replacing anything else asks first
 
-  function pick(name) {
-    const starter = starters.find((s) => s.name === name)
+  function pick(select) {
+    const starter = starters.find((s) => s.name === select.value)
+    select.value = '' // back to the prompt, so the same example can be picked again
     if (!starter) return
-    picked = name
+    if (currentSource() !== loaded && !confirm(`Replace your code with the ${starter.name} example?`)) return
     history.replaceState(null, '', location.pathname)
+    loaded = starter.source
     setSource(starter.source)
   }
 
@@ -38,32 +42,31 @@
     const shown = document.getElementById('repl-highlight')
     const box = document.getElementById('repl-preview')
     if (!(area instanceof HTMLTextAreaElement) || !shown || !box) throw new Error('playground: its markup is missing')
-    const frame = document.createElement('iframe')
-    frame.setAttribute('sandbox', 'allow-scripts')
-    frame.title = 'Preview'
-    frame.srcdoc = frameDoc(runtime)
 
-    let seq = 0 // each compile's number; only the latest one's reply counts
-    let timer
+    let seq = 0 // each run's number; only the latest one counts
+    let visible = { frame: document.createElement('iframe'), id: 0 } // the preview on screen
+    let pending = { frame: document.createElement('iframe'), id: 0 } // a run still rendering, shown once it replies
+    let timer = setTimeout(() => {})
     let escaped = false // Esc pressed: the next Tab leaves the editor instead of indenting
     let typed = false // the visitor has typed: the initial source (decoded asynchronously) mustn't replace that
-    const ready = new Promise((resolve) => frame.addEventListener('load', resolve, { once: true }))
 
-    const paint = () => {
-      shown.innerHTML = highlightTscl(area.value)
+    const sync = () => {
       shown.scrollTop = area.scrollTop
       shown.scrollLeft = area.scrollLeft
     }
+    const paint = () => {
+      shown.innerHTML = highlightTscl(area.value)
+      sync()
+    }
 
-    const run = async () => {
-      const source = area.value
+    const run = () => {
       const id = ++seq
       let server = ''
       let client = ''
       try {
-        server = compile(source, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' }).code
-        const c = compile(source, { file: 'App.tscl', target: 'client' })
-        client = c.stateful ? c.code : ''
+        server = prepare(compile(area.value, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' }).code)
+        const c = compile(area.value, { file: 'App.tscl', target: 'client' })
+        client = c.stateful ? prepare(c.code) : ''
       } catch (err) {
         // A compile error keeps the last preview: show where, as line:col.
         errors = [
@@ -75,13 +78,34 @@
         ]
         return
       }
-      await ready
-      if (id === seq) frame.contentWindow?.postMessage({ id, server, client: client || null }, '*')
+      // A fresh frame, hidden until it has rendered; a run still rendering is dropped for this one.
+      pending.frame.remove()
+      const frame = document.createElement('iframe')
+      frame.setAttribute('sandbox', 'allow-scripts')
+      frame.title = 'Component preview'
+      frame.hidden = true
+      frame.addEventListener(
+        'load',
+        () => frame.contentWindow?.postMessage({ id, server, client: client || null }, '*'),
+        { once: true },
+      )
+      frame.srcdoc = frameDoc(runtime)
+      pending = { frame, id }
+      box.append(frame)
     }
 
     const onMessage = (event) => {
-      if (event.source !== frame.contentWindow || event.data?.id !== seq) return
-      errors = event.data.error ? [event.data.error] : []
+      const data = event.data
+      if (event.source === pending.frame.contentWindow && data?.id === pending.id) {
+        // The run has rendered (or failed): it becomes the preview.
+        visible.frame.remove()
+        visible = pending
+        visible.frame.hidden = false
+        pending = { frame: document.createElement('iframe'), id: 0 }
+        errors = data.error ? [data.error] : []
+      } else if (event.source === visible.frame.contentWindow && data?.id === visible.id && data.error) {
+        errors = [data.error] // thrown later: an event handler, a timer
+      }
     }
 
     setSource = (source) => {
@@ -97,7 +121,7 @@
       clearTimeout(timer)
       timer = setTimeout(run, 250)
     })
-    area.addEventListener('scroll', paint)
+    area.addEventListener('scroll', sync)
     area.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
         escaped = true
@@ -105,8 +129,11 @@
       }
       if (event.key === 'Tab' && !escaped && !event.shiftKey) {
         event.preventDefault()
-        area.setRangeText('  ', area.selectionStart, area.selectionEnd, 'end')
-        area.dispatchEvent(new Event('input'))
+        // insertText keeps the browser's undo history; setRangeText where it isn't supported.
+        if (!document.execCommand('insertText', false, '  ')) {
+          area.setRangeText('  ', area.selectionStart, area.selectionEnd, 'end')
+          area.dispatchEvent(new Event('input'))
+        }
       }
       escaped = false
     })
@@ -116,14 +143,16 @@
       clearTimeout(timer)
     })
 
-    box.append(frame)
     // Text typed before this ran (a slow load) is kept; otherwise the shared code, or the first example.
     if (area.value) {
       typed = true
       setSource(area.value)
     }
     decode(location.hash.slice(1)).then((shared) => {
-      if (!typed) setSource(shared ?? starters[0].source)
+      if (!typed) {
+        loaded = shared ?? starters[0].source
+        setSource(loaded)
+      }
       area.closest('.repl')?.setAttribute('data-ready', '')
     })
   }
@@ -133,9 +162,10 @@
   <div class="repl-bar">
     <label>
       Example
-      <select (change)="pick($event.target.value)">
+      <select (change)="pick($event.target)">
+        <option value="">Choose an example…</option>
         @for (s of starters; track s.name) {
-          <option [value]="s.name" [selected]="s.name === picked">{{ s.name }}</option>
+          <option [value]="s.name">{{ s.name }}</option>
         }
       </select>
     </label>
@@ -156,13 +186,15 @@
     </div>
     <div id="repl-preview" class="repl-preview"></div>
   </div>
-  @if (errors.length) {
-    <ul class="repl-errors" role="alert">
-      @for (e of errors; track $index) {
-        <li>{{ e }}</li>
-      }
-    </ul>
-  }
+  <div aria-live="polite">
+    @if (errors.length) {
+      <ul class="repl-errors">
+        @for (e of errors; track $index) {
+          <li>{{ e }}</li>
+        }
+      </ul>
+    }
+  </div>
   <p id="repl-keys" class="repl-help">Tab indents. To leave the editor with the keyboard, press Esc, then Tab.</p>
   <noscript><p>The playground needs JavaScript: it compiles your component in the page.</p></noscript>
 </div>

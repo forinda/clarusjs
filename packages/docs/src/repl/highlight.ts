@@ -8,7 +8,7 @@ const TOKENS: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^\{\{--[\s\S]*?(--\}\}|$)/, (m) => span('comment', m[0])],
   [/^<!--[\s\S]*?(-->|$)/, (m) => span('comment', m[0])],
   [/^\{\{[\s\S]*?(\}\}|$)/, (m) => span('hole', m[0])],
-  [/^(?<=^|\n)[ \t]*@(import|input|model|type|interface)\b/, (m) => esc(m[0].slice(0, m[0].indexOf('@'))) + span('dir', m[0].trim())],
+  [/^@(import|input|model|type|interface)\b/, (m) => span('dir', m[0])], // only where a line starts (see `bol`)
   [/^@(if|else|for|empty|slot)\b/, (m) => span('block', m[0])],
   [/^<\/?[A-Za-z][\w-]*/, (m) => span('tag', m[0])],
 ]
@@ -18,6 +18,7 @@ export function highlightTscl(source: string): string {
   let out = ''
   let i = 0
   let inTag = false
+  let bol = true // at a line's start, or only spaces and tabs since: where a directive can be
   while (i < source.length) {
     const rest = source.slice(i)
     // <script> and <style>: the tag, then the body as plain text up to the closing tag.
@@ -53,20 +54,22 @@ export function highlightTscl(source: string): string {
     }
     let matched = false
     for (const [re, render] of TOKENS) {
-      // A directive only counts at the start of a line.
-      if (re.source.includes('(?<=') && i > 0 && source[i - 1] !== '\n' && !/^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', i - 1) + 1, i))) continue
+      if (re === TOKENS[3]![0] && !bol) continue
       const m = re.exec(rest)
       if (m && m[0]) {
         out += render(m)
         i += m[0].length
         if (re === TOKENS[5]![0]) inTag = true
         matched = true
+        bol = false
         break
       }
     }
     if (!matched) {
-      out += esc(source[i]!)
+      const c = source[i]!
+      out += esc(c)
       i++
+      bol = c === '\n' || (bol && (c === ' ' || c === '\t'))
     }
   }
   return out + '\n'

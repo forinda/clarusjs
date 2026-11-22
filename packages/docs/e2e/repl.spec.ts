@@ -23,13 +23,15 @@ test('a sandboxed srcdoc frame runs an inline module and imports a blob (what th
 // The preview frame on its own: the runtime bundled as the docs build bundles it, components compiled as the page does.
 import { compile } from 'clarusjs/compiler'
 import { bundleReplRuntime } from '../src/repl/bundle.ts'
+import { prepare } from '../src/repl/prepare.ts'
 import { frameDoc } from '../src/repl/frame.ts'
 
 const counter = '<script>\nlet n = state(0)\n</script>\n<button (click)="n++">Clicked {{ n }}</button>\n@if (n > 1) {<p class="big">big</p>}\n'
 const thrower = '<script>\nthrow new Error("boom in the script")\n</script>\n<p>x</p>\n'
+// What the page posts: compiled, then prepared (imports rewritten, loops guarded).
 const both = (source: string) => ({
-  server: compile(source, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' }).code,
-  client: compile(source, { file: 'App.tscl', target: 'client' }).stateful ? compile(source, { file: 'App.tscl', target: 'client' }).code : null,
+  server: prepare(compile(source, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' }).code),
+  client: compile(source, { file: 'App.tscl', target: 'client' }).stateful ? prepare(compile(source, { file: 'App.tscl', target: 'client' }).code) : null,
 })
 
 test.describe('the preview frame', () => {
@@ -61,9 +63,25 @@ test.describe('the preview frame', () => {
     await frame.locator('button').click()
     await expect(frame.locator('button')).toHaveText('Clicked 2')
     await expect(frame.locator('.big')).toHaveText('big')
-    // A second post replaces the first, fresh.
-    expect(await post({ id: 2, ...both(counter.replace('Clicked', 'Pressed')) })).toEqual({ id: 2, ok: true })
-    await expect(frame.locator('button')).toHaveText('Pressed 0')
+    // One run per frame (the page makes a fresh frame for the next): a second post is ignored.
+    await page.evaluate((m) => document.querySelector('iframe')!.contentWindow!.postMessage(m, '*'), { id: 2, ...both(counter.replace('Clicked', 'Pressed')) })
+    await page.waitForTimeout(300)
+    await expect(frame.locator('button')).toHaveText('Clicked 2')
+  })
+
+  test('ignores code posted by any window but its parent', async ({ page }) => {
+    const post = await open(page)
+    expect(await post({ id: 1, ...both(counter) })).toEqual({ id: 1, ok: true })
+    // A sibling frame (as the visitor's own code could be) posts other code to the preview.
+    await page.evaluate((evil) => {
+      const other = document.createElement('iframe')
+      other.setAttribute('sandbox', 'allow-scripts')
+      other.srcdoc = `<script>parent.frames[0].postMessage(${JSON.stringify(evil)}, '*')<\/script>`
+      document.body.append(other)
+    }, { id: 2, ...both('<p id="evil">replaced</p>') })
+    await page.waitForTimeout(500)
+    await expect(page.frameLocator('iframe').first().locator('#evil')).toHaveCount(0)
+    await expect(page.frameLocator('iframe').first().locator('button')).toHaveText('Clicked 0')
   })
 
   test('reports an error thrown while rendering, and shows it', async ({ page }) => {
@@ -78,7 +96,8 @@ test.describe('the preview frame', () => {
 // The page.
 test.describe('/repl', () => {
   const code = (page: import('@playwright/test').Page) => page.locator('#repl-code')
-  const preview = (page: import('@playwright/test').Page) => page.frameLocator('#repl-preview iframe')
+  // The frame on screen (a run still rendering waits in a hidden one).
+  const preview = (page: import('@playwright/test').Page) => page.frameLocator('#repl-preview iframe:not([hidden])')
   const type = (page: import('@playwright/test').Page, source: string) => code(page).fill(source)
   /** Open the playground and wait until it's attached (its compiler chunk is large; under load that takes a while). */
   const open = async (page: import('@playwright/test').Page, url = '/repl') => {
@@ -151,6 +170,57 @@ test.describe('/repl', () => {
     await expect(page.locator('.repl-errors')).toHaveCount(0)
   })
 
+  test('the caret and the borders are visible', async ({ page }) => {
+    await open(page)
+    await expect(preview(page).locator('button')).toBeVisible()
+    const look = await page.evaluate(() => {
+      const area = getComputedStyle(document.querySelector('#repl-code')!)
+      const editor = getComputedStyle(document.querySelector('.repl-editor')!)
+      const frame = getComputedStyle(document.querySelector('#repl-preview iframe:not([hidden])')!)
+      return { caret: area.caretColor, editor: editor.borderTopWidth, frame: frame.borderTopWidth }
+    })
+    expect(look.caret).not.toBe('rgba(0, 0, 0, 0)')
+    expect(look.editor).not.toBe('0px')
+    expect(look.frame).not.toBe('0px')
+  })
+
+  test('an endless loop is stopped with a message; the page stays usable', async ({ page }) => {
+    await open(page)
+    await type(page, '<script>\nlet n = state(0)\nwhile (true) { n++ }\n</script>\n<p>{{ n }}</p>\n')
+    await expect(page.locator('.repl-errors')).toContainText('a loop ran for more than 1 second', { timeout: 10_000 })
+    await type(page, counter)
+    await expect(preview(page).locator('button')).toHaveText('Clicked 0')
+  })
+
+  test("edits don't pile up: one preview frame, and an old run's timers stop with it", async ({ page }) => {
+    await open(page)
+    const ticking = (label: string) => `<script>\nlet shown = state(0)\nsetInterval(() => { globalThis.n = (globalThis.n ?? 0) + 1; shown = globalThis.n }, 50)\n</script>\n<p id="t">${label} {{ shown }}</p>\n`
+    for (let i = 1; i <= 6; i++) {
+      await type(page, ticking(`run ${i}`))
+      await expect(preview(page).locator('#t')).toContainText(`run ${i}`)
+    }
+    await expect(page.locator('#repl-preview iframe')).toHaveCount(1) // no frame left behind
+    const read = async () => Number((await preview(page).locator('#t').textContent())!.split(' ').pop())
+    const a = await read()
+    await page.waitForTimeout(1000)
+    expect((await read()) - a).toBeLessThan(60) // this run's own interval(s) only, not every earlier run's
+  })
+
+  test('an error thrown later, by an event handler, shows too', async ({ page }) => {
+    await open(page)
+    await type(page, '<script>\nfunction boom() { throw new Error("thrown on click") }\nlet n = state(0)\n</script>\n<button (click)="boom()">go {{ n }}</button>\n')
+    await expect(preview(page).locator('button')).toHaveText('go 0') // this run's preview, not the example's
+    await preview(page).locator('button').click()
+    await expect(page.locator('.repl-errors')).toContainText('thrown on click')
+  })
+
+  test('errors are announced politely (a live region), not as alerts', async ({ page }) => {
+    await open(page)
+    await type(page, counter + '<p>\n')
+    await expect(page.locator('[aria-live="polite"] .repl-errors')).toBeVisible()
+    await expect(page.locator('[role="alert"]')).toHaveCount(0)
+  })
+
   test('keyboard: Tab indents, Esc then Tab leaves the editor', async ({ page }) => {
     await open(page)
     await type(page, '')
@@ -158,16 +228,32 @@ test.describe('/repl', () => {
     await page.keyboard.press('Tab')
     await page.keyboard.type('x')
     await expect(code(page)).toHaveValue('  x')
+    await type(page, '')
+    await code(page).focus()
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('ControlOrMeta+z') // the indent is undone (not the edit before it)
+    await expect(code(page)).toHaveValue('')
+    await page.keyboard.press('Tab')
     await page.keyboard.press('Escape')
     await page.keyboard.press('Tab')
     await expect(code(page)).not.toBeFocused()
   })
 
-  test('the starter picker switches examples', async ({ page }) => {
+  test('the starter picker switches examples; over your own code it asks first', async ({ page }) => {
     await open(page)
     await page.getByLabel('Example').selectOption('Todo list')
     await expect(code(page)).toHaveValue(/@for/)
     await expect(preview(page).locator('li').first()).toBeVisible()
+    await type(page, '<p>mine</p>\n')
+    page.once('dialog', (d) => d.dismiss())
+    await page.getByLabel('Example').selectOption('Counter')
+    await expect(code(page)).toHaveValue('<p>mine</p>\n')
+    page.once('dialog', (d) => d.accept())
+    await page.getByLabel('Example').selectOption('Counter')
+    await expect(code(page)).toHaveValue(/count/)
+    // Picking the same example again works too (nothing to confirm: the code is the example's).
+    await page.getByLabel('Example').selectOption('Counter')
+    await expect(code(page)).toHaveValue(/count/)
   })
 
   test('only /repl loads the compiler', async () => {
@@ -176,6 +262,9 @@ test.describe('/repl', () => {
     const dist = resolve(import.meta.dirname, '../dist')
     const manifest = JSON.parse(readFileSync(resolve(dist, 'clarusjs-manifest.json'), 'utf8'))
     expect(manifest.routes['/repl'].islands.map((i: { component: string }) => i.component)).toContain('repl')
+    // The marker below is in /repl's own files (else the check on the other pages proves nothing).
+    const own = manifest.routes['/repl'].js.files.map((f: string) => readFileSync(resolve(dist, 'client', f.replace(/^\//, '')), 'utf8'))
+    expect(own.some((text: string) => text.includes('unexpected closing tag'))).toBe(true)
     for (const [route, info] of Object.entries<{ js: { files: string[] } }>(manifest.routes)) {
       if (route === '/repl') continue
       for (const file of info.js.files) expect(readFileSync(resolve(dist, 'client', file.replace(/^\//, '')), 'utf8'), `${route}: ${file}`).not.toContain('unexpected closing tag')

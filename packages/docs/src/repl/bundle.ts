@@ -10,7 +10,7 @@ export async function bundleReplRuntime(): Promise<string> {
   const result = await build({
     configFile: false,
     logLevel: 'silent',
-    build: { write: false, minify: true, lib: { entry, formats: ['es'], fileName: 'repl-runtime' }, rollupOptions: { output: { inlineDynamicImports: true } } },
+    build: { write: false, minify: true, lib: { entry, formats: ['es'], fileName: 'repl-runtime' }, rolldownOptions: { output: { codeSplitting: false } } },
   })
   const outputs = (Array.isArray(result) ? result : [result]) as { output: { type: string; code?: string }[] }[]
   return outputs[0]!.output.filter((o) => o.type === 'chunk').map((o) => o.code).join('\n')
@@ -25,7 +25,7 @@ export function replRuntime(): Plugin {
     resolveId: (id) => (id === ID ? '\0' + ID : undefined),
     async load(id) {
       if (id !== '\0' + ID) return
-      this.addWatchFile(entry)
+      this.addWatchFile(entry) // ponytail: edits to clarusjs's runtime itself need a dev-server restart to reach the frame
       return `export default ${JSON.stringify(await bundleReplRuntime())}`
     },
   }
