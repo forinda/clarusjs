@@ -1765,6 +1765,16 @@ test('#369: the sidebar as designed: groups collapse, the current one is open, s
 test('#369: a page in a collapsed group opens it', async ({ page }) => {
   await page.goto('/guide/deploy')
   await expect(page.locator('#sidebar details[data-group="Build & deploy"]')).toHaveAttribute('open', '')
+
+test('code blocks have line numbers, except shell commands', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  const ts = page.locator('.code-block.language-ts').first()
+  await expect(ts).toHaveClass(/line-numbers/)
+  await expect(ts.locator('.line-numbers-column span').first()).toHaveText('1')
+  await page.goto('/guide/getting-started')
+  const sh = page.locator('.code-block.language-sh').first()
+  await expect(sh).toBeVisible()
+  await expect(sh).not.toHaveClass(/line-numbers/)
 })
 
 test('#370: the phone drawer as designed: Menu, a Learn / Guide switch, groups, and a links row', async ({ page }) => {
