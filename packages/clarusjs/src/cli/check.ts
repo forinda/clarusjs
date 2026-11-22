@@ -6,6 +6,9 @@ import { createRequire } from 'node:module'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { ClarusError } from '../compiler/errors.ts'
 import { lint, type LintConfig, type LintRuleDef } from '../compiler/lint.ts'
+import { checkIcons } from '../compiler/icon.ts'
+import { parse } from '../compiler/parse.ts'
+import { resolveIcon } from '../icons.ts'
 import { generateTs, routesDeclaration, toSourceOffset, viewsDeclaration, type Mapping } from '../check/generate.ts'
 import { findClarusFiles, reachableComponents } from '../vite/build.ts'
 import { projectAliases, resolveAlias } from '../vite/aliases.ts'
@@ -100,6 +103,13 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
         for (const m of lint(source, file, options.lint, options.lintRules)) diagnostics.push({ file, line: m.line, column: m.column, severity: m.severity, code: m.rule, message: m.message })
       } catch {}
     }
+    // A compile error where its author wrote it: a page source's is placed in the source file when its text is found.
+    const located = (err: ClarusError): void => {
+      const message = err.message.slice(`${err.file}:${err.line}:${err.column} `.length)
+      const lines = source.split('\n')
+      const at = src ? inSource(original, source, lines.slice(0, err.line - 1).reduce((n, l) => n + l.length + 1, 0) + err.column - 1) : null
+      diagnostics.push({ file, ...(src ? (at === null ? { line: 1, column: 1 } : position(original, at)) : { line: err.line, column: err.column }), severity: 'error', code: 'clarus', message })
+    }
     try {
       const loader = loaderOf(path)
       const { code, mappings, loaderSpan } = generateTs(source, file, loader ? { loader } : {})
@@ -109,12 +119,12 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
       generated.set(vpath, { file, source, code, mappings, loaderSpan, ...(src ? { original } : {}) })
     } catch (err) {
       if (!(err instanceof ClarusError)) throw err
-      const message = err.message.slice(`${err.file}:${err.line}:${err.column} `.length)
-      // A page source's compile error is placed in the source file when its text can be found there.
-      const lines = source.split('\n')
-      const at = src ? inSource(original, source, lines.slice(0, err.line - 1).reduce((n, l) => n + l.length + 1, 0) + err.column - 1) : null
-      diagnostics.push({ file, ...(src ? (at === null ? { line: 1, column: 1 } : position(original, at)) : { line: err.line, column: err.column }), severity: 'error', code: 'clarus', message })
+      located(err)
     }
+    // <icon> names, against the sets installed for this package (a template error was reported above).
+    try {
+      for (const err of checkIcons(parse(source, file), file, source, (name) => resolveIcon(name, path))) located(err)
+    } catch {}
   }
 
   // Components from packages: a virtual file each (mirroring the package's folders, so their imports of each other
