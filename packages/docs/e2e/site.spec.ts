@@ -339,6 +339,8 @@ test('this site, explained: the table is generated from the manifest at build ti
   const { readFileSync } = await import('node:fs')
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
   await page.goto('/guide/explained')
+  await expect(page.locator('cl-island[c="explained-table"]')).toHaveAttribute('data-cl-ready', '')
+  await page.getByLabel('Rows').selectOption('all')
   const rows = page.locator('table.explained tbody tr')
   await expect(rows).toHaveCount(Object.keys(manifest.routes).length)
   const home = rows.filter({ has: page.locator('a[href="/"]') })
@@ -1902,4 +1904,54 @@ test("what clarusjs is: no 'early, proving ground' note on the intro or the home
     await page.goto(path)
     await expect(page.locator('main')).not.toContainText('proving ground')
   }
+})
+
+test('this site, explained: one table to filter, sort by any column, sample and trim to some columns', async ({ page }) => {
+  const { readFileSync } = await import('node:fs')
+  const routes = Object.entries(JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8')).routes) as [string, { js: { initialGzip: number } }][]
+  await page.goto('/guide/explained')
+  await expect(page.locator('.explained-stats li strong').first()).toHaveText(String(routes.length))
+  const table = page.locator('table.explained')
+  const rows = table.locator('tbody tr')
+  const loads = async () => (await rows.locator('td:nth-child(3)').allTextContents()).map((t) => parseFloat(t))
+  // Heaviest first, 10 rows, until JavaScript runs too: the server renders the default view.
+  await expect(rows).toHaveCount(10)
+  await expect(page.locator('cl-island[c="explained-table"]')).toHaveAttribute('data-cl-ready', '')
+  const heavy = await loads()
+  expect(heavy).toEqual([...heavy].sort((a, b) => b - a))
+  // Smallest first; then a header sorts by its column, and again reverses it.
+  await page.getByLabel('Show').selectOption('smallest')
+  const light = await loads()
+  expect(light).toEqual([...light].sort((a, b) => a - b))
+  await table.getByRole('button', { name: 'Route' }).click()
+  await expect(table.locator('th').first()).toHaveAttribute('aria-sort', 'ascending')
+  const names = (await rows.locator('td:first-child').allTextContents()).map((t) => t.trim())
+  expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
+  await table.getByRole('button', { name: 'Route' }).click()
+  await expect(table.locator('th').first()).toHaveAttribute('aria-sort', 'descending')
+  // Filters: a section and a search; no JavaScript on load.
+  await page.getByLabel('Section').selectOption('Reference')
+  await page.getByLabel('Rows').selectOption('all')
+  for (const r of (await rows.locator('td:first-child').allTextContents()).map((t) => t.trim())) expect(r).toMatch(/^\/reference/)
+  await page.getByLabel('Find').fill('template')
+  await expect(rows).toHaveCount(1)
+  await page.getByLabel('Find').fill('')
+  await page.getByLabel('Section').selectOption('All')
+  await page.getByLabel('Show').selectOption('nojs')
+  await expect(rows).toHaveCount(routes.filter(([, r]) => r.js.initialGzip === 0).length || 1)
+  await expect(page.locator('.explained-count')).toContainText(`(${routes.length} pages)`)
+  // Nothing matches: an empty state that says so, with a way back.
+  await page.getByLabel('Show').selectOption('heaviest')
+  await page.getByLabel('Find').fill('zzzz')
+  const empty = page.locator('.explained-empty')
+  await expect(empty).toBeVisible()
+  await expect(empty).toContainText('No page matches')
+  await expect(empty).toContainText('"zzzz"')
+  await empty.getByRole('button', { name: 'Clear filters' }).click()
+  await expect(page.getByLabel('Find')).toHaveValue('')
+  await expect(rows).toHaveCount(routes.length) // Rows is still All: only the filters were cleared
+  // Columns: unchecked, gone.
+  await page.getByLabel('Show').selectOption('heaviest')
+  await page.getByRole('checkbox', { name: 'Islands' }).uncheck()
+  await expect(table.locator('thead th')).toHaveText(['Route', 'JS on load', 'JS in all'])
 })
