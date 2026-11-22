@@ -1,0 +1,7 @@
+@input heading: string
+
+<article class="card">
+  <header><slot name="title" /></header>
+  <h3>{{ heading }}</h3>
+  <slot />
+</article>

@@ -1,0 +1,22 @@
+@input title: string = 'Items'
+
+<script>
+  let items = state([{ id: 1, name: 'a' }])
+  let open = state(true)
+</script>
+
+<section>
+  <h2>{{ title }}</h2>
+  @if (open) {
+    <ul>
+      @for (item of items; track item.id) {
+        <li [class]="$odd ? 'odd' : ''">{{ $index }}: {{ item.name }}</li>
+      } @empty {
+        <li>None</li>
+      }
+    </ul>
+  } @else {
+    <p>Closed</p>
+  }
+  <button type="button" (click)="open = !open">Toggle</button>
+</section>
