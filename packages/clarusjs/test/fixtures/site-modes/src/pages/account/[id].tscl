@@ -1,4 +1,6 @@
 @input id: string
 @input agent: string = ''
+@input user: string = ''
 <h1>Account {{ id }}</h1>
 <p>{{ agent }}</p>
+<p id="user">{{ user }}</p>

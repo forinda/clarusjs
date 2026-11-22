@@ -549,6 +549,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `export default createHandler(import.meta.glob(${glob('/src/pages')}), {\n` +
         `  loaderUrl: ${JSON.stringify(loaderUrl)},\n` +
         `  data: import.meta.glob('/src/pages/**/*.load.ts'),\n` +
+        // Endpoints: the other .ts files under src/pages, exporting GET, POST, … (see the server reference).
+        `  endpoints: import.meta.glob(['/src/pages/**/*.ts', '!/src/pages/**/*.load.ts', '!/src/pages/**/*.d.ts']),\n` +
         `  modes: ${JSON.stringify(modes)},\n` +
         `  routerUrl: ${JSON.stringify(routerUrl)},\n` +
         `  client: ${JSON.stringify(client)},\n` +
@@ -562,6 +564,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         // src/head.ts is optional: its transformHead (a function, so not a plugin option) runs on every page's head.
         `  site: ${JSON.stringify(options.site)},\n` +
         `  head: { ...${JSON.stringify(options.head ?? {})}, transform: Object.values(import.meta.glob('/src/head.ts', { eager: true }))[0]?.transformHead },\n` +
+        // src/server.ts is optional too: its handle() runs once per request, before any page loads (cookies, locals).
+        `  hooks: Object.values(import.meta.glob('/src/server.ts', { eager: true }))[0],\n` +
         `})\n`
     } },
     transform: {

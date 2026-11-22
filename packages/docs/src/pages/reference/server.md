@@ -2,12 +2,114 @@
 title: "Server"
 group: "APIs"
 order: 3
-description: "Server code: redirect(), render() a view to HTML, readManifest(), and the built handler that serves server routes."
+description: "Server code: load()'s context (cookies, locals), handle() in src/server.ts, redirect(), render() a view to HTML, readManifest(), and the built handler."
 ---
 
 # Server
 
 <p class="lead">Server code: a server route's <code>load()</code>, and the handler <code>vite build</code> writes. For when a route renders on each request, see <a href="/guide/rendering-modes">Rendering modes</a>.</p>
+
+## LoadContext
+
+```ts
+type LoadContext = { params: Record<string, string>; request: Request; cookies: Cookies; locals: Locals }
+```
+
+What a page's `load()` gets: the route's params, the request, the request's [cookies](#cookies), and the [locals](#locals) that [`handle()`](#handle) filled.
+
+```ts
+// src/pages/account.load.ts (a server route)
+import type { LoadContext } from 'clarusjs/server'
+
+export function load({ params, cookies, locals }: LoadContext) {
+  return { id: params.id, user: locals.user, theme: cookies.get('theme') ?? 'light' }
+}
+```
+
+## cookies
+
+```ts
+cookies.get(name: string): string | undefined
+cookies.getAll(): Record<string, string>
+cookies.set(name: string, value: string, options?: CookieOptions): void
+cookies.delete(name: string, options?: { path?: string; domain?: string }): void
+```
+
+The request's cookies, read from its `Cookie` header. What `set()` and `delete()` change is sent on the answer as `Set-Cookie`, whatever the answer is: the page, its data or fragment, or a `redirect()`. `get()` sees this request's own changes.
+
+### Options
+
+`CookieOptions`: `path`, `domain`, `maxAge` (seconds), `expires`, `httpOnly`, `secure`, `sameSite` (`'lax'`, `'strict'` or `'none'`).
+
+### Caveats
+
+- **Secure by default:** `path: '/'`, `httpOnly: true` (scripts can't read it), `sameSite: 'lax'`, and `secure: true`, so the cookie is only sent over HTTPS. The exception is the Vite dev server, so development over plain http works; browsers also accept secure cookies from `http://localhost`, so `vite preview` works. It's never guessed from the request's address: behind a proxy, production can see `http://localhost` too. Pass an option to change one.
+- **Only on the server:** a static page's `load()` runs once at build, for everyone, so it has no visitor's cookies or headers to read. Using `cookies` or `request.headers` there fails the build: `"/account reads cookies, but static routes are built once for everyone: make it 'server'"`. The same goes for a client route's data. `handle()` still runs for static pages, with no cookies. `clarusjs explain` shows which server routes read cookies.
+- **Names** must be cookie tokens: no spaces or separators. Values are URL-encoded on the way out and decoded on the way in.
+
+## locals
+
+```ts
+interface Locals {}
+```
+
+Data one request carries from [`handle()`](#handle) to every `load()`, such as the signed-in user. Declare what it holds once, and every loader is checked against it:
+
+```ts
+// src/server.ts
+declare module 'clarusjs/server' {
+  interface Locals { user?: { id: string; name: string } }
+}
+```
+
+## handle()
+
+```ts
+type Handle = (context: { request: Request; cookies: Cookies; locals: Locals }) => void | Response | Promise<void | Response>
+```
+
+An optional `handle` export in `src/server.ts` runs once per request, before any page loads. It turns the request (usually a session cookie) into `locals`, so pages never parse cookies themselves. Returning a `Response`, such as `redirect('/login')`, answers the request instead of the page.
+
+```ts
+// src/server.ts
+import type { Handle } from 'clarusjs/server'
+
+export const handle: Handle = async ({ cookies, locals }) => {
+  const session = cookies.get('session')
+  if (session) locals.user = await sessions.find(session)
+}
+```
+
+If `handle()` throws, the request gets a 500, and the error goes to the server's log.
+
+## Endpoints
+
+```ts
+type RequestHandler = (context: LoadContext) => Response | Promise<Response>
+```
+
+A `.ts` file under `src/pages` (not a `.load.ts`) that exports `GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `OPTIONS` is an endpoint, at its file's route: `src/pages/api/items.ts` answers `/api/items`, and `src/pages/api/items/[id].ts` answers `/api/items/42` with `params.id`. Each handler gets the same context as a `load()` (the request, params, [cookies](#cookies) and [locals](#locals)) and returns a `Response`.
+
+```ts
+// src/pages/api/items.ts
+import type { RequestHandler } from 'clarusjs/server'
+
+export const GET: RequestHandler = ({ locals }) => Response.json(listFor(locals.user))
+
+export const POST: RequestHandler = async ({ request, locals }) => {
+  const item = await save(locals.user, await request.json())
+  return Response.json(item, { status: 201 })
+}
+```
+
+An island calls it with `fetch('/api/items')`, and the visitor's cookies go along, so `handle()` has resolved the session. A token for a third-party API stays in the endpoint and never reaches the browser.
+
+### Caveats
+
+- **Endpoints are server routes:** they need a server deploy (an adapter, or `dist/server/index.mjs` in your own server). They are never prerendered.
+- **Writes from other sites are refused:** a `POST`, `PUT`, `PATCH` or `DELETE` whose `Origin` is neither the request's own nor your `site.url` gets a 403, as does one the browser marks cross-site (`Sec-Fetch-Site`). This blocks cross-site request forgery. A request without an `Origin`, from a server or a script, isn't a browser acting for a visitor, so it's allowed.
+- **Methods:** `HEAD` uses `GET`'s handler without the body. Any other method a file doesn't export gets 405, with an `Allow` header listing those it does.
+- **A page wins a shared path,** and a `.ts` file that exports no method isn't an endpoint (it's a 404).
 
 ## redirect()
 

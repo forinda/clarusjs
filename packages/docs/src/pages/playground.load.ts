@@ -1,12 +1,18 @@
 // Runs on the server for every request (this route is 'server' in vite.config.ts): it can read the request.
 import { h, render } from 'clarusjs/views'
-import { redirect } from 'clarusjs/server'
+import { redirect, type LoadContext } from 'clarusjs/server'
 
-export async function load({ request }: { request: Request }) {
+export async function load({ request, cookies }: LoadContext) {
   const url = new URL(request.url)
-  const name = (url.searchParams.get('name') ?? '').slice(0, 60)
   // A name of only spaces is no name: send the visitor to the plain page (a redirect, see the Routing guide).
-  if (url.searchParams.has('name') && !name.trim()) return redirect('/playground', 303)
+  if (url.searchParams.has('name') && !(url.searchParams.get('name') ?? '').trim()) {
+    cookies.delete('playground-name')
+    return redirect('/playground', 303)
+  }
+  // A name given is remembered in a cookie (see cookies in the server reference); without one, the cookie's is used.
+  const given = url.searchParams.get('name')?.slice(0, 60)
+  if (given) cookies.set('playground-name', given, { maxAge: 60 * 60 * 24 * 30 })
+  const name = given ?? cookies.get('playground-name')?.slice(0, 60) ?? ''
   return {
     name,
     renderedAt: new Date().toISOString(),

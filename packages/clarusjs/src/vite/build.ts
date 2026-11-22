@@ -38,7 +38,7 @@ export function routeToFile(route: string): string {
  * build. Runs in a fresh Node process so a rebuilt server bundle is never served from a module cache. Returns the
  * routes rendered and those that read the route manifest (readManifest() from `manifestFile`).
  */
-export async function prerender(serverEntry: string, outDir: string, manifestFile: string, only?: string[]): Promise<{ routes: string[]; readers: string[]; loaded: string[]; server: { route: string; loader: boolean }[] }> {
+export async function prerender(serverEntry: string, outDir: string, manifestFile: string, only?: string[]): Promise<{ routes: string[]; readers: string[]; loaded: string[]; server: { route: string; loader: boolean; cookies?: boolean }[] }> {
   const script = `
     import { mkdirSync, writeFileSync } from 'node:fs'
     import { dirname, resolve, sep } from 'node:path'
@@ -81,14 +81,14 @@ export async function prerender(serverEntry: string, outDir: string, manifestFil
       if (globalThis.__clLoaderRan) loaded.push(route)
     }
     const server = []
-    for (const route of handler.serverRoutes ?? []) server.push({ route, loader: await handler.hasLoader(route) })
+    for (const route of handler.serverRoutes ?? []) server.push({ route, loader: await handler.hasLoader(route), cookies: await handler.readsCookies?.(route) ?? false })
     process.stdout.write(JSON.stringify({ routes, readers, loaded, server }))
   `
   const args = ['--input-type=module', '-e', script, serverEntry, outDir, ...(only ? [JSON.stringify(only)] : [])]
   const env = { ...process.env, CLARUS_MANIFEST: manifestFile }
   const result = spawnSync(process.execPath, args, { encoding: 'utf8', env })
   if (result.status !== 0) throw new Error(result.stderr.trim() || `prerender failed (exit ${result.status})`)
-  return JSON.parse(result.stdout) as { routes: string[]; readers: string[]; loaded: string[]; server: { route: string; loader: boolean }[] }
+  return JSON.parse(result.stdout) as { routes: string[]; readers: string[]; loaded: string[]; server: { route: string; loader: boolean; cookies?: boolean }[] }
 }
 
 /** The package a file belongs to, from its last node_modules segment (pnpm: node_modules/.pnpm/x@1/node_modules/x/…). @internal */
