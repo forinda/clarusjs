@@ -4,8 +4,6 @@ group: "Interactivity"
 order: 7
 description: "Bind form fields two ways with [(value)] and @model, keep one state object, and reset or undo without cloning."
 ---
-@import signupForm from '~/components/signup-form.tscl'
-@import orderForm from '~/components/order-form.tscl'
 
 # Forms
 

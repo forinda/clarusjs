@@ -4,7 +4,6 @@ group: "Interactivity"
 order: 8
 description: "clarusjs/forms: errors on their fields from native constraints, a Standard Schema and the server; multi-step forms in the URL hash; submit takes you to the errors."
 ---
-@import signupSteps from '~/components/signup-steps.tscl'
 
 # Form validation
 

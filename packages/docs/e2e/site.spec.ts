@@ -1661,3 +1661,12 @@ test('#153: code in .tscl pages is highlighted like Markdown, and passes the con
     expect(results.violations, path).toEqual([])
   }
 })
+
+test('#145: Markdown pages use components by tag, without importing them', async ({ page }) => {
+  const source = readFileSync(resolve(import.meta.dirname, '../src/pages/guide/fetching.md'), 'utf8')
+  expect(source).not.toMatch(/^@import statCard\b/m)
+  await page.goto('/guide/fetching')
+  await expect(page.locator('cl-island[c="statCard"], cl-island[c="stat-card"]').first()).toBeAttached()
+  await page.goto('/guide/getting-started')
+  await expect(page.locator('.pm-tabs').first()).toBeVisible() // the package-manager tabs, imported by their tag
+})

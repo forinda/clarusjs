@@ -35,6 +35,8 @@ export default defineConfig({
       // Markdown pages (src/pages/**/*.md), rendered in the docs layout.
       sources: [markdown({
         layout: '/src/layouts/docs.tscl',
+        // Components in src/components are used by tag, no @import needed (explicit imports still win).
+        components: '/src/components',
         // ::: tip blocks and > [!NOTE] alerts render through the site's callout component.
         container: { tag: 'callout', from: '@clarusjs/theme-docs/callout.tscl' },
         // Every highlighted code block gets the site's copy button (an island that loads on first use).
