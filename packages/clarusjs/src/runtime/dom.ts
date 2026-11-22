@@ -1,6 +1,6 @@
 // Attach helpers: find markers in server HTML and keep them updated. Browser only. Never re-renders existing HTML;
 // only @if branches and @for rows that did not exist on the server are rendered here.
-import { attrValue } from './attrs.ts'
+import { attrValue, spreadAttrs } from './attrs.ts'
 import { batch, effect, onDispose, scope, state, untrack, type Signal } from './signals.ts'
 
 /** @internal Compiled components call this; apps don't. */
@@ -333,6 +333,27 @@ export function marked(ctx: Ctx, selector: string): Element | undefined {
   const root = rootOf(ctx)
   const island = root.closest('cl-island')
   return [...root.querySelectorAll(selector)].find((e) => e.closest('cl-island') === island && inside(ctx, e))
+}
+
+/**
+ * A reactive spread (#405): sets the attributes the object has, removes the ones it no longer has (only those it set:
+ * never one written on the element, which `skip` lists). Dropped keys are dropped silently here; the server warns.
+ * @internal
+ */
+export function spread(ctx: Ctx, index: number, fn: () => unknown, skip: readonly string[], tag?: string): void {
+  const el = marked(ctx, `[data-cl-a="${index}"]`)
+  if (!el) return
+  let had = new Set<string>()
+  effect(() => {
+    const now = new Set<string>()
+    for (const [name, v] of spreadAttrs(fn(), skip, tag).set) {
+      now.add(name)
+      if (v === null) el.removeAttribute(name)
+      else el.setAttribute(name, v === true ? '' : v)
+    }
+    for (const name of had) if (!now.has(name)) el.removeAttribute(name)
+    had = now
+  })
 }
 
 /** Keep attribute `name` of the element marked `data-cl-a="index"` in `ctx` in sync with `fn()`. @internal */

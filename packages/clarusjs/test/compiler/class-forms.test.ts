@@ -21,7 +21,7 @@ test('classValue: strings as written, objects by truthy keys, arrays flattened w
   expect(classValue('  a   b ')).toBe('a b')
   expect(attrValue('class', { a: true, b: false })).toBe('a')
   expect(attrValue('class', ['x', false])).toBe('x')
-  expect(attrValue('class', {})).toBe('') // an empty class, not [object Object]
+  expect(attrValue('class', {})).toBe(null) // no class at all, not [object Object] (#405: empty adds nothing)
 })
 
 test('[class.name] toggles one class, merged with the written class and the scope class', async () => {
@@ -34,7 +34,7 @@ test('[class.name] toggles one class, merged with the written class and the scop
 test('[class] with an object or an array, merged with toggles, the written class and the scope class', async () => {
   expect(await html("@input on: boolean\n<p class=\"card\" [class]=\"{ big: on, small: !on }\">x</p>", { on: true })).toBe('<p class="card big cl-c-s">x</p>')
   expect(await html("@input on: boolean\n<p [class]=\"['a', on && 'b', ['c']]\" [class.d]=\"on\">x</p>", { on: true })).toBe('<p class="a b c d cl-c-s">x</p>')
-  expect(await html("@input on: boolean\n<div><p [class]=\"{ big: on }\">x</p></div>", { on: false })).toContain('<p class="">x</p>')
+  expect(await html("@input on: boolean\n<div><p [class]=\"{ big: on }\">x</p></div>", { on: false })).toContain('<p>x</p>') // no class=""
 })
 
 test('in an island, a toggle and an object class update when state changes', async () => {

@@ -1,0 +1,4 @@
+{{-- Spread: an object of attributes onto an element; written ones win, class and style merge. --}}
+@input field: Record<string, unknown> = {}
+
+<input [...]="field" class="input" />

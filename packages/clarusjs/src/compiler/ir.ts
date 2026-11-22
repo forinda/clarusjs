@@ -16,7 +16,8 @@ export type IRNode =
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
   | { kind: 'slot'; name: string; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
-  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string }
+  // name '...': a spread (#405); skip: the names written on the element (lowercase), where: its place, for warnings.
+  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string }
   // [engine]="f": an element connected to a form from clarusjs/forms (marked data-cl-form="index").
   | { kind: 'connect'; expr: string; index: number }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
@@ -43,6 +44,8 @@ export type ComponentIR = {
 }
 
 const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
+// Elements a spread could make load something (their URL attributes are static only): no [...] on them.
+const SPREAD_REFUSED = new Set(['iframe', 'frame', 'embed', 'object', 'base', 'link', 'script', 'meta'])
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
 /**
@@ -226,6 +229,13 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       const paths: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
         if (/^(class|style)\./.test(a.name)) fail(`a component takes a static class="…" only: [${a.name}] is for elements`, a.start)
+        // [...]="props" (#406): every key a prop, first, so props written on the tag win.
+        if (a.kind === 'prop' && a.name === '...') {
+          if (props.some((p) => p.name === '...')) fail('one [...] per element', a.start)
+          checkExpr(a.expr, file, source, a.start)
+          props.unshift({ name: '...', expr: a.expr })
+          continue
+        }
         if (a.name === 'class') {
           // Passed through to the component's top-level elements (see markRoots in index.ts).
           if (a.kind !== 'static' || typeof a.value !== 'string') fail('a component takes a static class="…" only ([class] and {{ }} in it aren\'t supported on a component yet)', a.start)
@@ -374,6 +384,14 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         attrs.push({ kind: 'prop', name: 'selected', expr: `((__cl_s, __cl_v) => (Array.isArray(__cl_s) ? __cl_s.map(String).includes(String(__cl_v)) : String(__cl_s) === String(__cl_v)))(${selectModel}, ${mine})`, start: own.start })
       }
     }
+    // Spread (#405): one per element, never where it could set what loads; and the forms that look like a binding.
+    for (const a of node.attrs) {
+      if (a.name.startsWith('{')) fail(`${a.name} isn't a binding: spread with [...]="${a.name.replace(/^\{\.*|\}$/g, '')}"`, a.start)
+      if (a.kind === 'prop' && a.name.includes('.') && a.name !== '...' && !/^(class|style)\./.test(a.name)) fail(`[${a.name}]: only class. and style. take a . ([class.name], [style.prop])`, a.start)
+    }
+    const spreads = node.attrs.filter((a) => a.kind === 'prop' && a.name === '...')
+    if (spreads.length > 1) fail('one [...] per element', spreads[1]!.start)
+    if (spreads.length && SPREAD_REFUSED.has(node.tag.toLowerCase())) fail(`[...] can't spread onto <${node.tag}>: it could set what the element loads (write its attributes one by one)`, spreads[0]!.start)
     emitStatic(`<${node.tag}`)
     const elementEvents = attrs.filter((a) => a.kind === 'event')
     const dynamic: Extract<IRNode, { kind: 'attr' }>[] = []
@@ -388,6 +406,15 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         if (inputNames.size) for (const w of writesTo(a.expr, inputNames)) readOnly(w.name, exprStart + w.start)
         // A generated handler ([(value)]) writes a copy already: only handlers as written are checked.
         if (found !== -1) for (const m of mutationsOf(a.expr, stateNames)) warnings.push(new ClarusError(m.message, file, source, exprStart + m.start))
+      } else if (a.kind === 'prop' && a.name === '...') {
+        checkExpr(a.expr, file, source, a.start)
+        const reactive = stateful && (referencesNames(a.expr, scriptScope) || referencesNames(a.expr, loopNames))
+        // Written attributes win over the spread's (class and style merge, in the fold): their names, lowercase.
+        const skip = [...new Set(attrs.filter((x) => x !== a && x.kind !== 'event').map((x) => x.name.toLowerCase()))]
+        const at = new ClarusError('', file, source, a.start)
+        const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, where: `${file}:${at.line}:${at.column}` }
+        if (reactive) dynamic.push(node_)
+        out.push(node_)
       } else if (a.kind === 'prop' && a.name === 'engine') {
         // [engine]="f": this element's form (and its fields) belong to the forms engine f (clarusjs/forms).
         if (!stateful) fail('[engine] needs a <script> (an island): the forms engine runs in the browser', a.start)
