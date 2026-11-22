@@ -1,10 +1,19 @@
 // @vitest-environment happy-dom
 // #121: after a fragment swap or client render, focus moves to the new content and the title is announced.
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import '../../src/runtime/loader.ts'
 
 const navigated = (root: ParentNode) => (globalThis as { __clAttach?: (root: ParentNode, navigated?: 1) => void }).__clAttach!(root, 1)
-afterEach(() => { document.body.innerHTML = ''; history.replaceState(null, '', '/'); vi.useRealTimers() })
+// Fake timers throughout: a navigation announces the title 50 ms later, and a real timer could fire after the test
+// environment is gone (#311). Each test's timers run while its DOM is still here, and none are left over.
+beforeEach(() => { vi.useFakeTimers() })
+afterEach(() => {
+  vi.runOnlyPendingTimers()
+  expect(vi.getTimerCount()).toBe(0)
+  document.body.innerHTML = ''
+  history.replaceState(null, '', '/')
+  vi.useRealTimers()
+})
 
 test('focus goes to the page heading, which can take focus without becoming a tab stop', () => {
   document.body.innerHTML = '<header><a href="/">x</a></header><main id="content"><h1>New page</h1><p>…</p></main>'
