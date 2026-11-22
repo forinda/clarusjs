@@ -18,8 +18,69 @@ type Params = Record<string, string>
  */
 type DataModule = {
   entries?(): Params[] | Promise<Params[]>
-  load?(context: { params: Params; request: Request }): object | Promise<object>
+  load?(context: LoadContext): object | Promise<object>
 }
+
+/**
+ * Data a request carries from `handle()` (src/server.ts) to every `load()`, such as the signed-in user. Declare what
+ * it holds once, and every loader is checked against it:
+ * @example
+ * ```ts
+ * // src/server.ts
+ * declare module 'clarusjs/server' {
+ *   interface Locals { user?: { id: string; name: string } }
+ * }
+ * ```
+ * @see https://clarusjs.com/reference/server#locals
+ */
+export interface Locals {}
+
+/**
+ * Options for `cookies.set()`. Defaults: `path: '/'`, `httpOnly: true`, `sameSite: 'lax'`, and `secure: true` unless
+ * the request is plain http to localhost (so development works).
+ * @see https://clarusjs.com/reference/server#cookies
+ */
+export type CookieOptions = { path?: string; domain?: string; maxAge?: number; expires?: Date; httpOnly?: boolean; secure?: boolean; sameSite?: 'lax' | 'strict' | 'none' }
+
+/**
+ * A request's cookies: read from its `Cookie` header; what's set or deleted goes on the answer as `Set-Cookie`.
+ * @example
+ * ```ts
+ * export function load({ cookies }: LoadContext) {
+ *   cookies.set('visited', 'yes', { maxAge: 60 * 60 * 24 })
+ *   return { theme: cookies.get('theme') ?? 'light' }
+ * }
+ * ```
+ * @see https://clarusjs.com/reference/server#cookies
+ */
+export type Cookies = {
+  get(name: string): string | undefined
+  getAll(): Record<string, string>
+  set(name: string, value: string, options?: CookieOptions): void
+  delete(name: string, options?: Pick<CookieOptions, 'path' | 'domain'>): void
+}
+
+/**
+ * What a page's `load()` gets: its route params, the request, its cookies and the locals `handle()` filled.
+ * @see https://clarusjs.com/reference/server#loadcontext
+ */
+export type LoadContext = { params: Params; request: Request; cookies: Cookies; locals: Locals }
+
+/**
+ * `handle()` in src/server.ts: runs once per request before any page loads, to resolve the session into `locals`.
+ * Returning a Response (such as `redirect('/login')`) answers the request instead.
+ * @example
+ * ```ts
+ * // src/server.ts
+ * import type { Handle } from 'clarusjs/server'
+ * export const handle: Handle = async ({ cookies, locals }) => {
+ *   const id = cookies.get('session')
+ *   if (id) locals.user = await sessions.get(id)
+ * }
+ * ```
+ * @see https://clarusjs.com/reference/server#handle
+ */
+export type Handle = (context: { request: Request; cookies: Cookies; locals: Locals }) => void | Response | Promise<void | Response>
 
 type Route = { path: string; file: string; keys: string[]; regex: RegExp; load: () => Promise<PageModule> }
 
@@ -89,6 +150,8 @@ export function createHandler(
     site?: SiteOptions
     /** Development: a failing page throws its error (the dev server shows it with its stack) instead of answering 500. */
     dev?: boolean
+    /** src/server.ts: its `handle()` runs once per request, before any page loads. */
+    hooks?: { handle?: Handle }
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
@@ -189,6 +252,26 @@ export function createHandler(
       return out.sort()
     },
     async fetch(request) {
+      // The request's cookies (Set-Cookie on whatever answers it) and locals, filled by handle() before pages load.
+      const jar = cookieJar(request)
+      const locals = {} as Locals
+      if (options.hooks?.handle) {
+        let early: void | Response
+        try {
+          early = await options.hooks.handle({ request, cookies: jar.cookies, locals })
+        } catch (err) {
+          if (options.dev) throw err
+          console.error(`clarusjs: src/server.ts: handle() failed: ${(err as Error)?.message ?? err}`)
+          return jar.apply(failure('src/server.ts: handle() failed'))
+        }
+        if (early instanceof Response) return jar.apply(early)
+      }
+      return jar.apply(await answer(request, jar.cookies, locals))
+    },
+  }
+
+  async function answer(request: Request, cookies: Cookies, locals: Locals): Promise<Response> {
+    {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 })
       const pathname = new URL(request.url).pathname
       // '/guide/x/' is the same page as '/guide/x', in dev as on a static host.
@@ -269,7 +352,7 @@ export function createHandler(
       if (mod?.load) {
         let loaded: unknown
         try {
-          loaded = await mod.load({ params: found.params, request })
+          loaded = await mod.load({ params: found.params, request, cookies, locals })
         } catch (err) {
           return fail(`${dataFile}: load() failed: ${(err as Error)?.message ?? err}`, err)
         }
@@ -315,7 +398,7 @@ export function createHandler(
         : hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''
       const body = fullDocument(html, style, script)
       return new Response(head ? null : body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
-    },
+    }
   }
   return handler
 }
@@ -402,4 +485,60 @@ export function rootLinks(html: string, base: string): string {
     const resolved = new URL(url.replace(/&amp;/g, '&'), `http://x${base}`)
     return `${attr}${(resolved.pathname + resolved.search + resolved.hash).replace(/&/g, '&amp;')}"`
   })
+}
+
+// A cookie name: an RFC 6265 token (no spaces, separators or controls).
+const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
+
+/** The request's cookies, and `apply(response)`: the response with a Set-Cookie for each cookie set or deleted. */
+function cookieJar(request: Request): { cookies: Cookies; apply(response: Response): Response } {
+  const incoming = new Map<string, string>()
+  for (const part of (request.headers.get('cookie') ?? '').split(';')) {
+    const at = part.indexOf('=')
+    if (at < 1) continue
+    const name = part.slice(0, at).trim()
+    const raw = part.slice(at + 1).trim().replace(/^"(.*)"$/, '$1')
+    let value = raw
+    try { value = decodeURIComponent(raw) } catch {}
+    if (!incoming.has(name)) incoming.set(name, value)
+  }
+  const url = new URL(request.url)
+  const local = url.protocol === 'http:' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(url.hostname)
+  const current = new Map(incoming)
+  const out = new Map<string, string>() // name (and path, domain) → Set-Cookie value
+  const write = (name: string, value: string, o: CookieOptions) => {
+    if (!TOKEN.test(name)) throw new Error(`cookies.set: ${JSON.stringify(name)} isn't a valid cookie name`)
+    const path = o.path ?? '/'
+    let header = `${name}=${encodeURIComponent(value)}; Path=${path}`
+    if (o.domain) header += `; Domain=${o.domain}`
+    if (o.maxAge !== undefined) header += `; Max-Age=${Math.floor(o.maxAge)}`
+    if (o.expires) header += `; Expires=${o.expires.toUTCString()}`
+    if (o.httpOnly ?? true) header += '; HttpOnly'
+    header += `; SameSite=${({ lax: 'Lax', strict: 'Strict', none: 'None' } as const)[o.sameSite ?? 'lax']}`
+    if (o.secure ?? !local) header += '; Secure'
+    out.set(`${name};${path};${o.domain ?? ''}`, header)
+  }
+  return {
+    cookies: {
+      get: (name) => current.get(name),
+      getAll: () => Object.fromEntries(current),
+      set(name, value, options = {}) {
+        write(name, value, options)
+        current.set(name, value)
+      },
+      delete(name, options = {}) {
+        // An expired cookie with the attributes it was set with (Max-Age=0 after them, so it reads as a removal).
+        write(name, '', { ...options, maxAge: undefined })
+        const key = `${name};${options.path ?? '/'};${options.domain ?? ''}`
+        out.set(key, out.get(key)! + '; Max-Age=0')
+        current.delete(name)
+      },
+    },
+    apply(response) {
+      if (!out.size) return response
+      const headers = new Headers(response.headers) // a redirect's headers are immutable: copy them
+      for (const header of out.values()) headers.append('set-cookie', header)
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
+    },
+  }
 }

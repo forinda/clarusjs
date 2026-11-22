@@ -202,3 +202,12 @@ test('#98: compress writes .br and .gz next to the text files of dist/client, ea
     expect(statSync(resolve(client, f)).size).toBeLessThan(statSync(resolve(client, f.replace(/\.(br|gz)$/, ''))).size)
   }
 })
+
+test('#93: src/server.ts handle() resolves the session for every load(); Set-Cookie reaches the answer', async () => {
+  const { default: app } = await import(pathToFileURL(resolve(root, 'dist/server/index.mjs')).href + '?t=' + Date.now())
+  const signedIn = await app.fetch(new Request('https://x.test/account/1', { headers: { cookie: 'session=42' } }))
+  expect(unscoped(await signedIn.text())).toContain('<p id="user">user 42</p>')
+  expect(signedIn.headers.get('set-cookie')).toBe('last-account=seen; Path=/; HttpOnly; SameSite=Lax; Secure')
+  const anonymous = await app.fetch(new Request('https://x.test/account/1'))
+  expect(unscoped(await anonymous.text())).toContain('<p id="user">nobody</p>')
+})

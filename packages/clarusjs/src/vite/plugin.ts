@@ -555,6 +555,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         // src/head.ts is optional: its transformHead (a function, so not a plugin option) runs on every page's head.
         `  site: ${JSON.stringify(options.site)},\n` +
         `  head: { ...${JSON.stringify(options.head ?? {})}, transform: Object.values(import.meta.glob('/src/head.ts', { eager: true }))[0]?.transformHead },\n` +
+        // src/server.ts is optional too: its handle() runs once per request, before any page loads (cookies, locals).
+        `  hooks: Object.values(import.meta.glob('/src/server.ts', { eager: true }))[0],\n` +
         `})\n`
     } },
     transform: {

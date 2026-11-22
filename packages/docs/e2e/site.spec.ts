@@ -1682,3 +1682,18 @@ test('#50: llms.txt lists the docs for AI tools, and llms-full.txt has their tex
   expect(full).not.toContain('description: "Install clarusjs, configure Vite') // no frontmatter
   expect(full).toContain('Source: https://clarusjs.com/guide/explained') // a template page, as its text
 })
+
+test('#93: the server demo remembers your name in a cookie, set by its load()', async ({ page, context }) => {
+  await page.goto('/playground?name=Ada')
+  await expect(page.locator('#greeting')).toHaveText('Hello, Ada!')
+  const cookie = (await context.cookies()).find((c) => c.name === 'playground-name')
+  expect(cookie?.value).toBe('Ada')
+  expect(cookie?.httpOnly).toBe(true)
+  expect(cookie?.sameSite).toBe('Lax')
+  await page.goto('/playground')
+  await expect(page.locator('#greeting')).toHaveText('Hello, Ada!')
+  // A blank name forgets it.
+  await page.goto('/playground?name=%20')
+  await expect(page.locator('#greeting')).toContainText('Type a name')
+  expect((await context.cookies()).some((c) => c.name === 'playground-name')).toBe(false)
+})
