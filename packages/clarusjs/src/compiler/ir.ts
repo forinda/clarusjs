@@ -2,7 +2,7 @@
 import { parseExpressionAt } from 'acorn'
 import { ClarusError } from './errors.ts'
 import { FOR_IMPLICIT, importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
-import { analyzeScript, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
+import { analyzeScript, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
   | { kind: 'static'; html: string }
@@ -97,6 +97,10 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   const readOnly = (name: string, at: number): never =>
     fail(`@input ${name} is read-only: inputs belong to the parent. Copy it to change it here: let local = state(${name})`, at)
   if (parsed.script && inputNames.size) for (const w of writesTo(parsed.script.code, inputNames)) readOnly(w.name, parsed.script.start + w.start)
+  // State changed in place (items.push(x), form.a = 1) notifies nothing, so the page doesn't update (#350): a warning
+  // with the copy to write, in the script here and in event handlers below.
+  const stateNames = new Set(signals.keys())
+  if (parsed.script) for (const m of mutationsOf(parsed.script.code, stateNames)) warnings.push(new ClarusError(m.message, file, source, parsed.script.start + m.start))
   for (const d of parsed.dataImports) {
     // In an island the import is bundled for the browser, like a script import.
     if (stateful && d.from.startsWith('node:')) fail(`\`${d.from}\` can't be imported in an island: its imports are bundled for the browser`, d.start)
@@ -363,11 +367,11 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       else if (a.kind === 'event') {
         if (!stateful) fail('event bindings need a <script> with state; this component is static', a.start)
         checkHandler(a.expr, file, source, a.start)
-        if (inputNames.size) {
-          const found = source.indexOf(a.expr, a.start)
-          const exprStart = found === -1 ? a.start : found // a generated handler ([(value)]): at the binding
-          for (const w of writesTo(a.expr, inputNames)) readOnly(w.name, exprStart + w.start)
-        }
+        const found = source.indexOf(a.expr, a.start)
+        const exprStart = found === -1 ? a.start : found // a generated handler ([(value)]): at the binding
+        if (inputNames.size) for (const w of writesTo(a.expr, inputNames)) readOnly(w.name, exprStart + w.start)
+        // A generated handler ([(value)]) writes a copy already: only handlers as written are checked.
+        if (found !== -1) for (const m of mutationsOf(a.expr, stateNames)) warnings.push(new ClarusError(m.message, file, source, exprStart + m.start))
       } else if (a.kind === 'prop' && a.name === 'engine') {
         // [engine]="f": this element's form (and its fields) belong to the forms engine f (clarusjs/forms).
         if (!stateful) fail('[engine] needs a <script> (an island): the forms engine runs in the browser', a.start)
