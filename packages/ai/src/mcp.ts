@@ -6,6 +6,9 @@ import { realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { relative, resolve, isAbsolute } from 'node:path'
 import { compile, lint, ClarusError } from 'clarusjs/compiler'
+// clarusjs/icons came with built-in icons; with an older clarusjs (the peer range allows one) the server still starts,
+// and <icon> is a compile error, as in the playground.
+const icons = await import('clarusjs/icons').catch(() => undefined)
 import { runClarus } from './clarus.ts'
 import { loadDocs, search } from './docs.ts'
 
@@ -71,8 +74,10 @@ export function createMcp(options: McpOptions): { handle(message: unknown): Prom
         const source = str(args.source) ?? ''
         const file = str(args.file) ?? 'component.tscl'
         try {
-          const server = compile(source, { file, target: 'server', clientUrl: `/${file}?import` }) // the island's chunk URL, as in dev
-          const client = compile(source, { file, target: 'client' })
+          // <icon> names, from the sets installed in the project (as if the file were in it).
+          const icon = icons && ((name: string) => icons.resolveIcon(name, resolve(options.cwd, file)))
+          const server = compile(source, { file, target: 'server', clientUrl: `/${file}?import`, icon }) // the island's chunk URL, as in dev
+          const client = compile(source, { file, target: 'client', icon })
           const notes = [
             ...client.warnings.map((w) => `${w.message.replace(/^(\S+:\d+:\d+) /, '$1 warning: ')}`),
             ...lint(source, file).map((m) => `${file}:${m.line}:${m.column} ${m.severity} ${m.rule}: ${m.message}`),

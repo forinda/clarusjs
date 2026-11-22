@@ -6,7 +6,7 @@ import { blankOut, scan } from './blank.ts'
 export type Context =
   | { kind: 'tag-name'; prefix: string; start: number }
   | { kind: 'attr-name'; tag: string; prefix: string; start: number }
-  | { kind: 'attr-value'; tag: string; attr: string }
+  | { kind: 'attr-value'; tag: string; attr: string; prefix: string; start: number } // prefix: the value typed before the cursor
   | { kind: 'import-path'; prefix: string; start: number; end: number }
   | { kind: 'directive'; prefix: string; start: number }
   | { kind: 'text' }
@@ -32,7 +32,7 @@ export function contextAt(text: string, offset: number): Context {
     if (inside.length <= name.length) return { kind: 'tag-name', prefix: inside, start: tag.start + 1 }
     if (tag.quote !== -1) {
       const attr = /([^\s=]+)\s*=\s*$/.exec(text.slice(tag.start + 1, tag.quote))?.[1] ?? ''
-      return { kind: 'attr-value', tag: name, attr }
+      return { kind: 'attr-value', tag: name, attr, prefix: text.slice(tag.quote + 1, offset), start: tag.quote + 1 }
     }
     const prefix = /[^\s"']*$/.exec(inside)?.[0] ?? ''
     return { kind: 'attr-name', tag: name, prefix, start: offset - prefix.length }

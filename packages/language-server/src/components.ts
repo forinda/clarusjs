@@ -1,5 +1,6 @@
 // Components in a template: completion (directives, the file's imported components as tags, their inputs, models and
 // events as bindings, @import paths), hover on a component tag, and go to definition from a tag or its specifier. Read
+import { iconNames, iconSets, iconSvg, resolveIcon } from 'clarusjs/icons'
 // with the compiler's parser (each component's last good parse); the cursor's context is lexical.
 import { dirname, relative, sep } from 'node:path'
 import type { CompletionItem, CompletionList, Hover, LocationLink } from '@volar/language-service'
@@ -12,7 +13,7 @@ import type { Import, Project } from './project.ts'
 // ponytail: events a component sends, found by their literal name in its script; a name built at runtime isn't listed.
 const EVENT = /new\s+CustomEvent\(\s*(['"])([^'"]+)\1/g
 const DIRECTIVES = ['@if', '@else', '@for', '@empty', '@slot', '@import', '@input', '@model', '@type', '@interface']
-const Kind = { Property: 10, Event: 23, Keyword: 14, File: 17, Class: 7 } as const
+const Kind = { Property: 10, Event: 23, Keyword: 14, File: 17, Class: 7, Module: 9, Value: 12 } as const
 
 type Info = { inputs: { name: string; type: string; optional: boolean; model: boolean }[]; events: string[] }
 
@@ -49,6 +50,26 @@ export function completions(project: Project, path: string, text: string, offset
       ...info.events.map((e) => item(`(${e})`, Kind.Event, `Event from ${ctx.tag}; its data is $event.detail`)),
     ].filter((c) => c.label.startsWith(ctx.prefix)))
   }
+  // <icon name="…">: the installed sets, then the icons of the chosen set (a component imported as icon wins).
+  if (ctx.kind === 'attr-value' && ctx.tag === 'icon' && ctx.attr === 'name' && project.compiler.checkIcons && !importNamed(project, path, 'icon')) {
+    // The whole value, the cursor anywhere in it: an edit replaces the word it's in, not just what's before the cursor.
+    const close = text.indexOf(text[ctx.start - 1]!, ctx.start)
+    const value = text.slice(ctx.start, close === -1 ? offset : close)
+    const colon = ctx.prefix.indexOf(':')
+    if (colon === -1) {
+      const after = value.indexOf(':') // a set already followed by :icon keeps its colon
+      return list(iconSets(path).filter((s) => s.prefix.startsWith(ctx.prefix)).map((s) => ({
+        label: s.prefix,
+        kind: Kind.Module,
+        detail: `${s.name} · ${s.total} icons`,
+        textEdit: { range: range(ctx.start, ctx.start + (after === -1 ? value.length : after)), newText: after === -1 ? `${s.prefix}:` : s.prefix },
+        ...(after === -1 ? { command: { title: 'Icons', command: 'editor.action.triggerSuggest' } } : {}),
+      })))
+    }
+    const set = ctx.prefix.slice(0, colon)
+    const typed = ctx.prefix.slice(colon + 1)
+    return list(iconNames(set, path).filter((n) => n.startsWith(typed)).map((n) => ({ label: n, kind: Kind.Value, detail: set, textEdit: { range: range(ctx.start + colon + 1, ctx.start + value.length), newText: n } })))
+  }
   if (ctx.kind === 'import-path') {
     const dir = dirname(path)
     const specifiers = project.files().filter((f) => f.endsWith('.tscl') && f !== path).map((f) => { const r = relative(dir, f).split(sep).join('/'); return r.startsWith('.') ? r : `./${r}` })
@@ -61,6 +82,8 @@ export function completions(project: Project, path: string, text: string, offset
 const tagAt = (text: string, offset: number) => tagsIn(text).find((t) => offset >= t.start && offset <= t.end)
 
 export function hover(project: Project, path: string, text: string, offset: number): Hover | undefined {
+  const icon = iconAt(project, path, text, offset)
+  if (icon) return icon
   const tag = tagAt(text, offset)
   const imp = tag && importNamed(project, path, tag.name)
   if (!tag || !imp) return undefined
@@ -85,4 +108,25 @@ export function definition(project: Project, path: string, text: string, offset:
   const origin = { start: positionAt(text, start), end: positionAt(text, end) }
   const top = { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }
   return [{ originSelectionRange: origin, targetUri: URI.file(imp.target).toString(), targetRange: top, targetSelectionRange: top }]
+}
+
+/** Hover on `<icon name="set:name">`: a preview of the icon and its name. */
+function iconAt(project: Project, path: string, text: string, offset: number): Hover | undefined {
+  if (!project.compiler.checkIcons || importNamed(project, path, 'icon')) return undefined
+  // The value of name="…" on an <icon> (either quote), the cursor in it: the same reading as completion.
+  const ctx = contextAt(text, offset)
+  if (ctx.kind !== 'attr-value' || ctx.tag !== 'icon' || ctx.attr !== 'name') return undefined
+  const close = text.indexOf(text[ctx.start - 1]!, ctx.start)
+  const name = text.slice(ctx.start, close === -1 ? offset : close)
+  let found: ReturnType<typeof resolveIcon>
+  try {
+    found = resolveIcon(name, path)
+  } catch {
+    return undefined // an icon <icon> can't draw yet (a rotated alias): the diagnostic says so
+  }
+  if (!('data' in found)) return undefined
+  // A grey that shows on light and dark editors, for icons drawn in the text colour.
+  const svg = iconSvg(found.data, 'width="48" height="48"').replaceAll('currentColor', '#888')
+  const value = `![${name}](data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')})\n\n\`${name}\``
+  return { contents: { kind: 'markdown', value }, range: { start: positionAt(text, ctx.start), end: positionAt(text, ctx.start + name.length) } }
 }

@@ -26,7 +26,7 @@
     <h2 id="bento-title">What you get</h2>
     <div class="bento">
       <article class="bento-card span-4 tall">
-        <p class="bento-kicker">Islands</p>
+        <p class="bento-kicker"><icon name="lucide:zap" /> Islands</p>
         <h3>This page has one island</h3>
         <p>
           Everything here is static HTML, rendered at build time. The button is a component with a
@@ -49,14 +49,14 @@
       </article>
 
       <article class="bento-card span-2">
-        <p class="bento-kicker">HTML first</p>
+        <p class="bento-kicker"><icon name="lucide:code" /> HTML first</p>
         <h3>No script, no JavaScript</h3>
         <p>A component without a <code>&lt;script&gt;</code> is HTML only. This is all it sends to the browser:</p>
         <pre class="bento-code" tabindex="0"><code verbatim>export {}</code></pre>
       </article>
 
       <article class="bento-card span-2">
-        <p class="bento-kicker">No hydration</p>
+        <p class="bento-kicker"><icon name="lucide:layers" /> No hydration</p>
         <h3>Attach, don't re-render</h3>
         <ol class="bento-flow">
           <li>The server sends HTML</li>
@@ -67,7 +67,7 @@
       </article>
 
       <article class="bento-card span-3">
-        <p class="bento-kicker">Lists</p>
+        <p class="bento-kicker"><icon name="lucide:list" /> Lists</p>
         <h3>Rows by key</h3>
         <p>
           <code>@for</code> renders the list on the server; in the browser, rows are added and removed by key
@@ -78,7 +78,7 @@
       </article>
 
       <article class="bento-card span-3">
-        <p class="bento-kicker">Checked</p>
+        <p class="bento-kicker"><icon name="lucide:shield-check" /> Checked</p>
         <h3>Errors at build time</h3>
         <p>
           <code>clarusjs check</code> type-checks templates with your own TypeScript and points at the line you wrote.
@@ -90,7 +90,7 @@ src/pages/index.tscl:3:13 error TS2339:
       </article>
 
       <article class="bento-card span-2">
-        <p class="bento-kicker">Rendering</p>
+        <p class="bento-kicker"><icon name="lucide:route" /> Rendering</p>
         <h3>Static, server or client</h3>
         <ul class="bento-routes">
           <li><code>/</code><span>static</span></li>
@@ -101,14 +101,14 @@ src/pages/index.tscl:3:13 error TS2339:
       </article>
 
       <article class="bento-card span-2">
-        <p class="bento-kicker">Small</p>
+        <p class="bento-kicker"><icon name="lucide:feather" /> Small</p>
         <h3>A runtime under 5 KB</h3>
         <p class="bento-stat">&lt; 5 KB</p>
         <p>Gzipped, in the browser. A size test in the repo keeps it there.</p>
       </article>
 
       <article class="bento-card span-2">
-        <p class="bento-kicker">AI agents</p>
+        <p class="bento-kicker"><icon name="lucide:bot" /> AI agents</p>
         <h3>Checks for agents too</h3>
         <p>An MCP server to check, compile and search the docs, and the conventions for <code>AGENTS.md</code>.</p>
         <pre class="bento-code bento-terminal" tabindex="0"><code verbatim>$ npx @clarusjs/ai agents</code></pre>

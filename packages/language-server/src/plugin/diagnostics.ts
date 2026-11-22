@@ -1,6 +1,7 @@
 // Template errors: the compiler's, for the open file, at their place. A syntax error is left to the TypeScript 7.1
 // content mapper when the project runs it (it reports them too, also for `tsc`), so one mistake isn't two errors.
 import type { Diagnostic } from '@volar/language-service'
+import { resolveIcon } from 'clarusjs/icons'
 import { fromLineColumn } from '../positions.ts'
 import type { Project } from '../project.ts'
 
@@ -8,7 +9,7 @@ export function diagnosticsFor(project: Project, path: string, text: string): Di
   const { compile, parse, ClarusError, lint } = project.compiler
   try {
     // Warnings: things that compile but likely aren't meant. (A project's older clarusjs has none.)
-    const warnings = (compile(text, { file: path, target: 'client' }).warnings ?? []).map((w) => diagnostic(w, 2))
+    const warnings = (compile(text, { file: path, target: 'client', icon: (name) => resolveIcon(name, path) }).warnings ?? []).map((w) => diagnostic(w, 2))
     // Lint (#304), once the template compiles: the built-in rules at their default levels.
     // ponytail: the editor doesn't read the Vite config (its `lint` levels, `lintRules`); `clarusjs check` does.
     // Upgrade path: the trusted project's levels and rules, loaded as check loads them.
@@ -16,6 +17,9 @@ export function diagnosticsFor(project: Project, path: string, text: string): Di
     return [...warnings, ...linted]
   } catch (err) {
     if (!(err instanceof ClarusError)) return []
+    // An icon error stops the compile at the first; checkIcons finds the rest, as clarusjs check reports them.
+    const icons = iconErrors(project, path, text)
+    if (icons.some((e) => e.line === err.line && e.column === err.column && e.message === err.message)) return icons.map((e) => diagnostic(e, 1))
     if (project.mapperConfigured(path)) {
       try { parse(text, path) } catch { return [] } // a syntax error: the mapper's
     }
@@ -37,5 +41,16 @@ function diagnostic(err: { message: string; file: string; line: number; column: 
     message: err.message.slice(`${err.file}:${err.line}:${err.column} `.length),
     severity,
     source: 'clarusjs',
+  }
+}
+
+/** Every <icon> error in the file, with a clarusjs that has built-in icons (none on a syntax error). */
+function iconErrors(project: Project, path: string, text: string): { message: string; file: string; line: number; column: number }[] {
+  const { parse, checkIcons } = project.compiler
+  if (!checkIcons) return []
+  try {
+    return checkIcons(parse(text, path), path, text, (name) => resolveIcon(name, path))
+  } catch {
+    return []
   }
 }

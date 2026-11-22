@@ -40,6 +40,7 @@
   ],
   "exports": {
     "./compiler": "./src/compiler/index.ts",
+    "./icons": "./src/icons.ts",
     "./runtime": "./src/runtime/index.ts",
     "./navigation": "./src/runtime/navigation.ts",
     "./forms": "./src/forms/index.ts",
@@ -90,6 +91,10 @@
       "./compiler": {
         "types": "./dist/compiler/index.d.ts",
         "default": "./dist/compiler/index.js"
+      },
+      "./icons": {
+        "types": "./dist/icons.d.ts",
+        "default": "./dist/icons.js"
       },
       "./runtime": {
         "types": "./dist/runtime/index.d.ts",

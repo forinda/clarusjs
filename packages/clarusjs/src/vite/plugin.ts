@@ -24,6 +24,10 @@ import { rootLinks, routeFromFile } from '../server/handler.ts'
 import { basePath } from '../server/head.ts'
 import type { HeadTag, SiteOptions } from '../server/head.ts'
 import { sendResponse, toRequest } from './node.ts'
+import { resolveIcon } from '../icons.ts'
+
+/** <icon> names, found in the sets installed for the package `file` is in (clarusjs/icons). */
+const iconsFor = (file: string) => (name: string) => resolveIcon(name, file)
 
 // From src/ (workspace, tests) our siblings are .ts files; from the published dist/ they are .js.
 const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js'
@@ -117,7 +121,7 @@ function writeStyles(root: string, files: Files): boolean {
   const outDir = resolve(root, '.clarusjs')
   for (const file of files.components(root)) {
     try {
-      let out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file) }).css
+      let out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file), icon: iconsFor(file) }).css
       out = out.replace(/^(?:[ \t]*@(?:reference|import)\b[^;{]*;[ \t]*\n?)+/, (statements) => {
         for (const statement of statements.split(';').map((x) => x.trim()).filter(Boolean)) {
           head.add(statement.replace(/(["'])(\.{1,2}\/[^"']*)\1/, (_, q: string, spec: string) => {
@@ -364,7 +368,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const input: Record<string, string> = { [LOADER_ENTRY]: here('../runtime/loader') }
       const components = files.components(appRoot)
       for (const file of components) {
-        if (compile(files.read(file, appRoot), { file, target: 'client' }).stateful) input[entryName(appRoot, file)] = file
+        if (compile(files.read(file, appRoot), { file, target: 'client', icon: iconsFor(file) }).stateful) input[entryName(appRoot, file)] = file
       }
       // Client routes: the router, and each page's render function for the browser.
       const client = clientPages(appRoot, modes, files)
@@ -633,7 +637,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         const clientUrl = urls
           ? urls.get(entryName(root, file)) ?? urls.get(relative(root, file).split(sep).join('/')) ?? urls.get(real(file))
           : command === 'build' ? `${CHUNK_TOKEN}[${entryName(root, file)}]__` : clientUrlFor(root, file)
-        if (urls && !clientUrl && compile(code, { file, target: 'client' }).stateful) {
+        if (urls && !clientUrl && compile(code, { file, target: 'client', icon: iconsFor(file) }).stateful) {
           this.error(`${file}: stateful component is not under src/, so it has no client chunk`)
         }
         // Imports that aren't relative or root paths must resolve (an alias, a package): otherwise a located error at
@@ -656,7 +660,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const loader = componentLoaderOf(root, file) ? relative(root, file).split(sep).join('/') : undefined
           // Dev: an island's module swaps itself in place when its file changes (#53).
           const hot = command === 'serve' && target === 'client' ? '/cl-hot.js' : undefined
-          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader, hot })
+          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader, hot, icon: iconsFor(file) })
           // Every component compiles for the server once: warnings from there, so each is said once.
           if (consumer === 'server' && !renderQuery) for (const w of out.warnings) this.warn(w.message)
           return { code: out.code, map: null, moduleType: 'js' }

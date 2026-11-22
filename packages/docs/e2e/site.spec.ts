@@ -1754,7 +1754,7 @@ test('#369: the sidebar as designed: groups collapse, the current one is open, s
   await group('Site quality').locator('summary').click()
   await expect(group('Site quality').locator('a').first()).toBeVisible()
   await expect(page.locator('#sidebar a[aria-current="page"]')).toHaveText('Islands')
-  await expect(page.locator('#sidebar .badge')).toHaveText('New')
+  await expect(page.locator('#sidebar a[href="/guide/tailwind"] .badge')).toHaveText('New')
   // Search: the sidebar's box, not the header's button, which hides where the sidebar shows.
   await expect(page.locator('.site-header .search-button')).toBeHidden()
   await page.locator('#sidebar [data-search-open]').click()
@@ -1846,4 +1846,21 @@ test('#372: the home is a bento grid: live islands in cards, columns on desktop,
   const lefts = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)))
   expect(new Set(lefts).size).toBe(1)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})
+
+test('icons: <icon> is inline SVG, 1em high, hidden from screen readers, with no script for it', async ({ page }) => {
+  const scripts: string[] = []
+  page.on('request', (r) => { if (r.resourceType() === 'script') scripts.push(r.url()) })
+  await page.goto('/guide/icons')
+  const demo = page.locator('.icon-demo svg').first()
+  await expect(demo).toHaveAttribute('aria-hidden', 'true')
+  await expect(demo).toHaveAttribute('viewBox', '0 0 24 24')
+  const { svg, text } = await demo.evaluate((el) => ({ svg: el.getBoundingClientRect().height, text: parseFloat(getComputedStyle(el.parentElement!).fontSize) }))
+  expect(Math.abs(svg - text)).toBeLessThan(1) // 1em: the size of the text around it
+  // The guide's example is what the page shows.
+  await expect(page.locator('pre').filter({ hasText: '<icon name="lucide:rocket" />' }).first()).toBeVisible()
+  expect(scripts.filter((u) => /icon/i.test(u))).toEqual([])
+  // The home's cards carry icons too.
+  await page.goto('/')
+  await expect(page.locator('.bento-kicker svg').first()).toHaveAttribute('aria-hidden', 'true')
 })
