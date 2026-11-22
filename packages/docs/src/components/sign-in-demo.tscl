@@ -1,0 +1,47 @@
+{{--
+  The Auth and cookies guide's demo: an island that signs in through an endpoint. The cookie is HttpOnly, so this
+  script never sees it; it asks /api/demo-session who is signed in.
+--}}
+
+<script>
+  import { browser } from 'clarusjs/runtime'
+
+  let user = state({ name: '' }) // signed out: no name
+  let draft = state('')
+  let message = state('')
+
+  // body: JSON text, or '' for none.
+  const call = async (method, body = '') => {
+    const response = await fetch('/api/demo-session', {
+      method,
+      headers: body ? { 'content-type': 'application/json' } : {},
+      body: body || undefined,
+    })
+    const data = await response.json()
+    message = data.error ?? ''
+    if (!data.error) user = data.user ?? { name: '' }
+  }
+
+  async function signIn() {
+    await call('POST', JSON.stringify({ name: draft }))
+    draft = ''
+  }
+
+  if (browser) call('GET')
+</script>
+
+<div class="demo-panel sign-in-demo">
+  @if (user.name) {
+    <p class="signed-in">
+      Signed in as <strong>{{ user.name }}</strong
+      >.
+    </p>
+    <button type="button" (click)="call('DELETE')">Sign out</button>
+  } @else {
+    <form (submit)="$event.preventDefault(); signIn()">
+      <label>Name <input [(value)]="draft" autocomplete="off" /></label>
+      <button type="submit">Sign in</button>
+    </form>
+  }
+  <p class="demo-muted" role="status">{{ message }}</p>
+</div>
