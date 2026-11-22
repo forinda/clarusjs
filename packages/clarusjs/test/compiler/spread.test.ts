@@ -33,7 +33,7 @@ test('event handlers, srcdoc, invalid names, className/htmlFor and object values
   const out = await html('@input a: Record<string, unknown>\n<div><p [...]="a">x</p></div>', { a: { onclick: 'steal()', ONLOAD: 'x', srcdoc: '<b>', 'a b': 1, '"x': 1, className: 'c', htmlFor: 'f', aria: { label: 'x' }, fn: () => 1, id: 'kept' } })
   expect(out).toBe('<div><p id="kept">x</p></div>')
   const said = warn.mock.calls.map((c) => String(c[0])).join('\n')
-  for (const key of ['onclick', 'ONLOAD', 'srcdoc', 'a b', 'className', 'htmlFor', 'aria', 'fn']) expect(said).toContain(`'${key}'`)
+  for (const why of ['an event handler', 'srcdoc is static only', 'not an attribute name', 'use class', 'use for', 'an object or a function']) expect(said).toContain(why)
   expect(said).toContain('c.tscl:2:9')
 })
 
@@ -67,4 +67,22 @@ test('refused where a spread could load something, twice on one element, and the
   expect(error('@input a: object\n<p [...]="a" [...]="a">x</p>')).toMatch(/^2:14 one \[\.\.\.\] per element/)
   expect(error('@input a: object\n<p {...a}>x</p>')).toMatch(/^2:4 \{\.\.\.a\} isn't a binding: spread with \[\.\.\.\]="a"/)
   expect(error('@input a: string\n<p [aria.label]="a">x</p>')).toMatch(/^2:4 \[aria\.label\]: only class\. and style\. take a \. \(\[class\.name\], \[style\.prop\]\)/)
+})
+
+test('security: a spread never sets clarusjs\'s own markers (data-cl-*, cl-*), so data can\'t spoof wiring', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const out = await html('@input a: Record<string, unknown>\n<div><p [...]="a">x</p></div>', { a: { 'data-cl-e': '0', 'DATA-CL-A': '1', 'data-cl-path': 'x', 'cl-x': '1', 'data-id': 'ok' } })
+  expect(out).toBe('<div><p data-id="ok">x</p></div>')
+  expect(warn.mock.calls.map((c) => String(c[0])).join('\n')).toContain('reserved for clarusjs')
+})
+
+test('security: warnings are said once per place and reason, however many different keys the data brings', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const { code } = compile('@input a: Record<string, unknown>\n<div><p [...]="a">x</p></div>', { file: 'w.tscl', target: 'server', clientUrl: '/w.js' })
+  const { render } = await importCode(code, 'spr-w', {}, true)
+  for (let i = 0; i < 50; i++) render({ a: { [`on${i}`]: 'x' } })
+  expect(warn.mock.calls.filter((c) => String(c[0]).includes('w.tscl:2:9') && String(c[0]).includes('event handler')).length).toBe(1)
+  render({ a: { 'on"\n': 'x', 'a b': 1 } })
+  const said = warn.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('not an attribute name'))
+  expect(said).toEqual(['[clarusjs] w.tscl:2:9: [...] dropped "on\\"\\n" (not an attribute name)']) // escaped; 'a b' (same reason) not repeated
 })
