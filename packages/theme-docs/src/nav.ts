@@ -2,10 +2,21 @@
 // readonly, as a template's inputs are: the layout passes its config to these helpers as it gets it.
 
 /** A sidebar entry; `order` sorts it within its group (lowest first, then by title). */
-export type Item = { title: string; href: string; order?: number }
-export type Group = { title: string; items: readonly Item[] }
+/**
+ * A sidebar entry. `badge`: a short label beside it ("New"), also from a page's frontmatter. For a lesson (#371): `xp`,
+ * what it can earn (from its steps and quizzes), and `minutes` (frontmatter), shown in the Learn path.
+ */
+export type Item = { title: string; href: string; order?: number; badge?: string; xp?: number; minutes?: number }
+/** The icons a sidebar group can show (#369). */
+export type GroupIcon = 'info' | 'code' | 'box' | 'shield' | 'download' | 'book' | 'terminal' | 'sparkles' | 'layers' | 'wrench' | 'rocket' | 'file'
+/**
+ * A sidebar group. `icon`: shown beside its title. `collapsed`: closed until opened (the group of the current page is
+ * always open).
+ */
+export type Group = { title: string; icon?: GroupIcon; collapsed?: boolean; items: readonly Item[] }
 /** A top-level part of the docs (Guide, Reference): its own sidebar groups. */
-export type Section = { key: string; title: string; href: string; groups: readonly Group[] }
+/** A top-level section. `switch: false` leaves it out of the phone drawer's switch (#370; link it with `menuLinks`). */
+export type Section = { key: string; title: string; href: string; switch?: boolean; groups: readonly Group[] }
 export type Social = { label: string; href: string; icon: 'github' | 'npm' | 'link' }
 /** A heading on the page, for "On this page". */
 export type Heading = { id: string; text: string; level: number }
@@ -40,6 +51,8 @@ export type ThemeConfig = {
   sections: readonly Section[]
   /** Icon links at the right of the header (GitHub, npm…). */
   social?: readonly Social[]
+  /** Text links at the bottom of the phone drawer, before the social links (Reference, Releases…) (#370). */
+  menuLinks?: readonly { label: string; href: string }[]
   /**
    * "Edit this page": a pattern where `:file` is the page's source file under src/pages (`guide/start.md`, found in
    * `pages`), or a function of the route (the page's source route, for dynamic pages). None without it.
@@ -95,7 +108,7 @@ export function pager(sections: readonly Section[], path: string): { prev: Item;
  * A page as `themeDocs()` reads it (`import pages from 'virtual:theme-docs/pages'`): its route, source file under
  * src/pages, last commit time (unix seconds), sidebar entry, and `hidden` when it isn't in the sidebar.
  */
-export type PageInfo = { href: string; title: string; file: string; group?: string; order?: number; updated?: number; hidden?: boolean }
+export type PageInfo = { href: string; title: string; file: string; group?: string; order?: number; badge?: string; xp?: number; minutes?: number; updated?: number; hidden?: boolean }
 
 /**
  * The sections with their sidebar filled from the pages under `/<section key>/`: a page sits in its `group` (else the
@@ -104,7 +117,7 @@ export type PageInfo = { href: string; title: string; file: string; group?: stri
  */
 export function pagesNav(sections: readonly Section[], pages: readonly PageInfo[]): Section[] {
   return sections.map((section) => {
-    const groups = section.groups.map((g) => ({ title: g.title, items: [...g.items] }))
+    const groups: { title: string; icon?: GroupIcon; collapsed?: boolean; items: Item[] }[] = section.groups.map((g) => ({ ...g, items: [...g.items] }))
     const listed = new Set(groups.flatMap((g) => g.items.map((i) => i.href)))
     for (const page of pages) {
       const inSection = page.href === `/${section.key}` || page.href.startsWith(`/${section.key}/`)
@@ -112,7 +125,12 @@ export function pagesNav(sections: readonly Section[], pages: readonly PageInfo[
       const title = page.group ?? section.title
       let group = groups.find((g) => g.title === title)
       if (!group) groups.push(group = { title, items: [] })
-      group.items.push(page.order === undefined ? { title: page.title, href: page.href } : { title: page.title, href: page.href, order: page.order })
+      const item: Item = { title: page.title, href: page.href }
+      if (page.order !== undefined) item.order = page.order
+      if (page.badge) item.badge = page.badge
+      if (page.xp) item.xp = page.xp
+      if (page.minutes) item.minutes = page.minutes
+      group.items.push(item)
     }
     const rank = (i: Item) => i.order ?? Infinity
     for (const g of groups) g.items.sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title))

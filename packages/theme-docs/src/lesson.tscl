@@ -7,6 +7,7 @@
 --}}
 @import lessonBar from './lesson-bar.tscl'
 @import learnStatus from './learn-status.tscl'
+@import learnPath from './learn-path.tscl'
 @import pageHead from './page-head.tscl'
 @import type { ThemeConfig, Heading } from './nav.ts'
 @import { lessonOf, lessonsOf } from './nav.ts'
@@ -56,7 +57,26 @@
       @if (config.learn) {<learnStatus [lessons]="lessonsOf(config).map((l) => l.href)" [progress]="config.learn.progress" />}
       <slot name="header-end"></slot>
     </header>
-    <main class="lesson" id="content" tabindex="-1"><slot /></main>
+    <div class="lesson-body">
+      {{-- The path (#371): a lesson of config.learn's section, from 1024px. --}}
+      @if (config.learn && lessonsOf(config).some((l) => l.href === path)) {
+        <aside class="lesson-path">
+          <learnPath
+            [lessons]="lessonsOf(config)"
+            [path]="path"
+            [eyebrow]="config.sections.find((s) => s.key === config.learn?.section)?.title ?? 'Learn'"
+            [course]="
+              config.sections
+                .find((s) => s.key === config.learn?.section)
+                ?.groups.find((g) => g.items.some((i) => i.href === path))?.title ?? ''
+            "
+            [steps]="headings.filter((h) => h.level === 2)"
+            [progress]="config.learn.progress"
+          />
+        </aside>
+      }
+      <main class="lesson" id="content" tabindex="-1"><slot /></main>
+    </div>
     <div class="lesson-bar" role="region" aria-label="Lesson actions" hidden>
       <lessonBar
         [lesson]="path"

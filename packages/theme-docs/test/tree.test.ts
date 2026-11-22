@@ -92,7 +92,7 @@ test('updated: the last commit that touched the page (one git log for all pages)
   expect(pages.find((p) => p.href === '/guide/a')!.updated).toBe(1700000000)
   expect(pages.find((p) => p.href === '/guide/b')!.updated).toBe(1700100000)
   expect(readPages(dir).every((p) => p.updated === undefined)).toBe(true)
-})
+}, 20_000) // five git processes: past the default 5s when the whole suite runs at once
 
 test("a section's index page belongs to it; an empty href falls to the first page of the first group with one", () => {
   const pages = [{ href: '/guide', title: 'Overview', file: 'guide/index.md', order: 0 }, { href: '/guidebook/x', title: 'Other', file: 'guidebook/x.md' }, { href: '/guide/a', title: 'A', file: 'guide/a.md', group: 'Late' }]
@@ -109,5 +109,29 @@ test('frontmatter: a # comment after a value is not part of it, a # inside quote
   expect(readPages(dir)).toEqual([
     { href: '/guide/a', title: 'C# basics', file: 'guide/a.md', group: 'A # B', order: 2 },
     { href: '/guide/b', title: 'B', file: 'guide/b.md', hidden: true },
+  ])
+})
+
+test("#369: a group's icon and collapsed state come through, and a page's badge (frontmatter) reaches its item", () => {
+  const pages = mkdtempSync(resolve(tmpdir(), 'theme-badge-'))
+  mkdirSync(resolve(pages, 'guide'))
+  writeFileSync(resolve(pages, 'guide/tailwind.md'), '---\ntitle: Tailwind CSS\ngroup: Templates\nbadge: New\n---\n# Tailwind CSS\n')
+  writeFileSync(resolve(pages, 'guide/lists.md'), '---\ntitle: Lists\ngroup: Templates\n---\n# Lists\n')
+  writeFileSync(resolve(pages, 'guide/deploy.md'), '---\ntitle: Deploy\ngroup: Build & deploy\n---\n# Deploy\n')
+  const config: Section[] = [{ key: 'guide', title: 'Guide', href: '', groups: [{ title: 'Templates', icon: 'code', items: [] }, { title: 'Build & deploy', icon: 'download', collapsed: true, items: [] }] }]
+  const [guide] = pagesNav(config, readPages(pages))
+  expect(guide!.groups.map((g) => [g.title, g.icon, g.collapsed])).toEqual([['Templates', 'code', undefined], ['Build & deploy', 'download', true]])
+  expect(guide!.groups[0]!.items).toEqual([{ title: 'Lists', href: '/guide/lists' }, { title: 'Tailwind CSS', href: '/guide/tailwind', badge: 'New' }])
+})
+
+test('#371: a lesson (steps: true) gets the XP it can earn (50 + 10 a step + 20 a quiz) and its frontmatter minutes', () => {
+  const pages = mkdtempSync(resolve(tmpdir(), 'theme-xp-'))
+  mkdirSync(resolve(pages, 'learn'))
+  writeFileSync(resolve(pages, 'learn/a.md'), '---\ntitle: A\nsteps: true\nminutes: 5\n---\n# A\n## Read\nx\n## Write\n::: quiz Which?\n- a\n:::\n## Done\n')
+  writeFileSync(resolve(pages, 'learn/b.md'), '---\ntitle: B\n---\n# B\n## Not a step\n')
+  const [learn] = pagesNav([{ key: 'learn', title: 'Learn', href: '', groups: [] }], readPages(pages))
+  expect(learn!.groups[0]!.items).toEqual([
+    { title: 'A', href: '/learn/a', xp: 50 + 3 * 10 + 20, minutes: 5 },
+    { title: 'B', href: '/learn/b' },
   ])
 })

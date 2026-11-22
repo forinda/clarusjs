@@ -5,6 +5,7 @@ group: "Your first site"
 order: 4
 layout: /src/layouts/lesson.tscl
 steps: true
+minutes: 6
 ---
 
 # Pages and data

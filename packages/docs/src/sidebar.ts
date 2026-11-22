@@ -7,38 +7,41 @@ export const sidebar: Section[] = [
     key: 'learn',
     title: 'Learn',
     href: '',
-    groups: [{ title: 'Your first site', items: [] }, { title: 'You', items: [{ title: 'Your progress', href: '/learn/progress' }] }],
+    groups: [{ title: 'Your first site', icon: 'rocket', items: [] }, { title: 'You', icon: 'sparkles', items: [{ title: 'Your progress', href: '/learn/progress' }] }],
   },
   {
     key: 'guide',
     title: 'Guide',
     href: '/guide/what-is-clarusjs',
     groups: [
-      { title: 'Introduction', items: [] },
-      { title: 'Templates', items: [{ title: 'Verbatim', href: '/guide/verbatim', order: 8 }] },
-      { title: 'Interactivity', items: [] },
-      { title: 'Build & deploy', items: [
+      // Icons and collapsed groups as designed (#369): the current page's group is always open.
+      { title: 'Introduction', icon: 'info', items: [] },
+      { title: 'Templates', icon: 'code', items: [{ title: 'Verbatim', href: '/guide/verbatim', order: 8 }] },
+      { title: 'Interactivity', icon: 'box', items: [] },
+      { title: 'Site quality', icon: 'shield', collapsed: true, items: [] },
+      { title: 'Build & deploy', icon: 'download', collapsed: true, items: [
         { title: 'This site, explained', href: '/guide/explained', order: 3 },
         { title: 'Server demo', href: '/playground', order: 4 },
       ] },
-      { title: 'Site quality', items: [] },
-      { title: 'Tooling', items: [] },
+      { title: 'Tooling', icon: 'wrench', collapsed: true, items: [] },
     ],
   },
   {
     key: 'repl',
+    switch: false, // the phone drawer's switch is Learn / Guide (Reference is in its links row: nav.ts menuLinks)
     title: 'Playground',
     href: '/repl',
-    groups: [{ title: 'Playground', items: [{ title: 'Playground', href: '/repl' }] }],
+    groups: [{ title: 'Playground', icon: 'terminal', items: [{ title: 'Playground', href: '/repl' }] }],
   },
   {
     key: 'reference',
+    switch: false,
     title: 'Reference',
     href: '/reference/template-syntax',
     groups: [
-      { title: 'Templates', items: [] },
-      { title: 'APIs', items: [] },
-      { title: 'Project', items: [{ title: 'Release notes', href: '/releases' }] },
+      { title: 'Templates', icon: 'code', items: [] },
+      { title: 'APIs', icon: 'layers', items: [] },
+      { title: 'Project', icon: 'file', items: [{ title: 'Release notes', href: '/releases' }] },
     ],
   },
 ]

@@ -19,7 +19,8 @@
     "types": "node scripts/types.mjs",
     "prepack": "pnpm types",
     "test": "vitest run",
-    "typecheck": "pnpm types && tsc --noEmit"
+    "typecheck": "pnpm types && tsc --noEmit",
+    "css": "node scripts/classes.js && tailwindcss -i src/styles/theme.css -o src/theme.css"
   },
   "peerDependencies": {
     "clarusjs": "workspace:^"
@@ -44,10 +45,12 @@
     "url": "https://github.com/forinda/clarusjs/issues"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "4.3.5",
     "@types/node": "^26.6.6",
     "clarusjs": "workspace:^",
+    "tailwindcss": "4.3.5",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.1",
-    "vite": "^8.3.8"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
   }
 }

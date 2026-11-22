@@ -218,8 +218,8 @@ test('the sidebar is generated from the pages: each Markdown page sits in its fr
     .sort((a, b) => a.order - b.order)
     .map((p) => p.title)
   await page.goto('/guide/holes')
-  const group = page.locator('.sidebar p.group', { hasText: /^Templates$/ }).locator('xpath=following-sibling::ul[1]')
-  const shown = await group.locator('a').allTextContents()
+  // Each link's title (its first span: a badge, such as Tailwind CSS's "New", follows it).
+  const shown = await page.locator('#sidebar details[data-group="Templates"] ul a > span:first-child').allTextContents()
   // Verbatim is a .tscl page, placed by nav.ts.
   expect(shown.filter((t) => t !== 'Verbatim')).toEqual(templates)
   expect(shown).toContain('Verbatim')
@@ -527,7 +527,7 @@ test('fragment navigation reaches server routes; client routes and failures load
   const documents: string[] = []
   page.on('request', (req) => { if (req.resourceType() === 'document') documents.push(new URL(req.url()).pathname) })
   await page.goto('/guide/rendering-modes')
-  await page.locator('a[href="/playground"]').first().click()
+  await page.locator('.content a[href="/playground"]').first().click() // the page's link (the sidebar's sits in a collapsed group)
   await expect(page.locator('h1')).toHaveText('Server demo')
   await expect(page.locator('#pill-html')).toHaveText(/^<span class="pill cl-c-pill-[a-z0-9]+">guest<\/span>$/) // rendered by the server for this request
   expect(documents).toEqual(['/guide/rendering-modes'])
@@ -672,8 +672,9 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   await expect(dialog.getByRole('status')).toHaveText('No results for "zzqqxx"')
   await page.keyboard.press('Escape')
   await expect(dialog).not.toBeVisible()
-  // The header button opens the same dialog; while it's open, the page behind is inert (focus stays inside).
-  await page.locator('.search-button').click()
+  // The sidebar's search box opens the same dialog (#369: the header button hides where the sidebar shows); while it's
+  // open, the page behind is inert (focus stays inside).
+  await page.locator('#sidebar [data-search-open]').click()
   await expect(dialog).toBeVisible()
   for (let i = 0; i < 4; i++) await page.keyboard.press('Tab')
   expect(await page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true)
@@ -1743,6 +1744,29 @@ test("#361: the site's own footer, in place of the theme's, on every kind of pag
   }
 })
 
+test('#369: the sidebar as designed: groups collapse, the current one is open, search opens from the sidebar', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/guide/islands')
+  const group = (title: string) => page.locator(`#sidebar details[data-group="${title}"]`)
+  await expect(group('Interactivity')).toHaveAttribute('open', '')
+  await expect(group('Site quality')).not.toHaveAttribute('open')
+  await expect(group('Site quality').locator('a').first()).toBeHidden()
+  await group('Site quality').locator('summary').click()
+  await expect(group('Site quality').locator('a').first()).toBeVisible()
+  await expect(page.locator('#sidebar a[aria-current="page"]')).toHaveText('Islands')
+  await expect(page.locator('#sidebar .badge')).toHaveText('New')
+  // Search: the sidebar's box, not the header's button, which hides where the sidebar shows.
+  await expect(page.locator('.site-header .search-button')).toBeHidden()
+  await page.locator('#sidebar [data-search-open]').click()
+  await expect(page.locator('dialog.search-dialog')).toBeVisible()
+  await expect(page.locator('dialog.search-dialog input')).toBeFocused()
+})
+
+test('#369: a page in a collapsed group opens it', async ({ page }) => {
+  await page.goto('/guide/deploy')
+  await expect(page.locator('#sidebar details[data-group="Build & deploy"]')).toHaveAttribute('open', '')
+})
+
 test('code blocks have line numbers, except shell commands', async ({ page }) => {
   await page.goto('/guide/markdown')
   const ts = page.locator('.code-block.language-ts').first()
@@ -1752,4 +1776,74 @@ test('code blocks have line numbers, except shell commands', async ({ page }) =>
   const sh = page.locator('.code-block.language-sh').first()
   await expect(sh).toBeVisible()
   await expect(sh).not.toHaveClass(/line-numbers/)
+})
+
+test('#370: the phone drawer as designed: Menu, a Learn / Guide switch, groups, and a links row', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 })
+  await page.goto('/guide/islands')
+  await page.locator('.menu-button').click()
+  const drawer = page.locator('#sidebar')
+  await expect(drawer.locator('.sidebar-head')).toContainText('Menu')
+  await expect(drawer.locator('.sidebar-switch a')).toHaveText(['Learn', 'Guide'])
+  await expect(drawer.locator('.sidebar-switch a[aria-current="true"]')).toHaveText('Guide')
+  await expect(drawer.locator('[data-search-open]')).toBeHidden() // the header's search button is there
+  await expect(drawer.locator('.sidebar-links a')).toHaveText(['Reference', 'Releases', 'GitHub', 'npm'])
+  await expect(drawer.locator('.sidebar-links')).toBeInViewport()
+  // Nothing wider than the drawer.
+  expect(await drawer.evaluate((d) => d.scrollWidth <= d.clientWidth)).toBe(true)
+  await drawer.locator('.sidebar-switch a', { hasText: 'Learn' }).click()
+  await expect(page).toHaveURL(/\/learn\//)
+})
+
+test('#371: a lesson has the Learn path: progress, done / next / locked, XP, its steps following the bar', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  // Lessons 1 and 2 done: 3 is the one to do, 4 is next, 5 and 6 are locked.
+  await page.addInitScript(() => localStorage.setItem('clarusjs-learn', JSON.stringify({ v: 1, steps: {}, done: ['/learn/first-page', '/learn/templates'], quizzes: {} })))
+  await page.goto('/learn/first-island')
+  const path = page.locator('.learn-path')
+  await expect(path).toContainText('Your first site')
+  await expect(path).toContainText('2 of 6')
+  const lessons = path.locator('> ol > li')
+  await expect(lessons).toHaveCount(6)
+  await expect(lessons.nth(0)).toHaveAttribute('data-status', 'done')
+  await expect(lessons.nth(0)).toContainText('Done')
+  await expect(lessons.nth(2).locator('a').first()).toHaveAttribute('aria-current', 'page')
+  await expect(lessons.nth(2)).toContainText('5 min')
+  await expect(lessons.nth(2)).toContainText(/\+\d+/)
+  await expect(lessons.nth(3)).toHaveAttribute('data-status', 'next')
+  await expect(lessons.nth(4)).toHaveAttribute('data-status', 'locked')
+  await expect(lessons.nth(4)).toContainText('Finish lesson 4 first')
+  await expect(path.locator('.path-footer')).toContainText(/\d+ XP · \d+ badges?\b/)
+  // The steps follow the bar.
+  const steps = path.locator('.path-steps li')
+  await expect(steps.first()).toHaveAttribute('data-step', 'current')
+  await page.locator('.lesson-bar').getByRole('button', { name: 'Continue' }).click()
+  await expect(steps.nth(0)).toHaveAttribute('data-step', 'done')
+  await expect(steps.nth(1)).toHaveAttribute('data-step', 'current')
+  // Phones: the header's segments, no path.
+  await page.setViewportSize({ width: 390, height: 800 })
+  await expect(path).toBeHidden()
+})
+
+test('#372: the home is a bento grid: live islands in cards, columns on desktop, one column on phones', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/')
+  const bento = page.getByRole('region', { name: 'What you get' })
+  const cards = bento.locator('.bento-card')
+  expect(await cards.count()).toBeGreaterThanOrEqual(7)
+  for (const card of await cards.all()) await expect(card.locator('h3')).toHaveCount(1) // each card is titled
+  // The live demos are cards: the counter (with what ships) and the list.
+  await expect(bento.locator('.bento-card cl-island[c="counter"]')).toHaveCount(1)
+  await expect(bento.locator('.bento-card cl-island[c="what-ships"]')).toHaveCount(1)
+  await expect(bento.locator('.bento-card cl-island[c="todo"]')).toHaveCount(1)
+  // Desktop: cards share rows, and the islands card spans more than the others.
+  const tops = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)))
+  expect(new Set(tops).size).toBeLessThan(tops.length)
+  const width = (i: number) => cards.nth(i).evaluate((el) => el.getBoundingClientRect().width)
+  expect(await width(0)).toBeGreaterThan(await width(1))
+  // Phones: one column, nothing wider than the screen.
+  await page.setViewportSize({ width: 390, height: 800 })
+  const lefts = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)))
+  expect(new Set(lefts).size).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })

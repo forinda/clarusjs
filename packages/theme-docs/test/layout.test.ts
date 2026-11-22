@@ -22,8 +22,9 @@ beforeAll(async () => {
   w('src/config.ts', `export const config = {
   brand: { text: 'acme', accent: '.dev' },
   learn: { section: 'learn', progress: '/learn/progress' },
-  sections: [{ key: 'learn', title: 'Learn', href: '/learn/one', groups: [{ title: 'First site', items: [{ title: 'One', href: '/learn/one' }, { title: 'Two', href: '/learn/two' }] }, { title: 'You', items: [{ title: 'Progress', href: '/learn/progress' }] }] }, { key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', items: [{ title: 'Start', href: '/guide/start' }, { title: 'Next', href: '/guide/next' }] }] }],
+  sections: [{ key: 'learn', title: 'Learn', href: '/learn/one', groups: [{ title: 'First site', items: [{ title: 'One', href: '/learn/one', xp: 90, minutes: 5 }, { title: 'Two', href: '/learn/two', xp: 60 }] }, { title: 'You', items: [{ title: 'Progress', href: '/learn/progress' }] }] }, { key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', icon: 'book', items: [{ title: 'Start', href: '/guide/start', badge: 'New' }, { title: 'Next', href: '/guide/next' }] }, { title: 'Tools', icon: 'wrench', collapsed: true, items: [{ title: 'Extra', href: '/guide/extra' }] }] }, { key: 'api', title: 'API', href: '/guide/next', switch: false, groups: [] }],
   social: [{ label: 'GitHub', href: 'https://github.com/acme/x', icon: 'github' }],
+  menuLinks: [{ label: 'Releases', href: '/guide/next' }],
   editLink: 'https://example.com/edit/:file',
   pages: [{ href: '/guide/start', title: 'Start', file: 'guide/start.tscl', updated: 1700000000 }, { href: '/guide/next', title: 'Next', file: 'guide/next.tscl' }],
   footer: 'Acme footer',
@@ -33,6 +34,7 @@ beforeAll(async () => {
   const page = (title: string, path: string, body: string) => `@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../../config.ts'\n<layout [config]="config" [title]="'${title}'" [path]="'${path}'" [headings]="[{ id: 'one', text: 'One', level: 2 }, { id: 'two', text: 'Two', level: 3 }]">${body}</layout>\n`
   w('src/pages/guide/start.tscl', page('Start', '/guide/start', "<h1>Start</h1><h2 id=\"one\">One</h2>@slot('sidebar-top') {<p class=\"promo\">Promo</p>}@slot('footer') {<p>Custom footer</p>}"))
   w('src/pages/guide/next.tscl', page('Next', '/guide/next', '<h1>Next</h1>'))
+  w('src/pages/guide/extra.tscl', page('Extra', '/guide/extra', '<h1>Extra</h1>'))
   w('src/pages/index.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../config.ts'\n<layout [config]=\"config\" [title]=\"'Home'\"><h1>Home</h1></layout>\n")
   const lesson = (path: string, body: string) => `@import lesson from '@clarusjs/theme-docs/lesson.tscl'\n@import { config } from '../../config.ts'\n<lesson [config]="config" [title]="'One'" [path]="'${path}'" [headings]="[{ id: 'read', text: 'Read', level: 2 }, { id: 'sub', text: 'Sub', level: 3 }, { id: 'write', text: 'Write', level: 2 }]">${body}</lesson>\n`
   w('src/pages/learn/one.tscl', '@import quiz from \'@clarusjs/theme-docs/quiz.tscl\'\n' + lesson('/learn/one', '<h1>One</h1><p>Intro</p><section class="step" aria-labelledby="read"><h2 id="read">Read</h2></section><section class="step" aria-labelledby="write"><h2 id="write">Write</h2><quiz [name]="\'quiz-0\'" [question]="\'Pick b\'" [options]="[\'a\', \'b\']" [answer]="1"><p>Because.</p></quiz></section>'))
@@ -70,9 +72,9 @@ test('header: brand, section links with the current one marked, social icon link
 
 test('sidebar: a popover nav with the current page, slots, and the header links for phones', () => {
   expect(html).toMatch(/<nav id="sidebar" class="sidebar" aria-label="Pages" popover>/)
-  expect(html).toContain('<a href="/guide/start" aria-current="page">Start</a>')
+  expect(html).toMatch(/<a [^>]*href="\/guide\/start" aria-current="page"[^>]*>\s*(?:<span[^>]*>)?Start/)
   expect(html).toContain('<p class="promo">Promo</p>')
-  expect(html).toMatch(/<div class="sidebar-links">.*GitHub/s)
+  expect(html).toMatch(/<div class="sidebar-links[^"]*">.*GitHub/s)
 })
 
 test('content and "On this page": crumb, both forms of the table of contents, edit link, last updated, pager, footer slot', () => {
@@ -149,10 +151,52 @@ test('app: the header and a full-height main for a tool (a playground), without 
 test('#360: the layout is made of public parts, each usable on its own', () => {
   const parts = unscoped(readFileSync(resolve(root, 'dist/client/guide/parts/index.html'), 'utf8'))
   expect(parts).toMatch(/<header class="site-header">[\s\S]*<a href="\/guide\/start" aria-current="true">Guide<\/a>/)
-  expect(parts).toMatch(/<nav id="sidebar" class="sidebar" aria-label="Pages" popover>[\s\S]*<p class="top">Top<\/p>[\s\S]*<a href="\/guide\/start" aria-current="page">Start<\/a>/)
+  expect(parts).toMatch(/<nav id="sidebar" class="sidebar" aria-label="Pages" popover>[\s\S]*<p class="top">Top<\/p>[\s\S]*<a [^>]*href="\/guide\/start" aria-current="page"[^>]*>\s*(?:<span[^>]*>)?Start/)
   expect(parts).toMatch(/<details class="toc-inline">\s*<summary>On this page<\/summary>[\s\S]*<a href="#a">A<\/a>/)
   expect(parts).toMatch(/<footer class="page-footer">[\s\S]*<a class="next" href="\/guide\/next">/)
   expect(parts).toMatch(/<footer class="site-footer">\s*<p>Acme footer<\/p>\s*<\/footer>/)
   const layout = readFileSync(resolve(import.meta.dirname, '../src/layout.tscl'), 'utf8')
   for (const part of ['header', 'sidebar', 'contents', 'page-footer', 'footer']) expect(layout).toContain(`from './parts/${part}.tscl'`)
+})
+
+test('#369: the docs sidebar as designed: search, groups with an icon and a chevron that collapse, a guide line, the current page marked, badges', () => {
+  const sidebar = /<nav id="sidebar"[\s\S]*?<\/nav>/.exec(html)![0]
+  // Search at the top, opening the same dialog as the header's button (and Ctrl/⌘K).
+  expect(sidebar).toMatch(/<button type="button" [^>]*data-search-open[^>]*>[\s\S]*Search[\s\S]*<kbd[^>]*>⌘K<\/kbd>/)
+  // Groups are <details>: the current page's group open, a collapsed one closed, each with its icon.
+  expect(sidebar).toMatch(/<details [^>]*data-group="Basics"[^>]*open[^>]*>\s*<summary[^>]*>[\s\S]*?<svg[^>]*data-icon="book"[\s\S]*?Basics[\s\S]*?<\/summary>/)
+  expect(sidebar).toMatch(/<details [^>]*data-group="Tools"(?![^>]*open)[^>]*>/)
+  // The current page: aria-current, and a badge beside its title.
+  expect(sidebar).toMatch(/<a [^>]*href="\/guide\/start" aria-current="page"[^>]*>\s*<span[^>]*>Start<\/span>\s*<span [^>]*class="[^"]*badge[^"]*"[^>]*>New<\/span>/)
+})
+
+test('#369: a collapsed group holding the current page is open', () => {
+  const extra = unscoped(readFileSync(resolve(root, 'dist/client/guide/extra/index.html'), 'utf8'))
+  expect(extra).toMatch(/<details [^>]*data-group="Tools"[^>]*open/)
+})
+
+test('#370: the phone drawer as designed: "Menu", a switch between sections, and a links row (menuLinks, then social)', () => {
+  const sidebar = /<nav id="sidebar"[\s\S]*?<\/nav>/.exec(html)![0]
+  expect(sidebar).toMatch(/<div class="sidebar-head[^"]*">\s*<span[^>]*>Menu<\/span>/)
+  const sw = /<div class="sidebar-switch[^"]*"[^>]*>([\s\S]*?)<\/div>/.exec(sidebar)![1]!
+  expect(sw).toMatch(/<a [^>]*href="\/learn\/one"(?![^>]*aria-current)[^>]*>Learn<\/a>/)
+  expect(sw).toMatch(/<a [^>]*href="\/guide\/start"[^>]*aria-current="true"[^>]*>Guide<\/a>/)
+  expect(sw).not.toContain('API') // switch: false
+  expect(sidebar).toMatch(/<div class="sidebar-links[^"]*">[\s\S]*Releases[\s\S]*GitHub/)
+})
+
+test('#371: a lesson page has the path: course, progress, each lesson with its XP, the steps of this one, an XP footer', () => {
+  const one = unscoped(readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8'))
+  const path = /<nav class="learn-path[^"]*" aria-label="Lessons"[\s\S]*?<\/nav>/.exec(one)![0].replace(/<!--[\s\S]*?-->/g, '') // without the island's markers
+  expect(path).toMatch(/Learn[\s\S]*First site/) // the section, then the course (the lessons' group)
+  expect(path).toMatch(/<progress [^>]*max="2"/)
+  expect(path).toMatch(/<a [^>]*href="\/learn\/one"[^>]*aria-current="page"[\s\S]*?One[\s\S]*?\+90/)
+  expect(path).toMatch(/href="\/learn\/two"[\s\S]*?Two[\s\S]*?\+60/)
+  expect(path).toMatch(/5 min/)
+  // This lesson's steps (its h2s), as links to them.
+  expect(path).toMatch(/<ol [^>]*class="[^"]*path-steps[\s\S]*href="#read"[^>]*>[\s\S]*Read[\s\S]*href="#write"[\s\S]*Write/)
+  expect(path).not.toContain('Sub')
+  expect(path).toMatch(/<a [^>]*href="\/learn\/progress"[^>]*>[\s\S]*XP/)
+  // It's an island: done / current / locked come from the progress in the browser.
+  expect(one).toMatch(/<cl-island c="learn-path"/)
 })

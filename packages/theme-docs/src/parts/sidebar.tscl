@@ -1,15 +1,22 @@
 {{--
   The page list (a public part, #360): a drawer below 1024px (popover: Escape and a click outside close it), always
   visible from 1024px. Slots: top, bottom. Replace it with themeDocs({ components: { sidebar } }) (#361).
+
+  As designed (#369): search at the top; each group a <details> with its icon and a chevron (the current page's
+  group always open, a `collapsed` one closed until opened: no JavaScript); its pages on a guide line, the current one
+  marked with a bar; a badge ("New") beside a page that has one.
+  As a drawer (#370): "Menu" and a close button, a switch between the sections, then the groups (larger, without icons
+  or the search box: the header has one on phones), and a row of links at the bottom.
 --}}
+@import groupIcon from './icon.tscl'
 @import type { ThemeConfig } from '../nav.ts'
-@import { groupsOf } from '../nav.ts'
+@import { groupsOf, sectionKey } from '../nav.ts'
 @input config: ThemeConfig
 @input path: string = '/'
 
 <nav id="sidebar" class="sidebar" aria-label="Pages" popover>
   <div class="sidebar-head">
-    <span>{{ config.brand.text }}{{ config.brand.accent ?? '' }}</span>
+    <span>Menu</span>
     <button type="button" popovertarget="sidebar" popovertargetaction="hide" aria-label="Close the menu">
       <svg
         width="20"
@@ -25,18 +32,99 @@
       </svg>
     </button>
   </div>
+  <div class="sidebar-switch mb-3 auto-cols-fr grid-flow-col gap-1 rounded-xl bg-surface p-1">
+    @for (s of config.sections.filter((s) => s.switch !== false); track s.key) {
+      <a
+        [href]="s.href"
+        [aria-current]="s.key === sectionKey(config.sections, path) ? 'true' : false"
+        class="rounded-lg py-2 text-center text-sm font-semibold text-muted no-underline aria-[current=true]:bg-bg aria-[current=true]:text-accent aria-[current=true]:shadow-sm"
+        >{{ s.title }}</a
+      >
+    }
+  </div>
+  @if (config.search) {
+    {{-- Opens the search dialog, as the header's button and Ctrl/⌘K do (search.tscl listens for data-search-open). --}}
+    <button
+      type="button"
+      data-search-open
+      aria-haspopup="dialog"
+      class="sidebar-search mb-4 flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg border border-rule bg-bg px-2.5 text-left text-[13px] text-muted transition-colors hover:border-accent hover:text-fg"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-3.5-3.5"></path>
+      </svg>
+      <span class="flex-1">Search</span>
+      <kbd class="rounded border border-rule bg-surface px-1.5 py-px font-sans text-[11px] leading-4 text-muted"
+        >⌘K</kbd
+      >
+    </button>
+  }
   <slot name="top"></slot>
   @for (group of groupsOf(config.sections, path); track group.title) {
-    <p class="group">{{ group.title }}</p>
-    <ul>
-      @for (item of group.items; track item.href) {
-        <li>
-          <a [href]="item.href" [aria-current]="item.href === path ? 'page' : false">{{ item.title }}</a>
-        </li>
-      }
-    </ul>
+    <details
+      class="group mb-1.5"
+      [data-group]="group.title"
+      [open]="!group.collapsed || group.items.some((i) => i.href === path)"
+    >
+      <summary
+        class="flex cursor-pointer list-none items-center gap-2.5 rounded-md py-1.5 pr-1 text-[13px] font-semibold text-fg select-none [&::-webkit-details-marker]:hidden"
+      >
+        <span class="group-icon grid size-[22px] flex-none place-items-center rounded-md bg-accent-soft text-accent"
+          >@if (group.icon) {<groupIcon [name]="group.icon" />}</span
+        >
+        <span class="flex-1">{{ group.title }}</span>
+        <svg
+          class="flex-none text-muted transition-transform group-open:rotate-90"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m9 6 6 6-6 6"></path>
+        </svg>
+      </summary>
+      <ul class="my-1 ml-[10px] list-none border-l border-rule p-0">
+        @for (item of group.items; track item.href) {
+          <li class="m-0">
+            <a
+              [href]="item.href"
+              [aria-current]="item.href === path ? 'page' : false"
+              class="-ml-px flex items-center gap-2 rounded-r-md border-l-2 border-transparent py-[5px] pr-2 pl-3 text-[13px] text-fg/80 no-underline transition-colors hover:text-fg aria-[current=page]:border-accent aria-[current=page]:bg-accent-soft aria-[current=page]:font-semibold aria-[current=page]:text-accent"
+            >
+              <span class="flex-1">{{ item.title }}</span>
+              @if (item.badge) {
+                <span class="badge rounded bg-xp-soft px-1.5 py-px text-[10.5px] font-bold text-xp">{{
+                  item.badge
+                }}</span>
+              }
+            </a>
+          </li>
+        }
+      </ul>
+    </details>
   }
   <slot name="bottom"></slot>
-  {{-- On phones, the header's links live here. --}}
-  <div class="sidebar-links">@for (s of config.sections; track s.key) {<a [href]="s.href">{{ s.title }}</a>} @for (link of config.social ?? []; track link.href) {<a [href]="link.href">{{ link.label }}</a>}</div>
+  {{-- The drawer's links row: config.menuLinks, then the social links. --}}
+  <div
+    class="sidebar-links mt-auto justify-between gap-x-3 gap-y-1 border-t border-rule pt-3 text-[13px] font-medium [&_a]:text-accent [&_a]:no-underline"
+  >
+    @for (link of [...(config.menuLinks ?? []), ...(config.social ?? [])]; track link.href) {
+      <a [href]="link.href">{{ link.label }}</a>
+    }
+  </div>
 </nav>

@@ -5,6 +5,7 @@ group: "Your first site"
 order: 5
 layout: /src/layouts/lesson.tscl
 steps: true
+minutes: 5
 ---
 
 # Markdown and the head

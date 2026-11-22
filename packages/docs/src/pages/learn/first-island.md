@@ -5,6 +5,7 @@ group: "Your first site"
 order: 3
 layout: /src/layouts/lesson.tscl
 steps: true
+minutes: 5
 ---
 
 # Your first island

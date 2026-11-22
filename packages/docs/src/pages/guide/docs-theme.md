@@ -78,7 +78,8 @@ export const config: ThemeConfig = {
   brand: { text: 'acme' },
   sections: pagesNav([
     { key: 'guide', title: 'Guide', href: '', groups: [
-      { title: 'Basics', items: [] }, // sets the group order
+      { title: 'Basics', icon: 'book', items: [] }, // sets the group order
+      { title: 'Deploying', icon: 'rocket', collapsed: true, items: [] },
       { title: 'More', items: [{ title: 'Playground', href: '/playground', order: 9 }] }, // not under guide/
     ] },
   ], pages),
@@ -99,6 +100,9 @@ order: 1
 - **Left out:** `sidebar: false`, dynamic routes (`[step].tscl`) and files or folders starting with `_`.
 - **The config wins:** an item it lists replaces the page with the same `href`, so it can rename or move a page and add entries that aren't pages.
 - An empty `href` on a section means its first page.
+- **Icons and collapsing:** a group's `icon` shows beside its title (`info`, `code`, `box`, `shield`, `download`, `book`, `terminal`, `sparkles`, `layers`, `wrench`, `rocket`, `file`), and `collapsed: true` keeps it closed until opened. The group holding the current page is always open, and opening and closing needs no JavaScript.
+- **Badges:** a page's frontmatter `badge: "New"` (or an item's `badge`) shows a small label beside it.
+- **The phone drawer:** "Menu", a switch between the sections (leave one out with `switch: false` on it), the groups, and a row of links at the bottom: the config's `menuLinks` (`[{ label: 'Releases', href: '/releases' }]`), then its `social` links.
 
 Only the titles, groups and orders reach the browser (for pages it renders itself, like client routes), never the files. For the types, add `/// <reference types="@clarusjs/theme-docs/pages.d.ts" />` to a `.d.ts` in your project. This site's sidebar is built that way: [sidebar.ts](https://github.com/forinda/clarusjs/blob/main/packages/docs/src/sidebar.ts).
 
@@ -153,6 +157,7 @@ Pages hidden from the sidebar, dynamic routes and the 404 and 500 pages aren't l
 title: "Install and a first page"
 layout: /src/layouts/lesson.tscl
 steps: true
+minutes: 5
 ---
 
 # Install and a first page
@@ -168,6 +173,7 @@ steps: true
 - **Quizzes:** on a step with a quiz the main button is **Check**: the bar turns green ("Correct!") or red ("Not quite", with the right answer), then Continue. The quiz marks the right option and a wrong pick in words as well as colour.
 - **Code beside the text:** from 1024px, a step's code blocks and `.result` boxes sit in a column to the right of its text.
 - **Reduced motion:** steps change without animation.
+- **The path:** with `learn` set (below), from 1024px a lesson has the path beside it: the course (its sidebar group) and how many lessons are done, each lesson with the XP it can earn (50, plus 10 a step and 20 a quiz, counted from the page) and its frontmatter `minutes`, marked done, next or locked from your progress, this lesson's steps following along, and your XP and badges, linking to the progress page.
 
 ## Progress, XP and badges
 
@@ -280,3 +286,5 @@ Every colour, font and size is a CSS custom property on `:root`, so you can rest
 | `--header-height`, `--sidebar-width`, `--toc-width`, `--page-width` | layout sizes (`--page-width`: the widest the page gets; the header lines up with it) |
 
 Dark mode redefines the colour tokens under `prefers-color-scheme: dark` and `[data-theme='dark']` (the toggle); redefine yours in the same places.
+
+The theme's styles are written with Tailwind and shipped as a built stylesheet, so your site needs no Tailwind to use it. Its utilities are built on these tokens, so changing a token restyles them too. Only the utilities its own parts use are in it (`flex`, `bg-surface`…), with Tailwind's names: a site using Tailwind gets the same meaning for the same class.

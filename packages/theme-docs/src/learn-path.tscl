@@ -1,0 +1,134 @@
+{{--
+  The Learn path (#371), beside a lesson from 1024px: the course and how far you are, each lesson with the XP it can
+  earn (done, the one you're on, the next, then locked: a hint, every lesson stays open), this lesson's steps, and your
+  XP and badges. Progress is read from this browser, so without JavaScript only the lessons and steps show.
+  The steps follow the lesson bar (learn:step); everything else follows saved progress (learn:progress).
+--}}
+@import type { Heading } from './nav.ts'
+@interface Lesson { title: string; href: string; xp?: number; minutes?: number }
+@input lessons: Lesson[]
+@input path: string
+@input eyebrow: string = 'Learn'
+@input course: string = ''
+@input steps: Heading[] = []
+@input progress: string = ''
+
+<script>
+  import { load, stats } from './progress.ts'
+  let ready = state(false)
+  let statuses = state(Object.create(null)) // lesson href → done, current, next or locked
+  let done = state(0)
+  let xp = state(0)
+  let earned = state(0)
+  let step = state(0)
+  function refresh() {
+    const s = stats(
+      load(),
+      lessons.map((l) => l.href),
+    )
+    const current = lessons.findIndex((l) => s.status(l.href) === 'current')
+    statuses = Object.fromEntries(
+      lessons.map((l, i) => [l.href, s.status(l.href) === 'locked' && i === current + 1 ? 'next' : s.status(l.href)]),
+    )
+    done = s.done
+    xp = s.xp
+    earned = s.badges.filter((b) => b.earned).length
+    ready = true
+  }
+  const note = (lesson, i) =>
+    ready && statuses[lesson.href] === 'done'
+      ? 'Done'
+      : ready && statuses[lesson.href] === 'locked'
+        ? 'Finish lesson ' + i + ' first'
+        : lesson.minutes
+          ? lesson.minutes + ' min'
+          : ''
+  if (typeof document !== 'undefined') {
+    refresh()
+    window.addEventListener('learn:progress', refresh)
+    window.addEventListener('learn:step', (event) => {
+      if (event instanceof CustomEvent) step = event.detail
+    })
+  }
+</script>
+
+<nav class="learn-path flex flex-col" aria-label="Lessons">
+  <div class="border-b border-rule px-4 pt-5 pb-4">
+    <p class="m-0 text-[11px] font-bold tracking-wider text-accent uppercase">{{ eyebrow }}</p>
+    <p class="m-0 mt-0.5 text-[17px] font-bold text-fg">{{ course }}</p>
+    <div class="mt-3 flex items-center gap-2.5">
+      <progress
+        class="path-progress h-1.5 flex-1"
+        [value]="done"
+        [max]="lessons.length"
+        aria-label="Lessons done"
+      ></progress>
+      <span class="text-[13px] font-semibold text-fg">{{ done }} of {{ lessons.length }}</span>
+    </div>
+  </div>
+  <ol class="m-0 flex-1 list-none overflow-y-auto p-3">
+    @for (lesson of lessons; track lesson.href) {
+      <li class="m-0 mb-1" [data-status]="ready ? statuses[lesson.href] : false">
+        <a
+          class="path-lesson flex items-center gap-3 rounded-xl border-2 border-transparent px-2.5 py-2.5 text-fg no-underline aria-[current=page]:border-accent"
+          [href]="lesson.href"
+          [aria-current]="lesson.href === path ? 'page' : false"
+        >
+          <span
+            class="path-dot grid size-7 flex-none place-items-center rounded-full text-xs font-bold"
+            aria-hidden="true"
+          >
+            @if (ready && statuses[lesson.href] === 'done') {
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m5 12 5 5 9-10"></path>
+              </svg>
+            } @else if (!(ready && statuses[lesson.href] === 'locked')) {
+              {{ $index + 1 }}
+            }
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="path-title block text-sm leading-snug font-semibold">{{ lesson.title }}</span>
+            <span class="block text-xs text-muted">{{ note(lesson, $index) }}</span>
+          </span>
+          @if (lesson.xp) {
+            <span class="path-xp text-xs font-bold">+{{ lesson.xp }}</span>
+          }
+        </a>
+        @if (lesson.href === path && steps.length) {
+          <ol class="path-steps my-1.5 ml-[46px] list-none p-0" aria-label="Steps">
+            @for (s of steps; track s.id) {
+              <li class="m-0" [data-step]="$index < step ? 'done' : $index === step ? 'current' : 'next'">
+                <a
+                  class="flex items-center gap-2.5 py-1 text-[13px] text-muted no-underline"
+                  [href]="'#' + s.id"
+                  [aria-current]="$index === step ? 'step' : false"
+                  ><span class="step-dot size-2 flex-none rounded-full" aria-hidden="true"></span>{{ s.text }}</a
+                >
+              </li>
+            }
+          </ol>
+        }
+      </li>
+    }
+  </ol>
+  <a
+    class="path-footer m-3 mt-0 flex items-center gap-2 rounded-xl px-3.5 py-3 text-sm font-bold no-underline"
+    [href]="progress"
+  >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M13 2L4 14h7l-1 8 9-12h-7z"></path>
+    </svg>
+    <span class="flex-1" [hidden]="!ready">{{ xp }} XP · {{ earned }} {{ earned === 1 ? 'badge' : 'badges' }}</span>
+    <span class="flex-1" [hidden]="ready">Your progress</span>
+    <span aria-hidden="true">→</span>
+  </a>
+</nav>
