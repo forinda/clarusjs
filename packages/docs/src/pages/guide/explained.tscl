@@ -1,6 +1,8 @@
 @import copy from '@clarusjs/theme-docs/copy.tscl'
-@import docs from '../../layouts/docs.tscl'
+@import docs from '~/layouts/docs.tscl'
 @import { readManifest } from 'clarusjs/manifest'
+@import { explain } from '~/explained.ts'
+@import explainedTable from '~/components/explained-table.tscl'
 
 <docs
   [title]="'This site, explained'"
@@ -9,48 +11,15 @@
 >
   <h1>This site, explained</h1>
   <p class="lead">
-    Every page of this site, with its islands and the JavaScript it ships. The table is generated while the site is
-    built, from the same route manifest <code>clarusjs explain</code> reads, so it is always the truth about the version
-    you are reading.
+    Every page of this site, with its islands and the JavaScript it ships. The numbers and tables are generated while
+    the site is built, from the same route manifest <code>clarusjs explain</code> reads, so it is always the truth about
+    the version you are reading.
   </p>
 
-  <table class="explained">
-    <thead>
-      <tr>
-        <th>Route</th>
-        <th>Islands</th>
-        <th>JS on load</th>
-        <th>JS in all</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (entry of Object.entries(readManifest()?.routes ?? {}); track entry[0]) {
-        <tr>
-          <td>
-            <a [href]="entry[0]">{{ entry[0] }}</a>
-          </td>
-          <td>
-            {{
-              entry[1].islands
-                .map(
-                  (i) =>
-                    i.component +
-                    (i.count > 1 ? ' ×' + i.count : '') +
-                    (i.attach === 'load' ? '' : ' (' + i.attach + ')')
-                )
-                .join(', ') || 'none'
-            }}
-          </td>
-          <td>{{ (entry[1].js.initialGzip / 1024).toFixed(1) }} KB</td>
-          <td>{{ (entry[1].js.gzip / 1024).toFixed(1) }} KB</td>
-        </tr>
-      } @empty {
-        <tr>
-          <td colspan="4">Build the site (<code>vite build</code>) to fill this table.</td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  @for (site of [explain(readManifest())]; track 0) {
+    {{-- On both build passes, so the first manifest already counts this table's own JavaScript. --}}
+    <explainedTable [stats]="site.stats" [rows]="site.rows" />
+  }
   <p>
     Sizes are gzip. "JS on load" is the island loader, the shared runtime and the islands that attach right away; copy
     buttons attach on first interaction, so their code is only in "JS in all".
