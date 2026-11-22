@@ -1918,3 +1918,18 @@ test('what clarusjs is: where the name comes from, and how to say it', async ({ 
   await expect(page.locator('main')).toContainText('KLAIR-us')
   await expect(page.locator('main')).toContainText('Latin for "clear"')
 })
+
+test('what clarusjs is: a button says the name (the browser\'s speech, KLAIR-us in English)', async ({ page }) => {
+  await page.addInitScript(() => {
+    const said: { text: string; lang: string }[] = []
+    ;(window as unknown as { __said: typeof said }).__said = said
+    // A stand-in for the browser's voice: records what would be said.
+    window.speechSynthesis.speak = (u: SpeechSynthesisUtterance) => { said.push({ text: u.text, lang: u.lang }) }
+    window.speechSynthesis.cancel = () => {}
+  })
+  await page.goto('/guide/what-is-clarusjs')
+  const button = page.getByRole('button', { name: 'Hear “clarus”' })
+  await expect(button).toBeVisible()
+  await button.click()
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __said: unknown[] }).__said)).toEqual([{ text: 'Klair-us', lang: 'en-US' }])
+})
