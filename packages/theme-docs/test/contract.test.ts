@@ -39,6 +39,8 @@ test("the guide's minimal theme builds as a site's theme, with the theme's slots
   w('src/layouts/docs.tscl', block('src/layouts/docs.tscl'))
   w('src/pages/index.tscl', "@import docs from '../layouts/docs.tscl'\n<docs [title]=\"'Home'\"><h1>Home</h1></docs>\n")
   w('src/pages/guide/start.tscl', "@import docs from '../../layouts/docs.tscl'\n<docs [title]=\"'Start'\" [path]=\"'/guide/start'\" [headings]=\"[{ id: 'one', text: 'One', level: 2 }]\"><h1>Start</h1><h2 id=\"one\">One</h2></docs>\n")
+  // A tool page (app): no sidebar, no footer.
+  w('src/pages/tool.tscl', "@import theme from 'acme-theme/layout.tscl'\n@import { config } from '../config.ts'\n<theme [config]=\"config\" [title]=\"'Tool'\" [app]=\"true\"><p>Tool</p></theme>\n")
   w('tsconfig.json', JSON.stringify({ compilerOptions: { strict: true, target: 'ES2023', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2023', 'DOM'], allowImportingTsExtensions: true, noEmit: true, skipLibCheck: true } }))
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp()
   const html = readFileSync(resolve(root, 'dist/client/guide/start/index.html'), 'utf8').replace(/ class="cl-c-[\w-]+"/g, '').replace(/ cl-c-[\w-]+(?=[" ])/g, '')
@@ -46,6 +48,9 @@ test("the guide's minimal theme builds as a site's theme, with the theme's slots
   expect(html).toMatch(/<a href="\/guide\/start" aria-current="page">Start<\/a>/)
   expect(html).toContain('<a href="#one">One</a>')
   expect(html).toContain('<p>Acme footer</p>')
+  const tool = readFileSync(resolve(root, 'dist/client/tool/index.html'), 'utf8')
+  expect(tool).not.toContain('<footer')
+  expect(tool).not.toContain('aria-label="Pages"')
   // And it type-checks: the site passes what LayoutInputs says, the theme takes it.
   expect(check({ root, typescript: resolve(import.meta.dirname, '../node_modules/clarusjs/node_modules/typescript') }).diagnostics.filter((d) => d.severity === 'error')).toEqual([])
 }, 180_000)

@@ -62,3 +62,8 @@ test("the query a module is asked for with (?render: the layout rendered in the 
   expect(plugin.resolveId('./parts/footer.tscl?render', `${layout}?render`)).toBe(resolve(s.root, 'src/theme/footer.tscl') + '?render')
   expect(plugin.resolveId('./parts/header.tscl', layout)).toBeUndefined() // not replaced: Vite resolves it
 })
+
+test('a replacement outside src/ is a build error: clarusjs finds components (their styles, islands) under src/', async () => {
+  const s = site({ 'theme/footer.tscl': '@input config: object\n<footer><slot /></footer>\n<style scoped>:scope { color: red; }</style>\n' })
+  await expect(s.build({ footer: '/theme/footer.tscl' })).rejects.toThrow("themeDocs: components.footer (/theme/footer.tscl) isn't under src/: move it there, where clarusjs finds components (their styles and islands)")
+}, 120_000)

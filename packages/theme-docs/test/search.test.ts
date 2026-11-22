@@ -76,3 +76,8 @@ test("#360: the layout's parts carry a scope class; they stay out of the index a
   const html = page('<h1 id="start">Start</h1><details class="toc-inline cl-c-contents-1"><summary>On this page</summary><a href="#one">One</a></details><p>Body.</p><footer class="page-footer cl-c-page-footer-2"><a class="next" href="/x">Next page</a></footer>')
   expect(sectionsOf(html, '/start')).toEqual([{ u: '/start', p: 'Start', h: 'Start', t: 'Body.' }])
 })
+
+test('a class that only starts like one of them (crumb-note, custom-page-footer) stays in the index', () => {
+  const html = page('<h1 id="start">Start</h1><p class="crumb-note">Keep me.</p><footer class="custom-page-footer">And me.</footer>')
+  expect(sectionsOf(html, '/start')[0]!.t).toBe('Keep me. And me.')
+})

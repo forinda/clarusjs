@@ -256,7 +256,7 @@ themeDocs({ components: { footer: '/src/theme/footer.tscl' } })
 </footer>
 ```
 
-The names are `header`, `sidebar`, `contents`, `pageFooter` and `footer`. Your file gets the same inputs as the part it replaces (see the table above), and must have the same slots, since the layout fills them; it needn't declare every input, but any input it requires must be one the layout passes. A mistake is a build error that says what to fix. Starting from a copy of the theme's part keeps its classes, so the theme's CSS still applies. This site's footer is replaced this way.
+The names are `header`, `sidebar`, `contents`, `pageFooter` and `footer`. Your file gets the same inputs as the part it replaces (see the table above), and must have the same slots, since the layout fills them; it needn't declare every input, but any input it requires must be one the layout passes. Keep it under `src/`, where clarusjs finds components with their styles and islands. A mistake is a build error that says what to fix. Starting from a copy of the theme's part keeps its classes, so the theme's CSS still applies. This site's footer is replaced this way.
 
 ## Tokens
 

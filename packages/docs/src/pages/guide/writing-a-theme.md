@@ -87,7 +87,9 @@ A layout with a header, the sidebar, the page with "On this page", and a footer,
         </aside>
       }
     </main>
-    <footer><slot name="footer">@if (config.footer) {<p>{{ config.footer }}</p>}</slot></footer>
+    @if (!app) {
+      <footer><slot name="footer">@if (config.footer) {<p>{{ config.footer }}</p>}</slot></footer>
+    }
   </body>
 </html>
 ```

@@ -3,7 +3,7 @@
 // Plain JavaScript: vite.config loads it from node_modules, where Node doesn't strip types. Types are the JSDoc here;
 // vite.d.ts is generated from it (pnpm types; typecheck and prepack run it).
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'clarusjs/compiler'
 import { gitDates } from 'clarusjs/vite'
@@ -74,6 +74,8 @@ function overridesOf(components, root) {
     if (!path) continue
     const file = resolve(root, path.startsWith('/') ? '.' + path : path)
     if (!existsSync(file)) throw new Error(`themeDocs: components.${key}: no file at ${path}`)
+    // clarusjs finds components (for their styles and islands) under src/: a part elsewhere would render unstyled.
+    if (!real(file).startsWith(real(resolve(root, 'src')) + sep)) throw new Error(`themeDocs: components.${key} (${path}) isn't under src/: move it there, where clarusjs finds components (their styles and islands)`)
     const theirs = contractOf(join(PARTS_DIR, part))
     const mine = contractOf(file)
     const passed = new Set(theirs.inputs.map((i) => i.name))
@@ -219,6 +221,13 @@ const plain = (html) => html.replace(/<[^>]*>/g, (tag) => (BLOCK.test(tag) ? ' '
   .replace(/\s+/g, ' ').trim()
 
 /**
+ * An element (its tag, through its closing tag) whose class attribute has `name` as a whole token.
+ * @param {string} tag
+ * @param {string} name
+ */
+const withClass = (tag, name) => new RegExp(`<${tag}\\b[^>]*\\bclass="(?:[^"]*\\s)?${name}(?:\\s[^"]*)?"[^>]*>[\\s\\S]*?<\\/${tag}>`)
+
+/**
  * A built page's search sections: its main content (main#content, without the theme's crumb, inline contents and
  * footer) split at each h1-h3 with an id. None for pages without one, noindex pages and pages with
  * data-search="false" in their content.
@@ -233,10 +242,11 @@ export function sectionsOf(html, url) {
   if (main === undefined || /\bdata-search="false"/.test(main)) return []
   const body = main.replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<(script|style|template)\b[\s\S]*?<\/\1>/gi, '')
-    // By class token: the layout's parts carry their scope class too (class="page-footer cl-c-…").
-    .replace(/<p\b[^>]*\bclass="[^"]*\bcrumb\b[^"]*"[^>]*>[\s\S]*?<\/p>/, '')
-    .replace(/<details\b[^>]*\bclass="[^"]*\btoc-inline\b[^"]*"[^>]*>[\s\S]*?<\/details>/, '')
-    .replace(/<footer\b[^>]*\bclass="[^"]*\bpage-footer\b[^"]*"[^>]*>[\s\S]*?<\/footer>/, '')
+    // By whole class token: the layout's parts carry their scope class too (class="page-footer cl-c-…"), and a class
+    // that only starts the same (crumb-note) isn't one of them.
+    .replace(withClass('p', 'crumb'), '')
+    .replace(withClass('details', 'toc-inline'), '')
+    .replace(withClass('footer', 'page-footer'), '')
     .replace(/<a class="header-anchor"[\s\S]*?<\/a>/g, '')
   const parts = body.split(/(<h[1-3]\b[^>]*\bid="[^"]*"[^>]*>[\s\S]*?<\/h[1-3]>)/i)
   const page = plain(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(body)?.[1] ?? /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? '')
