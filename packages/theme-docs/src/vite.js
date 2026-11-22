@@ -13,6 +13,14 @@ const ID = 'virtual:theme-docs/pages'
  * @typedef {object} Options
  * @property {string} [pages] the pages folder, from the Vite root (default src/pages)
  * @property {boolean} [search] false: no search index (it's written to the client output's search/ after the build)
+ * @property {LlmsOptions} [llms] write llms.txt and llms-full.txt to the client output after the build (llmstxt.org)
+ */
+
+/**
+ * @typedef {object} LlmsOptions
+ * @property {string} title the site's name, the file's heading
+ * @property {string} [summary] one or two sentences about the site
+ * @property {string} [site] the public address (https://example.com): links are absolute with it, root-relative without
  */
 
 /**
@@ -41,8 +49,21 @@ export function themeDocs(options = {}) {
       order: 'post',
       /** @param {any} builder */
       async handler(builder) {
-        if (options.search === false) return
         const out = resolve(builder.config.root, builder.environments.client.config.build.outDir)
+        if (options.llms) {
+          const base = builder.config.base.replace(/\/$/, '')
+          // A template page's text: its built page, as the search index reads it.
+          /** @param {string} href */
+          const textOf = (href) => {
+            const file = join(out, href === '/' ? 'index.html' : href.slice(1) + '/index.html')
+            let html = ''
+            try { html = readFileSync(file, 'utf8') } catch { return '' }
+            return sectionsOf(html, base + href).map((x) => [x.h, x.t].filter(Boolean).join('\n\n')).join('\n\n')
+          }
+          writeFileSync(join(out, 'llms.txt'), llmsTxt(dir, options.llms))
+          writeFileSync(join(out, 'llms-full.txt'), llmsFull(dir, options.llms, textOf))
+        }
+        if (options.search === false) return
         const base = builder.config.base.replace(/\/$/, '')
         /** @type {import('./search.js').Section[]} */
         const sections = []
@@ -201,3 +222,65 @@ function frontmatter(text) {
 
 /** @param {string} name */
 const words = (name) => name.replace(/[-_]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+
+/**
+ * The pages llms.txt lists, with their descriptions: those in the sidebar (not hidden, not dynamic, not 404/500), in
+ * groups ordered by their lowest page `order` (pages without a group last, as "Other pages").
+ * @param {string} dir
+ */
+function llmsPages(dir) {
+  const pages = readPages(dir).filter((p) => !p.hidden && p.href !== '/404' && p.href !== '/500')
+  /** @type {Map<string, (import('./nav.ts').PageInfo & { description?: string; text: string })[]>} */
+  const groups = new Map()
+  for (const p of pages) {
+    const text = readFileSync(join(dir, /** @type {string} */ (p.file)), 'utf8')
+    const description = /\.md$/.test(p.file ?? '') ? frontmatter(text).description : undefined
+    const key = p.group ?? ''
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)?.push({ ...p, ...(description ? { description } : {}), text })
+  }
+  const rank = (/** @type {string} */ key) => (key === '' ? Infinity : Math.min(...(groups.get(key) ?? []).map((p) => p.order ?? Infinity)))
+  return [...groups.keys()].sort((a, b) => rank(a) - rank(b)).map((key) => ({
+    title: key || 'Other pages',
+    pages: (groups.get(key) ?? []).sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || a.title.localeCompare(b.title)),
+  }))
+}
+
+/** @param {LlmsOptions} o */
+const llmsHead = (o) => `# ${o.title}\n${o.summary ? `\n> ${o.summary}\n` : ''}`
+/** @param {LlmsOptions} o @param {string} href */
+const llmsUrl = (o, href) => (o.site ? o.site.replace(/\/$/, '') : '') + href
+
+/**
+ * llms.txt (llmstxt.org): the site's title and summary, then each sidebar group's pages as links with their
+ * descriptions.
+ * @param {string} dir the pages folder
+ * @param {LlmsOptions} options
+ * @returns {string}
+ */
+export function llmsTxt(dir, options) {
+  const sections = llmsPages(dir).map(({ title, pages }) =>
+    `## ${title}\n\n${pages.map((p) => `- [${p.title}](${llmsUrl(options, p.href)})${p.description ? `: ${p.description}` : ''}`).join('\n')}\n`)
+  return [llmsHead(options), ...sections].join('\n')
+}
+
+/**
+ * llms-full.txt: the same pages' text, one after another. A Markdown page is its Markdown (no frontmatter, no leading
+ * component import lines); a template page is what `textOf(href)` gives (its built page's text).
+ * @param {string} dir the pages folder
+ * @param {LlmsOptions} options
+ * @param {(href: string) => string} textOf
+ * @returns {string}
+ */
+export function llmsFull(dir, options, textOf) {
+  const parts = [llmsHead(options)]
+  for (const { pages } of llmsPages(dir)) {
+    for (const p of pages) {
+      const body = /\.md$/.test(p.file ?? '')
+        ? p.text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').replace(/^(?:[ \t]*(?:@import\b[^\n]*)?\r?\n)+/, '').trim()
+        : textOf(p.href).trim()
+      parts.push(`---\n\nSource: ${llmsUrl(options, p.href)}\n\n${body}\n`)
+    }
+  }
+  return parts.join('\n')
+}

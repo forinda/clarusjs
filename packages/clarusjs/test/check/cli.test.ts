@@ -129,7 +129,7 @@ test('#184: href() is typed against the routes through the generated routes.d.ts
     ].join('\n'),
   })
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const result = check({ root, typescript })
   expect(readFileSync(resolve(root, '.clarusjs/routes.d.ts'), 'utf8')).toContain('"/releases/[version]": { version: string }')
   expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/server/links.ts:3 TS2345', 'src/server/links.ts:4 TS2554'])
@@ -148,7 +148,7 @@ test('#22: render() is typed against each view\'s inputs through the generated v
   })
   // Like an app that installed clarusjs.
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const result = check({ root, typescript })
   expect(existsSync(resolve(root, '.clarusjs/views.d.ts'))).toBe(true)
   expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/server/mail.ts:3 TS2322', 'src/server/mail.ts:4 TS2345'])
@@ -164,7 +164,7 @@ test('review: views.d.ts is declarations only, so an app tsconfig can include it
     'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true, noImplicitAny: true, noEmit: true, target: 'ES2023', module: 'ESNext', moduleResolution: 'Bundler', allowImportingTsExtensions: true, skipLibCheck: true }, include: ['src', '.clarusjs/views.d.ts'] }),
   })
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   check({ root, typescript })
   const registry = readFileSync(resolve(root, '.clarusjs/views.d.ts'), 'utf8')
   expect(registry).not.toContain('virtual/')
@@ -358,7 +358,7 @@ test('review: a symlinked root; a converted page importing a package component i
     'src/pages/a.page': "title\n<card [n]=\"'x'\" />\n",
   })
   const link = `${real}-link`
-  symlinkSync(real, link, 'dir')
+  symlinkSync(real, link, 'junction')
   const addsImport = { extension: '.page', toTscl: (code: string) => `@import card from 'ui/card.tscl'\n${code.split('\n').slice(1).join('\n')}` }
   expect(check({ root: link, typescript, sources: [addsImport] }).diagnostics.map((d) => `${d.file} ${d.code}`)).toEqual(['src/pages/a.page TS2322'])
 })

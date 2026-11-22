@@ -5,7 +5,6 @@ order: 6
 description: "Repeat content with @for: track keys, @empty, and each row's $index, $count, $first, $last, $even and $odd."
 ---
 
-@import rowNames from '~/components/row-names.tscl'
 
 # Lists
 

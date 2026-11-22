@@ -17,8 +17,8 @@ beforeAll(async () => {
   root = mkdtempSync(resolve(tmpdir(), 'theme-docs-'))
   const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
   mkdirSync(resolve(root, 'node_modules/@clarusjs'), { recursive: true })
-  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/@clarusjs/theme-docs'), 'dir')
-  symlinkSync(resolve(import.meta.dirname, '../node_modules/clarusjs'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/@clarusjs/theme-docs'), 'junction')
+  symlinkSync(resolve(import.meta.dirname, '../node_modules/clarusjs'), resolve(root, 'node_modules/clarusjs'), 'junction')
   w('src/config.ts', `export const config = {
   brand: { text: 'acme', accent: '.dev' },
   learn: { section: 'learn', progress: '/learn/progress' },

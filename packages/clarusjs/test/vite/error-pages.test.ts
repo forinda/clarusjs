@@ -10,7 +10,7 @@ function site(pages: Record<string, string>) {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-errors-'))
   for (const [path, text] of Object.entries(pages)) { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   return root
 }
 const errorPage = '@input status: number = 500\n<html><head><title>Error</title></head><body><h1>Broken ({{ status }})</h1><a href="/">Home</a></body></html>\n'

@@ -4,7 +4,6 @@ group: "Interactivity"
 order: 6
 description: "Handle DOM events in islands with (event), use $event, talk to a parent island with custom events, and listen to the window or document."
 ---
-@import eventDemo from '~/components/event-demo.tscl'
 
 # Events
 

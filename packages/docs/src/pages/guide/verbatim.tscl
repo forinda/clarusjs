@@ -10,7 +10,7 @@
     Add <code>verbatim</code> to an element and everything inside it is shown as text: no holes, tags or directives.
     That's how every code sample on this site is written.
   </p>
-  <pre verbatim tabindex="0"><code verbatim>
+  <pre verbatim lang="tscl" tabindex="0"><code verbatim>
   <p>Hello, {{ name }}!</p>
 </code></pre>
   <p>

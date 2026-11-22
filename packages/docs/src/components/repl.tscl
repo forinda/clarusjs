@@ -1,21 +1,37 @@
 {{--
-  The playground (#243): a .tscl editor (a textarea over its highlighting) compiled in the page on each edit, and a
-  sandboxed preview frame that renders and runs the result. The visitor's code only ever runs in a frame, a fresh one
-  per run (so a run's timers and listeners end with it), and its loops are guarded (the frame shares this page's thread).
+  The playground (#243, #230): a .tscl editor (a textarea over its highlighting), compiled in a Web Worker on each edit
+  (typing stays smooth), and a sandboxed preview frame that renders and runs the result. The visitor's code only ever
+  runs in a frame, a fresh one per run (so a run's timers and listeners end with it), and its loops are guarded (the
+  frame shares this page's thread). Tabs show what the compiler made: the server and client modules and the HTML.
 --}}
 
 <script>
   import { browser, onDispose } from 'clarusjs/runtime'
-  import { ClarusError, compile } from 'clarusjs/compiler'
   import runtime from 'virtual:repl-runtime'
+  import CompileWorker from '../repl/compile.worker.ts?worker'
   import { frameDoc } from '../repl/frame.ts'
   import { highlightTscl } from '../repl/highlight.ts'
-  import { prepare } from '../repl/prepare.ts'
   import { decode, encode } from '../repl/share.ts'
   import { starters } from '../repl/starters.ts'
 
+  const TABS = [
+    { key: 'preview', label: 'Preview' },
+    { key: 'server', label: 'Server code' },
+    { key: 'client', label: 'Client code' },
+    { key: 'html', label: 'HTML' },
+  ]
+
   let errors = state([])
   let status = state('')
+  let tab = state('preview')
+  let output = state({ server: '', client: '', html: '' })
+  const code = derived(() =>
+    tab === 'server'
+      ? output.server
+      : tab === 'client'
+        ? output.client || 'No client code: this component ships no JavaScript.'
+        : output.html,
+  )
 
   // Set in the browser below.
   let setSource = (source) => {}
@@ -37,12 +53,23 @@
     status = 'The link to this code is in the address bar.'
   }
 
+  // The tabs pattern: arrows (and Home/End) move between tabs, selecting as they go.
+  function arrows(event) {
+    const at = TABS.findIndex((t) => t.key === tab)
+    const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: TABS.length - 1 }[event.key]
+    if (to === undefined) return
+    event.preventDefault()
+    tab = TABS[(to + TABS.length) % TABS.length].key
+    document.getElementById('repl-tab-' + tab)?.focus()
+  }
+
   if (browser) {
     const area = document.getElementById('repl-code')
     const shown = document.getElementById('repl-highlight')
     const box = document.getElementById('repl-preview')
     if (!(area instanceof HTMLTextAreaElement) || !shown || !box) throw new Error('playground: its markup is missing')
 
+    const worker = new CompileWorker()
     let seq = 0 // each run's number; only the latest one counts
     let visible = { frame: document.createElement('iframe'), id: 0 } // the preview on screen
     let pending = { frame: document.createElement('iframe'), id: 0 } // a run still rendering, shown once it replies
@@ -59,25 +86,17 @@
       sync()
     }
 
-    const run = () => {
-      const id = ++seq
-      let server = ''
-      let client = ''
-      try {
-        server = prepare(compile(area.value, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' }).code)
-        const c = compile(area.value, { file: 'App.tscl', target: 'client' })
-        client = c.stateful ? prepare(c.code) : ''
-      } catch (err) {
-        // A compile error keeps the last preview: show where, as line:col.
-        errors = [
-          err instanceof ClarusError
-            ? `${err.line}:${err.column} ${err.message.slice(err.message.indexOf(' ') + 1)}`
-            : err instanceof Error
-              ? err.message
-              : String(err),
-        ]
+    const run = () => worker.postMessage({ id: ++seq, source: area.value })
+
+    worker.addEventListener('message', (event) => {
+      const reply = event.data
+      if (reply.id !== seq) return // a newer edit is on its way
+      // A compile error keeps the last preview and output.
+      if (reply.error) {
+        errors = [reply.error]
         return
       }
+      output = { server: reply.server, client: reply.client ?? '', html: output.html }
       // A fresh frame, hidden until it has rendered; a run still rendering is dropped for this one.
       pending.frame.remove()
       const frame = document.createElement('iframe')
@@ -86,13 +105,17 @@
       frame.hidden = true
       frame.addEventListener(
         'load',
-        () => frame.contentWindow?.postMessage({ id, server, client: client || null }, '*'),
+        () =>
+          frame.contentWindow?.postMessage(
+            { id: reply.id, server: reply.preparedServer, client: reply.preparedClient },
+            '*',
+          ),
         { once: true },
       )
       frame.srcdoc = frameDoc(runtime)
-      pending = { frame, id }
+      pending = { frame, id: reply.id }
       box.append(frame)
-    }
+    })
 
     const onMessage = (event) => {
       const data = event.data
@@ -103,6 +126,7 @@
         visible.frame.hidden = false
         pending = { frame: document.createElement('iframe'), id: 0 }
         errors = data.error ? [data.error] : []
+        output = { ...output, html: data.html ?? '' }
       } else if (event.source === visible.frame.contentWindow && data?.id === visible.id && data.error) {
         errors = [data.error] // thrown later: an event handler, a timer
       }
@@ -141,6 +165,7 @@
     onDispose(() => {
       removeEventListener('message', onMessage)
       clearTimeout(timer)
+      worker.terminate()
     })
 
     // Text typed before this ran (a slow load) is kept; otherwise the shared code, or the first example.
@@ -184,7 +209,29 @@
         autocomplete="off"
       ></textarea>
     </div>
-    <div id="repl-preview" class="repl-preview"></div>
+    <div class="repl-output">
+      <div class="repl-tabs" role="tablist" aria-label="Output" (keydown)="arrows($event)">
+        @for (t of TABS; track t.key) {
+          <button
+            type="button"
+            role="tab"
+            [id]="'repl-tab-' + t.key"
+            [aria-selected]="tab === t.key"
+            [aria-controls]="t.key === 'preview' ? 'repl-panel-preview' : 'repl-panel-code'"
+            [tabindex]="tab === t.key ? 0 : -1"
+            (click)="tab = t.key"
+          >
+            {{ t.label }}
+          </button>
+        }
+      </div>
+      <div id="repl-panel-preview" role="tabpanel" aria-labelledby="repl-tab-preview" [hidden]="tab !== 'preview'">
+        <div id="repl-preview" class="repl-preview"></div>
+      </div>
+      <div id="repl-panel-code" role="tabpanel" [aria-labelledby]="'repl-tab-' + tab" [hidden]="tab === 'preview'">
+        <pre class="repl-out" tabindex="0"><code>{{ code }}</code></pre>
+      </div>
+    </div>
   </div>
   <div aria-live="polite">
     @if (errors.length) {

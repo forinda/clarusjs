@@ -54,7 +54,7 @@
   <div class="demo"><counter [start]="0" /></div>
   <whatShips attach="interaction" />
   <div class="sample">
-    <pre tabindex="0"><code verbatim>@input start: number = 0
+    <pre tabindex="0"><code verbatim lang="tscl">@input start: number = 0
 
 <script>
   let count = state(start)
