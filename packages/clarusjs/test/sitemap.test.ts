@@ -223,3 +223,22 @@ test('#393: up to the limit one sitemap.xml; past it, sitemap-1.xml… and sitem
   )
   expect(sitemapFiles('https://example.com', '/', pages).map((f) => f.file)).toEqual(['sitemap.xml']) // 50,000 by default
 })
+
+test('#395: sitemapXml writes a page\'s translations as xhtml:link alternates (the namespace only when used)', () => {
+  const xml = sitemapXml('https://example.com', '/', [{ path: '/guide', lastmod: undefined, alternates: [{ hreflang: 'en', href: '/guide' }, { hreflang: 'fr', href: '/fr/guide' }, { hreflang: 'x-default', href: 'https://example.com/guide' }] }])
+  expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"')
+  expect(xml).toContain('<url><loc>https://example.com/guide</loc><xhtml:link rel="alternate" hreflang="en" href="https://example.com/guide"/><xhtml:link rel="alternate" hreflang="fr" href="https://example.com/fr/guide"/><xhtml:link rel="alternate" hreflang="x-default" href="https://example.com/guide"/></url>')
+  expect(sitemapXml('https://example.com', '/', [{ path: '/b', lastmod: undefined }])).not.toContain('xmlns:xhtml')
+})
+
+test('#395: vite build reads each page\'s <link rel="alternate" hreflang> (in any attribute order) and keeps them in the page', async () => {
+  const { root, w } = repo()
+  w('src/pages/guide.tscl', `<html><head><title>G</title><cl-head><link rel="alternate" hreflang="en" href="/guide"><link href="/fr/guide" hreflang="fr" rel="alternate"><link rel="alternate" type="application/rss+xml" href="/feed.xml"></cl-head></head><body><p>g</p></body></html>`)
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
+  const xml = readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  expect(xml).toContain('<xhtml:link rel="alternate" hreflang="en" href="https://example.com/guide"/><xhtml:link rel="alternate" hreflang="fr" href="https://example.com/fr/guide"/>')
+  expect(xml).not.toContain('feed.xml') // an alternate without hreflang isn't a translation
+  expect(readFileSync(resolve(root, 'dist/client/guide/index.html'), 'utf8')).toContain('hreflang="fr"')
+}, 120_000)
