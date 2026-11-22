@@ -17,6 +17,12 @@ description: clarusjs compiles templates to server HTML and ships JavaScript onl
 
 <!-- @include: ../../parts/requirements.md -->
 
+## The name
+
+*Clarus* is Latin for "clear" or "bright" (and, of people, "famous"). It is the root of the English *clear*, *clarity* and *clarify*: the idea behind the tagline, **clear, compiled views**, where you can always see what a template becomes and where each line runs.
+
+Say it **KLAIR-us** (/ˈklɛər.əs/), the first syllable rhyming with *air*. In classical Latin it was **KLAH-roos** (/ˈklaː.rʊs/).
+
 ## When to use it
 
 clarusjs fits sites that are mostly content with interactive parts: documentation, marketing sites, blogs, shops, dashboards with a few live widgets. If every part of every screen is interactive (a design tool, a spreadsheet), a client-side framework is a better fit.
