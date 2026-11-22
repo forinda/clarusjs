@@ -1,5 +1,6 @@
 {{-- "This site, explained": every route in one table, to filter, sort (by any column), sample and trim to some columns. --}}
 @import type { Row } from '~/explained.ts'
+@input stats: { pages: number; noJs: number; withIslands: number; heaviest: string }
 @input rows: Row[]
 
 <script>
@@ -37,7 +38,7 @@
       (r) =>
         (section === 'All' || r.section === section) &&
         r.route.toLowerCase().includes(query.trim().toLowerCase()) &&
-        (view !== 'nojs' || r.load === 0),
+        (view !== 'nojs' || (r.measured && r.load === 0)),
     ),
   )
   const sorted = derived(() =>
@@ -68,6 +69,20 @@
 </script>
 
 <div class="explained-table">
+  <ul class="explained-stats">
+    <li>
+      <strong>{{ stats.pages }}</strong> pages
+    </li>
+    <li>
+      <strong>{{ stats.noJs }}</strong> ship no JavaScript on load
+    </li>
+    <li>
+      <strong>{{ stats.withIslands }}</strong> have islands
+    </li>
+    <li>
+      <strong>{{ stats.heaviest }}</strong> the most any page loads
+    </li>
+  </ul>
   <div class="explained-controls">
     <label
       ><span><icon name="lucide:search" /> Find</span> <input type="search" placeholder="/guide/" [(value)]="query"
@@ -140,10 +155,10 @@
               <td>{{ r.islands }}</td>
             }
             @if (cols.load) {
-              <td>{{ kb(r.load) }}</td>
+              <td>{{ r.measured ? kb(r.load) : 'per request' }}</td>
             }
             @if (cols.all) {
-              <td>{{ kb(r.all) }}</td>
+              <td>{{ r.measured ? kb(r.all) : 'per request' }}</td>
             }
           </tr>
         } @empty {
@@ -151,8 +166,14 @@
             <td [colspan]="span">
               <div class="explained-empty">
                 <icon name="lucide:search-x" class="explained-empty-icon" />
-                <p class="explained-empty-title">No page matches</p>
-                <p class="explained-empty-hint">Nothing {{ hint }}. Try another search, or clear the filters.</p>
+                <p class="explained-empty-title">{{ rows.length ? 'No page matches' : 'Nothing built yet' }}</p>
+                <p class="explained-empty-hint">
+                  @if (rows.length) {
+                    Nothing {{ hint }}. Try another search, or clear the filters.
+                  } @else {
+                    Build the site (<code>vite build</code>) to fill this table.
+                  }
+                </p>
                 <button type="button" (click)="clear()"><icon name="lucide:rotate-ccw" /> Clear filters</button>
               </div>
             </td>
@@ -165,3 +186,154 @@
     Showing {{ shown.length }} of {{ filtered.length }} ({{ rows.length }} pages)
   </p>
 </div>
+<style scoped>
+  .explained-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    padding: 0;
+    list-style: none;
+  }
+  .explained-stats li {
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .explained-stats strong {
+    display: block;
+    color: var(--fg);
+    font-size: 22px;
+  }
+  /* The controls, the table (full width; the wrapper scrolls it sideways on small screens) and the empty state. */
+  .explained-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 10px 16px;
+    margin: 20px 0 12px;
+    font-size: 14px;
+  }
+  .explained-controls label {
+    display: grid;
+    gap: 4px;
+    color: var(--muted);
+  }
+  .explained-controls input[type='search'],
+  .explained-controls select {
+    min-height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+  }
+  .explained-controls fieldset {
+    display: flex;
+    gap: 12px;
+    margin: 0;
+    padding: 6px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .explained-controls fieldset label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--fg);
+  }
+  .explained-controls legend {
+    padding: 0 4px;
+    color: var(--muted);
+  }
+  .explained th button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .explained td:nth-child(n + 3) {
+    white-space: nowrap;
+  }
+  .explained-count {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .explained .sort-icon {
+    color: var(--muted);
+    font-size: 0.85em;
+  }
+  .explained th[aria-sort] .sort-icon {
+    color: var(--accent);
+  }
+  .explained-controls label > span,
+  .explained-controls legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .explained-empty {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    margin: 8px 0;
+    padding: 32px 16px;
+    border: 2px dashed var(--rule);
+    border-radius: 14px;
+    background: var(--surface);
+    text-align: center;
+  }
+  .explained-empty-icon {
+    font-size: 36px;
+    color: var(--muted);
+  }
+  .explained-empty-title {
+    margin: 4px 0 0;
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--fg);
+  }
+  .explained-empty-hint {
+    margin: 0;
+    max-width: 46ch;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .explained-empty button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .explained-empty button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .explained-scroll {
+    overflow-x: auto;
+  }
+  .explained-scroll table.explained {
+    display: table;
+    width: 100%;
+  }
+</style>

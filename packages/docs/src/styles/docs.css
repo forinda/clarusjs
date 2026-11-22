@@ -226,28 +226,3 @@
 }
 
 
-.explained-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 0; list-style: none; }
-.explained-stats li { margin: 0; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 14px; }
-.explained-stats strong { display: block; color: var(--fg); font-size: 22px; }
-/* This site, explained: a few numbers, and one table to filter, sort, sample and trim (explained-table.tscl). */
-.explained-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 16px; margin: 20px 0 12px; font-size: 14px; }
-.explained-controls label { display: grid; gap: 4px; color: var(--muted); }
-.explained-controls input[type='search'], .explained-controls select { min-height: 36px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--fg); font: inherit; }
-.explained-controls fieldset { display: flex; gap: 12px; margin: 0; padding: 6px 12px; border: 1px solid var(--rule); border-radius: 8px; }
-.explained-controls fieldset label { display: flex; align-items: center; gap: 6px; color: var(--fg); }
-.explained-controls legend { padding: 0 4px; color: var(--muted); }
-.explained th button { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 650; cursor: pointer; }
-.explained td:nth-child(n + 3) { white-space: nowrap; }
-.explained-count { color: var(--muted); font-size: 14px; }
-.explained .sort-icon { color: var(--muted); font-size: 0.85em; }
-.explained th[aria-sort] .sort-icon { color: var(--accent); }
-.explained-controls label > span, .explained-controls legend { display: inline-flex; align-items: center; gap: 4px; }
-.explained-empty { display: grid; justify-items: center; gap: 6px; margin: 8px 0; padding: 32px 16px; border: 2px dashed var(--rule); border-radius: 14px; background: var(--surface); text-align: center; }
-.explained-empty-icon { font-size: 36px; color: var(--muted); }
-.explained-empty-title { margin: 4px 0 0; font-weight: 700; font-size: 17px; color: var(--fg); }
-.explained-empty-hint { margin: 0; max-width: 46ch; color: var(--muted); font-size: 14px; }
-.explained-empty button { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; min-height: 36px; padding: 0 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer; }
-.explained-empty button:hover { border-color: var(--accent); color: var(--accent); }
-/* Full width (also when empty); sideways scrolling, by keyboard too, comes from the wrapper on small screens. */
-.explained-scroll { overflow-x: auto; }
-.content .explained-scroll table.explained { display: table; width: 100%; }

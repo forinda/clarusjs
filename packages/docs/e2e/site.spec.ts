@@ -1916,7 +1916,7 @@ test("what clarusjs is: no 'early, proving ground' note on the intro or the home
 
 test('this site, explained: one table to filter, sort by any column, sample and trim to some columns', async ({ page }) => {
   const { readFileSync } = await import('node:fs')
-  const routes = Object.entries(JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8')).routes) as [string, { js: { initialGzip: number } }][]
+  const routes = Object.entries(JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8')).routes) as [string, { mode: string; js: { initialGzip: number } }][]
   await page.goto('/guide/explained')
   await expect(page.locator('.explained-stats li strong').first()).toHaveText(String(routes.length))
   const table = page.locator('table.explained')
@@ -1946,7 +1946,7 @@ test('this site, explained: one table to filter, sort by any column, sample and 
   await page.getByLabel('Find').fill('')
   await page.getByLabel('Section').selectOption('All')
   await page.getByLabel('Show').selectOption('nojs')
-  await expect(rows).toHaveCount(routes.filter(([, r]) => r.js.initialGzip === 0).length || 1)
+  await expect(rows).toHaveCount(routes.filter(([, r]) => r.mode !== 'server' && r.js.initialGzip === 0).length || 1)
   await expect(page.locator('.explained-count')).toContainText(`(${routes.length} pages)`)
   // Nothing matches: an empty state that says so, with a way back.
   await page.getByLabel('Show').selectOption('heaviest')
@@ -1958,6 +1958,13 @@ test('this site, explained: one table to filter, sort by any column, sample and 
   await empty.getByRole('button', { name: 'Clear filters' }).click()
   await expect(page.getByLabel('Find')).toHaveValue('')
   await expect(rows).toHaveCount(routes.length) // Rows is still All: only the filters were cleared
+  // A server route's JavaScript is decided per request: said so, and never counted as none.
+  await page.getByLabel('Show').selectOption('route')
+  await page.getByLabel('Find').fill('/playground')
+  await expect(rows.first()).toContainText('per request')
+  await page.getByLabel('Show').selectOption('nojs')
+  await expect(page.locator('.explained-empty')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear filters' }).click()
   // Columns: unchecked, gone.
   await page.getByLabel('Show').selectOption('heaviest')
   await page.getByRole('checkbox', { name: 'Islands' }).uncheck()

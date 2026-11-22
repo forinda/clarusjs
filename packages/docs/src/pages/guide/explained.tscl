@@ -17,25 +17,8 @@
   </p>
 
   @for (site of [explain(readManifest())]; track 0) {
-    <ul class="explained-stats">
-      <li>
-        <strong>{{ site.stats.pages }}</strong> pages
-      </li>
-      <li>
-        <strong>{{ site.stats.noJs }}</strong> ship no JavaScript on load
-      </li>
-      <li>
-        <strong>{{ site.stats.withIslands }}</strong> have islands
-      </li>
-      <li>
-        <strong>{{ site.stats.heaviest }}</strong> the most any page loads
-      </li>
-    </ul>
-    @if (site.rows.length) {
-      <explainedTable [rows]="site.rows" />
-    } @else {
-      <p>Build the site (<code>vite build</code>) to fill this page.</p>
-    }
+    {{-- On both build passes, so the first manifest already counts this table's own JavaScript. --}}
+    <explainedTable [stats]="site.stats" [rows]="site.rows" />
   }
   <p>
     Sizes are gzip. "JS on load" is the island loader, the shared runtime and the islands that attach right away; copy
