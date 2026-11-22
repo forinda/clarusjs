@@ -22,5 +22,5 @@ description: clarusjs compiles templates to server HTML and ships JavaScript onl
 clarusjs fits sites that are mostly content with interactive parts: documentation, marketing sites, blogs, shops, dashboards with a few live widgets. If every part of every screen is interactive (a design tool, a spreadsheet), a client-side framework is a better fit.
 
 ::: info
-clarusjs is early (`0.x`). This site is its proving ground: every feature is built because the site needs it, and tested here in a real browser. This page is written in Markdown.
+This site is built with clarusjs: its pages are static HTML, and only the interactive parts (search, the playground, the demos) ship JavaScript. This page is written in Markdown.
 :::

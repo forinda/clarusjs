@@ -59,12 +59,16 @@
 .releases li, .changes li { margin-bottom: 10px; }
 .muted { color: var(--muted); font-size: 14px; }
 
-/* Package-manager tabs: a row of tabs joined to the code block below. */
-.pm .pm-tabs { display: flex; gap: 2px; flex-wrap: wrap; }
-.pm .pm-tabs button { font: 600 13px var(--mono); padding: 6px 12px; border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; background: transparent; color: var(--muted); cursor: pointer; }
+/* Package-manager tabs: a slim header bar on the code block, the tabs a segmented control, Copy at its right. */
+.pm { margin: 0 0 20px; border: 1px solid var(--rule); border-radius: 10px; background: var(--code-bg); overflow: hidden; }
+.pm .pm-tabs { display: flex; align-items: center; gap: 2px; padding: 4px 88px 4px 6px; border-bottom: 1px solid var(--rule); background: color-mix(in srgb, var(--fg) 4%, var(--code-bg)); }
+.pm .pm-tabs button { font: 600 12px/1 var(--mono); padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
 .pm .pm-tabs button:hover { color: var(--fg); }
-.pm .pm-tabs button[aria-selected='true'] { background: var(--code-bg); color: var(--accent); }
-.pm pre { margin-top: 0; border-top-left-radius: 0; }
+.pm .pm-tabs button[aria-selected='true'] { background: var(--bg); color: var(--accent); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--rule); }
+.pm pre { margin: 0; border: 0; border-radius: 0; padding-right: 16px; }
+.pm .copy { top: 4px; right: 6px; }
+/* A block, so its lines take code's line height (1.55), as in the other code blocks, not the page's. */
+.pm pre code { display: block; }
 
 /* Server demo */
 .playground { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 20px; }
