@@ -45,3 +45,18 @@ export function sitemapXml(siteUrl: string, base: string, pages: { path: string;
   const ns = pages.some((p) => p.images?.length) ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : ''
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${ns}>\n${urls.join('')}</urlset>\n`
 }
+
+/**
+ * The sitemap files to write: one sitemap.xml up to `max` URLs (the protocol's 50,000); past it, sitemap-1.xml,
+ * sitemap-2.xml… of `max` each, and sitemap.xml as their index, so robots.txt and search consoles keep one address.
+ * ponytail: split by count only; the protocol's other limit, 50 MB a file, would take ~1 KB a URL to reach.
+ * @internal the build writes these; apps don't call it.
+ */
+export function sitemapFiles(siteUrl: string, base: string, pages: Parameters<typeof sitemapXml>[2], max = 50_000): { file: string; xml: string }[] {
+  if (pages.length <= max) return [{ file: 'sitemap.xml', xml: sitemapXml(siteUrl, base, pages) }]
+  const parts: { file: string; xml: string }[] = []
+  for (let i = 0; i < pages.length; i += max) parts.push({ file: `sitemap-${parts.length + 1}.xml`, xml: sitemapXml(siteUrl, base, pages.slice(i, i + max)) })
+  const root = new URL(/^https?:\/\//i.test(base) ? new URL(base).pathname : base, siteUrl.replace(/\/?$/, '/'))
+  const entries = parts.map((p) => `<sitemap><loc>${xml(new URL(p.file, root).href)}</loc></sitemap>\n`).join('')
+  return [...parts, { file: 'sitemap.xml', xml: `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}</sitemapindex>\n` }]
+}

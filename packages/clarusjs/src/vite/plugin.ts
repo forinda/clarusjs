@@ -18,7 +18,7 @@ import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
 import { projectAliases, resolveAlias, type Alias } from './aliases.ts'
-import { gitDates, sitemapXml } from './sitemap.ts'
+import { gitDates, sitemapFiles } from './sitemap.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { rootLinks, routeFromFile } from '../server/handler.ts'
 import { basePath } from '../server/head.ts'
@@ -548,7 +548,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             if (!listed.has(path)) pages.push({ path, lastmod: undefined, images: [] })
             listed.add(path)
           }
-          writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
+          for (const { file, xml } of sitemapFiles(options.site.url, builder.config.base, pages)) writeFileSync(resolve(out, file), xml)
         }
         // robots.txt: allow everything, and point at the sitemap. A robots.txt in public/ (already copied) wins.
         if (options.site && options.robots !== false && !existsSync(resolve(out, 'robots.txt'))) {

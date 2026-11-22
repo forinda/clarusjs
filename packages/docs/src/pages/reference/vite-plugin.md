@@ -109,6 +109,8 @@ clarusjs({
 
 Each path starts with `/`; one the build already listed isn't repeated.
 
+A sitemap holds at most 50,000 URLs. Past that, the build writes `sitemap-1.xml`, `sitemap-2.xml`… and `sitemap.xml` becomes their index, so `robots.txt` and search consoles keep the one address.
+
 ## robots
 
 **Type:** `boolean` · **Default:** `true` (with `site`)

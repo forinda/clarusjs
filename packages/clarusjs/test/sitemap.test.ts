@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { createBuilder } from 'vite'
 import { expect, test } from 'vitest'
-import { gitDates, sitemapXml } from '../src/vite/sitemap.ts'
+import { gitDates, sitemapFiles, sitemapXml } from '../src/vite/sitemap.ts'
 import clarusjs from '../src/vite/plugin.ts'
 
 const git = (root: string, cmd: string, date?: string) => execSync(`git ${cmd}`, {
@@ -208,3 +208,18 @@ test('#392: include adds URLs the build can\'t list (server, client routes): an 
   expect(await build(async () => ['/shop/c'])).toEqual(['/', '/shop/c'])
   await expect(build(['shop/d'])).rejects.toThrow(/sitemap\.include: 'shop\/d' isn't a path \(start it with \/\)/)
 }, 240_000)
+
+test('#393: up to the limit one sitemap.xml; past it, sitemap-1.xml… and sitemap.xml as their index', () => {
+  const pages = ['/a', '/b', '/c'].map((path) => ({ path, lastmod: undefined }))
+  expect(sitemapFiles('https://example.com', '/docs/', pages.slice(0, 2), 2).map((f) => f.file)).toEqual(['sitemap.xml'])
+  const files = sitemapFiles('https://example.com', '/docs/', pages, 2)
+  expect(files.map((f) => f.file)).toEqual(['sitemap-1.xml', 'sitemap-2.xml', 'sitemap.xml'])
+  expect(files[0]!.xml).toBe(sitemapXml('https://example.com', '/docs/', pages.slice(0, 2)))
+  expect(files[1]!.xml).toContain('<loc>https://example.com/docs/c</loc>')
+  expect(files[2]!.xml).toBe(
+    '<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    '<sitemap><loc>https://example.com/docs/sitemap-1.xml</loc></sitemap>\n' +
+    '<sitemap><loc>https://example.com/docs/sitemap-2.xml</loc></sitemap>\n</sitemapindex>\n',
+  )
+  expect(sitemapFiles('https://example.com', '/', pages).map((f) => f.file)).toEqual(['sitemap.xml']) // 50,000 by default
+})
