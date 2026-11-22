@@ -90,6 +90,8 @@ const ALERTS: Record<string, string> = { note: 'info', tip: 'tip', important: 'i
 /** Text safe inside generated .tscl markup: HTML escaped, and nothing a template would read ({ } @). */
 const inert = (s: string) => escapeHtml(s).replace(/\{/g, '&#123;').replace(/\}/g, '&#125;').replace(/@/g, '&#64;')
 
+export { highlightTemplates } from './templates.ts'
+
 /**
  * 'Hello, World!' → 'hello-world'. Shared by heading ids and (later) link checking.
  * @example

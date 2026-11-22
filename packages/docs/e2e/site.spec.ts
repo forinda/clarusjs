@@ -1647,3 +1647,17 @@ test('#241 forms: a checkbox group and a <select multiple> bind arrays, starting
   await form.getByLabel('Languages').selectOption(['en', 'sw'])
   await expect(out).toHaveText('Topics: releases · Languages: en, sw')
 })
+
+test('#153: code in .tscl pages is highlighted like Markdown, and passes the contrast check', async ({ page }) => {
+  for (const path of ['/', '/guide/explained', '/guide/verbatim']) {
+    await page.goto(path)
+    const block = page.locator('.code-block.language-tscl pre.shiki').first()
+    await expect(block, path).toBeVisible()
+    expect(await block.locator('span[style*="--shiki-light"]').count(), path).toBeGreaterThan(3)
+    // The text is the code as written: holes and directives shown, not run.
+    if (path === '/') await expect(block).toContainText('@input start: number = 0')
+    if (path === '/') await expect(block).toContainText('Clicked {{ count }} times')
+    const results = await new AxeBuilder({ page }).include('.code-block.language-tscl').withRules(['color-contrast']).analyze()
+    expect(results.violations, path).toEqual([])
+  }
+})

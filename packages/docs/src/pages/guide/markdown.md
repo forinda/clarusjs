@@ -103,6 +103,30 @@ npm install @clarusjs/content
 ```
 :::
 
+## Code in templates
+
+Code in a `.tscl` page (a page that has to stay a template) can be highlighted the same way, at build time. Add `highlightTemplates()` from `@clarusjs/content` before clarusjs:
+
+```ts
+// vite.config.ts
+import clarusjs from 'clarusjs/vite'
+import markdown, { highlightTemplates } from '@clarusjs/content'
+
+export default defineConfig({ plugins: [highlightTemplates(), clarusjs({ sources: [markdown()] })] })
+```
+
+Then give a code block its language with `lang`:
+
+```tscl
+<pre><code verbatim lang="ts">const answer = 42</code></pre>
+```
+
+- `<code verbatim lang="…">` shows the code exactly as written, `{{ }}` and `@` included.
+- `<pre verbatim lang="…">` does the same for a sample that contains `</code>` itself.
+- A `<code lang="…">` without `verbatim` is template text: write `&lt;` for `<`.
+
+Only static blocks are highlighted. A block with `{{ }}` holes, which changes with the page's data, is left as written, and the build says so. clarusjs itself never loads Shiki: the plugin is part of `@clarusjs/content`.
+
 ## Snippets and includes
 
 Show a file, or part of it, with `<<<`. `@` is the project root; regions are marked with `#region name` and `#endregion` comments:

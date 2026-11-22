@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
-import markdown from '@clarusjs/content'
+import markdown, { highlightTemplates } from '@clarusjs/content'
 import { themeDocs } from '@clarusjs/theme-docs/vite.js'
 import { guidePage } from './src/schemas.ts'
 import { replRuntime } from './src/repl/bundle.ts'
@@ -10,6 +10,8 @@ export default defineConfig({
     themeDocs(),
     // The playground's preview runtime, bundled into one string (src/repl/bundle.ts).
     replRuntime(),
+    // Code blocks in .tscl pages highlighted like Markdown's (before clarusjs compiles them).
+    highlightTemplates(),
     clarusjs({
       // Rendered on every request; on Netlify, by a function (see the Server playground page).
       routes: { '/playground': 'server', '/api/demo-stats': 'server', '/api/demo-records': 'server', '/tour/*': 'client' },
