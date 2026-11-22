@@ -196,9 +196,11 @@ export type ClarusOptions = {
   /**
    * With site.url, vite build writes sitemap.xml (static pages, dated from git). false: no sitemap. `exclude`: paths
    * left out ('/legal', '/tags/*' one segment, '/drafts/**' any depth). A page opts out itself with
-   * <cl-head><meta name="sitemap" content="false"></cl-head> (removed from the built page) or noindex.
+   * <cl-head><meta name="sitemap" content="false"></cl-head> (removed from the built page) or noindex, and sets its
+   * own date with <meta name="sitemap:lastmod" content="2026-11-01">. Each page's images (not alt="", not data:) are
+   * listed with Google's image extension; `images: false` leaves them out.
    */
-  sitemap?: boolean | { exclude?: string[] }
+  sitemap?: boolean | { exclude?: string[]; images?: boolean }
   /** With site.url, vite build writes robots.txt (allow all, and the sitemap), unless public/robots.txt exists. */
   robots?: boolean
   /** Collapse whitespace in template text at build (default true). */
@@ -503,7 +505,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             .map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*|\*/g, (s) => (s === '**' ? '.*' : '[^/]+'))}$`))
           // A page's own sitemap markers (opt-out, lastmod) are read, then removed from the built page; noindex pages
           // aren't listed either.
-          const sitemapMeta = (page: string): { out: boolean; lastmod?: number } => {
+          const images = typeof options.sitemap !== 'object' || options.sitemap.images !== false
+          const sitemapMeta = (page: string): { out: boolean; lastmod?: number; images: string[] } => {
             const file = resolve(out, routeToFile(page))
             let html = readFileSync(file, 'utf8')
             const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
@@ -522,13 +525,19 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             }
             for (const marker of [optOut, dated]) if (marker) html = html.replace(marker, '')
             if (optOut || dated) writeFileSync(file, html)
-            return { out: !!optOut || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? '')), ...(lastmod === undefined ? {} : { lastmod }) }
+            // The page's images, as written (sitemapXml resolves them): not decorative ones (alt=""), not data: URLs.
+            const decode = (v: string) => v.replace(/&(amp|quot|#39|lt|gt);/g, (_, e: string) => ({ amp: '&', quot: '"', '#39': "'", lt: '<', gt: '>' })[e]!)
+            const pics = images ? [...new Set([...html.matchAll(/<img\b[^>]*>/gi)].map(([tag]) => tag)
+              .filter((tag) => attr(tag, 'alt') !== '')
+              .map((tag) => decode(attr(tag, 'src') ?? ''))
+              .filter((src) => src && !/^data:/i.test(src)))].slice(0, 1000) : [] // ponytail: the extension's 1,000 per page
+            return { out: !!optOut || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? '')), ...(lastmod === undefined ? {} : { lastmod }), images: pics }
           }
           // Every page's markers are read (and stripped), excluded or not.
           const pages = pageRoutes.filter((page) => page !== '/404' && page !== '/500' && !clientRoutes.includes(page))
             .map((path) => ({ path, meta: sitemapMeta(path) }))
             .filter(({ path, meta }) => !meta.out && !exclude.some((re) => re.test(path)))
-            .map(({ path, meta }) => ({ path, lastmod: meta.lastmod ?? dates.get(fileOf(path) ?? '') ?? epoch }))
+            .map(({ path, meta }) => ({ path, lastmod: meta.lastmod ?? dates.get(fileOf(path) ?? '') ?? epoch, images: meta.images }))
           writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
         }
         // robots.txt: allow everything, and point at the sitemap. A robots.txt in public/ (already copied) wins.

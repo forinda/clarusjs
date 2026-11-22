@@ -163,3 +163,32 @@ test('#390: a lastmod that is not a date fails the build, naming the page', asyn
   await expect((await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp())
     .rejects.toThrow(/\/: sitemap:lastmod 'last tuesday' isn't a date \(YYYY-MM-DD\)/)
 }, 120_000)
+
+test('#391: sitemapXml writes a page\'s images (the image namespace only when there are any)', () => {
+  const xml = sitemapXml('https://example.com', '/', [{ path: '/a', lastmod: undefined, images: ['https://example.com/x.png?a=1&b=2'] }, { path: '/b', lastmod: undefined }])
+  expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">')
+  expect(xml).toContain('<url><loc>https://example.com/a</loc><image:image><image:loc>https://example.com/x.png?a=1&amp;b=2</image:loc></image:image></url>')
+  expect(xml).toContain('<url><loc>https://example.com/b</loc></url>')
+  expect(sitemapXml('https://example.com', '/', [{ path: '/b', lastmod: undefined }])).not.toContain('xmlns:image')
+})
+
+test('#391: vite build lists each page\'s images, absolute; decorative (alt="") and data: images left out; images: false turns it off', async () => {
+  const build = async (sitemap: object) => {
+    const { root, w } = repo()
+    w('src/pages/guide/a.tscl', '<h1>A</h1><img src="shot.png" alt="A screenshot"><img src="/logo.svg" alt="Logo"><img src="https://cdn.example.org/c.jpg" alt="CDN"><img src="/deco.png" alt=""><img src="data:image/png;base64,AAAA" alt="inline"><img src="/logo.svg" alt="Logo again">')
+    w('src/pages/b.tscl', '<p>no images</p>')
+    mkdirSync(resolve(root, 'node_modules'))
+    symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+    await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' }, sitemap })] })).buildApp()
+    return readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  }
+  const xml = await build({})
+  const page = /<url><loc>https:\/\/example\.com\/guide\/a<\/loc>(.*?)<\/url>/.exec(xml)![1]!
+  expect([...page.matchAll(/<image:loc>([^<]*)<\/image:loc>/g)].map((m) => m[1])).toEqual([
+    'https://example.com/guide/shot.png',
+    'https://example.com/logo.svg',
+    'https://cdn.example.org/c.jpg',
+  ])
+  expect(xml).toContain('<url><loc>https://example.com/b</loc>')
+  expect(await build({ images: false })).not.toContain('image:')
+}, 240_000)

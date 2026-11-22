@@ -29,14 +29,19 @@ export function gitDates(root: string, dir: string): Map<string, number> {
   return dates
 }
 
-/** The sitemap: one <url> per page, under the site URL and base; lastmod (unix seconds) as a date when known. */
-export function sitemapXml(siteUrl: string, base: string, pages: { path: string; lastmod: number | undefined }[]): string {
+/**
+ * The sitemap: one <url> per page, under the site URL and base; lastmod (unix seconds) as a date when known; images
+ * (src as written, resolved against the page's URL) with Google's image extension.
+ */
+export function sitemapXml(siteUrl: string, base: string, pages: { path: string; lastmod: number | undefined; images?: string[] }[]): string {
   // An absolute base (a CDN) counts by its path: the pages are on the site.
   const root = new URL(/^https?:\/\//i.test(base) ? new URL(base).pathname : base, siteUrl.replace(/\/?$/, '/'))
-  const urls = pages.map(({ path, lastmod }) => {
+  const urls = pages.map(({ path, lastmod, images = [] }) => {
     const loc = new URL(`./${path.slice(1)}`, root).href
     const date = lastmod === undefined ? '' : `<lastmod>${new Date(lastmod * 1000).toISOString().slice(0, 10)}</lastmod>`
-    return `<url><loc>${xml(loc)}</loc>${date}</url>\n`
+    const pics = images.map((src) => `<image:image><image:loc>${xml(new URL(src, loc).href)}</image:loc></image:image>`).join('')
+    return `<url><loc>${xml(loc)}</loc>${date}${pics}</url>\n`
   })
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('')}</urlset>\n`
+  const ns = pages.some((p) => p.images?.length) ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : ''
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${ns}>\n${urls.join('')}</urlset>\n`
 }

@@ -95,6 +95,8 @@ Leave pages out by path with `exclude`: `['/legal', '/tags/*', '/drafts/**']` (`
 
 A page sets its own date with `<cl-head><meta name="sitemap:lastmod" content="2026-11-01"></cl-head>`, or `lastmod: 2026-11-01` in Markdown frontmatter: it wins over the git date, for a page whose content changes without a commit to its file (it reads data, say). A full time works too (`2026-11-01T09:30:00Z`); anything else fails the build, naming the page. The marker is removed from the built page.
 
+Each page's images are listed with it, in [Google's image extension](https://developers.google.com/search/docs/crawling-indexing/sitemaps/image-sitemaps) (`<image:image>`), so they're found with their page: every `<img>` with a `src`, resolved to an absolute URL (images on another domain, a CDN, included). Decorative images (`alt=""`) and `data:` URLs aren't listed, and at most 1,000 per page are. `sitemap: { images: false }` leaves images out.
+
 ## robots
 
 **Type:** `boolean` · **Default:** `true` (with `site`)
