@@ -164,3 +164,8 @@ test('only a real verbatim attribute keeps an element as written, and never its 
   expect(out).toContain('<p title="verbatim">&#123;&#123; b }}</p>')
   expect(out).toContain('<code verbatim title="&#123;&#123; c }} &#64;d">{{ e }}</code>')
 })
+
+test('#390: frontmatter lastmod becomes the sitemap:lastmod marker (the build uses it, then strips it)', () => {
+  expect(page('---\ntitle: News\nlastmod: 2026-11-01\n---\n# News\n')).toContain('<cl-head><meta name="sitemap:lastmod" content="2026-11-01"></cl-head>')
+  expect(page("---\ntitle: News\nlastmod: '2026-11-01T09:30:00Z'\n---\n# News\n")).toContain('content="2026-11-01T09:30:00Z"')
+})

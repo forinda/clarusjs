@@ -93,6 +93,8 @@ With `site` set, `vite build` writes `sitemap.xml`: every prerendered static pag
 
 Leave pages out by path with `exclude`: `['/legal', '/tags/*', '/drafts/**']` (`*` is one path segment, `**` any depth). A page leaves itself out with `<cl-head><meta name="sitemap" content="false"></cl-head>`, or `sitemap: false` in Markdown frontmatter; the marker is removed from the built page.
 
+A page sets its own date with `<cl-head><meta name="sitemap:lastmod" content="2026-11-01"></cl-head>`, or `lastmod: 2026-11-01` in Markdown frontmatter: it wins over the git date, for a page whose content changes without a commit to its file (it reads data, say). A full time works too (`2026-11-01T09:30:00Z`); anything else fails the build, naming the page. The marker is removed from the built page.
+
 ## robots
 
 **Type:** `boolean` · **Default:** `true` (with `site`)

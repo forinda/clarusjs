@@ -139,3 +139,27 @@ test('review: route patterns with special characters, and noindex written any va
   expect(xml).not.toContain('quiet')
   expect(readFileSync(resolve(root, 'dist/client/404.html'), 'utf8')).toContain('<a href="/docs/blog/a">a post</a>')
 }, 120_000)
+
+test('#390: a page sets its own lastmod (it wins over git), and the marker is stripped from the built page', async () => {
+  const { root, w } = repo()
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  w('src/pages/news.tscl', '<html><head><title>N</title></head><body><cl-head><meta name="sitemap:lastmod" content="2026-11-01"></cl-head><p>n</p></body></html>')
+  git(root, 'add -A')
+  git(root, 'commit -qm one', '2024-01-02T00:00:00Z')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
+  const xml = readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  expect(xml).toContain('<url><loc>https://example.com/news</loc><lastmod>2026-11-01</lastmod></url>')
+  expect(xml).toContain('<url><loc>https://example.com/</loc><lastmod>2024-01-02</lastmod></url>') // others keep git's
+  expect(readFileSync(resolve(root, 'dist/client/news/index.html'), 'utf8')).not.toContain('sitemap:lastmod')
+}, 120_000)
+
+test('#390: a lastmod that is not a date fails the build, naming the page', async () => {
+  const { root, w } = repo()
+  w('src/pages/index.tscl', '<cl-head><meta name="sitemap:lastmod" content="last tuesday"></cl-head><h1>Home</h1>')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await expect((await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp())
+    .rejects.toThrow(/\/: sitemap:lastmod 'last tuesday' isn't a date \(YYYY-MM-DD\)/)
+}, 120_000)

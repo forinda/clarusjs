@@ -501,19 +501,34 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const epoch = process.env.SOURCE_DATE_EPOCH ? Number(process.env.SOURCE_DATE_EPOCH) : undefined
           const exclude = (typeof options.sitemap === 'object' ? options.sitemap.exclude ?? [] : [])
             .map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*|\*/g, (s) => (s === '**' ? '.*' : '[^/]+'))}$`))
-          // A page's own opt-out marker is read, then removed from the built page; noindex pages aren't listed either.
-          const optedOut = (page: string) => {
+          // A page's own sitemap markers (opt-out, lastmod) are read, then removed from the built page; noindex pages
+          // aren't listed either.
+          const sitemapMeta = (page: string): { out: boolean; lastmod?: number } => {
             const file = resolve(out, routeToFile(page))
-            const html = readFileSync(file, 'utf8')
+            let html = readFileSync(file, 'utf8')
             const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
             // Attribute values in any valid form: "x", 'x' or unquoted (transformHead output isn't normalized).
             const attr = (tag: string, name: string) => new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag)?.slice(1).find((v) => v !== undefined)
-            const marker = tags.find((tag) => attr(tag, 'name')?.toLowerCase() === 'sitemap' && attr(tag, 'content') === 'false')
-            if (marker) writeFileSync(file, html.replace(marker, ''))
-            return !!marker || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? ''))
+            const named = (name: string) => tags.find((tag) => attr(tag, 'name')?.toLowerCase() === name)
+            const optOut = tags.find((tag) => attr(tag, 'name')?.toLowerCase() === 'sitemap' && attr(tag, 'content') === 'false')
+            const dated = named('sitemap:lastmod')
+            let lastmod: number | undefined
+            if (dated) {
+              const value = attr(dated, 'content') ?? ''
+              // A date, or a full W3C datetime (2026-11-01T09:00:00Z), as sitemaps allow.
+              const time = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2}))?$/.test(value) ? Date.parse(value) : NaN
+              if (Number.isNaN(time)) throw new Error(`clarusjs: ${page}: sitemap:lastmod '${value}' isn't a date (YYYY-MM-DD)`)
+              lastmod = time / 1000
+            }
+            for (const marker of [optOut, dated]) if (marker) html = html.replace(marker, '')
+            if (optOut || dated) writeFileSync(file, html)
+            return { out: !!optOut || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? '')), ...(lastmod === undefined ? {} : { lastmod }) }
           }
-          const pages = pageRoutes.filter((page) => page !== '/404' && page !== '/500' && !clientRoutes.includes(page) && !optedOut(page) && !exclude.some((re) => re.test(page)))
-            .map((path) => ({ path, lastmod: dates.get(fileOf(path) ?? '') ?? epoch }))
+          // Every page's markers are read (and stripped), excluded or not.
+          const pages = pageRoutes.filter((page) => page !== '/404' && page !== '/500' && !clientRoutes.includes(page))
+            .map((path) => ({ path, meta: sitemapMeta(path) }))
+            .filter(({ path, meta }) => !meta.out && !exclude.some((re) => re.test(path)))
+            .map(({ path, meta }) => ({ path, lastmod: meta.lastmod ?? dates.get(fileOf(path) ?? '') ?? epoch }))
           writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
         }
         // robots.txt: allow everything, and point at the sitemap. A robots.txt in public/ (already copied) wins.
