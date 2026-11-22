@@ -7,7 +7,14 @@ import { replRuntime } from './src/repl/bundle.ts'
 
 export default defineConfig({
   plugins: [
-    themeDocs(),
+    // The sidebar from src/pages, search, and llms.txt / llms-full.txt for AI tools (llmstxt.org).
+    themeDocs({
+      llms: {
+        title: 'clarusjs',
+        summary: 'A compiler for .tscl components: HTML rendered on the server, and small islands that attach to it in the browser, with Vite.',
+        site: 'https://clarusjs.com',
+      },
+    }),
     // The playground's preview runtime, bundled into one string (src/repl/bundle.ts).
     replRuntime(),
     // Code blocks in .tscl pages highlighted like Markdown's (before clarusjs compiles them).

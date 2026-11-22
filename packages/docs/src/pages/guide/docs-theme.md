@@ -131,6 +131,19 @@ Set `search: true` in the config, and keep `themeDocs()` in `vite.config.ts`: af
 
 `themeDocs({ search: false })` skips the index.
 
+## llms.txt
+
+`themeDocs({ llms })` writes two files for AI tools after the build, as [llmstxt.org](https://llmstxt.org) describes:
+
+```ts
+themeDocs({ llms: { title: 'My docs', summary: 'What the project is, in a sentence.', site: 'https://example.com' } })
+```
+
+- **`/llms.txt`:** the title and summary, then each sidebar group with its pages as links, with their descriptions from the frontmatter. Groups come in the order of their pages' `order`; pages without a group come last.
+- **`/llms-full.txt`:** the same pages' text, one after another. A Markdown page is its Markdown, without frontmatter or imports; a template page is its built page's text.
+
+Pages hidden from the sidebar, dynamic routes and the 404 and 500 pages aren't listed. Without `site`, links are root-relative.
+
 ## Lessons
 
 `@clarusjs/theme-docs/lesson.tscl` is a layout for tutorials: a focused header, the lesson, and an action bar fixed to the bottom. A lesson is a Markdown page with `steps: true`, so each `##` section is a step:

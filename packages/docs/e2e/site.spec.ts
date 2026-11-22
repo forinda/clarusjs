@@ -1670,3 +1670,15 @@ test('#145: Markdown pages use components by tag, without importing them', async
   await page.goto('/guide/getting-started')
   await expect(page.locator('.pm-tabs').first()).toBeVisible() // the package-manager tabs, imported by their tag
 })
+
+test('#50: llms.txt lists the docs for AI tools, and llms-full.txt has their text', async ({ request }) => {
+  const index = await (await request.get('/llms.txt')).text()
+  expect(index.startsWith('# clarusjs\n\n> A compiler for .tscl components')).toBe(true)
+  expect(index).toMatch(/^## Introduction$/m)
+  expect(index).toContain('- [Getting started](https://clarusjs.com/guide/getting-started): Install clarusjs, configure Vite and write your first page.')
+  expect(index).not.toContain('/404')
+  const full = await (await request.get('/llms-full.txt')).text()
+  expect(full).toContain('Source: https://clarusjs.com/guide/getting-started\n\n# Getting started')
+  expect(full).not.toContain('description: "Install clarusjs, configure Vite') // no frontmatter
+  expect(full).toContain('Source: https://clarusjs.com/guide/explained') // a template page, as its text
+})
