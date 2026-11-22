@@ -3,6 +3,8 @@ packages:
   - examples/*
 
 # Install scripts: none run. @vscode/vsce-sign's (via @vscode/vsce) fetches a signing tool that packaging a .vsix
-# doesn't use (signing is a Marketplace publish step).
+# doesn't use (signing is a Marketplace publish step). @parcel/watcher's (via @tailwindcss/cli) builds a fallback for
+# platforms without a prebuilt binary (those come as optional dependencies), and only --watch uses it.
 allowBuilds:
+  '@parcel/watcher': false
   '@vscode/vsce-sign': false
