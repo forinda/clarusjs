@@ -7,7 +7,7 @@ import { prepare } from './prepare.ts'
 export type CompileRequest = { id: number; source: string }
 /** The answer: the outputs, or a located error. */
 export type CompileReply =
-  | { id: number; server: string; client: string | null; preparedServer: string; preparedClient: string | null }
+  | { id: number; server: string; client: string | null; preparedServer: string; preparedClient: string | null; css: string }
   | { id: number; error: string }
 
 addEventListener('message', (event: MessageEvent<CompileRequest>) => {
@@ -17,7 +17,7 @@ addEventListener('message', (event: MessageEvent<CompileRequest>) => {
     const server = compile(source, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' }).code
     const c = compile(source, { file: 'App.tscl', target: 'client' })
     const client = c.stateful ? c.code : null
-    reply = { id, server, client, preparedServer: prepare(server), preparedClient: client && prepare(client) }
+    reply = { id, server, client, preparedServer: prepare(server), preparedClient: client && prepare(client), css: c.css ?? '' }
   } catch (err) {
     // A compile error, shown where it is, as line:col.
     const error = err instanceof ClarusError ? `${err.line}:${err.column} ${err.message.slice(err.message.indexOf(' ') + 1)}` : err instanceof Error ? err.message : String(err)

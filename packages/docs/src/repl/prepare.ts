@@ -7,7 +7,7 @@ import { parse } from 'acorn'
 
 type Node = { type: string; start: number; end: number; [key: string]: any }
 
-const RUNTIME = new Set(['clarusjs/runtime', 'clarusjs/runtime/server'])
+const RUNTIME = new Set(['clarusjs/runtime', 'clarusjs/runtime/server', 'clarusjs/forms'])
 const LOOPS = new Set(['ForStatement', 'ForInStatement', 'ForOfStatement', 'WhileStatement', 'DoWhileStatement'])
 const LIMIT_MS = 1000
 
@@ -22,7 +22,7 @@ export function prepare(code: string): string {
   for (const node of ast.body as Node[]) {
     if (node.type !== 'ImportDeclaration') continue
     const from = node.source.value as string
-    if (!RUNTIME.has(from)) throw new Error(`the playground supports imports from clarusjs/runtime only, not '${from}'`)
+    if (!RUNTIME.has(from)) throw new Error(`the playground supports imports from clarusjs/runtime and clarusjs/forms only, not '${from}'`)
     const names = (node.specifiers as Node[]).map((s) => {
       if (s.type !== 'ImportSpecifier') throw new Error(`in the playground, import runtime functions by name: import { … } from '${from}'`)
       const imported = s.imported.type === 'Identifier' ? s.imported.name : s.imported.value
