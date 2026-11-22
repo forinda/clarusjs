@@ -192,3 +192,19 @@ test('#391: vite build lists each page\'s images, absolute; decorative (alt="") 
   expect(xml).toContain('<url><loc>https://example.com/b</loc>')
   expect(await build({ images: false })).not.toContain('image:')
 }, 240_000)
+
+test('#392: include adds URLs the build can\'t list (server, client routes): an array or an async function', async () => {
+  const build = async (include: unknown) => {
+    const { root, w } = repo()
+    w('src/pages/index.tscl', '<h1>Home</h1>')
+    w('src/pages/shop/[id].tscl', '@input id: string = \'\'\n<p>{{ id }}</p>')
+    mkdirSync(resolve(root, 'node_modules'))
+    symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+    const plugin = clarusjs({ site: { url: 'https://example.com' }, routes: { '/shop/*': 'server' }, sitemap: { include } as never })
+    await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [plugin] })).buildApp()
+    return [...readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8').matchAll(/<loc>https:\/\/example\.com([^<]*)<\/loc>/g)].map((m) => m[1])
+  }
+  expect(await build(['/shop/a', '/shop/b', '/'])).toEqual(['/', '/shop/a', '/shop/b']) // '/' once
+  expect(await build(async () => ['/shop/c'])).toEqual(['/', '/shop/c'])
+  await expect(build(['shop/d'])).rejects.toThrow(/sitemap\.include: 'shop\/d' isn't a path \(start it with \/\)/)
+}, 240_000)

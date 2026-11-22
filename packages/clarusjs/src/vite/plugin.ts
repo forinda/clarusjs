@@ -198,9 +198,10 @@ export type ClarusOptions = {
    * left out ('/legal', '/tags/*' one segment, '/drafts/**' any depth). A page opts out itself with
    * <cl-head><meta name="sitemap" content="false"></cl-head> (removed from the built page) or noindex, and sets its
    * own date with <meta name="sitemap:lastmod" content="2026-11-01">. Each page's images (not alt="", not data:) are
-   * listed with Google's image extension; `images: false` leaves them out.
+   * listed with Google's image extension; `images: false` leaves them out. `include`: paths the build can't list (server
+   * and client routes), or a function returning them (async, to read them from a database at build time).
    */
-  sitemap?: boolean | { exclude?: string[]; images?: boolean }
+  sitemap?: boolean | { exclude?: string[]; images?: boolean; include?: string[] | (() => string[] | Promise<string[]>) }
   /** With site.url, vite build writes robots.txt (allow all, and the sitemap), unless public/robots.txt exists. */
   robots?: boolean
   /** Collapse whitespace in template text at build (default true). */
@@ -538,6 +539,15 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             .map((path) => ({ path, meta: sitemapMeta(path) }))
             .filter(({ path, meta }) => !meta.out && !exclude.some((re) => re.test(path)))
             .map(({ path, meta }) => ({ path, lastmod: meta.lastmod ?? dates.get(fileOf(path) ?? '') ?? epoch, images: meta.images }))
+          // URLs the build can't list (server routes, client routes): from the config, an array or a function.
+          const include = typeof options.sitemap === 'object' ? options.sitemap.include : undefined
+          const extra = typeof include === 'function' ? await include() : include ?? []
+          const listed = new Set(pages.map((p) => p.path))
+          for (const path of extra) {
+            if (typeof path !== 'string' || !path.startsWith('/')) throw new Error(`clarusjs: sitemap.include: '${String(path)}' isn't a path (start it with /)`)
+            if (!listed.has(path)) pages.push({ path, lastmod: undefined, images: [] })
+            listed.add(path)
+          }
           writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
         }
         // robots.txt: allow everything, and point at the sitemap. A robots.txt in public/ (already copied) wins.

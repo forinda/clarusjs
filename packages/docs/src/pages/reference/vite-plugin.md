@@ -97,6 +97,18 @@ A page sets its own date with `<cl-head><meta name="sitemap:lastmod" content="20
 
 Each page's images are listed with it, in [Google's image extension](https://developers.google.com/search/docs/crawling-indexing/sitemaps/image-sitemaps) (`<image:image>`), so they're found with their page: every `<img>` with a `src`, resolved to an absolute URL (images on another domain, a CDN, included). Decorative images (`alt=""`) and `data:` URLs aren't listed, and at most 1,000 per page are. `sitemap: { images: false }` leaves images out.
 
+Server and client routes aren't built, so the build can't list their URLs. Add them with `include`, a list of paths or a function returning one (it may be async, to read them from a database while the site builds):
+
+```ts
+clarusjs({
+  site: { url: 'https://example.com' },
+  routes: { '/shop/*': 'server' },
+  sitemap: { include: async () => (await products()).map((p) => `/shop/${p.slug}`) },
+})
+```
+
+Each path starts with `/`; one the build already listed isn't repeated.
+
 ## robots
 
 **Type:** `boolean` · **Default:** `true` (with `site`)
