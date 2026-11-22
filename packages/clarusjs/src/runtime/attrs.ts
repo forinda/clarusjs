@@ -68,8 +68,10 @@ export function attrValue(name: string, value: unknown, tag?: string): string | 
   if (value == null) return null
   const n = name.toLowerCase()
   // A class from an object or an array (a spread's class, or one bound directly): its classes, never [object Object].
-  if (n === 'class' && typeof value === 'object') return classValue(value)
-  if (n === 'style' && typeof value === 'object') return styleValue(value)
+  if (n === 'class' && typeof value === 'object') return classValue(value) || null
+  if (n === 'style' && typeof value === 'object') return styleValue(value) || null
+  // An empty class or style adds nothing (a spread without one, a class whose toggles are all off).
+  if ((n === 'class' || n === 'style') && value === '') return null
   if (typeof value === 'boolean' && ENUMERATED.has(n)) return n === 'translate' ? (value ? 'yes' : 'no') : String(value) // translate: yes/no
   if (value === false) return null
   if (value === true) return true
@@ -89,4 +91,31 @@ export function attrValue(name: string, value: unknown, tag?: string): string | 
   if (n === 'ping') return s.split(/\s+/).filter(Boolean).every((url) => safeUrl(url, false)) ? s : UNSAFE_URL
   if (URL_ATTRS.has(n) && !safeUrl(s, IMAGE_ATTRS.has(n))) return UNSAFE_URL
   return s
+}
+
+const ATTR_NAME = /^[a-zA-Z_:][-a-zA-Z0-9_:.]*$/
+
+/**
+ * A spread's attributes (#405): each key with its value as attrValue gives it, except the names written on the element
+ * (`skip`, lowercase), class and style (merged with the element's own), and what a spread may never set, listed in
+ * `dropped` with why: event handlers, srcdoc, invalid names, JSX names and objects or functions.
+ * @internal the runtimes call this; apps write [...]="attrs".
+ */
+export function spreadAttrs(obj: unknown, skip: readonly string[], tag?: string): { set: [string, string | true | null][]; dropped: [string, string][] } {
+  const set: [string, string | true | null][] = []
+  const dropped: [string, string][] = []
+  if (!obj || typeof obj !== 'object') return { set, dropped }
+  for (const [key, value] of Object.entries(obj)) {
+    const n = key.toLowerCase()
+    if (skip.includes(n) || n === 'class' || n === 'style') continue
+    const why = !ATTR_NAME.test(key) ? 'not an attribute name'
+      : n.startsWith('on') ? 'an event handler: use (event)="…" in an island'
+      : n === 'srcdoc' ? 'srcdoc is static only'
+      : key === 'className' ? 'a JSX name: use class' : key === 'htmlFor' ? 'a JSX name: use for'
+      : value !== null && (typeof value === 'object' || typeof value === 'function') ? 'not a value for an attribute (an object or a function)'
+      : ''
+    if (why) dropped.push([key, why])
+    else set.push([key, attrValue(key, value, tag)])
+  }
+  return { set, dropped }
 }

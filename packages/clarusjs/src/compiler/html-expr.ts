@@ -17,6 +17,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
     if (n.kind === 'static') return JSON.stringify(n.html)
     if (n.kind === 'slot') return `(__cl_slots?.[${JSON.stringify(n.name)}] ?? ${n.fallback.length ? `(${htmlExpr(n.fallback, rw)})` : '""'})`
     if (n.kind === 'connect') return '""' // its marker is static; the browser connects it
+    if (n.kind === 'attr' && n.name === '...') return `__cl_spreadHtml(${attrValueExpr(n.value, rw.expr)}, ${JSON.stringify(n.skip ?? [])}, ${JSON.stringify(n.tag)}${rw === asWritten && n.where ? `, ${JSON.stringify(n.where)}` : ''})` // the place, for warnings: server code only
     if (n.kind === 'attr') return `__cl_attrHtml(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, rw.expr)}${tagArg(n)})`
     if (n.kind === 'if') {
       if (n.block === -1) {
