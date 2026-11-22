@@ -17,5 +17,7 @@ test("the Tailwind CLI runs in this package (the stylesheet's build)", async () 
   const { createRequire } = await import('node:module')
   const { dirname, resolve } = await import('node:path')
   const cli = resolve(dirname(createRequire(import.meta.url).resolve('@tailwindcss/cli/package.json')), 'dist/index.mjs')
-  expect(execFileSync(process.execPath, [cli, '--help'], { encoding: 'utf8' })).toMatch(/tailwindcss v4\.3\.5/)
+  // Without colors: CI sets FORCE_COLOR, which puts escape codes inside the version line.
+  const env = { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' }
+  expect(execFileSync(process.execPath, [cli, '--help'], { encoding: 'utf8', env })).toMatch(/tailwindcss v4\.3\.5/)
 })
