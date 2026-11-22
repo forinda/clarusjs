@@ -2,7 +2,7 @@
 // everywhere (dev, build, prerender, clarusjs check).
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { resolve } from 'node:path'
+import { normalize, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { projectAliases, resolveAlias } from '../../src/vite/aliases.ts'
 
@@ -36,7 +36,7 @@ test('Vite resolve.alias: string finds, as an object or a list (a regex find is 
   expect(resolveAlias('@ui/button.tscl', fromObject)).toBe(resolve(root, 'ui/button.tscl'))
   expect(resolveAlias('@ui', fromObject)).toBe(resolve(root, 'ui'))
   const fromList = projectAliases(root, [{ find: 'shared', replacement: '/abs/shared' }, { find: /^x/, replacement: 'y' }])
-  expect(resolveAlias('shared/a.ts', fromList)).toBe('/abs/shared/a.ts')
+  expect(resolveAlias('shared/a.ts', fromList)).toBe(normalize('/abs/shared/a.ts'))
   expect(resolveAlias('xyz', fromList)).toBeUndefined()
 })
 
