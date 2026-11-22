@@ -1,9 +1,9 @@
 {{-- "This site, explained": every route in one table, to filter, sort (by any column), sample and trim to some columns. --}}
-@import type { Row } from '../explained.ts'
+@import type { Row } from '~/explained.ts'
 @input rows: Row[]
 
 <script>
-  import { SECTIONS, kb } from '../explained.ts'
+  import { SECTIONS, kb } from '~/explained.ts'
   let query = state('')
   let section = state('All')
   let view = state('heaviest')

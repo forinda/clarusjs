@@ -1,8 +1,8 @@
 @import copy from '@clarusjs/theme-docs/copy.tscl'
-@import docs from '../../layouts/docs.tscl'
+@import docs from '~/layouts/docs.tscl'
 @import { readManifest } from 'clarusjs/manifest'
-@import { explain } from '../../explained.ts'
-@import explainedTable from '../../components/explained-table.tscl'
+@import { explain } from '~/explained.ts'
+@import explainedTable from '~/components/explained-table.tscl'
 
 <docs
   [title]="'This site, explained'"
