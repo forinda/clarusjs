@@ -6,7 +6,7 @@ AI coding tools for [clarusjs](https://github.com/forinda/clarusjs). An MCP serv
 npx @clarusjs/ai mcp
 ```
 
-Tools: `check` (type errors and lint, with the project's clarusjs), `explain` (where a built route's parts run), `compile` (one component, without a project) and `docs_search` (clarusjs.com). No dependencies besides clarusjs (a peer).
+Tools: `check` (type errors and lint, with the project's clarusjs), `explain` (where a built route's parts run), `compile` (one component, without a project) and `docs_search` (clarusjs.com). One dependency, commander (the version clarusjs uses), and clarusjs as a peer.
 
 ```sh
 claude mcp add clarusjs -- npx -y @clarusjs/ai mcp
