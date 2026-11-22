@@ -184,6 +184,9 @@ importers:
       '@clarusjs/prettier-plugin':
         specifier: workspace:*
         version: link:packages/prettier-plugin
+      clarusjs:
+        specifier: workspace:*
+        version: link:packages/clarusjs
       prettier:
         specifier: 3.9.10
         version: 3.9.10
@@ -197,6 +200,25 @@ importers:
       vite:
         specifier: ^8.3.8
         version: 8.3.8(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
+
+  packages/ai:
+    dependencies:
+      commander:
+        specifier: ^15.1.0
+        version: 15.1.0
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      clarusjs:
+        specifier: workspace:*
+        version: link:../clarusjs
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@types/node@26.6.6)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/clarusjs:
     dependencies:
@@ -278,6 +300,9 @@ importers:
       '@axe-core/playwright':
         specifier: ^4.14.0
         version: 4.14.0(playwright-core@1.65.1)
+      '@clarusjs/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@clarusjs/content':
         specifier: workspace:*
         version: link:../content

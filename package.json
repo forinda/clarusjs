@@ -33,6 +33,7 @@
     "@changesets/changelog-github": "1.0.1",
     "@changesets/cli": "3.0.3",
     "@clarusjs/prettier-plugin": "workspace:*",
+    "clarusjs": "workspace:*",
     "prettier": "3.9.10"
   }
 }
