@@ -14,9 +14,13 @@ export function skill(): string {
   return `---\nname: clarusjs\ndescription: ${DESCRIPTION}\n---\n\n${guidance()}\n\n${mistakes}\n`
 }
 
-/** Install it as a Claude Code project skill in `root`; returns the file written. */
-export function installSkill(root: string): string {
-  const file = resolve(root, '.claude/skills/clarusjs/SKILL.md')
+/**
+ * Install it as a Claude Code project skill in `root` (.claude/skills/clarusjs/SKILL.md), or at `out`: a path ending
+ * in .md or .mdc is the file itself (a Cursor rule), anything else a folder for SKILL.md (.agents/skills/clarusjs).
+ * Returns the file written.
+ */
+export function installSkill(root: string, out?: string): string {
+  const file = out === undefined ? resolve(root, '.claude/skills/clarusjs/SKILL.md') : /\.mdc?$/.test(out) ? resolve(out) : resolve(out, 'SKILL.md')
   mkdirSync(resolve(file, '..'), { recursive: true })
   writeFileSync(file, skill())
   return file

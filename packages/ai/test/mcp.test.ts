@@ -150,3 +150,10 @@ test('root stays inside the server\'s folder: no running a clarusjs planted else
   // A folder inside is fine.
   expect(text(await call(server, 'check', { root: 'src' }))).not.toContain("outside the server's folder")
 }, 60_000)
+
+test("the package's one runtime dependency is commander, the same version clarusjs uses (no second copy)", async () => {
+  const { readFileSync } = await import('node:fs')
+  const own = JSON.parse(readFileSync(resolve(import.meta.dirname, '../package.json'), 'utf8'))
+  const clarus = JSON.parse(readFileSync(resolve(workspace, 'packages/clarusjs/package.json'), 'utf8'))
+  expect(own.dependencies).toEqual({ commander: clarus.dependencies.commander })
+})

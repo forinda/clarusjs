@@ -7,7 +7,32 @@ description: "Build clarusjs apps with AI agents: an MCP server that checks thei
 
 # AI coding
 
-Agents write better clarusjs when they can check what they wrote. `@clarusjs/ai` gives them an MCP server with the same checks you run, so an agent fixes its own type errors and lint findings before it says it's done.
+Agents write better clarusjs when they know its conventions and can check what they wrote. `@clarusjs/ai` gives them both: the conventions as an `AGENTS.md` section and a skill, and an MCP server with the same checks you run, so an agent fixes its own type errors and lint findings before it says it's done.
+
+## Set up a project
+
+```sh
+npx @clarusjs/ai agents   # the clarusjs section of AGENTS.md
+npx @clarusjs/ai skill    # the clarusjs skill, for Claude Code
+claude mcp add clarusjs -- npx -y @clarusjs/ai mcp   # the MCP server (Cursor, VS Code: below)
+```
+
+| | What the agent gets | When it reads it |
+|---|---|---|
+| [AGENTS.md](#agentsmd) | where things go, the syntax, islands and state, the check loop | at the start of every session |
+| [The skill](#the-skill) | the same, plus the common mistakes and how to fix them | when it works on `.tscl` files |
+| [The MCP server](#the-mcp-server) | `check`, `compile`, `explain` and `docs_search` | whenever it wants to check its work |
+| [llms.txt](#llmstxt) | these docs, as text | when you point it there |
+
+## The loop
+
+The tools add up to one habit: write, check, fix, until `check` is clean.
+
+1. The agent writes or edits `.tscl` files, following `AGENTS.md` and the skill.
+2. It runs `check` (the MCP tool, or `npx clarusjs check`): type errors in templates and scripts, and the [lint rules](/guide/lint), each at `file.tscl:line:col`.
+3. It fixes what's reported, using `compile` to see what a component turns into and `docs_search` for syntax it isn't sure of, and checks again.
+
+Make it part of "done" in your own instructions too: CI that runs `clarusjs check --strict` catches what an agent missed.
 
 ## The MCP server
 
@@ -60,6 +85,12 @@ It covers where things go, a component's syntax, islands and state, and checking
 
 This site's own `AGENTS.md` is written this way, and a test fails when it falls behind.
 
+Another file, such as `CLAUDE.md` or a path of your own, takes `--out`; `--out -` prints the section instead:
+
+```sh
+npx @clarusjs/ai agents --out CLAUDE.md
+```
+
 ## The skill
 
 A skill is a set of instructions an agent loads when its task calls for it. The clarusjs skill carries the same conventions as the `AGENTS.md` section, plus the common mistakes: what fails to compile and why, and what compiles but is still wrong, such as changing an array in place.
@@ -70,4 +101,8 @@ Install it as a Claude Code project skill:
 npx @clarusjs/ai skill
 ```
 
-That writes `.claude/skills/clarusjs/SKILL.md`. Other agents that read the [Agent Skills](https://agentskills.io) format take the same file, published at [/skills/clarusjs/SKILL.md](/skills/clarusjs/SKILL.md). Every example in it is compiled by a test: the wrong ones must fail, the right ones must pass.
+That writes `.claude/skills/clarusjs/SKILL.md`. `--out` puts it elsewhere: a folder gets `SKILL.md` (`--out .agents/skills/clarusjs`), and a path ending in `.md` or `.mdc` is the file itself (`--out .cursor/rules/clarusjs.mdc` for a Cursor rule). Other agents that read the [Agent Skills](https://agentskills.io) format take the same file, published at [/skills/clarusjs/SKILL.md](/skills/clarusjs/SKILL.md). Every example in it is compiled by a test: the wrong ones must fail, the right ones must pass.
+
+## llms.txt
+
+These docs are also plain text for tools: [llms.txt](/guide/docs-theme#llmstxt) lists every page, and `llms-full.txt` has all of them in one file. Point an agent without the MCP server at `https://clarusjs.com/llms-full.txt`, or add it to a tool's docs sources (Cursor's `@Docs`, for example).
