@@ -225,6 +225,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       let cls: string | undefined
       const paths: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
+        if (/^(class|style)\./.test(a.name)) fail(`a component takes a static class="…" only: [${a.name}] is for elements`, a.start)
         if (a.name === 'class') {
           // Passed through to the component's top-level elements (see markRoots in index.ts).
           if (a.kind !== 'static' || typeof a.value !== 'string') fail('a component takes a static class="…" only ([class] and {{ }} in it aren\'t supported on a component yet)', a.start)

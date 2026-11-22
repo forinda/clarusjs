@@ -47,7 +47,10 @@ export function generateTs(source: string, file: string, options: { loader?: str
   // primitive (an object would read "[object Object]").
   // (The text type is spelled out, not aliased, so errors name it.)
   const text = 'string | number | boolean | null | undefined'
-  emit(`type __cl_AttrOf<T extends string, P extends string> = T extends keyof HTMLElementTagNameMap ? P extends keyof HTMLElementTagNameMap[T] ? (HTMLElementTagNameMap[T][P] extends boolean ? boolean | null | undefined : ${text}) : ${text} : ${text}\n`)
+  // class (#403) takes what classValue does: a string, an array or an object of class names; a toggle ([class.x])
+  // is read as true or false, so it takes anything.
+  emit(`export type __cl_Class = ${text} | __cl_Class[] | { [name: string]: unknown }\n`)
+  emit(`type __cl_AttrOf<T extends string, P extends string> = P extends 'class' ? __cl_Class : P extends \`class.\${string}\` ? unknown : T extends keyof HTMLElementTagNameMap ? P extends keyof HTMLElementTagNameMap[T] ? (HTMLElementTagNameMap[T][P] extends boolean ? boolean | null | undefined : ${text}) : ${text} : ${text}\n`)
   emit('declare function __cl_attr<T extends string, P extends string>(value: __cl_AttrOf<T, P>): void\n')
   // A name the DOM doesn't know is a custom event (a child island's CustomEvent, with its detail).
   // currentTarget is the element the handler is on (an unknown tag: HTMLElement). Helper types are exported only so a

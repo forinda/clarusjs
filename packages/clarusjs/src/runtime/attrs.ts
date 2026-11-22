@@ -32,11 +32,26 @@ function safeUrl(url: string, image: boolean): boolean {
 const ENUMERATED = new Set(['contenteditable', 'draggable', 'spellcheck', 'translate', 'aria-expanded', 'aria-pressed', 'aria-checked', 'aria-selected'])
 
 /**
+ * A class from a string (as written), an object (its truthy keys) or an array (flattened, falsy entries dropped), like
+ * clsx. Templates use it for `[class]` values and `[class.name]` toggles.
+ * @example
+ * classValue(['a', on && 'b', { c: true, d: false }]) // 'a b c' when on
+ * @see https://clarusjs.com/guide/attributes
+ */
+export function classValue(value: unknown): string {
+  const names = (v: unknown): unknown[] => (!v ? [] : typeof v === 'string' ? v.split(/\s+/) : Array.isArray(v) ? v.flatMap(names) : typeof v === 'object' ? Object.keys(v).filter((k) => (v as Record<string, unknown>)[k]) : [String(v)])
+  // Each class once, single spaces: a written class="star" and a bound 'star on' make "star on".
+  return [...new Set(names(value).filter(Boolean))].join(' ')
+}
+
+/**
  * What an attribute should become: `null` removes it, `true` makes it a bare boolean attribute, a string is its value.
  */
 export function attrValue(name: string, value: unknown, tag?: string): string | true | null {
   if (value == null) return null
   const n = name.toLowerCase()
+  // A class from an object or an array (a spread's class, or one bound directly): its classes, never [object Object].
+  if (n === 'class' && typeof value === 'object') return classValue(value)
   if (typeof value === 'boolean' && ENUMERATED.has(n)) return n === 'translate' ? (value ? 'yes' : 'no') : String(value) // translate: yes/no
   if (value === false) return null
   if (value === true) return true

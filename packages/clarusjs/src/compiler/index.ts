@@ -7,6 +7,7 @@ import { parse, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
+import { foldClass } from './class-style.ts'
 export { checkIcons, type IconResolver } from './icon.ts'
 import type { IconResolver } from './icon.ts'
 export { lint, lintRules, type LintRule, type LintLevel, type LintConfig, type LintMessage, type LintRuleDef, type LintContext, type LintElement } from './lint.ts'
@@ -58,6 +59,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
   // Every component's top-level elements carry its scope class, styled or not: a parent's scope then takes in a
   // child's top-level element and stops inside it.
   const id = options.scope ?? scopeId(options.file)
+  foldClass(parsed.nodes, new Set(parsed.imports.map((imp) => imp.name)))
   markRoots(parsed.nodes, `cl-c-${id}`, new Set(parsed.imports.map((imp) => imp.name)))
   let css = ''
   for (const s of parsed.styles) {
@@ -107,7 +109,8 @@ function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>):
       else if (own.kind === 'static') node.attrs[at] = { kind: 'interp', name: 'class', parts: [own.value === true || !own.value ? cls : `${own.value} ${cls}`, passed], start: own.start }
       else if (own.kind === 'interp') own.parts.push(` ${cls}`, passed)
       // ponytail: a bound [class] that is null/false still gets the scope class (the class can't go away entirely).
-      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr, start: own.start }, ` ${cls}`, passed], start: own.start }
+      // classValue: the bound value may be an object or an array (#403), joined here with the scope class as text.
+      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr.startsWith('__cl_classValue(') ? own.expr : `__cl_classValue(${own.expr})`, start: own.start }, ` ${cls}`, passed], start: own.start }
     } else if (node.type === 'if') {
       for (const b of node.branches) markRoots(b.children, cls, components)
     } else if (node.type === 'for') {

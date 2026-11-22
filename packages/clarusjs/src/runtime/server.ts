@@ -3,6 +3,7 @@ import { attrHtml, escape, HTML } from './html.ts'
 import { stringify } from './serialize.ts'
 
 export { escape, json, blockHtml, forHtml, regionHtml } from './html.ts'
+export { classValue } from './attrs.ts'
 
 /**
  * Wrap a stateful component's HTML in its island boundary: name, client chunk URL, props (`p`) and, when the
