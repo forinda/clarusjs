@@ -1,5 +1,20 @@
 # @clarusjs/theme-docs
 
+## 0.3.0
+
+### Minor Changes
+
+- [#365](https://github.com/forinda/clarusjs/pull/365) [`dd03650`](https://github.com/forinda/clarusjs/commit/dd03650df052e8e1fa14d335599b7541ca62a38e) Thanks [@forinda](https://github.com/forinda)! - `LayoutInputs` (from `nav.ts`): the inputs a site's layout passes to a theme's `layout.tscl`, the contract a theme of your own implements, kept equal to the docs theme's layout by a test. The new "Writing a theme" guide lists what the package makes public (covered by semver) and what is internal, with a minimal theme that is built and type-checked in CI.
+
+- [#364](https://github.com/forinda/clarusjs/pull/364) [`8cf5fee`](https://github.com/forinda/clarusjs/commit/8cf5feeb780350333af3c11b73e70df39610afa3) Thanks [@forinda](https://github.com/forinda)! - Replace a part of the docs layout with a file of your own: `themeDocs({ components: { footer: '/src/theme/footer.tscl' } })` (`header`, `sidebar`, `contents`, `pageFooter`, `footer`). The layout uses your file in dev and build, in the browser too; it is checked against the part it replaces (no required input the layout doesn't pass, every slot the layout fills), and a mistake is a build error that says what to fix. The file may be anywhere in the project: the theme hands it to clarusjs, so its styles and islands are built.
+
+- [#363](https://github.com/forinda/clarusjs/pull/363) [`f1b420f`](https://github.com/forinda/clarusjs/commit/f1b420ffe77a78ac580e26dfdb0129ba7cb688f1) Thanks [@forinda](https://github.com/forinda)! - The docs layout is made of public parts, each usable on its own: `parts/header.tscl`, `parts/sidebar.tscl` (slots `top`, `bottom`), `parts/contents.tscl` ("On this page", `inline` for the box form), `parts/page-footer.tscl` and `parts/footer.tscl`. The HTML a site gets is unchanged, apart from the scope class each part's top-level element carries; search indexing matches the parts by class token.
+
+### Patch Changes
+
+- Updated dependencies [[`dd107bb`](https://github.com/forinda/clarusjs/commit/dd107bbdedc950fbcf9b120a9bb5569bf9f348cf), [`7daaabe`](https://github.com/forinda/clarusjs/commit/7daaabe2d7eac69e57fe2744b94bd2c36a7945cd), [`5d58103`](https://github.com/forinda/clarusjs/commit/5d5810381b0455a534d434a4a67b72e96bbc70b4)]:
+  - clarusjs@0.12.0
+
 ## 0.2.0
 
 ### Minor Changes

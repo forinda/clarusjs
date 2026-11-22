@@ -1,5 +1,17 @@
 # clarusjs
 
+## 0.12.0
+
+### Minor Changes
+
+- [#358](https://github.com/forinda/clarusjs/pull/358) [`7daaabe`](https://github.com/forinda/clarusjs/commit/7daaabe2d7eac69e57fe2744b94bd2c36a7945cd) Thanks [@forinda](https://github.com/forinda)! - A compile warning when state is changed in place, in a script or an event handler: `items.push(x)`, `items.sort()`, `form.a = 1`, `form.b.c++`, `delete form.a`, a Map's or Set's `set`/`add`/`delete`/`clear`. Nothing notifies, so the page doesn't update; the warning says what to assign instead (`items = [...items, …]`, `form = { ...form, a: … }`). Two-way bindings (`[(value)]`) already write a copy and aren't flagged.
+
+- [#363](https://github.com/forinda/clarusjs/pull/363) [`5d58103`](https://github.com/forinda/clarusjs/commit/5d5810381b0455a534d434a4a67b72e96bbc70b4) Thanks [@forinda](https://github.com/forinda)! - Other Vite plugins can name components for clarusjs to build: `api: { clarusComponents: (root) => [...files] }`. They are found like the components under `src/`, so their styles reach the stylesheet and their islands get client chunks, though no page imports them by path (a docs theme's replacement for one of its parts, for example).
+
+### Patch Changes
+
+- [#357](https://github.com/forinda/clarusjs/pull/357) [`dd107bb`](https://github.com/forinda/clarusjs/commit/dd107bbdedc950fbcf9b120a9bb5569bf9f348cf) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/forms`: a multi-step form moves between steps inside a sandboxed frame too (a `srcdoc` iframe, an embedded preview). There `history.pushState` throws, and `next()` rejected with the step half-changed; now the step moves, without the URL hash.
+
 ## 0.11.0
 
 ### Minor Changes

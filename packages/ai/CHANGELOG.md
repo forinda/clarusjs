@@ -1,5 +1,13 @@
 # @clarusjs/ai
 
+## 0.1.1
+
+### Patch Changes
+
+- [#358](https://github.com/forinda/clarusjs/pull/358) [`7daaabe`](https://github.com/forinda/clarusjs/commit/7daaabe2d7eac69e57fe2744b94bd2c36a7945cd) Thanks [@forinda](https://github.com/forinda)! - The skill's "changing state in place" mistake covers event handlers too, and says the compiler now warns about it.
+- Updated dependencies [[`dd107bb`](https://github.com/forinda/clarusjs/commit/dd107bbdedc950fbcf9b120a9bb5569bf9f348cf), [`7daaabe`](https://github.com/forinda/clarusjs/commit/7daaabe2d7eac69e57fe2744b94bd2c36a7945cd), [`5d58103`](https://github.com/forinda/clarusjs/commit/5d5810381b0455a534d434a4a67b72e96bbc70b4)]:
+  - clarusjs@0.12.0
+
 ## 0.1.0
 
 ### Minor Changes
