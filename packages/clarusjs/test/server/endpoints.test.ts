@@ -65,3 +65,16 @@ test('endpoints are server routes (for preview, adapters and the manifest); page
   expect(h.isServerPath('/api/items/9')).toBe(true)
   expect(await (await call('/')).text()).toContain('<h1>home</h1>')
 })
+
+test('review: a write without Origin is checked by Referer, and refused when it carries cookies and neither header', async () => {
+  const post = (headers: Record<string, string>) => call('/api/items', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: '{}' })
+  expect((await post({ referer: 'https://evil.test/page' })).status).toBe(403)
+  expect((await post({ origin: 'null', referer: 'https://x.test/page' })).status).toBe(403) // a sandboxed frame
+  expect((await post({ referer: 'https://x.test/somewhere' })).status).toBe(201)
+  expect((await post({ cookie: 'session=1' })).status).toBe(403) // a browser acting for the visitor, unidentified
+  expect((await post({})).status).toBe(201) // no cookies: a server or a script, nothing of the visitor's to abuse
+})
+
+test('review: a malformed escape in an endpoint path is a 404, not a crash', async () => {
+  expect((await call('/api/items/%E0%A4%A')).status).toBe(404)
+})
