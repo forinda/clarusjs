@@ -140,9 +140,10 @@ An event needs a `<script>`: a component without one is static HTML and ships no
 
 These compile, but are wrong:
 
-- **Changing state in place.** In a script, `items.push(x)` or `form.name = 'a'` changes the value without telling
-  anyone, so the page doesn't update. Assign a new value: `items = [...items, x]`, `form = { ...form, name: 'a' }`.
-  (Template bindings such as `[(value)]="form.name"` do this for you.)
+- **Changing state in place.** In a script or an event handler, `items.push(x)` or `form.name = 'a'` changes the
+  value without telling anyone, so the page doesn't update; the compiler warns. Assign a new value:
+  `items = [...items, x]`, `form = { ...form, name: 'a' }`. (Two-way bindings such as `[(value)]="form.name"` do this
+  for you.)
 - **`@for` without `track`.** Rows are matched by position, so a row's state moves to another item when the list
   changes order. `clarusjs check` warns; use `track item.id` (or another unique key).
 - **Other frameworks' habits.** There is no `useState`, `ref()`, `this` or `className`: use `state()`, plain

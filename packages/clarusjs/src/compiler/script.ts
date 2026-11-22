@@ -370,6 +370,77 @@ export function referencesSignal(expr: string, signals: Signals): boolean {
   return referencesNames(expr, new Set(signals.keys()))
 }
 
+/** Methods that change an array, a Map or a Set in place, and the copy that does the same as a new value. */
+const MUTATORS: Record<string, (name: string) => string> = {
+  push: (n) => `${n} = [...${n}, …]`,
+  unshift: (n) => `${n} = […, ...${n}]`,
+  pop: (n) => `${n} = ${n}.slice(0, -1)`,
+  shift: (n) => `${n} = ${n}.slice(1)`,
+  splice: (n) => `${n} = ${n}.toSpliced(…)`,
+  sort: (n) => `${n} = ${n}.toSorted(…)`,
+  reverse: (n) => `${n} = ${n}.toReversed()`,
+  fill: (n) => `${n} = ${n}.map(…)`,
+  copyWithin: (n) => `${n} = [...${n}]`,
+  set: (n) => `${n} = new Map(${n}).set(…)`,
+  add: (n) => `${n} = new Set(${n}).add(…)`,
+  delete: (n) => `a copy without it: ${n} = new Map(${n}), then delete from that`,
+  clear: (n) => `${n} = new Map() or new Set()`,
+}
+
+/** The name a member chain starts from (`form` in `form.b.c`, `items` in `items[0]`), if it is an identifier. */
+function rootOf(node: N): N | undefined {
+  let n = node
+  while (n.type === 'MemberExpression') n = n.object
+  return n.type === 'Identifier' ? n : undefined
+}
+/** A member chain as written, with computed parts shortened: `form.b.c`, `items[…]`. */
+function chain(node: N): string {
+  if (node.type === 'Identifier') return node.name
+  if (node.type !== 'MemberExpression') return '…'
+  return node.computed ? `${chain(node.object)}[…]` : `${chain(node.object)}.${node.property.name}`
+}
+
+/**
+ * State changed in place (#350): a mutating method called on one of `names` (`items.push(x)`), or one of its properties
+ * written, incremented or deleted (`form.a = 1`). Nothing notifies, so the page doesn't update. Skips places where a
+ * local declaration shadows the name. Each with where it starts in `code` and what to write instead.
+ */
+export function mutationsOf(code: string, names: Set<string>): { name: string; start: number; message: string }[] {
+  const found: { name: string; start: number; message: string }[] = []
+  const say = (name: string, start: number, what: string, instead: string) =>
+    found.push({ name, start, message: `${what} changes ${name} in place, so the page won't update: assign a new value instead (${instead})` })
+  const visit = (active: Set<string>, entered: WeakSet<N>): Hook => (node, parent, key) => {
+    if (!entered.has(node)) {
+      const shadowed = [...scopeNames(node)].filter((n) => active.has(n))
+      if (shadowed.length) {
+        entered.add(node)
+        print(node, code, visit(new Set([...active].filter((n) => !shadowed.includes(n))), entered), parent, key)
+        return ''
+      }
+    }
+    if (node.type === 'CallExpression' && node.callee.type === 'MemberExpression' && !node.callee.computed) {
+      const method = node.callee.property.name as string
+      const root = rootOf(node.callee.object)
+      if (root && active.has(root.name) && Object.hasOwn(MUTATORS, method)) {
+        say(root.name, node.start, `${chain(node.callee.object)}.${method}()`, MUTATORS[method]!(root.name))
+      }
+    }
+    const target = node.type === 'AssignmentExpression' ? node.left : node.type === 'UpdateExpression' ? node.argument : node.type === 'UnaryExpression' && node.operator === 'delete' ? node.argument : null
+    if (target?.type === 'MemberExpression') {
+      const root = rootOf(target)
+      if (root && active.has(root.name)) {
+        const what = node.type === 'AssignmentExpression' ? `${chain(target)} ${node.operator} …` : node.type === 'UpdateExpression' ? `${chain(target)}${node.operator}` : `delete ${chain(target)}`
+        // One level deep with a plain name: the exact spread; deeper or computed: the shape of it.
+        const direct = target.object.type === 'Identifier' && !target.computed
+        say(root.name, node.start, what, direct ? `${root.name} = { ...${root.name}, ${target.property.name}: … }` : `${root.name} = { ...${root.name}, … }`)
+      }
+    }
+    return undefined
+  }
+  print(parseScript(code), code, visit(names, new WeakSet()))
+  return found
+}
+
 /** Does `expr` read any of `names`? */
 /**
  * Assignments and ++/-- to any of `names` in a script or event handler, skipping places where a local declaration
