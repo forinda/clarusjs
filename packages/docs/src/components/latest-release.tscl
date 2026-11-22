@@ -1,0 +1,9 @@
+{{-- The newest clarusjs release, from the changelog. Its data comes from its own loader (latest-release.load.ts): the
+page that shows it doesn't pass anything. --}}
+@input version: string = ''
+@input changes: number = 0
+
+<p class="latest-release">
+  Latest: <a [href]="'/releases/' + version">clarusjs {{ version }}</a
+  >, with {{ changes }} changes.
+</p>

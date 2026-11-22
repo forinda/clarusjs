@@ -1724,3 +1724,11 @@ test('#96: the auth guide signs in through an endpoint; the HttpOnly cookie keep
   await expect(demo.getByRole('button', { name: 'Sign in' })).toBeVisible()
   expect((await context.cookies()).some((c) => c.name === 'demo-user')).toBe(false)
 })
+
+test('#97: a component loads its own data (the latest release), without the page passing it', async ({ page }) => {
+  await page.goto('/releases')
+  const latest = page.locator('.latest-release')
+  const first = await page.locator('.releases li a').first().textContent()
+  await expect(latest).toContainText(`Latest: ${first}`)
+  await expect(latest).toContainText(/with \d+ changes/)
+})

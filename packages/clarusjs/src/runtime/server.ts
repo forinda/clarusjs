@@ -33,3 +33,26 @@ export function toBrowser(value: unknown, path = '', seen = new Set<object>()): 
   }
   return path ? '' : stringify(value)
 }
+
+/**
+ * The data a component's loader returned for the page being rendered (#97), or nothing outside such a render. Read by
+ * compiled components that have a loader. @internal
+ */
+export function loaded(key: string): object {
+  return (globalThis as { __clLoaded?: Map<string, object> }).__clLoaded?.get(key) ?? {}
+}
+
+/**
+ * Render with component loaders' results available to `loaded()`. Rendering is synchronous, so one render's data never
+ * reaches another's; the previous data is restored afterwards, even when the render throws. @internal
+ */
+export function withLoaded<T>(data: Map<string, object>, render: () => T): T {
+  const scope = globalThis as { __clLoaded?: Map<string, object> }
+  const outer = scope.__clLoaded
+  scope.__clLoaded = data
+  try {
+    return render()
+  } finally {
+    scope.__clLoaded = outer
+  }
+}

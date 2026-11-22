@@ -1,5 +1,5 @@
 import { modeFor, type ModeTable } from './modes.ts'
-import { toBrowser } from '../runtime/server.ts'
+import { toBrowser, withLoaded } from '../runtime/server.ts'
 import { completeHead, type HeadOptions, type SiteOptions } from './head.ts'
 import { escape } from '../runtime/html.ts'
 
@@ -169,6 +169,10 @@ export function createHandler(
     dev?: boolean
     /** src/server.ts: its `handle()` runs once per request, before any page loads. */
     hooks?: { handle?: Handle }
+    /** Component loaders (#97): each route's (as its file names it) loader files, by Vite path ('/src/x.load.ts'). */
+    componentLoaders?: Record<string, string[]>
+    /** The component loader modules, by Vite path. */
+    componentData?: Record<string, () => Promise<DataModule>>
     /** Endpoints: .ts files under src/pages (not .load.ts) exporting GET, POST, … handlers. */
     endpoints?: Record<string, () => Promise<EndpointModule>>
   } = {},
@@ -372,6 +376,11 @@ export function createHandler(
       if (!found) return notFound()
       // A prerendered dynamic route only has the pages its entries() lists, as on a static host.
       if (mode !== 'server' && found.route.keys.length && !(await listed(found.route, found.params))) return notFound()
+      // Component loaders (#97) run on the server around the page's render; a client route renders in the browser.
+      const componentFiles = options.componentLoaders?.[found.route.path] ?? []
+      if (mode === 'client' && componentFiles.length) {
+        return fail(`${found.route.file}: component loaders don't run in client routes yet (${componentFiles.map((f) => f.replace(/^\//, '')).join(', ')}); make the route 'static' or 'server'`)
+      }
       if (mode === 'client' && !wantsData) {
         // In matching order (static before dynamic, as on the server): the router takes the first match.
         const client = options.client ?? {}
@@ -419,9 +428,34 @@ export function createHandler(
       if (wantsData) {
         return new Response(head ? null : safeJson(toBrowser(props)), { headers: { 'content-type': 'application/json; charset=utf-8' } })
       }
+      // Every component loader the page uses, side by side; then a synchronous render that reads their results.
+      let componentData = new Map<string, object>()
+      if (componentFiles.length) {
+        const once = mode !== 'server'
+        const context = { params: found.params, locals, ...(once ? builtOnce(found.route.path, request) : { request, cookies }) }
+        try {
+          componentData = new Map(await Promise.all(componentFiles.map(async (file) => {
+            const name = file.replace(/^\//, '')
+            const mod = await options.componentData?.[file]?.()
+            let value: unknown
+            try {
+              value = await mod?.load?.(context)
+            } catch (err) {
+              throw Object.assign(new Error(`${name}: load() failed: ${(err as Error)?.message ?? err}`), { cause: err })
+            }
+            if (value === null || typeof value !== 'object' || Array.isArray(value) || value instanceof Response) {
+              throw new Error(`${name}: load() must return an object of the component's inputs, got ${value instanceof Response ? 'a Response' : Array.isArray(value) ? 'an array' : value === null ? 'null' : typeof value}`)
+            }
+            return [name.replace(/\.load\.ts$/, '.tscl'), value as object] as const
+          })))
+        } catch (err) {
+          return fail((err as Error).message, err)
+        }
+      }
       let html: string
       try {
-        html = (await found.route.load()).render(props)
+        const module = await found.route.load()
+        html = withLoaded(componentData, () => module.render(props))
       } catch (err) {
         return fail(`${found.route.file}: render failed: ${(err as Error)?.message ?? err}`, err)
       }
