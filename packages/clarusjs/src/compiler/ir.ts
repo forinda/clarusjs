@@ -217,7 +217,8 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       iconBodies.set(svg, body)
       return visit(svg, rawText)
     }
-    if (components.has(node.tag)) {
+    // The <svg> an <icon> became is always the element, even when a component named svg is imported.
+    if (components.has(node.tag) && !iconBodies.has(node)) {
       const props: { name: string; expr: string }[] = []
       const models: { name: string; set: string }[] = []
       let attach: string | undefined

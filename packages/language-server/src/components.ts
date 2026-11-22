@@ -52,19 +52,23 @@ export function completions(project: Project, path: string, text: string, offset
   }
   // <icon name="…">: the installed sets, then the icons of the chosen set (a component imported as icon wins).
   if (ctx.kind === 'attr-value' && ctx.tag === 'icon' && ctx.attr === 'name' && project.compiler.checkIcons && !importNamed(project, path, 'icon')) {
+    // The whole value, the cursor anywhere in it: an edit replaces the word it's in, not just what's before the cursor.
+    const close = text.indexOf(text[ctx.start - 1]!, ctx.start)
+    const value = text.slice(ctx.start, close === -1 ? offset : close)
     const colon = ctx.prefix.indexOf(':')
     if (colon === -1) {
+      const after = value.indexOf(':') // a set already followed by :icon keeps its colon
       return list(iconSets(path).filter((s) => s.prefix.startsWith(ctx.prefix)).map((s) => ({
         label: s.prefix,
         kind: Kind.Module,
         detail: `${s.name} · ${s.total} icons`,
-        textEdit: { range: range(ctx.start), newText: `${s.prefix}:` },
-        command: { title: 'Icons', command: 'editor.action.triggerSuggest' },
+        textEdit: { range: range(ctx.start, ctx.start + (after === -1 ? value.length : after)), newText: after === -1 ? `${s.prefix}:` : s.prefix },
+        ...(after === -1 ? { command: { title: 'Icons', command: 'editor.action.triggerSuggest' } } : {}),
       })))
     }
     const set = ctx.prefix.slice(0, colon)
     const typed = ctx.prefix.slice(colon + 1)
-    return list(iconNames(set, path).filter((n) => n.startsWith(typed)).map((n) => ({ label: n, kind: Kind.Value, detail: set, textEdit: { range: range(ctx.start + colon + 1), newText: n } })))
+    return list(iconNames(set, path).filter((n) => n.startsWith(typed)).map((n) => ({ label: n, kind: Kind.Value, detail: set, textEdit: { range: range(ctx.start + colon + 1, ctx.start + value.length), newText: n } })))
   }
   if (ctx.kind === 'import-path') {
     const dir = dirname(path)
@@ -114,7 +118,12 @@ function iconAt(project: Project, path: string, text: string, offset: number): H
   if (ctx.kind !== 'attr-value' || ctx.tag !== 'icon' || ctx.attr !== 'name') return undefined
   const close = text.indexOf(text[ctx.start - 1]!, ctx.start)
   const name = text.slice(ctx.start, close === -1 ? offset : close)
-  const found = resolveIcon(name, path)
+  let found: ReturnType<typeof resolveIcon>
+  try {
+    found = resolveIcon(name, path)
+  } catch {
+    return undefined // an icon <icon> can't draw yet (a rotated alias): the diagnostic says so
+  }
   if (!('data' in found)) return undefined
   // A grey that shows on light and dark editors, for icons drawn in the text colour.
   const svg = iconSvg(found.data, 'width="48" height="48"').replaceAll('currentColor', '#888')

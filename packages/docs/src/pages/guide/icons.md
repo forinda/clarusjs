@@ -42,7 +42,7 @@ That compiles to plain HTML:
 
 ## Accessibility
 
-An icon next to text is decoration: it gets `aria-hidden="true"`. An icon on its own needs a name, so give it an `aria-label` (or `aria-labelledby`, or `title`), and it becomes an image instead:
+An icon next to text is decoration: it gets `aria-hidden="true"`. An icon on its own needs a name, so give it an `aria-label` (or `aria-labelledby`), and it becomes an image instead. A `title` attribute doesn't name an SVG, so it isn't enough:
 
 ```tscl
 <button type="button"><icon name="lucide:x" aria-label="Close" /></button>

@@ -1,8 +1,8 @@
 // <icon name="…">: completion of the installed sets and their icons, a preview on hover, and unknown icons as errors.
 // The cursor is `§`.
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { loadCompiler } from '../src/compiler.ts'
 import { completions, hover } from '../src/components.ts'
@@ -97,4 +97,33 @@ test('every icon error in the file, not just the first', async () => {
     [0, "no icon 'rockt' in test (did you mean 'rocket'?)"],
     [1, "no icon set 'nope': install it with pnpm add -D @iconify-json/nope"],
   ])
+})
+
+/** The text after applying a completion item's edit (single line). */
+const applied = (text: string, item: { textEdit?: unknown }) => {
+  const e = item.textEdit as { range: { start: { character: number }; end: { character: number } }; newText: string }
+  return text.slice(0, e.range.start.character) + e.newText + text.slice(e.range.end.character)
+}
+
+test('a completion replaces the whole name, not just up to the cursor', async () => {
+  const { at } = await setup()
+  const mid = '<p><icon name="test:ro§cket" /></p>'
+  const rocket = at(mid, completions).items.find((i) => i.label === 'rocket')!
+  expect(applied(mid.replace('§', ''), rocket)).toBe('<p><icon name="test:rocket" /></p>')
+  const inSet = '<p><icon name="te§st:rocket" /></p>'
+  const set = at(inSet, completions).items.find((i) => i.label === 'test')!
+  expect(applied(inSet.replace('§', ''), set)).toBe('<p><icon name="test:rocket" /></p>') // no second colon
+})
+
+test('hover on an alias the editor can\'t draw (a rotated one) shows nothing instead of failing', async () => {
+  const { project, page } = await setup()
+  const icons = resolve(dirname(dirname(dirname(page))), 'node_modules/@iconify-json/test/icons.json')
+  const set = JSON.parse(readFileSync(icons, 'utf8'))
+  set.aliases.turned = { parent: 'rocket', rotate: 1 }
+  writeFileSync(icons, JSON.stringify(set))
+  const later = new Date(Date.now() + 5000)
+  utimesSync(icons, later, later)
+  const text = '<p><icon name="test:turned" /></p>\n'
+  project.update(page, text)
+  expect(hover(project, page, text, text.indexOf('turned'))).toBeUndefined()
 })

@@ -109,3 +109,14 @@ test('a name is set:icon; one without a set says so', () => {
   expect(e.message).toMatch(/1:4 <icon> name is set:icon, like lucide:rocket \(got 'rocket'\)$/)
   expect(error('<p><icon name="a/../b:x" /></p>').message).toMatch(/name is set:icon/)
 })
+
+test('a component imported as svg leaves the svg an <icon> becomes alone', () => {
+  const { code } = compile("@import svg from './svg.tscl'\n<p><icon name=\"test:rocket\" /></p>", { file: 'c.tscl', target: 'server', icon })
+  expect(code).toContain('<path d=\\"M1 1\\"/>')
+})
+
+test('title is not a label: an svg is named by aria-label or aria-labelledby, so a titled icon stays hidden', async () => {
+  const out = await html('<p><icon name="test:rocket" title="Launch" /></p>')
+  expect(out).toContain('aria-hidden="true"')
+  expect(out).not.toContain('role="img"')
+})

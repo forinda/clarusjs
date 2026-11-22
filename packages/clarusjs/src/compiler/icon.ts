@@ -11,7 +11,8 @@ import type { Attr, ParsedFile, TemplateNode } from './parse.ts'
 export type IconResolver = (name: string) => IconLookup
 
 type Element = Extract<TemplateNode, { type: 'element' }>
-const LABELS = new Set(['aria-label', 'aria-labelledby', 'title'])
+// What names an svg: a title attribute doesn't (only a <title> child would), so a titled icon stays hidden.
+const LABELS = new Set(['aria-label', 'aria-labelledby'])
 
 /** `<icon>` as the `<svg>` it renders and the body that goes inside it; throws a located error when it can't. */
 export function iconElement(node: Element, file: string, source: string, icon: IconResolver | undefined): { svg: Element; body: string } {

@@ -1,5 +1,5 @@
 // clarusjs/icons: icons from the Iconify sets a project installs (@iconify-json/<set>), for <icon> and the editor.
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
@@ -83,4 +83,14 @@ test("names of built-in object properties aren't icons (constructor, toString, _
   const { file } = project({ test: TEST })
   for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) expect(resolveIcon(`test:${name}`, file), name).toMatchObject({ missing: 'icon' })
   expect(iconNames('test', file)).not.toContain('constructor')
+})
+
+test('a set that changes on disk is read again (a long dev session, a pnpm update)', () => {
+  const { root, file } = project({ test: TEST })
+  expect(resolveIcon('test:rocket', file)).toMatchObject({ data: { body: '<path d="M1 1"/>' } })
+  install(root, 'test', { ...TEST, icons: { ...TEST.icons, rocket: { body: '<rect/>' } } })
+  const path = join(root, 'node_modules/@iconify-json/test/icons.json')
+  const later = new Date(Date.now() + 5000)
+  utimesSync(path, later, later)
+  expect(resolveIcon('test:rocket', file)).toMatchObject({ data: { body: '<rect/>' } })
 })

@@ -1,7 +1,7 @@
 // Icons from the Iconify sets a project installs (`pnpm add -D @iconify-json/lucide`), for `<icon name="set:name" />`.
 // Node only: the build, `clarusjs check`, the editor and the MCP server pass `resolveIcon` to the compiler, which stays
 // pure. Nothing here reaches a browser.
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 
@@ -20,7 +20,9 @@ export type IconLookup = { data: IconData } | { missing: 'set'; set: string } | 
 type IconJson = { body?: string; width?: number; height?: number; left?: number; top?: number; parent?: string; hFlip?: boolean; vFlip?: boolean; rotate?: number }
 type SetJson = { prefix: string; info?: { name?: string; total?: number }; icons: Record<string, IconJson>; aliases?: Record<string, IconJson>; width?: number; height?: number; left?: number; top?: number }
 
-const sets = new Map<string, SetJson>() // by icons.json path; misses aren't kept, so a set installed later is found
+// By icons.json path, with its modification time: a set changed on disk (an update while dev runs) is read again.
+// Misses aren't kept, so a set installed later is found.
+const sets = new Map<string, { mtime: number; data: SetJson }>()
 
 /** The folder of the nearest package.json above `file`: where its icon sets are installed. */
 function packageDir(file: string): string {
@@ -38,8 +40,11 @@ function loadSet(set: string, fromFile: string): SetJson | undefined {
   } catch {
     return undefined
   }
-  let data = sets.get(path)
-  if (!data) sets.set(path, (data = JSON.parse(readFileSync(path, 'utf8')) as SetJson))
+  const mtime = statSync(path).mtimeMs
+  const cached = sets.get(path)
+  if (cached?.mtime === mtime) return cached.data
+  const data = JSON.parse(readFileSync(path, 'utf8')) as SetJson
+  sets.set(path, { mtime, data })
   return data
 }
 
