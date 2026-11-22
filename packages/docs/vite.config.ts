@@ -4,6 +4,7 @@ import markdown, { highlightTemplates } from '@clarusjs/content'
 import { themeDocs } from '@clarusjs/theme-docs/vite.js'
 import { guidePage } from './src/schemas.ts'
 import { replRuntime } from './src/repl/bundle.ts'
+import { noInlineStyle } from './src/lint/no-inline-style.ts'
 
 export default defineConfig({
   plugins: [
@@ -25,6 +26,8 @@ export default defineConfig({
       adapter: 'netlify',
       // Moving between pages swaps the page instead of reloading it (see the Fragment navigation guide).
       fragments: true,
+      // `pnpm docs:check` lints templates too: the built-in rules, and this site's own (see the Lint guide).
+      lintRules: [noInlineStyle],
       // Paths people type out of habit (see the Routing guide): a 301 on Netlify, a forwarding page anywhere else.
       redirects: { '/docs': '/guide/getting-started' },
       // The public address: canonical URLs and social cards on every page (public/og.png unless a page sets its own).

@@ -7,6 +7,7 @@ import { parse, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
+export { lint, lintRules, type LintRule, type LintLevel, type LintConfig, type LintMessage, type LintRuleDef, type LintContext, type LintElement } from './lint.ts'
 export type { ParsedFile, InputDecl, ImportDecl, TemplateNode, Attr } from './parse.ts'
 
 /**

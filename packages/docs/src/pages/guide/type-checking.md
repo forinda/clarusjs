@@ -52,7 +52,7 @@ src/pages/index.tscl:2:38 error TS2339: Property 'hrfe' does not exist on type '
 
 ## In CI
 
-The command exits with 1 when there are errors, so it fails a CI job on its own. Add `--json` to get the diagnostics (file, line, column, code, message) for other tools. This site checks itself in CI the same way.
+The command exits with 1 when there are errors, so it fails a CI job on its own. [Lint](/guide/lint) warnings don't, unless you add `--strict`. Add `--json` to get the diagnostics (file, line, column, severity, code, message) for other tools. This site checks itself in CI the same way.
 
 ```yaml
 - run: pnpm check
