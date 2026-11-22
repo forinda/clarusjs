@@ -1,5 +1,11 @@
 # @clarusjs/language-server
 
+## 0.3.0
+
+### Minor Changes
+
+- [#337](https://github.com/forinda/clarusjs/pull/337) [`aa69dae`](https://github.com/forinda/clarusjs/commit/aa69dae9a04403747a334a3c4b8f87985842a4f7) Thanks [@forinda](https://github.com/forinda)! - Template lint in `clarusjs check`: `unused-input`, `unused-import`, `img-alt`, `label-field` and `accessible-name`, reported as warnings at `file:line:col` (the exit code changes only with `--strict`, or a rule set to `'error'`). Set levels with the plugin's `lint` option, skip one place with `{{-- clarusjs-ignore rule --}}`, and add your own rules with `lintRules` (`lint()`, `lintRules` and `LintRuleDef` are exported from `clarusjs/compiler`). Every diagnostic now has a `severity`, also in `--json`. The language server shows the built-in rules' findings as warnings.
+
 ## 0.2.0
 
 ### Minor Changes

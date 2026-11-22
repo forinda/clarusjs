@@ -1,5 +1,18 @@
 # @clarusjs/content
 
+## 0.3.0
+
+### Minor Changes
+
+- [#323](https://github.com/forinda/clarusjs/pull/323) [`d0ef9ec`](https://github.com/forinda/clarusjs/commit/d0ef9ec37598ffe01b2bddaaaaf948d9a22b71a5) Thanks [@forinda](https://github.com/forinda)! - `highlightTemplates()`: a Vite plugin (add it before clarusjs) that highlights code blocks in `.tscl` templates at build time with the same Shiki setup, themes and wrapper as Markdown. Mark a block with its language: `<pre><code verbatim lang="ts">…</code></pre>`, or `<pre verbatim lang="tscl">` for a sample holding `</code>`. Blocks with `{{ }}` holes are left as written, with a build warning; clarusjs itself never loads Shiki.
+
+- [#324](https://github.com/forinda/clarusjs/pull/324) [`2ff6bef`](https://github.com/forinda/clarusjs/commit/2ff6bef98b2b446e85ed27df28a0105d3f87a599) Thanks [@forinda](https://github.com/forinda)! - `markdown({ components: '/src/components' })` (or several folders): a Markdown page uses a component by its tag without an `@import` line. `<counter />` imports `counter.tscl`, `<todoSummary />` `todo-summary.tscl`. An explicit `@import` wins, HTML's own elements and tags in code are skipped, and an unknown camelCase tag fails the build naming the page and the tag.
+
+### Patch Changes
+
+- Updated dependencies [[`d1aa9d1`](https://github.com/forinda/clarusjs/commit/d1aa9d1b8314d9c8541bcc2f4139e2e5f81077f1), [`ece99b7`](https://github.com/forinda/clarusjs/commit/ece99b712d31942c13001003779bd337081bd094), [`3ed3004`](https://github.com/forinda/clarusjs/commit/3ed3004422470311b0f88bd1dbf3d2f477e990bd), [`061d0f7`](https://github.com/forinda/clarusjs/commit/061d0f79a60a7349ae1eb3785fcbf02fd93191e0), [`5d4d1ce`](https://github.com/forinda/clarusjs/commit/5d4d1ce3987f5a6742bae3c92e88f73397c5de0c), [`d4af927`](https://github.com/forinda/clarusjs/commit/d4af927b6a27a69339941aa480a471b55c273038), [`16c619f`](https://github.com/forinda/clarusjs/commit/16c619fa42a7336c7a247fb125edbbb031445268), [`79315ea`](https://github.com/forinda/clarusjs/commit/79315ead6668ca60da0a280ae15abdd8f2e4082d), [`aa69dae`](https://github.com/forinda/clarusjs/commit/aa69dae9a04403747a334a3c4b8f87985842a4f7), [`29b7974`](https://github.com/forinda/clarusjs/commit/29b79748a27b0aa14aa26469481bc27ee0e993e7)]:
+  - clarusjs@0.11.0
+
 ## 0.2.3
 
 ### Patch Changes

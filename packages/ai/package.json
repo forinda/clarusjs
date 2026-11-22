@@ -1,6 +1,6 @@
 {
   "name": "@clarusjs/ai",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "AI coding tools for clarusjs: an MCP server (check, explain, compile, docs search), AGENTS.md and an agent skill",
   "license": "MIT",
   "type": "module",
