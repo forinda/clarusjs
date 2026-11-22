@@ -1903,3 +1903,20 @@ test("what clarusjs is: no 'early, proving ground' note on the intro or the home
     await expect(page.locator('main')).not.toContainText('proving ground')
   }
 })
+
+test('attributes: the guide\'s demo toggles a class, sets a style property and spreads attributes, following state', async ({ page }) => {
+  await page.goto('/guide/attributes')
+  const button = page.locator('.attr-demo-button')
+  await expect(page.locator('cl-island[c="attr-demo"]')).toHaveAttribute('data-cl-ready', '')
+  await expect(button).toHaveAttribute('aria-pressed', 'false')
+  await expect(button).toHaveAttribute('style', '--hue: 180;')
+  await expect(button).not.toHaveClass(/\bon\b/)
+  await button.click()
+  await expect(button).toHaveClass(/\bon\b/)
+  await expect(button).toHaveAttribute('aria-pressed', 'true')
+  await expect(button).toHaveAttribute('title', 'On')
+  await page.locator('.attr-demo input[type="range"]').fill('20')
+  await expect(button).toHaveAttribute('style', '--hue: 20;')
+  // The guide says what isn't supported, and why.
+  await expect(page.getByRole('heading', { name: 'Not supported, and why' })).toBeVisible()
+})
