@@ -8,6 +8,9 @@ import type { Source } from 'clarusjs/vite'
 import { highlight } from './highlight.ts'
 import { expand } from './snippets.ts'
 
+/** Shell languages: never numbered by `lineNumbers`. */
+const SHELL = new Set(['sh', 'bash', 'shell', 'zsh', 'console', 'powershell', 'ps1'])
+
 /**
  * `markdown()`'s options: the layout, components for blocks, code copy and quizzes, and frontmatter schemas.
  * @see https://clarusjs.com/reference/content#markdown
@@ -29,6 +32,12 @@ export type MarkdownOptions = {
    * with the explanation as its content. Without it they are static HTML that works without JavaScript.
    */
   quiz?: { tag: string; from: string }
+  /**
+   * Number the lines of every code block, except shell ones (sh, bash, shell, zsh, console, powershell, ps1): a
+   * command is copied, not referred to by line. `:no-line-numbers` turns one block off, `:line-numbers` one on.
+   * @see https://clarusjs.com/guide/markdown#code
+   */
+  lineNumbers?: boolean
   /** `::: quiz` is for lessons (frontmatter `steps: true`); 'everywhere' allows it on any page. */
   quizzes?: 'lessons' | 'everywhere'
   /**
@@ -254,13 +263,15 @@ function renderer(options: MarkdownOptions): Md {
     return '</div>\n'
   }
 
-  // ```lang {1,3} [title] :line-numbers
+  // ```lang {1,3} [title] :line-numbers (or :no-line-numbers, with lineNumbers on)
   md.renderer.rules.fence = (tokens, i, _o, env) => {
     const e = env as { tags: string[]; group?: { id: number; n: number } }
     const info = tokens[i]!.info.trim()
     const lang = /^[^\s{[:]+/.exec(info)?.[0] ?? 'text'
     const title = /\[([^\]]+)\]/.exec(info)?.[1]
-    const lineNumbers = /(^|\s):line-numbers\b/.test(info)
+    const lineNumbers =
+      /(^|\s):line-numbers\b/.test(info) ||
+      (!!options.lineNumbers && !SHELL.has(lang.toLowerCase()) && !/(^|\s):no-line-numbers\b/.test(info))
     const code = tokens[i]!.content
     let out = ''
     if (e.group) {

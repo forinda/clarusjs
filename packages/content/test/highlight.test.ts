@@ -58,3 +58,14 @@ test('#122: the light theme\'s comments use an AA colour (#59636e), not #6e7781'
   expect(out.toLowerCase()).toContain('--shiki-light:#59636e')
   expect(out.toLowerCase()).not.toContain('#6e7781')
 })
+
+test('lineNumbers: true numbers every code block but shell ones; :no-line-numbers opts one out', () => {
+  const numbered = (code: string) => md(code, { lineNumbers: true }).includes('line-numbers-column')
+  expect(numbered('```ts\na()\n```\n')).toBe(true)
+  expect(numbered('```tscl\n<p>x</p>\n```\n')).toBe(true)
+  for (const lang of ['sh', 'bash', 'shell', 'zsh', 'console', 'powershell', 'ps1']) expect(numbered('```' + lang + '\nls\n```\n')).toBe(false)
+  expect(numbered('```ts :no-line-numbers\na()\n```\n')).toBe(false)
+  expect(numbered('```sh :line-numbers\nls\n```\n')).toBe(true) // asked for, on a shell block too
+  // Off by default: only :line-numbers numbers a block.
+  expect(md('```ts\na()\n```\n').includes('line-numbers-column')).toBe(false)
+})
