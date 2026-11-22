@@ -18,7 +18,7 @@ import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
 import { projectAliases, resolveAlias, type Alias } from './aliases.ts'
-import { gitDates, sitemapXml } from './sitemap.ts'
+import { gitDates, sitemapFiles } from './sitemap.ts'
 import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { rootLinks, routeFromFile } from '../server/handler.ts'
 import { basePath } from '../server/head.ts'
@@ -196,9 +196,12 @@ export type ClarusOptions = {
   /**
    * With site.url, vite build writes sitemap.xml (static pages, dated from git). false: no sitemap. `exclude`: paths
    * left out ('/legal', '/tags/*' one segment, '/drafts/**' any depth). A page opts out itself with
-   * <cl-head><meta name="sitemap" content="false"></cl-head> (removed from the built page) or noindex.
+   * <cl-head><meta name="sitemap" content="false"></cl-head> (removed from the built page) or noindex, and sets its
+   * own date with <meta name="sitemap:lastmod" content="2026-11-01">. Each page's images (not alt="", not data:) are
+   * listed with Google's image extension; `images: false` leaves them out. `include`: paths the build can't list (server
+   * and client routes), or a function returning them (async, to read them from a database at build time).
    */
-  sitemap?: boolean | { exclude?: string[] }
+  sitemap?: boolean | { exclude?: string[]; images?: boolean; include?: string[] | (() => string[] | Promise<string[]>) }
   /** With site.url, vite build writes robots.txt (allow all, and the sitemap), unless public/robots.txt exists. */
   robots?: boolean
   /** Collapse whitespace in template text at build (default true). */
@@ -503,7 +506,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             .map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*|\*/g, (s) => (s === '**' ? '.*' : '[^/]+'))}$`))
           // A page's own sitemap markers (opt-out, lastmod) are read, then removed from the built page; noindex pages
           // aren't listed either.
-          const sitemapMeta = (page: string): { out: boolean; lastmod?: number } => {
+          const images = typeof options.sitemap !== 'object' || options.sitemap.images !== false
+          const sitemapMeta = (page: string): { out: boolean; lastmod?: number; images: string[]; alternates: { hreflang: string; href: string }[] } => {
             const file = resolve(out, routeToFile(page))
             let html = readFileSync(file, 'utf8')
             const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
@@ -522,14 +526,33 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             }
             for (const marker of [optOut, dated]) if (marker) html = html.replace(marker, '')
             if (optOut || dated) writeFileSync(file, html)
-            return { out: !!optOut || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? '')), ...(lastmod === undefined ? {} : { lastmod }) }
+            // The page's images, as written (sitemapXml resolves them): not decorative ones (alt=""), not data: URLs.
+            const decode = (v: string) => v.replace(/&(amp|quot|#39|lt|gt);/g, (_, e: string) => ({ amp: '&', quot: '"', '#39': "'", lt: '<', gt: '>' })[e]!)
+            const pics = images ? [...new Set([...html.matchAll(/<img\b[^>]*>/gi)].map(([tag]) => tag)
+              .filter((tag) => attr(tag, 'alt') !== '')
+              .map((tag) => decode(attr(tag, 'src') ?? ''))
+              .filter((src) => src && !/^data:/i.test(src)))].slice(0, 1000) : [] // ponytail: the extension's 1,000 per page
+            // Its translations: <link rel="alternate" hreflang="…" href="…"> in its head (kept there; they belong in both).
+            const alternates = [...html.matchAll(/<link\b[^>]*>/gi)].map(([tag]) => tag)
+              .filter((tag) => /(^|\s)alternate(\s|$)/i.test(attr(tag, 'rel') ?? '') && attr(tag, 'hreflang') && attr(tag, 'href'))
+              .map((tag) => ({ hreflang: attr(tag, 'hreflang')!, href: decode(attr(tag, 'href')!) }))
+            return { out: !!optOut || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? '')), ...(lastmod === undefined ? {} : { lastmod }), images: pics, alternates }
           }
           // Every page's markers are read (and stripped), excluded or not.
           const pages = pageRoutes.filter((page) => page !== '/404' && page !== '/500' && !clientRoutes.includes(page))
             .map((path) => ({ path, meta: sitemapMeta(path) }))
             .filter(({ path, meta }) => !meta.out && !exclude.some((re) => re.test(path)))
-            .map(({ path, meta }) => ({ path, lastmod: meta.lastmod ?? dates.get(fileOf(path) ?? '') ?? epoch }))
-          writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
+            .map(({ path, meta }) => ({ path, lastmod: meta.lastmod ?? dates.get(fileOf(path) ?? '') ?? epoch, images: meta.images, alternates: meta.alternates }))
+          // URLs the build can't list (server routes, client routes): from the config, an array or a function.
+          const include = typeof options.sitemap === 'object' ? options.sitemap.include : undefined
+          const extra = typeof include === 'function' ? await include() : include ?? []
+          const listed = new Set(pages.map((p) => p.path))
+          for (const path of extra) {
+            if (typeof path !== 'string' || !path.startsWith('/')) throw new Error(`clarusjs: sitemap.include: '${String(path)}' isn't a path (start it with /)`)
+            if (!listed.has(path)) pages.push({ path, lastmod: undefined, images: [], alternates: [] })
+            listed.add(path)
+          }
+          for (const { file, xml } of sitemapFiles(options.site.url, builder.config.base, pages)) writeFileSync(resolve(out, file), xml)
         }
         // robots.txt: allow everything, and point at the sitemap. A robots.txt in public/ (already copied) wins.
         if (options.site && options.robots !== false && !existsSync(resolve(out, 'robots.txt'))) {
