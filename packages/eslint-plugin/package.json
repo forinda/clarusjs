@@ -1,7 +1,6 @@
 {
   "name": "@clarusjs/eslint-plugin",
   "version": "0.0.0",
-  "private": true,
   "description": "Lint clarusjs .tscl components with ESLint: their <script> blocks with your rules, and the template rules of clarusjs check",
   "license": "MIT",
   "type": "module",

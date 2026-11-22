@@ -34,7 +34,7 @@
   )
 
   // Set in the browser below.
-  let setSource = (source) => {}
+  let setSource = (_source) => {}
   let currentSource = () => ''
   let loaded = '' // the source last loaded (an example, a shared link): replacing anything else asks first
 

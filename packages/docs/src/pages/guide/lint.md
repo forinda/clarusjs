@@ -2,7 +2,7 @@
 title: "Lint"
 group: "Tooling"
 order: 4
-description: "Template rules clarusjs check reports as warnings: unused inputs and imports, images without alt, labels and buttons without names. Turn rules off, ignore one place, or write your own."
+description: "Template rules clarusjs check reports as warnings: unused inputs and imports, images without alt, labels and buttons without names. Turn rules off, ignore one place, write your own, or run them in ESLint with your script rules."
 ---
 
 # Lint
@@ -89,6 +89,49 @@ What `check` gets:
 
 Test a rule with `lint(source, file, levels, rules)` from `clarusjs/compiler`, which returns the findings with their line and column. A rule that throws is reported as an error at the top of the file, so a bug in it doesn't stop the other rules.
 
+## With ESLint
+
+`@clarusjs/eslint-plugin` runs ESLint on `.tscl` files: your rules on each `<script>`, and the template rules above as `clarusjs/template`. Errors land on the line and column you wrote, and `--fix` edits the `.tscl` file.
+
+<pm [commands]="['add -D eslint @clarusjs/eslint-plugin']" />
+
+```js [eslint.config.js]
+import clarusjs from '@clarusjs/eslint-plugin'
+
+export default [
+  ...clarusjs.configs.recommended,
+  {
+    files: ['**/*.tscl'],
+    rules: { 'prefer-const': 'error', 'no-unused-vars': 'error' },
+    // Optional: template rule levels, and your own rules.
+    settings: { clarusjs: { lintRules: [noInlineStyle] } }, // see Writing a rule
+  },
+]
+```
+
+The plugin knows how clarusjs scripts work:
+
+- **Names a script doesn't import**: the file's `@input`s, the data it `@import`s, and `state`, `derived` and `shared` are defined, so `no-undef` doesn't report them. Browser globals such as `window` are yours to add, as in any ESLint config (`languageOptions.globals`).
+- **Names the template uses**: a function called only from `(click)`, or a value shown only in `{{ }}`, counts as used for `no-unused-vars`.
+- **Signals written elsewhere**: `let open = state(false)` is written by the template (`(click)="open = !open"`) or by an update such as `open.x = 1`, so `prefer-const` doesn't ask for `const`. The same goes for `shared(store)`.
+
+`clarusjs/template` takes the levels as its option: `'clarusjs/template': ['error', { 'img-alt': 'off' }]`. The rule's own severity applies to every finding, and each message ends with the clarusjs rule's name. The `{{-- clarusjs-ignore --}}` comment works as it does in `clarusjs check`. This site lints itself this way.
+
+### TypeScript rules
+
+A script's syntax is JavaScript; its types come from your inputs and from inference. To use another parser, such as typescript-eslint's, pass it as `parserOptions.parser`:
+
+```js [eslint.config.js]
+import tseslint from 'typescript-eslint'
+
+export default [
+  ...clarusjs.configs.recommended,
+  { files: ['**/*.tscl'], languageOptions: { parserOptions: { parser: tseslint.parser } } },
+]
+```
+
+Rules that need type information (`no-floating-promises`, `no-unsafe-*` and the like) don't work on `.tscl` files yet. They need a type checker that can read `.tscl` files, which TypeScript 7.1 provides and typescript-eslint doesn't run on yet. typescript-eslint also needs TypeScript 6 or older, so a project on TypeScript 7 keeps a TypeScript 6 copy installed for it.
+
 ## In editors
 
-The [editor extension](/guide/editor) shows the built-in rules' findings as warnings. It doesn't read the Vite config yet, so a project's own rules and levels apply in `clarusjs check` only.
+The [editor extension](/guide/editor) shows the built-in rules' findings as warnings. It doesn't read the Vite config yet, so a project's own rules and levels apply in `clarusjs check` (and in ESLint, with the plugin) only. ESLint's own editor extension shows the plugin's findings, with your levels and rules.

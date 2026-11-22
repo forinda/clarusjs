@@ -281,6 +281,9 @@ importers:
       '@clarusjs/content':
         specifier: workspace:*
         version: link:../content
+      '@clarusjs/eslint-plugin':
+        specifier: workspace:*
+        version: link:../eslint-plugin
       '@playwright/test':
         specifier: 1.65.1
         version: 1.65.1
@@ -290,6 +293,9 @@ importers:
       acorn:
         specifier: ^8.19.0
         version: 8.19.0
+      eslint:
+        specifier: 10.15.0
+        version: 10.15.0(jiti@2.7.0)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
