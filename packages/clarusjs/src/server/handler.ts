@@ -365,14 +365,20 @@ export function toFragment(html: string): string {
   return titleHtml + html.slice(open.index, close) + '</body>'
 }
 
-/** Same length as `html`, with every HTML comment blanked out, so positions found in it are valid in `html`. */
+/**
+ * Same length as `html`, with every HTML comment and the contents of every <script> and <style> blanked out, so tags
+ * found in it are real tags (not text in a comment or a string in a script) and positions are valid in `html`.
+ */
 function maskComments(html: string): string {
-  return html.replace(/<!--[\s\S]*?-->/g, (c) => ' '.repeat(c.length))
+  return html
+    .replace(/<!--[\s\S]*?-->/g, (c) => ' '.repeat(c.length))
+    .replace(/(<(script|style)\b[^>]*>)([\s\S]*?)(<\/\2\s*>)/gi, (_, open: string, _tag: string, body: string, close: string) => open + ' '.repeat(body.length) + close)
 }
 
 /** A page whose layout renders the whole document: add the doctype if missing, and put style/script in place. */
 function fullDocument(html: string, style: string, script: string): string {
-  let out = /^\s*<!doctype/i.test(html) ? html : `<!doctype html>${html}`
+  // A BOM or a comment may come first (\s covers U+FEFF; comments are masked to spaces).
+  let out = /^\s*<!doctype/i.test(maskComments(html)) ? html : `<!doctype html>${html}`
   if (style) {
     const head = maskComments(out).search(/<\/head>/i)
     out = head === -1 ? out + style : out.slice(0, head) + style + out.slice(head)
