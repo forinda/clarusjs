@@ -1,2 +1,3 @@
 {{-- The Fetching guide's caching demo endpoint: its load() answers with JSON (a Response), so this never shows. --}}
+
 <p>Demo records</p>

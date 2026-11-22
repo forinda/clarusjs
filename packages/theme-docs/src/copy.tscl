@@ -1,19 +1,23 @@
 {{-- A copy button for the code it sits next to: a .sample wrapper, or a highlighted .code-block from Markdown. --}}
+
 <script>
   let copied = state(false)
   async function copy(button) {
     const block = button.closest('.sample, .code-block')?.querySelector('code')
     // Removed diff lines aren't part of the code to copy.
     const clone = block?.cloneNode(true)
-    if (clone instanceof Element) clone.querySelectorAll('.diff.remove').forEach((line) => {
-      if (line.nextSibling?.nodeType === 3 && line.nextSibling.textContent === '\n') line.nextSibling.remove() // its newline too
-      line.remove()
-    })
+    if (clone instanceof Element)
+      clone.querySelectorAll('.diff.remove').forEach((line) => {
+        if (line.nextSibling?.nodeType === 3 && line.nextSibling.textContent === '\n') line.nextSibling.remove() // its newline too
+        line.remove()
+      })
     const code = clone?.textContent ?? ''
     try {
       await navigator.clipboard.writeText(code)
       copied = true
-      setTimeout(() => { copied = false }, 1500)
+      setTimeout(() => {
+        copied = false
+      }, 1500)
     } catch {}
   }
 </script>

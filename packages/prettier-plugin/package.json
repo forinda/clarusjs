@@ -1,0 +1,52 @@
+{
+  "name": "@clarusjs/prettier-plugin",
+  "version": "0.0.0",
+  "description": "Format clarusjs .tscl components with Prettier",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forinda/clarusjs.git",
+    "directory": "packages/prettier-plugin"
+  },
+  "homepage": "https://clarusjs.com/guide/formatting",
+  "keywords": [
+    "clarusjs",
+    "prettier",
+    "prettier-plugin",
+    "tscl"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "peerDependencies": {
+    "clarusjs": ">=0.9.0",
+    "prettier": "^3.6.0"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1",
+    "@types/node": "^26.6.6",
+    "clarusjs": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}

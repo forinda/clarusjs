@@ -1,17 +1,31 @@
 {{-- The signed-in user, from the page's shared resource; Refresh asks again. --}}
+
 <script>
   import { user } from '../stores/dashboard.ts'
   const me = user
 </script>
 
 <section class="demo-panel" id="user-panel">
-  @if (me.value) { <p><strong>{{ me.value.name }}</strong> · {{ me.value.role }}</p> }
-  @else { <p class="demo-muted">Loading the user…</p> }
+  @if (me.value) {
+    <p>
+      <strong>{{ me.value.name }}</strong> · {{ me.value.role }}
+    </p>
+  } @else {
+    <p class="demo-muted">Loading the user…</p>
+  }
   <button type="button" (click)="me.refetch()">Refresh</button>
-  @if (me.loading && me.value) { <span class="demo-muted">Refreshing…</span> }
+  @if (me.loading && me.value) {
+    <span class="demo-muted">Refreshing…</span>
+  }
 </section>
 
 <style scoped>
-  :scope { border: 1px solid var(--rule); border-radius: 8px; padding: 12px 16px; }
-  .demo-muted { color: var(--muted); }
+  :scope {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .demo-muted {
+    color: var(--muted);
+  }
 </style>

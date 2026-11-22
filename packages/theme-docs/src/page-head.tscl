@@ -4,11 +4,22 @@
 @input title: string
 @input description: string = ''
 @input url: string = '/'
-
 {{-- Runs before the first paint: the saved theme is on <html> before anything shows (no flash). --}}
-<script inline>try{var t=localStorage.getItem('clarusjs-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-@if (description) {<meta name="description" content="{{ description }}">}
+
+<script inline>
+  try {
+    var t = localStorage.getItem('clarusjs-theme')
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t)
+  } catch (e) {}
+</script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+@if (description) {
+  <meta name="description" content="{{ description }}" />
+}
 <title>{{ title }}</title>
-@if (config.siteUrl) {<script type="application/ld+json">{{ { '@context': 'https://schema.org', '@type': 'TechArticle', headline: title, description, url: `${config.siteUrl}${url === '/' ? '' : url}` } }}</script>}
+@if (config.siteUrl) {
+  <script type="application/ld+json">
+    {{ { '@context': 'https://schema.org', '@type': 'TechArticle', headline: title, description, url: `${config.siteUrl}${url === '/' ? '' : url}` } }}
+  </script>
+}

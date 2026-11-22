@@ -8,4 +8,6 @@
 @input description: string = 'Learn clarusjs by building a site, one step at a time.'
 @input headings: Heading[] = []
 
-<lessonTheme [config]="theme" [title]="title" [path]="path" [description]="description" [headings]="headings"><slot /></lessonTheme>
+<lessonTheme [config]="theme" [title]="title" [path]="path" [description]="description" [headings]="headings"
+  ><slot
+/></lessonTheme>

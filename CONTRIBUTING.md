@@ -12,7 +12,7 @@ small reproduction, fixes with tests, and feedback on the design in [docs/archit
 
 ## Setup
 
-You need Node `^22.12.0`, `^24` or `>=26`, and [pnpm](https://pnpm.io). The repo is a pnpm workspace; don't use npm or
+You need Node `^22.18.0`, `^24` or `>=26` (versions that run TypeScript files directly, as `pnpm format:tscl` does), and [pnpm](https://pnpm.io). The repo is a pnpm workspace; don't use npm or
 yarn.
 
 ```sh

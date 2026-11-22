@@ -12,18 +12,29 @@
     next++
     draft = ''
   }
-  function remove(item) { items = items.filter((i) => i !== item) }
+  function remove(item) {
+    items = items.filter((i) => i !== item)
+  }
 </script>
 
 <div class="todo">
   <form (submit)="$event.preventDefault(); add(); $event.target.reset()">
-    <input name="item" (input)="draft = $event.target.value" placeholder="Add an item" aria-label="New item" autocomplete="off">
+    <input
+      name="item"
+      (input)="draft = $event.target.value"
+      placeholder="Add an item"
+      aria-label="New item"
+      autocomplete="off"
+    />
     <button type="submit">Add</button>
   </form>
   <p class="todo-count"><pill [text]="items.length === 1 ? '1 item' : items.length + ' items'" /></p>
   <ul class="todo-list">
     @for (item of items; track item.id) {
-      <li><span>{{ item.text }}</span> <button type="button" class="remove" (click)="remove(item)" [aria-label]="'Remove ' + item.text">×</button></li>
+      <li>
+        <span>{{ item.text }}</span>
+        <button type="button" class="remove" (click)="remove(item)" [aria-label]="'Remove ' + item.text">×</button>
+      </li>
     } @empty {
       <li class="empty">Nothing yet.</li>
     }

@@ -1,12 +1,24 @@
 @import docs from '../layouts/docs.tscl'
 @import { releases } from '../releases.ts'
 
-<docs [title]="'Release notes'" [path]="'/releases'" [description]="'Every clarusjs release and what changed in it, from the package changelog.'">
+<docs
+  [title]="'Release notes'"
+  [path]="'/releases'"
+  [description]="'Every clarusjs release and what changed in it, from the package changelog.'"
+>
   <h1>Release notes</h1>
-  <p class="lead">Every release of the <code>clarusjs</code> package, newest first. Each page is generated from the changelog when this site is built.</p>
+  <p class="lead">
+    Every release of the <code>clarusjs</code> package, newest first. Each page is generated from the changelog when
+    this site is built.
+  </p>
   <ul class="releases">
     @for (r of releases; track r.version) {
-      <li><a [href]="'/releases/' + r.version">clarusjs {{ r.version }}</a> <span class="muted">{{ r.groups.map((g) => g.changes.length + ' ' + (g.title.split(' ')[0] ?? '').toLowerCase()).join(', ') }}</span></li>
+      <li>
+        <a [href]="'/releases/' + r.version">clarusjs {{ r.version }}</a>
+        <span class="muted">{{
+          r.groups.map((g) => g.changes.length + ' ' + (g.title.split(' ')[0] ?? '').toLowerCase()).join(', ')
+        }}</span>
+      </li>
     } @empty {
       <li>No releases yet.</li>
     }

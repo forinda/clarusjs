@@ -10,4 +10,13 @@
 @input description: string = 'clarusjs: clear, compiled views. Server HTML with JavaScript only where it is interactive.'
 @input headings: Heading[] = []
 
-<docsTheme [config]="theme" [title]="title" [path]="path" [source]="source" [url]="url" [description]="description" [headings]="headings"><slot /></docsTheme>
+<docsTheme
+  [config]="theme"
+  [title]="title"
+  [path]="path"
+  [source]="source"
+  [url]="url"
+  [description]="description"
+  [headings]="headings"
+  ><slot
+/></docsTheme>

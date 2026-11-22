@@ -3,4 +3,7 @@
   let items = shared(todos)
 </script>
 
-<p class="todo-summary">Your list below has <strong>{{ items.length }}</strong> {{ items.length === 1 ? 'item' : 'items' }}, shared with this sentence through a store.</p>
+<p class="todo-summary">
+  Your list below has <strong>{{ items.length }}</strong> {{ items.length === 1 ? 'item' : 'items' }}, shared with this
+  sentence through a store.
+</p>

@@ -1,4 +1,8 @@
 {{-- No <style> of its own: the parent's rules still stop at its top-level element. --}}
+
 <div class="scope-child">
-  <p>The child's paragraph: the parent's <code>p</code> rule doesn't reach it. The bar is the parent's, on the child's top-level element.</p>
+  <p>
+    The child's paragraph: the parent's <code>p</code> rule doesn't reach it. The bar is the parent's, on the child's
+    top-level element.
+  </p>
 </div>

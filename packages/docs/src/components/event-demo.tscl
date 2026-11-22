@@ -5,14 +5,27 @@
   let rating = state(0)
   let note = state('')
   let log = state([])
-  const add = (line) => { log = [line, ...log].slice(0, 5) }
+  const add = (line) => {
+    log = [line, ...log].slice(0, 5)
+  }
 </script>
 
 <div class="event-demo">
   <div (rate)="rating = $event.detail; add('rate: ' + $event.detail)"><starRating /></div>
   <form (submit)="$event.preventDefault(); add('submit: ' + (note || '(empty)'))">
-    <input aria-label="Note" [(value)]="note" (keydown)="$event.key === 'Escape' && (note = '')" (focus)="add('focus')" (blur)="add('blur')" placeholder="Type, press Escape or Enter">
+    <input
+      aria-label="Note"
+      [(value)]="note"
+      (keydown)="$event.key === 'Escape' && (note = '')"
+      (focus)="add('focus')"
+      (blur)="add('blur')"
+      placeholder="Type, press Escape or Enter"
+    />
   </form>
   <p class="event-rating">Rating: {{ rating || 'none' }}</p>
-  <ol class="event-log">@for (line of log; track $index) {<li>{{ line }}</li>}</ol>
+  <ol class="event-log">
+    @for (line of log; track $index) {
+      <li>{{ line }}</li>
+    }
+  </ol>
 </div>

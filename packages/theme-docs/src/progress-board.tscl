@@ -15,15 +15,23 @@
   let mode = state('waiting')
   let confirming = state(false)
   function refresh() {
-    const s = stats(load(), lessons.map((l) => l.href))
+    const s = stats(
+      load(),
+      lessons.map((l) => l.href),
+    )
     xp = s.xp
     done = s.done
-    accuracy = s.answered ? Math.round((s.right / s.answered) * 100) + '% (' + s.right + ' of ' + s.answered + ')' : 'no quizzes answered yet'
+    accuracy = s.answered
+      ? Math.round((s.right / s.answered) * 100) + '% (' + s.right + ' of ' + s.answered + ')'
+      : 'no quizzes answered yet'
     badges = s.badges
     statuses = Object.fromEntries(lessons.map((l) => [l.href, s.status(l.href)]))
   }
   function wipe() {
-    if (!confirming) { confirming = true; return }
+    if (!confirming) {
+      confirming = true
+      return
+    }
     reset()
     confirming = false
     refresh()
@@ -40,26 +48,47 @@
   @if (mode === 'waiting') {
     <p class="progress-note">Your progress is kept in this browser and shows here with JavaScript on.</p>
   } @else {
-    @if (mode === 'blocked') {<p class="progress-note">This browser isn't keeping your progress (storage is blocked), so it lasts until you leave the page.</p>}
+    @if (mode === 'blocked') {
+      <p class="progress-note">
+        This browser isn't keeping your progress (storage is blocked), so it lasts until you leave the page.
+      </p>
+    }
     <dl class="progress-stats">
-      <div><dt>XP</dt><dd>{{ xp }}</dd></div>
-      <div><dt>Lessons</dt><dd>{{ done }} of {{ lessons.length }}</dd></div>
-      <div><dt>Quizzes right</dt><dd>{{ accuracy }}</dd></div>
+      <div>
+        <dt>XP</dt>
+        <dd>{{ xp }}</dd>
+      </div>
+      <div>
+        <dt>Lessons</dt>
+        <dd>{{ done }} of {{ lessons.length }}</dd>
+      </div>
+      <div>
+        <dt>Quizzes right</dt>
+        <dd>{{ accuracy }}</dd>
+      </div>
     </dl>
     <h2>Badges</h2>
     <ul class="badges">
       @for (badge of badges; track badge.id) {
-        <li [class]="badge.earned ? 'earned' : false"><strong>{{ badge.title }}</strong> <span>{{ badge.text }}</span> <em>{{ badge.earned ? 'Earned' : 'Not yet' }}</em></li>
+        <li [class]="badge.earned ? 'earned' : false">
+          <strong>{{ badge.title }}</strong> <span>{{ badge.text }}</span>
+          <em>{{ badge.earned ? 'Earned' : 'Not yet' }}</em>
+        </li>
       }
     </ul>
   }
   <h2>Lessons</h2>
   <ol class="progress-lessons">
     @for (lesson of lessons; track lesson.href) {
-      <li [data-status]="statuses[lesson.href] ?? false"><a [href]="lesson.href">{{ lesson.title }}</a>@if (statuses[lesson.href]) { <span class="status-note">({{ statuses[lesson.href] === 'current' ? 'up next' : statuses[lesson.href] === 'done' ? 'done' : 'not started' }})</span>}</li>
+      <li [data-status]="statuses[lesson.href] ?? false">
+        <a [href]="lesson.href">{{ lesson.title }}</a
+        >@if (statuses[lesson.href]) { <span class="status-note">({{ statuses[lesson.href] === 'current' ? 'up next' : statuses[lesson.href] === 'done' ? 'done' : 'not started' }})</span>}
+      </li>
     }
   </ol>
   @if (mode !== 'waiting') {
-    <button type="button" class="progress-reset" (click)="wipe()">{{ confirming ? 'Click again to erase your progress' : 'Reset progress' }}</button>
+    <button type="button" class="progress-reset" (click)="wipe()">
+      {{ confirming ? 'Click again to erase your progress' : 'Reset progress' }}
+    </button>
   }
 </div>
