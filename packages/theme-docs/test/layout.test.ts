@@ -22,8 +22,9 @@ beforeAll(async () => {
   w('src/config.ts', `export const config = {
   brand: { text: 'acme', accent: '.dev' },
   learn: { section: 'learn', progress: '/learn/progress' },
-  sections: [{ key: 'learn', title: 'Learn', href: '/learn/one', groups: [{ title: 'First site', items: [{ title: 'One', href: '/learn/one' }, { title: 'Two', href: '/learn/two' }] }, { title: 'You', items: [{ title: 'Progress', href: '/learn/progress' }] }] }, { key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', icon: 'book', items: [{ title: 'Start', href: '/guide/start', badge: 'New' }, { title: 'Next', href: '/guide/next' }] }, { title: 'Tools', icon: 'wrench', collapsed: true, items: [{ title: 'Extra', href: '/guide/extra' }] }] }],
+  sections: [{ key: 'learn', title: 'Learn', href: '/learn/one', groups: [{ title: 'First site', items: [{ title: 'One', href: '/learn/one' }, { title: 'Two', href: '/learn/two' }] }, { title: 'You', items: [{ title: 'Progress', href: '/learn/progress' }] }] }, { key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', icon: 'book', items: [{ title: 'Start', href: '/guide/start', badge: 'New' }, { title: 'Next', href: '/guide/next' }] }, { title: 'Tools', icon: 'wrench', collapsed: true, items: [{ title: 'Extra', href: '/guide/extra' }] }] }, { key: 'api', title: 'API', href: '/guide/next', switch: false, groups: [] }],
   social: [{ label: 'GitHub', href: 'https://github.com/acme/x', icon: 'github' }],
+  menuLinks: [{ label: 'Releases', href: '/guide/next' }],
   editLink: 'https://example.com/edit/:file',
   pages: [{ href: '/guide/start', title: 'Start', file: 'guide/start.tscl', updated: 1700000000 }, { href: '/guide/next', title: 'Next', file: 'guide/next.tscl' }],
   footer: 'Acme footer',
@@ -73,7 +74,7 @@ test('sidebar: a popover nav with the current page, slots, and the header links 
   expect(html).toMatch(/<nav id="sidebar" class="sidebar" aria-label="Pages" popover>/)
   expect(html).toMatch(/<a [^>]*href="\/guide\/start" aria-current="page"[^>]*>\s*(?:<span[^>]*>)?Start/)
   expect(html).toContain('<p class="promo">Promo</p>')
-  expect(html).toMatch(/<div class="sidebar-links">.*GitHub/s)
+  expect(html).toMatch(/<div class="sidebar-links[^"]*">.*GitHub/s)
 })
 
 test('content and "On this page": crumb, both forms of the table of contents, edit link, last updated, pager, footer slot', () => {
@@ -172,4 +173,14 @@ test('#369: the docs sidebar as designed: search, groups with an icon and a chev
 test('#369: a collapsed group holding the current page is open', () => {
   const extra = unscoped(readFileSync(resolve(root, 'dist/client/guide/extra/index.html'), 'utf8'))
   expect(extra).toMatch(/<details [^>]*data-group="Tools"[^>]*open/)
+})
+
+test('#370: the phone drawer as designed: "Menu", a switch between sections, and a links row (menuLinks, then social)', () => {
+  const sidebar = /<nav id="sidebar"[\s\S]*?<\/nav>/.exec(html)![0]
+  expect(sidebar).toMatch(/<div class="sidebar-head[^"]*">\s*<span[^>]*>Menu<\/span>/)
+  const sw = /<div class="sidebar-switch[^"]*"[^>]*>([\s\S]*?)<\/div>/.exec(sidebar)![1]!
+  expect(sw).toMatch(/<a [^>]*href="\/learn\/one"(?![^>]*aria-current)[^>]*>Learn<\/a>/)
+  expect(sw).toMatch(/<a [^>]*href="\/guide\/start"[^>]*aria-current="true"[^>]*>Guide<\/a>/)
+  expect(sw).not.toContain('API') // switch: false
+  expect(sidebar).toMatch(/<div class="sidebar-links[^"]*">[\s\S]*Releases[\s\S]*GitHub/)
 })

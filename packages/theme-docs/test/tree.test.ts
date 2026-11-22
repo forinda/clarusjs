@@ -92,7 +92,7 @@ test('updated: the last commit that touched the page (one git log for all pages)
   expect(pages.find((p) => p.href === '/guide/a')!.updated).toBe(1700000000)
   expect(pages.find((p) => p.href === '/guide/b')!.updated).toBe(1700100000)
   expect(readPages(dir).every((p) => p.updated === undefined)).toBe(true)
-})
+}, 20_000) // five git processes: past the default 5s when the whole suite runs at once
 
 test("a section's index page belongs to it; an empty href falls to the first page of the first group with one", () => {
   const pages = [{ href: '/guide', title: 'Overview', file: 'guide/index.md', order: 0 }, { href: '/guidebook/x', title: 'Other', file: 'guidebook/x.md' }, { href: '/guide/a', title: 'A', file: 'guide/a.md', group: 'Late' }]

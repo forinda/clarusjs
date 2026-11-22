@@ -5,16 +5,18 @@
   As designed (#369): search at the top; each group a <details> with its icon and a chevron (the current page's
   group always open, a `collapsed` one closed until opened: no JavaScript); its pages on a guide line, the current one
   marked with a bar; a badge ("New") beside a page that has one.
+  As a drawer (#370): "Menu" and a close button, a switch between the sections, then the groups (larger, without icons
+  or the search box: the header has one on phones), and a row of links at the bottom.
 --}}
 @import groupIcon from './icon.tscl'
 @import type { ThemeConfig } from '../nav.ts'
-@import { groupsOf } from '../nav.ts'
+@import { groupsOf, sectionKey } from '../nav.ts'
 @input config: ThemeConfig
 @input path: string = '/'
 
 <nav id="sidebar" class="sidebar" aria-label="Pages" popover>
   <div class="sidebar-head">
-    <span>{{ config.brand.text }}{{ config.brand.accent ?? '' }}</span>
+    <span>Menu</span>
     <button type="button" popovertarget="sidebar" popovertargetaction="hide" aria-label="Close the menu">
       <svg
         width="20"
@@ -30,13 +32,23 @@
       </svg>
     </button>
   </div>
+  <div class="sidebar-switch tw:mb-3 tw:auto-cols-fr tw:grid-flow-col tw:gap-1 tw:rounded-xl tw:bg-surface tw:p-1">
+    @for (s of config.sections.filter((s) => s.switch !== false); track s.key) {
+      <a
+        [href]="s.href"
+        [aria-current]="s.key === sectionKey(config.sections, path) ? 'true' : false"
+        class="tw:rounded-lg tw:py-2 tw:text-center tw:text-sm tw:font-semibold tw:text-muted tw:no-underline tw:aria-[current=true]:bg-bg tw:aria-[current=true]:text-accent tw:aria-[current=true]:shadow-sm"
+        >{{ s.title }}</a
+      >
+    }
+  </div>
   @if (config.search) {
     {{-- Opens the search dialog, as the header's button and Ctrl/⌘K do (search.tscl listens for data-search-open). --}}
     <button
       type="button"
       data-search-open
       aria-haspopup="dialog"
-      class="tw:mb-4 tw:flex tw:h-9 tw:w-full tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-rule tw:bg-bg tw:px-2.5 tw:text-left tw:text-[13px] tw:text-muted tw:transition-colors tw:hover:border-accent tw:hover:text-fg"
+      class="sidebar-search tw:mb-4 tw:flex tw:h-9 tw:w-full tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-rule tw:bg-bg tw:px-2.5 tw:text-left tw:text-[13px] tw:text-muted tw:transition-colors tw:hover:border-accent tw:hover:text-fg"
     >
       <svg
         width="14"
@@ -69,7 +81,7 @@
         class="tw:flex tw:cursor-pointer tw:list-none tw:items-center tw:gap-2.5 tw:rounded-md tw:py-1.5 tw:pr-1 tw:text-[13px] tw:font-semibold tw:text-fg tw:select-none tw:[&::-webkit-details-marker]:hidden"
       >
         <span
-          class="tw:grid tw:size-[22px] tw:flex-none tw:place-items-center tw:rounded-md tw:bg-accent-soft tw:text-accent"
+          class="group-icon tw:grid tw:size-[22px] tw:flex-none tw:place-items-center tw:rounded-md tw:bg-accent-soft tw:text-accent"
           >@if (group.icon) {<groupIcon [name]="group.icon" />}</span
         >
         <span class="tw:flex-1">{{ group.title }}</span>
@@ -110,6 +122,12 @@
     </details>
   }
   <slot name="bottom"></slot>
-  {{-- On phones, the header's links live here. --}}
-  <div class="sidebar-links">@for (s of config.sections; track s.key) {<a [href]="s.href">{{ s.title }}</a>} @for (link of config.social ?? []; track link.href) {<a [href]="link.href">{{ link.label }}</a>}</div>
+  {{-- The drawer's links row: config.menuLinks, then the social links. --}}
+  <div
+    class="sidebar-links tw:mt-auto tw:justify-between tw:gap-x-3 tw:gap-y-1 tw:border-t tw:border-rule tw:pt-3 tw:text-[13px] tw:font-medium tw:[&_a]:text-accent tw:[&_a]:no-underline"
+  >
+    @for (link of [...(config.menuLinks ?? []), ...(config.social ?? [])]; track link.href) {
+      <a [href]="link.href">{{ link.label }}</a>
+    }
+  </div>
 </nav>

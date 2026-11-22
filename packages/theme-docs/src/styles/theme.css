@@ -228,7 +228,7 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
 /* The sidebar is a popover (so it can be a drawer on small screens): shown in place from 1024px. */
 /* inset first: it would reset top. */
 .sidebar[popover] { display: block; position: sticky; inset: auto; top: var(--header-height); width: auto; height: auto; max-height: calc(100vh - var(--header-height)); margin: 0; border: 0; border-right: 1px solid var(--rule); background: transparent; color: inherit; overflow-y: auto; }
-.sidebar-head, .sidebar-links { display: none; }
+.sidebar-head, .sidebar-links, .sidebar-switch { display: none; }
 
 /* On this page */
 .toc { position: sticky; top: var(--header-height); align-self: start; max-height: calc(100vh - var(--header-height)); overflow-y: auto; padding: 36px 16px; font-size: 14px; }
@@ -260,7 +260,13 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
   .sidebar[popover]::backdrop { background: rgba(15, 23, 25, 0.45); }
   .sidebar-head { display: flex; align-items: center; justify-content: space-between; min-height: 60px; font-weight: 700; border-bottom: 1px solid var(--rule); margin: 0 -12px 8px; padding: 0 8px 0 16px; }
   .sidebar-head button { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
-  .sidebar-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--rule); }
+  /* Pinned to the bottom of the drawer, over the list as it scrolls (the drawer's 16px bottom padding included). */
+  .sidebar-links { display: flex; flex-wrap: wrap; position: sticky; bottom: -16px; margin: auto -12px -16px; padding: 12px 16px 16px; background: var(--bg); }
+  .sidebar-switch { display: grid; }
+  /* The drawer (#370): no search box (the header's button is there) or icons; larger rows. */
+  .sidebar .sidebar-search, .sidebar .group-icon { display: none; }
+  .sidebar summary { font-size: 15px; padding-block: 10px; }
+  .sidebar details a { font-size: 15px; padding-block: 6px; }
   .more-button, .social { display: none; }
   .search-label, .search-button kbd { display: none; }
 }

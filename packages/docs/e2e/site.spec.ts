@@ -1766,3 +1766,20 @@ test('#369: a page in a collapsed group opens it', async ({ page }) => {
   await page.goto('/guide/deploy')
   await expect(page.locator('#sidebar details[data-group="Build & deploy"]')).toHaveAttribute('open', '')
 })
+
+test('#370: the phone drawer as designed: Menu, a Learn / Guide switch, groups, and a links row', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 })
+  await page.goto('/guide/islands')
+  await page.locator('.menu-button').click()
+  const drawer = page.locator('#sidebar')
+  await expect(drawer.locator('.sidebar-head')).toContainText('Menu')
+  await expect(drawer.locator('.sidebar-switch a')).toHaveText(['Learn', 'Guide'])
+  await expect(drawer.locator('.sidebar-switch a[aria-current="true"]')).toHaveText('Guide')
+  await expect(drawer.locator('[data-search-open]')).toBeHidden() // the header's search button is there
+  await expect(drawer.locator('.sidebar-links a')).toHaveText(['Reference', 'Releases', 'GitHub', 'npm'])
+  await expect(drawer.locator('.sidebar-links')).toBeInViewport()
+  // Nothing wider than the drawer.
+  expect(await drawer.evaluate((d) => d.scrollWidth <= d.clientWidth)).toBe(true)
+  await drawer.locator('.sidebar-switch a', { hasText: 'Learn' }).click()
+  await expect(page).toHaveURL(/\/learn\//)
+})

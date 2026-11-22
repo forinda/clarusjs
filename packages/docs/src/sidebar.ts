@@ -28,12 +28,14 @@ export const sidebar: Section[] = [
   },
   {
     key: 'repl',
+    switch: false, // the phone drawer's switch is Learn / Guide (Reference is in its links row: nav.ts menuLinks)
     title: 'Playground',
     href: '/repl',
     groups: [{ title: 'Playground', icon: 'terminal', items: [{ title: 'Playground', href: '/repl' }] }],
   },
   {
     key: 'reference',
+    switch: false,
     title: 'Reference',
     href: '/reference/template-syntax',
     groups: [

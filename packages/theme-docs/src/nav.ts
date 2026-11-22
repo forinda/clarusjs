@@ -12,7 +12,8 @@ export type GroupIcon = 'info' | 'code' | 'box' | 'shield' | 'download' | 'book'
  */
 export type Group = { title: string; icon?: GroupIcon; collapsed?: boolean; items: readonly Item[] }
 /** A top-level part of the docs (Guide, Reference): its own sidebar groups. */
-export type Section = { key: string; title: string; href: string; groups: readonly Group[] }
+/** A top-level section. `switch: false` leaves it out of the phone drawer's switch (#370; link it with `menuLinks`). */
+export type Section = { key: string; title: string; href: string; switch?: boolean; groups: readonly Group[] }
 export type Social = { label: string; href: string; icon: 'github' | 'npm' | 'link' }
 /** A heading on the page, for "On this page". */
 export type Heading = { id: string; text: string; level: number }
@@ -47,6 +48,8 @@ export type ThemeConfig = {
   sections: readonly Section[]
   /** Icon links at the right of the header (GitHub, npm…). */
   social?: readonly Social[]
+  /** Text links at the bottom of the phone drawer, before the social links (Reference, Releases…) (#370). */
+  menuLinks?: readonly { label: string; href: string }[]
   /**
    * "Edit this page": a pattern where `:file` is the page's source file under src/pages (`guide/start.md`, found in
    * `pages`), or a function of the route (the page's source route, for dynamic pages). None without it.
