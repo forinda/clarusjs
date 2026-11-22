@@ -1,5 +1,5 @@
-@import docs from '../layouts/docs.tscl'
-@import repl from '../components/repl.tscl'
+@import docs from '~/layouts/docs.tscl'
+@import repl from '~/components/repl.tscl'
 {{-- A tool, laid out like other playgrounds: the header, then the editor and its output filling the window. --}}
 
 <docs

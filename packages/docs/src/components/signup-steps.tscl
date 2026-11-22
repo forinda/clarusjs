@@ -5,7 +5,7 @@
 
 <script>
   import { form } from 'clarusjs/forms'
-  import { register, signupSchema } from '../signup.ts'
+  import { register, signupSchema } from '~/signup.ts'
   let signup = state({ name: '', email: '', username: '', plan: '', terms: false })
   let welcome = state('')
   let tried = state(false) // the summary shows after a submit: showing it on leaving a field moves the buttons

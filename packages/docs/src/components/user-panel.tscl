@@ -1,7 +1,7 @@
 {{-- The signed-in user, from the page's shared resource; Refresh asks again. --}}
 
 <script>
-  import { user } from '../stores/dashboard.ts'
+  import { user } from '~/stores/dashboard.ts'
   const me = user
 </script>
 

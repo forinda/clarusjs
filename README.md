@@ -6,6 +6,8 @@
 
 <p align="center"><strong>Clear, compiled views.</strong></p>
 
+<p align="center">Pronounced <strong>KLAIR-us</strong> (/ˈklɛər.əs/), from the Latin <em>clarus</em>, “clear, bright”.</p>
+
 <p align="center"><a href="https://clarusjs.com">Documentation</a> · <a href="https://clarusjs.com/guide/getting-started">Getting started</a> · <a href="https://www.npmjs.com/package/clarusjs">npm</a></p>
 
 <p align="center"><a href="https://www.npmjs.com/package/clarusjs"><img src="https://img.shields.io/npm/dm/clarusjs?label=downloads%2Fmonth" alt="clarusjs monthly downloads on npm"></a> <a href="https://www.npmjs.com/package/clarusjs"><img src="https://img.shields.io/npm/v/clarusjs" alt="clarusjs version on npm"></a> <img src="https://img.shields.io/node/v/clarusjs" alt="Node.js versions clarusjs supports"> <a href="LICENSE"><img src="https://img.shields.io/npm/l/clarusjs" alt="License: MIT"></a></p>

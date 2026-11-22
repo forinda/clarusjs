@@ -1,5 +1,5 @@
-@import docs from '../../layouts/docs.tscl'
-@import type { Release } from '../../releases.ts'
+@import docs from '~/layouts/docs.tscl'
+@import type { Release } from '~/releases.ts'
 @input version: string
 @input release: Release
 

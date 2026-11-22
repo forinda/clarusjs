@@ -8,11 +8,11 @@
 <script>
   import { browser, onDispose } from 'clarusjs/runtime'
   import runtime from 'virtual:repl-runtime'
-  import CompileWorker from '../repl/compile.worker.ts?worker'
-  import { frameDoc } from '../repl/frame.ts'
-  import { highlightTscl } from '../repl/highlight.ts'
-  import { decode, encode } from '../repl/share.ts'
-  import { starters } from '../repl/starters.ts'
+  import CompileWorker from '~/repl/compile.worker.ts?worker'
+  import { frameDoc } from '~/repl/frame.ts'
+  import { highlightTscl } from '~/repl/highlight.ts'
+  import { decode, encode } from '~/repl/share.ts'
+  import { starters } from '~/repl/starters.ts'
 
   const TABS = [
     { key: 'preview', label: 'Preview' },
