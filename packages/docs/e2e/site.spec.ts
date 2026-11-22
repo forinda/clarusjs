@@ -218,8 +218,8 @@ test('the sidebar is generated from the pages: each Markdown page sits in its fr
     .sort((a, b) => a.order - b.order)
     .map((p) => p.title)
   await page.goto('/guide/holes')
-  const group = page.locator('.sidebar p.group', { hasText: /^Templates$/ }).locator('xpath=following-sibling::ul[1]')
-  const shown = await group.locator('a').allTextContents()
+  // Each link's title (its first span: a badge, such as Tailwind CSS's "New", follows it).
+  const shown = await page.locator('#sidebar details[data-group="Templates"] ul a > span:first-child').allTextContents()
   // Verbatim is a .tscl page, placed by nav.ts.
   expect(shown.filter((t) => t !== 'Verbatim')).toEqual(templates)
   expect(shown).toContain('Verbatim')
@@ -527,7 +527,7 @@ test('fragment navigation reaches server routes; client routes and failures load
   const documents: string[] = []
   page.on('request', (req) => { if (req.resourceType() === 'document') documents.push(new URL(req.url()).pathname) })
   await page.goto('/guide/rendering-modes')
-  await page.locator('a[href="/playground"]').first().click()
+  await page.locator('.content a[href="/playground"]').first().click() // the page's link (the sidebar's sits in a collapsed group)
   await expect(page.locator('h1')).toHaveText('Server demo')
   await expect(page.locator('#pill-html')).toHaveText(/^<span class="pill cl-c-pill-[a-z0-9]+">guest<\/span>$/) // rendered by the server for this request
   expect(documents).toEqual(['/guide/rendering-modes'])
@@ -672,8 +672,9 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   await expect(dialog.getByRole('status')).toHaveText('No results for "zzqqxx"')
   await page.keyboard.press('Escape')
   await expect(dialog).not.toBeVisible()
-  // The header button opens the same dialog; while it's open, the page behind is inert (focus stays inside).
-  await page.locator('.search-button').click()
+  // The sidebar's search box opens the same dialog (#369: the header button hides where the sidebar shows); while it's
+  // open, the page behind is inert (focus stays inside).
+  await page.locator('#sidebar [data-search-open]').click()
   await expect(dialog).toBeVisible()
   for (let i = 0; i < 4; i++) await page.keyboard.press('Tab')
   expect(await page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true)
@@ -1741,4 +1742,27 @@ test("#361: the site's own footer, in place of the theme's, on every kind of pag
     await expect(footer, path).toContainText('MIT licensed')
     await expect(footer.getByRole('link', { name: 'For AI agents' }), path).toHaveAttribute('href', '/guide/ai-coding')
   }
+})
+
+test('#369: the sidebar as designed: groups collapse, the current one is open, search opens from the sidebar', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/guide/islands')
+  const group = (title: string) => page.locator(`#sidebar details[data-group="${title}"]`)
+  await expect(group('Interactivity')).toHaveAttribute('open', '')
+  await expect(group('Site quality')).not.toHaveAttribute('open')
+  await expect(group('Site quality').locator('a').first()).toBeHidden()
+  await group('Site quality').locator('summary').click()
+  await expect(group('Site quality').locator('a').first()).toBeVisible()
+  await expect(page.locator('#sidebar a[aria-current="page"]')).toHaveText('Islands')
+  await expect(page.locator('#sidebar .badge')).toHaveText('New')
+  // Search: the sidebar's box, not the header's button, which hides where the sidebar shows.
+  await expect(page.locator('.site-header .search-button')).toBeHidden()
+  await page.locator('#sidebar [data-search-open]').click()
+  await expect(page.locator('dialog.search-dialog')).toBeVisible()
+  await expect(page.locator('dialog.search-dialog input')).toBeFocused()
+})
+
+test('#369: a page in a collapsed group opens it', async ({ page }) => {
+  await page.goto('/guide/deploy')
+  await expect(page.locator('#sidebar details[data-group="Build & deploy"]')).toHaveAttribute('open', '')
 })

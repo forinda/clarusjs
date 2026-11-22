@@ -78,7 +78,8 @@ export const config: ThemeConfig = {
   brand: { text: 'acme' },
   sections: pagesNav([
     { key: 'guide', title: 'Guide', href: '', groups: [
-      { title: 'Basics', items: [] }, // sets the group order
+      { title: 'Basics', icon: 'book', items: [] }, // sets the group order
+      { title: 'Deploying', icon: 'rocket', collapsed: true, items: [] },
       { title: 'More', items: [{ title: 'Playground', href: '/playground', order: 9 }] }, // not under guide/
     ] },
   ], pages),
@@ -99,6 +100,8 @@ order: 1
 - **Left out:** `sidebar: false`, dynamic routes (`[step].tscl`) and files or folders starting with `_`.
 - **The config wins:** an item it lists replaces the page with the same `href`, so it can rename or move a page and add entries that aren't pages.
 - An empty `href` on a section means its first page.
+- **Icons and collapsing:** a group's `icon` shows beside its title (`info`, `code`, `box`, `shield`, `download`, `book`, `terminal`, `sparkles`, `layers`, `wrench`, `rocket`, `file`), and `collapsed: true` keeps it closed until opened. The group holding the current page is always open, and opening and closing needs no JavaScript.
+- **Badges:** a page's frontmatter `badge: "New"` (or an item's `badge`) shows a small label beside it.
 
 Only the titles, groups and orders reach the browser (for pages it renders itself, like client routes), never the files. For the types, add `/// <reference types="@clarusjs/theme-docs/pages.d.ts" />` to a `.d.ts` in your project. This site's sidebar is built that way: [sidebar.ts](https://github.com/forinda/clarusjs/blob/main/packages/docs/src/sidebar.ts).
 

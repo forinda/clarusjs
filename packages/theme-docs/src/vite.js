@@ -209,6 +209,7 @@ export function readPages(dir) {
     const group = data.group ?? (parts.length > 2 ? words(parts[1]) : undefined)
     if (group) page.group = group
     if (data.order !== undefined && Number.isFinite(Number(data.order))) page.order = Number(data.order)
+    if (typeof data.badge === 'string' && data.badge) page.badge = data.badge
     const updated = dates.get(resolve(dir, file))
     if (updated !== undefined) page.updated = updated
     if (data.sidebar === 'false' || parts.some((part) => part.startsWith('['))) page.hidden = true

@@ -111,3 +111,15 @@ test('frontmatter: a # comment after a value is not part of it, a # inside quote
     { href: '/guide/b', title: 'B', file: 'guide/b.md', hidden: true },
   ])
 })
+
+test("#369: a group's icon and collapsed state come through, and a page's badge (frontmatter) reaches its item", () => {
+  const pages = mkdtempSync(resolve(tmpdir(), 'theme-badge-'))
+  mkdirSync(resolve(pages, 'guide'))
+  writeFileSync(resolve(pages, 'guide/tailwind.md'), '---\ntitle: Tailwind CSS\ngroup: Templates\nbadge: New\n---\n# Tailwind CSS\n')
+  writeFileSync(resolve(pages, 'guide/lists.md'), '---\ntitle: Lists\ngroup: Templates\n---\n# Lists\n')
+  writeFileSync(resolve(pages, 'guide/deploy.md'), '---\ntitle: Deploy\ngroup: Build & deploy\n---\n# Deploy\n')
+  const config: Section[] = [{ key: 'guide', title: 'Guide', href: '', groups: [{ title: 'Templates', icon: 'code', items: [] }, { title: 'Build & deploy', icon: 'download', collapsed: true, items: [] }] }]
+  const [guide] = pagesNav(config, readPages(pages))
+  expect(guide!.groups.map((g) => [g.title, g.icon, g.collapsed])).toEqual([['Templates', 'code', undefined], ['Build & deploy', 'download', true]])
+  expect(guide!.groups[0]!.items).toEqual([{ title: 'Lists', href: '/guide/lists' }, { title: 'Tailwind CSS', href: '/guide/tailwind', badge: 'New' }])
+})

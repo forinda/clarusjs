@@ -2,13 +2,15 @@
    built one; a test fails when they differ. Sites using the theme get the built, plain CSS: they need no Tailwind.
 
    - No preflight: the theme keeps its own base styles below, and a site its own.
+   - Utilities are unlayered, like the rules below: ordinary specificity decides, so a utility (a class) wins over a
+     base rule for an element (a, li). In a layer, every unlayered rule would win over it.
    - The tokens (--bg, --accent…) stay the public way to restyle the theme; Tailwind's colours and fonts are built on
      them (tw:bg-surface, tw:text-muted, tw:border-rule, tw:bg-accent-soft, tw:font-mono…), so utilities follow light and dark.
    - Classes are found in the theme's own components only (source(none), then the .tscl files), and carry a prefix
      (tw:flex, tw:bg-surface): only prefixed words become utilities, and they never meet a site's own class names. */
-@layer theme, utilities;
+@layer theme;
 @import 'tailwindcss/theme.css' layer(theme) source(none) prefix(tw);
-@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+@import 'tailwindcss/utilities.css' source(none);
 @source '../**/*.tscl';
 
 @theme inline {
@@ -174,13 +176,6 @@ pre code { background: none; padding: 0; font-size: 14px; line-height: 1.55; }
 .docs { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--toc-width); max-width: var(--page-width); margin: 0 auto; }
 .docs .content { margin: 0; max-width: 760px; min-width: 0; }
 .sidebar { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 28px 16px 40px max(16px, env(safe-area-inset-left, 0px)); border-right: 1px solid var(--rule); }
-.sidebar .group { margin: 20px 0 6px; font-size: 13px; font-weight: 650; color: var(--fg); }
-.sidebar .group:first-child { margin-top: 0; }
-.sidebar ul { list-style: none; padding: 0; margin: 0; }
-.sidebar li { margin: 0; }
-.sidebar a { display: block; padding: 4px 8px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 14px; }
-.sidebar a:hover { color: var(--fg); }
-.sidebar a[aria-current='page'] { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 .crumb { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent); }
 .lead { font-size: 18px; color: var(--muted); }
 .page-footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--rule); }
@@ -228,6 +223,8 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
 .search-page { font-size: 13px; color: var(--accent); }
 .search-text { font-size: 13px; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
+/* Where the sidebar is shown in place (from 1024px) it has the search box: the header's button would repeat it. */
+@media (min-width: 1024px) { body:has(.sidebar) .site-header .search-button { display: none; } }
 /* The sidebar is a popover (so it can be a drawer on small screens): shown in place from 1024px. */
 /* inset first: it would reset top. */
 .sidebar[popover] { display: block; position: sticky; inset: auto; top: var(--header-height); width: auto; height: auto; max-height: calc(100vh - var(--header-height)); margin: 0; border: 0; border-right: 1px solid var(--rule); background: transparent; color: inherit; overflow-y: auto; }
@@ -263,7 +260,6 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
   .sidebar[popover]::backdrop { background: rgba(15, 23, 25, 0.45); }
   .sidebar-head { display: flex; align-items: center; justify-content: space-between; min-height: 60px; font-weight: 700; border-bottom: 1px solid var(--rule); margin: 0 -12px 8px; padding: 0 8px 0 16px; }
   .sidebar-head button { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
-  .sidebar a { padding: 9px 10px; font-size: 15px; }
   .sidebar-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--rule); }
   .more-button, .social { display: none; }
   .search-label, .search-button kbd { display: none; }

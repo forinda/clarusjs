@@ -1,0 +1,21 @@
+{{-- A sidebar group's icon (#369), by name: see parts/icons.ts. Decorative: the group's title says what it is. --}}
+@import type { GroupIcon } from '../nav.ts'
+@import { ICONS } from './icons.ts'
+@input name: GroupIcon
+
+<svg
+  [data-icon]="name"
+  width="14"
+  height="14"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+>
+  @for (d of ICONS[name] ?? []; track d) {
+    <path [d]="d"></path>
+  }
+</svg>

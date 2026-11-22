@@ -73,6 +73,10 @@
         open()
       }
     })
+    // The sidebar's search box (any element marked data-search-open) opens the same dialog.
+    document.addEventListener('click', (event) => {
+      if (event.target instanceof Element && event.target.closest('[data-search-open]')) open()
+    })
   }
 </script>
 

@@ -3,6 +3,7 @@ title: Tailwind CSS
 group: "Templates"
 order: 10
 description: Use Tailwind CSS v4 in a clarusjs app with its official Vite plugin, including @apply in scoped component styles.
+badge: "New"
 ---
 
 # Tailwind CSS
