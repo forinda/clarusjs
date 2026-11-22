@@ -84,3 +84,15 @@ describe('share links', () => {
     expect(await decode('AAAA')).toBeUndefined()
   })
 })
+
+describe('frameDoc', () => {
+  test('a whole document, the runtime in one module script, </script> in it escaped', async () => {
+    const { frameDoc } = await import('../src/repl/frame.ts')
+    const doc = frameDoc('const s = "</script><p>x</p>"; console.log(s)')
+    expect(doc.startsWith('<!doctype html>')).toBe(true)
+    expect(doc).toContain('<meta charset="utf-8">')
+    expect(doc).toContain('<div id="out"></div>')
+    expect(doc.match(/<\/script>/g)).toHaveLength(1) // only the one closing its own script
+    expect(doc).toContain('const s = "<\\/script><p>x</p>"')
+  })
+})
