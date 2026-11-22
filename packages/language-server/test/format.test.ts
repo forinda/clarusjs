@@ -1,5 +1,5 @@
 // #303: Format Document runs the project's own Prettier with @clarusjs/prettier-plugin, in a trusted workspace only.
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { expect, test } from 'vitest'
@@ -112,4 +112,17 @@ test('.editorconfig applies with no Prettier config (still never one from outsid
   const { out } = await run({ __clConfigFile: undefined })
   expect(out.options.editorconfig).toBe(true)
   expect(out.options.semi).toBeUndefined()
+})
+
+test('real Prettier: .editorconfig alone sets the indentation (no .prettierrc anywhere in the folder)', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'cl-ls-format-ec-'))
+  writeFileSync(resolve(root, 'package.json'), '{"name":"app"}')
+  writeFileSync(resolve(root, '.editorconfig'), 'root = true\n\n[*]\nindent_style = space\nindent_size = 4\n')
+  const plugin = resolve(import.meta.dirname, '../../prettier-plugin')
+  mkdirSync(resolve(root, 'node_modules/@clarusjs'), { recursive: true })
+  symlinkSync(realpathSync(resolve(plugin, 'node_modules/prettier')), resolve(root, 'node_modules/prettier'))
+  symlinkSync(plugin, resolve(root, 'node_modules/@clarusjs/prettier-plugin'))
+  const format = await loadFormatter(root, true, () => {})
+  // A block's contents always go on lines of their own, indented by the configured width.
+  expect(await format!('<section>@if (a) {<p>x</p>}</section>\n', resolve(root, 'a.tscl'))).toBe('<section>\n    @if (a) {\n        <p>x</p>\n    }\n</section>\n')
 })
