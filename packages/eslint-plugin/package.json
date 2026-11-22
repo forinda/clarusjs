@@ -1,0 +1,53 @@
+{
+  "name": "@clarusjs/eslint-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Lint clarusjs .tscl components with ESLint: their <script> blocks with your rules, and the template rules of clarusjs check",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forinda/clarusjs.git",
+    "directory": "packages/eslint-plugin"
+  },
+  "homepage": "https://clarusjs.com/guide/lint",
+  "keywords": [
+    "clarusjs",
+    "eslint",
+    "eslint-plugin",
+    "tscl"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "peerDependencies": {
+    "clarusjs": ">=0.11.0",
+    "eslint": "^9.0.0 || ^10.0.0"
+  },
+  "devDependencies": {
+    "eslint": "10.15.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1",
+    "@types/node": "^26.6.6",
+    "clarusjs": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  }
+}
