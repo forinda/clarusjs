@@ -173,6 +173,8 @@ head:
 
 A page's own social card image goes in `image` (`image: /cards/release.png`); with the plugin's `site` option, every page gets a canonical URL and social cards anyway.
 
+In the [sitemap](/reference/vite-plugin#sitemap), a page is dated by its file's last commit. `lastmod: 2026-11-01` sets the date instead, and `sitemap: false` leaves the page out.
+
 Structured data goes in `jsonLd` (an object, or a list of them), written as JSON-LD:
 
 ```md

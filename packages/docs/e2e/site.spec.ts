@@ -1889,6 +1889,14 @@ test('icons: <icon> is inline SVG, 1em high, hidden from screen readers, with no
   await expect(page.locator('.bento-kicker svg').first()).toHaveAttribute('aria-hidden', 'true')
 })
 
+test('sitemap: /releases is dated by the changelog it is built from (its own lastmod), and the marker is gone from the page', async () => {
+  const { execFileSync } = await import('node:child_process')
+  const changelog = execFileSync('git', ['log', '-1', '--format=%cs', '--', '../clarusjs/CHANGELOG.md'], { encoding: 'utf8' }).trim()
+  const sitemap = readFileSync(new URL('../dist/client/sitemap.xml', import.meta.url), 'utf8')
+  expect(sitemap).toContain(`<url><loc>https://clarusjs.com/releases</loc><lastmod>${changelog}</lastmod>`)
+  expect(readFileSync(new URL('../dist/client/releases/index.html', import.meta.url), 'utf8')).not.toContain('sitemap:lastmod')
+})
+
 test('getting started: create the project, its scripts and files, run it; from a Vite template too', async ({ page }) => {
   await page.goto('/guide/getting-started')
   const content = page.locator('main')
@@ -1954,4 +1962,11 @@ test('this site, explained: one table to filter, sort by any column, sample and 
   await page.getByLabel('Show').selectOption('heaviest')
   await page.getByRole('checkbox', { name: 'Islands' }).uncheck()
   await expect(table.locator('thead th')).toHaveText(['Route', 'JS on load', 'JS in all'])
+})
+
+test('what clarusjs is: where the name comes from, and how to say it', async ({ page }) => {
+  await page.goto('/guide/what-is-clarusjs')
+  await expect(page.getByRole('heading', { name: 'The name' })).toBeVisible()
+  await expect(page.locator('main')).toContainText('KLAIR-us')
+  await expect(page.locator('main')).toContainText('Latin for "clear"')
 })
