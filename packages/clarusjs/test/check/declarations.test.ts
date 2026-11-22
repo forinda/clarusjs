@@ -47,3 +47,9 @@ test.each(projects.map((p) => [relative(resolve(import.meta.dirname, '../../..')
   expect(views.length).toBeGreaterThan(0)
   expect(strictErrors(root, viewsDeclaration(views), routesDeclaration(files))).toEqual([])
 }, 60_000)
+
+test('views.d.ts: a type import from ~/ (src/) is written from .clarusjs/, so it resolves without a paths entry', () => {
+  const out = viewsDeclaration([{ file: 'src/components/table.tscl', source: "@import type { Row } from '~/explained.ts'\n@input rows: Row[]\n<p>{{ rows.length }}</p>\n" }])
+  expect(out).toContain('import("../src/explained.ts")')
+  expect(out).not.toContain('~/')
+})
