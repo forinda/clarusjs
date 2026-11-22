@@ -1,7 +1,7 @@
 {
   "name": "@clarusjs/ai",
   "version": "0.0.0",
-  "description": "AI coding tools for clarusjs: an MCP server (check, explain, compile, docs search) for agents",
+  "description": "AI coding tools for clarusjs: an MCP server (check, explain, compile, docs search) and AGENTS.md for agents",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -22,10 +22,12 @@
   },
   "exports": {
     ".": "./src/mcp.ts",
-    "./docs": "./src/docs.ts"
+    "./docs": "./src/docs.ts",
+    "./agents": "./src/agents.ts"
   },
   "files": [
     "dist",
+    "templates",
     "LICENSE",
     "README.md"
   ],
@@ -53,6 +55,10 @@
       "./docs": {
         "types": "./dist/docs.d.ts",
         "default": "./dist/docs.js"
+      },
+      "./agents": {
+        "types": "./dist/agents.d.ts",
+        "default": "./dist/agents.js"
       }
     }
   }

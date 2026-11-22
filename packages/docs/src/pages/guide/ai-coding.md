@@ -47,3 +47,15 @@ Cursor reads `.cursor/mcp.json`, with the same `mcpServers` entry. VS Code reads
 ```
 
 This repository has a `.mcp.json` too: agents working on clarusjs itself check the docs site with it.
+
+## AGENTS.md
+
+Coding agents (Codex, Cursor, Copilot, Claude Code and others) read a project's `AGENTS.md` for its conventions. Write clarusjs's into yours:
+
+```sh
+npx @clarusjs/ai agents
+```
+
+It covers where things go, a component's syntax, islands and state, and checking the work with `clarusjs check`. It goes between `<!-- clarusjs:start -->` and `<!-- clarusjs:end -->` markers, so the rest of the file stays yours, and running the command again after an upgrade updates only that part. Claude Code reads `CLAUDE.md`: add a line `@AGENTS.md` to it to bring the file in.
+
+This site's own `AGENTS.md` is written this way, and a test fails when it falls behind.

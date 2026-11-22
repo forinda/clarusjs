@@ -12,4 +12,6 @@ Tools: `check` (type errors and lint, with the project's clarusjs), `explain` (w
 claude mcp add clarusjs -- npx -y @clarusjs/ai mcp
 ```
 
+`npx @clarusjs/ai agents` writes the clarusjs section of your `AGENTS.md` (between markers; run it again to update).
+
 See the [AI coding guide](https://clarusjs.com/guide/ai-coding). MIT licensed.
