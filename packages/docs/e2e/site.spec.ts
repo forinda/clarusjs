@@ -1742,3 +1742,14 @@ test("#361: the site's own footer, in place of the theme's, on every kind of pag
     await expect(footer.getByRole('link', { name: 'For AI agents' }), path).toHaveAttribute('href', '/guide/ai-coding')
   }
 })
+
+test('code blocks have line numbers, except shell commands', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  const ts = page.locator('.code-block.language-ts').first()
+  await expect(ts).toHaveClass(/line-numbers/)
+  await expect(ts.locator('.line-numbers-column span').first()).toHaveText('1')
+  await page.goto('/guide/getting-started')
+  const sh = page.locator('.code-block.language-sh').first()
+  await expect(sh).toBeVisible()
+  await expect(sh).not.toHaveClass(/line-numbers/)
+})
