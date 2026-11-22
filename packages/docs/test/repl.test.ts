@@ -85,8 +85,12 @@ describe('prepare (the page, before posting to the frame)', () => {
     expect(prepare(code)).toBe(code)
   })
 
+  test('clarusjs/forms is supported too (the forms engine: [engine], schemas, steps)', () => {
+    expect(prepare("import { form } from 'clarusjs/forms'\n")).toBe("const { form } = globalThis.__cl_repl['clarusjs/forms']\n")
+  })
+
   test('other imports are refused, naming the module', () => {
-    expect(() => prepare("import x from 'lodash'\n")).toThrow("the playground supports imports from clarusjs/runtime only, not 'lodash'")
+    expect(() => prepare("import x from 'lodash'\n")).toThrow("the playground supports imports from clarusjs/runtime and clarusjs/forms only, not 'lodash'")
     expect(() => prepare("import { resource } from 'clarusjs/fetch'\n")).toThrow("not 'clarusjs/fetch'")
     expect(() => prepare("import * as r from 'clarusjs/runtime'\n")).toThrow('import { … } from')
   })
@@ -149,15 +153,16 @@ describe('frameDoc', () => {
 })
 
 describe('starters', () => {
-  test('counter, todo, form and conditional; each compiles for server and client without warnings', async () => {
+  test('counter, todo, form, checkout and conditional; each compiles for server and client without warnings, and passes lint', async () => {
     const { starters } = await import('../src/repl/starters.ts')
-    const { compile } = await import('clarusjs/compiler')
-    expect(starters.map((s) => s.name)).toEqual(['Counter', 'Todo list', 'Form', 'Conditional'])
+    const { compile, lint } = await import('clarusjs/compiler')
+    expect(starters.map((s) => s.name)).toEqual(['Counter', 'Todo list', 'Form', 'Checkout', 'Conditional'])
     for (const s of starters) {
       const server = compile(s.source, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' })
       const client = compile(s.source, { file: 'App.tscl', target: 'client' })
       expect(server.warnings, s.name).toEqual([])
       expect(client.stateful, s.name).toBe(true)
+      expect(lint(s.source, 'App.tscl'), s.name).toEqual([])
     }
   })
 })

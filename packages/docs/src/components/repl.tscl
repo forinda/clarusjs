@@ -141,7 +141,7 @@
         'load',
         () =>
           frame.contentWindow?.postMessage(
-            { id: reply.id, server: reply.preparedServer, client: reply.preparedClient },
+            { id: reply.id, server: reply.preparedServer, client: reply.preparedClient, css: reply.css },
             '*',
           ),
         { once: true },

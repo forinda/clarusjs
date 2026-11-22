@@ -64,6 +64,116 @@ export const starters: Starter[] = [
 `,
   },
   {
+    name: 'Checkout',
+    source: `<script>
+  import { form } from 'clarusjs/forms'
+
+  // A Standard Schema, written by hand: Zod, Valibot or ArkType plug in the same way. It checks what the fields'
+  // own constraints (required, type="email") can't say, and its issues land on their fields by path.
+  const schema = {
+    '~standard': {
+      version: 1,
+      vendor: 'playground',
+      validate(value) {
+        const issues = []
+        if (value.postal && !/^\\d{5}$/.test(value.postal)) issues.push({ path: ['postal'], message: 'A postal code has 5 digits.' })
+        const digits = value.card.replace(/\\s/g, '')
+        if (digits && !luhn(digits)) issues.push({ path: ['card'], message: "That card number isn't valid." })
+        const expiry = /^(\\d{2})\\/(\\d{2})$/.exec(value.expiry)
+        if (value.expiry && (!expiry || +expiry[1] < 1 || +expiry[1] > 12)) issues.push({ path: ['expiry'], message: 'Use MM/YY.' })
+        else if (expiry && new Date(2000 + +expiry[2], +expiry[1]) <= new Date()) issues.push({ path: ['expiry'], message: 'That card has expired.' })
+        return issues.length ? { issues } : { value }
+      },
+    },
+  }
+
+  // The card number's check digit (Luhn).
+  function luhn(digits) {
+    let sum = 0
+    for (let i = 0; i < digits.length; i++) {
+      let d = +digits[digits.length - 1 - i]
+      if (i % 2) d = d * 2 > 9 ? d * 2 - 9 : d * 2
+      sum += d
+    }
+    return /^\\d{12,19}$/.test(digits) && sum % 10 === 0
+  }
+
+  let order = state({ name: '', email: '', postal: '', card: '', expiry: '' })
+  let placed = state('')
+  const titles = { shipping: 'Shipping', payment: 'Payment', review: 'Review' }
+  const f = form(order, {
+    schema,
+    submit(values) {
+      placed = 'Thanks, ' + values.name.split(' ')[0] + '! Your order is placed.'
+    },
+  })
+</script>
+
+<form [engine]="f">
+  <ol class="steps">
+    @for (s of f.steps; track s.id) {
+      <li [aria-current]="s.current ? 'step' : false" [class]="s.errors ? 'bad' : s.done ? 'done' : false">{{ titles[s.id] }}</li>
+    }
+  </ol>
+  <fieldset id="shipping" data-cl-step>
+    <h2>Shipping</h2>
+    <div data-cl-field>
+      <label for="name">Full name</label>
+      <input id="name" required autocomplete="name" [(value)]="order.name" />
+      <small data-cl-message></small>
+    </div>
+    <div data-cl-field>
+      <label for="email">Email</label>
+      <input id="email" type="email" required autocomplete="email" [(value)]="order.email" />
+      <small data-cl-message></small>
+    </div>
+    <div data-cl-field>
+      <label for="postal">Postal code</label>
+      <input id="postal" required inputmode="numeric" autocomplete="postal-code" [(value)]="order.postal" />
+      <small data-cl-message></small>
+    </div>
+    <div><button type="button" (click)="f.next()">Next</button></div>
+  </fieldset>
+  <fieldset id="payment" data-cl-step>
+    <h2>Payment</h2>
+    <div data-cl-field>
+      <label for="card">Card number</label>
+      <input id="card" required inputmode="numeric" autocomplete="cc-number" [(value)]="order.card" />
+      <small data-cl-message></small>
+    </div>
+    <div data-cl-field>
+      <label for="expiry">Expiry (MM/YY)</label>
+      <input id="expiry" required autocomplete="cc-exp" placeholder="MM/YY" [(value)]="order.expiry" />
+      <small data-cl-message></small>
+    </div>
+    <div>
+      <button type="button" (click)="f.back()">Back</button>
+      <button type="button" (click)="f.next()">Next</button>
+    </div>
+  </fieldset>
+  <fieldset id="review" data-cl-step>
+    <h2>Review</h2>
+    <p>{{ order.name }}, {{ order.postal }}</p>
+    <p>{{ order.email }}</p>
+    <p>Card •••• {{ order.card.replace(/\\s/g, '').slice(-4) }}</p>
+    <div>
+      <button type="button" (click)="f.back()">Back</button>
+      <button [disabled]="f.submitting">Place order</button>
+    </div>
+  </fieldset>
+  <p role="status">{{ placed }}</p>
+</form>
+
+<style scoped>
+  /* The step list; fields, messages and buttons come from the preview's default look. */
+  .steps { display: flex; gap: 20px; padding: 0; margin: 0 0 4px; list-style: none; color: GrayText; font-size: 14px; }
+  .steps [aria-current] { color: CanvasText; font-weight: 600; }
+  .steps .done::before { content: '✓ '; color: green; }
+  .steps .bad { color: #b3261e; }
+</style>
+`,
+  },
+  {
     name: 'Conditional',
     source: `<script>
   let open = state(false)

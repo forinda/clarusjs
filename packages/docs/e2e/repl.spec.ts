@@ -171,6 +171,46 @@ test.describe('/repl', () => {
     await expect(preview(page).locator('p')).toHaveText('1')
   })
 
+  test("a component's <style> applies in the preview", async ({ page }) => {
+    await open(page)
+    // Scoped rules apply inside the component's top-level elements (a top-level one is styled with :scope).
+    await type(page, '<div><p class="big">Hi</p></div>\n<style scoped>\n  .big { font-size: 40px; }\n</style>\n')
+    await expect(preview(page).locator('.big')).toHaveCSS('font-size', '40px')
+  })
+
+  test('the Checkout example: steps, the schema\'s errors on their fields, a summary on submit, and the order placed', async ({ page }) => {
+    await open(page)
+    await page.getByLabel('Example').selectOption('Checkout')
+    const frame = preview(page)
+    // Step 1, shipping: Next checks this step only, and stays with the field's error shown.
+    await expect(frame.getByRole('heading', { name: 'Shipping' })).toBeVisible()
+    await frame.getByRole('button', { name: 'Next' }).click()
+    await expect(frame.getByLabel('Full name')).toBeFocused()
+    await frame.getByLabel('Full name').fill('Ada Lovelace')
+    await frame.getByLabel('Email').fill('ada@example.com')
+    await frame.getByLabel('Postal code').fill('12')
+    await frame.getByRole('button', { name: 'Next' }).click()
+    await expect(frame.getByText('A postal code has 5 digits.')).toBeVisible() // the schema's message, on its field
+    await frame.getByLabel('Postal code').fill('12345')
+    await frame.getByRole('button', { name: 'Next' }).click()
+    // Step 2, payment: the card number fails the schema's checksum, the expiry is in the past.
+    await expect(frame.getByRole('heading', { name: 'Payment' })).toBeVisible()
+    await frame.getByLabel('Card number').fill('4242 4242 4242 4241')
+    await frame.getByLabel('Expiry (MM/YY)').fill('01/20')
+    await frame.getByRole('button', { name: 'Next' }).click()
+    await expect(frame.getByText("That card number isn't valid.")).toBeVisible()
+    await expect(frame.getByText('That card has expired.')).toBeVisible()
+    await frame.getByLabel('Card number').fill('4242 4242 4242 4242')
+    await frame.getByLabel('Expiry (MM/YY)').fill('12/39')
+    await frame.getByRole('button', { name: 'Next' }).click()
+    // Step 3, review: what was entered, and the order placed.
+    await expect(frame.getByRole('heading', { name: 'Review' })).toBeVisible()
+    await expect(frame.getByText('Ada Lovelace, 12345')).toBeVisible()
+    await expect(frame.getByText('•••• 4242')).toBeVisible()
+    await frame.getByRole('button', { name: 'Place order' }).click()
+    await expect(frame.getByRole('status')).toContainText('Thanks, Ada! Your order is placed.')
+  })
+
   test('opens with the first starter running', async ({ page }) => {
     await open(page)
     await expect(page).toHaveTitle(/Playground/)
