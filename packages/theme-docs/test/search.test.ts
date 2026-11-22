@@ -1,5 +1,6 @@
 // Search: sections from built pages, a sharded index (never one big file), and queries that load only what they need.
 import { expect, test } from 'vitest'
+import { resolve } from 'node:path'
 import { buildIndex, sectionsOf } from '../src/vite.js'
 import { search, tokens } from '../src/search.js'
 
@@ -56,4 +57,17 @@ test('search: every word must match (the last as a prefix), headings rank first,
   const long = buildIndex([{ u: '/notes', p: 'Notes', h: 'Notes', t: 'island '.repeat(40) }, { u: '/i', p: 'Islands', h: 'Island', t: 'x' }])
   expect((await search('island', async (f) => JSON.parse(long.get(f)!))).map((r) => r.u)).toEqual(['/i', '/notes'])
   expect(await search('x', load)).toEqual([])
+})
+
+test('loads in Vite dev (the module runner), where the base comes from import.meta.env', async () => {
+  const { createServer, isRunnableDevEnvironment } = await import('vite')
+  const server = await createServer({ root: resolve(import.meta.dirname, '..'), configFile: false, logLevel: 'silent', base: '/docs/', server: { middlewareMode: true, ws: false } })
+  try {
+    const env = server.environments.ssr
+    if (!isRunnableDevEnvironment(env)) throw new Error('no runner')
+    const search = await env.runner.import<{ base: string }>('/src/search.js')
+    expect(search.base).toBe('/docs/')
+  } finally {
+    await server.close()
+  }
 })

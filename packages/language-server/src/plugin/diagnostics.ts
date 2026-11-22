@@ -5,10 +5,15 @@ import { fromLineColumn } from '../positions.ts'
 import type { Project } from '../project.ts'
 
 export function diagnosticsFor(project: Project, path: string, text: string): Diagnostic[] {
-  const { compile, parse, ClarusError } = project.compiler
+  const { compile, parse, ClarusError, lint } = project.compiler
   try {
     // Warnings: things that compile but likely aren't meant. (A project's older clarusjs has none.)
-    return (compile(text, { file: path, target: 'client' }).warnings ?? []).map((w) => diagnostic(w, 2))
+    const warnings = (compile(text, { file: path, target: 'client' }).warnings ?? []).map((w) => diagnostic(w, 2))
+    // Lint (#304), once the template compiles: the built-in rules at their default levels.
+    // ponytail: the editor doesn't read the Vite config (its `lint` levels, `lintRules`); `clarusjs check` does.
+    // Upgrade path: the trusted project's levels and rules, loaded as check loads them.
+    const linted = (lint?.(text, path) ?? []).map((m) => ({ ...lintDiagnostic(m), code: m.rule }))
+    return [...warnings, ...linted]
   } catch (err) {
     if (!(err instanceof ClarusError)) return []
     if (project.mapperConfigured(path)) {
@@ -16,6 +21,12 @@ export function diagnosticsFor(project: Project, path: string, text: string): Di
     }
     return [diagnostic(err, 1)]
   }
+}
+
+/** A lint finding: message and place are already separate. */
+function lintDiagnostic(m: { message: string; line: number; column: number; severity: 'warning' | 'error' }): Diagnostic {
+  const start = fromLineColumn(m.line, m.column)
+  return { range: { start, end: { line: start.line, character: start.character + 1 } }, message: m.message, severity: m.severity === 'error' ? 1 : 2, source: 'clarusjs' }
 }
 
 /** A located compiler error or warning (1 error, 2 warning) as a diagnostic: its message without the location. */

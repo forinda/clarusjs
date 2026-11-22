@@ -83,6 +83,22 @@ const { inputs, imports } = parse(source, 'src/components/card.tscl')
 console.log(inputs.map((i) => `${i.name}: ${i.type}`))
 ```
 
+## lint()
+
+```ts
+lint(source: string, file: string, levels?: LintConfig, rules?: LintRuleDef[]): LintMessage[]
+```
+
+Runs the [lint rules](/guide/lint) on one `.tscl` file: the built-in ones and `rules`, at their `levels` (`'warn'` by default, `'error'` or `'off'`). Each finding has its `rule`, `severity` (`'warning'` or `'error'`), `message`, `file`, `line`, `column` and `start` offset. A `{{-- clarusjs-ignore --}}` comment skips its line and the next. Like `parse`, it throws a located `ClarusError` for a syntax error.
+
+```ts
+import { lint } from 'clarusjs/compiler'
+
+for (const m of lint(source, 'src/components/card.tscl')) console.log(`${m.line}:${m.column} ${m.rule}: ${m.message}`)
+```
+
+`lintRules` is the list of built-in rules, and `LintRuleDef` the type of one. See [Writing a rule](/guide/lint#writing-a-rule).
+
 ## ClarusError
 
 ```ts

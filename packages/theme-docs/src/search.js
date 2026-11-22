@@ -15,7 +15,10 @@ export const CHUNK = 64
 
 /** The site's base path ('/' unless Vite's `base` is set), where the search index is fetched from. */
 /** @type {string} */
-export const base = /** @type {any} */ (import.meta).env?.BASE_URL ?? '/' // Vite's import.meta.env, when there is one
+// Written out as import.meta.env.BASE_URL, which Vite replaces: Vite's dev module runner refuses any other way of
+// reading import.meta.env (a cast in parentheses included). Outside Vite there is no env: '/'.
+// @ts-ignore import.meta.env is Vite's
+export const base = import.meta.env?.BASE_URL ?? '/'
 
 /** @param {string} text @returns {string[]} lowercase words of two or more letters, accents folded */
 export function tokens(text) {

@@ -5,12 +5,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync,
 import { createRequire } from 'node:module'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { ClarusError } from '../compiler/errors.ts'
+import { lint, type LintConfig, type LintRuleDef } from '../compiler/lint.ts'
 import { generateTs, routesDeclaration, toSourceOffset, viewsDeclaration, type Mapping } from '../check/generate.ts'
 import { findClarusFiles, reachableComponents } from '../vite/build.ts'
 import { projectAliases, resolveAlias } from '../vite/aliases.ts'
 import { routeFromFile } from '../server/handler.ts'
 
-export type Diagnostic = { file: string; line: number; column: number; code: string; message: string }
+/** A type error, a template error, or a lint finding (#304: `code` is the rule, usually a warning). */
+export type Diagnostic = { file: string; line: number; column: number; severity: 'error' | 'warning'; code: string; message: string }
 export type CheckResult = { diagnostics: Diagnostic[]; exitCode: 0 | 1; text: string; json: string }
 
 const VIRTUAL = '.clarusjs/virtual'
@@ -64,7 +66,8 @@ function typescriptDir(root: string, override?: string): string {
 /** A page source, as the Vite plugin's `sources` option takes it (Markdown from @clarusjs/content, …). */
 export type CheckSource = { extension: string; toTscl(code: string, file: string, context: { route: string; root: string; addDependency(file: string): void }): string }
 
-export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown }): CheckResult {
+/** `lint`: the plugin's rule levels; `lintRules`: the project's own rules; `strict`: warnings fail too. */
+export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown; lint?: LintConfig; lintRules?: LintRuleDef[]; strict?: boolean }): CheckResult {
   const root = resolve(options.root)
   const virtualRoot = resolve(root, VIRTUAL)
   rmSync(virtualRoot, { recursive: true, force: true })
@@ -86,10 +89,17 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     try {
       if (src) source = src.toTscl(original, path, { route: routeFromFile(`/${file}`), root, addDependency: () => {} })
     } catch (err) {
-      diagnostics.push({ file, line: 1, column: 1, code: 'clarus', message: (err as Error).message })
+      diagnostics.push({ file, line: 1, column: 1, severity: 'error', code: 'clarus', message: (err as Error).message })
       continue
     }
     views.push({ file, source })
+    // Lint (#304): .tscl files only, a page source's generated text isn't what its author wrote. A syntax error is
+    // reported once, below.
+    if (!src) {
+      try {
+        for (const m of lint(source, file, options.lint, options.lintRules)) diagnostics.push({ file, line: m.line, column: m.column, severity: m.severity, code: m.rule, message: m.message })
+      } catch {}
+    }
     try {
       const loader = loaderOf(path)
       const { code, mappings, loaderSpan } = generateTs(source, file, loader ? { loader } : {})
@@ -103,7 +113,7 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
       // A page source's compile error is placed in the source file when its text can be found there.
       const lines = source.split('\n')
       const at = src ? inSource(original, source, lines.slice(0, err.line - 1).reduce((n, l) => n + l.length + 1, 0) + err.column - 1) : null
-      diagnostics.push({ file, ...(src ? (at === null ? { line: 1, column: 1 } : position(original, at)) : { line: err.line, column: err.column }), code: 'clarus', message })
+      diagnostics.push({ file, ...(src ? (at === null ? { line: 1, column: 1 } : position(original, at)) : { line: err.line, column: err.column }), severity: 'error', code: 'clarus', message })
     }
   }
 
@@ -207,7 +217,7 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     // Errors inside a package (its components or its .ts files) are the package's, not the app's.
     if (g?.fromPackage || (!g && (!resolve(path).startsWith(resolve(root) + sep) || path.includes(`${sep}node_modules${sep}`)))) continue
     if (!g) {
-      diagnostics.push({ file: posix(relative(root, path)), line: Number(m[2]), column: Number(m[3]), code: m[4]!, message: m[5]! })
+      diagnostics.push({ file: posix(relative(root, path)), line: Number(m[2]), column: Number(m[3]), severity: 'error', code: m[4]!, message: m[5]! })
       continue
     }
     const lines = g.code.split('\n')
@@ -218,14 +228,14 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     const at = source === null ? { line: 1, column: 1 } : position(g.original ?? g.source, source)
     const fromLoader = g.loaderSpan && offset >= g.loaderSpan[0] && offset < g.loaderSpan[1]
     const message = fromLoader ? `load() returns a value that doesn't fit this page's inputs: ${m[5]}` : source === null ? `${m[5]} (in generated code)` : m[5]!
-    diagnostics.push({ file: g.file, ...at, code: m[4]!, message })
+    diagnostics.push({ file: g.file, ...at, severity: 'error', code: m[4]!, message })
   }
 
   diagnostics.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column)
   return {
     diagnostics,
-    exitCode: diagnostics.length ? 1 : 0,
-    text: diagnostics.map((d) => `${d.file}:${d.line}:${d.column} error ${d.code}: ${d.message}`).join('\n'),
+    exitCode: diagnostics.some((d) => d.severity === 'error' || options.strict) ? 1 : 0,
+    text: diagnostics.map((d) => `${d.file}:${d.line}:${d.column} ${d.severity} ${d.code}: ${d.message}`).join('\n'),
     json: JSON.stringify(diagnostics, null, 2),
   }
 }
