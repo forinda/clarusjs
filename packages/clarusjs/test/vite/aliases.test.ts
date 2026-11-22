@@ -64,7 +64,7 @@ function site() {
     'src/pages/index.load.ts': "import { name } from '~/data/site.ts'\nexport const load = () => ({ greeting: `Hello from ${name}` })\n",
   })
   mkdirSync(resolve(root, 'node_modules'), { recursive: true })
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   return root
 }
 const quiet = { info() {}, warn() {}, warnOnce() {}, error() {}, clearScreen() {}, hasErrorLogged: () => false, hasWarned: false }

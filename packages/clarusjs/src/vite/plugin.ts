@@ -1,6 +1,6 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, watch as watchFs, writeFileSync } from 'node:fs'
 import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib'
 import { createRequire } from 'node:module'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
@@ -29,10 +29,18 @@ const ext = import.meta.url.endsWith('.ts') ? '.ts' : '.js'
 const here = (path: string) => fileURLToPath(new URL(path + ext, import.meta.url))
 const ENTRY = 'virtual:clarusjs/server-entry'
 
-/** Dev URL of a component's client module: root-relative, or Vite's /@fs/ form for files outside the root. @internal */
-export function clientUrlFor(root: string, file: string): string {
-  const rel = relative(root, file)
-  return rel.startsWith('..') || isAbsolute(rel) ? `/@fs${file}?import` : `/${rel}?import`
+/**
+ * Dev URL of a component's client module: root-relative, or Vite's /@fs/ form for files outside the root. Always with
+ * forward slashes (`/@fs/C:/libs/c.tscl` on Windows). `path`: the platform's (a parameter for tests). @internal
+ */
+export function clientUrlFor(root: string, file: string, path: Pick<typeof import('node:path'), 'relative' | 'isAbsolute' | 'sep'> = { relative, isAbsolute, sep }): string {
+  const rel = path.relative(root, file)
+  const slashes = (p: string) => p.split(path.sep).join('/')
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    const abs = slashes(file)
+    return `/@fs${abs.startsWith('/') ? '' : '/'}${abs}?import`
+  }
+  return `/${slashes(rel)}?import`
 }
 
 const LOADER_ENTRY = 'cl-loader'
@@ -372,105 +380,113 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     async buildApp(builder) {
       const { client, ssr } = builder.environments
       if (!client || !ssr) return
-      // Before anything is built: an old path must not be a page.
-      checkRedirects(options.redirects ?? {}, files.find(resolve(builder.config.root, 'src/pages')).map((f) => routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`)))
-      await builder.build(client)
-      await builder.build(ssr)
-      const entry = resolve(builder.config.root, SERVER_OUT, 'index.mjs')
-      const out = resolve(builder.config.root, CLIENT_OUT)
-      const dist = dirname(out)
-      const manifestFile = resolve(dist, 'clarusjs-manifest.json')
-      rmSync(manifestFile, { force: true }) // a page reading the manifest must never see the previous build's
-      const { routes, readers, loaded, server } = await prerender(entry, out, manifestFile)
-      writeManifest(dist, routes, builder.config.base, loaded, server)
-      // Pages that read the manifest saw none on the first pass: render them again now that it exists.
-      if (readers.length) {
-        await prerender(entry, out, manifestFile, readers)
+      // vite build --watch: Vite's own per-environment watchers would rebuild client and server separately, in any
+      // order (the server build needs the client's new hashes) and never prerender. The whole sequence reruns instead.
+      const watching = !!client.config.build.watch
+      if (watching) client.config.build.watch = ssr.config.build.watch = null
+      const once = async () => {
+        // Before anything is built: an old path must not be a page.
+        checkRedirects(options.redirects ?? {}, files.find(resolve(builder.config.root, 'src/pages')).map((f) => routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`)))
+        await builder.build(client)
+        await builder.build(ssr)
+        const entry = resolve(builder.config.root, SERVER_OUT, 'index.mjs')
+        const out = resolve(builder.config.root, CLIENT_OUT)
+        const dist = dirname(out)
+        const manifestFile = resolve(dist, 'clarusjs-manifest.json')
+        rmSync(manifestFile, { force: true }) // a page reading the manifest must never see the previous build's
+        const { routes, readers, loaded, server } = await prerender(entry, out, manifestFile)
         writeManifest(dist, routes, builder.config.base, loaded, server)
-      }
-      // Links between pages and to anchors, checked against what was written.
-      const pageRoutes = routes.filter((r) => !/\/(__data\.json|index\.frag\.html)$/.test(r))
-      const clientRoutes = pageRoutes.filter((r) => routes.includes(r === '/' ? '/__data.json' : `${r}/__data.json`))
-      // 404.html, which static hosts serve for unknown paths at any depth: the 404 page with its relative links
-      // resolved from the site root (also at /404 itself, so the link check sees what visitors get).
-      if (pageRoutes.includes('/404') && !clientRoutes.includes('/404')) {
-        const html = rootLinks(readFileSync(resolve(out, routeToFile('/404')), 'utf8'), basePath(builder.config.base))
-        writeFileSync(resolve(out, routeToFile('/404')), html)
-        writeFileSync(resolve(out, '404.html'), html)
-      }
-      // 500.html, for hosts that serve it when something fails: the 500 page, with links from the site root.
-      if (pageRoutes.includes('/500') && !clientRoutes.includes('/500')) {
-        const html = rootLinks(readFileSync(resolve(out, routeToFile('/500')), 'utf8'), basePath(builder.config.base))
-        writeFileSync(resolve(out, routeToFile('/500')), html)
-        writeFileSync(resolve(out, '500.html'), html)
-      }
-      // Redirect pages exist (links to old paths stay valid); their anchors are the target's, so they go unchecked.
-      if (options.redirects) {
-        writeRedirects(out, options.redirects, basePath(builder.config.base).replace(/\/$/, ''), routes)
-        const moved = Object.keys(options.redirects).map((from) => (from.length > 1 ? from.replace(/\/+$/, '') : from))
-        pageRoutes.push(...moved)
-        clientRoutes.push(...moved)
-      }
-      const issues = checkLinks({
-        outDir: out,
-        routes: pageRoutes,
-        serverRoutes: server.map((x) => x.route),
-        clientRoutes,
-        base: builder.config.base,
-        site: options.site?.url,
-      })
-      const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn' }
-      // Each problem names the page's source file, and the line where the link is written literally.
-      const sourceOf = new Map(files.find(resolve(builder.config.root, 'src/pages')).map((f) => [routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`), f]))
-      // Literal segments escaped; only whole [param] segments match any one segment (as the handler's routes do).
-      const pattern = (route: string) => new RegExp(`^${route.split('/').map((seg) => (/^\[[^\]]+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/')}$`)
-      const fileOf = (page: string) => sourceOf.get(page) ?? [...sourceOf].find(([route]) => pattern(route).test(page))?.[1]
-      const locate = (page: string, href: string) => {
-        const file = fileOf(page)
-        if (!file) return page
-        const rel = relative(builder.config.root, file).split(sep).join('/')
-        const line = readFileSync(file, 'utf8').split('\n').findIndex((l) => l.includes(href))
-        return line === -1 ? `${rel} (${page})` : `${rel}:${line + 1}`
-      }
-      const errors: string[] = []
-      for (const issue of issues) {
-        const level = levels[issue.kind]
-        if (level === 'off') continue
-        const text = `${locate(issue.page, issue.href)}: ${issue.message}`
-        if (level === 'error' || options.links?.strict) errors.push(text)
-        else builder.config.logger.warn(`clarusjs: ${text}`)
-      }
-      if (errors.length) throw new Error(`clarusjs: broken links:\n  ${errors.join('\n  ')}`)
-      // sitemap.xml: static pages (not client shells, not noindex), dated by their source file's last commit.
-      if (options.site && options.sitemap !== false) {
-        const dates = gitDates(builder.config.root, 'src/pages')
-        const epoch = process.env.SOURCE_DATE_EPOCH ? Number(process.env.SOURCE_DATE_EPOCH) : undefined
-        const exclude = (typeof options.sitemap === 'object' ? options.sitemap.exclude ?? [] : [])
-          .map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*|\*/g, (s) => (s === '**' ? '.*' : '[^/]+'))}$`))
-        // A page's own opt-out marker is read, then removed from the built page; noindex pages aren't listed either.
-        const optedOut = (page: string) => {
-          const file = resolve(out, routeToFile(page))
-          const html = readFileSync(file, 'utf8')
-          const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
-          // Attribute values in any valid form: "x", 'x' or unquoted (transformHead output isn't normalized).
-          const attr = (tag: string, name: string) => new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag)?.slice(1).find((v) => v !== undefined)
-          const marker = tags.find((tag) => attr(tag, 'name')?.toLowerCase() === 'sitemap' && attr(tag, 'content') === 'false')
-          if (marker) writeFileSync(file, html.replace(marker, ''))
-          return !!marker || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? ''))
+        // Pages that read the manifest saw none on the first pass: render them again now that it exists.
+        if (readers.length) {
+          await prerender(entry, out, manifestFile, readers)
+          writeManifest(dist, routes, builder.config.base, loaded, server)
         }
-        const pages = pageRoutes.filter((page) => page !== '/404' && page !== '/500' && !clientRoutes.includes(page) && !optedOut(page) && !exclude.some((re) => re.test(page)))
-          .map((path) => ({ path, lastmod: dates.get(fileOf(path) ?? '') ?? epoch }))
-        writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
+        // Links between pages and to anchors, checked against what was written.
+        const pageRoutes = routes.filter((r) => !/\/(__data\.json|index\.frag\.html)$/.test(r))
+        const clientRoutes = pageRoutes.filter((r) => routes.includes(r === '/' ? '/__data.json' : `${r}/__data.json`))
+        // 404.html, which static hosts serve for unknown paths at any depth: the 404 page with its relative links
+        // resolved from the site root (also at /404 itself, so the link check sees what visitors get).
+        if (pageRoutes.includes('/404') && !clientRoutes.includes('/404')) {
+          const html = rootLinks(readFileSync(resolve(out, routeToFile('/404')), 'utf8'), basePath(builder.config.base))
+          writeFileSync(resolve(out, routeToFile('/404')), html)
+          writeFileSync(resolve(out, '404.html'), html)
+        }
+        // 500.html, for hosts that serve it when something fails: the 500 page, with links from the site root.
+        if (pageRoutes.includes('/500') && !clientRoutes.includes('/500')) {
+          const html = rootLinks(readFileSync(resolve(out, routeToFile('/500')), 'utf8'), basePath(builder.config.base))
+          writeFileSync(resolve(out, routeToFile('/500')), html)
+          writeFileSync(resolve(out, '500.html'), html)
+        }
+        // Redirect pages exist (links to old paths stay valid); their anchors are the target's, so they go unchecked.
+        if (options.redirects) {
+          writeRedirects(out, options.redirects, basePath(builder.config.base).replace(/\/$/, ''), routes)
+          const moved = Object.keys(options.redirects).map((from) => (from.length > 1 ? from.replace(/\/+$/, '') : from))
+          pageRoutes.push(...moved)
+          clientRoutes.push(...moved)
+        }
+        const issues = checkLinks({
+          outDir: out,
+          routes: pageRoutes,
+          serverRoutes: server.map((x) => x.route),
+          clientRoutes,
+          base: builder.config.base,
+          site: options.site?.url,
+        })
+        const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn' }
+        // Each problem names the page's source file, and the line where the link is written literally.
+        const sourceOf = new Map(files.find(resolve(builder.config.root, 'src/pages')).map((f) => [routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`), f]))
+        // Literal segments escaped; only whole [param] segments match any one segment (as the handler's routes do).
+        const pattern = (route: string) => new RegExp(`^${route.split('/').map((seg) => (/^\[[^\]]+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/')}$`)
+        const fileOf = (page: string) => sourceOf.get(page) ?? [...sourceOf].find(([route]) => pattern(route).test(page))?.[1]
+        const locate = (page: string, href: string) => {
+          const file = fileOf(page)
+          if (!file) return page
+          const rel = relative(builder.config.root, file).split(sep).join('/')
+          const line = readFileSync(file, 'utf8').split('\n').findIndex((l) => l.includes(href))
+          return line === -1 ? `${rel} (${page})` : `${rel}:${line + 1}`
+        }
+        const errors: string[] = []
+        for (const issue of issues) {
+          const level = levels[issue.kind]
+          if (level === 'off') continue
+          const text = `${locate(issue.page, issue.href)}: ${issue.message}`
+          if (level === 'error' || options.links?.strict) errors.push(text)
+          else builder.config.logger.warn(`clarusjs: ${text}`)
+        }
+        if (errors.length) throw new Error(`clarusjs: broken links:\n  ${errors.join('\n  ')}`)
+        // sitemap.xml: static pages (not client shells, not noindex), dated by their source file's last commit.
+        if (options.site && options.sitemap !== false) {
+          const dates = gitDates(builder.config.root, 'src/pages')
+          const epoch = process.env.SOURCE_DATE_EPOCH ? Number(process.env.SOURCE_DATE_EPOCH) : undefined
+          const exclude = (typeof options.sitemap === 'object' ? options.sitemap.exclude ?? [] : [])
+            .map((p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*|\*/g, (s) => (s === '**' ? '.*' : '[^/]+'))}$`))
+          // A page's own opt-out marker is read, then removed from the built page; noindex pages aren't listed either.
+          const optedOut = (page: string) => {
+            const file = resolve(out, routeToFile(page))
+            const html = readFileSync(file, 'utf8')
+            const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map(([tag]) => tag)
+            // Attribute values in any valid form: "x", 'x' or unquoted (transformHead output isn't normalized).
+            const attr = (tag: string, name: string) => new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(tag)?.slice(1).find((v) => v !== undefined)
+            const marker = tags.find((tag) => attr(tag, 'name')?.toLowerCase() === 'sitemap' && attr(tag, 'content') === 'false')
+            if (marker) writeFileSync(file, html.replace(marker, ''))
+            return !!marker || tags.some((tag) => attr(tag, 'name')?.toLowerCase() === 'robots' && /\bnoindex\b/i.test(attr(tag, 'content') ?? ''))
+          }
+          const pages = pageRoutes.filter((page) => page !== '/404' && page !== '/500' && !clientRoutes.includes(page) && !optedOut(page) && !exclude.some((re) => re.test(page)))
+            .map((path) => ({ path, lastmod: dates.get(fileOf(path) ?? '') ?? epoch }))
+          writeFileSync(resolve(out, 'sitemap.xml'), sitemapXml(options.site.url, builder.config.base, pages))
+        }
+        // robots.txt: allow everything, and point at the sitemap. A robots.txt in public/ (already copied) wins.
+        if (options.site && options.robots !== false && !existsSync(resolve(out, 'robots.txt'))) {
+          const sitemap = options.sitemap !== false ? `\nSitemap: ${new URL('sitemap.xml', new URL(builder.config.base, options.site.url.replace(/\/?$/, '/'))).href}\n` : ''
+          writeFileSync(resolve(out, 'robots.txt'), `User-agent: *\nAllow: /\n${sitemap}`)
+        }
+        if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
+        // Vite's manifest was for this build (island URLs, clarusjs-manifest.json); it isn't part of the site.
+        rmSync(resolve(out, '.vite'), { recursive: true, force: true })
+        if (options.compress) precompress(out)
       }
-      // robots.txt: allow everything, and point at the sitemap. A robots.txt in public/ (already copied) wins.
-      if (options.site && options.robots !== false && !existsSync(resolve(out, 'robots.txt'))) {
-        const sitemap = options.sitemap !== false ? `\nSitemap: ${new URL('sitemap.xml', new URL(builder.config.base, options.site.url.replace(/\/?$/, '/'))).href}\n` : ''
-        writeFileSync(resolve(out, 'robots.txt'), `User-agent: *\nAllow: /\n${sitemap}`)
-      }
-      if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
-      // Vite's manifest was for this build (island URLs, clarusjs-manifest.json); it isn't part of the site.
-      rmSync(resolve(out, '.vite'), { recursive: true, force: true })
-      if (options.compress) precompress(out)
+      await once()
+      if (watching) watchApp(builder, once)
     },
     // order 'pre': before Vite resolves the relative import itself.
     resolveId: { order: 'pre', handler(id, importer) {
@@ -685,5 +701,31 @@ function precompress(dir: string): void {
     const gz = gzipSync(data, { level: 9 })
     if (br.length < data.length) writeFileSync(file + '.br', br)
     if (gz.length < data.length) writeFileSync(file + '.gz', gz)
+  }
+}
+
+/**
+ * vite build --watch: run `once` (the whole build) again after each change under src/ or public/, debounced and one
+ * at a time. A failed rebuild is logged and the next change tries again. The watcher is on the builder (closable).
+ */
+function watchApp(builder: { config: { root: string; logger: { info(m: string): void; error(m: string): void } } }, once: () => Promise<void>): void {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let running = Promise.resolve()
+  const rebuild = () => {
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      running = running.then(once).then(
+        () => builder.config.logger.info('clarusjs: rebuilt'),
+        (err) => builder.config.logger.error(`clarusjs: rebuild failed: ${(err as Error)?.message ?? err}`),
+      )
+    }, 100)
+  }
+  const watchers = ['src', 'public'].filter((d) => existsSync(resolve(builder.config.root, d))).map((d) => watchFs(resolve(builder.config.root, d), { recursive: true }, rebuild))
+  ;(builder as { clarusjsWatcher?: { close(): Promise<void> } }).clarusjsWatcher = {
+    async close() {
+      clearTimeout(timer)
+      for (const w of watchers) w.close()
+      await running
+    },
   }
 }

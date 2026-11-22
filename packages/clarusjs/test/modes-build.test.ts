@@ -132,7 +132,7 @@ test('review: client routes under a base list their browser paths', async () => 
   const dir = mkdtempSync(resolve(tmpdir(), 'clarusjs-client-base-'))
   cpSync(resolve(root, 'src'), resolve(dir, 'src'), { recursive: true })
   mkdirSync(resolve(dir, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'junction')
   const config = { root: dir, configFile: false as const, base: '/docs/', logLevel: 'silent' as const, plugins: [clarusjs({ routes: { '/account/*': 'server', '/app/*': 'client' } })] }
   await (await createBuilder(config)).buildApp()
   const shell = readFileSync(resolve(dir, 'dist/client/app/one/index.html'), 'utf8')

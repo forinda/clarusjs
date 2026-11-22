@@ -8,7 +8,7 @@ import { loadProject } from '../../src/cli/project.ts'
 function app(config: string | null): string {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-project-'))
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   writeFileSync(resolve(root, 'package.json'), '{ "type": "module" }')
   if (config) writeFileSync(resolve(root, 'vite.config.ts'), config)
   return root

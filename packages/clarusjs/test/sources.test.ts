@@ -32,7 +32,7 @@ test('a build renders pages from a source next to .tscl pages, with layouts, com
   w('notes/outside.note', 'raw text')
   w('src/pages/raw.tscl', "@import text from '../../notes/outside.note?raw'\n<pre>{{ text }}</pre>")
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ sources: [note] })] })).buildApp()
   const html = readFileSync(resolve(root, 'dist/client/guide/intro/index.html'), 'utf8')
   expect(html).toMatch(/<main data-path="\/guide\/intro" class="cl-c-main-[a-z0-9]+"><p>Hello from a note\.<\/p><\/main>/)
@@ -55,7 +55,7 @@ test('a source whose extension Vite treats as an asset (.txt) still gets the fil
   const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
   w('src/pages/readme.txt', 'Plain text page.\n')
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const txt: Source = { extension: '.txt', toTscl: (code) => `<p>${code.trim()}</p>` }
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ sources: [txt] })] })).buildApp()
   expect(unscoped(readFileSync(resolve(root, 'dist/client/readme/index.html'), 'utf8'))).toContain('<p>Plain text page.</p>')
