@@ -10,16 +10,19 @@ const program = new Command('clarusjs').description('clarusjs: clear, compiled v
 
 program
   .command('check')
-  .description('type-check every .tscl file under src/ and every page (Markdown pages too), reporting errors where they are written')
+  .description('type-check and lint every .tscl file under src/ and every page (Markdown pages too), reporting each finding where it is written')
   .argument('[dir]', 'project folder', '.')
   .option('--json', 'print diagnostics as JSON')
-  .action(async (dir: string, options: { json?: boolean }) => {
-    // The page sources (Markdown, …) and Vite aliases from the app's Vite config, as the build sees them.
-    const result = check({ root: dir, ...(await loadProject(dir)) })
+  .option('--strict', 'fail on lint warnings too')
+  .action(async (dir: string, options: { json?: boolean; strict?: boolean }) => {
+    // The page sources (Markdown, …), Vite aliases and lint settings from the app's Vite config, as the build sees them.
+    const result = check({ root: dir, ...(await loadProject(dir)), strict: options.strict })
     if (options.json) console.log(result.json)
     else if (result.diagnostics.length) {
+      const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+      const errors = result.diagnostics.filter((d) => d.severity === 'error').length
       console.log(result.text)
-      console.log(`\n${result.diagnostics.length} error${result.diagnostics.length === 1 ? '' : 's'}`)
+      console.log(`\n${[errors && count(errors, 'error'), result.diagnostics.length - errors && count(result.diagnostics.length - errors, 'warning')].filter(Boolean).join(', ')}`)
     } else console.log('No errors.')
     process.exitCode = result.exitCode
   })

@@ -27,6 +27,18 @@ test('the clarusjs plugin\'s sources and resolve.alias, from vite.config.ts (plu
 }, 30_000) // loads vite.config.ts through Vite: slower on Windows runners
 
 test('without a Vite config, or without the plugin in it: no sources', async () => {
-  expect(await loadProject(app(null))).toEqual({ sources: [], viteAliases: undefined })
+  expect(await loadProject(app(null))).toEqual({ sources: [], viteAliases: undefined, lint: undefined, lintRules: [] })
   expect((await loadProject(app('export default { plugins: [] }\n'))).sources).toEqual([])
 })
+
+test("#304: the plugin's lint levels and the project's own lint rules", async () => {
+  const root = app([
+    "import clarusjs from 'clarusjs/vite'",
+    "const mine = { name: 'no-inline-style', check() {} }",
+    "export default { plugins: [clarusjs({ lint: { 'img-alt': 'off' }, lintRules: [mine] })] }",
+    '',
+  ].join('\n'))
+  const project = await loadProject(root)
+  expect(project.lint).toEqual({ 'img-alt': 'off' })
+  expect(project.lintRules.map((r) => r.name)).toEqual(['no-inline-style'])
+}, 30_000)

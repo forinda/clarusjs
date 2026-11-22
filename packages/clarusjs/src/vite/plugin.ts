@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
+import type { LintConfig, LintRuleDef } from '../compiler/lint.ts'
 import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, routeToFile } from './build.ts'
 export { packageOf } from './build.ts'
 /** Newest commit time (unix seconds) of every file under a folder, from one `git log` (themes use it for "last updated"). */
@@ -163,6 +164,16 @@ export type ClarusOptions = {
    */
   links?: { pages?: LinkLevel; anchors?: LinkLevel; strict?: boolean }
   /**
+   * Template lint levels for `clarusjs check`: `{ 'img-alt': 'off', 'accessible-name': 'error' }`. Rules warn by default.
+   * @see https://clarusjs.com/guide/lint
+   */
+  lint?: LintConfig
+  /**
+   * The project's own lint rules, run by `clarusjs check` beside the built-in ones.
+   * @see https://clarusjs.com/guide/lint#writing-a-rule
+   */
+  lintRules?: LintRuleDef[]
+  /**
    * Paths that moved: `{ '/old': '/new' }` (a site path or a full URL). The build writes a page at each old path that
    * sends visitors on, and `_redirects` lines (a real 301 on Netlify and Cloudflare Pages); dev answers 301.
    * @see https://clarusjs.com/guide/routing
@@ -303,7 +314,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   return {
     name: 'clarusjs',
     // For clarusjs check (src/cli/project.ts): the page sources it should type-check too.
-    api: { sources },
+    api: { sources, lint: options.lint, lintRules: options.lintRules },
     config(userConfig, env) {
       // The plugin's own component and stylesheet discovery resolves the same aliases Vite does.
       const projectRoot = resolve(userConfig.root ?? process.cwd())

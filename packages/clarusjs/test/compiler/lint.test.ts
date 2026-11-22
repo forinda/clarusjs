@@ -1,0 +1,113 @@
+// #304: template lint rules only clarusjs understands, located like compile errors.
+import { expect, test } from 'vitest'
+import { lint, type LintRuleDef } from '../../src/compiler/index.ts'
+
+const file = 'src/components/x.tscl'
+const rules = (source: string, config?: Parameters<typeof lint>[2]) => lint(source, file, config).map((m) => `${m.line}:${m.column} ${m.severity} ${m.rule}`)
+
+test('a clean component has nothing to say', () => {
+  const source = `@import badge from './badge.tscl'
+@import { site } from '../site.ts'
+@input title: string
+@input count: number = 0
+<script>
+  let n = state(count)
+</script>
+<h1>{{ title }} {{ site.name }}</h1>
+<badge [n]="n" />
+<img src="/a.png" alt="A" />
+<img src="/b.png" alt="" />
+<label>Name <input /></label>
+<label for="e">Email</label><input id="e" />
+<button (click)="n++">Add</button>
+<button aria-label="Close">×</button>
+<a href="/x"><img src="/i.png" alt="Home" /></a>
+<a href="/y">{{ title }}</a>
+`
+  expect(lint(source, file)).toEqual([])
+})
+
+test('unused-input: an @input (or @model) the template and script never read', () => {
+  expect(rules('@input title: string\n@input used: string\n@model open: boolean = false\n<p>{{ used }}</p>\n')).toEqual([
+    '1:1 warning unused-input',
+    '3:1 warning unused-input',
+  ])
+  // Read in the script, in an attribute, in an @if, an @for, an interpolated attribute, or another input's default.
+  expect(rules('@input a: number\n@input b: string\n@input c: boolean\n@input d: string[]\n@input e: string\n@input f: number = a\n<script>\n  const x = derived(() => f)\n</script>\n<p [title]="b" class="k-{{ e }}">@if (c) {<i>{{ x }}</i>}</p>\n@for (i of d; track i) {<b>{{ i }}</b>}\n')).toEqual([])
+  // A name inside a longer one, or a property of something else, isn't a read.
+  expect(rules('@input name: string\n<p>{{ user.name }} {{ names }}</p>\n')).toEqual(['1:1 warning unused-input'])
+})
+
+test('unused-import: a component never used as a tag, and data never read', () => {
+  expect(rules("@import card from './card.tscl'\n@import { a, b as c } from './data.ts'\n<p>{{ a }}</p>\n")).toEqual([
+    '1:1 warning unused-import',
+    '2:1 warning unused-import',
+  ])
+  expect(lint("@import { a, b as c } from './data.ts'\n<p>{{ a }}</p>\n", file)[0]!.message).toBe("'c' is imported but never used")
+  // Used in a slot fill, in a branch, or as a type.
+  expect(rules("@import card from './card.tscl'\n@import { Kind } from './kinds.ts'\n@input k: Kind\n@if (k) {<card />}\n")).toEqual([])
+})
+
+test('img-alt: every <img> has an alt, empty for decoration', () => {
+  expect(rules('<img src="/a.png" />\n<img [alt]="x" src="/b.png" />\n')).toEqual(['1:1 warning img-alt'])
+})
+
+test('label-field: a <label> names a field, by for="…" or by holding one', () => {
+  expect(rules('<label>Name</label>\n<label>Pick <select></select></label>\n<label [for]="id">Id</label>\n')).toEqual(['1:1 warning label-field'])
+  // A component or a slot may render the field: given the benefit of the doubt.
+  expect(rules("@import field from './field.tscl'\n<label>Name <field /></label>\n<label><slot /></label>\n")).toEqual([])
+})
+
+test('accessible-name: a button or link with no text, label or title', () => {
+  expect(rules('<button></button>\n<a href="/x"><svg></svg></a>\n<a href="/y"><img src="/i.png" alt="" /></a>\n<a name="top"></a>\n')).toEqual([
+    '1:1 warning accessible-name',
+    '2:1 warning accessible-name',
+    '3:1 warning accessible-name',
+  ])
+  expect(rules('<button title="Close"><svg></svg></button>\n<button><slot /></button>\n<a [href]="u" aria-labelledby="t"></a>\n')).toEqual([])
+})
+
+test('rules nested in @if, @for and slot fills are found too', () => {
+  expect(rules('@if (true) {\n  @for (i of [1]; track i) {\n    <img src="/a.png" />\n  }\n}\n')).toEqual(['3:5 warning img-alt'])
+})
+
+test('a {{-- clarusjs-ignore --}} comment skips the next line: all rules, or the ones it names', () => {
+  expect(rules('{{-- clarusjs-ignore img-alt --}}\n<img src="/a.png" />\n<img src="/b.png" />\n')).toEqual(['3:1 warning img-alt'])
+  expect(rules('{{-- clarusjs-ignore --}}\n<button><img src="/a.png" /></button>\n')).toEqual([])
+  expect(rules('{{-- clarusjs-ignore label-field --}}\n<img src="/a.png" />\n')).toEqual(['2:1 warning img-alt'])
+  expect(rules('<img src="/a.png" /> {{-- clarusjs-ignore img-alt --}}\n')).toEqual([]) // or the same line
+})
+
+test('rules can be turned off, or raised to errors', () => {
+  expect(rules('<img src="/a.png" />\n<button></button>\n', { 'img-alt': 'off', 'accessible-name': 'error' })).toEqual(['2:1 error accessible-name'])
+})
+
+test('messages say what to do, and locations are 1-based', () => {
+  const [m] = lint('<p>\n  <img src="/a.png" />\n</p>\n', file)
+  expect(m).toMatchObject({ rule: 'img-alt', severity: 'warning', file, line: 2, column: 3 })
+  expect(m!.message).toBe('<img> without alt: describe the image, or use alt="" when it is decoration')
+})
+
+test("a project's own rules run beside the built-in ones, with the same levels and ignores", () => {
+  // The recipe from the Lint guide: no inline style="…", so styles stay in <style> blocks.
+  const noInlineStyle: LintRuleDef = {
+    name: 'no-inline-style',
+    check({ elements, report }) {
+      for (const el of elements) {
+        const style = el.attrs.find((a) => a.name === 'style')
+        if (style) report(style.start, `inline style on <${el.tag}>: move it to a <style> block`)
+      }
+    },
+  }
+  const source = '<p style="color: red">a</p>\n{{-- clarusjs-ignore no-inline-style --}}\n<b style="x">b</b>\n<img src="/a.png" />\n'
+  expect(lint(source, file, {}, [noInlineStyle]).map((m) => `${m.line}:${m.column} ${m.severity} ${m.rule} ${m.message}`)).toEqual([
+    '1:4 warning no-inline-style inline style on <p>: move it to a <style> block',
+    '4:1 warning img-alt <img> without alt: describe the image, or use alt="" when it is decoration',
+  ])
+  expect(lint(source, file, { 'no-inline-style': 'error', 'img-alt': 'off' }, [noInlineStyle]).map((m) => m.severity)).toEqual(['error'])
+})
+
+test('a rule that throws is reported as its own finding, not a crash', () => {
+  const broken: LintRuleDef = { name: 'broken', check() { throw new Error('oops') } }
+  expect(lint('<p></p>\n', file, {}, [broken])).toEqual([expect.objectContaining({ rule: 'broken', severity: 'error', line: 1, column: 1, message: 'the rule failed: oops' })])
+})

@@ -2,8 +2,9 @@
 // resolve.alias, so check sees the same pages and imports as the build. Read with Vite's own config loader.
 import { resolve } from 'node:path'
 import type { CheckSource } from './check.ts'
+import type { LintConfig, LintRuleDef } from '../compiler/lint.ts'
 
-type Plugin = { name?: string; api?: { sources?: CheckSource[] } }
+type Plugin = { name?: string; api?: { sources?: CheckSource[]; lint?: LintConfig; lintRules?: LintRuleDef[] } }
 
 /** Vite's plugins option: plugins, falsy entries, nested arrays and promises of any of these. */
 async function flatten(plugins: unknown): Promise<Plugin[]> {
@@ -12,11 +13,14 @@ async function flatten(plugins: unknown): Promise<Plugin[]> {
   return value && typeof value === 'object' ? [value as Plugin] : []
 }
 
-export async function loadProject(root: string): Promise<{ sources: CheckSource[]; viteAliases: unknown }> {
+type Project = { sources: CheckSource[]; viteAliases: unknown; lint: LintConfig | undefined; lintRules: LintRuleDef[] }
+const none: Project = { sources: [], viteAliases: undefined, lint: undefined, lintRules: [] }
+
+export async function loadProject(root: string): Promise<Project> {
   let vite: typeof import('vite')
-  try { vite = await import('vite') } catch { return { sources: [], viteAliases: undefined } } // vite is a peer dependency
+  try { vite = await import('vite') } catch { return none } // vite is a peer dependency
   const loaded = await vite.loadConfigFromFile({ command: 'build', mode: 'production' }, undefined, resolve(root), 'silent')
-  if (!loaded) return { sources: [], viteAliases: undefined }
+  if (!loaded) return none
   const plugin = (await flatten(loaded.config.plugins)).find((p) => p.name === 'clarusjs')
-  return { sources: plugin?.api?.sources ?? [], viteAliases: loaded.config.resolve?.alias }
+  return { sources: plugin?.api?.sources ?? [], viteAliases: loaded.config.resolve?.alias, lint: plugin?.api?.lint, lintRules: plugin?.api?.lintRules ?? [] }
 }
