@@ -23,6 +23,8 @@ description: "Bind attributes, classes and styles: [name], {{ }} in values, [cla
 </button>
 ```
 
+For a longer example to edit (toggles, objects, style properties and a spread from state, and a link from data whose `javascript:` URL never reaches the page), pick **Attributes** in the [Playground](/repl).
+
 ## One attribute
 
 ```tscl
