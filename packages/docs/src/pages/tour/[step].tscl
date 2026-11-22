@@ -1,7 +1,7 @@
-@import docs from '../../layouts/docs.tscl'
-@import tourKeys from '../../components/tour-keys.tscl'
+@import docs from '~/layouts/docs.tscl'
+@import tourKeys from '~/components/tour-keys.tscl'
 @import { href } from 'clarusjs/navigation'
-@import type { Step } from '../../tour.ts'
+@import type { Step } from '~/tour.ts'
 @input step: string
 @input current: Step
 @input total: number

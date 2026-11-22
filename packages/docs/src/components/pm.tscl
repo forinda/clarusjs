@@ -3,8 +3,8 @@
 @input commands: string[]
 
 <script>
-  import { pm } from '../stores/pm.ts'
-  import { managers, command } from '../pm.ts'
+  import { pm } from '~/stores/pm.ts'
+  import { managers, command } from '~/pm.ts'
   import { browser } from 'clarusjs/runtime'
   let manager = shared(pm)
   function pick(m) {

@@ -5,7 +5,7 @@
 
 <script>
   import { resource } from 'clarusjs/fetch'
-  import { stats } from '../stores/dashboard.ts'
+  import { stats } from '~/stores/dashboard.ts'
   const stat = resource(() => stats.get(key))
   function show(v) {
     return (money ? '$' : '') + v.toLocaleString('en-US')
