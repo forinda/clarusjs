@@ -153,10 +153,10 @@ describe('frameDoc', () => {
 })
 
 describe('starters', () => {
-  test('counter, todo, form, checkout and conditional; each compiles for server and client without warnings, and passes lint', async () => {
+  test('counter, todo, form, checkout, attributes and conditional; each compiles for server and client without warnings, and passes lint', async () => {
     const { starters } = await import('../src/repl/starters.ts')
     const { compile, lint } = await import('clarusjs/compiler')
-    expect(starters.map((s) => s.name)).toEqual(['Counter', 'Todo list', 'Form', 'Checkout', 'Conditional'])
+    expect(starters.map((s) => s.name)).toEqual(['Counter', 'Todo list', 'Form', 'Checkout', 'Attributes', 'Conditional'])
     for (const s of starters) {
       const server = compile(s.source, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' })
       const client = compile(s.source, { file: 'App.tscl', target: 'client' })

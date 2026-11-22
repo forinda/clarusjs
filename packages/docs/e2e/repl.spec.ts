@@ -211,6 +211,27 @@ test.describe('/repl', () => {
     await expect(frame.getByRole('status')).toContainText('Thanks, Ada! Your order is placed.')
   })
 
+  test('the Attributes example: toggles, objects, a style property and a spread, all following state', async ({ page }) => {
+    await open(page)
+    await page.getByLabel('Example').selectOption('Attributes')
+    const frame = preview(page)
+    const card = frame.locator('.card')
+    const classes = () => card.evaluate((el) => [...el.classList].filter((c) => !c.startsWith('cl-c-')).join(' '))
+    await expect.poll(classes).toBe('card')
+    await expect(card).toHaveAttribute('style', '--hue: 200;')
+    await expect(card).toHaveAttribute('aria-pressed', 'false')
+    await frame.getByRole('button', { name: 'Select' }).click()
+    await expect.poll(classes).toBe('card selected')
+    await expect(card).toHaveAttribute('aria-pressed', 'true')
+    await frame.getByLabel('Big').check()
+    await expect.poll(classes).toBe('card big selected') // written, the [class] object, then the toggle
+    await expect(frame.locator('.title')).toHaveAttribute('style', /font-size: 1\.5em;/)
+    await frame.getByLabel('Hue').fill('20')
+    await expect(card).toHaveAttribute('style', '--hue: 20;')
+    // A link from data: the javascript: URL never reaches the page.
+    await expect(frame.locator('.unsafe')).toHaveAttribute('href', 'about:invalid#unsafe')
+  })
+
   test('opens with the first starter running', async ({ page }) => {
     await open(page)
     await expect(page).toHaveTitle(/Playground/)

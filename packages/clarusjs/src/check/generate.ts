@@ -231,8 +231,16 @@ export function generateTs(source: string, file: string, options: { loader?: str
           emit('  { const ')
           point('__cl_p', node.start, node.tag.length + 1) // the tag: `<card`
           emit(`: __cl_Readonly<${alias(node.tag)}> = { `) // a child reads its inputs only, so readonly values fit
+          // A spread (#406) first: it must provide the required inputs the tag doesn't write (TypeScript doesn't check a
+          // spread's extra keys).
           for (const a of node.attrs) {
-            if (a.kind !== 'prop' && a.kind !== 'model') continue
+            if (a.kind !== 'prop' || a.name !== '...') continue
+            emit('...(')
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit('), ')
+          }
+          for (const a of node.attrs) {
+            if ((a.kind !== 'prop' && a.kind !== 'model') || a.name === '...') continue
             copy(a.name, a.start + (a.kind === 'model' ? 2 : 1))
             emit(': (')
             copy(a.expr, at(a.expr, attrValueStart(a)))
