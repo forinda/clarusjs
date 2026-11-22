@@ -1,0 +1,32 @@
+{{--
+  "On this page" (a public part, #360): the page's h2/h3 as a column (an aside, shown from 1280px) or, with inline, a
+  collapsible box above the content (below 1280px). Nothing without headings. Replace it with
+  themeDocs({ components: { contents } }) (#361).
+--}}
+@import type { Heading } from '../nav.ts'
+@input headings: Heading[] = []
+@input inline: boolean = false
+
+@if (headings.length && inline) {
+  <details class="toc-inline">
+    <summary>On this page</summary>
+    <ul>
+      @for (h of headings; track h.id) {
+        <li [class]="h.level === 3 ? 'sub' : false">
+          <a [href]="'#' + h.id">{{ h.text }}</a>
+        </li>
+      }
+    </ul>
+  </details>
+} @else if (headings.length) {
+  <aside class="toc" aria-label="On this page">
+    <p>On this page</p>
+    <ul>
+      @for (h of headings; track h.id) {
+        <li [class]="h.level === 3 ? 'sub' : false">
+          <a [href]="'#' + h.id">{{ h.text }}</a>
+        </li>
+      }
+    </ul>
+  </aside>
+}

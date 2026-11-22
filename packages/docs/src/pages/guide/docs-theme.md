@@ -216,6 +216,27 @@ Add your own content in place, without copying the layout:
 
 The slots are `sidebar-top`, `sidebar-bottom`, `content-top`, `content-bottom` and `footer` (it replaces `config.footer`).
 
+## Parts
+
+The layout is made of parts, each a component in `@clarusjs/theme-docs/parts/`. Use them on their own when you compose a layout of your own:
+
+| Part | What | Inputs | Slots |
+|---|---|---|---|
+| `header.tscl` | the menu button, brand, section links, Learn status, search, social links, theme toggle | `config`, `path`, `app` | |
+| `sidebar.tscl` | the page list: a drawer below 1024px, beside the content from 1024px | `config`, `path` | `top`, `bottom` |
+| `contents.tscl` | "On this page": a column, or with `inline` a box above the content | `headings`, `inline` | |
+| `page-footer.tscl` | the edit link, last updated, and the previous and next pages | `config`, `path`, `source` | |
+| `footer.tscl` | the site footer: `config.footer` | `config` | default |
+
+```tscl
+@import siteHeader from '@clarusjs/theme-docs/parts/header.tscl'
+@import { config } from '../theme.config.ts'
+@input path: string = '/'
+
+<siteHeader [config]="config" [path]="path" />
+<main><slot /></main>
+```
+
 ## Tokens
 
 Every colour, font and size is a CSS custom property on `:root`, so you can restyle the theme from your own stylesheet without overriding its rules:

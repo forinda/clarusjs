@@ -1,0 +1,8 @@
+{{--
+  The site footer (a public part, #360): its default content is config.footer. Replace it with
+  themeDocs({ components: { footer } }) (#361).
+--}}
+@import type { ThemeConfig } from '../nav.ts'
+@input config: ThemeConfig
+
+<footer class="site-footer"><slot>@if (config.footer) {<p>{{ config.footer }}</p>}</slot></footer>

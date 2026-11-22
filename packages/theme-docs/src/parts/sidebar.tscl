@@ -1,0 +1,42 @@
+{{--
+  The page list (a public part, #360): a drawer below 1024px (popover: Escape and a click outside close it), always
+  visible from 1024px. Slots: top, bottom. Replace it with themeDocs({ components: { sidebar } }) (#361).
+--}}
+@import type { ThemeConfig } from '../nav.ts'
+@import { groupsOf } from '../nav.ts'
+@input config: ThemeConfig
+@input path: string = '/'
+
+<nav id="sidebar" class="sidebar" aria-label="Pages" popover>
+  <div class="sidebar-head">
+    <span>{{ config.brand.text }}{{ config.brand.accent ?? '' }}</span>
+    <button type="button" popovertarget="sidebar" popovertargetaction="hide" aria-label="Close the menu">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <path d="M6 6l12 12M18 6L6 18"></path>
+      </svg>
+    </button>
+  </div>
+  <slot name="top"></slot>
+  @for (group of groupsOf(config.sections, path); track group.title) {
+    <p class="group">{{ group.title }}</p>
+    <ul>
+      @for (item of group.items; track item.href) {
+        <li>
+          <a [href]="item.href" [aria-current]="item.href === path ? 'page' : false">{{ item.title }}</a>
+        </li>
+      }
+    </ul>
+  }
+  <slot name="bottom"></slot>
+  {{-- On phones, the header's links live here. --}}
+  <div class="sidebar-links">@for (s of config.sections; track s.key) {<a [href]="s.href">{{ s.title }}</a>} @for (link of config.social ?? []; track link.href) {<a [href]="link.href">{{ link.label }}</a>}</div>
+</nav>

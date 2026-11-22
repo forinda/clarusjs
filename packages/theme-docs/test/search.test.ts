@@ -71,3 +71,8 @@ test('loads in Vite dev (the module runner), where the base comes from import.me
     await server.close()
   }
 })
+
+test("#360: the layout's parts carry a scope class; they stay out of the index all the same", () => {
+  const html = page('<h1 id="start">Start</h1><details class="toc-inline cl-c-contents-1"><summary>On this page</summary><a href="#one">One</a></details><p>Body.</p><footer class="page-footer cl-c-page-footer-2"><a class="next" href="/x">Next page</a></footer>')
+  expect(sectionsOf(html, '/start')).toEqual([{ u: '/start', p: 'Start', h: 'Start', t: 'Body.' }])
+})

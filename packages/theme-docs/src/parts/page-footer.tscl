@@ -1,0 +1,21 @@
+{{--
+  Under the content (a public part, #360): the edit link, when the page was last updated, and the previous and next
+  pages. Replace it with themeDocs({ components: { pageFooter } }) (#361).
+--}}
+@import type { ThemeConfig } from '../nav.ts'
+@import { editHref, updatedOf, pager } from '../nav.ts'
+@input config: ThemeConfig
+@input path: string = '/'
+{{-- The page's own route, when it differs from its sidebar entry (see the layout's source input). --}}
+@input source: string = ''
+
+<footer class="page-footer">
+  @if (editHref(config, source || path)) {<a class="edit" [href]="editHref(config, source || path)">Edit this page on GitHub</a>}
+  @if (updatedOf(config, source || path)) {
+    <p class="updated">
+      Last updated
+      <time [datetime]="updatedOf(config, source || path)?.iso">{{ updatedOf(config, source || path)?.text }}</time>
+    </p>
+  }
+  <nav class="pager" aria-label="Previous and next">@if (pager(config.sections, path).prev.href) {<a class="prev" [href]="pager(config.sections, path).prev.href"><small>Previous</small>{{ pager(config.sections, path).prev.title }}</a>} @if (pager(config.sections, path).next.href) {<a class="next" [href]="pager(config.sections, path).next.href"><small>Next</small>{{ pager(config.sections, path).next.title }}</a>}</nav>
+</footer>

@@ -1,0 +1,62 @@
+{{--
+  The site header (a public part, #360): the menu button, brand, section links, Learn status, search, social links and
+  the theme toggle. Replace it with themeDocs({ components: { header } }) (#361).
+--}}
+@import themeToggle from '../theme-toggle.tscl'
+@import pageTransitions from '../view-transitions.tscl'
+@import siteSearch from '../search.tscl'
+@import learnStatus from '../learn-status.tscl'
+@import type { ThemeConfig } from '../nav.ts'
+@import { sectionKey, lessonsOf } from '../nav.ts'
+@input config: ThemeConfig
+@input path: string = '/'
+{{-- An app page (a tool) has no sidebar, so no menu button. --}}
+@input app: boolean = false
+
+<header class="site-header">
+  @if (!app && sectionKey(config.sections, path)) {
+    <button type="button" class="menu-button" popovertarget="sidebar" aria-label="Open menu">
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        aria-hidden="true"
+      >
+        <path d="M4 7h16M4 12h16M4 17h16"></path>
+      </svg>
+    </button>
+  }
+  <a class="brand" href="/"
+    >@if (config.brand.logo) {<img [src]="config.brand.logo" alt="" width="28" height="28">}<span>{{ config.brand.text }}@if (config.brand.accent) {<span class="js">{{ config.brand.accent }}</span>}</span></a
+  >
+  <nav class="top-nav" aria-label="Main">@for (s of config.sections; track s.key) {<a [href]="s.href" [aria-current]="sectionKey(config.sections, path) === s.key ? 'true' : false">{{ s.title }}</a>}</nav>
+  <div class="header-end">
+    {{-- On Learn pages: the XP chip, and the sidebar's lessons marked done, current or locked. --}}
+    @if (config.learn && sectionKey(config.sections, path) === config.learn.section) {<learnStatus [lessons]="lessonsOf(config).map((l) => l.href)" [progress]="config.learn.progress" />}
+    {{-- Kept across fragment navigations, like the theme toggle: its shortcut listener is added once. --}}
+    @if (config.search) {<span class="persist" data-cl-persist="search"><siteSearch /></span>}
+    @if ((config.social ?? []).length) {
+      <span class="social">
+        @for (link of config.social ?? []; track link.href) {
+          <a [href]="link.href" [aria-label]="link.label" [title]="link.label"> @if (link.icon === 'github') {<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 19c-4 1.5-4-2-6-2.5m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"></path></svg>} @else if (link.icon === 'npm') {<span class="npm" aria-hidden="true">npm</span>} @else {<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>} </a>
+        }
+      </span>
+      {{-- When the header runs out of room, the social links fold into this menu (native popover). --}}
+      <button type="button" class="more-button" popovertarget="more" aria-label="More links">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="5" cy="12" r="2"></circle>
+          <circle cx="12" cy="12" r="2"></circle>
+          <circle cx="19" cy="12" r="2"></circle>
+        </svg>
+      </button>
+      <div id="more" class="more" popover>@for (link of config.social ?? []; track link.href) {<a [href]="link.href">{{ link.label }}</a>}</div>
+    }
+    {{-- Kept across fragment navigations: the same element, with its state. --}}
+    <span class="persist" data-cl-persist="theme"><themeToggle /></span>
+    @if (config.viewTransitions) {<span class="persist" data-cl-persist="view-transitions"><pageTransitions /></span>}
+  </div>
+</header>

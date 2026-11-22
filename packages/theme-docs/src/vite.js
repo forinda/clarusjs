@@ -152,9 +152,10 @@ export function sectionsOf(html, url) {
   if (main === undefined || /\bdata-search="false"/.test(main)) return []
   const body = main.replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<(script|style|template)\b[\s\S]*?<\/\1>/gi, '')
-    .replace(/<p class="crumb">[\s\S]*?<\/p>/, '')
-    .replace(/<details class="toc-inline">[\s\S]*?<\/details>/, '')
-    .replace(/<footer class="page-footer">[\s\S]*?<\/footer>/, '')
+    // By class token: the layout's parts carry their scope class too (class="page-footer cl-c-…").
+    .replace(/<p\b[^>]*\bclass="[^"]*\bcrumb\b[^"]*"[^>]*>[\s\S]*?<\/p>/, '')
+    .replace(/<details\b[^>]*\bclass="[^"]*\btoc-inline\b[^"]*"[^>]*>[\s\S]*?<\/details>/, '')
+    .replace(/<footer\b[^>]*\bclass="[^"]*\bpage-footer\b[^"]*"[^>]*>[\s\S]*?<\/footer>/, '')
     .replace(/<a class="header-anchor"[\s\S]*?<\/a>/g, '')
   const parts = body.split(/(<h[1-3]\b[^>]*\bid="[^"]*"[^>]*>[\s\S]*?<\/h[1-3]>)/i)
   const page = plain(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(body)?.[1] ?? /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? '')
