@@ -2,8 +2,10 @@
 // `virtual:theme-docs/pages`, so the sidebar data (not the files) reaches pages rendered in the browser too.
 // Plain JavaScript: vite.config loads it from node_modules, where Node doesn't strip types. Types are the JSDoc here;
 // vite.d.ts is generated from it (pnpm types; typecheck and prepack run it).
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { parse } from 'clarusjs/compiler'
 import { gitDates } from 'clarusjs/vite'
 import { CHUNK, termFile, tokens } from './search.js'
 
@@ -14,7 +16,11 @@ const ID = 'virtual:theme-docs/pages'
  * @property {string} [pages] the pages folder, from the Vite root (default src/pages)
  * @property {boolean} [search] false: no search index (it's written to the client output's search/ after the build)
  * @property {LlmsOptions} [llms] write llms.txt and llms-full.txt to the client output after the build (llmstxt.org)
+ * @property {Partial<Record<PartName, string>>} [components] parts of the layout replaced by files of the site's own, from
+ *   the Vite root: `{ header: '/src/theme/header.tscl' }`. Each gets the inputs and slots the theme's part gets.
  */
+
+/** @typedef {'header' | 'sidebar' | 'contents' | 'pageFooter' | 'footer'} PartName */
 
 /**
  * @typedef {object} LlmsOptions
@@ -23,6 +29,65 @@ const ID = 'virtual:theme-docs/pages'
  * @property {string} [site] the public address (https://example.com): links are absolute with it, root-relative without
  */
 
+/** The layout's replaceable parts (#361) and their files in src/parts/. */
+const PARTS = { header: 'header.tscl', sidebar: 'sidebar.tscl', contents: 'contents.tscl', pageFooter: 'page-footer.tscl', footer: 'footer.tscl' }
+const PARTS_DIR = fileURLToPath(new URL('./parts/', import.meta.url))
+const real = (/** @type {string} */ p) => { try { return realpathSync(p) } catch { return p } }
+
+/**
+ * A .tscl file's inputs (name, and whether it has a default) and slot names ('default' for the unnamed one).
+ * @param {string} file
+ */
+function contractOf(file) {
+  const parsed = parse(readFileSync(file, 'utf8'), file)
+  /** @type {Set<string>} */
+  const slots = new Set()
+  /** @param {any[]} nodes */
+  const walk = (nodes) => {
+    for (const n of nodes) {
+      if (n.type === 'element' && n.tag === 'slot') {
+        const name = n.attrs.find((/** @type {any} */ a) => a.name === 'name' && a.kind === 'static')
+        slots.add(name ? String(name.value) : 'default')
+      }
+      for (const key of ['children', 'empty']) if (Array.isArray(n[key])) walk(n[key])
+      if (n.type === 'if') for (const b of n.branches) walk(b.children)
+    }
+  }
+  walk(parsed.nodes)
+  return { inputs: parsed.inputs.map((i) => ({ name: i.name, required: i.default === undefined })), slots }
+}
+
+/**
+ * The site's replacements for the layout's parts, as absolute paths by part file, checked against the parts they
+ * replace: every part named exists, every file exists, a replacement needs no input the layout doesn't pass, and has
+ * every slot the layout fills.
+ * @param {Partial<Record<string, string>>} components
+ * @param {string} root
+ * @returns {Map<string, string>}
+ */
+function overridesOf(components, root) {
+  /** @type {Map<string, string>} */
+  const out = new Map()
+  for (const [key, path] of Object.entries(components)) {
+    const part = /** @type {Record<string, string>} */ (PARTS)[key]
+    if (!part) throw new Error(`themeDocs: components.${key} isn't a part of the theme; the parts are ${Object.keys(PARTS).join(', ')}`)
+    if (!path) continue
+    const file = resolve(root, path.startsWith('/') ? '.' + path : path)
+    if (!existsSync(file)) throw new Error(`themeDocs: components.${key}: no file at ${path}`)
+    const theirs = contractOf(join(PARTS_DIR, part))
+    const mine = contractOf(file)
+    const passed = new Set(theirs.inputs.map((i) => i.name))
+    for (const i of mine.inputs) {
+      if (i.required && !passed.has(i.name)) throw new Error(`themeDocs: components.${key} (${path}) requires @input ${i.name}, which the layout never passes: give it a default, or remove it`)
+    }
+    for (const slot of theirs.slots) {
+      if (!mine.slots.has(slot)) throw new Error(`themeDocs: components.${key} (${path}) has no ${slot === 'default' ? '<slot />' : `<slot name="${slot}">`}, which the layout fills`)
+    }
+    out.set(real(join(PARTS_DIR, part)), file)
+  }
+  return out
+}
+
 /**
  * Reads the pages for the sidebar (served as `virtual:theme-docs/pages`) and writes the search index after the build.
  * @param {Options} [options]
@@ -30,15 +95,37 @@ const ID = 'virtual:theme-docs/pages'
  */
 export function themeDocs(options = {}) {
   let dir = resolve(options.pages ?? 'src/pages')
+  /** @type {Map<string, string>} */
+  let overrides = new Map()
   return {
     name: 'clarusjs:theme-docs',
+    // Before Vite resolves the layout's relative import of a part itself.
+    enforce: 'pre',
+    // The replacements, for clarusjs to find like its own components (their styles and islands): no page imports
+    // them by path, and they may be outside src/.
+    api: {
+      /** @param {string} root */
+      clarusComponents: (root) => [...overridesOf(options.components ?? {}, root).values()],
+    },
     /** @param {{ root: string }} config */
     configResolved(config) {
       dir = resolve(config.root, options.pages ?? 'src/pages')
+      overrides = overridesOf(options.components ?? {}, config.root)
     },
-    /** @param {string} id */
-    resolveId(id) {
-      return id === ID ? '\0' + ID : undefined
+    /**
+     * @param {string} id
+     * @param {string} [importer]
+     */
+    resolveId(id, importer) {
+      if (id === ID) return '\0' + ID
+      // The layout's import of a part the site replaced (./parts/x.tscl from the theme): the site's file.
+      // The query (?render: the layout rendered in the browser) stays on the site's file.
+      if (overrides.size && importer && id.startsWith('./parts/')) {
+        const [path, query] = id.split('?', 2)
+        const file = overrides.get(real(resolve(dirname(importer.replace(/\?.*$/, '')), /** @type {string} */ (path))))
+        if (file) return query === undefined ? file : `${file}?${query}`
+      }
+      return undefined
     },
     /** @param {string} id */
     load(id) {
@@ -138,6 +225,13 @@ const plain = (html) => html.replace(/<[^>]*>/g, (tag) => (BLOCK.test(tag) ? ' '
   .replace(/\s+/g, ' ').trim()
 
 /**
+ * An element (its tag, through its closing tag) whose class attribute has `name` as a whole token.
+ * @param {string} tag
+ * @param {string} name
+ */
+const withClass = (tag, name) => new RegExp(`<${tag}\\b[^>]*\\bclass="(?:[^"]*\\s)?${name}(?:\\s[^"]*)?"[^>]*>[\\s\\S]*?<\\/${tag}>`)
+
+/**
  * A built page's search sections: its main content (main#content, without the theme's crumb, inline contents and
  * footer) split at each h1-h3 with an id. None for pages without one, noindex pages and pages with
  * data-search="false" in their content.
@@ -152,9 +246,11 @@ export function sectionsOf(html, url) {
   if (main === undefined || /\bdata-search="false"/.test(main)) return []
   const body = main.replace(/<!--[\s\S]*?-->/g, '')
     .replace(/<(script|style|template)\b[\s\S]*?<\/\1>/gi, '')
-    .replace(/<p class="crumb">[\s\S]*?<\/p>/, '')
-    .replace(/<details class="toc-inline">[\s\S]*?<\/details>/, '')
-    .replace(/<footer class="page-footer">[\s\S]*?<\/footer>/, '')
+    // By whole class token: the layout's parts carry their scope class too (class="page-footer cl-c-…"), and a class
+    // that only starts the same (crumb-note) isn't one of them.
+    .replace(withClass('p', 'crumb'), '')
+    .replace(withClass('details', 'toc-inline'), '')
+    .replace(withClass('footer', 'page-footer'), '')
     .replace(/<a class="header-anchor"[\s\S]*?<\/a>/g, '')
   const parts = body.split(/(<h[1-3]\b[^>]*\bid="[^"]*"[^>]*>[\s\S]*?<\/h[1-3]>)/i)
   const page = plain(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(body)?.[1] ?? /<title>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? '')

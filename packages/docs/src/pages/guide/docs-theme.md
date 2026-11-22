@@ -216,6 +216,48 @@ Add your own content in place, without copying the layout:
 
 The slots are `sidebar-top`, `sidebar-bottom`, `content-top`, `content-bottom` and `footer` (it replaces `config.footer`).
 
+## Parts
+
+The layout is made of parts, each a component in `@clarusjs/theme-docs/parts/`. Use them on their own when you compose a layout of your own:
+
+| Part | What | Inputs | Slots |
+|---|---|---|---|
+| `header.tscl` | the menu button, brand, section links, Learn status, search, social links, theme toggle | `config`, `path`, `app` | |
+| `sidebar.tscl` | the page list: a drawer below 1024px, beside the content from 1024px | `config`, `path` | `top`, `bottom` |
+| `contents.tscl` | "On this page": a column, or with `inline` a box above the content | `headings`, `inline` | |
+| `page-footer.tscl` | the edit link, last updated, and the previous and next pages | `config`, `path`, `source` | |
+| `footer.tscl` | the site footer: `config.footer` | `config` | default |
+
+```tscl
+@import siteHeader from '@clarusjs/theme-docs/parts/header.tscl'
+@import { config } from '../theme.config.ts'
+@input path: string = '/'
+
+<siteHeader [config]="config" [path]="path" />
+<main><slot /></main>
+```
+
+## Replacing a part
+
+To change a part's markup rather than add to it, give `themeDocs()` a file of your own for it. The layout uses yours in place of the theme's; the other parts stay the theme's:
+
+```ts [vite.config.ts]
+themeDocs({ components: { footer: '/src/theme/footer.tscl' } })
+```
+
+```tscl
+{{-- src/theme/footer.tscl --}}
+@import type { ThemeConfig } from '@clarusjs/theme-docs/nav.ts'
+@input config: ThemeConfig
+
+<footer class="site-footer">
+  <slot>@if (config.footer) {<p>{{ config.footer }}</p>}</slot>
+  <nav><a href="https://github.com/acme/docs">GitHub</a></nav>
+</footer>
+```
+
+The names are `header`, `sidebar`, `contents`, `pageFooter` and `footer`. Your file gets the same inputs as the part it replaces (see the table above), and must have the same slots, since the layout fills them; it needn't declare every input, but any input it requires must be one the layout passes. It may be anywhere in the project: its styles and islands are built like those of your own components. A mistake is a build error that says what to fix. Starting from a copy of the theme's part keeps its classes, so the theme's CSS still applies. This site's footer is replaced this way.
+
 ## Tokens
 
 Every colour, font and size is a CSS custom property on `:root`, so you can restyle the theme from your own stylesheet without overriding its rules:

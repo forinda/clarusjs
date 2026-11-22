@@ -39,6 +39,23 @@ beforeAll(async () => {
   w('src/pages/learn/two.tscl', lesson('/learn/two', '<h1>Two</h1>'))
   w('src/pages/learn/progress.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import learnProgress from '@clarusjs/theme-docs/learn-progress.tscl'\n@import { config } from '../../config.ts'\n<layout [config]=\"config\" [title]=\"'Progress'\" [path]=\"'/learn/progress'\"><h1>Progress</h1><learnProgress [config]=\"config\" /></layout>\n")
   w('src/pages/guide/tool.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../../config.ts'\n<layout [config]=\"config\" [title]=\"'Tool'\" [path]=\"'/guide/start'\" [app]=\"true\"><div class=\"tool\">Tool</div></layout>\n")
+  // #360: each part on its own, as a site uses one when it composes its own layout.
+  w('src/pages/guide/parts.tscl', [
+    "@import siteHeader from '@clarusjs/theme-docs/parts/header.tscl'",
+    "@import docsSidebar from '@clarusjs/theme-docs/parts/sidebar.tscl'",
+    "@import contents from '@clarusjs/theme-docs/parts/contents.tscl'",
+    "@import pageFooter from '@clarusjs/theme-docs/parts/page-footer.tscl'",
+    "@import siteFooter from '@clarusjs/theme-docs/parts/footer.tscl'",
+    "@import { config } from '../../config.ts'",
+    "<div class=\"parts\">",
+    "  <siteHeader [config]=\"config\" [path]=\"'/guide/start'\" />",
+    "  <docsSidebar [config]=\"config\" [path]=\"'/guide/start'\">@slot('top') {<p class=\"top\">Top</p>}</docsSidebar>",
+    "  <contents [headings]=\"[{ id: 'a', text: 'A', level: 2 }]\" [inline]=\"true\" />",
+    "  <pageFooter [config]=\"config\" [path]=\"'/guide/start'\" />",
+    "  <siteFooter [config]=\"config\" />",
+    "</div>",
+    '',
+  ].join('\n'))
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [themeDocs(), clarusjs()] })).buildApp()
   html = unscoped(readFileSync(resolve(root, 'dist/client/guide/start/index.html'), 'utf8'))
 }, 120_000)
@@ -127,4 +144,15 @@ test('app: the header and a full-height main for a tool (a playground), without 
   expect(tool).not.toContain('class="page-footer"')
   expect(tool).not.toContain('class="site-footer"')
   expect(tool).not.toContain('popovertarget="sidebar"') // no drawer to open
+})
+
+test('#360: the layout is made of public parts, each usable on its own', () => {
+  const parts = unscoped(readFileSync(resolve(root, 'dist/client/guide/parts/index.html'), 'utf8'))
+  expect(parts).toMatch(/<header class="site-header">[\s\S]*<a href="\/guide\/start" aria-current="true">Guide<\/a>/)
+  expect(parts).toMatch(/<nav id="sidebar" class="sidebar" aria-label="Pages" popover>[\s\S]*<p class="top">Top<\/p>[\s\S]*<a href="\/guide\/start" aria-current="page">Start<\/a>/)
+  expect(parts).toMatch(/<details class="toc-inline">\s*<summary>On this page<\/summary>[\s\S]*<a href="#a">A<\/a>/)
+  expect(parts).toMatch(/<footer class="page-footer">[\s\S]*<a class="next" href="\/guide\/next">/)
+  expect(parts).toMatch(/<footer class="site-footer">\s*<p>Acme footer<\/p>\s*<\/footer>/)
+  const layout = readFileSync(resolve(import.meta.dirname, '../src/layout.tscl'), 'utf8')
+  for (const part of ['header', 'sidebar', 'contents', 'page-footer', 'footer']) expect(layout).toContain(`from './parts/${part}.tscl'`)
 })
