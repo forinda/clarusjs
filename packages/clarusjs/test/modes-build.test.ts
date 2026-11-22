@@ -1,5 +1,5 @@
 // #29: a build with server routes: static routes are files, server routes render per request from dist/server.
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createBuilder, preview } from 'vite'
@@ -183,4 +183,22 @@ test('#36: with fragments on, static pages load the navigation script, which sta
 test('#307: collapseWhitespace: false keeps template text as written at build', () => {
   const html = readFileSync(resolve(root, 'dist/client/spacing/index.html'), 'utf8')
   expect(html).toContain('<p>\n        Indented    text\n    </p>')
+})
+
+test('#98: compress writes .br and .gz next to the text files of dist/client, each the same content', async () => {
+  const { brotliDecompressSync, gunzipSync } = await import('node:zlib')
+  const { readdirSync } = await import('node:fs')
+  const client = resolve(root, 'dist/client')
+  const html = readFileSync(resolve(client, 'index.html'))
+  expect(gunzipSync(readFileSync(resolve(client, 'index.html.gz'))).equals(html)).toBe(true)
+  expect(brotliDecompressSync(readFileSync(resolve(client, 'index.html.br'))).equals(html)).toBe(true)
+  const files = readdirSync(client, { recursive: true }) as string[]
+  const js = files.find((f) => f.endsWith('.js'))!
+  expect(files).toContain(js + '.br')
+  // Only text files, and only when compressing makes them smaller; never a compressed file of a compressed file.
+  expect(files.some((f) => /\.(br|gz)\.(br|gz)$/.test(f))).toBe(false)
+  for (const f of files.filter((f) => /\.(br|gz)$/.test(f))) {
+    expect(f).toMatch(/\.(html|js|css|svg|json|xml)\.(br|gz)$/)
+    expect(statSync(resolve(client, f)).size).toBeLessThan(statSync(resolve(client, f.replace(/\.(br|gz)$/, ''))).size)
+  }
 })

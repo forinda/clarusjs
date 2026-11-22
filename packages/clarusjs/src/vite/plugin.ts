@@ -1,6 +1,7 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib'
 import { createRequire } from 'node:module'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -167,6 +168,8 @@ export type ClarusOptions = {
   robots?: boolean
   /** Collapse whitespace in template text at build (default true). */
   collapseWhitespace?: boolean
+  /** At build, write .br and .gz next to dist/client's text files, for servers that serve them as is. Default false. */
+  compress?: boolean
 }
 export type { HeadTag }
 /**
@@ -467,6 +470,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
       // Vite's manifest was for this build (island URLs, clarusjs-manifest.json); it isn't part of the site.
       rmSync(resolve(out, '.vite'), { recursive: true, force: true })
+      if (options.compress) precompress(out)
     },
     // order 'pre': before Vite resolves the relative import itself.
     resolveId: { order: 'pre', handler(id, importer) {
@@ -665,5 +669,21 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         })
       }
     },
+  }
+}
+
+/**
+ * Precompressed copies for self-hosted servers that serve them directly (nginx gzip_static/brotli_static, Caddy
+ * precompressed): `x.html.br` and `x.html.gz` next to each text file, kept only when smaller than the original.
+ */
+function precompress(dir: string): void {
+  for (const name of readdirSync(dir, { recursive: true }) as string[]) {
+    if (!/\.(html|js|css|svg|json|xml)$/.test(name)) continue
+    const file = resolve(dir, name)
+    const data = readFileSync(file)
+    const br = brotliCompressSync(data, { params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 11, [zlibConstants.BROTLI_PARAM_SIZE_HINT]: data.length } })
+    const gz = gzipSync(data, { level: 9 })
+    if (br.length < data.length) writeFileSync(file + '.br', br)
+    if (gz.length < data.length) writeFileSync(file + '.gz', gz)
   }
 }
