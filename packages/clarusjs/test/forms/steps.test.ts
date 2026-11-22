@@ -125,3 +125,19 @@ test('review #233 (2): next() checks the step\'s fields by their paths after wai
   resolve()
   expect(await moved).toBe(false)
 })
+
+test("where history can't be written (a sandboxed srcdoc frame), next() still moves on, without the hash", async () => {
+  const { f, input } = mount()
+  const pushState = history.pushState
+  history.pushState = () => { throw new DOMException("A history state object with URL '…#plan' cannot be created in a document with origin 'null'", 'SecurityError') }
+  try {
+    fill(input('name'), 'Ada')
+    expect(await f.next()).toBe(true)
+    expect(f.step).toBe('plan')
+    expect(document.getElementById('plan')!.hidden).toBe(false)
+    f.back()
+    expect(f.step).toBe('details')
+  } finally {
+    history.pushState = pushState
+  }
+})
