@@ -1,4 +1,4 @@
-@import docs from '../../layouts/docs.tscl'
+@import docs from '~/layouts/docs.tscl'
 
 <docs
   [title]="'Verbatim'"

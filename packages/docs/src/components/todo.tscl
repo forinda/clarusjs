@@ -1,7 +1,7 @@
 @import pill from './pill.tscl'
 
 <script>
-  import { todos } from '../stores/todos.ts'
+  import { todos } from '~/stores/todos.ts'
   let draft = state('')
   let items = shared(todos)
   let next = state(2)

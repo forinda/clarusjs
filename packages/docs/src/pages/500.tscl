@@ -1,5 +1,5 @@
 {{-- Shown when a page fails on the server (the playground runs on every request): nothing internal, links from the site root. --}}
-@import docs from '../layouts/docs.tscl'
+@import docs from '~/layouts/docs.tscl'
 @input status: number = 500
 
 <docs [title]="'Something went wrong'" [path]="'/500'" [description]="'This page could not be shown.'">

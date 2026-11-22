@@ -1,5 +1,5 @@
 <script>
-  import { todos } from '../stores/todos.ts'
+  import { todos } from '~/stores/todos.ts'
   let items = shared(todos)
 </script>
 
