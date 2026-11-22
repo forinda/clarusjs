@@ -22,6 +22,8 @@
 @input url: string = ''
 {{-- The page's h2/h3 for "On this page" (Markdown pages pass them; none: the region is left out). --}}
 @input headings: Heading[] = []
+{{-- A tool (a playground) rather than a page: the header and a full-height main, without sidebar, crumb or footers. --}}
+@input app: boolean = false
 
 <html lang="en">
   <head>
@@ -31,7 +33,7 @@
     {{-- First in the tab order: keyboard and screen reader users jump past the header and page list. --}}
     <a class="skip-link" href="#content">Skip to content</a>
     <header class="site-header">
-      @if (sectionKey(config.sections, path)) {
+      @if (!app && sectionKey(config.sections, path)) {
         <button type="button" class="menu-button" popovertarget="sidebar" aria-label="Open menu">
           <svg
             width="22"
@@ -77,7 +79,9 @@
         @if (config.viewTransitions) {<span class="persist" data-cl-persist="view-transitions"><pageTransitions /></span>}
       </div>
     </header>
-    @if (sectionKey(config.sections, path)) {
+    @if (app) {
+      <main class="content app" id="content" tabindex="-1"><slot /></main>
+    } @else if (sectionKey(config.sections, path)) {
       <div class="docs">
         {{-- A drawer below 1024px (popover: Escape and a click outside close it), always visible from 1024px. --}}
         <nav id="sidebar" class="sidebar" aria-label="Pages" popover>
@@ -160,6 +164,8 @@
     } @else {
       <main class="content home" id="content" tabindex="-1"><slot /></main>
     }
-    <footer class="site-footer"><slot name="footer">@if (config.footer) {<p>{{ config.footer }}</p>}</slot></footer>
+    @if (!app) {
+      <footer class="site-footer"><slot name="footer">@if (config.footer) {<p>{{ config.footer }}</p>}</slot></footer>
+    }
   </body>
 </html>

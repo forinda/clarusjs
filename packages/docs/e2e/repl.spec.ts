@@ -105,6 +105,53 @@ test.describe('/repl', () => {
     await expect(page.locator('.repl[data-ready]')).toBeAttached({ timeout: 20_000 })
   }
 
+  test('an app layout like other playgrounds: the full width, no sidebar, the panes filling the window', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await open(page)
+    await expect(page.locator('#sidebar')).toHaveCount(0)
+    const box = await page.locator('.repl-panes').boundingBox()
+    expect(box!.width).toBeGreaterThan(1400)
+    expect(box!.y + box!.height).toBeGreaterThan(880) // down to the bottom of the window
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(900) // no page scroll
+  })
+
+  test('line numbers follow the code, and scroll with it', async ({ page }) => {
+    await open(page)
+    await type(page, 'a\nb\nc\n')
+    await expect(page.locator('#repl-lines')).toHaveText(['1', '2', '3', '4'].join('\n'))
+    await type(page, Array.from({ length: 200 }, (_, i) => `<p>${i}</p>`).join('\n'))
+    await code(page).evaluate((area) => { area.scrollTop = 1000; area.dispatchEvent(new Event('scroll')) })
+    expect(await page.locator('#repl-lines').evaluate((lines) => lines.scrollTop)).toBe(await code(page).evaluate((a) => a.scrollTop))
+  })
+
+  test('the divider resizes the panes, by mouse and by keyboard', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await open(page)
+    const divider = page.getByRole('separator', { name: 'Resize the editor and the output' })
+    const width = () => page.locator('.repl-editor-pane').evaluate((e) => e.getBoundingClientRect().width)
+    const before = await width()
+    const at = (await divider.boundingBox())!
+    await page.mouse.move(at.x + at.width / 2, at.y + 100)
+    await page.mouse.down()
+    await page.mouse.move(at.x - 300, at.y + 100, { steps: 5 })
+    await page.mouse.up()
+    expect(await width()).toBeLessThan(before - 200)
+    const dragged = await width()
+    await divider.focus()
+    await page.keyboard.press('ArrowRight')
+    expect(await width()).toBeGreaterThan(dragged)
+    await expect(divider).toHaveAttribute('aria-valuenow', /\d+/)
+  })
+
+  test('on a phone the panes stack', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await open(page)
+    const editor = (await page.locator('.repl-editor-pane').boundingBox())!
+    const output = (await page.locator('.repl-output').boundingBox())!
+    expect(output.y).toBeGreaterThanOrEqual(editor.y + editor.height - 1)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+
   test('opens with the first starter running', async ({ page }) => {
     await open(page)
     await expect(page).toHaveTitle(/Playground/)
@@ -177,8 +224,10 @@ test.describe('/repl', () => {
       const area = getComputedStyle(document.querySelector('#repl-code')!)
       const editor = getComputedStyle(document.querySelector('.repl-editor')!)
       const frame = getComputedStyle(document.querySelector('#repl-preview iframe:not([hidden])')!)
-      return { caret: area.caretColor, editor: editor.borderTopWidth, frame: frame.borderTopWidth }
+      const layer = getComputedStyle(document.querySelector('#repl-highlight')!)
+      return { caret: area.caretColor, editor: editor.borderTopWidth, frame: frame.borderTopWidth, layer: layer.backgroundColor }
     })
+    expect(look.layer).toBe('rgba(0, 0, 0, 0)') // the gutter's line numbers show through it
     expect(look.caret).not.toBe('rgba(0, 0, 0, 0)')
     expect(look.editor).not.toBe('0px')
     expect(look.frame).not.toBe('0px')

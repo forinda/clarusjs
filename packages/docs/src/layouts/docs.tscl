@@ -9,6 +9,7 @@
 @input url: string = ''
 @input description: string = 'clarusjs: clear, compiled views. Server HTML with JavaScript only where it is interactive.'
 @input headings: Heading[] = []
+@input app: boolean = false
 
 <docsTheme
   [config]="theme"
@@ -18,5 +19,6 @@
   [url]="url"
   [description]="description"
   [headings]="headings"
+  [app]="app"
   ><slot
 /></docsTheme>
