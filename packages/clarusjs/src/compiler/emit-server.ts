@@ -4,7 +4,7 @@ import { htmlExpr, walk } from './html-expr.ts'
 import { rewriteServer } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
 
-export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = false): string {
+export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = false, loader?: string): string {
   const all = walk(ir.nodes)
   const runtime = [
     'escape as __cl_escape',
@@ -14,6 +14,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     all.some((n) => n.kind === 'if' && n.block >= 0) && 'blockHtml as __cl_blockHtml',
     all.some((n) => n.kind === 'for' && n.block >= 0) && 'forHtml as __cl_forHtml',
     all.some((n) => n.kind === 'component' && n.region >= 0) && 'regionHtml as __cl_regionHtml',
+    loader && 'loaded as __cl_loaded',
   ].filter(Boolean).join(', ')
   let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
   for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}${renderImports ? '?render' : ''}'\n`
@@ -30,6 +31,8 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     out += unknownSlotCheck(ir)
     out += `  if (__cl_opts?.attach) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> has no <script>, so attach="`)} + __cl_opts.attach + '" does nothing')\n`
   }
+  // A component loader (#97): the data it loaded for this render fills the inputs; the parent's props win.
+  if (loader) out += `  __cl_props = { ...__cl_loaded(${JSON.stringify(loader)}), ...__cl_props }\n`
   out += inputsLine(ir)
   out += `  const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""\n`
   if (ir.script) out += indentScript(rewriteServer(ir.script))

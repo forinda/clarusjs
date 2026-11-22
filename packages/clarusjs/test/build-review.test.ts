@@ -131,6 +131,22 @@ test('#54: a project reached through a symlink (or a Windows short name) builds:
   expect(readFileSync(resolve(real, 'dist/client/styled/index.html'), 'utf8')).toMatch(/<link rel="stylesheet" href="\/assets\/[^"]*base[^"]*\.css">/)
 }, 120_000)
 
+test('#97: component loaders run at build for the pages that use them (through other components too), islands included', async () => {
+  const root = tempApp()
+  const w = (file: string, text: string) => writeFileSync(resolve(root, file), text)
+  w('src/components/latest.tscl', '@input version: string = "?"\n<p class="latest">Latest {{ version }}</p>\n')
+  w('src/components/latest.load.ts', "export async function load() { await new Promise((r) => setTimeout(r, 20)); return { version: '1.2.3' } }\n")
+  w('src/components/box.tscl', "@import latest from './latest.tscl'\n<section><latest /></section>\n")
+  w('src/components/counter.load.ts', 'export function load() { return { start: 5 } }\n')
+  w('src/pages/loaded.tscl', "@import box from '../components/box.tscl'\n@import counter from '../components/counter.tscl'\n<box />\n<counter />\n")
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp()
+  const html = unscoped(readFileSync(resolve(root, 'dist/client/loaded/index.html'), 'utf8'))
+  expect(html).toContain('<p class="latest">Latest 1.2.3</p>')
+  expect(html).toMatch(/<cl-island c="counter"[^>]*p="\{&quot;start&quot;:5\}"/) // the island's props carry the loaded input
+  // The home page passes start="1" to its counter: the parent's prop wins over the loaded one.
+  expect(unscoped(readFileSync(resolve(root, 'dist/client/index.html'), 'utf8'))).toMatch(/p="\{&quot;start&quot;:1\}"/)
+}, 120_000)
+
 test('vite preview resolves a page route that contains a dot', async () => {
   const root = tempApp()
   writeFileSync(resolve(root, 'src/pages/release.v1.tscl'), '<h1>Release 1</h1>')

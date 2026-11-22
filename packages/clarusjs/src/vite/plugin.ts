@@ -59,7 +59,7 @@ const scopeFor = (root: string, file: string) => scopeId(relative(root, file).sp
  * Each page's stylesheets (absolute paths), from its own `@import './x.css'` and its components', transitively.
  * Dependencies come first, so a layout's base CSS is linked before what the page adds.
  */
-function pageStylesheets(root: string, files: Files, aliases: Alias[] = []): Map<string, string[]> {
+function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<string, { css: string[]; components: string[] }> {
   const deps = new Map<string, { css: string[]; components: string[] }>()
   const require = createRequire(resolve(root, 'package.json'))
   const packageFile = (spec: string) => { try { return realpathSync(require.resolve(spec.replace(/\?.*$/, ''))) } catch { return undefined } }
@@ -89,13 +89,22 @@ function pageStylesheets(root: string, files: Files, aliases: Alias[] = []): Map
     for (const c of components) if (existsSync(c)) collect(c, out, seen)
     for (const sheet of css) if (!out.includes(sheet)) out.push(sheet)
   }
-  const pages = new Map<string, string[]>()
+  const pages = new Map<string, { css: string[]; components: string[] }>()
   for (const file of files.find(resolve(root, 'src/pages'))) {
-    const out: string[] = []
-    collect(file, out, new Set())
-    pages.set(routeFromFile(`/${relative(root, file).split(sep).join('/')}`), out)
+    const css: string[] = []
+    const seen = new Set<string>()
+    collect(file, css, seen)
+    seen.delete(file)
+    pages.set(routeFromFile(`/${relative(root, file).split(sep).join('/')}`), { css, components: [...seen] })
   }
   return pages
+}
+
+/** A component's loader (#97): a .load.ts next to a .tscl outside src/pages (there it's the page's data), or none. */
+function componentLoaderOf(root: string, file: string): string | undefined {
+  if (!file.endsWith('.tscl') || real(file).startsWith(real(resolve(root, 'src/pages')) + sep)) return undefined
+  const loader = file.replace(/\.tscl$/, '.load.ts')
+  return existsSync(loader) ? loader : undefined
 }
 
 /** Write .clarusjs/styles.css from every component under src/; false when no component has a <style>. */
@@ -342,7 +351,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (options.fragments) input[NAV_ENTRY] = here('../runtime/fragments')
       if (writeStyles(appRoot, files)) input[STYLES_ENTRY] = resolve(appRoot, STYLES_FILE)
       // Stylesheets imported by pages and components: each goes through Vite's CSS pipeline as its own entry.
-      for (const sheet of new Set([...pageStylesheets(appRoot, files, aliases).values()].flat())) {
+      for (const sheet of new Set([...pageGraph(appRoot, files, aliases).values()].flatMap((p) => p.css))) {
         if (!existsSync(sheet)) throw new Error(`clarusjs: imported stylesheet not found: ${relative(appRoot, sheet)}`)
         input[`css/${relative(appRoot, sheet).split(sep).join('/').replace(/\.css$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))}`] = sheet
       }
@@ -522,7 +531,14 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const navUrl = urls?.get(NAV_ENTRY) ?? '/cl-nav.js'
       // Each page's imported stylesheets: built URLs (by source key), or the source served by Vite in dev.
       const css: Record<string, string[]> = {}
-      for (const [route, sheets] of pageStylesheets(root, files, aliases)) {
+      const graph = pageGraph(root, files, aliases)
+      // Each page's component loaders (#97): those of the components it uses, by Vite path.
+      const componentLoaders: Record<string, string[]> = {}
+      for (const [route, { components }] of graph) {
+        const loaders = components.map((c) => componentLoaderOf(root, c)).filter((f): f is string => !!f && !relative(root, f).startsWith('..'))
+        if (loaders.length) componentLoaders[route] = loaders.map((f) => `/${relative(root, f).split(sep).join('/')}`).sort()
+      }
+      for (const [route, { css: sheets }] of graph) {
         if (!sheets.length) continue
         css[route] = sheets.map((sheet) => {
           const key = relative(root, sheet).split(sep).join('/')
@@ -549,6 +565,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `export default createHandler(import.meta.glob(${glob('/src/pages')}), {\n` +
         `  loaderUrl: ${JSON.stringify(loaderUrl)},\n` +
         `  data: import.meta.glob('/src/pages/**/*.load.ts'),\n` +
+        // Component loaders (#97): a .load.ts next to a component outside src/pages, run for the pages that use it.
+        `  componentLoaders: ${JSON.stringify(componentLoaders)},\n` +
+        `  componentData: import.meta.glob(['/src/**/*.load.ts', '!/src/pages/**']),\n` +
         // Endpoints: the other .ts files under src/pages, exporting GET, POST, … (see the server reference).
         `  endpoints: import.meta.glob(['/src/pages/**/*.ts', '!/src/pages/**/*.load.ts', '!/src/pages/**/*.d.ts']),\n` +
         `  modes: ${JSON.stringify(modes)},\n` +
@@ -611,7 +630,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const renderImports = renderQuery && this.environment.config.consumer !== 'server'
           // moduleType: a source extension may have its own built-in type in Rolldown (.txt is text); the output is JS.
           const collapseWhitespace = command === 'build' && options.collapseWhitespace !== false
-          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace })
+          // A component with a loader (#97) reads what it loaded, by its path from the root.
+          const loader = componentLoaderOf(root, file) ? relative(root, file).split(sep).join('/') : undefined
+          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader })
           // Every component compiles for the server once: warnings from there, so each is said once.
           if (consumer === 'server' && !renderQuery) for (const w of out.warnings) this.warn(w.message)
           return { code: out.code, map: null, moduleType: 'js' }
