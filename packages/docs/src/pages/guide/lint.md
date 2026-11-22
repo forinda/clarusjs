@@ -130,7 +130,29 @@ export default [
 ]
 ```
 
-Rules that need type information (`no-floating-promises`, `no-unsafe-*` and the like) don't work on `.tscl` files yet. They need a type checker that can read `.tscl` files, which TypeScript 7.1 provides and typescript-eslint doesn't run on yet. typescript-eslint also needs TypeScript 6 or older, so a project on TypeScript 7 keeps a TypeScript 6 copy installed for it.
+typescript-eslint itself needs TypeScript 6 or older: see the setup below.
+
+### Type-aware rules
+
+Rules that need types, such as `no-floating-promises`, `no-unsafe-*` and `restrict-plus-operands`, work with `typeAware: true`. A script's types come from the component's inputs, the data it imports and its signals, as in `clarusjs check`:
+
+```js [eslint.config.js]
+export default [
+  ...tseslint.configs.recommendedTypeCheckedOnly.map((c) => ({ ...c, files: ['**/*.tscl'] })),
+  // After typescript-eslint's presets, which set their own parser: .tscl files keep this plugin's.
+  ...clarusjs.configs.recommended,
+  {
+    files: ['**/*.tscl'],
+    languageOptions: { parserOptions: { parser: tseslint.parser, typeAware: true } },
+  },
+]
+```
+
+typescript-eslint doesn't run on TypeScript 7 yet. Type-aware linting needs TypeScript 6 installed as `typescript`, with TypeScript 7 kept for `tsc` under another name:
+
+<pm [commands]="['add -D typescript@npm:@typescript/typescript6 @typescript/native@npm:typescript@^7']" />
+
+Without TypeScript 6, every `.tscl` file reports an error that says so; the other rules don't need it, so leave `typeAware` off until you install it. The compiler options come from the project's `tsconfig.json` (or `jsconfig.json`). Once typescript-eslint runs on TypeScript 7.1, the plugin will use 7.1's own support for `.tscl` files instead, and TypeScript 6 won't be needed.
 
 ## In editors
 

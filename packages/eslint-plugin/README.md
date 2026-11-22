@@ -16,6 +16,6 @@ export default [
 ]
 ```
 
-A component's inputs, imported data and `state`/`derived`/`shared` are known to `no-undef`; names the template uses count as used; `let x = state(…)` written by the template isn't pushed to `const`. Another parser (typescript-eslint's) goes in `parserOptions.parser`. Type-aware rules don't work on `.tscl` files yet. See the [Lint guide](https://clarusjs.com/guide/lint#with-eslint).
+A component's inputs, imported data and `state`/`derived`/`shared` are known to `no-undef`; names the template uses count as used; `let x = state(…)` written by the template isn't pushed to `const`. Another parser (typescript-eslint's) goes in `parserOptions.parser`; with `typeAware: true`, type-aware rules work too, with types from the component's inputs, imported data and signals. typescript-eslint needs TypeScript 6 for now: `pnpm add -D typescript@npm:@typescript/typescript6 @typescript/native@npm:typescript@^7`. See the [Lint guide](https://clarusjs.com/guide/lint#with-eslint).
 
 MIT licensed.
