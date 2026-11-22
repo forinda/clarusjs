@@ -109,6 +109,8 @@ export function spreadAttrs(obj: unknown, skip: readonly string[], tag?: string)
     const n = key.toLowerCase()
     if (skip.includes(n) || n === 'class' || n === 'style') continue
     const why = !ATTR_NAME.test(key) ? 'not an attribute name'
+      // clarusjs's own markers (data-cl-e, data-cl-a, data-cl-path…): data must not spoof the runtime's wiring.
+      : n.startsWith('data-cl-') || n.startsWith('cl-') ? 'reserved for clarusjs'
       : n.startsWith('on') ? 'an event handler: use (event)="…" in an island'
       : n === 'srcdoc' ? 'srcdoc is static only'
       : key === 'className' ? 'a JSX name: use class' : key === 'htmlFor' ? 'a JSX name: use for'

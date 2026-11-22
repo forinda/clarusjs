@@ -28,10 +28,11 @@ const warned = new Set<string>()
  */
 export function spreadHtml(obj: unknown, skip: readonly string[], tag?: string, where?: string): string {
   const { set, dropped } = spreadAttrs(obj, skip, tag)
+  // Once per place and reason, not per key: keys come from data, so a set of them could grow without end on a server.
   if (where) for (const [key, why] of dropped) {
-    if (warned.has(where + key)) continue
-    warned.add(where + key)
-    console.warn(`[clarusjs] ${where}: [...] dropped '${key}' (${why})`)
+    if (warned.has(`${where} ${why}`)) continue
+    warned.add(`${where} ${why}`)
+    console.warn(`[clarusjs] ${where}: [...] dropped ${JSON.stringify(key)} (${why})`)
   }
   return set.map(([name, v]) => (v === null ? '' : v === true ? ` ${name}` : ` ${name}="${escape(v)}"`)).join('')
 }
