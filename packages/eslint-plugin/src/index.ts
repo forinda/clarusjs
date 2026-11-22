@@ -5,12 +5,15 @@
 //   its globals.
 // - clarusjs/uses-vars: script names the template reads count as used (no-unused-vars).
 // - clarusjs/template: the template rules of `clarusjs check` (#304), with a project's own from settings.
-// ponytail: type-aware TypeScript rules need a type checker that reads .tscl files (TypeScript 7.1's content mapper),
-// which typescript-eslint can't use yet (#339).
+// - parserOptions.typeAware (#339): typescript-eslint's type-aware rules on the script, types from a program built by
+//   type-aware.ts (TypeScript 6 until typescript-eslint runs on 7).
 import { createRequire } from 'node:module'
 import { lint, parse, ClarusError, type LintConfig, type LintRuleDef, type TemplateNode } from 'clarusjs/compiler'
 import type { ESLint, Linter, Rule, Scope } from 'eslint'
+import { declarations, fromTypescriptEslint, loadTypeScript, typeProgram } from './type-aware.ts'
 
+type Node = { type: string; range: [number, number]; loc: { start: { line: number; column: number }; end: { line: number; column: number } } }
+type Program = Node & { body: Node[]; tokens?: Node[]; comments?: Node[] }
 type Parser = { parse?(code: string, options?: object): unknown; parseForESLint?(code: string, options?: object): { ast: unknown; scopeManager?: unknown; visitorKeys?: unknown; services?: unknown } }
 type ScopeManager = Scope.ScopeManager & { addGlobals?(names: string[]): void }
 
@@ -61,15 +64,45 @@ export const parser = {
       throw err instanceof ClarusError ? parsingError(err) : err
     }
     const text = blank(code, parsed.script)
-    const { parser: delegate, ...rest } = options
+    const { parser: delegate, typeAware, typescript, ...rest } = options
     const parserOptions = { ecmaVersion: 'latest', sourceType: 'module', ...rest, range: true, loc: true, tokens: true, comment: true }
+    if (typeAware) return typeAwareParse(code, text, parsed, options.filePath ?? 'file.tscl', delegate, parserOptions, typescript as object | undefined)
     const result = delegate?.parseForESLint ? delegate.parseForESLint(text, parserOptions) : { ast: (delegate ?? espree).parse!(text, parserOptions) }
     const scopeManager = (result.scopeManager as ScopeManager | undefined) ?? eslintScope.analyze(result.ast, { ecmaVersion: 2022, sourceType: 'module', ...(result.visitorKeys ? { childVisitorKeys: result.visitorKeys } : {}) })
-    // The file's own globals: inputs, imported data, and the runtime's signal functions.
     // ponytail: addGlobals is eslint-scope's (ESLint 9.x late and 10); older ones skip it, so no-undef may report them.
-    scopeManager.addGlobals?.([...RUNTIME, ...parsed.inputs.map((i) => i.name), ...parsed.dataImports.flatMap((d) => importNames(d.clause))])
+    scopeManager.addGlobals?.(globalsOf(parsed))
     return { ...result, scopeManager }
   },
+}
+
+/** The file's own globals: inputs, imported data, and the runtime's signal functions. */
+const globalsOf = (parsed: ReturnType<typeof parse>) => [...RUNTIME, ...parsed.inputs.map((i) => i.name), ...parsed.dataImports.flatMap((d) => importNames(d.clause))]
+
+/**
+ * typescript-eslint's parse of the script followed by declarations for what it uses without importing, with the types
+ * of a program that has them; the declarations are then cut from the tree, so ESLint sees the file as it is.
+ */
+function typeAwareParse(code: string, text: string, parsed: ReturnType<typeof parse>, file: string, delegate: Parser | undefined, parserOptions: Record<string, unknown>, typescript?: object) {
+  if (!delegate?.parseForESLint) throw new Error("clarusjs: typeAware needs typescript-eslint's parser as parserOptions.parser (import tseslint from 'typescript-eslint', then parserOptions: { parser: tseslint.parser, typeAware: true })")
+  const ts = loadTypeScript(file, typescript)
+  const virtualFile = `${file}.ts` // never written: the program reads it from memory
+  const full = text + declarations(parsed)
+  const program = typeProgram(ts, file, virtualFile, full)
+  const { project: _p, projectService: _s, ...options } = parserOptions
+  const result = delegate.parseForESLint(full, { ...options, filePath: virtualFile, programs: [program] })
+  const ast = result.ast as Program
+  const inFile = (n: Node) => n.range[1] <= code.length
+  ast.body = ast.body.filter(inFile)
+  if (ast.tokens) ast.tokens = ast.tokens.filter(inFile)
+  if (ast.comments) ast.comments = ast.comments.filter(inFile)
+  const lines = code.split('\n')
+  ast.range = [ast.range[0], code.length]
+  ast.loc = { ...ast.loc, end: { line: lines.length, column: lines.at(-1)!.length } }
+  // The scopes of the file as ESLint sees it (without the declarations), and its globals as without typeAware.
+  const { analyze } = fromTypescriptEslint(file)('@typescript-eslint/scope-manager') as { analyze(ast: unknown, options: object): ScopeManager }
+  const scopeManager = analyze(ast, { sourceType: 'module', lib: ['esnext', 'dom'] })
+  scopeManager.addGlobals?.(globalsOf(parsed))
+  return { ...result, ast, scopeManager }
 }
 
 /** Local names an import clause binds: `{ a, b as c }` → a, c. */
