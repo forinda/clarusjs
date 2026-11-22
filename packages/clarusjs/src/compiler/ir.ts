@@ -229,7 +229,13 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       const paths: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
         if (/^(class|style)\./.test(a.name)) fail(`a component takes a static class="…" only: [${a.name}] is for elements`, a.start)
-        if (a.name === '...') fail('[...] onto a component tag (spreading its props) isn\'t supported yet: pass each [prop]', a.start)
+        // [...]="props" (#406): every key a prop, first, so props written on the tag win.
+        if (a.kind === 'prop' && a.name === '...') {
+          if (props.some((p) => p.name === '...')) fail('one [...] per element', a.start)
+          checkExpr(a.expr, file, source, a.start)
+          props.unshift({ name: '...', expr: a.expr })
+          continue
+        }
         if (a.name === 'class') {
           // Passed through to the component's top-level elements (see markRoots in index.ts).
           if (a.kind !== 'static' || typeof a.value !== 'string') fail('a component takes a static class="…" only ([class] and {{ }} in it aren\'t supported on a component yet)', a.start)

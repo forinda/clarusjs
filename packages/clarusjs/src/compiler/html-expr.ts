@@ -52,7 +52,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
 
 /** `render_child({ props }, { slots })` for a component node. */
 export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rewriter): string {
-  const props = n.props.map((p) => `${p.name}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')
+  const props = n.props.map((p) => (p.name === '...' ? `...${wrapExpr(rw.expr(p.expr))}` : `${p.name}: ${wrapExpr(rw.expr(p.expr))}`)).join(', ') // a spread first (#406)
   const slots = [
     ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw)}`] : []),
     ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw)}`),
