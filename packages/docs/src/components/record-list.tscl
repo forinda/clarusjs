@@ -21,7 +21,7 @@
   async function rename() {
     const row = list.value?.rows[0]
     if (!row) return
-    await fetch(`/api/demo-records?rename=${row.id}`)
+    await fetch('/api/demo-records', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rename: row.id }) })
     invalidate(['records']) // every cached page: the one on screen fetches again now, the others when opened
   }
 </script>

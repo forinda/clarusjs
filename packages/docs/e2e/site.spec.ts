@@ -307,7 +307,7 @@ test('the route manifest matches what the browser loads', async ({ page }) => {
   const manifest = JSON.parse(readFileSync(new URL('../dist/clarusjs-manifest.json', import.meta.url), 'utf8'))
   // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour), 404 and 500.
   const routes = Object.keys(manifest.routes)
-  // /api/demo-stats is the Fetching guide's JSON endpoint (a server route), not a page in the sidebar.
+  // /api/demo-stats and /api/demo-records are the Fetching guide's endpoints (server routes), not sidebar pages.
   const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500' || r === '/api/demo-stats' || r === '/api/demo-records'
   expect(routes.filter((r) => !generated(r)).sort()).toEqual(pages.map((p) => p.path).sort())
   for (const path of ['/', '/guide/state']) {
@@ -1562,7 +1562,7 @@ test('#258 fetching: cards batch into one request, the feed waits on the user an
 
 test('#287 caching: seen pages make no request, invalidate refetches what\'s shown', async ({ page }) => {
   const asked: string[] = [] // the page param of each list request (renames are left out)
-  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-records' && !u.searchParams.has('rename')) asked.push(u.searchParams.get('page')!) })
+  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-records' && r.method() === 'GET') asked.push(u.searchParams.get('page')!) })
   await page.goto('/guide/fetching#caching')
   const list = page.locator('#record-list')
   await expect(list.locator('li').first()).toHaveText('Record 1')
@@ -1696,4 +1696,15 @@ test('#93: the server demo remembers your name in a cookie, set by its load()', 
   await page.goto('/playground?name=%20')
   await expect(page.locator('#greeting')).toContainText('Type a name')
   expect((await context.cookies()).some((c) => c.name === 'playground-name')).toBe(false)
+})
+
+test('#95: the demo endpoints answer reads and same-site writes, and refuse a cross-site write', async ({ request }) => {
+  const stats = await request.get('/api/demo-stats?keys=visits')
+  expect(await stats.json()).toEqual({ visits: 12400 })
+  const base = new URL(test.info().project.use.baseURL!).origin
+  const ok = await request.post('/api/demo-records', { headers: { origin: base }, data: { rename: 3 } })
+  expect(await ok.json()).toEqual({ ok: true })
+  const evil = await request.post('/api/demo-records', { headers: { origin: 'https://evil.example' }, data: { rename: 4 } })
+  expect(evil.status()).toBe(403)
+  expect((await request.put('/api/demo-records', { headers: { origin: base } })).status()).toBe(405)
 })

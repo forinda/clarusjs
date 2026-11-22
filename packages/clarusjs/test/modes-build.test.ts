@@ -55,7 +55,8 @@ test('#32: adapter netlify writes a function that serves the server routes with 
   expect(existsSync(file)).toBe(true)
   const fn = await import(`${pathToFileURL(file).href}?t=${Date.now()}`)
   // Static routes stay files: Netlify serves them first, and only the server routes reach the function.
-  expect(fn.config).toEqual({ path: ['/account/:id', '/account/:id/', '/account/:id/index.frag.html'], preferStatic: true })
+  // Endpoints (#95) are server routes too. (Their index.frag.html path is a 404: only pages have fragments.)
+  expect(fn.config).toEqual({ path: ['/account/:id', '/account/:id/', '/account/:id/index.frag.html', '/api/hello', '/api/hello/', '/api/hello/index.frag.html'], preferStatic: true })
   const res = await fn.default(new Request('https://site.example/account/3', { headers: { 'user-agent': 'netlify/1' } }))
   expect(res.status).toBe(200)
   expect(unscoped(await res.text())).toContain('<p>netlify/1</p>')
@@ -217,4 +218,16 @@ test('#94: the manifest and clarusjs explain say which server routes read cookie
   expect(manifest.routes['/account/[id]'].cookies).toBe(true)
   const { explain } = await import('../src/cli/explain.ts')
   expect(explain({ root, route: '/account/[id]' }).text).toContain('load() runs on every request, and reads cookies')
+})
+
+test('#95: an endpoint is served by the built handler (CSRF-checked) and listed as a server route', async () => {
+  const { default: app } = await import(pathToFileURL(resolve(root, 'dist/server/index.mjs')).href + '?e=' + Date.now())
+  const get = await app.fetch(new Request('https://x.test/api/hello', { headers: { cookie: 'session=5' } }))
+  expect(await get.json()).toEqual({ hello: 'user 5' })
+  const post = await app.fetch(new Request('https://x.test/api/hello', { method: 'POST', headers: { origin: 'https://x.test', 'content-type': 'application/json' }, body: '{"a":1}' }))
+  expect(post.status).toBe(201)
+  expect((await app.fetch(new Request('https://x.test/api/hello', { method: 'POST', headers: { origin: 'https://evil.test' }, body: '{}' }))).status).toBe(403)
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  expect(manifest.routes['/api/hello'].mode).toBe('server')
+  expect(existsSync(resolve(root, 'dist/client/api/hello/index.html'))).toBe(false) // not prerendered
 })
