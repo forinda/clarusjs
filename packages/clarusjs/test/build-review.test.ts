@@ -112,6 +112,18 @@ test('#54: vite build --watch rebuilds a changed island with a fresh hash, and t
   }
 }, 120_000)
 
+test('#54: a project reached through a symlink (or a Windows short name) builds: islands and stylesheets are found', async () => {
+  const real = tempApp()
+  writeFileSync(resolve(real, 'src/pages/styled.tscl'), "@import '../styles/base.css'\n<h1>Styled</h1>\n")
+  const link = resolve(tmpdir(), `clarusjs-link-${Date.now()}`)
+  symlinkSync(real, link, 'junction')
+  await (await createBuilder({ root: link, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp()
+  const home = readFileSync(resolve(real, 'dist/client/index.html'), 'utf8')
+  const src = /<cl-island c="counter" src="([^"]+)"/.exec(home)![1]!
+  expect(existsSync(resolve(real, 'dist/client', src.slice(1)))).toBe(true)
+  expect(readFileSync(resolve(real, 'dist/client/styled/index.html'), 'utf8')).toMatch(/<link rel="stylesheet" href="\/assets\/[^"]*base[^"]*\.css">/)
+}, 120_000)
+
 test('vite preview resolves a page route that contains a dot', async () => {
   const root = tempApp()
   writeFileSync(resolve(root, 'src/pages/release.v1.tscl'), '<h1>Release 1</h1>')
