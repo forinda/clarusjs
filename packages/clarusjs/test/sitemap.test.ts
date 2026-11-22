@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { createBuilder } from 'vite'
 import { expect, test } from 'vitest'
-import { gitDates, sitemapXml } from '../src/vite/sitemap.ts'
+import { gitDates, sitemapFiles, sitemapXml } from '../src/vite/sitemap.ts'
 import clarusjs from '../src/vite/plugin.ts'
 
 const git = (root: string, cmd: string, date?: string) => execSync(`git ${cmd}`, {
@@ -192,3 +192,53 @@ test('#391: vite build lists each page\'s images, absolute; decorative (alt="") 
   expect(xml).toContain('<url><loc>https://example.com/b</loc>')
   expect(await build({ images: false })).not.toContain('image:')
 }, 240_000)
+
+test('#392: include adds URLs the build can\'t list (server, client routes): an array or an async function', async () => {
+  const build = async (include: unknown) => {
+    const { root, w } = repo()
+    w('src/pages/index.tscl', '<h1>Home</h1>')
+    w('src/pages/shop/[id].tscl', '@input id: string = \'\'\n<p>{{ id }}</p>')
+    mkdirSync(resolve(root, 'node_modules'))
+    symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+    const plugin = clarusjs({ site: { url: 'https://example.com' }, routes: { '/shop/*': 'server' }, sitemap: { include } as never })
+    await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [plugin] })).buildApp()
+    return [...readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8').matchAll(/<loc>https:\/\/example\.com([^<]*)<\/loc>/g)].map((m) => m[1])
+  }
+  expect(await build(['/shop/a', '/shop/b', '/'])).toEqual(['/', '/shop/a', '/shop/b']) // '/' once
+  expect(await build(async () => ['/shop/c'])).toEqual(['/', '/shop/c'])
+  await expect(build(['shop/d'])).rejects.toThrow(/sitemap\.include: 'shop\/d' isn't a path \(start it with \/\)/)
+}, 240_000)
+
+test('#393: up to the limit one sitemap.xml; past it, sitemap-1.xml… and sitemap.xml as their index', () => {
+  const pages = ['/a', '/b', '/c'].map((path) => ({ path, lastmod: undefined }))
+  expect(sitemapFiles('https://example.com', '/docs/', pages.slice(0, 2), 2).map((f) => f.file)).toEqual(['sitemap.xml'])
+  const files = sitemapFiles('https://example.com', '/docs/', pages, 2)
+  expect(files.map((f) => f.file)).toEqual(['sitemap-1.xml', 'sitemap-2.xml', 'sitemap.xml'])
+  expect(files[0]!.xml).toBe(sitemapXml('https://example.com', '/docs/', pages.slice(0, 2)))
+  expect(files[1]!.xml).toContain('<loc>https://example.com/docs/c</loc>')
+  expect(files[2]!.xml).toBe(
+    '<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    '<sitemap><loc>https://example.com/docs/sitemap-1.xml</loc></sitemap>\n' +
+    '<sitemap><loc>https://example.com/docs/sitemap-2.xml</loc></sitemap>\n</sitemapindex>\n',
+  )
+  expect(sitemapFiles('https://example.com', '/', pages).map((f) => f.file)).toEqual(['sitemap.xml']) // 50,000 by default
+})
+
+test('#395: sitemapXml writes a page\'s translations as xhtml:link alternates (the namespace only when used)', () => {
+  const xml = sitemapXml('https://example.com', '/', [{ path: '/guide', lastmod: undefined, alternates: [{ hreflang: 'en', href: '/guide' }, { hreflang: 'fr', href: '/fr/guide' }, { hreflang: 'x-default', href: 'https://example.com/guide' }] }])
+  expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"')
+  expect(xml).toContain('<url><loc>https://example.com/guide</loc><xhtml:link rel="alternate" hreflang="en" href="https://example.com/guide"/><xhtml:link rel="alternate" hreflang="fr" href="https://example.com/fr/guide"/><xhtml:link rel="alternate" hreflang="x-default" href="https://example.com/guide"/></url>')
+  expect(sitemapXml('https://example.com', '/', [{ path: '/b', lastmod: undefined }])).not.toContain('xmlns:xhtml')
+})
+
+test('#395: vite build reads each page\'s <link rel="alternate" hreflang> (in any attribute order) and keeps them in the page', async () => {
+  const { root, w } = repo()
+  w('src/pages/guide.tscl', `<html><head><title>G</title><cl-head><link rel="alternate" hreflang="en" href="/guide"><link href="/fr/guide" hreflang="fr" rel="alternate"><link rel="alternate" type="application/rss+xml" href="/feed.xml"></cl-head></head><body><p>g</p></body></html>`)
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
+  const xml = readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  expect(xml).toContain('<xhtml:link rel="alternate" hreflang="en" href="https://example.com/guide"/><xhtml:link rel="alternate" hreflang="fr" href="https://example.com/fr/guide"/>')
+  expect(xml).not.toContain('feed.xml') // an alternate without hreflang isn't a translation
+  expect(readFileSync(resolve(root, 'dist/client/guide/index.html'), 'utf8')).toContain('hreflang="fr"')
+}, 120_000)
