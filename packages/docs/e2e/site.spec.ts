@@ -1765,6 +1765,7 @@ test('#369: the sidebar as designed: groups collapse, the current one is open, s
 test('#369: a page in a collapsed group opens it', async ({ page }) => {
   await page.goto('/guide/deploy')
   await expect(page.locator('#sidebar details[data-group="Build & deploy"]')).toHaveAttribute('open', '')
+})
 
 test('code blocks have line numbers, except shell commands', async ({ page }) => {
   await page.goto('/guide/markdown')
