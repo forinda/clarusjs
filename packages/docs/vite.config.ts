@@ -53,6 +53,8 @@ export default defineConfig({
         container: { tag: 'callout', from: '@clarusjs/theme-docs/callout.tscl' },
         // Every highlighted code block gets the site's copy button (an island that loads on first use).
         copy: { tag: 'copy', from: '@clarusjs/theme-docs/copy.tscl' },
+        // Line numbers on every code block but shell commands.
+        lineNumbers: true,
         // ::: quiz blocks in lessons render through the theme's quiz (its options are an island).
         quiz: { tag: 'quiz', from: '@clarusjs/theme-docs/quiz.tscl' },
         // Guide pages must have a title, description, sidebar group and order (src/schemas.ts).
