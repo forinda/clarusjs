@@ -1733,3 +1733,12 @@ test('#97: a component loads its own data (the latest release), without the page
   await expect(latest).toContainText(`Latest: ${first}`)
   await expect(latest).toContainText(/with \d+ changes/)
 })
+
+test("#361: the site's own footer, in place of the theme's, on every kind of page", async ({ page }) => {
+  for (const path of ['/', '/guide/islands', '/learn/progress']) {
+    await page.goto(path)
+    const footer = page.locator('footer.site-footer')
+    await expect(footer, path).toContainText('MIT licensed')
+    await expect(footer.getByRole('link', { name: 'For AI agents' }), path).toHaveAttribute('href', '/guide/ai-coding')
+  }
+})
