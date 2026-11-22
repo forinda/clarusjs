@@ -117,6 +117,16 @@ test('#94: a static page whose load() reads cookies fails the build, naming the 
   writeFileSync(resolve(root, 'src/pages/me.tscl'), '@input theme: string = ""\n<p>{{ theme }}</p>\n')
   writeFileSync(resolve(root, 'src/pages/me.load.ts'), "export function load({ cookies }) { return { theme: cookies.get('theme') ?? 'light' } }\n")
   await expect((async () => (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp())()).rejects.toThrow(/\/me reads cookies, but static routes are built once for everyone: make it 'server'/)
+test('#54: a project reached through a symlink (or a Windows short name) builds: islands and stylesheets are found', async () => {
+  const real = tempApp()
+  writeFileSync(resolve(real, 'src/pages/styled.tscl'), "@import '../styles/base.css'\n<h1>Styled</h1>\n")
+  const link = resolve(tmpdir(), `clarusjs-link-${Date.now()}`)
+  symlinkSync(real, link, 'junction')
+  await (await createBuilder({ root: link, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp()
+  const home = readFileSync(resolve(real, 'dist/client/index.html'), 'utf8')
+  const src = /<cl-island c="counter" src="([^"]+)"/.exec(home)![1]!
+  expect(existsSync(resolve(real, 'dist/client', src.slice(1)))).toBe(true)
+  expect(readFileSync(resolve(real, 'dist/client/styled/index.html'), 'utf8')).toMatch(/<link rel="stylesheet" href="\/assets\/[^"]*base[^"]*\.css">/)
 }, 120_000)
 
 test('vite preview resolves a page route that contains a dot', async () => {

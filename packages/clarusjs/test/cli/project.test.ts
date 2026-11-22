@@ -24,7 +24,7 @@ test('the clarusjs plugin\'s sources and resolve.alias, from vite.config.ts (plu
   const project = await loadProject(root)
   expect(project.sources.map((s) => s.extension)).toEqual(['.page'])
   expect(project.viteAliases).toEqual({ '@ui': '/abs/ui' })
-})
+}, 30_000) // loads vite.config.ts through Vite: slower on Windows runners
 
 test('without a Vite config, or without the plugin in it: no sources', async () => {
   expect(await loadProject(app(null))).toEqual({ sources: [], viteAliases: undefined })

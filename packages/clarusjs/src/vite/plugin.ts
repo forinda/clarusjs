@@ -43,6 +43,9 @@ export function clientUrlFor(root: string, file: string, path: Pick<typeof impor
   return `/${slashes(rel)}?import`
 }
 
+/** A path as the file system names it (symlinks and Windows short names resolved), or as given if it doesn't exist. */
+const real = (path: string) => { try { return realpathSync.native(path) } catch { return path } }
+
 const LOADER_ENTRY = 'cl-loader'
 const ROUTER_ENTRY = 'cl-router'
 const NAV_ENTRY = 'cl-nav'
@@ -281,6 +284,10 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (!chunk.isEntry) continue
       if (chunk.name) built.set(chunk.name, base + chunk.file)
       built.set(key, base + chunk.file)
+      // And by the source's real path: Vite keys modules by their real path, which differs from the path the plugin
+      // has when the project is reached through a symlink or a Windows short name (C:\\Users\\RUNNER~1).
+      const [file, query] = key.split('?')
+      built.set(real(resolve(root, file!)) + (query ? `?${query}` : ''), base + chunk.file)
     }
     return built
   }
@@ -519,7 +526,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         if (!sheets.length) continue
         css[route] = sheets.map((sheet) => {
           const key = relative(root, sheet).split(sep).join('/')
-          const url = urls ? urls.get(key) : clientUrlFor(root, sheet).replace(/\?.*$/, '')
+          const url = urls ? urls.get(key) ?? urls.get(real(sheet)) : clientUrlFor(root, sheet).replace(/\?.*$/, '')
           if (!url) throw new Error(`clarusjs: no built stylesheet for ${key}`)
           return url
         })
@@ -530,7 +537,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const client: Record<string, string> = {}
       for (const [route, file] of clientPages(root, modes, files)) {
         const key = `${relative(root, file).split(sep).join('/')}?render`
-        const url = urls ? urls.get(key) : `${clientUrlFor(root, file).replace(/\?.*$/, '')}?render&import`
+        const url = urls ? urls.get(key) ?? urls.get(`${real(file)}?render`) : `${clientUrlFor(root, file).replace(/\?.*$/, '')}?render&import`
         if (!url) throw new Error(`clarusjs: no client chunk for ${key}`)
         client[route] = url
       }
@@ -581,7 +588,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         const urls = consumer === 'server' ? builtUrls() : undefined
         // Built URLs by entry name, or by source key when the name was sanitized ([tag] → _tag_).
         const clientUrl = urls
-          ? urls.get(entryName(root, file)) ?? urls.get(relative(root, file).split(sep).join('/'))
+          ? urls.get(entryName(root, file)) ?? urls.get(relative(root, file).split(sep).join('/')) ?? urls.get(real(file))
           : command === 'build' ? `${CHUNK_TOKEN}[${entryName(root, file)}]__` : clientUrlFor(root, file)
         if (urls && !clientUrl && compile(code, { file, target: 'client' }).stateful) {
           this.error(`${file}: stateful component is not under src/, so it has no client chunk`)
