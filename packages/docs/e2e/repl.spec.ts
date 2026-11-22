@@ -152,6 +152,25 @@ test.describe('/repl', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   })
 
+  test('the Todo list example adds an item: a form in the preview submits to its handler', async ({ page }) => {
+    await open(page)
+    await page.getByLabel('Example').selectOption('Todo list')
+    await expect(preview(page).locator('li')).toHaveCount(2)
+    await preview(page).getByLabel('New item').fill('Milk')
+    await preview(page).getByRole('button', { name: 'Add' }).click()
+    await expect(preview(page).locator('li')).toHaveCount(3)
+    await expect(preview(page).locator('li').last()).toContainText('Milk')
+    await preview(page).getByLabel('New item').press('Enter') // empty: nothing added
+    await expect(preview(page).locator('li')).toHaveCount(3)
+  })
+
+  test("a form without preventDefault doesn't take the preview away", async ({ page }) => {
+    await open(page)
+    await type(page, '<script>\n  let n = state(0)\n</script>\n<form (submit)="n++"><button>Go</button></form>\n<p>{{ n }}</p>\n')
+    await preview(page).getByRole('button', { name: 'Go' }).click()
+    await expect(preview(page).locator('p')).toHaveText('1')
+  })
+
   test('opens with the first starter running', async ({ page }) => {
     await open(page)
     await expect(page).toHaveTitle(/Playground/)

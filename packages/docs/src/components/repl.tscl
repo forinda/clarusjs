@@ -132,7 +132,9 @@
       // A fresh frame, hidden until it has rendered; a run still rendering is dropped for this one.
       pending.frame.remove()
       const frame = document.createElement('iframe')
-      frame.setAttribute('sandbox', 'allow-scripts')
+      // allow-forms: without it the browser drops a form's submit event too, so (submit) handlers never run. It gives
+      // the frame nothing scripts can't already do; the frame keeps its opaque origin.
+      frame.setAttribute('sandbox', 'allow-scripts allow-forms')
       frame.title = 'Component preview'
       frame.hidden = true
       frame.addEventListener(

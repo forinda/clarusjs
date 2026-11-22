@@ -10,6 +10,10 @@ type Message = { id: number; server: string; client: string | null }
 
 let current = 0 // the run's id, for errors thrown later (an event handler, a timer)
 
+// A form in a preview has nowhere to go: its default action (navigating this frame away, and the preview with it) is
+// stopped here, on the window, after the component's own handlers have run.
+addEventListener('submit', (event) => event.preventDefault())
+
 const report = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error)
   const p = document.createElement('p')
