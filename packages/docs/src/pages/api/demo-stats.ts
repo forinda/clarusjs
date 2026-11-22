@@ -1,4 +1,4 @@
-// The Fetching guide's demo API (a server route, see vite.config.ts): ?keys=a,b answers { a: …, b: … }. A request
+// The Fetching guide's demo API (an endpoint: a .ts file under src/pages exporting GET): ?keys=a,b answers { a: …, b: … }. A request
 // with &fail=<id> fails once per id (503), so the activity feed's retry shows.
 const DATA: Record<string, unknown> = {
   visits: 12400,
@@ -9,7 +9,9 @@ const DATA: Record<string, unknown> = {
 const ACTIVITY = ['Opened the dashboard', 'Invited a teammate', 'Exported a report']
 const failed = new Set<string>()
 
-export async function load({ request }: { request: Request }) {
+import type { RequestHandler } from 'clarusjs/server'
+
+export const GET: RequestHandler = async ({ request }) => {
   const url = new URL(request.url)
   const fail = url.searchParams.get('fail')
   if (fail && !failed.has(fail)) {

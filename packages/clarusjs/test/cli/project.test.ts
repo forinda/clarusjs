@@ -8,7 +8,7 @@ import { loadProject } from '../../src/cli/project.ts'
 function app(config: string | null): string {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-project-'))
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   writeFileSync(resolve(root, 'package.json'), '{ "type": "module" }')
   if (config) writeFileSync(resolve(root, 'vite.config.ts'), config)
   return root
@@ -24,7 +24,7 @@ test('the clarusjs plugin\'s sources and resolve.alias, from vite.config.ts (plu
   const project = await loadProject(root)
   expect(project.sources.map((s) => s.extension)).toEqual(['.page'])
   expect(project.viteAliases).toEqual({ '@ui': '/abs/ui' })
-})
+}, 30_000) // loads vite.config.ts through Vite: slower on Windows runners
 
 test('without a Vite config, or without the plugin in it: no sources', async () => {
   expect(await loadProject(app(null))).toEqual({ sources: [], viteAliases: undefined })

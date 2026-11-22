@@ -4,7 +4,6 @@ group: "Tooling"
 order: 1
 description: "Type-check templates with clarusjs check: inputs, holes, events and imported data, reported at file.tscl:line:col."
 ---
-@import pm from '../../components/pm.tscl'
 
 # Type checking
 

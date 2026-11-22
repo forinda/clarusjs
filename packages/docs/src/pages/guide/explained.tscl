@@ -62,7 +62,7 @@
     rendered again once the manifest is written; outside a build it returns <code>null</code>.
   </p>
   <div class="sample">
-    <pre tabindex="0"><code verbatim>@import { readManifest } from 'clarusjs/manifest'
+    <pre tabindex="0"><code verbatim lang="tscl">@import { readManifest } from 'clarusjs/manifest'
 
 @for (entry of Object.entries(readManifest()?.routes ?? {}); track entry[0]) {
   <p>{{ entry[0] }}: {{ entry[1].islands.length }} islands</p>

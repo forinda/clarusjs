@@ -47,7 +47,7 @@ async function build(pages: Record<string, string>, options: ClarusOptions = {})
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-links-build-'))
   for (const [path, text] of Object.entries(pages)) { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const warnings: string[] = []
   const logger = { info() {}, warn: (m: string) => warnings.push(m), warnOnce() {}, error() {}, clearScreen() {}, hasErrorLogged: () => false, hasWarned: false }
   await (await createBuilder({ root, configFile: false, customLogger: logger, plugins: [clarusjs(options)] })).buildApp()

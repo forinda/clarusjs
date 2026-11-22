@@ -15,7 +15,7 @@ test('vite build warns once about a component with a plain <style>, and not abou
   }
   for (const [path, text] of Object.entries(files)) { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const warnings: string[] = []
   const logger = { info() {}, warn: (m: string) => warnings.push(m), warnOnce: (m: string) => warnings.push(m), error() {}, clearScreen() {}, hasErrorLogged: () => false, hasWarned: false }
   await (await createBuilder({ root, configFile: false, customLogger: logger, plugins: [clarusjs()] })).buildApp()

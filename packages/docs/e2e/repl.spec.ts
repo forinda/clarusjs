@@ -56,7 +56,7 @@ test.describe('the preview frame', () => {
 
   test('renders posted code and attaches its island', async ({ page }) => {
     const post = await open(page)
-    expect(await post({ id: 1, ...both(counter) })).toEqual({ id: 1, ok: true })
+    expect(await post({ id: 1, ...both(counter) })).toMatchObject({ id: 1, ok: true })
     const frame = page.frameLocator('iframe')
     await expect(frame.locator('button')).toHaveText('Clicked 0')
     await frame.locator('button').click()
@@ -71,7 +71,7 @@ test.describe('the preview frame', () => {
 
   test('ignores code posted by any window but its parent', async ({ page }) => {
     const post = await open(page)
-    expect(await post({ id: 1, ...both(counter) })).toEqual({ id: 1, ok: true })
+    expect(await post({ id: 1, ...both(counter) })).toMatchObject({ id: 1, ok: true })
     // A sibling frame (as the visitor's own code could be) posts other code to the preview.
     await page.evaluate((evil) => {
       const other = document.createElement('iframe')
@@ -256,20 +256,52 @@ test.describe('/repl', () => {
     await expect(code(page)).toHaveValue(/count/)
   })
 
-  test('only /repl loads the compiler', async () => {
-    const { readFileSync } = await import('node:fs')
+  test('the compiler runs in a worker: no page, /repl included, has it on its main thread', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const dist = resolve(import.meta.dirname, '../dist')
     const manifest = JSON.parse(readFileSync(resolve(dist, 'clarusjs-manifest.json'), 'utf8'))
     expect(manifest.routes['/repl'].islands.map((i: { component: string }) => i.component)).toContain('repl')
-    // The marker below is in /repl's own files (else the check on the other pages proves nothing).
-    const own = manifest.routes['/repl'].js.files.map((f: string) => readFileSync(resolve(dist, 'client', f.replace(/^\//, '')), 'utf8'))
-    expect(own.some((text: string) => text.includes('unexpected closing tag'))).toBe(true)
+    const marker = 'unexpected closing tag' // a compiler error message
     for (const [route, info] of Object.entries<{ js: { files: string[] } }>(manifest.routes)) {
-      if (route === '/repl') continue
-      for (const file of info.js.files) expect(readFileSync(resolve(dist, 'client', file.replace(/^\//, '')), 'utf8'), `${route}: ${file}`).not.toContain('unexpected closing tag')
+      for (const file of info.js.files) expect(readFileSync(resolve(dist, 'client', file.replace(/^\//, '')), 'utf8'), `${route}: ${file}`).not.toContain(marker)
     }
+    // It is in the site, in the worker's own file (else the check above proves nothing).
+    const assets = readdirSync(resolve(dist, 'client/assets'), { recursive: true }) as string[]
+    const holders = assets.filter((f) => f.endsWith('.js') && readFileSync(resolve(dist, 'client/assets', f), 'utf8').includes(marker))
+    expect(holders.length).toBeGreaterThan(0)
+    expect(holders.every((f) => /worker/i.test(f))).toBe(true)
   })
+
+  test('the output tabs: server code, client code and the rendered HTML', async ({ page }) => {
+    await open(page)
+    await type(page, counter)
+    await expect(preview(page).locator('button')).toHaveText('Clicked 0')
+    await page.getByRole('tab', { name: 'Server code' }).click()
+    await expect(page.getByRole('tabpanel')).toContainText('export function render')
+    await page.getByRole('tab', { name: 'Client code' }).click()
+    await expect(page.getByRole('tabpanel')).toContainText('export function attach')
+    await page.getByRole('tab', { name: 'HTML' }).click()
+    await expect(page.getByRole('tabpanel')).toContainText('<button')
+    await expect(page.getByRole('tabpanel')).toContainText('Clicked <!--[0-->0<!--]-->')
+    // A static component ships no client code, and says so.
+    await type(page, '<p>static</p>\n')
+    await page.getByRole('tab', { name: 'Client code' }).click()
+    await expect(page.getByRole('tabpanel')).toContainText('ships no JavaScript')
+    await page.getByRole('tab', { name: 'Preview' }).click()
+    await expect(preview(page).locator('p')).toHaveText('static')
+  })
+
+  test('the tabs follow the keyboard: arrows move between them', async ({ page }) => {
+    await open(page)
+    await page.getByRole('tab', { name: 'Preview' }).focus()
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByRole('tab', { name: 'Server code' })).toBeFocused()
+    await expect(page.getByRole('tab', { name: 'Server code' })).toHaveAttribute('aria-selected', 'true')
+    await page.keyboard.press('ArrowLeft')
+    await expect(page.getByRole('tab', { name: 'Preview' })).toHaveAttribute('aria-selected', 'true')
+  })
+
 })
 
 test('text typed before the playground attaches is kept', async ({ page }) => {
