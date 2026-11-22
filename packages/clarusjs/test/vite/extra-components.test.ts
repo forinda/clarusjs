@@ -18,7 +18,8 @@ test("a component another plugin names: its styles and client chunk are built, t
   const theme: Plugin = { name: 'theme', api: { clarusComponents: (appRoot: string) => [resolve(appRoot, 'theme/badge.tscl')] } }
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [[theme], clarusjs()] })).buildApp()
   const assets = resolve(root, 'dist/client/assets')
-  const files = (readdirSync(assets, { recursive: true }) as string[]).filter((f) => statSync(resolve(assets, f)).isFile())
+  // Forward slashes: on Windows the recursive listing has backslashes (theme\badge-….js).
+  const files = (readdirSync(assets, { recursive: true }) as string[]).filter((f) => statSync(resolve(assets, f)).isFile()).map((f) => f.replaceAll('\\', '/'))
   expect(files.map((f) => readFileSync(resolve(assets, f), 'utf8')).join('\n')).toContain('3.25px')
   expect(files.some((f) => /(^|\/)badge-[\w-]+\.js$/.test(f))).toBe(true) // its island chunk
 }, 120_000)
