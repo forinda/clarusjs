@@ -1,0 +1,12 @@
+{{-- <icon>: inline SVG at build time, from the installed set; in an island's @if, part of the client code. --}}
+<script>
+  let open = state(false)
+</script>
+
+<button type="button" (click)="open = !open">
+  <icon name="test:rocket" class="glyph" />
+  Launch
+</button>
+@if (open) {
+  <p><icon name="test:rocket" aria-label="Launched" /> Launched</p>
+}

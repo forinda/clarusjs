@@ -9,10 +9,22 @@ import { resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { check } from '../../src/cli/check.ts'
 import { compile } from '../../src/compiler/index.ts'
+import { resolveIcon } from '../../src/icons.ts'
 
 const dir = resolve(import.meta.dirname, 'fixtures')
 const typescript = resolve(import.meta.dirname, '../../node_modules/typescript')
 const update = process.env.UPDATE === '1'
+/** A small icon set (@iconify-json/test) installed in `root`, for fixtures that use <icon>. */
+function iconSet(root: string): void {
+  const set = resolve(root, 'node_modules/@iconify-json/test')
+  mkdirSync(set, { recursive: true })
+  writeFileSync(resolve(set, 'package.json'), JSON.stringify({ name: '@iconify-json/test', exports: { './icons.json': './icons.json' } }))
+  writeFileSync(resolve(set, 'icons.json'), JSON.stringify({ prefix: 'test', width: 24, height: 24, icons: { rocket: { body: '<path d="M4 20 20 4"/>' } } }))
+  if (!existsSync(resolve(root, 'package.json'))) writeFileSync(resolve(root, 'package.json'), '{}')
+}
+const icons = mkdtempSync(resolve(tmpdir(), 'clarusjs-fixture-icons-'))
+iconSet(icons)
+const icon = (name: string) => resolveIcon(name, resolve(icons, 'src/components/x.tscl'))
 
 /** `expected` matches the file `path`; with UPDATE=1 the file is (re)written instead. */
 function matches(path: string, actual: string): void {
@@ -28,6 +40,7 @@ function matches(path: string, actual: string): void {
 function diagnostics(name: string, source: string): string {
   const root = mkdtempSync(resolve(tmpdir(), 'clarusjs-fixture-'))
   mkdirSync(resolve(root, 'src/components'), { recursive: true })
+  iconSet(root)
   writeFileSync(resolve(root, `src/components/${name}.tscl`), source)
   return check({ root, typescript }).diagnostics.map((d) => `${d.line}:${d.column} ${d.code} ${d.message}\n`).join('')
 }
@@ -41,7 +54,7 @@ test('there are fixtures', () => {
 test.each(cases)('%s', (name) => {
   const source = readFileSync(resolve(dir, name, 'input.tscl'), 'utf8')
   const file = `src/components/${name}.tscl`
-  matches(resolve(dir, name, 'server.js'), compile(source, { file, target: 'server', clientUrl: `/${file}?import` }).code)
-  matches(resolve(dir, name, 'client.js'), compile(source, { file, target: 'client' }).code)
+  matches(resolve(dir, name, 'server.js'), compile(source, { file, target: 'server', clientUrl: `/${file}?import`, icon }).code)
+  matches(resolve(dir, name, 'client.js'), compile(source, { file, target: 'client', icon }).code)
   matches(resolve(dir, name, 'check.txt'), diagnostics(name, source))
 }, 60_000)
