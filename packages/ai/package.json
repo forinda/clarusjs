@@ -37,6 +37,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p ."
   },
+  "dependencies": {
+    "commander": "^15.1.0"
+  },
   "peerDependencies": {
     "clarusjs": ">=0.11.0"
   },

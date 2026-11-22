@@ -8,6 +8,6 @@ test('every `npx @clarusjs/ai <command>` in the guide is a command of the CLI', 
   const guide = readFileSync(resolve(import.meta.dirname, '../src/pages/guide/ai-coding.md'), 'utf8')
   const commands = new Set([...guide.matchAll(/@clarusjs\/ai (\w+)/g)].map((m) => m[1]!))
   expect([...commands].sort()).toEqual(['agents', 'mcp', 'skill'])
-  const usage = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', resolve(import.meta.dirname, '../../ai/src/cli.ts')], { encoding: 'utf8' }).stderr
-  for (const c of commands) expect(usage, c).toContain(`clarusjs-ai ${c}`)
+  const help = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', resolve(import.meta.dirname, '../../ai/src/cli.ts'), '--help'], { encoding: 'utf8' }).stdout
+  for (const c of commands) expect(help, c).toMatch(new RegExp(`^  ${c}\\b`, 'm'))
 })
