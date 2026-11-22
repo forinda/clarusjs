@@ -15,6 +15,8 @@ description: "vite build writes a complete static site in three steps."
 
 A page that fails to render fails the build, naming the page. `vite preview` serves the result at its routes.
 
+`vite build --watch` runs the three steps again after each change under `src/` or `public/`. A changed island gets a new hashed chunk, and the pages point at it. A rebuild that fails is reported, and the next change tries again.
+
 ## The route manifest
 
 The build also writes `dist/clarusjs-manifest.json`: for every route, how it was rendered, which islands it has and when each attaches, and how much JavaScript it ships (gzip bytes, in all and on page load). It is read from the pages that were actually written, and it sits outside `dist/client`, so it isn't published with the site.

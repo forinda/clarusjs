@@ -198,7 +198,7 @@ test('#30: a dynamic route without entries() fails the build, naming the file', 
   cpSync(root, dir, { recursive: true, filter: (src) => !src.includes('/dist') })
   rmSync(resolve(dir, 'src/pages/users/[id].load.ts'))
   mkdirSync(resolve(dir, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(dir, 'node_modules/clarusjs'), 'junction')
   const plugin = resolve(import.meta.dirname, '../src/vite/plugin.ts')
   // No bare 'vite' import: a temp folder outside the workspace has no node_modules to resolve it from.
   writeFileSync(resolve(dir, 'vite.config.ts'), `import clarusjs from ${JSON.stringify(plugin)}\nexport default { plugins: [clarusjs()] }\n`)

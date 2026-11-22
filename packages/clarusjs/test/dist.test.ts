@@ -1,7 +1,7 @@
 // The published package is the built dist/, not src/. Build it once and check it works on its own.
 import { execSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { beforeAll, expect, test } from 'vitest'
 
 const pkgDir = resolve(import.meta.dirname, '..')
@@ -56,14 +56,14 @@ test('built Vite plugin points at built runtime files that exist', async () => {
     expect(existsSync(a.replacement)).toBe(true)
   }
   const loader = plugin.resolveId.handler('/cl-loader.js')
-  expect(loader).toBe(`${dist}/runtime/loader.js`)
+  expect(loader).toBe(join(dist, 'runtime/loader.js'))
   expect(existsSync(loader)).toBe(true)
   // #179: the built router gets its own copy of the built navigation guard.
-  const guard = plugin.resolveId.handler('./navigate.js', `${dist}/runtime/router.js`) as string
-  expect(guard).toBe(`${dist}/runtime/navigate.js?cl-copy=router`)
+  const guard = plugin.resolveId.handler('./navigate.js', join(dist, 'runtime/router.js')) as string
+  expect(guard).toBe(`${join(dist, 'runtime/navigate.js')}?cl-copy=router`)
   expect(existsSync(guard.replace(/\?.*/, ''))).toBe(true)
   const entry = plugin.load.handler('\0virtual:clarusjs/server-entry') as string
-  expect(entry).toContain(`${dist}/server/handler.js`)
+  expect(entry).toContain(JSON.stringify(join(dist, 'server/handler.js')).slice(1, -1)) // as written into the entry (a JSON string)
 })
 
 test('every path in "files" exists, including README and LICENSE (npm shows the package README)', () => {

@@ -1,5 +1,6 @@
 // Markdown pages for clarusjs. A page source: each .md file under src/pages becomes .tscl text (its HTML inside
 // the layout), then compiles like any page. Build-time only: nothing here reaches the browser.
+import { existsSync } from 'node:fs'
 import { dirname, relative, resolve, sep } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import { parse as parseYaml } from 'yaml'
@@ -37,6 +38,12 @@ export type MarkdownOptions = {
    * Synchronous schemas only.
    * @see https://clarusjs.com/guide/markdown#frontmatter-schemas
    */
+  /**
+   * Folders of components a page can use by tag without importing them: `'/src/components'` (root-relative), or
+   * several, searched in order. `<counter />` imports counter.tscl, `<todoSummary />` todo-summary.tscl. An explicit
+   * `@import` wins; an unknown camelCase tag is an error; tags in code stay text.
+   */
+  components?: string | string[]
   schema?: StandardSchema | Record<string, StandardSchema>
 }
 
@@ -89,6 +96,8 @@ const TITLES: Record<string, string> = { tip: 'Tip', info: 'Info', warning: 'War
 const ALERTS: Record<string, string> = { note: 'info', tip: 'tip', important: 'info', warning: 'warning', caution: 'danger' }
 /** Text safe inside generated .tscl markup: HTML escaped, and nothing a template would read ({ } @). */
 const inert = (s: string) => escapeHtml(s).replace(/\{/g, '&#123;').replace(/\}/g, '&#125;').replace(/@/g, '&#64;')
+
+export { highlightTemplates } from './templates.ts'
 
 /**
  * 'Hello, World!' → 'hello-world'. Shared by heading ids and (later) link checking.
@@ -379,6 +388,32 @@ function staticHtml(html: string): string {
   return out + inertText(html.slice(at))
 }
 
+// Code in Markdown: fences, then inline spans. What's inside stays text (a tag in an example is no component).
+const CODE = /(?:^|\n)[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:\n[ \t]*\1[`~]*[ \t\r]*(?=\n|$)|$)|(`+)[\s\S]*?[^`]\2(?!`)/
+
+// HTML's own elements: never taken for a component, even if a file has the name.
+const HTML_TAGS = new Set('a abbr address area article aside audio b base bdi bdo blockquote body br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script search section select slot small source span strong style sub summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr svg math'.split(' '))
+
+/**
+ * Imports for the components a page uses by tag (`markdown({ components })`): a tag naming `<dir>/<tag>.tscl` (or the
+ * kebab-case file of a camelCase tag), in the first folder that has it. Tags already imported, HTML's own and those in
+ * code are skipped; an unknown camelCase tag (no HTML element has capitals) is an error naming the page.
+ */
+function autoImports(body: string, dirs: string[], root: string, file: string, imported: Set<string>): string[] {
+  const out: string[] = []
+  const seen = new Set(imported)
+  const text = body.replace(new RegExp(CODE.source, 'g'), '')
+  for (const [, name] of text.matchAll(/<([A-Za-z][\w-]*)/g)) {
+    if (seen.has(name!) || HTML_TAGS.has(name!)) continue
+    seen.add(name!)
+    const kebab = name!.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())
+    const found = dirs.flatMap((dir) => [name!, kebab].map((f) => `${dir.replace(/\/$/, '')}/${f}.tscl`)).find((f) => existsSync(resolve(root, '.' + f)))
+    if (found) out.push(`@import ${name} from '${found}'`)
+    else if (/[A-Z]/.test(name!)) throw new Error(`${file}: <${name}> is not a component in ${dirs.join(', ')} (check the name, or @import it)`)
+  }
+  return out
+}
+
 /**
  * Component tags (and any tag with [prop] or (event) bindings) aren't valid CommonMark HTML, so markdown-it would
  * escape them. They are swapped for HTML comments, which it passes through, and put back after rendering.
@@ -386,7 +421,7 @@ function staticHtml(html: string): string {
 function protectTags(body: string, components: Set<string>, saved: string[]): { body: string; restore(html: string): string } {
   // Code (fences, then inline spans) is matched first and kept as written: a tag in an example stays text.
   // ponytail: indented code blocks aren't recognised; use a fence to show a component tag in code.
-  const code = /(?:^|\n)[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:\n[ \t]*\1[`~]*[ \t\r]*(?=\n|$)|$)|(`+)[\s\S]*?[^`]\2(?!`)/
+  const code = CODE
   const tag = /<\/?([A-Za-z][\w-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/
   const out = body.replace(new RegExp(`${code.source}|${tag.source}`, 'g'), (match, _fence, _ticks, name: string | undefined, attrs: string) => {
     if (name === undefined) return match
@@ -432,6 +467,11 @@ export default function markdown(options: MarkdownOptions = {}): Source {
         if (!line) break
         if (line[1]) imports.push(line[1].trim())
         body = body.slice(line[0].length)
+      }
+      // Components used by tag, from the configured folders (explicit imports win).
+      if (options.components) {
+        const explicit = new Set(imports.map((line) => /^@import\s+([A-Za-z_$][\w-]*)\s+from/.exec(line)?.[1]).filter((n): n is string => !!n))
+        imports.push(...autoImports(body, [options.components].flat(), context.root, file, explicit))
       }
       // Blocks rendered through a component need it imported.
       if (options.container && !imports.some((line) => new RegExp(`^@import\\s+${options.container!.tag}\\s+from`).test(line))) {
