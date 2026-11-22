@@ -1903,3 +1903,10 @@ test("what clarusjs is: no 'early, proving ground' note on the intro or the home
     await expect(page.locator('main')).not.toContainText('proving ground')
   }
 })
+
+test('what clarusjs is: where the name comes from, and how to say it', async ({ page }) => {
+  await page.goto('/guide/what-is-clarusjs')
+  await expect(page.getByRole('heading', { name: 'The name' })).toBeVisible()
+  await expect(page.locator('main')).toContainText('KLAIR-us')
+  await expect(page.locator('main')).toContainText('Latin for "clear"')
+})
