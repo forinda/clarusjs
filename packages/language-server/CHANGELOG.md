@@ -1,5 +1,11 @@
 # @clarusjs/language-server
 
+## 0.2.0
+
+### Minor Changes
+
+- [#306](https://github.com/forinda/clarusjs/pull/306) [`13dc4d5`](https://github.com/forinda/clarusjs/commit/13dc4d5678e1153c0cd397d13ffa58b9e7ae9db0) Thanks [@forinda](https://github.com/forinda)! - Format Document formats `.tscl` files with the project's Prettier and `@clarusjs/prettier-plugin` (trusted workspaces, both installed). Also fixes the server exiting at startup when an editor opens workspace folders without supporting folder-change notifications.
+
 ## 0.1.0
 
 ### Minor Changes
