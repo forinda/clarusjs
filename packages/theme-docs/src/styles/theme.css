@@ -8,7 +8,10 @@
      them (bg-surface, text-muted, border-rule, bg-accent-soft, font-mono…), so utilities follow light and dark.
    - Classes come from the theme's own templates only, and only from their class="…" attributes: scripts/classes.js
      lists them for Tailwind (reading the templates, every word would be a candidate: .hidden, .block…). A test keeps
-     the theme's own class names (.sidebar, .step…) from also being utilities. */
+     the theme's own class names (.sidebar, .step…) from also being utilities.
+   - Rules below use @apply for keywords and token colours (flex items-center border border-rule text-muted), and
+     plain declarations for sizes: Tailwind's spacing and radii are in rem, the theme's sizes in px. No hover: variant
+     either (it adds @media (hover: hover)); :hover rules @apply instead. */
 @layer theme;
 @import 'tailwindcss/theme.css' layer(theme) source(none);
 @import 'tailwindcss/utilities.css' source(none);
@@ -117,12 +120,12 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   padding: 0 max(16px, env(safe-area-inset-right, 0px), calc((100% - var(--page-width)) / 2 + 16px)) 0 max(16px, env(safe-area-inset-left, 0px), calc((100% - var(--page-width)) / 2 + 16px));
   border-bottom: 1px solid var(--rule);
 }
-.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); text-decoration: none; font-weight: 650; font-size: 18px; }
+.brand { @apply inline-flex items-center text-fg no-underline; gap: 10px; font-weight: 650; font-size: 18px; }
 .js { color: var(--accent); font-weight: 500; }
 .site-header nav { display: flex; flex-wrap: wrap; gap: 4px 18px; }
-.site-header nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
-.site-header nav a:hover { color: var(--fg); }
-.site-header nav a[aria-current] { color: var(--accent); font-weight: 600; }
+.site-header nav a { @apply text-muted no-underline; font-size: 15px; }
+.site-header nav a:hover { @apply text-fg; }
+.site-header nav a[aria-current] { @apply text-accent font-semibold; }
 
 .content {
   max-width: 760px;
@@ -151,42 +154,39 @@ pre code { background: none; padding: 0; font-size: 14px; line-height: 1.55; }
 
 
 .site-footer {
-  border-top: 1px solid var(--rule);
-  color: var(--muted);
+  @apply border-t border-rule text-muted text-center;
   font-size: 14px;
-  text-align: center;
   padding: 20px max(16px, env(safe-area-inset-right, 0px)) 28px max(16px, env(safe-area-inset-left, 0px));
 }
 
 .sample { position: relative; }
 .sample pre { padding-right: 72px; }
 .copy {
-  position: absolute; top: 8px; right: 8px;
-  font: 600 12px var(--sans); padding: 4px 10px; border-radius: 6px;
-  border: 1px solid var(--rule); background: var(--bg); color: var(--muted); cursor: pointer;
+  @apply absolute border border-rule bg-bg text-muted cursor-pointer;
+  top: 8px; right: 8px; font: 600 12px var(--sans); padding: 4px 10px; border-radius: 6px;
 }
-.copy:hover { color: var(--accent); border-color: var(--accent); }
+.copy:hover { @apply text-accent border-accent; }
 .theme-toggle {
+  @apply border border-rule bg-transparent text-fg cursor-pointer;
   font-size: 16px; line-height: 1; width: 30px; height: 30px; border-radius: 8px;
-  border: 1px solid var(--rule); background: transparent; color: var(--fg); cursor: pointer;
 }
-.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.theme-toggle:hover { @apply border-accent text-accent; }
 .site-header nav { align-items: center; }
 
 /* Docs pages: sidebar, content and "On this page" (from 1280px a column, below that a box above the content). */
 .docs { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--toc-width); max-width: var(--page-width); margin: 0 auto; }
 .docs .content { margin: 0; max-width: 760px; min-width: 0; }
 .sidebar { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 28px 16px 40px max(16px, env(safe-area-inset-left, 0px)); border-right: 1px solid var(--rule); }
-.crumb { margin: 0 0 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent); }
-.lead { font-size: 18px; color: var(--muted); }
-.page-footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.crumb { @apply font-semibold text-accent; margin: 0 0 6px; font-size: 13px; letter-spacing: 0.04em; }
+.lead { @apply text-muted; font-size: 18px; }
+.page-footer { @apply border-t border-rule; margin-top: 48px; padding-top: 16px; }
 .edit { font-size: 14px; }
-.updated { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.updated { @apply text-muted; margin: 4px 0 0; font-size: 14px; }
 .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
-.pager a { display: block; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; text-decoration: none; font-weight: 600; }
-.pager a:hover { border-color: var(--accent); }
-.pager small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
-.pager .next { grid-column: 2; text-align: right; }
+.pager a { @apply block border border-rule no-underline font-semibold; padding: 12px 14px; border-radius: 8px; }
+.pager a:hover { @apply border-accent; }
+.pager small { @apply block font-normal text-muted; font-size: 12px; }
+.pager .next { @apply col-start-2 text-right; }
 table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 15px; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
 .content table { display: block; overflow-x: auto; }
@@ -195,34 +195,46 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
 .persist { display: contents; }
 
 /* Header: section links, then (pushed right) social icons, the ⋯ overflow menu and the theme toggle. */
-.top-nav { display: flex; flex-wrap: wrap; gap: 4px 18px; }
-.header-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
-.social { display: flex; align-items: center; gap: 2px; }
-.social a, .more-button, .menu-button { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; text-decoration: none; }
-.social a:hover, .more-button:hover, .menu-button:hover { color: var(--fg); background: var(--accent-soft); }
+.top-nav { @apply flex flex-wrap; gap: 4px 18px; }
+.header-end { @apply ml-auto flex items-center; gap: 6px; }
+.social { @apply flex items-center; gap: 2px; }
+.social a, .more-button, .menu-button {
+  @apply inline-flex items-center justify-center border-0 bg-transparent text-muted cursor-pointer no-underline;
+  min-width: 40px; height: 40px; padding: 0 6px; border-radius: 8px;
+}
+.social a:hover, .more-button:hover, .menu-button:hover { @apply text-fg bg-accent-soft; }
 .npm { padding: 1px 5px; border: 1.8px solid currentColor; border-radius: 4px; font: 700 11px/1.3 var(--mono); }
 .more-button, .menu-button { display: none; }
-.more { inset: auto; margin: 0; padding: 6px; min-width: 200px; border: 1px solid var(--rule); border-radius: 12px; background: var(--bg); color: var(--fg); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18); position-area: bottom span-left; }
-.more a { display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 8px; color: var(--fg); text-decoration: none; }
-.more a:hover { background: var(--accent-soft); }
+.more {
+  @apply m-0 border border-rule bg-bg text-fg;
+  inset: auto; padding: 6px; min-width: 200px; border-radius: 12px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18); position-area: bottom span-left;
+}
+.more a { @apply flex items-center text-fg no-underline; min-height: 44px; padding: 0 12px; border-radius: 8px; }
+.more a:hover { @apply bg-accent-soft; }
 
 /* Search: a button in the header, a modal dialog with the results. */
-.search-button { display: inline-flex; align-items: center; gap: 8px; height: 40px; min-width: 40px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--bg); color: var(--muted); font: inherit; font-size: 14px; cursor: pointer; }
-.search-button:hover { color: var(--fg); border-color: var(--accent); }
-.search-button kbd { padding: 1px 6px; border: 1px solid var(--rule); border-radius: 6px; font: 12px var(--mono); }
-.search-dialog { width: min(640px, calc(100vw - 32px)); max-height: min(560px, calc(100vh - 96px)); margin: 72px auto auto; padding: 0; border: 1px solid var(--rule); border-radius: 14px; background: var(--bg); color: var(--fg); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3); }
+.search-button {
+  @apply inline-flex items-center border border-rule bg-bg text-muted cursor-pointer;
+  gap: 8px; height: 40px; min-width: 40px; padding: 0 10px; border-radius: 10px; font: inherit; font-size: 14px;
+}
+.search-button:hover { @apply text-fg border-accent; }
+.search-button kbd { @apply border border-rule; padding: 1px 6px; border-radius: 6px; font: 12px var(--mono); }
+.search-dialog {
+  @apply p-0 border border-rule bg-bg text-fg;
+  width: min(640px, calc(100vw - 32px)); max-height: min(560px, calc(100vh - 96px)); margin: 72px auto auto; border-radius: 14px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+}
 .search-dialog::backdrop { background: rgba(15, 23, 25, 0.45); }
-.search-box { display: flex; flex-direction: column; max-height: inherit; }
-.search-box input { height: 52px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--rule); background: transparent; color: inherit; font: inherit; font-size: 17px; }
+.search-box { @apply flex flex-col; max-height: inherit; }
+.search-box input { @apply border-0 border-b border-rule bg-transparent text-inherit; height: 52px; padding: 0 16px; font: inherit; font-size: 17px; }
 .search-box input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
-.search-status { margin: 0; padding: 8px 16px 0; font-size: 13px; color: var(--muted); }
+.search-status { @apply m-0 text-muted; padding: 8px 16px 0; font-size: 13px; }
 .search-status:empty { display: none; }
-#search-results { list-style: none; margin: 0; padding: 8px; overflow-y: auto; }
-#search-results a { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; color: var(--fg); text-decoration: none; }
-#search-results [aria-selected="true"] a, #search-results a:hover { background: var(--accent-soft); }
+#search-results { @apply list-none m-0 overflow-y-auto; padding: 8px; }
+#search-results a { @apply grid text-fg no-underline; gap: 2px; padding: 10px 12px; border-radius: 10px; }
+#search-results [aria-selected="true"] a, #search-results a:hover { @apply bg-accent-soft; }
 .search-heading { font-weight: 650; }
-.search-page { font-size: 13px; color: var(--accent); }
-.search-text { font-size: 13px; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.search-page { @apply text-accent; font-size: 13px; }
+.search-text { @apply text-muted line-clamp-2; font-size: 13px; }
 
 /* Where the sidebar is shown in place (from 1024px) it has the search box: the header's button would repeat it. */
 @media (min-width: 1024px) { body:has(.sidebar) .site-header .search-button { display: none; } }
@@ -234,13 +246,13 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
 /* On this page */
 .toc { position: sticky; top: var(--header-height); align-self: start; max-height: calc(100vh - var(--header-height)); overflow-y: auto; padding: 36px 16px; font-size: 14px; }
 .toc p { margin: 0 0 8px; font-weight: 650; }
-.toc ul, .toc-inline ul { list-style: none; margin: 0; padding: 0; }
+.toc ul, .toc-inline ul { @apply list-none m-0 p-0; }
 .toc li, .toc-inline li { margin: 0 0 6px; }
 .toc li.sub, .toc-inline li.sub { padding-left: 14px; }
-.toc a, .toc-inline a { color: var(--muted); text-decoration: none; }
-.toc a:hover, .toc-inline a:hover { color: var(--accent); }
-.toc-inline { display: none; margin: 0 0 24px; border: 1px solid var(--rule); border-radius: 10px; }
-.toc-inline > summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px; font-size: 14px; font-weight: 650; cursor: pointer; }
+.toc a, .toc-inline a { @apply text-muted no-underline; }
+.toc a:hover, .toc-inline a:hover { @apply text-accent; }
+.toc-inline { @apply hidden border border-rule; margin: 0 0 24px; border-radius: 10px; }
+.toc-inline > summary { @apply flex items-center cursor-pointer; min-height: 44px; padding: 0 14px; font-size: 14px; font-weight: 650; }
 .toc-inline ul { padding: 0 14px 12px; font-size: 14px; }
 
 /* Below 1280px: no room for the column; "On this page" is a box above the content, social links fold into ⋯. */
@@ -259,8 +271,8 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
   .sidebar[popover] { display: none; }
   .sidebar[popover]:popover-open { display: flex; flex-direction: column; position: fixed; inset: 0 auto 0 0; width: min(340px, 86vw); height: 100%; max-height: none; padding: 0 12px 16px; border-right: 1px solid var(--rule); background: var(--bg); box-shadow: 8px 0 32px rgba(0, 0, 0, 0.25); }
   .sidebar[popover]::backdrop { background: rgba(15, 23, 25, 0.45); }
-  .sidebar-head { display: flex; align-items: center; justify-content: space-between; min-height: 60px; font-weight: 700; border-bottom: 1px solid var(--rule); margin: 0 -12px 8px; padding: 0 8px 0 16px; }
-  .sidebar-head button { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+  .sidebar-head { @apply flex items-center justify-between font-bold border-b border-rule; min-height: 60px; margin: 0 -12px 8px; padding: 0 8px 0 16px; }
+  .sidebar-head button { @apply border-0 bg-transparent text-muted cursor-pointer; width: 44px; height: 44px; border-radius: 8px; }
   /* Pinned to the bottom of the drawer, over the list as it scrolls (the drawer's 16px bottom padding included). */
   .sidebar-links { display: flex; flex-wrap: wrap; position: sticky; bottom: -16px; margin: auto -12px -16px; padding: 12px 16px 16px; background: var(--bg); }
   .sidebar-switch { display: grid; }
@@ -338,11 +350,11 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
 :root[data-theme='dark'] { --xp: #ffd23f; --xp-soft: rgba(255, 210, 63, 0.12); }
 
 /* Quizzes: big options to tap, then the right one green and a wrong pick red. */
-.quiz { margin: 24px 0; padding: 18px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); }
+.quiz { @apply border border-rule bg-surface; margin: 24px 0; padding: 18px; border-radius: 14px; }
 .quiz-question { font-weight: 650; margin: 0 0 12px; }
-.quiz-options { display: grid; gap: 8px; }
-.quiz-options label { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border: 1.5px solid var(--rule); border-radius: 12px; background: var(--bg); cursor: pointer; }
-.quiz-options label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.quiz-options { @apply grid; gap: 8px; }
+.quiz-options label { @apply flex items-center bg-bg cursor-pointer; gap: 10px; min-height: 48px; padding: 0 14px; border: 1.5px solid var(--rule); border-radius: 12px; }
+.quiz-options label:has(input:checked) { @apply border-accent bg-accent-soft; }
 .quiz-options label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .quiz .quiz-options label.right { border-color: var(--ok); background: var(--ok-soft); }
 .quiz .quiz-options label.wrong { border-color: var(--bad); background: var(--bad-soft); }
@@ -350,36 +362,39 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
 .quiz-options .right .mark { color: var(--ok); }
 .quiz-options .wrong .mark { color: var(--bad); }
 .quiz-options input { accent-color: var(--accent); width: 18px; height: 18px; }
-.quiz-check { margin-top: 12px; min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: var(--accent); color: var(--bg); font: inherit; font-weight: 700; cursor: pointer; }
+.quiz-check { @apply border-0 bg-accent text-bg cursor-pointer; margin-top: 12px; min-height: 44px; padding: 0 18px; border-radius: 10px; font: inherit; font-weight: 700; }
 .quiz-check:disabled { opacity: 0.5; cursor: default; }
 .quiz-status { margin: 8px 0 0; font-size: 14px; }
 .quiz-status:empty { display: none; }
 .quiz-answer { margin-top: 12px; font-size: 15px; }
-.quiz-answer > summary { cursor: pointer; color: var(--muted); }
+.quiz-answer > summary { @apply cursor-pointer text-muted; }
 .quiz-correct { font-weight: 650; margin: 8px 0; }
 
 /* Learn: the XP chip, lesson states in the sidebar (a hint: every lesson stays open), the progress page. */
-.xp-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--bg); color: var(--fg); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.xp-chip {
+  @apply inline-flex items-center border border-rule bg-bg text-fg font-bold no-underline whitespace-nowrap;
+  gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; font-size: 14px;
+}
 .xp-chip[hidden] { display: none; }
 .xp-chip svg { color: #c99400; }
-.xp-chip:hover { border-color: var(--accent); }
+.xp-chip:hover { @apply border-accent; }
 .sidebar a[data-status]::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--rule); vertical-align: -1px; }
 .sidebar a[data-status="done"]::before { background: var(--ok); border-color: var(--ok); }
 .sidebar a[data-status="current"]::before { border-color: var(--accent); }
 .sidebar a[data-status="locked"] { color: var(--muted); }
 .status-note { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .progress-board .status-note { position: static; width: auto; height: auto; clip-path: none; color: var(--muted); font-size: 14px; }
-.progress-note { padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+.progress-note { @apply border border-rule bg-surface; padding: 12px 14px; border-radius: 10px; }
 .progress-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 0 0 24px; }
-.progress-stats div { padding: 14px 16px; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); }
-.progress-stats dt { font-size: 13px; color: var(--muted); }
+.progress-stats div { @apply border border-rule bg-surface; padding: 14px 16px; border-radius: 12px; }
+.progress-stats dt { @apply text-muted; font-size: 13px; }
 .progress-stats dd { margin: 4px 0 0; font-size: 22px; font-weight: 800; }
-.badges { display: grid; gap: 8px; padding: 0; list-style: none; }
+.badges { @apply grid p-0 list-none; gap: 8px; }
 .badges li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; padding: 12px 14px; border: 1px dashed var(--rule); border-radius: 12px; color: var(--muted); }
 .badges li.earned { border-style: solid; border-color: var(--ok); color: var(--fg); background: var(--ok-soft); }
 .badges em { margin-left: auto; font-style: normal; font-size: 13px; font-weight: 700; }
 .progress-lessons li[data-status="done"] a::after { content: ' ✓'; color: var(--ok); }
-.progress-reset { margin-top: 16px; min-height: 44px; padding: 0 16px; border: 1px solid var(--bad); border-radius: 10px; background: transparent; color: var(--bad); font: inherit; font-weight: 600; cursor: pointer; }
+.progress-reset { @apply bg-transparent cursor-pointer; margin-top: 16px; min-height: 44px; padding: 0 16px; border: 1px solid var(--bad); border-radius: 10px; color: var(--bad); font: inherit; font-weight: 600; }
 
 /* While a page change runs (fragments or the client router set data-cl-navigating on <html>): a thin bar at the top.
    Shown after a short delay, so fast swaps don't flash it. */
