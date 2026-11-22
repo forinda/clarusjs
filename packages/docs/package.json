@@ -10,7 +10,8 @@
     "test:e2e": "playwright test",
     "check": "node --experimental-strip-types ../clarusjs/src/cli/index.ts check --strict",
     "explain": "node --experimental-strip-types --no-warnings ../clarusjs/src/cli/index.ts explain",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint \"src/**/*.tscl\""
   },
   "dependencies": {
     "clarusjs": "workspace:*",
@@ -19,11 +20,13 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@clarusjs/content": "workspace:*",
+    "@clarusjs/eslint-plugin": "workspace:*",
     "@playwright/test": "1.65.1",
     "@types/node": "^26.6.6",
+    "acorn": "^8.19.0",
+    "eslint": "10.15.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.1",
-    "acorn": "^8.19.0"
+    "vitest": "^5.1.1"
   }
 }
