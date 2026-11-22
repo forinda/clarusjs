@@ -94,3 +94,18 @@ test('checkIcons reports every icon error in a file, in @if and @for too', () =>
   const errors = checkIcons(parse(src, 'c.tscl'), 'c.tscl', src, icon)
   expect(errors.map((e) => `${e.line}:${e.column}`)).toEqual(['1:4', '2:10', '3:26'])
 })
+
+test("the author's own aria-hidden, role, viewBox and xmlns win, each once", async () => {
+  const out = await html('<p><icon name="test:rocket" aria-hidden="false" role="presentation" viewBox="0 0 1 1" /></p>')
+  const svg = /<svg[^>]*>/.exec(out)![0]
+  for (const name of ['aria-hidden', 'role', 'viewBox', 'xmlns', 'width', 'height']) expect(svg.match(new RegExp(` ${name}=`, 'g'))?.length ?? 0, name).toBeLessThanOrEqual(1)
+  expect(svg).toContain('aria-hidden="false"')
+  expect(svg).toContain('role="presentation"')
+  expect(svg).toContain('viewBox="0 0 1 1"')
+})
+
+test('a name is set:icon; one without a set says so', () => {
+  const e = error('<p><icon name="rocket" /></p>')
+  expect(e.message).toMatch(/1:4 <icon> name is set:icon, like lucide:rocket \(got 'rocket'\)$/)
+  expect(error('<p><icon name="a/../b:x" /></p>').message).toMatch(/name is set:icon/)
+})

@@ -22,6 +22,8 @@ export function iconElement(node: Element, file: string, source: string, icon: I
   if (node.children.some((c) => c.type !== 'text' || c.value.trim())) return fail('<icon> takes no content')
   if (!icon) return fail('icons are resolved at build time: <icon> needs clarusjs/vite or clarusjs check (the playground has no icon sets)')
   const id = name.value
+  // Iconify names: lowercase letters, digits and hyphens, as set:icon (this also keeps a name inside @iconify-json/).
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)) return fail(`<icon> name is set:icon, like lucide:rocket (got '${id}')`)
   let found: IconLookup
   try {
     found = icon(id)
@@ -39,12 +41,15 @@ export function iconElement(node: Element, file: string, source: string, icon: I
   const at = node.start
   const fixed = (n: string, value: string): Attr[] => (has(n) ? [] : [{ kind: 'static', name: n, value, start: at }])
   // ponytail: an icon used twice repeats its ids (gradients in coloured sets); prefix them per use if it bites.
+  // What the author sets wins: a generated attribute is left out when the author wrote it (or, for the accessibility
+  // pair, either of them).
+  const a11y: Attr[] = has('role') || has('aria-hidden') ? [] : own.some((a) => LABELS.has(a.name)) ? fixed('role', 'img') : fixed('aria-hidden', 'true')
   const attrs: Attr[] = [
-    { kind: 'static', name: 'xmlns', value: 'http://www.w3.org/2000/svg', start: at },
+    ...fixed('xmlns', 'http://www.w3.org/2000/svg'),
     ...fixed('width', `${+(data.width / data.height).toFixed(4)}em`),
     ...fixed('height', '1em'),
-    { kind: 'static', name: 'viewBox', value: `${data.left} ${data.top} ${data.width} ${data.height}`, start: at },
-    own.some((a) => LABELS.has(a.name)) ? { kind: 'static', name: 'role', value: 'img', start: at } : { kind: 'static', name: 'aria-hidden', value: 'true', start: at },
+    ...fixed('viewBox', `${data.left} ${data.top} ${data.width} ${data.height}`),
+    ...a11y,
     ...own,
   ]
   return { svg: { type: 'element', tag: 'svg', attrs, children: [], start: node.start }, body: data.body }
