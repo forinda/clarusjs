@@ -51,7 +51,7 @@ export function completions(project: Project, path: string, text: string, offset
     ].filter((c) => c.label.startsWith(ctx.prefix)))
   }
   // <icon name="…">: the installed sets, then the icons of the chosen set (a component imported as icon wins).
-  if (ctx.kind === 'attr-value' && ctx.tag === 'icon' && ctx.attr === 'name' && !importNamed(project, path, 'icon')) {
+  if (ctx.kind === 'attr-value' && ctx.tag === 'icon' && ctx.attr === 'name' && project.compiler.checkIcons && !importNamed(project, path, 'icon')) {
     const colon = ctx.prefix.indexOf(':')
     if (colon === -1) {
       return list(iconSets(path).filter((s) => s.prefix.startsWith(ctx.prefix)).map((s) => ({
@@ -108,16 +108,16 @@ export function definition(project: Project, path: string, text: string, offset:
 
 /** Hover on `<icon name="set:name">`: a preview of the icon and its name. */
 function iconAt(project: Project, path: string, text: string, offset: number): Hover | undefined {
-  if (importNamed(project, path, 'icon')) return undefined
-  for (const m of text.matchAll(/<icon\b[^>]*?\bname="([^"]*)"/g)) {
-    const start = m.index + m[0].length - m[1]!.length - 1
-    if (offset < start || offset > start + m[1]!.length) continue
-    const found = resolveIcon(m[1]!, path)
-    if (!('data' in found)) return undefined
-    // A grey that shows on light and dark editors, for icons drawn in the text colour.
-    const svg = iconSvg(found.data, 'width="48" height="48"').replaceAll('currentColor', '#888')
-    const value = `![${m[1]}](data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')})\n\n\`${m[1]}\``
-    return { contents: { kind: 'markdown', value }, range: { start: positionAt(text, start), end: positionAt(text, start + m[1]!.length) } }
-  }
-  return undefined
+  if (!project.compiler.checkIcons || importNamed(project, path, 'icon')) return undefined
+  // The value of name="…" on an <icon> (either quote), the cursor in it: the same reading as completion.
+  const ctx = contextAt(text, offset)
+  if (ctx.kind !== 'attr-value' || ctx.tag !== 'icon' || ctx.attr !== 'name') return undefined
+  const close = text.indexOf(text[ctx.start - 1]!, ctx.start)
+  const name = text.slice(ctx.start, close === -1 ? offset : close)
+  const found = resolveIcon(name, path)
+  if (!('data' in found)) return undefined
+  // A grey that shows on light and dark editors, for icons drawn in the text colour.
+  const svg = iconSvg(found.data, 'width="48" height="48"').replaceAll('currentColor', '#888')
+  const value = `![${name}](data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')})\n\n\`${name}\``
+  return { contents: { kind: 'markdown', value }, range: { start: positionAt(text, ctx.start), end: positionAt(text, ctx.start + name.length) } }
 }

@@ -13,10 +13,12 @@ export type Compiler = {
   ClarusError: typeof bundled.ClarusError
   /** Template lint (#304); a project's older clarusjs has none. */
   lint?: typeof bundled.lint
+  /** Built-in icons: a project's clarusjs from before <icon> has none, and the editor then offers no icons. */
+  checkIcons?: typeof bundled.checkIcons
   source: 'project' | 'bundled'
 }
 
-const BUNDLED: Compiler = { compile: bundled.compile, parse: bundled.parse, ClarusError: bundled.ClarusError, lint: bundled.lint, source: 'bundled' }
+const BUNDLED: Compiler = { compile: bundled.compile, parse: bundled.parse, ClarusError: bundled.ClarusError, lint: bundled.lint, checkIcons: bundled.checkIcons, source: 'bundled' }
 
 export async function loadCompiler(root: string, trusted: boolean, log: (message: string) => void): Promise<Compiler> {
   if (!trusted) {
@@ -38,7 +40,7 @@ export async function loadCompiler(root: string, trusted: boolean, log: (message
     const own = await import(pathToFileURL(entry).href)
     if (typeof own.compile === 'function' && typeof own.parse === 'function' && typeof own.ClarusError === 'function') {
       log(`clarusjs: using the project's compiler (${entry})`)
-      return { compile: own.compile, parse: own.parse, ClarusError: own.ClarusError, lint: typeof own.lint === 'function' ? own.lint : undefined, source: 'project' }
+      return { compile: own.compile, parse: own.parse, ClarusError: own.ClarusError, lint: typeof own.lint === 'function' ? own.lint : undefined, checkIcons: typeof own.checkIcons === 'function' ? own.checkIcons : undefined, source: 'project' }
     }
     log('clarusjs: using the bundled compiler (the project\'s clarusjs is too old: it has no parse)')
   } catch (err) {

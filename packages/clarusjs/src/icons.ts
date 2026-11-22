@@ -69,8 +69,9 @@ export function resolveIcon(name: string, fromFile: string): IconLookup {
   if (!data) return { missing: 'set', set }
   // Own keys only: a name like constructor or __proto__ isn't an icon.
   const all: Record<string, IconJson> = Object.assign(Object.create(null), data.aliases, data.icons)
-  let found = Object.hasOwn(all, icon) ? all[icon] : undefined
-  if (!found) {
+  const own = (n: string): IconJson | undefined => (Object.hasOwn(all, n) ? all[n] : undefined)
+  const first = own(icon)
+  if (!first) {
     const suggestions = Object.keys(all)
       .map((n) => [n, distance(icon, n)] as const)
       .filter(([n, d]) => d <= Math.max(2, Math.floor(n.length / 3)))
@@ -80,9 +81,10 @@ export function resolveIcon(name: string, fromFile: string): IconLookup {
     return { missing: 'icon', set, suggestions }
   }
   // An alias takes its parent's body and fills in what it doesn't set itself (chains included).
+  let found: IconJson = first
   let merged: IconJson = { ...found }
   for (let depth = 0; found.parent && depth < 10; depth++) {
-    const parent = Object.hasOwn(all, found.parent) ? all[found.parent] : undefined
+    const parent = own(found.parent)
     if (!parent) break
     merged = { ...parent, ...merged, parent: parent.parent }
     found = parent

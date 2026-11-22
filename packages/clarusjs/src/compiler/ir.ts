@@ -45,7 +45,11 @@ export type ComponentIR = {
 const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
-/** The body of each <svg> an <icon> became, emitted right after its open tag. */
+/**
+ * The body of each <svg> an <icon> became, emitted right after its open tag. Keyed by the element object itself, so
+ * visit() must emit the open tag of the node it was given: a pass that copies the element first ({ ...node, attrs })
+ * would lose the body (the icon tests catch that: the svg would come out empty).
+ */
 const iconBodies = new WeakMap<object, string>()
 
 export function lower(parsed: ParsedFile, file: string, source: string, options: { collapseWhitespace?: boolean; icon?: IconResolver } = {}): ComponentIR {

@@ -17,6 +17,9 @@ export function diagnosticsFor(project: Project, path: string, text: string): Di
     return [...warnings, ...linted]
   } catch (err) {
     if (!(err instanceof ClarusError)) return []
+    // An icon error stops the compile at the first; checkIcons finds the rest, as clarusjs check reports them.
+    const icons = iconErrors(project, path, text)
+    if (icons.some((e) => e.line === err.line && e.column === err.column && e.message === err.message)) return icons.map((e) => diagnostic(e, 1))
     if (project.mapperConfigured(path)) {
       try { parse(text, path) } catch { return [] } // a syntax error: the mapper's
     }
@@ -38,5 +41,16 @@ function diagnostic(err: { message: string; file: string; line: number; column: 
     message: err.message.slice(`${err.file}:${err.line}:${err.column} `.length),
     severity,
     source: 'clarusjs',
+  }
+}
+
+/** Every <icon> error in the file, with a clarusjs that has built-in icons (none on a syntax error). */
+function iconErrors(project: Project, path: string, text: string): { message: string; file: string; line: number; column: number }[] {
+  const { parse, checkIcons } = project.compiler
+  if (!checkIcons) return []
+  try {
+    return checkIcons(parse(text, path), path, text, (name) => resolveIcon(name, path))
+  } catch {
+    return []
   }
 }

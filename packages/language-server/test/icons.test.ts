@@ -74,3 +74,27 @@ test('an unknown icon is an error, with the closest name', async () => {
   expect(d!.message).toBe("no icon 'rockt' in test (did you mean 'rocket'?)")
   expect(d!.range.start).toEqual({ line: 0, character: 3 })
 })
+
+test("hover only on <icon name>, in single or double quotes; not <icon-button name> or data-name", async () => {
+  const { at } = await setup()
+  expect(at("<p><icon name='test:ro§cket' /></p>\n", hover)).toBeDefined()
+  expect(at('<p><icon-button name="test:ro§cket"></icon-button></p>\n', hover)).toBeUndefined()
+  expect(at('<p><icon data-name="test:ro§cket" name="test:ship" /></p>\n', hover)).toBeUndefined()
+})
+
+test("a project's older compiler (no icons) gets no icon completion or hover", async () => {
+  const { project, at } = await setup()
+  const { checkIcons: _, ...older } = project.compiler
+  Object.defineProperty(project, 'compiler', { value: older })
+  expect(at('<p><icon name="§" /></p>\n', completions).items).toEqual([])
+  expect(at('<p><icon name="test:ro§cket" /></p>\n', hover)).toBeUndefined()
+})
+
+test('every icon error in the file, not just the first', async () => {
+  const { project, page } = await setup()
+  const ds = diagnosticsFor(project, page, '<p><icon name="test:rockt" /></p>\n<p><icon name="nope:x" /></p>\n')
+  expect(ds.map((d) => [d.range.start.line, d.message])).toEqual([
+    [0, "no icon 'rockt' in test (did you mean 'rocket'?)"],
+    [1, "no icon set 'nope': install it with pnpm add -D @iconify-json/nope"],
+  ])
+})
