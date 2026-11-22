@@ -358,13 +358,16 @@ function renderer(options: MarkdownOptions): Md {
 }
 
 /**
- * Frontmatter `image` (the social card), `jsonLd` (an object or a list), `head: [[tag, attrs, content?]]` and `titleTemplate: false` (the title as written) as <cl-head>, which
+ * Frontmatter `image` (the social card), `lastmod` (the sitemap's date for the page), `jsonLd` (an object or a list), `head: [[tag, attrs, content?]]` and `titleTemplate: false` (the title as written) as <cl-head>, which
  * the server moves into the page's <head>.
  */
 function pageHead(data: Record<string, unknown>, title: string | undefined): string {
   const tags: string[] = []
   if (data.titleTemplate === false && title !== undefined) tags.push(`<title>${escapeHtml(title)}</title>`)
   if (data.sitemap === false) tags.push('<meta name="sitemap" content="false">')
+  // lastmod: the page's date in the sitemap (over git's). YAML may read a bare date as a Date.
+  const lastmod = data.lastmod instanceof Date ? data.lastmod.toISOString().slice(0, 10) : typeof data.lastmod === 'string' ? data.lastmod : undefined
+  if (lastmod !== undefined) tags.push(`<meta name="sitemap:lastmod" content="${escapeHtml(lastmod)}">`)
   if (typeof data.image === 'string') tags.push(`<meta property="og:image" content="${escapeHtml(data.image)}">`)
   const raws: string[] = [] // scripts: raw text, kept out of staticHtml
   for (const entry of Array.isArray(data.head) ? data.head : []) {

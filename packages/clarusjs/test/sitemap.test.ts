@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { createBuilder } from 'vite'
 import { expect, test } from 'vitest'
-import { gitDates, sitemapXml } from '../src/vite/sitemap.ts'
+import { gitDates, sitemapFiles, sitemapXml } from '../src/vite/sitemap.ts'
 import clarusjs from '../src/vite/plugin.ts'
 
 const git = (root: string, cmd: string, date?: string) => execSync(`git ${cmd}`, {
@@ -139,3 +139,159 @@ test('review: route patterns with special characters, and noindex written any va
   expect(xml).not.toContain('quiet')
   expect(readFileSync(resolve(root, 'dist/client/404.html'), 'utf8')).toContain('<a href="/docs/blog/a">a post</a>')
 }, 120_000)
+
+test('#390: a page sets its own lastmod (it wins over git), and the marker is stripped from the built page', async () => {
+  const { root, w } = repo()
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  w('src/pages/news.tscl', '<html><head><title>N</title></head><body><cl-head><meta name="sitemap:lastmod" content="2026-11-01"></cl-head><p>n</p></body></html>')
+  git(root, 'add -A')
+  git(root, 'commit -qm one', '2024-01-02T00:00:00Z')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
+  const xml = readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  expect(xml).toContain('<url><loc>https://example.com/news</loc><lastmod>2026-11-01</lastmod></url>')
+  expect(xml).toContain('<url><loc>https://example.com/</loc><lastmod>2024-01-02</lastmod></url>') // others keep git's
+  expect(readFileSync(resolve(root, 'dist/client/news/index.html'), 'utf8')).not.toContain('sitemap:lastmod')
+}, 120_000)
+
+test('#390: a lastmod that is not a date fails the build, naming the page', async () => {
+  const { root, w } = repo()
+  w('src/pages/index.tscl', '<cl-head><meta name="sitemap:lastmod" content="last tuesday"></cl-head><h1>Home</h1>')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await expect((await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp())
+    .rejects.toThrow(/\/: sitemap:lastmod 'last tuesday' isn't a date \(YYYY-MM-DD\)/)
+}, 120_000)
+
+test('#391: sitemapXml writes a page\'s images (the image namespace only when there are any)', () => {
+  const xml = sitemapXml('https://example.com', '/', [{ path: '/a', lastmod: undefined, images: ['https://example.com/x.png?a=1&b=2'] }, { path: '/b', lastmod: undefined }])
+  expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">')
+  expect(xml).toContain('<url><loc>https://example.com/a</loc><image:image><image:loc>https://example.com/x.png?a=1&amp;b=2</image:loc></image:image></url>')
+  expect(xml).toContain('<url><loc>https://example.com/b</loc></url>')
+  expect(sitemapXml('https://example.com', '/', [{ path: '/b', lastmod: undefined }])).not.toContain('xmlns:image')
+})
+
+test('#391: vite build lists each page\'s images, absolute; decorative (alt="") and data: images left out; images: false turns it off', async () => {
+  const build = async (sitemap: object) => {
+    const { root, w } = repo()
+    w('src/pages/guide/a.tscl', '<h1>A</h1><img src="shot.png" alt="A screenshot"><img src="/logo.svg" alt="Logo"><img src="https://cdn.example.org/c.jpg" alt="CDN"><img src="/deco.png" alt=""><img src="data:image/png;base64,AAAA" alt="inline"><img src="/logo.svg" alt="Logo again">')
+    w('src/pages/b.tscl', '<p>no images</p>')
+    mkdirSync(resolve(root, 'node_modules'))
+    symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+    await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' }, sitemap })] })).buildApp()
+    return readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  }
+  const xml = await build({})
+  const page = /<url><loc>https:\/\/example\.com\/guide\/a<\/loc>(.*?)<\/url>/.exec(xml)![1]!
+  expect([...page.matchAll(/<image:loc>([^<]*)<\/image:loc>/g)].map((m) => m[1])).toEqual([
+    'https://example.com/guide/shot.png',
+    'https://example.com/logo.svg',
+    'https://cdn.example.org/c.jpg',
+  ])
+  expect(xml).toContain('<url><loc>https://example.com/b</loc>')
+  expect(await build({ images: false })).not.toContain('image:')
+}, 240_000)
+
+test('#392: include adds URLs the build can\'t list (server, client routes): an array or an async function', async () => {
+  const build = async (include: unknown) => {
+    const { root, w } = repo()
+    w('src/pages/index.tscl', '<h1>Home</h1>')
+    w('src/pages/shop/[id].tscl', '@input id: string = \'\'\n<p>{{ id }}</p>')
+    mkdirSync(resolve(root, 'node_modules'))
+    symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+    const plugin = clarusjs({ site: { url: 'https://example.com' }, routes: { '/shop/*': 'server' }, sitemap: { include } as never })
+    await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [plugin] })).buildApp()
+    return [...readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8').matchAll(/<loc>https:\/\/example\.com([^<]*)<\/loc>/g)].map((m) => m[1])
+  }
+  expect(await build(['/shop/a', '/shop/b', '/'])).toEqual(['/', '/shop/a', '/shop/b']) // '/' once
+  expect(await build(async () => ['/shop/c'])).toEqual(['/', '/shop/c'])
+  await expect(build(['shop/d'])).rejects.toThrow(/sitemap\.include: 'shop\/d' isn't a path \(start it with \/\)/)
+}, 240_000)
+
+test('#393: up to the limit one sitemap.xml; past it, sitemap-1.xml… and sitemap.xml as their index', () => {
+  const pages = ['/a', '/b', '/c'].map((path) => ({ path, lastmod: undefined }))
+  expect(sitemapFiles('https://example.com', '/docs/', pages.slice(0, 2), 2).map((f) => f.file)).toEqual(['sitemap.xml'])
+  const files = sitemapFiles('https://example.com', '/docs/', pages, 2)
+  expect(files.map((f) => f.file)).toEqual(['sitemap-1.xml', 'sitemap-2.xml', 'sitemap.xml'])
+  expect(files[0]!.xml).toBe(sitemapXml('https://example.com', '/docs/', pages.slice(0, 2)))
+  expect(files[1]!.xml).toContain('<loc>https://example.com/docs/c</loc>')
+  expect(files[2]!.xml).toBe(
+    '<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    '<sitemap><loc>https://example.com/docs/sitemap-1.xml</loc></sitemap>\n' +
+    '<sitemap><loc>https://example.com/docs/sitemap-2.xml</loc></sitemap>\n</sitemapindex>\n',
+  )
+  expect(sitemapFiles('https://example.com', '/', pages).map((f) => f.file)).toEqual(['sitemap.xml']) // 50,000 by default
+})
+
+test('#395: sitemapXml writes a page\'s translations as xhtml:link alternates (the namespace only when used)', () => {
+  const xml = sitemapXml('https://example.com', '/', [{ path: '/guide', lastmod: undefined, alternates: [{ hreflang: 'en', href: '/guide' }, { hreflang: 'fr', href: '/fr/guide' }, { hreflang: 'x-default', href: 'https://example.com/guide' }] }])
+  expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"')
+  expect(xml).toContain('<url><loc>https://example.com/guide</loc><xhtml:link rel="alternate" hreflang="en" href="https://example.com/guide"/><xhtml:link rel="alternate" hreflang="fr" href="https://example.com/fr/guide"/><xhtml:link rel="alternate" hreflang="x-default" href="https://example.com/guide"/></url>')
+  expect(sitemapXml('https://example.com', '/', [{ path: '/b', lastmod: undefined }])).not.toContain('xmlns:xhtml')
+})
+
+test('#395: vite build reads each page\'s <link rel="alternate" hreflang> (in any attribute order) and keeps them in the page', async () => {
+  const { root, w } = repo()
+  w('src/pages/guide.tscl', `<html><head><title>G</title><cl-head><link rel="alternate" hreflang="en" href="/guide"><link href="/fr/guide" hreflang="fr" rel="alternate"><link rel="alternate" type="application/rss+xml" href="/feed.xml"></cl-head></head><body><p>g</p></body></html>`)
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
+  const xml = readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  expect(xml).toContain('<xhtml:link rel="alternate" hreflang="en" href="https://example.com/guide"/><xhtml:link rel="alternate" hreflang="fr" href="https://example.com/fr/guide"/>')
+  expect(xml).not.toContain('feed.xml') // an alternate without hreflang isn't a translation
+  expect(readFileSync(resolve(root, 'dist/client/guide/index.html'), 'utf8')).toContain('hreflang="fr"')
+}, 120_000)
+
+test('#396 review: lastmod must be a real calendar date (2026-02-30 is not); leap days and times with a zone are', async () => {
+  const build = async (value: string) => {
+    const { root, w } = repo()
+    w('src/pages/index.tscl', `<cl-head><meta name="sitemap:lastmod" content="${value}"></cl-head><h1>Home</h1>`)
+    mkdirSync(resolve(root, 'node_modules'))
+    symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+    await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
+    return readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
+  }
+  await expect(build('2026-02-30')).rejects.toThrow(/sitemap:lastmod '2026-02-30' isn't a date/)
+  await expect(build('2026-13-01')).rejects.toThrow(/isn't a date/)
+  expect(await build('2028-02-29')).toContain('<lastmod>2028-02-29</lastmod>')
+  expect(await build('2026-11-01T23:30:00-05:00')).toContain('<lastmod>2026-11-02</lastmod>') // as UTC
+}, 240_000)
+
+test('#396 review: the markers are removed from every built page, also 404, 500 and client routes', async () => {
+  const { root, w } = repo()
+  const marked = '<cl-head><meta name="sitemap:lastmod" content="2026-11-01"><meta name="sitemap" content="false"></cl-head>'
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  w('src/pages/404.tscl', `${marked}<h1>Not found</h1>`)
+  w('src/pages/500.tscl', `${marked}<h1>Error</h1>`)
+  w('src/pages/app.tscl', `${marked}<h1>App</h1>`)
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ site: { url: 'https://example.com' }, routes: { '/app': 'client' } })] })).buildApp()
+  for (const file of ['404/index.html', '404.html', '500/index.html', '500.html', 'app/index.html']) {
+    const path = resolve(root, 'dist/client', file)
+    if (existsSync(path)) expect(readFileSync(path, 'utf8'), file).not.toMatch(/name="sitemap(:lastmod)?"/)
+  }
+}, 120_000)
+
+test('#396 review: include doesn\'t bring back a page that exclude, its own opt-out or noindex keeps out', async () => {
+  const { root, w } = repo()
+  w('src/pages/index.tscl', '<h1>Home</h1>')
+  w('src/pages/private.tscl', '<cl-head><meta name="sitemap" content="false"></cl-head><p>p</p>')
+  w('src/pages/hidden.tscl', '<cl-head><meta name="robots" content="noindex"></cl-head><p>h</p>')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  const plugin = clarusjs({ site: { url: 'https://example.com' }, sitemap: { exclude: ['/drafts/**'], include: ['/drafts/x', '/private', '/hidden', '/shop/a'] } })
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [plugin] })).buildApp()
+  const locs = [...readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8').matchAll(/<loc>https:\/\/example\.com([^<]*)<\/loc>/g)].map((m) => m[1])
+  expect(locs).toEqual(['/', '/shop/a'])
+}, 120_000)
+
+test('#396 review: files split by size as well as by count (50 MB each, uncompressed), with the index', () => {
+  const pages = ['/a', '/b', '/c'].map((path) => ({ path, lastmod: undefined, images: Array.from({ length: 20 }, (_, i) => `/img/${path.slice(1)}-${i}.png`) }))
+  const one = sitemapXml('https://example.com', '/', pages.slice(0, 1)).length
+  const files = sitemapFiles('https://example.com', '/', pages, 50_000, one + 10) // room for one page a file
+  expect(files.map((f) => f.file)).toEqual(['sitemap-1.xml', 'sitemap-2.xml', 'sitemap-3.xml', 'sitemap.xml'])
+  for (const f of files.slice(0, 3)) expect(Buffer.byteLength(f.xml)).toBeLessThanOrEqual(one + 10)
+  expect(sitemapFiles('https://example.com', '/', pages).map((f) => f.file)).toEqual(['sitemap.xml']) // 50 MB by default
+})
