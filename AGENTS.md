@@ -64,6 +64,9 @@ Releases are automated from `main` (see RELEASE.md): never run `npm publish` or 
 - **Compiled output stays readable.** Exact-output tests in `test/compiler/emit-*.test.ts` pin it; update them deliberately.
 - **Tests first.** Write the failing test, watch it fail, then implement. Bug fixes start with a reproducing test.
 - **Size budgets are tests.** Browser runtime ≤ 5 KB gzip, a fixture site's JavaScript ≤ 6.5 KB gzip, published tarball ≤ 115 KB (unpacked ≤ 400 KB), dependencies exactly `acorn` (compiler) and `commander` (CLI), and no compiler or CLI code in browser assets (`test/build.test.ts`, `test/dist.test.ts`). Raising a budget or adding a dependency is a deliberate, explained change in its own PR.
+- **Read [docs/decisions.md](docs/decisions.md) first** before changing size budgets, bundling, module resolution,
+  formatting or the docs playground: it lists approaches already measured and rejected, and why. Add to it when you
+  measure and reject one.
 - **Keep it small.** No new runtime dependencies beyond `acorn` (compiler) and `commander` (CLI); neither may reach a browser bundle. Deliberate shortcuts get a `ponytail:` comment naming the limit and the upgrade path.
 
 ## The docs site is the proving ground
