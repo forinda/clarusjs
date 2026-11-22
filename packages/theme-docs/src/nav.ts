@@ -10,6 +10,28 @@ export type Social = { label: string; href: string; icon: 'github' | 'npm' | 'li
 /** A heading on the page, for "On this page". */
 export type Heading = { id: string; text: string; level: number }
 
+/**
+ * What a site's layout passes to a theme's `layout.tscl`: the contract a theme implements (#362). `config` and
+ * `title` always; the rest optional, with the defaults the docs theme uses. A theme's layout also has the slots
+ * `sidebar-top`, `sidebar-bottom`, `content-top`, `content-bottom` and `footer`, beside its default one.
+ * @see https://clarusjs.com/guide/writing-a-theme
+ */
+export type LayoutInputs = {
+  config: ThemeConfig
+  title: string
+  description?: string
+  /** The page's sidebar entry (default '/'). */
+  path?: string
+  /** The page's own route, when it differs from its sidebar entry. */
+  source?: string
+  /** The page's own address, when path names its sidebar entry instead. */
+  url?: string
+  /** The page's h2 and h3, for "On this page". */
+  headings?: Heading[]
+  /** A tool rather than a page: no sidebar, crumb or footers. */
+  app?: boolean
+}
+
 export type ThemeConfig = {
   /** The site's name in the header: `{ text: 'clarus', accent: '.js' }` shows the accent in the brand colour. */
   brand: { text: string; accent?: string; logo?: string }
