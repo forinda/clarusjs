@@ -1783,3 +1783,33 @@ test('#370: the phone drawer as designed: Menu, a Learn / Guide switch, groups, 
   await drawer.locator('.sidebar-switch a', { hasText: 'Learn' }).click()
   await expect(page).toHaveURL(/\/learn\//)
 })
+
+test('#371: a lesson has the Learn path: progress, done / next / locked, XP, its steps following the bar', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  // Lessons 1 and 2 done: 3 is the one to do, 4 is next, 5 and 6 are locked.
+  await page.addInitScript(() => localStorage.setItem('clarusjs-learn', JSON.stringify({ v: 1, steps: {}, done: ['/learn/first-page', '/learn/templates'], quizzes: {} })))
+  await page.goto('/learn/first-island')
+  const path = page.locator('.learn-path')
+  await expect(path).toContainText('Your first site')
+  await expect(path).toContainText('2 of 6')
+  const lessons = path.locator('> ol > li')
+  await expect(lessons).toHaveCount(6)
+  await expect(lessons.nth(0)).toHaveAttribute('data-status', 'done')
+  await expect(lessons.nth(0)).toContainText('Done')
+  await expect(lessons.nth(2).locator('a').first()).toHaveAttribute('aria-current', 'page')
+  await expect(lessons.nth(2)).toContainText('5 min')
+  await expect(lessons.nth(2)).toContainText(/\+\d+/)
+  await expect(lessons.nth(3)).toHaveAttribute('data-status', 'next')
+  await expect(lessons.nth(4)).toHaveAttribute('data-status', 'locked')
+  await expect(lessons.nth(4)).toContainText('Finish lesson 4 first')
+  await expect(path.locator('.path-footer')).toContainText(/\d+ XP · \d+ badges?\b/)
+  // The steps follow the bar.
+  const steps = path.locator('.path-steps li')
+  await expect(steps.first()).toHaveAttribute('data-step', 'current')
+  await page.locator('.lesson-bar').getByRole('button', { name: 'Continue' }).click()
+  await expect(steps.nth(0)).toHaveAttribute('data-step', 'done')
+  await expect(steps.nth(1)).toHaveAttribute('data-step', 'current')
+  // Phones: the header's segments, no path.
+  await page.setViewportSize({ width: 390, height: 800 })
+  await expect(path).toBeHidden()
+})

@@ -5,6 +5,7 @@ group: "Your first site"
 order: 2
 layout: /src/layouts/lesson.tscl
 steps: true
+minutes: 5
 ---
 
 # Templates

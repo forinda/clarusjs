@@ -5,6 +5,7 @@ group: "Your first site"
 order: 1
 layout: /src/layouts/lesson.tscl
 steps: true
+minutes: 5
 ---
 
 # Install and a first page

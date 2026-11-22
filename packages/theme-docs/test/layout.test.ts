@@ -22,7 +22,7 @@ beforeAll(async () => {
   w('src/config.ts', `export const config = {
   brand: { text: 'acme', accent: '.dev' },
   learn: { section: 'learn', progress: '/learn/progress' },
-  sections: [{ key: 'learn', title: 'Learn', href: '/learn/one', groups: [{ title: 'First site', items: [{ title: 'One', href: '/learn/one' }, { title: 'Two', href: '/learn/two' }] }, { title: 'You', items: [{ title: 'Progress', href: '/learn/progress' }] }] }, { key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', icon: 'book', items: [{ title: 'Start', href: '/guide/start', badge: 'New' }, { title: 'Next', href: '/guide/next' }] }, { title: 'Tools', icon: 'wrench', collapsed: true, items: [{ title: 'Extra', href: '/guide/extra' }] }] }, { key: 'api', title: 'API', href: '/guide/next', switch: false, groups: [] }],
+  sections: [{ key: 'learn', title: 'Learn', href: '/learn/one', groups: [{ title: 'First site', items: [{ title: 'One', href: '/learn/one', xp: 90, minutes: 5 }, { title: 'Two', href: '/learn/two', xp: 60 }] }, { title: 'You', items: [{ title: 'Progress', href: '/learn/progress' }] }] }, { key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', icon: 'book', items: [{ title: 'Start', href: '/guide/start', badge: 'New' }, { title: 'Next', href: '/guide/next' }] }, { title: 'Tools', icon: 'wrench', collapsed: true, items: [{ title: 'Extra', href: '/guide/extra' }] }] }, { key: 'api', title: 'API', href: '/guide/next', switch: false, groups: [] }],
   social: [{ label: 'GitHub', href: 'https://github.com/acme/x', icon: 'github' }],
   menuLinks: [{ label: 'Releases', href: '/guide/next' }],
   editLink: 'https://example.com/edit/:file',
@@ -183,4 +183,20 @@ test('#370: the phone drawer as designed: "Menu", a switch between sections, and
   expect(sw).toMatch(/<a [^>]*href="\/guide\/start"[^>]*aria-current="true"[^>]*>Guide<\/a>/)
   expect(sw).not.toContain('API') // switch: false
   expect(sidebar).toMatch(/<div class="sidebar-links[^"]*">[\s\S]*Releases[\s\S]*GitHub/)
+})
+
+test('#371: a lesson page has the path: course, progress, each lesson with its XP, the steps of this one, an XP footer', () => {
+  const one = unscoped(readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8'))
+  const path = /<nav class="learn-path[^"]*" aria-label="Lessons"[\s\S]*?<\/nav>/.exec(one)![0].replace(/<!--[\s\S]*?-->/g, '') // without the island's markers
+  expect(path).toMatch(/Learn[\s\S]*First site/) // the section, then the course (the lessons' group)
+  expect(path).toMatch(/<progress [^>]*max="2"/)
+  expect(path).toMatch(/<a [^>]*href="\/learn\/one"[^>]*aria-current="page"[\s\S]*?One[\s\S]*?\+90/)
+  expect(path).toMatch(/href="\/learn\/two"[\s\S]*?Two[\s\S]*?\+60/)
+  expect(path).toMatch(/5 min/)
+  // This lesson's steps (its h2s), as links to them.
+  expect(path).toMatch(/<ol [^>]*class="[^"]*path-steps[\s\S]*href="#read"[^>]*>[\s\S]*Read[\s\S]*href="#write"[\s\S]*Write/)
+  expect(path).not.toContain('Sub')
+  expect(path).toMatch(/<a [^>]*href="\/learn\/progress"[^>]*>[\s\S]*XP/)
+  // It's an island: done / current / locked come from the progress in the browser.
+  expect(one).toMatch(/<cl-island c="learn-path"/)
 })

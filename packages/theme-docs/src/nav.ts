@@ -2,8 +2,11 @@
 // readonly, as a template's inputs are: the layout passes its config to these helpers as it gets it.
 
 /** A sidebar entry; `order` sorts it within its group (lowest first, then by title). */
-/** A sidebar entry. `badge`: a short label beside it ("New"), also from a page's frontmatter. */
-export type Item = { title: string; href: string; order?: number; badge?: string }
+/**
+ * A sidebar entry. `badge`: a short label beside it ("New"), also from a page's frontmatter. For a lesson (#371): `xp`,
+ * what it can earn (from its steps and quizzes), and `minutes` (frontmatter), shown in the Learn path.
+ */
+export type Item = { title: string; href: string; order?: number; badge?: string; xp?: number; minutes?: number }
 /** The icons a sidebar group can show (#369). */
 export type GroupIcon = 'info' | 'code' | 'box' | 'shield' | 'download' | 'book' | 'terminal' | 'sparkles' | 'layers' | 'wrench' | 'rocket' | 'file'
 /**
@@ -105,7 +108,7 @@ export function pager(sections: readonly Section[], path: string): { prev: Item;
  * A page as `themeDocs()` reads it (`import pages from 'virtual:theme-docs/pages'`): its route, source file under
  * src/pages, last commit time (unix seconds), sidebar entry, and `hidden` when it isn't in the sidebar.
  */
-export type PageInfo = { href: string; title: string; file: string; group?: string; order?: number; badge?: string; updated?: number; hidden?: boolean }
+export type PageInfo = { href: string; title: string; file: string; group?: string; order?: number; badge?: string; xp?: number; minutes?: number; updated?: number; hidden?: boolean }
 
 /**
  * The sections with their sidebar filled from the pages under `/<section key>/`: a page sits in its `group` (else the
@@ -125,6 +128,8 @@ export function pagesNav(sections: readonly Section[], pages: readonly PageInfo[
       const item: Item = { title: page.title, href: page.href }
       if (page.order !== undefined) item.order = page.order
       if (page.badge) item.badge = page.badge
+      if (page.xp) item.xp = page.xp
+      if (page.minutes) item.minutes = page.minutes
       group.items.push(item)
     }
     const rank = (i: Item) => i.order ?? Infinity

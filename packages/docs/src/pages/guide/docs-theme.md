@@ -157,6 +157,7 @@ Pages hidden from the sidebar, dynamic routes and the 404 and 500 pages aren't l
 title: "Install and a first page"
 layout: /src/layouts/lesson.tscl
 steps: true
+minutes: 5
 ---
 
 # Install and a first page
@@ -172,6 +173,7 @@ steps: true
 - **Quizzes:** on a step with a quiz the main button is **Check**: the bar turns green ("Correct!") or red ("Not quite", with the right answer), then Continue. The quiz marks the right option and a wrong pick in words as well as colour.
 - **Code beside the text:** from 1024px, a step's code blocks and `.result` boxes sit in a column to the right of its text.
 - **Reduced motion:** steps change without animation.
+- **The path:** with `learn` set (below), from 1024px a lesson has the path beside it: the course (its sidebar group) and how many lessons are done, each lesson with the XP it can earn (50, plus 10 a step and 20 a quiz, counted from the page) and its frontmatter `minutes`, marked done, next or locked from your progress, this lesson's steps following along, and your XP and badges, linking to the progress page.
 
 ## Progress, XP and badges
 

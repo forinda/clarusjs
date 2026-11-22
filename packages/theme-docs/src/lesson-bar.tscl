@@ -40,6 +40,8 @@
     all.forEach((step, j) => {
       step.hidden = j !== current
     })
+    // The Learn path's steps follow along.
+    window.dispatchEvent(new CustomEvent('learn:step', { detail: current }))
     checking = !!all[current].querySelector('[data-quiz]:not([data-answered])')
     verdict('', '', '')
     const id = all[current].getAttribute('aria-labelledby') ?? ''

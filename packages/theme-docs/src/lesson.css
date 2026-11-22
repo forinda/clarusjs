@@ -70,3 +70,28 @@
   .lesson-actions button { padding: 0 16px; }
   .feedback-title { font-size: 14px; }
 }
+
+/* The Learn path (#371): beside the lesson from 1024px, above the action bar. Below that the header's segments do. */
+.lesson-path { display: none; }
+@media (min-width: 1024px) {
+  .lesson-body { display: grid; grid-template-columns: 300px minmax(0, 1fr); }
+  .lesson-path { display: block; position: sticky; top: var(--header-height); align-self: start; height: calc(100vh - var(--header-height)); border-right: 1px solid var(--rule); }
+  .one-step .lesson-path { height: calc(100vh - var(--header-height) - var(--bar-height)); }
+  .lesson-path cl-island, .lesson-path .learn-path { height: 100%; }
+  .lesson-body .lesson { width: 100%; }
+}
+.path-progress { appearance: none; border: 0; border-radius: 999px; background: var(--rule); overflow: hidden; }
+.path-progress::-webkit-progress-bar { background: var(--rule); }
+.path-progress::-webkit-progress-value { background: var(--accent); border-radius: 999px; }
+.path-progress::-moz-progress-bar { background: var(--accent); border-radius: 999px; }
+.path-dot { background: var(--surface); color: var(--muted); border: 2px solid var(--rule); }
+.path-xp { color: var(--xp); }
+.learn-path [data-status='done'] .path-dot { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.learn-path a[aria-current='page'] .path-dot { background: var(--bg); border-color: var(--accent); color: var(--accent); }
+.learn-path [data-status='locked'] .path-dot { background: var(--surface); border-color: var(--surface); }
+.learn-path [data-status='locked'] .path-title, .learn-path [data-status='locked'] .path-xp { color: var(--muted); }
+.step-dot { background: var(--rule); }
+.path-steps [data-step='done'] .step-dot { background: var(--accent); }
+.path-steps [data-step='current'] .step-dot { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); }
+.path-steps [data-step='current'] a { color: var(--accent); font-weight: 650; }
+.path-footer { background: var(--xp-soft); color: var(--xp); }

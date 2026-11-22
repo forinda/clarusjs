@@ -20,7 +20,7 @@
   --color-muted: var(--muted);
   --color-rule: var(--rule);
   --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft: var(--accent-soft); --color-xp: var(--xp); --color-xp-soft: var(--xp-soft);
   --color-code: var(--code-bg);
   --font-sans: var(--sans);
   --font-mono: var(--mono);
@@ -331,6 +331,10 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
   :root:not([data-theme='light']) { --ok: #4ade80; --ok-soft: rgba(74, 222, 128, 0.12); --bad: #f87171; --bad-soft: rgba(248, 113, 113, 0.12); }
 }
 :root[data-theme='dark'] { --ok: #4ade80; --ok-soft: rgba(74, 222, 128, 0.12); --bad: #f87171; --bad-soft: rgba(248, 113, 113, 0.12); }
+/* XP and badges (amber): the Learn path's XP, its footer, the sidebar's "New". */
+:root { --xp: #8a6100; --xp-soft: #fff6d6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --xp: #ffd23f; --xp-soft: rgba(255, 210, 63, 0.12); } }
+:root[data-theme='dark'] { --xp: #ffd23f; --xp-soft: rgba(255, 210, 63, 0.12); }
 
 /* Quizzes: big options to tap, then the right one green and a wrong pick red. */
 .quiz { margin: 24px 0; padding: 18px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); }

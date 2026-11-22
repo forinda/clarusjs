@@ -123,3 +123,15 @@ test("#369: a group's icon and collapsed state come through, and a page's badge 
   expect(guide!.groups.map((g) => [g.title, g.icon, g.collapsed])).toEqual([['Templates', 'code', undefined], ['Build & deploy', 'download', true]])
   expect(guide!.groups[0]!.items).toEqual([{ title: 'Lists', href: '/guide/lists' }, { title: 'Tailwind CSS', href: '/guide/tailwind', badge: 'New' }])
 })
+
+test('#371: a lesson (steps: true) gets the XP it can earn (50 + 10 a step + 20 a quiz) and its frontmatter minutes', () => {
+  const pages = mkdtempSync(resolve(tmpdir(), 'theme-xp-'))
+  mkdirSync(resolve(pages, 'learn'))
+  writeFileSync(resolve(pages, 'learn/a.md'), '---\ntitle: A\nsteps: true\nminutes: 5\n---\n# A\n## Read\nx\n## Write\n::: quiz Which?\n- a\n:::\n## Done\n')
+  writeFileSync(resolve(pages, 'learn/b.md'), '---\ntitle: B\n---\n# B\n## Not a step\n')
+  const [learn] = pagesNav([{ key: 'learn', title: 'Learn', href: '', groups: [] }], readPages(pages))
+  expect(learn!.groups[0]!.items).toEqual([
+    { title: 'A', href: '/learn/a', xp: 50 + 3 * 10 + 20, minutes: 5 },
+    { title: 'B', href: '/learn/b' },
+  ])
+})

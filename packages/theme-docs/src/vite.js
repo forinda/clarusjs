@@ -210,6 +210,12 @@ export function readPages(dir) {
     if (group) page.group = group
     if (data.order !== undefined && Number.isFinite(Number(data.order))) page.order = Number(data.order)
     if (typeof data.badge === 'string' && data.badge) page.badge = data.badge
+    if (data.minutes !== undefined && Number(data.minutes) > 0) page.minutes = Number(data.minutes)
+    // A lesson: the XP it can earn, as progress.ts counts it (a step 10, the lesson 50, a quiz right 20).
+    if (String(data.steps) === 'true') {
+      const body = text.replace(/^```[\s\S]*?^```/gm, '') // not the headings inside code samples
+      page.xp = 50 + 10 * (body.match(/^## /gm)?.length ?? 0) + 20 * (body.match(/^:::+ *quiz\b/gm)?.length ?? 0)
+    }
     const updated = dates.get(resolve(dir, file))
     if (updated !== undefined) page.updated = updated
     if (data.sidebar === 'false' || parts.some((part) => part.startsWith('['))) page.hidden = true
