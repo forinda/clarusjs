@@ -51,6 +51,11 @@ pnpm --filter clarusjs build
 pnpm --filter clarusjs pack --pack-destination /tmp
 ```
 
+`pnpm smoke` goes further: it packs `clarusjs`, `@clarusjs/content` and `@clarusjs/theme-docs`, installs the tarballs
+(not the workspace) into a scratch site that uses all three, and runs `clarusjs check`, `vite build` and
+`vite preview` on it (`--keep` leaves the scratch folder). CI runs it on every pull request that touches those packages
+(`.github/workflows/smoke.yml`); run it before a release that changes what a package publishes.
+
 ## Pre-releases
 
 ```sh

@@ -26,7 +26,8 @@
     "release:enter:rc": "changeset pre enter rc",
     "release:exit:pre": "changeset pre exit",
     "format:tscl": "prettier --write \"packages/{docs,theme-docs}/src/**/*.tscl\"",
-    "format:tscl:check": "prettier --check \"packages/{docs,theme-docs}/src/**/*.tscl\""
+    "format:tscl:check": "prettier --check \"packages/{docs,theme-docs}/src/**/*.tscl\"",
+    "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "@changesets/changelog-github": "1.0.1",
