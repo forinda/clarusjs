@@ -3,9 +3,9 @@ import { describe, expect, test } from 'vitest'
 import { createHandler, redirect, type Handle } from '../../src/server/handler.ts'
 
 const page = { render: (p: Record<string, unknown> = {}) => `<p>${JSON.stringify(p)}</p>` }
-const make = (load: (c: any) => unknown, handle?: Handle, mode: 'server' | 'client' = 'server') => createHandler(
+const make = (load: (c: any) => unknown, handle?: Handle, mode: 'server' | 'client' = 'server', dev = false) => createHandler(
   { '/src/pages/account.tscl': async () => page },
-  { data: { '/src/pages/account.load.ts': async () => ({ load: load as never }) }, modes: { '/account': mode }, ...(handle ? { hooks: { handle } } : {}) },
+  { data: { '/src/pages/account.load.ts': async () => ({ load: load as never }) }, modes: { '/account': mode }, dev, ...(handle ? { hooks: { handle } } : {}) },
 )
 const get = (h: ReturnType<typeof make>, url = 'https://x.test/account', headers: Record<string, string> = {}) => h.fetch(new Request(url, { headers }))
 const body = async (r: Response) => JSON.parse(/<p>(.*)<\/p>/.exec(await r.text())![1]!)
@@ -22,14 +22,19 @@ describe('cookies', () => {
     expect((await get(h)).headers.get('set-cookie')).toBe('session=a%20b; Path=/; HttpOnly; SameSite=Lax; Secure')
   })
 
-  test('over http://localhost, not Secure (so development works); options override the defaults', async () => {
+  test('the dev server leaves Secure off (development over plain http); options override the defaults', async () => {
     const h = make(({ cookies }) => {
       cookies.set('a', '1')
       cookies.set('b', '2', { path: '/account', httpOnly: false, sameSite: 'strict', maxAge: 60, domain: 'x.test' })
       return {}
-    })
+    }, undefined, 'server', true)
     const set = (await get(h, 'http://localhost:5173/account')).headers.getSetCookie()
     expect(set).toEqual(['a=1; Path=/; HttpOnly; SameSite=Lax', 'b=2; Path=/account; Domain=x.test; Max-Age=60; SameSite=Strict'])
+  })
+
+  test('outside dev, Secure even when the request looks local (behind a proxy, production can be http://localhost)', async () => {
+    const h = make(({ cookies }) => { cookies.set('a', '1'); return {} })
+    expect((await get(h, 'http://localhost:3000/account')).headers.get('set-cookie')).toBe('a=1; Path=/; HttpOnly; SameSite=Lax; Secure')
   })
 
   test('delete() expires it; get() sees this request\'s own writes', async () => {

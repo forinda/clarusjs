@@ -36,8 +36,8 @@ type DataModule = {
 export interface Locals {}
 
 /**
- * Options for `cookies.set()`. Defaults: `path: '/'`, `httpOnly: true`, `sameSite: 'lax'`, and `secure: true` unless
- * the request is plain http to localhost (so development works).
+ * Options for `cookies.set()`. Defaults: `path: '/'`, `httpOnly: true`, `sameSite: 'lax'`, and `secure: true` except
+ * in the Vite dev server (so development over plain http works everywhere).
  * @see https://clarusjs.com/reference/server#cookies
  */
 export type CookieOptions = { path?: string; domain?: string; maxAge?: number; expires?: Date; httpOnly?: boolean; secure?: boolean; sameSite?: 'lax' | 'strict' | 'none' }
@@ -253,7 +253,7 @@ export function createHandler(
     },
     async fetch(request) {
       // The request's cookies (Set-Cookie on whatever answers it) and locals, filled by handle() before pages load.
-      const jar = cookieJar(request)
+      const jar = cookieJar(request, options.dev === true)
       const locals = {} as Locals
       if (options.hooks?.handle) {
         let early: void | Response
@@ -491,7 +491,7 @@ export function rootLinks(html: string, base: string): string {
 const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
 
 /** The request's cookies, and `apply(response)`: the response with a Set-Cookie for each cookie set or deleted. */
-function cookieJar(request: Request): { cookies: Cookies; apply(response: Response): Response } {
+function cookieJar(request: Request, dev: boolean): { cookies: Cookies; apply(response: Response): Response } {
   const incoming = new Map<string, string>()
   for (const part of (request.headers.get('cookie') ?? '').split(';')) {
     const at = part.indexOf('=')
@@ -502,8 +502,6 @@ function cookieJar(request: Request): { cookies: Cookies; apply(response: Respon
     try { value = decodeURIComponent(raw) } catch {}
     if (!incoming.has(name)) incoming.set(name, value)
   }
-  const url = new URL(request.url)
-  const local = url.protocol === 'http:' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(url.hostname)
   const current = new Map(incoming)
   const out = new Map<string, string>() // name (and path, domain) → Set-Cookie value
   const write = (name: string, value: string, o: CookieOptions) => {
@@ -515,7 +513,9 @@ function cookieJar(request: Request): { cookies: Cookies; apply(response: Respon
     if (o.expires) header += `; Expires=${o.expires.toUTCString()}`
     if (o.httpOnly ?? true) header += '; HttpOnly'
     header += `; SameSite=${({ lax: 'Lax', strict: 'Strict', none: 'None' } as const)[o.sameSite ?? 'lax']}`
-    if (o.secure ?? !local) header += '; Secure'
+    // Secure unless the Vite dev server answers: never guessed from the request's URL, which behind a proxy can be
+    // http://localhost in production. (Browsers accept Secure cookies on http://localhost, so vite preview works.)
+    if (o.secure ?? !dev) header += '; Secure'
     out.set(`${name};${path};${o.domain ?? ''}`, header)
   }
   return {

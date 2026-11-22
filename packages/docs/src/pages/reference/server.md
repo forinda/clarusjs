@@ -43,7 +43,7 @@ The request's cookies, read from its `Cookie` header. What `set()` and `delete()
 
 ### Caveats
 
-- **Secure by default:** `path: '/'`, `httpOnly: true` (scripts can't read it), `sameSite: 'lax'`, and `secure: true`, so the cookie is only sent over HTTPS. The exception is a plain `http://localhost` request, so development works. Pass an option to change one.
+- **Secure by default:** `path: '/'`, `httpOnly: true` (scripts can't read it), `sameSite: 'lax'`, and `secure: true`, so the cookie is only sent over HTTPS. The exception is the Vite dev server, so development over plain http works; browsers also accept secure cookies from `http://localhost`, so `vite preview` works. It's never guessed from the request's address: behind a proxy, production can see `http://localhost` too. Pass an option to change one.
 - **Only on the server:** a static page's `load()` runs once at build, for everyone, so its cookies are always empty. Read cookies in server routes.
 - **Names** must be cookie tokens: no spaces or separators. Values are URL-encoded on the way out and decoded on the way in.
 
