@@ -1,0 +1,59 @@
+{
+  "name": "@clarusjs/ai",
+  "version": "0.0.0",
+  "description": "AI coding tools for clarusjs: an MCP server (check, explain, compile, docs search) for agents",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forinda/clarusjs.git",
+    "directory": "packages/ai"
+  },
+  "homepage": "https://clarusjs.com/guide/ai-coding",
+  "keywords": [
+    "clarusjs",
+    "mcp",
+    "ai",
+    "agents",
+    "tscl"
+  ],
+  "bin": {
+    "clarusjs-ai": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./src/mcp.ts",
+    "./docs": "./src/docs.ts"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "peerDependencies": {
+    "clarusjs": ">=0.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "clarusjs": "workspace:*",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/mcp.d.ts",
+        "default": "./dist/mcp.js"
+      },
+      "./docs": {
+        "types": "./dist/docs.d.ts",
+        "default": "./dist/docs.js"
+      }
+    }
+  }
+}
