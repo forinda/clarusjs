@@ -44,7 +44,7 @@ The request's cookies, read from its `Cookie` header. What `set()` and `delete()
 ### Caveats
 
 - **Secure by default:** `path: '/'`, `httpOnly: true` (scripts can't read it), `sameSite: 'lax'`, and `secure: true`, so the cookie is only sent over HTTPS. The exception is the Vite dev server, so development over plain http works; browsers also accept secure cookies from `http://localhost`, so `vite preview` works. It's never guessed from the request's address: behind a proxy, production can see `http://localhost` too. Pass an option to change one.
-- **Only on the server:** a static page's `load()` runs once at build, for everyone, so its cookies are always empty. Read cookies in server routes.
+- **Only on the server:** a static page's `load()` runs once at build, for everyone, so it has no visitor's cookies or headers to read. Using `cookies` or `request.headers` there fails the build: `"/account reads cookies, but static routes are built once for everyone: make it 'server'"`. The same goes for a client route's data. `handle()` still runs for static pages, with no cookies. `clarusjs explain` shows which server routes read cookies.
 - **Names** must be cookie tokens: no spaces or separators. Values are URL-encoded on the way out and decoded on the way in.
 
 ## locals
@@ -81,6 +81,35 @@ export const handle: Handle = async ({ cookies, locals }) => {
 ```
 
 If `handle()` throws, the request gets a 500, and the error goes to the server's log.
+
+## Endpoints
+
+```ts
+type RequestHandler = (context: LoadContext) => Response | Promise<Response>
+```
+
+A `.ts` file under `src/pages` (not a `.load.ts`) that exports `GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `OPTIONS` is an endpoint, at its file's route: `src/pages/api/items.ts` answers `/api/items`, and `src/pages/api/items/[id].ts` answers `/api/items/42` with `params.id`. Each handler gets the same context as a `load()` (the request, params, [cookies](#cookies) and [locals](#locals)) and returns a `Response`.
+
+```ts
+// src/pages/api/items.ts
+import type { RequestHandler } from 'clarusjs/server'
+
+export const GET: RequestHandler = ({ locals }) => Response.json(listFor(locals.user))
+
+export const POST: RequestHandler = async ({ request, locals }) => {
+  const item = await save(locals.user, await request.json())
+  return Response.json(item, { status: 201 })
+}
+```
+
+An island calls it with `fetch('/api/items')`, and the visitor's cookies go along, so `handle()` has resolved the session. A token for a third-party API stays in the endpoint and never reaches the browser.
+
+### Caveats
+
+- **Endpoints are server routes:** they need a server deploy (an adapter, or `dist/server/index.mjs` in your own server). They are never prerendered.
+- **Writes from other sites are refused:** a `POST`, `PUT`, `PATCH` or `DELETE` whose `Origin` is neither the request's own nor your `site.url` gets a 403, as does one the browser marks cross-site (`Sec-Fetch-Site`). This blocks cross-site request forgery. A request without an `Origin`, from a server or a script, isn't a browser acting for a visitor, so it's allowed.
+- **Methods:** `HEAD` uses `GET`'s handler without the body. Any other method a file doesn't export gets 405, with an `Allow` header listing those it does.
+- **A page wins a shared path,** and a `.ts` file that exports no method isn't an endpoint (it's a 404).
 
 ## redirect()
 

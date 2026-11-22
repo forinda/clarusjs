@@ -53,16 +53,12 @@ describe('cookies', () => {
     expect((await get(h)).status).toBe(500)
   })
 
-  test('Set-Cookie goes on a redirect from load() too, and on the page\'s data request', async () => {
+  test('Set-Cookie goes on a redirect from load() too', async () => {
     const h = make(({ cookies, request }) => { cookies.set('seen', '1'); return new URL(request.url).searchParams.has('go') ? redirect('/home') : {} })
     const r = await get(h, 'https://x.test/account?go')
     expect(r.status).toBe(302)
     expect(r.headers.get('set-cookie')).toContain('seen=1')
-    // A client route's data, fetched by the router.
-    const client = make(({ cookies }) => { cookies.set('seen', '1'); return {} }, undefined, 'client')
-    const data = await get(client, 'https://x.test/account/__data.json')
-    expect(data.headers.get('content-type')).toContain('application/json')
-    expect(data.headers.get('set-cookie')).toContain('seen=1')
+    // (A client route's data is built once, so it can't use cookies: see 'static routes' below.)
   })
 })
 
@@ -91,5 +87,42 @@ describe('handle() and locals', () => {
   test('a throwing handle() is a 500, not a crash', async () => {
     const h = make(() => ({}), () => { throw new Error('session store down') })
     expect((await get(h)).status).toBe(500)
+  })
+})
+
+// #94
+describe('static routes', () => {
+  const staticHandler = (load: (c: any) => unknown, mode: 'static' | 'client' = 'static', dev = true) => createHandler(
+    { '/src/pages/account.tscl': async () => page },
+    { data: { '/src/pages/account.load.ts': async () => ({ load: load as never }) }, modes: { '/account': mode }, dev },
+  )
+  test('a static route\'s load() reading cookies is an error naming the route and the fix', async () => {
+    const h = staticHandler(({ cookies }) => ({ theme: cookies.get('theme') }))
+    await expect(h.fetch(new Request('https://x.test/account'))).rejects.toThrow("/account reads cookies, but static routes are built once for everyone: make it 'server'")
+  })
+
+  test('so is writing them, or reading the request\'s headers; a client route\'s data (built once) too', async () => {
+    await expect(staticHandler(({ cookies }) => { cookies.set('a', '1'); return {} }).fetch(new Request('https://x.test/account'))).rejects.toThrow(/reads cookies/)
+    await expect(staticHandler(({ request }) => ({ ua: request.headers.get('user-agent') })).fetch(new Request('https://x.test/account'))).rejects.toThrow("/account reads the request's headers, but static routes are built once for everyone: make it 'server'")
+    await expect(staticHandler(({ cookies }) => ({ t: cookies.get('t') }), 'client').fetch(new Request('https://x.test/account/__data.json'))).rejects.toThrow(/reads cookies/)
+  })
+
+  test('the rest of the request is fine (its URL), and handle() still runs (cookies empty at build)', async () => {
+    let handled = false
+    const h = createHandler(
+      { '/src/pages/account.tscl': async () => page },
+      { data: { '/src/pages/account.load.ts': async () => ({ load: (({ request }: any) => ({ path: new URL(request.url).pathname })) as never }) }, hooks: { handle: ({ cookies }) => { handled = cookies.get('session') === undefined } }, dev: true },
+    )
+    expect(await body(await h.fetch(new Request('https://x.test/account')))).toEqual({ path: '/account' })
+    expect(handled).toBe(true)
+  })
+
+  test('which server routes read cookies, for clarusjs explain', async () => {
+    const h = createHandler(
+      { '/src/pages/a.tscl': async () => page, '/src/pages/b.tscl': async () => page },
+      { data: { '/src/pages/a.load.ts': async () => ({ load: (({ cookies }: any) => ({ x: cookies.get('x') })) as never }), '/src/pages/b.load.ts': async () => ({ load: (() => ({})) as never }) }, modes: { '/a': 'server', '/b': 'server' } },
+    )
+    expect(await h.readsCookies('/a')).toBe(true)
+    expect(await h.readsCookies('/b')).toBe(false)
   })
 })

@@ -26,6 +26,8 @@ export type RouteInfo = {
   html: string | null
   /** 'build': load() ran once, when the page was prerendered. 'request': it runs on every request. */
   loader: 'build' | 'request' | null
+  /** A server route whose load() reads cookies (from its source). */
+  cookies?: boolean
   islands: IslandInfo[]
   /** Files relative to dist/client; gzip sizes in bytes. initialGzip is what loads with the page (attach="load"). */
   js: { files: string[]; gzip: number; initialGzip: number }
@@ -91,7 +93,7 @@ export function describeRoute(route: string, html: string, opts: { base: string;
 }
 
 /** Describe every prerendered route and write `<distDir>/clarusjs-manifest.json`. */
-export function writeManifest(distDir: string, routes: string[], base: string, loaded: string[] = [], server: { route: string; loader: boolean }[] = []): Manifest {
+export function writeManifest(distDir: string, routes: string[], base: string, loaded: string[] = [], server: { route: string; loader: boolean; cookies?: boolean }[] = []): Manifest {
   const client = resolve(distDir, 'client')
   const chunks = JSON.parse(readFileSync(resolve(client, '.vite/manifest.json'), 'utf8')) as ChunkGraph
   const sizes = new Map<string, number>()
@@ -109,8 +111,8 @@ export function writeManifest(distDir: string, routes: string[], base: string, l
     manifest.routes[route] = describeRoute(route, readFileSync(resolve(client, routeToFile(route)), 'utf8'), { base, chunks, size, loaded: ran, client: isClient })
   }
   // Server routes have no HTML at build time: what they ship is decided per request.
-  for (const { route, loader } of server) {
-    manifest.routes[route] = { mode: 'server', html: null, loader: loader ? 'request' : null, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] }
+  for (const { route, loader, cookies } of server) {
+    manifest.routes[route] = { mode: 'server', html: null, loader: loader ? 'request' : null, ...(cookies ? { cookies: true } : {}), islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] }
   }
   writeFileSync(resolve(distDir, 'clarusjs-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
   return manifest
