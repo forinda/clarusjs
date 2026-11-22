@@ -143,3 +143,9 @@
 :root[data-theme='dark'] .t-bind { color: #c4a5ff; } :root[data-theme='dark'] .t-hole { color: #ff8a80; }
 :root[data-theme='dark'] .t-block, :root[data-theme='dark'] .t-dir { color: #79c0ff; }
 :root[data-theme='dark'] .t-comment { color: #9198a1; } :root[data-theme='dark'] .t-string { color: #7ee787; }
+.repl-output { display: flex; flex-direction: column; min-width: 0; }
+.repl-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--rule); margin-bottom: 8px; }
+.repl-tabs [role='tab'] { font: inherit; font-size: 14px; padding: 6px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); cursor: pointer; }
+.repl-tabs [role='tab'][aria-selected='true'] { color: var(--fg); border-bottom-color: var(--accent); }
+.repl-tabs [role='tab']:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.repl-out { margin: 0; min-height: 360px; max-height: 70vh; overflow: auto; padding: 12px; border: 1px solid var(--rule); border-radius: 8px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre; }

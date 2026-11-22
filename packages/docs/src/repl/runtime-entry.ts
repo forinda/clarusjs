@@ -58,7 +58,8 @@ addEventListener('message', async (event: MessageEvent<Message>) => {
   current = id
   const out = document.getElementById('out')!
   try {
-    out.innerHTML = await (await load(serverCode)).render({})
+    const html = await (await load(serverCode)).render({})
+    out.innerHTML = html
     if (client) {
       const island = out.querySelector('cl-island')
       if (island) {
@@ -67,7 +68,7 @@ addEventListener('message', async (event: MessageEvent<Message>) => {
         ;(await load(client)).attach(island, props, s === null ? undefined : runtime.parseIslandData(s))
       }
     }
-    parent.postMessage({ id, ok: true }, '*')
+    parent.postMessage({ id, ok: true, html }, '*') // the server's HTML, for the playground's HTML tab
   } catch (err) {
     out.replaceChildren()
     report(err)
