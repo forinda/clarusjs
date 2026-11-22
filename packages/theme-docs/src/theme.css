@@ -1095,8 +1095,16 @@ th, td {
   .more-button, .social {
     display: none;
   }
-  .search-label, .search-button kbd {
+  .search-button kbd {
     display: none;
+  }
+  .search-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 @media (max-width: 699px) {

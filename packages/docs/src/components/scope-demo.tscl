@@ -7,15 +7,16 @@
   <scopeChild class="framed" />
 </div>
 <style scoped>
+  /* The theme's accent: teal in light mode, a lighter teal that keeps its contrast in dark. */
   p {
-    color: rgb(11, 110, 112);
+    color: var(--accent);
   }
   .scope-child {
-    border-left: 3px solid rgb(11, 110, 112);
+    border-left: 3px solid var(--accent);
     padding-left: 12px;
   }
   .framed {
     border-radius: 6px;
-    background: color-mix(in srgb, rgb(11, 110, 112) 8%, transparent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
   }
 </style>

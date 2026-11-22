@@ -17,7 +17,7 @@ npx @clarusjs/ai skill    # the clarusjs skill, for Claude Code
 claude mcp add clarusjs -- npx -y @clarusjs/ai mcp   # the MCP server (Cursor, VS Code: below)
 ```
 
-| | What the agent gets | When it reads it |
+| Tool | What the agent gets | When it reads it |
 |---|---|---|
 | [AGENTS.md](#agentsmd) | where things go, the syntax, islands and state, the check loop | at the start of every session |
 | [The skill](#the-skill) | the same, plus the common mistakes and how to fix them | when it works on `.tscl` files |

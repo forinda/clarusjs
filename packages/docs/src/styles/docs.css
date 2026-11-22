@@ -147,7 +147,7 @@
 .repl-editor pre { color: var(--fg); pointer-events: none; background: transparent; border-radius: 0; } /* not the theme's code blocks: the layers show through */
 .repl-editor .repl-lines {
   right: auto; width: var(--gutter); padding: 12px 8px 12px 0; overflow: hidden; text-align: right;
-  color: var(--muted); opacity: 0.7; border-right: 1px solid var(--rule); user-select: none;
+  color: var(--muted); border-right: 1px solid var(--rule); user-select: none; /* --muted as is: 4.5:1 on the code background */
 }
 .repl-divider { cursor: col-resize; background: var(--rule); border-left: 2px solid var(--bg); border-right: 2px solid var(--bg); touch-action: none; }
 .repl-divider:hover, .repl-divider:focus-visible { background: var(--accent); outline: none; }

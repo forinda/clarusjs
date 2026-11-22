@@ -11,7 +11,7 @@ description: "Where cookies, user data and tokens live in a clarusjs app, how to
 
 ## Where things live
 
-| | Static route | Server route | Island |
+| What | Static route | Server route | Island |
 |---|---|---|---|
 | **Runs** | once, at build, for everyone | on every request | in the browser |
 | **Cookies** | none (reading them fails the build) | `cookies` in `load()` | sent along with its `fetch()` calls, never readable when HttpOnly |
