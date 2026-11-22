@@ -153,7 +153,7 @@ export function createHandler(
     /** src/server.ts: its `handle()` runs once per request, before any page loads. */
     hooks?: { handle?: Handle }
   } = {},
-): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
+): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; readsCookies(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
   const routes: Route[] = Object.entries(pages)
     .map(([file, load]) => ({ path: routeFromFile(file), file: file.replace(/^\//, ''), load, ...compile(routeFromFile(file)) }))
@@ -212,6 +212,13 @@ export function createHandler(
       return Boolean(found && modeFor(found.route.path, modes) === 'server')
     },
     /** Whether a route (as its file names it) has a load(). */
+    /** Whether a route's load() mentions cookies (its source text): for clarusjs explain. */
+    async readsCookies(route) {
+      const found = routes.find((r) => r.path === route)
+      const dataFile = found && `/${found.file.replace(/\.[^./]+$/, '.load.ts')}`
+      const mod = dataFile && data[dataFile] ? await data[dataFile]!() : undefined
+      return !!mod?.load && /\bcookies\b/.test(String(mod.load))
+    },
     async hasLoader(path) {
       const route = routes.find((r) => r.path === path)
       const file = route && `/${route.file.replace(/\.[^./]+$/, '.load.ts')}`
@@ -352,7 +359,9 @@ export function createHandler(
       if (mod?.load) {
         let loaded: unknown
         try {
-          loaded = await mod.load({ params: found.params, request, cookies, locals })
+          // A route that isn't 'server' is built once for everyone: its load() can't use a visitor's cookies or headers.
+          const once = modeFor(found.route.path, modes) !== 'server'
+          loaded = await mod.load({ params: found.params, locals, ...(once ? builtOnce(found.route.path, request) : { request, cookies }) })
         } catch (err) {
           return fail(`${dataFile}: load() failed: ${(err as Error)?.message ?? err}`, err)
         }
@@ -541,4 +550,22 @@ function cookieJar(request: Request, dev: boolean): { cookies: Cookies; apply(re
       return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
     },
   }
+}
+
+/**
+ * A static or client route's view of the request: built once for everyone, so a visitor's cookies and headers aren't
+ * there to read. Using either throws, naming the route and the fix; the rest (the URL) is fine.
+ */
+function builtOnce(route: string, request: Request): { request: Request; cookies: Cookies } {
+  const refuse = (what: string) => () => { throw new Error(`${route} reads ${what}, but static routes are built once for everyone: make it 'server' (routes in vite.config.ts)`) }
+  const cookies: Cookies = { get: refuse('cookies'), getAll: refuse('cookies'), set: refuse('cookies'), delete: refuse('cookies') }
+  const headers = new Proxy(request.headers, { get: refuse("the request's headers") })
+  const proxied = new Proxy(request, {
+    get(target, key) {
+      if (key === 'headers') return headers
+      const value = Reflect.get(target, key, target)
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+  return { request: proxied, cookies }
 }

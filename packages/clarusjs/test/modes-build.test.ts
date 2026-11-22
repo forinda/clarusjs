@@ -29,7 +29,7 @@ test('the built handler renders a server route per request, with load() reading 
 test('the manifest records each route\'s mode', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
   expect(manifest.routes['/'].mode).toBe('static')
-  expect(manifest.routes['/account/[id]']).toEqual({ mode: 'server', html: null, loader: 'request', islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] })
+  expect(manifest.routes['/account/[id]']).toEqual({ mode: 'server', html: null, loader: 'request', cookies: true, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] })
 })
 
 test('vite preview serves server routes through the built handler', async () => {
@@ -210,4 +210,11 @@ test('#93: src/server.ts handle() resolves the session for every load(); Set-Coo
   expect(signedIn.headers.get('set-cookie')).toBe('last-account=seen; Path=/; HttpOnly; SameSite=Lax; Secure')
   const anonymous = await app.fetch(new Request('https://x.test/account/1'))
   expect(unscoped(await anonymous.text())).toContain('<p id="user">nobody</p>')
+})
+
+test('#94: the manifest and clarusjs explain say which server routes read cookies', async () => {
+  const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
+  expect(manifest.routes['/account/[id]'].cookies).toBe(true)
+  const { explain } = await import('../src/cli/explain.ts')
+  expect(explain({ root, route: '/account/[id]' }).text).toContain('load() runs on every request, and reads cookies')
 })

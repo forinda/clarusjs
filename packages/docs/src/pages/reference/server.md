@@ -44,7 +44,7 @@ The request's cookies, read from its `Cookie` header. What `set()` and `delete()
 ### Caveats
 
 - **Secure by default:** `path: '/'`, `httpOnly: true` (scripts can't read it), `sameSite: 'lax'`, and `secure: true`, so the cookie is only sent over HTTPS. The exception is the Vite dev server, so development over plain http works; browsers also accept secure cookies from `http://localhost`, so `vite preview` works. It's never guessed from the request's address: behind a proxy, production can see `http://localhost` too. Pass an option to change one.
-- **Only on the server:** a static page's `load()` runs once at build, for everyone, so its cookies are always empty. Read cookies in server routes.
+- **Only on the server:** a static page's `load()` runs once at build, for everyone, so it has no visitor's cookies or headers to read. Using `cookies` or `request.headers` there fails the build: `"/account reads cookies, but static routes are built once for everyone: make it 'server'"`. The same goes for a client route's data. `handle()` still runs for static pages, with no cookies. `clarusjs explain` shows which server routes read cookies.
 - **Names** must be cookie tokens: no spaces or separators. Values are URL-encoded on the way out and decoded on the way in.
 
 ## locals
