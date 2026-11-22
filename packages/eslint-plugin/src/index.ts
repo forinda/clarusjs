@@ -150,7 +150,7 @@ const template: Rule.RuleModule = {
   },
 }
 
-// `let x = state(…)` (or shared(store)) is a signal the template (`(click)="x++"`) or a copy-on-write update (`x.a = 1`) assigns, where
+// `let x = state(…)` (or shared(store)) is a signal the template assigns (`(click)="x++"`, `[(value)]="x.name"`), where
 // ESLint can't see: prefer-const's report on its declaration is dropped. The file itself is linted as it is.
 const texts = new Map<string, string>()
 const processor: Linter.Processor = {

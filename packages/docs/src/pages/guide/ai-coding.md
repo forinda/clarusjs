@@ -59,3 +59,15 @@ npx @clarusjs/ai agents
 It covers where things go, a component's syntax, islands and state, and checking the work with `clarusjs check`. It goes between `<!-- clarusjs:start -->` and `<!-- clarusjs:end -->` markers, so the rest of the file stays yours, and running the command again after an upgrade updates only that part. Claude Code reads `CLAUDE.md`: add a line `@AGENTS.md` to it to bring the file in.
 
 This site's own `AGENTS.md` is written this way, and a test fails when it falls behind.
+
+## The skill
+
+A skill is a set of instructions an agent loads when its task calls for it. The clarusjs skill carries the same conventions as the `AGENTS.md` section, plus the common mistakes: what fails to compile and why, and what compiles but is still wrong, such as changing an array in place.
+
+Install it as a Claude Code project skill:
+
+```sh
+npx @clarusjs/ai skill
+```
+
+That writes `.claude/skills/clarusjs/SKILL.md`. Other agents that read the [Agent Skills](https://agentskills.io) format take the same file, published at [/skills/clarusjs/SKILL.md](/skills/clarusjs/SKILL.md). Every example in it is compiled by a test: the wrong ones must fail, the right ones must pass.
