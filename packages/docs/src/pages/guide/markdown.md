@@ -96,7 +96,7 @@ import clarusjs from 'clarusjs/vite'
 export default defineConfig({ plugins: [clarusjs()] })
 ```
 
-Mark lines with comments: `// [!code ++]`, `// [!code --]`, `// [!code focus]`, `// [!code highlight]`, `// [!code error]`. Add `:line-numbers` after the language for line numbers, and `{1,3-5}` to highlight lines.
+Mark lines with comments: `// [!code ++]`, `// [!code --]`, `// [!code focus]`, `// [!code highlight]`, `// [!code error]`. Add `:line-numbers` after the language for line numbers, and `{1,3-5}` to highlight lines. To number every block, pass `markdown({ lineNumbers: true })`: shell commands (`sh`, `bash`, `console`…) stay without, since they're copied rather than referred to by line, but a shell script is numbered: give it a file title (` ```bash [deploy.sh] `) or start it with `#!`. `:no-line-numbers` turns one block off.
 
 ```ts
 const site = clarusjs() // [!code --]
