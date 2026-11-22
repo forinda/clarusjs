@@ -1,0 +1,212 @@
+// Template lint (#304): rules only clarusjs understands, located like compile errors. Pure: a source string in,
+// findings out. `clarusjs check` reports them, and editors show them through the language server. Each rule is a
+// LintRuleDef: the built-in ones below, and a project's own (the plugin's `lintRules`).
+
+import { ClarusError } from './errors.ts'
+import { importNames, parse, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
+
+/**
+ * The built-in rules' names.
+ * @see https://clarusjs.com/guide/lint#rules
+ */
+export type LintRule = 'unused-input' | 'unused-import' | 'img-alt' | 'label-field' | 'accessible-name'
+/**
+ * Each rule's level, built-in or a project's, keyed by rule name.
+ * @see https://clarusjs.com/guide/lint#warnings-and-errors
+ */
+export type LintConfig = Partial<Record<LintRule, LintLevel>> & Record<string, LintLevel>
+/**
+ * A rule's level: 'warn' (the default), 'error', or 'off'.
+ * @see https://clarusjs.com/guide/lint#warnings-and-errors
+ */
+export type LintLevel = 'off' | 'warn' | 'error'
+/**
+ * A finding, at its 1-based line and column (`start`: its offset in the source).
+ * @see https://clarusjs.com/reference/compiler#lint
+ */
+export type LintMessage = { rule: string; severity: 'warning' | 'error'; message: string; file: string; line: number; column: number; start: number }
+/**
+ * A template element, as `parse` returns it.
+ * @see https://clarusjs.com/guide/lint#writing-a-rule
+ */
+export type LintElement = Extract<TemplateNode, { type: 'element' }>
+
+/**
+ * What a rule's check() gets: the file, its syntax tree, every element in it, and report().
+ * @see https://clarusjs.com/guide/lint#writing-a-rule
+ */
+export type LintContext = {
+  file: string
+  source: string
+  parsed: ParsedFile
+  /** Every element, in branches, rows, empty content and slot fills too, in source order. */
+  elements: LintElement[]
+  /** The names of the components this file imports (their tags). */
+  components: Set<string>
+  /** Whether the template, the script, or an input's type or default reads `name`. */
+  reads(name: string): boolean
+  /** A finding at `start`, an offset in the source (an element's, an attribute's, an @input's). */
+  report(start: number, message: string): void
+}
+/**
+ * A lint rule: a name (used in levels and ignore comments) and a check over one file.
+ * @see https://clarusjs.com/guide/lint#writing-a-rule
+ */
+export type LintRuleDef = { name: string; check(context: LintContext): void }
+
+const FIELDS = new Set(['input', 'select', 'textarea', 'meter', 'output', 'progress'])
+const IGNORE_RE = /\{\{--\s*clarusjs-ignore\b([\w\s,-]*?)\s*--\}\}/g
+
+function* elements(nodes: TemplateNode[]): Generator<LintElement> {
+  for (const n of nodes) {
+    if (n.type === 'element') { yield n; yield* elements(n.children) }
+    else if (n.type === 'if') for (const b of n.branches) yield* elements(b.children)
+    else if (n.type === 'for') { yield* elements(n.children); if (n.empty) yield* elements(n.empty) }
+    else if (n.type === 'fill') yield* elements(n.children)
+  }
+}
+
+/** Every expression a template reads, as text: holes, bindings, conditions, lists. */
+function* expressions(nodes: TemplateNode[]): Generator<string> {
+  for (const n of nodes) {
+    if (n.type === 'expr') yield n.expr
+    else if (n.type === 'element') {
+      for (const a of n.attrs) {
+        if (a.kind === 'interp') for (const p of a.parts) { if (typeof p !== 'string') yield p.expr }
+        else if (a.kind !== 'static') yield a.expr
+      }
+      yield* expressions(n.children)
+    } else if (n.type === 'if') for (const b of n.branches) { if (b.cond) yield b.cond; yield* expressions(b.children) }
+    else if (n.type === 'for') { yield n.list; if (n.track) yield n.track; yield* expressions(n.children); if (n.empty) yield* expressions(n.empty) }
+    else if (n.type === 'fill') yield* expressions(n.children)
+  }
+}
+
+const has = (el: LintElement, name: string) => el.attrs.some((a: Attr) => a.name === name)
+const labelled = (el: LintElement) => has(el, 'aria-label') || has(el, 'aria-labelledby') || has(el, 'title')
+
+/** Whether content gives a name: text, a hole, a labelled descendant, or content lint can't see (a component, a slot). */
+function named(nodes: TemplateNode[], components: Set<string>): boolean {
+  return nodes.some((n) => {
+    if (n.type === 'text') return n.value.trim() !== ''
+    if (n.type === 'expr' || n.type === 'raw') return true
+    if (n.type === 'if') return n.branches.some((b) => named(b.children, components))
+    if (n.type === 'for') return named(n.children, components)
+    if (n.type !== 'element') return false
+    if (components.has(n.tag) || n.tag === 'slot' || n.tag === 'title' || labelled(n)) return true
+    if (n.tag === 'img') return n.attrs.some((a) => a.name === 'alt' && !(a.kind === 'static' && (a.value === true || a.value.trim() === '')))
+    return named(n.children, components)
+  })
+}
+
+/**
+ * The built-in rules, each written as a project's own would be.
+ * @example
+ * ```ts
+ * import { lintRules } from 'clarusjs/compiler'
+ * console.log(lintRules.map((r) => r.name)) // ['unused-input', 'unused-import', …]
+ * ```
+ * @see https://clarusjs.com/guide/lint#rules
+ */
+export const lintRules: LintRuleDef[] = [
+  {
+    name: 'unused-input',
+    check({ parsed, reads, report }) {
+      for (const i of parsed.inputs) if (!reads(i.name)) report(i.start, `@${i.model ? 'model' : 'input'} ${i.name} is never used`)
+    },
+  },
+  {
+    name: 'unused-import',
+    check({ parsed, elements, reads, report }) {
+      const tags = new Set(elements.map((e) => e.tag))
+      for (const i of parsed.imports) if (!tags.has(i.name) && !reads(i.name)) report(i.start, `'${i.name}' is imported but never used as <${i.name}>`)
+      for (const d of parsed.dataImports) {
+        const unused = importNames(d.clause).filter((name) => !reads(name))
+        if (unused.length) report(d.start, `${unused.map((n) => `'${n}'`).join(', ')} ${unused.length === 1 ? 'is' : 'are'} imported but never used`)
+      }
+    },
+  },
+  {
+    name: 'img-alt',
+    check({ elements, report }) {
+      for (const el of elements) if (el.tag === 'img' && !has(el, 'alt')) report(el.start, '<img> without alt: describe the image, or use alt="" when it is decoration')
+    },
+  },
+  {
+    name: 'label-field',
+    check({ elements: all, components, report }) {
+      for (const el of all) {
+        if (el.tag !== 'label' || has(el, 'for')) continue
+        // A component or a slot inside may render the field: given the benefit of the doubt.
+        if (![...elements(el.children)].some((e) => FIELDS.has(e.tag) || components.has(e.tag) || e.tag === 'slot')) {
+          report(el.start, '<label> names no field: put the field inside it, or point to one with for="id"')
+        }
+      }
+    },
+  },
+  {
+    name: 'accessible-name',
+    check({ elements, components, report }) {
+      for (const el of elements) {
+        if (el.tag !== 'button' && !(el.tag === 'a' && has(el, 'href'))) continue
+        if (!labelled(el) && !named(el.children, components)) report(el.start, `<${el.tag}> has no accessible name: give it text, aria-label or title`)
+      }
+    },
+  },
+]
+
+/**
+ * Lint a `.tscl` file's template with the built-in rules and `extra` ones, at the levels in `config`. Throws a
+ * located `ClarusError` for a syntax error, as `parse` does.
+ * @example
+ * ```ts
+ * import { lint } from 'clarusjs/compiler'
+ * for (const m of lint(source, 'src/components/card.tscl')) console.log(`${m.line}:${m.column} ${m.rule}: ${m.message}`)
+ * ```
+ * @see https://clarusjs.com/reference/compiler#lint
+ */
+export function lint(source: string, file: string, config: LintConfig = {}, extra: LintRuleDef[] = []): LintMessage[] {
+  const parsed = parse(source, file)
+  // Everything that can read a name: the template's expressions, the script, input types and defaults, type aliases.
+  const corpus = [
+    ...expressions(parsed.nodes),
+    parsed.script?.code ?? '',
+    ...parsed.inputs.flatMap((i) => [i.type, i.default ?? '']),
+    ...parsed.types.map((t) => t.type),
+  ].join('\n')
+  const lineOf = (offset: number) => source.slice(0, offset).split('\n').length
+  // Lines a {{-- clarusjs-ignore [rules] --}} comment covers: its own and the next, for the rules it names (or all).
+  const ignored = new Map<number, Set<string> | 'all'>()
+  for (const m of source.matchAll(IGNORE_RE)) {
+    const names = m[1]!.split(/[\s,]+/).filter(Boolean)
+    const line = lineOf(m.index + m[0].length)
+    for (const l of [line, line + 1]) ignored.set(l, names.length ? new Set(names) : 'all')
+  }
+  const base = {
+    file,
+    source,
+    parsed,
+    elements: [...elements(parsed.nodes)],
+    components: new Set(parsed.imports.map((i) => i.name)),
+    reads: (name: string) => new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(corpus),
+  }
+
+  const out: LintMessage[] = []
+  const add = (rule: string, severity: LintMessage['severity'], start: number, message: string) => {
+    const { line, column } = new ClarusError(message, file, source, start)
+    const skip = ignored.get(line)
+    if (skip === 'all' || skip?.has(rule)) return
+    out.push({ rule, severity, message, file, line, column, start })
+  }
+  for (const rule of [...lintRules, ...extra]) {
+    const level = config[rule.name] ?? 'warn'
+    if (level === 'off') continue
+    try {
+      rule.check({ ...base, report: (start, message) => add(rule.name, level === 'error' ? 'error' : 'warning', start, message) })
+    } catch (err) {
+      // A project's rule with a bug: said where it shows, rather than ending check or the editor's diagnostics.
+      add(rule.name, 'error', 0, `the rule failed: ${(err as Error).message}`)
+    }
+  }
+  return out.sort((a, b) => a.start - b.start)
+}

@@ -43,3 +43,15 @@ test('#279: compile warnings are warnings at their place (a plain <style> is glo
   expect(d).toMatchObject({ message: expect.stringMatching(/^a plain <style> is global/), severity: 2, source: 'clarusjs', range: { start: { line: 1, character: 0 } } })
   expect(diagnosticsFor(project, file, '<p>x</p>\n<style scoped>\n  p { color: red; }\n</style>\n')).toEqual([])
 })
+
+test('#304: lint findings are warnings at their place, tagged with their rule; an ignore comment skips one', async () => {
+  const { project, file } = await setup()
+  const found = diagnosticsFor(project, file, '<p>\n  <img src="/a.png" />\n</p>\n')
+  expect(found).toEqual([{ range: { start: { line: 1, character: 2 }, end: { line: 1, character: 3 } }, message: expect.stringContaining('<img> without alt'), severity: 2, code: 'img-alt', source: 'clarusjs' }])
+  expect(diagnosticsFor(project, file, '{{-- clarusjs-ignore img-alt --}}\n<img src="/a.png" />\n')).toEqual([])
+})
+
+test('#304: a template that does not compile has its error only (no lint on top)', async () => {
+  const { project, file } = await setup()
+  expect(diagnosticsFor(project, file, '<form [engine]="f"></form>\n<img src="/a.png" />\n')).toHaveLength(1)
+})

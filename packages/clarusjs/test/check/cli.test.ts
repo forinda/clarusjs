@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { check } from '../../src/cli/check.ts'
+import type { LintContext } from '../../src/compiler/lint.ts'
 
 function project(files: Record<string, string>): string {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-cli-'))
@@ -33,7 +34,7 @@ test('errors are reported per template position, with a text and a JSON form', (
   const result = check({ root, typescript })
   expect(result.exitCode).toBe(1)
   expect(result.diagnostics).toEqual([
-    { file: 'src/pages/index.tscl', line: 3, column: 13, code: 'TS2339', message: expect.stringContaining("Property 'nmae' does not exist") },
+    { file: 'src/pages/index.tscl', line: 3, column: 13, severity: 'error', code: 'TS2339', message: expect.stringContaining("Property 'nmae' does not exist") },
   ])
   expect(result.text).toMatch(/^src\/pages\/index\.tscl:3:13 error TS2339: Property 'nmae' does not exist/m)
   expect(JSON.parse(result.json)).toEqual(result.diagnostics)
@@ -52,7 +53,7 @@ test('errors in plain .ts files of the project are reported too', () => {
     'src/pages/index.tscl': '<p>ok</p>\n',
   })
   const result = check({ root, typescript })
-  expect(result.diagnostics).toEqual([expect.objectContaining({ file: 'src/stores/n.ts', line: 1, column: 14, code: 'TS2322' })])
+  expect(result.diagnostics).toEqual([expect.objectContaining({ file: 'src/stores/n.ts', line: 1, column: 14, severity: 'error', code: 'TS2322' })])
 })
 
 test('untyped parameters in island scripts are fine (scripts are JavaScript)', () => {
@@ -76,7 +77,7 @@ test('the command line runs check, with --json and an exit code', async () => {
   const cli = resolve(import.meta.dirname, '../../src/cli/index.ts')
   const run = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, 'check', root, '--json'], { encoding: 'utf8' })
   expect(run.status).toBe(1)
-  expect(JSON.parse(run.stdout)).toEqual([expect.objectContaining({ file: 'src/pages/index.tscl', line: 2, column: 9, code: 'TS2339' })])
+  expect(JSON.parse(run.stdout)).toEqual([expect.objectContaining({ file: 'src/pages/index.tscl', line: 2, column: 9, severity: 'error', code: 'TS2339' })])
   const help = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, '--help'], { encoding: 'utf8' })
   expect(help.stdout).toMatch(/check \[options\] \[dir\]/)
 })
@@ -102,7 +103,7 @@ test('#31: what load() returns is checked against the page inputs', () => {
     'src/pages/users/[id].load.ts': 'export function load() {\n  return { name: 42 }\n}\n',
   })
   expect(check({ root: bad, typescript }).diagnostics).toEqual([
-    { file: 'src/pages/users/[id].tscl', line: 1, column: 1, code: 'TS2322', message: expect.stringMatching(/^load\(\) returns a value that doesn.t fit this page.s inputs: .*not assignable/s) },
+    { file: 'src/pages/users/[id].tscl', line: 1, column: 1, severity: 'error', code: 'TS2322', message: expect.stringMatching(/^load\(\) returns a value that doesn.t fit this page.s inputs: .*not assignable/s) },
   ])
 })
 
@@ -111,7 +112,7 @@ test('#192: a load() that may return a Response (a redirect) has only its page i
   const loader = (value: string) => `export function load({ request }: { request: Request }) {\n  if (request.url.endsWith('?x')) return new Response(null, { status: 302, headers: { location: '/' } })\n  return { name: ${value} }\n}\n`
   expect(check({ root: project({ 'src/pages/a.tscl': page, 'src/pages/a.load.ts': loader('"a"') }), typescript }).diagnostics).toEqual([])
   expect(check({ root: project({ 'src/pages/a.tscl': page, 'src/pages/a.load.ts': loader('1') }), typescript }).diagnostics).toEqual([
-    { file: 'src/pages/a.tscl', line: 1, column: 1, code: 'TS2322', message: expect.stringMatching(/^load\(\) returns a value that doesn.t fit/) },
+    { file: 'src/pages/a.tscl', line: 1, column: 1, severity: 'error', code: 'TS2322', message: expect.stringMatching(/^load\(\) returns a value that doesn.t fit/) },
   ])
 })
 
@@ -151,7 +152,7 @@ test('#22: render() is typed against each view\'s inputs through the generated v
   symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const result = check({ root, typescript })
   expect(existsSync(resolve(root, '.clarusjs/views.d.ts'))).toBe(true)
-  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/server/mail.ts:3 TS2322', 'src/server/mail.ts:4 TS2345'])
+  expect(result.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/server/mail.ts:3 TS2322', 'src/server/mail.ts:4 TS2345'])
 })
 
 test('review: views.d.ts is declarations only, so an app tsconfig can include it (noImplicitAny on, relative type imports)', async () => {
@@ -293,7 +294,7 @@ test('#99: multi-line @input types and function-typed inputs are checked, at the
     'src/pages/index.tscl': "@import picker from '../components/picker.tscl'\n<picker [options]=\"{ size: 'xl' }\" [onPick]=\"(id: string) => id\" />\n<picker [onPick]=\"(id: number) => id\" />\n",
   })
   const result = check({ root, typescript })
-  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
+  expect(result.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
     'src/components/picker.tscl:6 TS2339', // options.colour
     'src/pages/index.tscl:2 TS2322', // size 'xl'
     'src/pages/index.tscl:3 TS2322', // onPick takes a string id
@@ -380,4 +381,42 @@ test('review: [(x)] checks the child\'s model type can be written back into the 
     'src/pages/index.tscl': "@import field from '../components/field.tscl'\n<script>\n  let form = state({ name: 'a' })\n</script>\n<field [(value)]=\"form.name\" />\n",
   })
   expect(check({ root, typescript }).diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:5 TS2322'])
+})
+
+// #304: lint rules, as warnings that don't fail check unless --strict (or a rule is raised to 'error').
+test('lint findings are warnings: reported at their place, exit code 0', () => {
+  const root = project({ 'src/pages/index.tscl': '<h1>Home</h1>\n<img src="/a.png" />\n' })
+  const result = check({ root, typescript })
+  expect(result.diagnostics).toEqual([
+    { file: 'src/pages/index.tscl', line: 2, column: 1, severity: 'warning', code: 'img-alt', message: expect.stringContaining('<img> without alt') },
+  ])
+  expect(result.exitCode).toBe(0)
+  expect(result.text).toMatch(/^src\/pages\/index\.tscl:2:1 warning img-alt: <img> without alt/m)
+})
+
+test('strict: warnings fail too', () => {
+  const root = project({ 'src/pages/index.tscl': '<img src="/a.png" />\n' })
+  expect(check({ root, typescript, strict: true }).exitCode).toBe(1)
+})
+
+test("the plugin's lint option turns rules off or raises them to errors", () => {
+  const root = project({ 'src/pages/index.tscl': '<img src="/a.png" />\n<button></button>\n' })
+  const result = check({ root, typescript, lint: { 'img-alt': 'off', 'accessible-name': 'error' } })
+  expect(result.diagnostics.map((d) => [d.code, d.severity])).toEqual([['accessible-name', 'error']])
+  expect(result.exitCode).toBe(1)
+})
+
+test('only .tscl files are linted (a Markdown page is its source, not generated template text); a syntax error is one error', () => {
+  const md = { extension: '.md', toTscl: () => '@input title: string\n<img src="/a.png" />\n' }
+  const root = project({ 'src/pages/guide.md': '# Guide\n', 'src/pages/index.tscl': '<p>a</p>\n<div>\n' })
+  const result = check({ root, typescript, sources: [md] })
+  expect(result.diagnostics.map((d) => [d.file, d.code])).toEqual([['src/pages/index.tscl', 'clarus']])
+})
+
+test("a project's own lint rules run in check", () => {
+  const root = project({ 'src/pages/index.tscl': '<p style="color: red">a</p>\n' })
+  const noInlineStyle = { name: 'no-inline-style', check: ({ elements, report }: LintContext) => { for (const el of elements) { const s = el.attrs.find((a) => a.name === 'style'); if (s) report(s.start, 'inline style') } } }
+  expect(check({ root, typescript, lintRules: [noInlineStyle] }).diagnostics).toEqual([
+    { file: 'src/pages/index.tscl', line: 1, column: 4, severity: 'warning', code: 'no-inline-style', message: 'inline style' },
+  ])
 })

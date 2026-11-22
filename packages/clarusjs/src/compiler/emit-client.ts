@@ -5,7 +5,8 @@ import { attrValueExpr, componentCall, htmlExpr, tagArg, walk, whichExpr, type R
 import { formName, rewriteClient, rewriteClientExpr, wrapExpr, type Signals } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
 
-export function emitClient(ir: ComponentIR): string {
+/** `hot`: in dev, the module that swaps a changed island in place (#53); its updates are accepted. */
+export function emitClient(ir: ComponentIR, hot?: string): string {
   if (!ir.stateful) return 'export {}\n'
   const kinds = new Set(ir.signals.values())
   const all = walk(ir.nodes)
@@ -38,6 +39,7 @@ export function emitClient(ir: ComponentIR): string {
   ].filter(Boolean)
 
   let out = used.length ? `import { ${used.join(', ')} } from 'clarusjs/runtime'\n` : ''
+  if (hot) out += `import { swap as __cl_swap } from ${JSON.stringify(hot)}\n`
   // Child components render in the browser too (in branches, rows and regions): import their server render
   // functions through the plugin's ?render query.
   const usedComponents = new Set(all.flatMap((n) => (n.kind === 'component' ? [n.name] : [])))
@@ -65,8 +67,13 @@ export function emitClient(ir: ComponentIR): string {
   if (lines.length) out += '\n' + lines.map((l) => `  ${l}\n`).join('')
   // New props from a parent island: each input follows (the loader keeps this, and the parent calls it in place).
   // All at once (a batch): an effect reading two inputs never sees one updated and the other not.
+  // Dev (#53): the island's state, read by the next version of this module when the file changes (runtime/hot.ts).
+  if (hot) out += `  __cl_root.__cl_hot = () => ({ ${[...ir.signals].filter(([, kind]) => kind === 'state').map(([name]) => `${name}: ${name}.get()`).join(', ')} })\n`
   if (inputs.length) out += `  return (__cl_p) => __cl_batch(() => {\n${inputs.map((i) => `    ${i.name}.${i.model ? 'own' : 'set'}(${value(i, '__cl_p')})\n`).join('')}  })\n`
-  return out + '}\n'
+  out += '}\n'
+  // Accepts its own updates: the new version swaps the island in place, keeping its state (one line, dev only).
+  if (hot) out += `\nif (import.meta.hot) { import.meta.hot.accept(); if (import.meta.hot.data.cl) __cl_swap(import.meta.url); import.meta.hot.data.cl = 1 }\n`
+  return out
 }
 
 /** Rewrites expressions for the browser: reads of `signals` become `.get()`. */
