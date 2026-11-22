@@ -45,6 +45,23 @@ export function classValue(value: unknown): string {
 }
 
 /**
+ * A style from a string (as written), an object (camelCase keys to kebab-case, custom properties as they are; null,
+ * undefined, false and '' left out; no units added) or an array of those. Templates use it for `[style]` values and
+ * `[style.prop]` bindings.
+ * @example
+ * styleValue({ fontSize: '2em', '--accent': c, color: null }) // 'font-size: 2em; --accent: …;'
+ * @see https://clarusjs.com/guide/attributes
+ */
+export function styleValue(value: unknown): string {
+  // A string stays whole (a url(data:…;base64,…) holds a ';'); only a trailing ';' is dropped before joining.
+  const decls = (v: unknown): string[] =>
+    !v ? [] : typeof v === 'string' ? [v.trim().replace(/;\s*$/, '')].filter(Boolean) : Array.isArray(v) ? v.flatMap(decls) : typeof v === 'object'
+      ? Object.entries(v).filter(([, x]) => x != null && x !== false && x !== '').map(([k, x]) => `${k.startsWith('--') ? k : k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())}: ${x}`)
+      : []
+  return decls(value).map((d) => d + ';').join(' ')
+}
+
+/**
  * What an attribute should become: `null` removes it, `true` makes it a bare boolean attribute, a string is its value.
  */
 export function attrValue(name: string, value: unknown, tag?: string): string | true | null {
@@ -52,6 +69,7 @@ export function attrValue(name: string, value: unknown, tag?: string): string | 
   const n = name.toLowerCase()
   // A class from an object or an array (a spread's class, or one bound directly): its classes, never [object Object].
   if (n === 'class' && typeof value === 'object') return classValue(value)
+  if (n === 'style' && typeof value === 'object') return styleValue(value)
   if (typeof value === 'boolean' && ENUMERATED.has(n)) return n === 'translate' ? (value ? 'yes' : 'no') : String(value) // translate: yes/no
   if (value === false) return null
   if (value === true) return true

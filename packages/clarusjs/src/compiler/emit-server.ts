@@ -12,6 +12,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     ir.stateful && 'island as __cl_island',
     all.some((n) => n.kind === 'attr') && 'attr as __cl_attrHtml',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_classValue(')) && 'classValue as __cl_classValue',
+    all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_styleValue(')) && 'styleValue as __cl_styleValue',
     all.some((n) => n.kind === 'if' && n.block >= 0) && 'blockHtml as __cl_blockHtml',
     all.some((n) => n.kind === 'for' && n.block >= 0) && 'forHtml as __cl_forHtml',
     all.some((n) => n.kind === 'component' && n.region >= 0) && 'regionHtml as __cl_regionHtml',

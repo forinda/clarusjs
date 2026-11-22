@@ -37,6 +37,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     rendersHtml && hasFors && 'forHtml as __cl_forHtml',
     hasRegions && 'regionHtml as __cl_regionHtml',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_classValue(')) && 'classValue as __cl_classValue',
+    all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_styleValue(')) && 'styleValue as __cl_styleValue',
   ].filter(Boolean)
 
   let out = used.length ? `import { ${used.join(', ')} } from 'clarusjs/runtime'\n` : ''
