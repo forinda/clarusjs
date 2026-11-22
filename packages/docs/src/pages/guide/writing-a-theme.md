@@ -108,4 +108,6 @@ A site uses it the way it uses the docs theme:
 <theme [config]="config" [title]="title" [path]="path" [headings]="headings"><slot /></theme>
 ```
 
-A test builds and type-checks this theme as a site's, so it keeps working as the docs theme changes. Its `source` and `url` inputs are taken and unused here; the docs theme uses them for edit links and canonical addresses. Add the theme's CSS with an `@import './theme.css'` at the top of `layout.tscl`, and its own islands (a theme toggle, search) as components like any other.
+A test builds and type-checks this theme as a site's, so it keeps working as the docs theme changes.
+
+A theme with a Vite plugin of its own can hand clarusjs components that no page imports by path, such as files a site configures, so their styles and islands are built: give the plugin `api: { clarusComponents: (root) => [/* absolute paths */] }`. The docs theme does this for [replaced parts](/guide/docs-theme#replacing-a-part). Its `source` and `url` inputs are taken and unused here; the docs theme uses them for edit links and canonical addresses. Add the theme's CSS with an `@import './theme.css'` at the top of `layout.tscl`, and its own islands (a theme toggle, search) as components like any other.

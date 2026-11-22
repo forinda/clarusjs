@@ -3,7 +3,7 @@
 // Plain JavaScript: vite.config loads it from node_modules, where Node doesn't strip types. Types are the JSDoc here;
 // vite.d.ts is generated from it (pnpm types; typecheck and prepack run it).
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve, sep } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'clarusjs/compiler'
 import { gitDates } from 'clarusjs/vite'
@@ -74,8 +74,6 @@ function overridesOf(components, root) {
     if (!path) continue
     const file = resolve(root, path.startsWith('/') ? '.' + path : path)
     if (!existsSync(file)) throw new Error(`themeDocs: components.${key}: no file at ${path}`)
-    // clarusjs finds components (for their styles and islands) under src/: a part elsewhere would render unstyled.
-    if (!real(file).startsWith(real(resolve(root, 'src')) + sep)) throw new Error(`themeDocs: components.${key} (${path}) isn't under src/: move it there, where clarusjs finds components (their styles and islands)`)
     const theirs = contractOf(join(PARTS_DIR, part))
     const mine = contractOf(file)
     const passed = new Set(theirs.inputs.map((i) => i.name))
@@ -103,6 +101,12 @@ export function themeDocs(options = {}) {
     name: 'clarusjs:theme-docs',
     // Before Vite resolves the layout's relative import of a part itself.
     enforce: 'pre',
+    // The replacements, for clarusjs to find like its own components (their styles and islands): no page imports
+    // them by path, and they may be outside src/.
+    api: {
+      /** @param {string} root */
+      clarusComponents: (root) => [...overridesOf(options.components ?? {}, root).values()],
+    },
     /** @param {{ root: string }} config */
     configResolved(config) {
       dir = resolve(config.root, options.pages ?? 'src/pages')

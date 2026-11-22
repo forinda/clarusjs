@@ -63,7 +63,15 @@ test("the query a module is asked for with (?render: the layout rendered in the 
   expect(plugin.resolveId('./parts/header.tscl', layout)).toBeUndefined() // not replaced: Vite resolves it
 })
 
-test('a replacement outside src/ is a build error: clarusjs finds components (their styles, islands) under src/', async () => {
-  const s = site({ 'theme/footer.tscl': '@input config: object\n<footer><slot /></footer>\n<style scoped>:scope { color: red; }</style>\n' })
-  await expect(s.build({ footer: '/theme/footer.tscl' })).rejects.toThrow("themeDocs: components.footer (/theme/footer.tscl) isn't under src/: move it there, where clarusjs finds components (their styles and islands)")
+test("a replacement outside src/ keeps its styles and its island: clarusjs finds it through the theme's plugin", async () => {
+  const s = site({
+    // Its slot (the layout fills it) and its styles, and an island of its own beside it.
+    'theme/footer.tscl': "@import likes from './likes.tscl'\n@input config: object\n<footer class=\"mine\"><slot /><likes /></footer>\n<style scoped>\n  :scope { letter-spacing: 3.25px; }\n</style>\n",
+    'theme/likes.tscl': '<script>\n  let n = state(0)\n</script>\n<button type="button" (click)="n++">{{ n }}</button>\n',
+  })
+  await s.build({ footer: '/theme/footer.tscl' })
+  const html = page(s.root)
+  expect(html).toMatch(/<cl-island c="likes" src="\/assets\/[^"]+\.js"/) // the island it imports has its client chunk
+  const sheets = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map((m) => readFileSync(resolve(s.root, 'dist/client', '.' + m[1]), 'utf8')).join('\n')
+  expect(sheets).toContain('3.25px')
 }, 120_000)

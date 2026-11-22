@@ -238,6 +238,12 @@ function clientPages(appRoot: string, modes: ModeTable, files: Files): Map<strin
   return pages
 }
 
+/** Vite's plugins option, flattened: nested arrays followed, falsy entries and promises (not resolved yet) left out. */
+function pluginsOf(list: unknown): Plugin[] {
+  if (Array.isArray(list)) return list.flatMap(pluginsOf)
+  return list && typeof list === 'object' && !(list instanceof Promise) ? [list as Plugin] : []
+}
+
 /**
  * The clarusjs Vite plugin: compiles `.tscl` files, serves pages in development, and on `vite build` builds the
  * browser code, the server and the prerendered pages.
@@ -267,9 +273,12 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   // Page sources only apply under src/pages: elsewhere (src/parts, …) their files are plain files, not components.
   // The project's path aliases (set in the config hook, once the root and Vite's own aliases are known).
   let aliases: Alias[] = []
+  // Components other plugins name (api.clarusComponents(root)): a docs theme's replacement for one of its parts, which
+  // no page imports by path. Found like those under src/, so their styles and islands are built. Set in config.
+  let extra: (appRoot: string) => string[] = () => []
   const files: Files = {
     find: (dir) => findClarusFiles(dir, extensions).filter((f) => f.endsWith('.tscl') || f.includes(`${sep}src${sep}pages${sep}`)),
-    components: (appRoot) => reachableComponents(appRoot, files.find(resolve(appRoot, 'src')), (file) => files.read(file, appRoot), extensions, aliases),
+    components: (appRoot) => reachableComponents(appRoot, [...files.find(resolve(appRoot, 'src')), ...extra(appRoot).filter((f) => existsSync(f))], (file) => files.read(file, appRoot), extensions, aliases),
     read: (file, appRoot) => {
       const code = readFileSync(file, 'utf8')
       const src = sources.find((x) => file.endsWith(x.extension))
@@ -316,6 +325,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     // For clarusjs check (src/cli/project.ts): the page sources it should type-check too.
     api: { sources, lint: options.lint, lintRules: options.lintRules },
     config(userConfig, env) {
+      extra = (appRoot) => pluginsOf(userConfig.plugins).flatMap((p) => (p.api as { clarusComponents?: (root: string) => string[] } | undefined)?.clarusComponents?.(appRoot) ?? [])
       // The plugin's own component and stylesheet discovery resolves the same aliases Vite does.
       const projectRoot = resolve(userConfig.root ?? process.cwd())
       aliases = projectAliases(projectRoot, userConfig.resolve?.alias)
