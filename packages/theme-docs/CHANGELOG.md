@@ -1,5 +1,19 @@
 # @clarusjs/theme-docs
 
+## 0.2.0
+
+### Minor Changes
+
+- [#325](https://github.com/forinda/clarusjs/pull/325) [`9aca4ba`](https://github.com/forinda/clarusjs/commit/9aca4bab34e58ddf537cd39c0b8313f051dfec0e) Thanks [@forinda](https://github.com/forinda)! - `themeDocs({ llms: { title, summary, site } })` writes `llms.txt` and `llms-full.txt` (llmstxt.org) to the built site: the sidebar's pages as links with their descriptions, and their full text (Markdown pages as Markdown, template pages as their built text).
+
+- [#349](https://github.com/forinda/clarusjs/pull/349) [`a8544a4`](https://github.com/forinda/clarusjs/commit/a8544a4bfcacad5cbbc01521b1b929d11eadd241) Thanks [@forinda](https://github.com/forinda)! - `app` on the layout: a tool rather than a page (a playground, a demo), with the header and a main that fills the window under it, and no sidebar, crumb, pager or footer. `<layout [config]="config" [title]="'Playground'" [path]="'/repl'" [app]="true">`.
+
+### Patch Changes
+
+- [#335](https://github.com/forinda/clarusjs/pull/335) [`387d491`](https://github.com/forinda/clarusjs/commit/387d491d3315fd6ef5ea0bb993d47ee2abae4f47) Thanks [@forinda](https://github.com/forinda)! - Pages using the theme render again in `vite dev`. The search module read `import.meta.env` in a form Vite 8's dev module runner refuses, so every page answered 500 in development (builds were fine).
+- Updated dependencies [[`d1aa9d1`](https://github.com/forinda/clarusjs/commit/d1aa9d1b8314d9c8541bcc2f4139e2e5f81077f1), [`ece99b7`](https://github.com/forinda/clarusjs/commit/ece99b712d31942c13001003779bd337081bd094), [`3ed3004`](https://github.com/forinda/clarusjs/commit/3ed3004422470311b0f88bd1dbf3d2f477e990bd), [`061d0f7`](https://github.com/forinda/clarusjs/commit/061d0f79a60a7349ae1eb3785fcbf02fd93191e0), [`5d4d1ce`](https://github.com/forinda/clarusjs/commit/5d4d1ce3987f5a6742bae3c92e88f73397c5de0c), [`d4af927`](https://github.com/forinda/clarusjs/commit/d4af927b6a27a69339941aa480a471b55c273038), [`16c619f`](https://github.com/forinda/clarusjs/commit/16c619fa42a7336c7a247fb125edbbb031445268), [`79315ea`](https://github.com/forinda/clarusjs/commit/79315ead6668ca60da0a280ae15abdd8f2e4082d), [`aa69dae`](https://github.com/forinda/clarusjs/commit/aa69dae9a04403747a334a3c4b8f87985842a4f7), [`29b7974`](https://github.com/forinda/clarusjs/commit/29b79748a27b0aa14aa26469481bc27ee0e993e7)]:
+  - clarusjs@0.11.0
+
 ## 0.1.3
 
 ### Patch Changes

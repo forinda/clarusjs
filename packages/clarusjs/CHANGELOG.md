@@ -1,5 +1,33 @@
 # clarusjs
 
+## 0.11.0
+
+### Minor Changes
+
+- [#334](https://github.com/forinda/clarusjs/pull/334) [`d1aa9d1`](https://github.com/forinda/clarusjs/commit/d1aa9d1b8314d9c8541bcc2f4139e2e5f81077f1) Thanks [@forinda](https://github.com/forinda)! - Component loaders: a `.load.ts` next to a component (outside `src/pages`) loads that component's data. Before a page renders, every component loader it uses (however deeply nested) runs in parallel with the route's context (`params`, `request`, `cookies`, `locals`), then the page renders synchronously with the results, which fill each component's inputs (props from the parent win). Static pages run them at build, server routes per request; client routes don't support them yet (an error).
+
+- [#313](https://github.com/forinda/clarusjs/pull/313) [`ece99b7`](https://github.com/forinda/clarusjs/commit/ece99b712d31942c13001003779bd337081bd094) Thanks [@forinda](https://github.com/forinda)! - `clarusjs({ compress: true })`: `vite build` writes `.br` and `.gz` next to each HTML, JS, CSS, SVG, JSON and XML file in `dist/client` (Node's `zlib`, no dependency), each kept only when smaller, for servers that serve precompressed files directly (nginx `gzip_static`/`brotli_static`, Caddy `precompressed`).
+
+- [#327](https://github.com/forinda/clarusjs/pull/327) [`3ed3004`](https://github.com/forinda/clarusjs/commit/3ed3004422470311b0f88bd1dbf3d2f477e990bd) Thanks [@forinda](https://github.com/forinda)! - Cookies and locals in loaders, with a request hook: every `load()` gets `cookies` (`get`, `getAll`, `set`, `delete`; what's set goes on the answer as `Set-Cookie`, with secure defaults: `path: '/'`, `httpOnly`, `sameSite: 'lax'`, and `secure` everywhere but the Vite dev server) and `locals`. An optional `src/server.ts` exports `handle({ request, cookies, locals })`, run once per request before any page loads; returning a Response (such as `redirect('/login')`) answers instead. `Locals` is declared once with module augmentation and checked in every loader. New types: `LoadContext`, `Cookies`, `CookieOptions`, `Locals`, `Handle`.
+
+- [#329](https://github.com/forinda/clarusjs/pull/329) [`061d0f7`](https://github.com/forinda/clarusjs/commit/061d0f79a60a7349ae1eb3785fcbf02fd93191e0) Thanks [@forinda](https://github.com/forinda)! - Endpoints: a `.ts` file under `src/pages` (not `.load.ts`) exporting `GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `OPTIONS` handlers answers at its route, with the same context as `load()` (request, params, cookies, locals), served by the same handler in dev, preview and production (and the Netlify adapter). Cross-site writes are refused (403) by an `Origin` / `Sec-Fetch-Site` check; `HEAD` falls back to `GET`; other methods get 405 with `Allow`. Request bodies now reach the handler in dev and `vite preview`. New type: `RequestHandler`.
+
+  The CSRF check falls back to `Referer` when a write has no `Origin`, refuses an opaque `Origin: null`, and refuses a write that carries cookies but neither header.
+
+- [#336](https://github.com/forinda/clarusjs/pull/336) [`d4af927`](https://github.com/forinda/clarusjs/commit/d4af927b6a27a69339941aa480a471b55c273038) Thanks [@forinda](https://github.com/forinda)! - Island HMR in `vite dev`: saving an island's file swaps it in place with the page's new HTML and code, and its state (and that of islands inside it) carries over by name. Changes only the server sees, like pages, layouts, components without a `<script>`, loaders and Markdown pages, now reload the open page; before, the browser kept showing the old page. Builds carry none of it.
+
+- [#328](https://github.com/forinda/clarusjs/pull/328) [`79315ea`](https://github.com/forinda/clarusjs/commit/79315ead6668ca60da0a280ae15abdd8f2e4082d) Thanks [@forinda](https://github.com/forinda)! - A static (or client) route's `load()` that reads `cookies` or the request's headers is now an error: "/account reads cookies, but static routes are built once for everyone: make it 'server'". Such a page used to be built once with whatever the build saw. `clarusjs explain` and `dist/clarusjs-manifest.json` (`cookies: true`) show which server routes read cookies.
+
+- [#337](https://github.com/forinda/clarusjs/pull/337) [`aa69dae`](https://github.com/forinda/clarusjs/commit/aa69dae9a04403747a334a3c4b8f87985842a4f7) Thanks [@forinda](https://github.com/forinda)! - Template lint in `clarusjs check`: `unused-input`, `unused-import`, `img-alt`, `label-field` and `accessible-name`, reported as warnings at `file:line:col` (the exit code changes only with `--strict`, or a rule set to `'error'`). Set levels with the plugin's `lint` option, skip one place with `{{-- clarusjs-ignore rule --}}`, and add your own rules with `lintRules` (`lint()`, `lintRules` and `LintRuleDef` are exported from `clarusjs/compiler`). Every diagnostic now has a `severity`, also in `--json`. The language server shows the built-in rules' findings as warnings.
+
+### Patch Changes
+
+- [#313](https://github.com/forinda/clarusjs/pull/313) [`5d4d1ce`](https://github.com/forinda/clarusjs/commit/5d4d1ce3987f5a6742bae3c92e88f73397c5de0c) Thanks [@forinda](https://github.com/forinda)! - Full-document pages: a comment (or BOM) before the doctype no longer adds a second one, and `<html>`, `</head>` or `</body>` inside a `<script>` or `<style>` no longer count as the page's own tags (a page with one in an inline script got no default shell, or the loader in the wrong place).
+
+- [#313](https://github.com/forinda/clarusjs/pull/313) [`16c619f`](https://github.com/forinda/clarusjs/commit/16c619fa42a7336c7a247fb125edbbb031445268) Thanks [@forinda](https://github.com/forinda)! - `vite build` no longer publishes Vite's manifest (`dist/client/.vite/manifest.json`) with the site. `vite preview` answers a malformed URL with 400 instead of passing it on, and its built-page lookup compares against the output folder with a separator, so a path into a sibling folder (`dist/clientx`) can't be mistaken for a page of the site.
+
+- [#326](https://github.com/forinda/clarusjs/pull/326) [`29b7974`](https://github.com/forinda/clarusjs/commit/29b79748a27b0aa14aa26469481bc27ee0e993e7) Thanks [@forinda](https://github.com/forinda)! - `vite build --watch` works: after each change under `src/` or `public/`, the client build, the server build and the prerender run again in order, so pages point at the rebuilt islands' new hashes (it used to fail looking for the server build). In dev, island URLs use forward slashes on Windows, and `/@fs/` URLs for components outside the root carry the drive (`/@fs/C:/libs/c.tscl`).
+
 ## 0.10.0
 
 ### Minor Changes
