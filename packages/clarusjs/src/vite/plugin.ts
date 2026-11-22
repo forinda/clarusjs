@@ -514,6 +514,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (id === '/cl-loader.js') return here('../runtime/loader')
       if (id === '/cl-router.js') return here('../runtime/router')
       if (id === '/cl-nav.js') return here('../runtime/fragments')
+      if (id === '/cl-hot.js') return here('../runtime/hot')
       if (id === ENTRY) return '\0' + ENTRY
     } },
     // order 'pre': a page source's file is read as text before Vite's asset loader can claim it (.txt,
@@ -632,7 +633,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const collapseWhitespace = command === 'build' && options.collapseWhitespace !== false
           // A component with a loader (#97) reads what it loaded, by its path from the root.
           const loader = componentLoaderOf(root, file) ? relative(root, file).split(sep).join('/') : undefined
-          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader })
+          // Dev: an island's module swaps itself in place when its file changes (#53).
+          const hot = command === 'serve' && target === 'client' ? '/cl-hot.js' : undefined
+          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader, hot })
           // Every component compiles for the server once: warnings from there, so each is said once.
           if (consumer === 'server' && !renderQuery) for (const w of out.warnings) this.warn(w.message)
           return { code: out.code, map: null, moduleType: 'js' }
@@ -688,6 +691,13 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           res.end(req.method === 'HEAD' ? undefined : readFileSync(page))
         })
       }
+    },
+    // A change only the server's modules see (a page, a layout, a stateless component, a loader) is a full reload:
+    // the browser has nothing to update. Changes the browser has loaded go through its own HMR (islands swap in place).
+    hotUpdate({ file, modules, server }) {
+      if (this.environment.name !== 'ssr' || !modules.length) return
+      if (server.environments.client.moduleGraph.getModulesByFile(file)?.size) return
+      server.environments.client.hot.send({ type: 'full-reload' })
     },
     configureServer(server) {
       // Component styles change with their .tscl files: regenerate the stylesheet (Vite then updates the page's CSS).

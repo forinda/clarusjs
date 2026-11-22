@@ -88,3 +88,5 @@ In JavaScript, `checkJs` turns on type errors in `.js` files, from JSDoc types a
 ## Run it
 
 <pm [commands]="['exec vite        # dev server, pages rendered on each request', 'exec vite build  # static site in dist/client/']" />
+
+While the dev server runs, saving a file updates the open page: an island is swapped in place and keeps its state, anything else reloads the page (see [Islands](/guide/islands#editing-an-island)).

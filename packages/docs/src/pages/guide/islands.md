@@ -28,3 +28,9 @@ This page's text and layout ship no JavaScript. It loads two kinds of island: th
 ::: info
 In the HTML, an island is a `<cl-island>` element that names its chunk and props, and its reactive text sits between `<!--[0-->` markers. View the source of the home page to see it.
 :::
+
+## Editing an island
+
+In `vite dev`, saving an island's file swaps it in place: the dev server renders the page again, the island gets its new HTML and code, and its state carries over by name. A counter at 5 is still at 5 with its new template, and islands inside it keep theirs too. A state renamed or added in the edit starts from its initial value.
+
+A change that only the server sees, such as a page, a layout, a component without a `<script>`, a `.load.ts` file or a Markdown page, reloads the page. So does an edit the swap can't follow, such as one that adds or removes copies of the island on the page, and any edit on a [client route](/guide/client-routes). None of this is in a build.

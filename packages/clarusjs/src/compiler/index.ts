@@ -19,7 +19,7 @@ export type { ParsedFile, InputDecl, ImportDecl, TemplateNode, Attr } from './pa
  * `scope`: the id that scopes this component's styles (default: from the file name).
  * @see https://clarusjs.com/reference/compiler#compile
  */
-export type CompileOptions = { file: string; target: 'server' | 'client'; clientUrl?: string; renderImports?: boolean; scope?: string; collapseWhitespace?: boolean; loader?: string }
+export type CompileOptions = { file: string; target: 'server' | 'client'; clientUrl?: string; renderImports?: boolean; scope?: string; collapseWhitespace?: boolean; loader?: string; hot?: string }
 /**
  * `css`: the component's stylesheet (`<style scoped>` blocks wrapped in @scope, the others as written); '' without
  * <style>. `warnings`: things that compile but likely aren't meant (each a located ClarusError, not thrown).
@@ -61,7 +61,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
   }
   const ir = lower(parsed, options.file, source, { collapseWhitespace: options.collapseWhitespace })
   warnings.push(...ir.warnings)
-  if (options.target === 'client') return { code: emitClient(ir), stateful: ir.stateful, css, warnings }
+  if (options.target === 'client') return { code: emitClient(ir, options.hot), stateful: ir.stateful, css, warnings }
   if (ir.stateful && !options.clientUrl) throw new Error(`[clarusjs] ${options.file}: clientUrl is required to compile a stateful component for the server`)
   return { code: emitServer(ir, options.clientUrl ?? '', options.renderImports, options.loader), stateful: ir.stateful, css, warnings }
 }
