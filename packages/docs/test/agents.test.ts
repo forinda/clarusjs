@@ -17,3 +17,9 @@ test("the section's links point at pages this site has", () => {
     expect(exists, path).toBe(true)
   }
 })
+
+// #345: the skill this site publishes (/skills/clarusjs/SKILL.md) is the current one.
+test('public/skills/clarusjs/SKILL.md is the current skill', async () => {
+  const { skill } = await import('@clarusjs/ai/skill')
+  expect(readFileSync(resolve(import.meta.dirname, '../public/skills/clarusjs/SKILL.md'), 'utf8')).toBe(skill())
+})

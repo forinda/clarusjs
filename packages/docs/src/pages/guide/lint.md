@@ -113,7 +113,7 @@ The plugin knows how clarusjs scripts work:
 
 - **Names a script doesn't import**: the file's `@input`s, the data it `@import`s, and `state`, `derived` and `shared` are defined, so `no-undef` doesn't report them. Browser globals such as `window` are yours to add, as in any ESLint config (`languageOptions.globals`).
 - **Names the template uses**: a function called only from `(click)`, or a value shown only in `{{ }}`, counts as used for `no-unused-vars`.
-- **Signals written elsewhere**: `let open = state(false)` is written by the template (`(click)="open = !open"`) or by an update such as `open.x = 1`, so `prefer-const` doesn't ask for `const`. The same goes for `shared(store)`.
+- **Signals the template writes**: `let open = state(false)` is written by the template (`(click)="open = !open"`, or a binding such as `[(value)]="form.name"`), so `prefer-const` doesn't ask for `const`. The same goes for `shared(store)`.
 
 `clarusjs/template` takes the levels as its option: `'clarusjs/template': ['error', { 'img-alt': 'off' }]`. The rule's own severity applies to every finding, and each message ends with the clarusjs rule's name. The `{{-- clarusjs-ignore --}}` comment works as it does in `clarusjs check`. This site lints itself this way.
 
