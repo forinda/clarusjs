@@ -24,6 +24,7 @@
   "include": [
     "src",
     "e2e",
+    "test",
     ".clarusjs/views.d.ts",
     ".clarusjs/routes.d.ts"
   ],
