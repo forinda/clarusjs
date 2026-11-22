@@ -12,7 +12,7 @@ test('vite build: the @for duplicate-key warning is left out of production asset
   w('src/components/list.tscl', '<script>\n  let items = state(["a", "b"])\n</script>\n<ul>@for (item of items; track item) {<li>{{ item }}</li>}</ul>\n')
   w('src/pages/index.tscl', "@import list from '../components/list.tscl'\n<list />\n")
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const quiet = { info() {}, warn() {}, warnOnce() {}, error() {}, clearScreen() {}, hasErrorLogged: () => false, hasWarned: false }
   // As `vite build` runs: vitest sets NODE_ENV=test, which Vite would treat as development.
   const env = process.env.NODE_ENV

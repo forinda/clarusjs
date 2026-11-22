@@ -25,7 +25,7 @@ function tempApp() {
   cpSync(resolve(fixtures, 'site/public'), resolve(root, 'public'), { recursive: true })
   // Like an app that installed clarusjs, so pages can import 'clarusjs/manifest'.
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   return root
 }
 
@@ -82,6 +82,53 @@ test('building twice with the same builder uses the new island chunk and the new
   expect(existsSync(resolve(root, 'dist/client', src(second)!.slice(1)))).toBe(true)
   expect(unscoped(second)).toContain('<h1>Home v2</h1>')
   expect(second).toContain('Pressed')
+}, 120_000)
+
+test('#54: vite build --watch rebuilds a changed island with a fresh hash, and the page points at it', async () => {
+  const root = tempApp()
+  const counterFile = resolve(root, 'src/components/counter.tscl')
+  const page = () => { try { return readFileSync(resolve(root, 'dist/client/index.html'), 'utf8') } catch { return '' } }
+  const src = (html: string) => /<cl-island c="counter" src="([^"]+)"/.exec(html)?.[1]
+  const builder = await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()], build: { watch: {} } })
+  const watchers: { close(): Promise<void> }[] = []
+  try {
+    const result = (await builder.buildApp()) as unknown
+    for (const w of [result].flat()) if (w && typeof (w as { close?: unknown }).close === 'function') watchers.push(w as { close(): Promise<void> })
+    const own = (builder as unknown as { clarusjsWatcher?: { close(): Promise<void> } }).clarusjsWatcher
+    expect(own).toBeTruthy() // the build watches
+    watchers.push(own!)
+    // The first build is written.
+    for (let i = 0; i < 150 && !src(page()); i++) await new Promise((r) => setTimeout(r, 100))
+    const first = src(page())
+    expect(first).toBeTruthy()
+    writeFileSync(counterFile, readFileSync(counterFile, 'utf8').replace('count * 2', 'count * 5'))
+    let second: string | undefined
+    for (let i = 0; i < 300 && (!second || second === first); i++) { await new Promise((r) => setTimeout(r, 100)); second = src(page()) }
+    expect(second).not.toBe(first)
+    expect(existsSync(resolve(root, 'dist/client', second!.slice(1)))).toBe(true)
+    expect(readFileSync(resolve(root, 'dist/client', second!.slice(1)), 'utf8')).toMatch(/\*\s*5\b/) // the new code (minified)
+  } finally {
+    await Promise.all(watchers.map((w) => w.close().catch(() => {})))
+  }
+}, 120_000)
+
+test('#94: a static page whose load() reads cookies fails the build, naming the route and the fix', async () => {
+  const root = tempApp()
+  writeFileSync(resolve(root, 'src/pages/me.tscl'), '@input theme: string = ""\n<p>{{ theme }}</p>\n')
+  writeFileSync(resolve(root, 'src/pages/me.load.ts'), "export function load({ cookies }) { return { theme: cookies.get('theme') ?? 'light' } }\n")
+  await expect((async () => (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp())()).rejects.toThrow(/\/me reads cookies, but static routes are built once for everyone: make it 'server'/)
+}, 120_000)
+
+test('#54: a project reached through a symlink (or a Windows short name) builds: islands and stylesheets are found', async () => {
+  const real = tempApp()
+  writeFileSync(resolve(real, 'src/pages/styled.tscl'), "@import '../styles/base.css'\n<h1>Styled</h1>\n")
+  const link = resolve(tmpdir(), `clarusjs-link-${Date.now()}`)
+  symlinkSync(real, link, 'junction')
+  await (await createBuilder({ root: link, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp()
+  const home = readFileSync(resolve(real, 'dist/client/index.html'), 'utf8')
+  const src = /<cl-island c="counter" src="([^"]+)"/.exec(home)![1]!
+  expect(existsSync(resolve(real, 'dist/client', src.slice(1)))).toBe(true)
+  expect(readFileSync(resolve(real, 'dist/client/styled/index.html'), 'utf8')).toMatch(/<link rel="stylesheet" href="\/assets\/[^"]*base[^"]*\.css">/)
 }, 120_000)
 
 test('vite preview resolves a page route that contains a dot', async () => {

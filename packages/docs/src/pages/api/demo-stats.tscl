@@ -1,3 +1,0 @@
-{{-- The Fetching guide's demo endpoint: its load() answers with JSON (a Response), so this template never shows. --}}
-
-<p>Demo stats</p>

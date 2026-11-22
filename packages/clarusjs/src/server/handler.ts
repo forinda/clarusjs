@@ -18,8 +18,86 @@ type Params = Record<string, string>
  */
 type DataModule = {
   entries?(): Params[] | Promise<Params[]>
-  load?(context: { params: Params; request: Request }): object | Promise<object>
+  load?(context: LoadContext): object | Promise<object>
 }
+
+/**
+ * Data a request carries from `handle()` (src/server.ts) to every `load()`, such as the signed-in user. Declare what
+ * it holds once, and every loader is checked against it:
+ * @example
+ * ```ts
+ * // src/server.ts
+ * declare module 'clarusjs/server' {
+ *   interface Locals { user?: { id: string; name: string } }
+ * }
+ * ```
+ * @see https://clarusjs.com/reference/server#locals
+ */
+export interface Locals {}
+
+/**
+ * Options for `cookies.set()`. Defaults: `path: '/'`, `httpOnly: true`, `sameSite: 'lax'`, and `secure: true` except
+ * in the Vite dev server (so development over plain http works everywhere).
+ * @see https://clarusjs.com/reference/server#cookies
+ */
+export type CookieOptions = { path?: string; domain?: string; maxAge?: number; expires?: Date; httpOnly?: boolean; secure?: boolean; sameSite?: 'lax' | 'strict' | 'none' }
+
+/**
+ * A request's cookies: read from its `Cookie` header; what's set or deleted goes on the answer as `Set-Cookie`.
+ * @example
+ * ```ts
+ * export function load({ cookies }: LoadContext) {
+ *   cookies.set('visited', 'yes', { maxAge: 60 * 60 * 24 })
+ *   return { theme: cookies.get('theme') ?? 'light' }
+ * }
+ * ```
+ * @see https://clarusjs.com/reference/server#cookies
+ */
+export type Cookies = {
+  get(name: string): string | undefined
+  getAll(): Record<string, string>
+  set(name: string, value: string, options?: CookieOptions): void
+  delete(name: string, options?: Pick<CookieOptions, 'path' | 'domain'>): void
+}
+
+/**
+ * What a page's `load()` gets: its route params, the request, its cookies and the locals `handle()` filled.
+ * @see https://clarusjs.com/reference/server#loadcontext
+ */
+export type LoadContext = { params: Params; request: Request; cookies: Cookies; locals: Locals }
+
+/**
+ * `handle()` in src/server.ts: runs once per request before any page loads, to resolve the session into `locals`.
+ * Returning a Response (such as `redirect('/login')`) answers the request instead.
+ * @example
+ * ```ts
+ * // src/server.ts
+ * import type { Handle } from 'clarusjs/server'
+ * export const handle: Handle = async ({ cookies, locals }) => {
+ *   const id = cookies.get('session')
+ *   if (id) locals.user = await sessions.get(id)
+ * }
+ * ```
+ * @see https://clarusjs.com/reference/server#handle
+ */
+export type Handle = (context: { request: Request; cookies: Cookies; locals: Locals }) => void | Response | Promise<void | Response>
+
+/**
+ * An endpoint's handler (`export function GET(…)` in src/pages/api/items.ts): the request, its route params, cookies
+ * and locals; returns the Response.
+ * @example
+ * ```ts
+ * // src/pages/api/items.ts
+ * import type { RequestHandler } from 'clarusjs/server'
+ * export const GET: RequestHandler = ({ locals }) => Response.json(listItemsFor(locals.user))
+ * export const POST: RequestHandler = async ({ request }) => Response.json(await save(await request.json()), { status: 201 })
+ * ```
+ * @see https://clarusjs.com/reference/server#endpoints
+ */
+export type RequestHandler = (context: LoadContext) => Response | Promise<Response>
+
+/** An endpoint module: one handler per HTTP method it answers. @internal */
+export type EndpointModule = Partial<Record<'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS', RequestHandler>>
 
 type Route = { path: string; file: string; keys: string[]; regex: RegExp; load: () => Promise<PageModule> }
 
@@ -89,12 +167,29 @@ export function createHandler(
     site?: SiteOptions
     /** Development: a failing page throws its error (the dev server shows it with its stack) instead of answering 500. */
     dev?: boolean
+    /** src/server.ts: its `handle()` runs once per request, before any page loads. */
+    hooks?: { handle?: Handle }
+    /** Endpoints: .ts files under src/pages (not .load.ts) exporting GET, POST, … handlers. */
+    endpoints?: Record<string, () => Promise<EndpointModule>>
   } = {},
-): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
+): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; readsCookies(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
   const routes: Route[] = Object.entries(pages)
     .map(([file, load]) => ({ path: routeFromFile(file), file: file.replace(/^\//, ''), load, ...compile(routeFromFile(file)) }))
     .sort((a, b) => a.keys.length - b.keys.length || b.path.split('/').length - a.path.split('/').length)
+  // Endpoints (src/pages/api/items.ts → /api/items), matched after pages; most fixed segments first, as for pages.
+  const endpointRoutes = Object.entries(options.endpoints ?? {})
+    .map(([file, load]) => ({ path: routeFromFile(file), file: file.replace(/^\//, ''), load, ...compile(routeFromFile(file)) }))
+    .sort((a, b) => a.keys.length - b.keys.length || b.path.split('/').length - a.path.split('/').length)
+  const matchEndpoint = (pathname: string) => {
+    for (const route of endpointRoutes) {
+      const m = route.regex.exec(pathname)
+      if (!m) continue
+      // A malformed %-escape in a param names no endpoint: a 404, as for pages, never a crash.
+      try { return { route, params: Object.fromEntries(route.keys.map((k, i) => [k, decodeURIComponent(m[i + 1]!)])) } } catch { return undefined }
+    }
+    return undefined
+  }
   const data = options.data ?? {}
   const modes = options.modes ?? {}
   const loaderUrl = options.loaderUrl ?? '/cl-loader.js'
@@ -139,16 +234,23 @@ export function createHandler(
   const handler: ReturnType<typeof createHandler> = {
     routes: routes.map((r) => r.path).sort(),
     /** Routes rendered per request ('server' mode), as their files name them. */
-    serverRoutes: routes.filter((r) => modeFor(r.path, modes) === 'server').map((r) => r.path).sort(),
+    serverRoutes: [...routes.filter((r) => modeFor(r.path, modes) === 'server').map((r) => r.path), ...endpointRoutes.map((r) => r.path)].sort(),
     /** Whether a URL path belongs to a server route (what a host must send to this handler instead of a file). */
     isServerPath(pathname) {
       const trim = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') : path)
       // <page>/index.frag.html belongs to that page when it exists; otherwise it is an ordinary path.
       const owner = options.fragments && pathname.endsWith(`/${FRAG}`) ? match(trim(pathname.slice(0, -FRAG.length - 1) || '/')) : null
       const found = owner ?? match(trim(pathname))
-      return Boolean(found && modeFor(found.route.path, modes) === 'server')
+      return Boolean(found ? modeFor(found.route.path, modes) === 'server' : matchEndpoint(trim(pathname)))
     },
     /** Whether a route (as its file names it) has a load(). */
+    /** Whether a route's load() mentions cookies (its source text): for clarusjs explain. */
+    async readsCookies(route) {
+      const found = routes.find((r) => r.path === route)
+      const dataFile = found && `/${found.file.replace(/\.[^./]+$/, '.load.ts')}`
+      const mod = dataFile && data[dataFile] ? await data[dataFile]!() : undefined
+      return !!mod?.load && /\bcookies\b/.test(String(mod.load))
+    },
     async hasLoader(path) {
       const route = routes.find((r) => r.path === path)
       const file = route && `/${route.file.replace(/\.[^./]+$/, '.load.ts')}`
@@ -189,6 +291,36 @@ export function createHandler(
       return out.sort()
     },
     async fetch(request) {
+      // The request's cookies (Set-Cookie on whatever answers it) and locals, filled by handle() before pages load.
+      const jar = cookieJar(request, options.dev === true)
+      const locals = {} as Locals
+      if (options.hooks?.handle) {
+        let early: void | Response
+        try {
+          early = await options.hooks.handle({ request, cookies: jar.cookies, locals })
+        } catch (err) {
+          if (options.dev) throw err
+          console.error(`clarusjs: src/server.ts: handle() failed: ${(err as Error)?.message ?? err}`)
+          return jar.apply(failure('src/server.ts: handle() failed'))
+        }
+        if (early instanceof Response) return jar.apply(early)
+      }
+      return jar.apply(await answer(request, jar.cookies, locals))
+    },
+  }
+
+  async function answer(request: Request, cookies: Cookies, locals: Locals): Promise<Response> {
+    // An endpoint answers where no page does (pages win a shared path).
+    if (endpointRoutes.length) {
+      const path = new URL(request.url).pathname
+      const trimmed = path.length > 1 ? path.replace(/\/+$/, '') : path
+      const found = !match(trimmed) && matchEndpoint(trimmed)
+      if (found) {
+        const response = await callEndpoint(found.route.file, await found.route.load(), { request, params: found.params, cookies, locals }, options)
+        if (response) return response
+      }
+    }
+    {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 })
       const pathname = new URL(request.url).pathname
       // '/guide/x/' is the same page as '/guide/x', in dev as on a static host.
@@ -269,7 +401,9 @@ export function createHandler(
       if (mod?.load) {
         let loaded: unknown
         try {
-          loaded = await mod.load({ params: found.params, request })
+          // A route that isn't 'server' is built once for everyone: its load() can't use a visitor's cookies or headers.
+          const once = modeFor(found.route.path, modes) !== 'server'
+          loaded = await mod.load({ params: found.params, locals, ...(once ? builtOnce(found.route.path, request) : { request, cookies }) })
         } catch (err) {
           return fail(`${dataFile}: load() failed: ${(err as Error)?.message ?? err}`, err)
         }
@@ -315,7 +449,7 @@ export function createHandler(
         : hasIslands ? `<script type="module" src="${loaderUrl}"></script>` : ''
       const body = fullDocument(html, style, script)
       return new Response(head ? null : body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
-    },
+    }
   }
   return handler
 }
@@ -402,4 +536,135 @@ export function rootLinks(html: string, base: string): string {
     const resolved = new URL(url.replace(/&amp;/g, '&'), `http://x${base}`)
     return `${attr}${(resolved.pathname + resolved.search + resolved.hash).replace(/&/g, '&amp;')}"`
   })
+}
+
+// A cookie name: an RFC 6265 token (no spaces, separators or controls).
+const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
+
+/** The request's cookies, and `apply(response)`: the response with a Set-Cookie for each cookie set or deleted. */
+function cookieJar(request: Request, dev: boolean): { cookies: Cookies; apply(response: Response): Response } {
+  const incoming = new Map<string, string>()
+  for (const part of (request.headers.get('cookie') ?? '').split(';')) {
+    const at = part.indexOf('=')
+    if (at < 1) continue
+    const name = part.slice(0, at).trim()
+    const raw = part.slice(at + 1).trim().replace(/^"(.*)"$/, '$1')
+    let value = raw
+    try { value = decodeURIComponent(raw) } catch {}
+    if (!incoming.has(name)) incoming.set(name, value)
+  }
+  const current = new Map(incoming)
+  const out = new Map<string, string>() // name (and path, domain) → Set-Cookie value
+  const write = (name: string, value: string, o: CookieOptions) => {
+    if (!TOKEN.test(name)) throw new Error(`cookies.set: ${JSON.stringify(name)} isn't a valid cookie name`)
+    const path = o.path ?? '/'
+    let header = `${name}=${encodeURIComponent(value)}; Path=${path}`
+    if (o.domain) header += `; Domain=${o.domain}`
+    if (o.maxAge !== undefined) header += `; Max-Age=${Math.floor(o.maxAge)}`
+    if (o.expires) header += `; Expires=${o.expires.toUTCString()}`
+    if (o.httpOnly ?? true) header += '; HttpOnly'
+    header += `; SameSite=${({ lax: 'Lax', strict: 'Strict', none: 'None' } as const)[o.sameSite ?? 'lax']}`
+    // Secure unless the Vite dev server answers: never guessed from the request's URL, which behind a proxy can be
+    // http://localhost in production. (Browsers accept Secure cookies on http://localhost, so vite preview works.)
+    if (o.secure ?? !dev) header += '; Secure'
+    out.set(`${name};${path};${o.domain ?? ''}`, header)
+  }
+  return {
+    cookies: {
+      get: (name) => current.get(name),
+      getAll: () => Object.fromEntries(current),
+      set(name, value, options = {}) {
+        write(name, value, options)
+        current.set(name, value)
+      },
+      delete(name, options = {}) {
+        // An expired cookie with the attributes it was set with (Max-Age=0 after them, so it reads as a removal).
+        write(name, '', { ...options, maxAge: undefined })
+        const key = `${name};${options.path ?? '/'};${options.domain ?? ''}`
+        out.set(key, out.get(key)! + '; Max-Age=0')
+        current.delete(name)
+      },
+    },
+    apply(response) {
+      if (!out.size) return response
+      const headers = new Headers(response.headers) // a redirect's headers are immutable: copy them
+      for (const header of out.values()) headers.append('set-cookie', header)
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
+    },
+  }
+}
+
+/**
+ * A static or client route's view of the request: built once for everyone, so a visitor's cookies and headers aren't
+ * there to read. Using either throws, naming the route and the fix; the rest (the URL) is fine.
+ */
+function builtOnce(route: string, request: Request): { request: Request; cookies: Cookies } {
+  const refuse = (what: string) => () => { throw new Error(`${route} reads ${what}, but static routes are built once for everyone: make it 'server' (routes in vite.config.ts)`) }
+  const cookies: Cookies = { get: refuse('cookies'), getAll: refuse('cookies'), set: refuse('cookies'), delete: refuse('cookies') }
+  const headers = new Proxy(request.headers, { get: refuse("the request's headers") })
+  const proxied = new Proxy(request, {
+    get(target, key) {
+      if (key === 'headers') return headers
+      const value = Reflect.get(target, key, target)
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+  return { request: proxied, cookies }
+}
+
+const METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as const
+const WRITES = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
+/**
+ * An endpoint's answer: the method's handler (HEAD falls back to GET), 405 with Allow for others, 403 for a write from
+ * another site. Undefined when the module exports no handler at all (a helper file, not an endpoint).
+ */
+async function callEndpoint(file: string, mod: EndpointModule, context: LoadContext, options: { site?: SiteOptions; dev?: boolean }): Promise<Response | undefined> {
+  const exported = METHODS.filter((m) => typeof mod[m] === 'function')
+  if (!exported.length) return undefined
+  const { request } = context
+  const method = request.method.toUpperCase()
+  const fn = mod[method as (typeof METHODS)[number]] ?? (method === 'HEAD' ? mod.GET : undefined)
+  if (!fn) {
+    const allow = [...new Set(exported.flatMap((m) => (m === 'GET' ? ['GET', 'HEAD'] : [m])))].sort()
+    return new Response('Method Not Allowed', { status: 405, headers: { allow: allow.join(', '), 'content-type': 'text/plain; charset=utf-8' } })
+  }
+  if (WRITES.has(method) && !sameOrigin(request, options.site?.url)) {
+    return new Response('Forbidden: cross-site request', { status: 403, headers: { 'content-type': 'text/plain; charset=utf-8' } })
+  }
+  let response: unknown
+  try {
+    response = await fn(context)
+  } catch (err) {
+    if (options.dev) throw err
+    console.error(`clarusjs: ${file}: ${method} failed: ${(err as Error)?.message ?? err}`)
+    return failure(`${file}: ${method} failed`)
+  }
+  if (!(response instanceof Response)) {
+    const message = `${file}: ${method} must return a Response (got ${response === null ? 'null' : typeof response})`
+    if (options.dev) throw new Error(message)
+    console.error(`clarusjs: ${message}`)
+    return failure(message)
+  }
+  return method === 'HEAD' ? new Response(null, { status: response.status, statusText: response.statusText, headers: response.headers }) : response
+}
+
+/**
+ * Whether a write comes from this site (CSRF): not marked cross-site by the browser, and its Origin (else its Referer's
+ * origin) is the request's own or the configured site URL's (behind a proxy the request URL can differ). With neither
+ * header, a write carrying cookies is refused (a browser acting for the visitor, unidentified); one without cookies
+ * (a server or a script) has nothing of the visitor's to abuse, and is allowed.
+ */
+function sameOrigin(request: Request, site?: string): boolean {
+  if (request.headers.get('sec-fetch-site') === 'cross-site') return false
+  let origin = request.headers.get('origin')
+  if (origin === 'null') return false // an opaque origin (a sandboxed frame, a data: page): never this site
+  if (!origin) {
+    const referer = request.headers.get('referer')
+    try { origin = referer ? new URL(referer).origin : null } catch { origin = null }
+  }
+  if (!origin) return !request.headers.has('cookie')
+  const allowed = [new URL(request.url).origin]
+  if (site) try { allowed.push(new URL(site).origin) } catch {}
+  return allowed.includes(origin)
 }

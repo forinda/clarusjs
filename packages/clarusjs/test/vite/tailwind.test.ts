@@ -25,7 +25,7 @@ beforeAll(async () => {
     '<layout><main><h1 class="text-3xl font-bold underline">Hi</h1><card>c</card><toggle /></main></layout>',
   ].join('\n'))
   mkdirSync(resolve(root, 'node_modules'))
-  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'dir')
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [tailwindcss(), clarusjs()] })).buildApp()
   const assets = resolve(root, 'dist/client/assets')
   css = (readdirSync(assets, { recursive: true }) as string[]).filter((f) => f.endsWith('.css')).map((f) => readFileSync(resolve(assets, f), 'utf8')).join('\n')
