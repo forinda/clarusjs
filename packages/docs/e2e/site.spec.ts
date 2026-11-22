@@ -1847,3 +1847,25 @@ test('#372: the home is a bento grid: live islands in cards, columns on desktop,
   expect(new Set(lefts).size).toBe(1)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+// Every page, as a phone (light) and a desktop (dark) see it: no WCAG 2.2 AA or best-practice violation axe finds.
+// (A full audit found the phone search button unnamed, small lesson segments, unfocusable scrolling tables and low
+// contrast in dark mode, each only in one of these two.)
+for (const [label, viewport, colorScheme] of [['phone, light', { width: 390, height: 800 }, 'light'], ['desktop, dark', { width: 1280, height: 900 }, 'dark']] as const) {
+  test(`a11y: every page passes axe (${label})`, async ({ browser }) => {
+    test.setTimeout(240_000)
+    const sitemap = readFileSync(new URL('../dist/client/sitemap.xml', import.meta.url), 'utf8')
+    const paths = [...sitemap.matchAll(/<loc>https?:\/\/[^/<]+(\/[^<]*)<\/loc>/g)].map((m) => m[1]!)
+    expect(paths.length).toBeGreaterThan(50)
+    const context = await browser.newContext({ viewport, colorScheme, reducedMotion: 'reduce' })
+    const page = await context.newPage()
+    const failures: string[] = []
+    for (const path of paths) {
+      await page.goto(path)
+      const { violations } = await (await axe(page)).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']).analyze()
+      for (const v of violations) failures.push(`${path} ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)
+    }
+    await context.close()
+    expect(failures).toEqual([])
+  })
+}

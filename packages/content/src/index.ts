@@ -264,6 +264,12 @@ function renderer(options: MarkdownOptions): Md {
     return '</div>\n'
   }
 
+  // A table can take focus: when it scrolls sideways on a small screen, keyboard users can scroll it (WCAG 2.1.1).
+  md.renderer.rules.table_open = (tokens, i, options, _env, self) => {
+    tokens[i]!.attrSet('tabindex', '0')
+    return self.renderToken(tokens, i, options)
+  }
+
   // ```lang {1,3} [title] :line-numbers (or :no-line-numbers, with lineNumbers on)
   md.renderer.rules.fence = (tokens, i, _o, env) => {
     const e = env as { tags: string[]; group?: { id: number; n: number } }

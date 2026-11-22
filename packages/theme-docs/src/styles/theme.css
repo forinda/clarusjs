@@ -281,7 +281,9 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
   .sidebar summary { font-size: 15px; padding-block: 10px; }
   .sidebar details a { font-size: 15px; padding-block: 6px; }
   .more-button, .social { display: none; }
-  .search-label, .search-button kbd { display: none; }
+  /* The icon alone shows; "Search" stays for screen readers (the button's name), only out of sight. */
+  .search-button kbd { display: none; }
+  .search-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 
 /* Phones: the section links move into the drawer. */
