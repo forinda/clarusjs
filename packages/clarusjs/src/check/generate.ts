@@ -50,7 +50,9 @@ export function generateTs(source: string, file: string, options: { loader?: str
   // class (#403) takes what classValue does: a string, an array or an object of class names; a toggle ([class.x])
   // is read as true or false, so it takes anything.
   emit(`export type __cl_Class = ${text} | __cl_Class[] | { [name: string]: unknown }\n`)
-  emit(`type __cl_AttrOf<T extends string, P extends string> = P extends 'class' ? __cl_Class : P extends \`class.\${string}\` ? unknown : T extends keyof HTMLElementTagNameMap ? P extends keyof HTMLElementTagNameMap[T] ? (HTMLElementTagNameMap[T][P] extends boolean ? boolean | null | undefined : ${text}) : ${text} : ${text}\n`)
+  // style (#404): a string, an object of properties (or an array of those); one property ([style.x]) takes text.
+  emit(`export type __cl_Style = ${text} | __cl_Style[] | { [property: string]: ${text} }\n`)
+  emit(`type __cl_AttrOf<T extends string, P extends string> = P extends '...' ? { [name: string]: unknown } | null | undefined : P extends 'class' ? __cl_Class : P extends \`class.\${string}\` ? unknown : P extends 'style' ? __cl_Style : T extends keyof HTMLElementTagNameMap ? P extends keyof HTMLElementTagNameMap[T] ? (HTMLElementTagNameMap[T][P] extends boolean ? boolean | null | undefined : ${text}) : ${text} : ${text}\n`)
   emit('declare function __cl_attr<T extends string, P extends string>(value: __cl_AttrOf<T, P>): void\n')
   // A name the DOM doesn't know is a custom event (a child island's CustomEvent, with its detail).
   // currentTarget is the element the handler is on (an unknown tag: HTMLElement). Helper types are exported only so a
@@ -229,8 +231,16 @@ export function generateTs(source: string, file: string, options: { loader?: str
           emit('  { const ')
           point('__cl_p', node.start, node.tag.length + 1) // the tag: `<card`
           emit(`: __cl_Readonly<${alias(node.tag)}> = { `) // a child reads its inputs only, so readonly values fit
+          // A spread (#406) first: it must provide the required inputs the tag doesn't write (TypeScript doesn't check a
+          // spread's extra keys).
           for (const a of node.attrs) {
-            if (a.kind !== 'prop' && a.kind !== 'model') continue
+            if (a.kind !== 'prop' || a.name !== '...') continue
+            emit('...(')
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit('), ')
+          }
+          for (const a of node.attrs) {
+            if ((a.kind !== 'prop' && a.kind !== 'model') || a.name === '...') continue
             copy(a.name, a.start + (a.kind === 'model' ? 2 : 1))
             emit(': (')
             copy(a.expr, at(a.expr, attrValueStart(a)))

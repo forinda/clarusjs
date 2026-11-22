@@ -1,0 +1,6 @@
+{{-- Style forms: one property (custom properties too), and an object, merged with the written style. --}}
+@input hue: number = 180
+@input big: boolean = false
+
+<p style="margin: 0" [style.--hue]="hue" [style.color]="big ? 'red' : null">Property</p>
+<p [style]="{ fontSize: big ? '2em' : null, borderWidth: '1px' }">Object</p>

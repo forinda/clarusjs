@@ -1,5 +1,5 @@
 // HTML-string helpers used by compiled code on the server (render) and in the browser (branch HTML for @if).
-import { attrValue } from './attrs.ts'
+import { attrValue, spreadAttrs } from './attrs.ts'
 
 /** The mark of h()'s output (clarusjs/views). Symbol.for: two copies of the module agree. @internal */
 export const HTML = Symbol.for('clarusjs.html')
@@ -17,6 +17,24 @@ export function escape(value: unknown): string {
 /** A value as JSON for a <script> (JSON-LD): <, >, & and line separators escaped, so it can't end the script. @internal */
 export function json(value: unknown): string {
   return (JSON.stringify(value) ?? 'null').replace(/[<>&\u2028\u2029]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`)
+}
+
+const warned = new Set<string>()
+
+/**
+ * A spread's attributes as HTML (#405); `where` (file:line:col, server code only) names the place in a warning for
+ * each key it drops, once.
+ * @internal
+ */
+export function spreadHtml(obj: unknown, skip: readonly string[], tag?: string, where?: string): string {
+  const { set, dropped } = spreadAttrs(obj, skip, tag)
+  // Once per place and reason, not per key: keys come from data, so a set of them could grow without end on a server.
+  if (where) for (const [key, why] of dropped) {
+    if (warned.has(`${where} ${why}`)) continue
+    warned.add(`${where} ${why}`)
+    console.warn(`[clarusjs] ${where}: [...] dropped ${JSON.stringify(key)} (${why})`)
+  }
+  return set.map(([name, v]) => (v === null ? '' : v === true ? ` ${name}` : ` ${name}="${escape(v)}"`)).join('')
 }
 
 /** ` name="value"`, ` name` (true) or '' (false/null/undefined), escaped and URL-checked. @internal */

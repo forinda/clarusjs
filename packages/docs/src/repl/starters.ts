@@ -174,6 +174,44 @@ export const starters: Starter[] = [
 `,
   },
   {
+    name: 'Attributes',
+    source: `{{-- Attribute bindings, from one attribute to a whole object of them. --}}
+<script>
+  let selected = state(false)
+  let big = state(false)
+  let hue = state(200)
+  // A spread: every key is an attribute; written ones on the element win.
+  const a11y = derived(() => ({ 'aria-pressed': String(selected), title: selected ? 'Selected' : 'Not selected' }))
+  // From data: a spread checks URLs like any attribute, and drops event handlers.
+  const link = { href: 'javascript:alert(1)', onclick: 'alert(2)', class: 'unsafe' }
+</script>
+
+<div
+  class="card"
+  [class.selected]="selected"
+  [class]="{ big }"
+  [style.--hue]="hue"
+  [...]="a11y"
+>
+  <p class="title" [style]="{ fontSize: big ? '1.5em' : null, color: selected ? 'white' : null }">A card</p>
+  <button type="button" (click)="selected = !selected">{{ selected ? 'Deselect' : 'Select' }}</button>
+</div>
+
+<p>
+  <label><input type="checkbox" [(checked)]="big" /> Big</label>
+  <label>Hue <input type="range" min="0" max="360" [(value)]="hue" /></label>
+</p>
+<p><a [...]="link">A link from data</a> (look at its href)</p>
+
+<style scoped>
+  .card { padding: 16px; border: 2px solid hsl(var(--hue) 60% 45%); border-radius: 12px; }
+  .card.selected { background: hsl(var(--hue) 60% 45%); }
+  .card.big { padding: 28px; }
+  .title { margin: 0 0 8px; font-weight: 700; }
+</style>
+`,
+  },
+  {
     name: 'Conditional',
     source: `<script>
   let open = state(false)
