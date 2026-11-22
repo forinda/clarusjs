@@ -184,6 +184,9 @@ importers:
       '@clarusjs/prettier-plugin':
         specifier: workspace:*
         version: link:packages/prettier-plugin
+      clarusjs:
+        specifier: workspace:*
+        version: link:packages/clarusjs
       prettier:
         specifier: 3.9.10
         version: 3.9.10

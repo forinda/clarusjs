@@ -67,8 +67,11 @@ export async function loadDocs(fetchImpl: typeof fetch, cacheDir: string): Promi
     const res = await fetchImpl(DOCS_URL)
     if (!res.ok) throw new Error(`${DOCS_URL}: ${res.status}`)
     const text = await res.text()
-    mkdirSync(cacheDir, { recursive: true })
-    writeFileSync(file, text)
+    // A cache that can't be written (read-only home, a file in the way) only costs the next fetch.
+    try {
+      mkdirSync(cacheDir, { recursive: true })
+      writeFileSync(file, text)
+    } catch {}
     return text
   } catch (err) {
     if (cached) return cached

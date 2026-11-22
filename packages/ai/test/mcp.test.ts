@@ -157,3 +157,70 @@ test("the package's one runtime dependency is commander, the same version clarus
   const clarus = JSON.parse(readFileSync(resolve(workspace, 'packages/clarusjs/package.json'), 'utf8'))
   expect(own.dependencies).toEqual({ commander: clarus.dependencies.commander })
 })
+
+// Review fixes (#347).
+test('docs: a download that cannot be cached is still used', async () => {
+  const { writeFileSync: write } = await import('node:fs')
+  const blocked = resolve(mkdtempSync(resolve(tmpdir(), 'clarus-mcp-ro-')), 'file')
+  write(blocked, 'a file where the cache folder would go')
+  const server = createMcp({ cwd: workspace, fetch: fakeFetch, cacheDir: blocked })
+  const r = await call(server, 'docs_search', { query: 'island' })
+  expect(r.result.isError).toBeFalsy()
+  expect(text(r)).toContain('https://clarusjs.com/guide/islands')
+})
+
+test('docs: concurrent searches share one load; once the cache is a day old, a long-running server fetches again', async () => {
+  fetches = 0
+  const { utimesSync } = await import('node:fs')
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'clarus-mcp-c-'))
+  const server = createMcp({ cwd: workspace, fetch: fakeFetch, cacheDir })
+  await Promise.all([call(server, 'docs_search', { query: 'island' }), call(server, 'docs_search', { query: 'track' })])
+  expect(fetches).toBe(1)
+  await call(server, 'docs_search', { query: 'island' })
+  expect(fetches).toBe(1) // fresh in the cache
+  const old = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+  utimesSync(resolve(cacheDir, 'llms-full.txt'), old, old)
+  await call(server, 'docs_search', { query: 'island' })
+  expect(fetches).toBe(2)
+})
+
+test('protocol: a batch (2025-03-26) gets an array of responses, notifications left out; invalid requests are -32600', async () => {
+  const server = mcp()
+  expect(await server.handle([{ jsonrpc: '2.0', id: 1, method: 'ping' }, { jsonrpc: '2.0', method: 'notifications/initialized' }, { jsonrpc: '2.0', id: 2, method: 'ping' }])).toEqual([
+    { jsonrpc: '2.0', id: 1, result: {} },
+    { jsonrpc: '2.0', id: 2, result: {} },
+  ])
+  expect(await server.handle([{ jsonrpc: '2.0', method: 'notifications/initialized' }])).toBeUndefined()
+  expect(await server.handle([])).toMatchObject({ id: null, error: { code: -32600 } })
+  for (const bad of [null, 42, 'x', { jsonrpc: '2.0', id: 3 }, { id: 4, method: 7 }]) {
+    expect(await server.handle(bad), JSON.stringify(bad)).toMatchObject({ jsonrpc: '2.0', error: { code: -32600 } })
+  }
+})
+
+test('over stdio: a line that is null or a batch is answered, never crashing the server', async () => {
+  const child = spawn(process.execPath, ['--experimental-strip-types', '--no-warnings', resolve(import.meta.dirname, '../src/cli.ts'), 'mcp'], { cwd: workspace })
+  const lines: object[] = []
+  let buffer = ''
+  child.stdout.on('data', (d: Buffer) => {
+    buffer += d.toString()
+    for (let i; (i = buffer.indexOf('\n')) >= 0; buffer = buffer.slice(i + 1)) lines.push(JSON.parse(buffer.slice(0, i)))
+  })
+  child.stdin.write('null\n')
+  child.stdin.write(JSON.stringify([{ jsonrpc: '2.0', id: 7, method: 'ping' }]) + '\n')
+  child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 8, method: 'ping' }) + '\n')
+  for (let i = 0; i < 100 && lines.length < 3; i++) await new Promise((r) => setTimeout(r, 50))
+  child.kill()
+  // Answers go out as they finish (JSON-RPC allows any order).
+  expect(lines).toHaveLength(3)
+  expect(lines).toEqual(expect.arrayContaining([
+    { jsonrpc: '2.0', id: null, error: { code: -32600, message: expect.any(String) } },
+    [{ jsonrpc: '2.0', id: 7, result: {} }],
+    { jsonrpc: '2.0', id: 8, result: {} },
+  ]))
+}, 20_000)
+
+test("from the repository's root, as .mcp.json starts it: check runs on a project in the repo", async () => {
+  const r = await call(mcp(workspace), 'check', { root: 'examples/counter' })
+  expect(text(r)).not.toContain("isn't installed")
+  expect(text(r)).toMatch(/No errors|warning|error/)
+}, 60_000)

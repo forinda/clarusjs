@@ -9,7 +9,8 @@ test('docs_search results link to real pages and headings', async ({ page, reque
   expect(found.length).toBe(5)
   for (const { url } of found) {
     const { pathname, hash } = new URL(url)
-    await page.goto(pathname)
+    const res = await page.goto(pathname)
+    expect(res?.ok(), url).toBe(true)
     if (hash) await expect(page.locator(hash), url).toHaveCount(1)
   }
 })
