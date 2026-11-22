@@ -79,6 +79,8 @@ test('the clarusjs command is built, with a shebang', () => {
   expect(readFileSync(bin, 'utf8').startsWith('#!/usr/bin/env node')).toBe(true)
 })
 
+// 130 / 450 KB: richer sitemaps (#394: a page's own lastmod, images, include, an index, hreflang) on top of main at
+// 127,227 / 446,892 B, within 800 B of the old 125 KB tarball; the third story alone went over.
 // 125 / 450 KB: built-in icons (clarusjs/icons reads installed Iconify sets, ~6 KB unpacked with its typed docs, and
 // <icon> in the compiler) on top of main at 123,616 / 434,441 B, within 6 KB of the old 430 KB.
 // 125 / 430 KB: the server and build features of #93–#95, #54 and #98 (cookies, handle(), endpoints and their CSRF
@@ -91,9 +93,9 @@ test('the clarusjs command is built, with a shebang', () => {
 // 100 / 350 KB before: the forms engine (#250: clarusjs/forms, steps, submit) takes the package past 90 / 320 KB, which
 // the editor epic (#45: the content mapper, tolerant parsing) had nearly filled (88 / 304 KB).
 // 90 / 320 KB before: the TypeScript epic (#211); 80 / 290 KB: the navigation epic (#169); 70 / 250 KB before that.
-test('size budget: the published package stays small (tarball 125 KB, unpacked 450 KB)', () => {
+test('size budget: the published package stays small (tarball 130 KB, unpacked 450 KB)', () => {
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
-  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(125 * 1024)
+  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(130 * 1024)
   expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(450 * 1024)
 }, 30_000) // npm pack takes over 5 s when every package's tests run at once
 
