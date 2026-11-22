@@ -31,18 +31,20 @@ export function gitDates(root: string, dir: string): Map<string, number> {
 
 /**
  * The sitemap: one <url> per page, under the site URL and base; lastmod (unix seconds) as a date when known; images
- * (src as written, resolved against the page's URL) with Google's image extension.
+ * (src as written, resolved against the page's URL) with Google's image extension; translations (hreflang alternates,
+ * href resolved the same way) as xhtml:link.
  */
-export function sitemapXml(siteUrl: string, base: string, pages: { path: string; lastmod: number | undefined; images?: string[] }[]): string {
+export function sitemapXml(siteUrl: string, base: string, pages: { path: string; lastmod: number | undefined; images?: string[]; alternates?: { hreflang: string; href: string }[] }[]): string {
   // An absolute base (a CDN) counts by its path: the pages are on the site.
   const root = new URL(/^https?:\/\//i.test(base) ? new URL(base).pathname : base, siteUrl.replace(/\/?$/, '/'))
-  const urls = pages.map(({ path, lastmod, images = [] }) => {
+  const urls = pages.map(({ path, lastmod, images = [], alternates = [] }) => {
     const loc = new URL(`./${path.slice(1)}`, root).href
     const date = lastmod === undefined ? '' : `<lastmod>${new Date(lastmod * 1000).toISOString().slice(0, 10)}</lastmod>`
     const pics = images.map((src) => `<image:image><image:loc>${xml(new URL(src, loc).href)}</image:loc></image:image>`).join('')
-    return `<url><loc>${xml(loc)}</loc>${date}${pics}</url>\n`
+    const alts = alternates.map((a) => `<xhtml:link rel="alternate" hreflang="${xml(a.hreflang)}" href="${xml(new URL(a.href, loc).href)}"/>`).join('')
+    return `<url><loc>${xml(loc)}</loc>${date}${alts}${pics}</url>\n`
   })
-  const ns = pages.some((p) => p.images?.length) ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : ''
+  const ns = (pages.some((p) => p.alternates?.length) ? ' xmlns:xhtml="http://www.w3.org/1999/xhtml"' : '') + (pages.some((p) => p.images?.length) ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : '')
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${ns}>\n${urls.join('')}</urlset>\n`
 }
 
