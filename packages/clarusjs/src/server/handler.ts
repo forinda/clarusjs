@@ -184,7 +184,9 @@ export function createHandler(
   const matchEndpoint = (pathname: string) => {
     for (const route of endpointRoutes) {
       const m = route.regex.exec(pathname)
-      if (m) return { route, params: Object.fromEntries(route.keys.map((k, i) => [k, decodeURIComponent(m[i + 1]!)])) }
+      if (!m) continue
+      // A malformed %-escape in a param names no endpoint: a 404, as for pages, never a crash.
+      try { return { route, params: Object.fromEntries(route.keys.map((k, i) => [k, decodeURIComponent(m[i + 1]!)])) } } catch { return undefined }
     }
     return undefined
   }
@@ -648,14 +650,20 @@ async function callEndpoint(file: string, mod: EndpointModule, context: LoadCont
 }
 
 /**
- * Whether a write comes from this site (CSRF): not marked cross-site by the browser, and its Origin, when it sends one,
- * is the request's own or the configured site URL's (behind a proxy the request URL can differ). No Origin at all (a
- * server or a script, not a browser form): allowed, as cookies aren't sent by those on a visitor's behalf.
+ * Whether a write comes from this site (CSRF): not marked cross-site by the browser, and its Origin (else its Referer's
+ * origin) is the request's own or the configured site URL's (behind a proxy the request URL can differ). With neither
+ * header, a write carrying cookies is refused (a browser acting for the visitor, unidentified); one without cookies
+ * (a server or a script) has nothing of the visitor's to abuse, and is allowed.
  */
 function sameOrigin(request: Request, site?: string): boolean {
   if (request.headers.get('sec-fetch-site') === 'cross-site') return false
-  const origin = request.headers.get('origin')
-  if (!origin) return true
+  let origin = request.headers.get('origin')
+  if (origin === 'null') return false // an opaque origin (a sandboxed frame, a data: page): never this site
+  if (!origin) {
+    const referer = request.headers.get('referer')
+    try { origin = referer ? new URL(referer).origin : null } catch { origin = null }
+  }
+  if (!origin) return !request.headers.has('cookie')
   const allowed = [new URL(request.url).origin]
   if (site) try { allowed.push(new URL(site).origin) } catch {}
   return allowed.includes(origin)
