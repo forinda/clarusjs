@@ -119,3 +119,9 @@ test('#430: @await, @then and @catch are control keywords, with TypeScript in th
   for (const word of ['await', 'then', 'catch']) expect(scopesOf(src, word)).toContain('keyword.control.flow.tscl')
   expect(scopesOf(src, 'load')).toContain('meta.embedded.expression.tscl')
 })
+
+test('#430: <script server> is TypeScript, like <script>', () => {
+  const src = "<script server>\n  const posts = await load()\n</script>\n<p>{{ posts.length }}</p>\n"
+  expect(scopesOf(src, 'const')).toContain('source.ts')
+  expect(scopesOf(src, 'await')).toContain('source.ts')
+})

@@ -1,8 +1,13 @@
 # clarusjs for VS Code
 
-## Unreleased
+## 0.3.0
 
-- `@await`, `@then` and `@catch` are highlighted as control keywords, with TypeScript in their parentheses.
+- **Icons.** `<icon name="set:name" />` works in the editor: names complete from the Iconify sets the project installed, with a preview of each icon; hover shows the icon; an unknown name or a missing set is an error at its place. Before, every `<icon>` was reported as "icons are resolved at build time".
+- **Hover on a component's props** (`[title]`, `[(open)]`, `(rate)`) shows the input or model as the component declares it, with its type and default, or the event it sends. With TypeScript 7.1's content mapper set up, script variables and bindings get TypeScript's own hover too.
+- **Template lint**, as you type: an `<img>` without `alt`, a `<label>` naming no field, an unused input or import.
+- **Format Document** formats `.tscl` files with your project's Prettier and `@clarusjs/prettier-plugin`, as the Prettier CLI does.
+- **`@await`, `@then` and `@catch`** are highlighted as control keywords, with TypeScript in their parentheses, and completed as directives; **`<script server>`** is highlighted as TypeScript.
+- Renames, references and folders: fixes for renames across several files, closed files, folders added later, and `<script>` / `<style>` bodies.
 - The extension bundles minimatch 11 (GHSA-g3hv-75wg-m249, a pattern amplification in minimatch before 11.0.1).
 
 ## 0.2.0
