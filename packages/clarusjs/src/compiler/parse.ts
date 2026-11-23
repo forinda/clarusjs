@@ -70,6 +70,9 @@ export type ParsedFile = {
   // `tag`: where the <style> tag starts.
   styles: { css: string; mode: 'scoped' | 'global' | 'plain'; start: number; tag: number }[]
   cssImports: { from: string; start: number }[] // @import './x.css': stylesheets the component needs
+  /** `@layout none` (#456): the page renders without its folder and config layouts. `layoutStart`: where it is. */
+  layout?: 'none'
+  layoutStart?: number
   nodes: TemplateNode[]
 }
 
@@ -123,6 +126,11 @@ export function parse(source: string, file: string): ParsedFile {
     else if ((m = CSS_IMPORT_RE.exec(line))) {
       if (!/\.css(\?|$)/.test(m[2]!)) fail(`@import without a name only takes a stylesheet (.css): "${m[2]}"`, i)
       out.cssImports.push({ from: m[2]!, start: i })
+    }
+    else if ((m = /^@layout(?:\s+(\S+))?\s*$/.exec(line))) {
+      if (m[1] !== 'none') fail('@layout only takes none: @layout none renders the page without its folder and config layouts', i)
+      out.layout = 'none'
+      out.layoutStart = i
     }
     else fail(`unknown or malformed directive "${line.split(/\s/)[0]}"`, i)
     i = end

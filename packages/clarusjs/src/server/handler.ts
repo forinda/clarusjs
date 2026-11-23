@@ -11,7 +11,7 @@ const safeJson = (json: string) => json.replace(/</g, '\\u003c')
 
 // The fetch handler: Request → Response. Same function for dev, per-request SSR and (later) build-time prerender.
 
-type PageModule = { render(props?: object): string | Promise<string> }
+type PageModule = { render(props?: object, slots?: undefined, opts?: { route: { path: string; params: Record<string, string> } }): string | Promise<string> }
 
 /** Each render's component loader data (#97), read by loaded() (runtime/server.ts) across awaits (#430). */
 const loadedStore = new AsyncLocalStorage<Map<string, object>>()
@@ -141,6 +141,11 @@ export function redirect(to: string, status: 301 | 302 | 303 | 307 | 308 = 302):
 }
 
 /** @internal clarusjs's own build and server code call this; apps don't. */
+export function isPageFile(file: string): boolean {
+  return !/\/\+[^/]*$/.test(file) // +layout.tscl (#456) and other + files are never routes
+}
+
+/** @internal clarusjs's own build and server code call this; apps don't. */
 export function routeFromFile(file: string): string {
   const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.[^./]+$/, '').replace(/\/index$/, '')
   return path || '/'
@@ -184,6 +189,7 @@ export function createHandler(
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; readsCookies(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
   const routes: Route[] = Object.entries(pages)
+    .filter(([file]) => isPageFile(file))
     .map(([file, load]) => ({ path: routeFromFile(file), file: file.replace(/^\//, ''), load, ...compile(routeFromFile(file)) }))
     .sort((a, b) => a.keys.length - b.keys.length || b.path.split('/').length - a.path.split('/').length)
   // Endpoints (src/pages/api/items.ts → /api/items), matched after pages; most fixed segments first, as for pages.
@@ -462,7 +468,8 @@ export function createHandler(
         const module = await found.route.load()
         // Awaited: a page or a component in it may await in its <script server> (#430). Component loaders' data is
         // this render's, even while it waits (see loaded() in runtime/server.ts).
-        html = await loadedStore.run(componentData, () => module.render(props))
+        // The route goes to the page's folder and config layouts (#456): their path and params.
+        html = await loadedStore.run(componentData, () => module.render(props, undefined, { route: { path: pathname, params: found.params } }))
       } catch (err) {
         return fail(`${found.route.file}: render failed: ${(err as Error)?.message ?? err}`, err)
       }

@@ -3,7 +3,7 @@ import { emitClient } from './emit-client.ts'
 import { ClarusError } from './errors.ts'
 import { emitServer } from './emit-server.ts'
 import { lower } from './ir.ts'
-import { awaitLists, parse, type TemplateNode } from './parse.ts'
+import { awaitLists, parse, type Attr, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
@@ -24,6 +24,11 @@ export type { ParsedFile, InputDecl, ImportDecl, TemplateNode, Attr } from './pa
  * @see https://clarusjs.com/reference/compiler#compile
  */
 export type CompileOptions = {
+  /**
+   * The page's layouts (#456), outermost first, as import specifiers: its folder and config layouts, which the plugin
+   * finds. The page's template is wrapped in them (each gets the route's `path` and `params`); `@layout none` skips them.
+   */
+  layouts?: string[]
   file: string
   target: 'server' | 'client'
   clientUrl?: string
@@ -55,6 +60,7 @@ export type CompileResult = { code: string; stateful: boolean; css: string; warn
  */
 export function compile(source: string, options: CompileOptions): CompileResult {
   const parsed = parse(source, options.file)
+  if (options.layouts?.length && parsed.layout !== 'none') wrapInLayouts(parsed, options.layouts, options.file, source)
   const warnings: ClarusError[] = []
   // Every component's top-level elements carry its scope class, styled or not: a parent's scope then takes in a
   // child's top-level element and stops inside it.
@@ -150,4 +156,28 @@ function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>, 
       for (const kids of awaitLists(node)) markRoots(kids, cls, components, slots)
     }
   }
+}
+
+/**
+ * Wrap a page's template in its layouts (#456): each becomes an imported component (a generated name) around the
+ * next, the page's own nodes innermost, so they keep their places and a top-level @slot fill goes to the innermost
+ * layout. Each layout gets the route's path and params from the render options.
+ */
+function wrapInLayouts(parsed: ReturnType<typeof parse>, layouts: string[], file: string, source: string): void {
+  // ponytail: not around an island page: the layout would be inside the island (re-rendered in the browser, with its
+  // <html>). Lift it by rendering layouts around the island's output instead.
+  if (parsed.script || parsed.inputs.some((i) => i.model)) {
+    throw new ClarusError('this page is an island (it has a <script> or a @model input), and folder or config layouts can\'t wrap an island yet: move the script into a component the page uses, or add @layout none', file, source, 0)
+  }
+  let nodes = parsed.nodes
+  for (let k = layouts.length - 1; k >= 0; k--) {
+    const name = `__cl_layout_${k}`
+    parsed.imports.push({ name, from: layouts[k]!, start: 0 })
+    const attrs: Attr[] = [
+      { kind: 'prop', name: 'path', expr: "__cl_opts?.route?.path ?? ''", start: 0 },
+      { kind: 'prop', name: 'params', expr: '__cl_opts?.route?.params ?? {}', start: 0 },
+    ]
+    nodes = [{ type: 'element', tag: name, attrs, children: nodes, start: 0 }]
+  }
+  parsed.nodes = nodes
 }

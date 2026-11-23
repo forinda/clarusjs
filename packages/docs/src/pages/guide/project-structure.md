@@ -15,6 +15,7 @@ my-site/
 ├── public/               copied to the build as is (CSS, images)
 └── src/
     ├── pages/            one .tscl file per route
+    │   ├── +layout.tscl        optional: wraps every page (+ files are never routes)
     │   ├── index.tscl          /
     │   └── guide/intro.tscl    /guide/intro
     ├── layouts/          components that render the whole page

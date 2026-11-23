@@ -2312,3 +2312,14 @@ test('#454 recipes: an upload sends the file, and Cancel stops one', async ({ pa
   await expect(box.getByRole('status')).toHaveText('Uploaded notes.txt (11 bytes).') // the last one; the cancelled one left no error
   await expect(box.getByRole('button', { name: 'Cancel' })).toBeDisabled()
 })
+
+test('#456 folder layouts: the tour pages are wrapped in tour/+layout.tscl, on the server and by the client router', async ({ page }) => {
+  await page.goto('/tour/1')
+  await expect(page).toHaveTitle(/^Client tour, step 1/) // the layout's title, from the route's params
+  await expect(page.locator('.sidebar, nav[aria-label]').first()).toBeVisible() // the docs layout around the page
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await page.getByRole('link', { name: 'Step 2 →' }).click() // the router renders the next step in the browser
+  await expect(page).toHaveURL(/\/tour\/2$/)
+  await expect(page).toHaveTitle(/^Client tour, step 2/)
+  expect((await page.request.get('/tour/+layout')).status()).toBe(404) // + files are never routes
+})

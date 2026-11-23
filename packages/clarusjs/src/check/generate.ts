@@ -429,7 +429,7 @@ export function viewsDeclaration(views: { file: string; source: string }[]): str
  */
 export function routesDeclaration(files: string[]): string {
   // ponytail: page sources are recognised by what they aren't; a stray asset under src/pages would become a route.
-  const pages = files.filter((f) => f.startsWith('src/pages/') && !/\.(m?[jt]s|css|json)$/.test(f) && !/(^|\/)_[^/]*$/.test(f))
+  const pages = files.filter((f) => f.startsWith('src/pages/') && !/\.(m?[jt]s|css|json)$/.test(f) && !/(^|\/)[_+][^/]*$/.test(f))
   const routes = [...new Set(pages.map((f) => routeFromFile(`/${f}`)))].sort()
   const entries = routes.map((route) => {
     const keys = [...route.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]!)
