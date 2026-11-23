@@ -2,7 +2,7 @@
 title: "Fetching data"
 group: "Interactivity"
 order: 9
-description: "clarusjs/fetch: islands fetch their own data in the browser, in parallel, chained or batched into one request, with retry and refetch."
+description: "clarusjs/fetch: islands fetch their own data in the browser, in parallel, chained or batched, any response type, with retry, refetch, timeouts, cancelling and error callbacks."
 ---
 
 # Fetching data
@@ -98,6 +98,140 @@ const feed = resource(load, {
 
 `refetch()` runs it now, for a Refresh button or after you've saved something. In code that needs the data itself, `await items.ready()` waits for the first answer (in a handler or an async function; a script's top level can't `await`). `mutate(value)` shows a value right away (an optimistic update); the next run replaces it.
 
+## Any response, and sending data
+
+`json()` reads JSON. `request()` reads whatever the server sends, by its `Content-Type`: JSON (`application/json`, and `+json` types such as `application/problem+json`), text (`text/*` and XML), or else a `Blob`. A `204` gives `undefined`. To choose yourself, pass `as`: `'json'`, `'text'`, `'blob'`, `'arrayBuffer'`, `'formData'`, `'stream'` (the body as a `ReadableStream`) or `'response'` (the `Response` itself).
+
+```ts
+const csv = await request<string>('/api/export')                // text/csv: read as text
+const photo = await request<Blob>(`/api/photos/${id}`)          // image/png: a Blob
+const rows = await request('/api/feed', { parse: { 'application/x-ndjson': ndjson } }) // your own reader
+```
+
+A plain object or array as `body` is sent as JSON, with `Content-Type: application/json` unless you set one. `FormData`, `URLSearchParams`, a `Blob` or a string go as `fetch` sends them.
+
+```ts
+await request(`/api/posts/${id}`, { method: 'PATCH', body: { title } })
+```
+
+A response that isn't 2xx throws, whatever you asked to read. The error has the `status` and the body read the same way, as `data`, so a `422`'s field errors are at hand (`e.data.errors`).
+
+## With axios, ky or your own client
+
+`resource()` and `action()` take any function that returns a promise, so an HTTP client you already use works as it is. Two things to carry over:
+
+- **Pass `signal` on.** It's how a newer run, `abort()`, `timeout` and an island going away cancel the request. axios, ky and `fetch` all take an `AbortSignal` as `signal`.
+- **Let errors throw.** `retry`, `error` and `onError` see whatever the client throws. axios throws an `AxiosError` for a non-2xx response, with the status at `error.response.status`, where `request()` puts it at `error.status`.
+
+```ts
+// api.ts: one client for the site, with its own base URL and interceptors (auth, logging)
+import axios from 'axios'
+export const api = axios.create({ baseURL: '/api' })
+api.interceptors.request.use((config) => ({ ...config, headers: { ...config.headers, 'x-client': 'web' } }))
+```
+
+```tscl
+<script>
+  import { action, invalidate, resource } from 'clarusjs/fetch'
+  import { api } from '~/api.ts'
+  const posts = resource(({ signal }) => api.get('/posts', { signal }).then((res) => res.data), { key: () => ['posts'] })
+  const remove = action((id, { signal }) => api.delete(`/posts/${id}`, { signal }), {
+    onSuccess: () => invalidate(['posts']),
+    onError: (e) => { if (e.response?.status === 404) return false }, // gone already: no toast
+  })
+</script>
+```
+
+With ky, the same: `ky.get('/api/posts', { signal }).json()` in the fetcher; its `HTTPError` has the status at `error.response.status`.
+
+In `configure()`'s handlers, read the status the way your client reports it (`e.response?.status` for axios and ky, `e.status` for `request()`). Whatever the client throws when its `signal` aborts (axios: `CanceledError`), a cancel is still no error and no callbacks, and a `timeout` is still a `TimeoutError`.
+
+### Your own fetcher
+
+Without a library, wrap `request()` once for the site: the base URL, the auth header, and the error your handlers expect. Every resource and action then calls the wrapper, and passes `signal` through.
+
+```ts
+// api.ts
+import { request, type RequestOptions } from 'clarusjs/fetch'
+
+export function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers = new Headers(options.headers)
+  const token = localStorage.getItem('token')
+  if (token) headers.set('authorization', `Bearer ${token}`)
+  return request<T>(`/api${path}`, { timeout: 10_000, ...options, headers })
+}
+```
+
+```ts
+const me = resource(({ signal }) => api<User>('/me', { signal }))
+const save = action((draft: Draft, { signal }) => api('/drafts', { method: 'POST', body: draft, signal }))
+```
+
+A non-2xx answer still throws with `status` and `data` (the server's error body), so one `configure({ onError })` can turn a `401` into a redirect to sign in and a `422` into its field errors.
+
+## Actions: save, delete, like
+
+`resource()` reads. For a one-off call from a button, use `action()`: it gives `pending`, `error` and `result` for the template, and runs the request when you call `run()`.
+
+```tscl
+<script>
+  import { action, invalidate, request } from 'clarusjs/fetch'
+  const remove = action((id, { signal }) => request(`/api/posts/${id}`, { method: 'DELETE', signal }), {
+    meta: { success: 'Deleted' },          // for configure()'s toast
+    onSuccess: () => invalidate(['posts']), // the lists showing posts fetch again
+  })
+</script>
+
+<button (click)="remove.run(post.id)" [disabled]="remove.pending">Delete</button>
+@if (remove.error) { <p role="alert">Couldn't delete it.</p> }
+```
+
+- **`run(input)` never rejects.** A failure lands in `error`, `onError` and `configure()`'s handler, so a click can't leave an unhandled error. **`runAsync(input)`** rejects, for `try`/`catch` or `await`ing one action after another.
+- **A second call while one runs joins it**: one request, the same answer, no double submit. With `concurrency: 'latest'`, it cancels the one in flight instead (a search as you type).
+- **`abort()`, `timeout`, the callbacks and `meta`** work as they do for a resource. Created in an island, a call in flight is cancelled when the island goes away.
+- **Optimistic updates:** change what's shown first (`setData()` or a resource's `mutate()`), and put it back in `onError`.
+
+The caching demo below renames a record with an action: the button says *Renaming…* while it runs.
+
+## Cancelling and timeouts
+
+`abort()` cancels a resource's run in flight. That isn't a failure: `loading` goes back to false, the last value stays, and `error` stays empty. `timeout` (ms) fails a run that takes too long, retries included, with a `TimeoutError`. That one is an error. `request()` takes `timeout` too, on top of the `signal` you pass.
+
+<exportDemo />
+
+```tscl
+<script>
+  import { request, resource } from 'clarusjs/fetch'
+  const csv = resource(({ signal }) => request('/api/export', { signal }), {
+    refetch: { onStart: false }, // waits for the button
+    timeout: 2500,
+  })
+</script>
+
+<button (click)="csv.refetch()" [disabled]="csv.loading">Export CSV</button>
+<button (click)="csv.abort()" [disabled]="!csv.loading">Cancel</button>
+```
+
+## Errors
+
+Use whichever fits:
+
+- **State in the template.** `error` holds the last run's error, until the next run starts: `@if (feed.error) { … }`.
+- **Callbacks, once per request.** `onSuccess(value)`, `onError(error)` and `onSettled(value, error)`. They are events: the same error twice calls `onError` twice, which is what a toast wants. A cancel calls none of them; with `retry`, `onError` runs after the last attempt.
+- **One place for toasts.** `configure()` sets handlers that run after every resource's and action's own callbacks, with its `meta`. An own `onError` returning `false` skips them (it handled the error).
+- **An effect, for something that lasts.** A banner shown while an error stands: `effect(() => banner.set(feed.error ? 'Offline' : ''))`.
+
+```ts
+// once, in a module every island imports (a store)
+configure({
+  onError: (e, { meta }) => { if (!meta?.silent) toast.error(String(e)) },
+  onSuccess: (_, { meta }) => { if (meta?.success) toast(String(meta.success)) },
+})
+
+const stats = resource(load, { meta: { silent: true } })        // no toast for this one
+const feed = resource(load, { onError: () => false })           // handled here instead
+```
+
 ## Caching
 
 Give a resource a `key`, and its answers are cached by it: a key seen before comes back without a request. This list has 20,000 records, 10 per page. Go forward and back: pages you've seen don't ask the server again, the next page is fetched ahead, and the previous page stays on screen while a new one loads. **Rename the first row** changes a record, then invalidates every cached page.
@@ -190,6 +324,6 @@ To skip that first browser fetch, set `refetch: { onStart: false }`. The resourc
 
 - **Keep answers across full page loads:** the cache (with `key`) lives in the page; a reload starts it empty.
 - **Merge different endpoints into one request:** write a server route that combines them, and batch that.
-- **Mutations:** send them with `fetch` (or a form, see [Form validation](./form-validation.md)), then `refetch()` or `mutate()`.
+- **Progress:** there's no upload or download progress. For a progress bar, read `as: 'stream'` and count the chunks yourself.
 
 Every option and its exact behaviour is in the [clarusjs/fetch reference](/reference/fetch).

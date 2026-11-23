@@ -1,0 +1,60 @@
+{{-- The Fetching guide's export demo (#431): a CSV read as text from its Content-Type, a Cancel button (abort(): not
+     an error), a timeout (an error), and a status line written by onSuccess / onError, once per request. --}}
+
+<script>
+  import { request, resource } from 'clarusjs/fetch'
+  let slow = state(false)
+  let status = state('')
+  const csv = resource(({ signal }) => request(`/api/demo-export?wait=${slow ? 4000 : 600}`, { signal }), {
+    refetch: { onStart: false },
+    timeout: 2500,
+    onSuccess: (text) => (status = `Exported ${text.trim().split('\n').length - 1} rows.`),
+    onError: (e) =>
+      (status = e instanceof DOMException && e.name === 'TimeoutError' ? 'Timed out after 2.5 s.' : 'Export failed.'),
+  })
+  function start() {
+    status = ''
+    void csv.refetch()
+  }
+  function cancel() {
+    csv.abort()
+    status = 'Cancelled.'
+  }
+</script>
+
+<section class="demo-panel" id="export">
+  <p class="export-tools">
+    <button type="button" (click)="start()" [disabled]="csv.loading">Export CSV</button>
+    <button type="button" (click)="cancel()" [disabled]="!csv.loading">Cancel</button>
+    <label><input type="checkbox" [(checked)]="slow" /> Slow server (4 s)</label>
+  </p>
+  <p class="export-status" role="status">
+    {{ csv.loading ? 'Exporting…' : status }}
+  </p>
+  @if (csv.value) {
+    <pre class="export-csv">{{ csv.value }}</pre>
+  }
+</section>
+
+<style scoped>
+  :scope {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .export-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 0;
+  }
+  .export-status {
+    min-height: 1.5em;
+    margin: 8px 0 0;
+    color: var(--muted);
+  }
+  .export-csv {
+    margin: 8px 0 0;
+  }
+</style>
