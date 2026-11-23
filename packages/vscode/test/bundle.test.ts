@@ -48,3 +48,8 @@ test('the extension declares limited support for untrusted workspaces (the serve
   const manifest = JSON.parse(readFileSync(resolve(pkg, 'package.json'), 'utf8'))
   expect(manifest.capabilities?.untrustedWorkspaces?.supported).toBe('limited')
 })
+
+test('the bundled language client calls no minimatch API that minimatch 11 lacks (0.3.0 crashed on startup: n.makeRe is not a function)', () => {
+  const client = readFileSync(resolve(import.meta.dirname, '../dist/extension.js'), 'utf8')
+  expect(client).not.toMatch(/\.makeRe\(\)/)
+})
