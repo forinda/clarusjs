@@ -1,0 +1,58 @@
+{{-- Fetching recipes: requests in a chain and in parallel, from an external API (JSONPlaceholder). The user first;
+     then their posts and todos, both at once. Changing the user starts the chain again. --}}
+
+<script>
+  import { json, resource } from 'clarusjs/fetch'
+  const API = 'https://jsonplaceholder.typicode.com'
+  let id = state(1)
+  const user = resource(({ signal }) => json(API + '/users/' + id, { signal }))
+  const work = resource(
+    ({ signal }) =>
+      user.value &&
+      Promise.all([
+        json(API + '/posts?userId=' + user.value.id, { signal }),
+        json(API + '/todos?userId=' + user.value.id, { signal }),
+      ]),
+  )
+</script>
+
+<div id="recipe-chain">
+  <label
+    >User
+    <select [value]="String(id)" (change)="id = Number($event.target.value)">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select></label
+  >
+  <p role="status">
+    @if (user.error || work.error) {
+      Couldn't reach JSONPlaceholder.
+    } @else if (user.value && work.value) {
+      <strong>{{ user.value.name }}</strong> wrote {{ work.value[0].length }} posts and has
+      {{ work.value[1].filter((t) => !t.completed).length }} todos left.
+    } @else {
+      Loading…
+    }
+  </p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+</style>

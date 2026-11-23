@@ -1,0 +1,56 @@
+{{-- Fetching recipes: uploading a file. FormData goes as fetch sends it; Cancel aborts the request. --}}
+
+<script>
+  import { action, request } from 'clarusjs/fetch'
+  let file = new Blob() // the chosen file (a File is a Blob); `chosen` says whether there is one
+  let chosen = state('')
+  function pick(f) {
+    file = f ?? new Blob()
+    chosen = f ? f.name : ''
+  }
+  const why = (e) => e?.data?.error ?? 'The upload failed.'
+  const send = action((_, { signal }) => {
+    const body = new FormData()
+    body.append('file', file)
+    return request('/api/demo-upload', { method: 'POST', body, signal })
+  })
+</script>
+
+<div id="recipe-upload">
+  <label>A file (up to 1 MB) <input type="file" (change)="pick($event.target.files[0])" /></label>
+  <p>
+    <button type="button" [disabled]="!chosen || send.pending" (click)="send.run()">Upload</button>
+    <button type="button" [disabled]="!send.pending" (click)="send.abort()">Cancel</button>
+  </p>
+  <p role="status">
+    {{
+      send.pending
+        ? 'Uploading ' + chosen + '…'
+        : send.result
+          ? 'Uploaded ' + send.result.name + ' (' + send.result.size + ' bytes).'
+          : send.error
+            ? why(send.error)
+            : ''
+    }}
+  </p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+</style>
