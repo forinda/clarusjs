@@ -209,6 +209,40 @@
           }
         },
         {
+          "comment": "@slot('name', { item }) { \u2026 }: a fill that receives what the slot passes (#455), named as TypeScript",
+          "name": "meta.block.slot.tscl",
+          "begin": "(@)(slot)\\s*(\\()\\s*(['\"][^'\"]*['\"])\\s*(,)",
+          "end": "\\)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.keyword.tscl"
+            },
+            "2": {
+              "name": "keyword.control.flow.tscl"
+            },
+            "3": {
+              "name": "meta.brace.round.ts"
+            },
+            "4": {
+              "name": "string.quoted.tscl"
+            },
+            "5": {
+              "name": "punctuation.separator.comma.tscl"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "meta.brace.round.ts"
+            }
+          },
+          "contentName": "meta.embedded.expression.tscl",
+          "patterns": [
+            {
+              "include": "source.ts"
+            }
+          ]
+        },
+        {
           "comment": "@slot('name') { \u2026 }",
           "match": "(@)(slot)\\s*(\\()\\s*(['\"][^'\"]*['\"])\\s*(\\))",
           "captures": {

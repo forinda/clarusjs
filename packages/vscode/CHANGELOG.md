@@ -1,5 +1,9 @@
 # clarusjs for VS Code
 
+## Unreleased
+
+- `@slot('row', { item })`: the names a fill receives are highlighted as TypeScript.
+
 ## 0.3.1
 
 - Fix: the language server stopped right after starting ("n.makeRe is not a function"), so 0.3.0 had no errors, hovers or completion in `.tscl` files.

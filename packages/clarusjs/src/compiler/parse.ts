@@ -30,7 +30,8 @@ export type TemplateNode =
   | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
   // @await (promise) { pending } @then (value) { … } @catch (error) { … } (#430)
   | { type: 'await'; expr: string; exprStart: number; pending: TemplateNode[]; then: AwaitBranch | null; catch: AwaitBranch | null; start: number }
-  | { type: 'fill'; name: string; children: TemplateNode[]; start: number } // @slot('name') { … } inside a component tag
+  // @slot('name') { … } inside a component tag; @slot('name', { item }) { … } names what the slot passes (#455).
+  | { type: 'fill'; name: string; params?: string; paramsStart?: number; children: TemplateNode[]; start: number }
   | { type: 'for'; item: string; list: string; track: string | null; headStart: number; itemStart: number; listStart: number; trackStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
 // model: declared with @model, the one kind of input a component may write (two-way binding, [(name)] at the use site).
 /**
@@ -448,13 +449,16 @@ export function parse(source: string, file: string): ParsedFile {
   function fillBlock(): TemplateNode {
     const start = i
     i += 5
-    const { cond } = condition('@slot')
-    const m = /^(['"])([\w-]+)\1$/.exec(cond)
-    if (!m) fail(`@slot needs a quoted name, like @slot('aside')`, start)
+    const { cond, condStart } = condition('@slot')
+    // A quoted name, then optionally what the slot passes, named as a function parameter: { item }, props.
+    const m = /^(['"])([\w-]+)\1\s*(?:,\s*([\s\S]*\S))?\s*$/.exec(cond)
+    if (!m) fail(`@slot needs a quoted name, like @slot('aside'), or @slot('row', { item }) for a slot that passes data`, start)
+    const params = m![3]
+    const paramsStart = params === undefined ? undefined : condStart + cond.indexOf(params, m![1]!.length * 2 + m![2]!.length)
     while (/\s/.test(source[i] ?? '')) i++
     if (source[i] !== '{') fail('expected { to open the block', i)
     i++
-    return { type: 'fill', name: m![2]!, children: children({ tag: '@slot', start, block: true }), start }
+    return { type: 'fill', name: m![2]!, ...(params !== undefined ? { params, paramsStart } : {}), children: children({ tag: '@slot', start, block: true }), start }
   }
 
   function children(parent?: { tag: string; start: number; block?: boolean }): TemplateNode[] {

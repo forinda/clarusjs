@@ -1,0 +1,31 @@
+{{-- A list whose rows the page renders (#455): the row slot passes each item and its index. Unfilled, a row shows
+     the item's label. --}}
+@input items: { id: string; label: string }[]
+
+<ul class="item-list">
+  @for (item of items; track item.id) {
+    <li>
+      <slot name="row" [item]="item" [index]="$index">{{ item.label }}</slot>
+    </li>
+  } @empty {
+    <li class="empty"><slot name="empty">Nothing here yet.</slot></li>
+  }
+</ul>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    padding: 8px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .empty {
+    color: var(--muted);
+  }
+</style>

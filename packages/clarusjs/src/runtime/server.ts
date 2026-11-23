@@ -41,6 +41,15 @@ export async function awaitHtml(promise: unknown, then: ((v: unknown) => string 
   return then ? then(value) : ''
 }
 
+/**
+ * A slot's HTML (#455): its fill, a function called with what the slot passes when it takes data, or the fallback
+ * when nothing fills it. @internal
+ */
+export function slot(fill: unknown, data: object | undefined, fallback: () => string | Promise<string>): string | Promise<string> {
+  if (fill === undefined || fill === null) return fallback()
+  return typeof fill === 'function' ? fill(data ?? {}) : (fill as string | Promise<string>)
+}
+
 /** A child component's HTML inside an island: a promise (it awaits) is an error naming both. @internal */
 export function sync(html: string | Promise<string>, child: string, island: string): string {
   if (typeof html === 'string') return html
