@@ -2,7 +2,7 @@
 title: "clarusjs/fetch"
 group: "APIs"
 order: 2
-description: "resource(), batch() and json(): the exact contract of each, with parameters, return values, caveats and usage."
+description: "resource(), batch(), request(), json(), text() and configure(): the exact contract of each, with parameters, return values, caveats and usage."
 ---
 
 # clarusjs/fetch
@@ -10,7 +10,7 @@ description: "resource(), batch() and json(): the exact contract of each, with p
 <p class="lead">Data an island fetches itself, in the browser. For the how-to with a live dashboard, see <a href="/guide/fetching">Fetching data</a>.</p>
 
 ```ts
-import { resource, batch, json } from 'clarusjs/fetch'
+import { resource, batch, request, json, text, configure } from 'clarusjs/fetch'
 ```
 
 ## resource()
@@ -34,6 +34,9 @@ Runs `fetcher` and gives its answer as `value`, `loading` and `error`. It runs a
   - **`key`**: a function returning the cache key, an array such as `['items', { page }]`. Answers are cached by it and shared by every resource on the page; a key seen before is served without a request until it's invalidated. A falsy key means "not ready". See [Caching](#caching).
   - **`stale`** (ms, with `key`): a cached answer older than this is fetched again when used. Unset: fresh until invalidated. `0`: always fetched.
   - **`keep`** (ms, with `key`, default 5 minutes): how long an answer nothing shows stays cached.
+  - **`timeout`** (ms): fail a run that takes longer, retries included, with a `TimeoutError` (an error, unlike `abort()`). The fetcher's `signal` aborts with it.
+  - **`onSuccess(value)`**, **`onError(error)`**, **`onSettled(value, error)`**: called once per request that settles, in the browser. A cancelled run calls none; with `retry`, after the last attempt; a cache hit isn't a request. `onSuccess` or `onError` returning `false` skips [`configure()`](#configure)'s handler. A callback that throws is reported (`reportError`) and changes nothing.
+  - **`meta`**: any object, passed to `configure()`'s handlers (`{ success: 'Saved' }`, `{ silent: true }`).
 
 ### Returns
 
@@ -43,6 +46,7 @@ A `Resource<T>`:
 - **`loading`**: `true` while a run is in flight (not while revalidating `initial` on attach).
 - **`error`**: the last run's error, or `undefined`. It's cleared when a run starts.
 - **`refetch()`**: run now, cancelling a run in flight. Returns a promise that settles when this run ends (with its retries), or when a newer run replaces it.
+- **`abort()`**: cancel the run in flight. `loading` goes back to `false`, `value` stays, `error` stays empty, and no callback runs. A keyed request still fills the cache for other resources.
 - **`mutate(value)`**: show `value` now, for example an optimistic update. The next run replaces it.
 - **`ready()`**: a promise of the first answer. It resolves with `value` once there is one (at once if there already is), or rejects with the first run's error. On the server it resolves with `initial`. Use it in an event handler or an async function: a script's top level can't `await`.
 
@@ -247,14 +251,71 @@ export const stats = batch((keys, { signal }) => json(`/api/stats?keys=${keys.jo
 const stat = resource(() => stats.get(key))
 ```
 
+## request()
+
+```ts
+request<T = any>(url, options?): Promise<T>
+```
+
+`fetch(url, options)`, then the response read by its `Content-Type`:
+
+| Content-Type | Read as |
+|---|---|
+| `application/json`, `*/*+json` (`application/problem+json`) | JSON |
+| `text/*`, `*/*xml` | text |
+| anything else | `Blob` |
+| a `204` response | `undefined` |
+
+A response that isn't 2xx throws an `Error` naming the URL and status (`/api/me: 404 Not Found`), with `status` and `data` (the body, read the same way), so `retry` and `error` see it. `T` defaults to `any`.
+
+### Parameters
+
+- **`url`**: a string or `URL`.
+- **`options`**: `fetch`'s options, and:
+  - **`body`**: what `fetch` takes, or a plain object or array, sent as JSON with `Content-Type: application/json` unless you set one;
+  - **`as`**: what to read, whatever the `Content-Type`: `'json'`, `'text'`, `'blob'`, `'arrayBuffer'`, `'formData'`, `'stream'` (the `ReadableStream`), `'response'` (the `Response`, unread);
+  - **`parse`**: your own readers by content type, without parameters (`{ 'application/x-ndjson': (res) => … }`), ahead of the built-in ones and `as`;
+  - **`timeout`** (ms): abort with a `TimeoutError`, together with `signal`.
+
+### Usage
+
+```ts
+const csv = await request<string>('/api/export', { timeout: 10_000 })
+await request(`/api/posts/${id}`, { method: 'PATCH', body: { title } })
+try { await request('/api/signup', { method: 'POST', body: form }) } catch (e) { errors = e.data?.errors }
+```
+
 ## json()
 
 ```ts
-json<T = any>(url, init?): Promise<T>
+json<T = any>(url, options?): Promise<T>
 ```
 
-`fetch(url, init)`, then the response's JSON. A response that isn't 2xx throws an `Error` naming the URL and the status (`/api/me: 503 Service Unavailable`), with the code in its `status` property, so `retry` and `error` see it (`if (user.error?.status === 404) …`). `T` defaults to `any`, as `Response.json()` does.
+`request()` with `as: 'json'`: the body as JSON, whatever the `Content-Type`. Errors as `request()`'s (`status`, `data`). Its options are `request()`'s, and are passed on to `fetch` without the clarusjs ones.
 
 ```ts
 const me = resource(({ signal }) => json<User>('/api/me', { signal }))
+```
+
+## text()
+
+```ts
+text(url, options?): Promise<string>
+```
+
+`request()` with `as: 'text'`.
+
+## configure()
+
+```ts
+configure({ onSuccess?, onError? }): void
+```
+
+Sets handlers every resource calls after its own callbacks: one place for toasts. Each gets the value or error, and `{ meta }` (the resource's `meta`). A resource's own `onSuccess` or `onError` returning `false` skips them. Calling it again replaces the handlers. Call it once, in a module every island imports.
+
+```ts
+configure({
+  onError: (e, { meta }) => { if (!meta?.silent) toast.error(String(e)) },
+  onSuccess: (_, { meta }) => { if (meta?.success) toast(String(meta.success)) },
+})
 ```

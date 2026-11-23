@@ -19,6 +19,8 @@ export type Resource<T> = {
   readonly error: unknown
   /** Run now, aborting a run in flight. */
   refetch(): Promise<void>
+  /** Cancel the run in flight: back to idle, the value kept, no error and no callbacks (a cancel isn't a failure). */
+  abort(): void
   /** Set the shown value (e.g. optimistically, before a POST); the next run overwrites it. Keyed: its cache entry. */
   mutate(value: T): void
   /** The first answer (`value`), or the first run's error. On the server, `initial`. In handlers, not top level. */
@@ -45,7 +47,67 @@ export type ResourceOptions<T> = {
   stale?: number
   /** With `key`: keep an unshown answer this long (ms, default 5 min). */
   keep?: number
+  /** Fail a run (retries included) after this many ms, with a `TimeoutError`: an error, unlike `abort()`. */
+  timeout?: number
+} & Callbacks<T>
+
+/**
+ * What happens after a request settles, once per request (an event, so the same error twice is two calls; an effect
+ * on `error` is for state). A cancel calls none of them; with `retry`, after the last attempt. Browser only.
+ * @see https://clarusjs.com/guide/fetching#errors
+ */
+export type Callbacks<T> = {
+  /** It succeeded. Return `false` to skip `configure()`'s `onSuccess`. */
+  onSuccess?(value: T): unknown
+  /** It failed (a timeout too). Return `false` to skip `configure()`'s `onError` (handled here). */
+  onError?(error: unknown): unknown
+  /** After either, last: `(value, undefined)` or `(undefined, error)`. */
+  onSettled?(value: T | undefined, error: unknown): unknown
+  /** Anything for `configure()`'s handlers: `{ success: 'Saved' }`, `{ silent: true }`. */
+  meta?: Record<string, unknown>
 }
+
+/**
+ * Handlers for every resource and action on the page, after their own callbacks: toasts in one place.
+ * @see https://clarusjs.com/reference/fetch#configure
+ */
+export type Handlers = {
+  onSuccess?(value: unknown, ctx: { meta: Record<string, unknown> | undefined }): void
+  onError?(error: unknown, ctx: { meta: Record<string, unknown> | undefined }): void
+}
+let handlers: Handlers = {}
+
+/**
+ * Set the handlers every resource and action calls after its own callbacks (one place for toasts); replaces the
+ * previous ones. An instance's `meta` reaches them; its own callback returning `false` skips them.
+ * @example
+ * ```ts
+ * configure({
+ *   onError: (e, { meta }) => { if (!meta?.silent) toast.error(String(e)) },
+ *   onSuccess: (_, { meta }) => { if (meta?.success) toast(String(meta.success)) },
+ * })
+ * ```
+ * @see https://clarusjs.com/reference/fetch#configure
+ */
+export function configure(next: Handlers): void {
+  handlers = next
+}
+
+/** A callback that throws is reported (like an uncaught error), and changes nothing. */
+const call = (fn: ((...a: any[]) => unknown) | undefined, ...args: unknown[]): unknown => {
+  // Browsers: reportError (a window 'error' event, as uncaught; error trackers see it). Elsewhere: the console.
+  try { return fn?.(...args) } catch (err) { (globalThis.reportError ?? console.error)(err) }
+}
+/** A settled request: the instance's callbacks, then the global handlers unless the instance said `false`. */
+const settled = <T>(o: Callbacks<T>, ok: boolean, value: unknown, err: unknown): void => {
+  const ctx = { meta: o.meta }
+  if (ok) { if (call(o.onSuccess, value) !== false) call(handlers.onSuccess, value, ctx) }
+  else if (call(o.onError, err) !== false) call(handlers.onError, err, ctx)
+  call(o.onSettled, ok ? value : undefined, ok ? undefined : err)
+}
+
+/** `signal`, also aborted after `ms` with a `TimeoutError`. */
+const within = (signal: AbortSignal, ms: number | undefined) => (ms === undefined ? signal : AbortSignal.any([signal, AbortSignal.timeout(ms)]))
 
 /**
  * A fetcher's answer: a value, a promise of one, or undefined/null/false for "not ready" (a chain still waiting). An
@@ -118,6 +180,7 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
     controller?.abort()
     const id = ++runs
     const c = (controller = new AbortController())
+    const signal = within(c.signal, options.timeout)
     let state: 'not ready' | 'hit' | 'fetch' = 'fetch'
     let out: unknown // the fetcher's answer (unkeyed), the entry's request (keyed), or a cached value (a hit)
     inFetcher = true
@@ -134,15 +197,15 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
           } else if (!forced && e.pending) out = e.pending // the same key asked at the same time: one request
           else {
             // ponytail: own signal, so it (and its retries) ends even if this resource goes; abort if nobody awaits.
-            const rc = new AbortController()
-            const first = fetcher({ signal: rc.signal }) // reads here are tracked
+            const rs = within(new AbortController().signal, options.timeout)
+            const first = fetcher({ signal: rs }) // reads here are tracked
             if (first === undefined || first === null || first === false) state = 'not ready'
-            else out = request(e, retrying(first, () => fetcher({ signal: rc.signal }), rc.signal))
+            else out = track(e, retrying(first, () => fetcher({ signal: rs }), rs))
           }
         }
         if (state === 'not ready') join(undefined)
       } else {
-        out = fetcher({ signal: c.signal }) // reads here are tracked
+        out = fetcher({ signal }) // reads here are tracked
         if (out === undefined || out === null || out === false) state = 'not ready'
       }
     } catch (err) { out = Promise.reject(err); state = 'fetch' } finally { inFetcher = false }
@@ -161,10 +224,10 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
       busy = true
       const latest = () => id === runs && !disposed
       // Keyed answers arrive through the entry (store → push), only if still its newest.
-      return (keyed ? (out as Promise<T>) : retrying(out, () => fetcher({ signal: c.signal }), c.signal)).then(
+      return (keyed ? (out as Promise<T>) : retrying(out, () => fetcher({ signal }), signal)).then(
         // An async "not ready" resolves to undefined: keep the value.
-        (v) => { if (latest()) { if (!keyed && v !== undefined) value.set(v); loading.set(false); busy = false } },
-        (err) => { if (latest()) { error.set(err); loading.set(false); busy = false } },
+        (v) => { if (latest()) { if (!keyed && v !== undefined) value.set(v); loading.set(false); busy = false; if (v !== undefined) settled(options, true, v, undefined) } },
+        (err) => { if (latest()) { error.set(err); loading.set(false); busy = false; settled(options, false, undefined, err) } },
       )
     })
   }
@@ -205,6 +268,14 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
       else stop = effect(run) // the first run of a resource that didn't start on attach
       // Inside a signals batch() the run starts when the batch ends: wait for that, then for the run.
       return Promise.resolve().then(() => pending)
+    },
+    abort() {
+      if (!controller) return
+      runs++ // its answer, or its abort, is no longer this resource's
+      controller.abort()
+      controller = undefined
+      busy = false
+      loading.set(false)
     },
     // Server: unchanged. Keyed: writes the entry.
     mutate(v) { if (browser) { if (entry) store(entry, v, ++entry.seq); else value.set(v) } },
@@ -252,7 +323,7 @@ const store = (e: Entry, v: unknown, seq: number) => {
   for (const u of e.users) u.push(v)
 }
 /** The entry's newest request: stores what it gets (if still newest). */
-const request = <T>(e: Entry, answer: Promise<T>): Promise<T> => {
+const track = <T>(e: Entry, answer: Promise<T>): Promise<T> => {
   const seq = ++e.seq
   const p = answer.then((v) => { if (v !== undefined) store(e, v, seq); return v })
   e.pending = p
@@ -311,7 +382,7 @@ export function setData<T>(key: unknown[], value: T | ((prev: T | undefined) => 
 export function prefetch<T>(key: unknown[], fetcher: (ctx: { signal: AbortSignal }) => T | Promise<T>): Promise<void> {
   if (!browser) return Promise.resolve()
   const e = entryOf(key)
-  const p = e.has && !e.invalid ? Promise.resolve() : e.pending ?? request(e, (async () => fetcher({ signal: new AbortController().signal }))())
+  const p = e.has && !e.invalid ? Promise.resolve() : e.pending ?? track(e, (async () => fetcher({ signal: new AbortController().signal }))())
   release(e)
   return p.then(() => {}, () => {})
 }
@@ -392,20 +463,93 @@ export function batch<T>(
 }
 
 /**
- * `fetch(url, init)`, then the response's JSON. A response that isn't 2xx throws an Error naming the URL and status
- * (its `status` property holds the code), so a resource's `retry` and `error` see it.
+ * What `request()` reads from a response: by default from its `Content-Type` (JSON for `application/json` and
+ * `+json` types, text for `text/*` and XML, else a Blob; nothing for a 204), or as `as` says.
+ * @see https://clarusjs.com/reference/fetch#request
+ */
+export type ReadAs = 'json' | 'text' | 'blob' | 'arrayBuffer' | 'formData' | 'response' | 'stream'
+
+/**
+ * `request()`'s options: `fetch`'s, plus `body` (a plain object or array is sent as JSON), `as`, `parse` and `timeout`.
+ * @see https://clarusjs.com/reference/fetch#request
+ */
+export type RequestOptions = Omit<RequestInit, 'body'> & {
+  /** What `fetch` takes, or a plain object or array: sent as JSON, with `Content-Type: application/json` unless set. */
+  body?: BodyInit | Record<string, unknown> | unknown[] | null
+  /** What to read from the response; by default its `Content-Type` decides. */
+  as?: ReadAs
+  /** Your own reader per content type (`'application/x-ndjson'`, without parameters), ahead of the built-in ones. */
+  parse?: Record<string, (res: Response) => unknown>
+  /** Abort after this many ms, with a `TimeoutError` (on top of `signal`). */
+  timeout?: number
+}
+
+/**
+ * The error a non-2xx response throws: its `status`, and its body read like a success's (`data`).
+ * @see https://clarusjs.com/reference/fetch#request
+ */
+export type ResponseError = Error & { status: number; data: unknown }
+
+const read = (res: Response, as: ReadAs | undefined, parse: RequestOptions['parse']): unknown => {
+  const type = res.headers.get('content-type')?.split(';')[0]!.trim().toLowerCase() ?? ''
+  const own = parse?.[type]
+  if (own) return own(res)
+  if (as === 'response') return res
+  if (as === 'stream') return res.body
+  if (as) return res[as]()
+  if (res.status === 204) return undefined
+  if (type === 'application/json' || type.endsWith('+json')) return res.json()
+  return type.startsWith('text/') || type.endsWith('xml') ? res.text() : res.blob()
+}
+
+/**
+ * `fetch`, then the response read by its `Content-Type` (or as `as` says). A response that isn't 2xx throws an Error
+ * naming the URL and status, with `status` and the error body (`data`), so a resource's `retry` and `error` see it.
  *
+ * @param options `fetch`'s options, plus `body` (a plain object or array goes as JSON), `as`, `parse`, `timeout`.
+ * @example
+ * ```ts
+ * const csv = await request<string>('/api/export', { as: 'text', timeout: 10_000 })
+ * await request(`/api/posts/${id}`, { method: 'PATCH', body: { title } })
+ * ```
+ * @see https://clarusjs.com/reference/fetch#request
+ */
+export async function request<T = any>(url: string | URL, options: RequestOptions = {}): Promise<T> {
+  const { as, parse, timeout, body, ...init } = options
+  if (body !== undefined) {
+    const plain = body !== null && typeof body === 'object' && (Array.isArray(body) || [Object.prototype, null].includes(Object.getPrototypeOf(body)))
+    if (plain) {
+      const headers = new Headers(init.headers)
+      if (!headers.has('content-type')) headers.set('content-type', 'application/json')
+      Object.assign(init, { body: JSON.stringify(body), headers })
+    } else (init as RequestInit).body = body as BodyInit | null
+  }
+  if (timeout !== undefined) init.signal = AbortSignal.any([AbortSignal.timeout(timeout), ...(init.signal ? [init.signal] : [])])
+  const res = await fetch(url, init as RequestInit)
+  if (!res.ok) {
+    // Read it (so the request ends: a browser keeps an unread body's request open), and keep it: a 422's errors.
+    const data = await Promise.resolve(read(res, as === 'response' || as === 'stream' ? 'text' : undefined, parse)).catch(() => undefined)
+    throw Object.assign(new Error(`${url}: ${res.status} ${res.statusText}`.trim()), { status: res.status, data })
+  }
+  return read(res, as, parse) as T
+}
+
+/**
+ * `request()` reading JSON whatever the `Content-Type`. A non-2xx response throws (with `status` and `data`).
  * @example
  * ```ts
  * const me = resource(({ signal }) => json<User>('/api/me', { signal }))
  * ```
  * @see https://clarusjs.com/reference/fetch#json
  */
-export async function json<T = any>(url: string | URL, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init)
-  if (!res.ok) {
-    await res.text().catch(() => {}) // read it, so the request ends: a browser keeps an unread body's request open
-    throw Object.assign(new Error(`${url}: ${res.status} ${res.statusText}`.trim()), { status: res.status })
-  }
-  return res.json() as Promise<T>
-}
+export const json = <T = any>(url: string | URL, options?: RequestOptions): Promise<T> => request<T>(url, { ...options, as: 'json' })
+
+/**
+ * `request()` reading text whatever the `Content-Type`. A non-2xx response throws (with `status` and `data`).
+ * @example
+ * ```ts
+ * const readme = resource(({ signal }) => text('/README.md', { signal }))
+ * ```
+ * @see https://clarusjs.com/reference/fetch#text
+ */
+export const text = (url: string | URL, options?: RequestOptions): Promise<string> => request<string>(url, { ...options, as: 'text' })

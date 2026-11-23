@@ -451,7 +451,7 @@ test('the generated Netlify function serves only the server routes', async () =>
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
   // The pages and endpoints, each with its fragment path (endpoints have none: a 404).
-  expect(fn).toContain('export const config = {"path":["/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
+  expect(fn).toContain('export const config = {"path":["/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -2010,4 +2010,25 @@ test('what clarusjs is: a button says the name (the browser\'s speech, KLAIR-us 
   await expect(button).toBeVisible()
   await button.click()
   await expect.poll(() => page.evaluate(() => (window as unknown as { __said: unknown[] }).__said)).toEqual([{ text: 'Klair-us', lang: 'en-US' }])
+})
+
+test('#431 fetching: a CSV read as text, Cancel aborts without an error, a slow server times out, onSuccess/onError say so', async ({ page }) => {
+  await page.goto('/guide/fetching#cancelling-and-timeouts')
+  const demo = page.locator('#export')
+  await expect(demo.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+  const status = demo.getByRole('status')
+  await demo.getByRole('button', { name: 'Export CSV' }).click()
+  await expect(status).toHaveText('Exported 3 rows.')
+  await expect(demo.locator('.export-csv')).toContainText('1,Ada,12')
+  // Cancel while the slow server works: idle again, no error, the last CSV kept.
+  await demo.getByLabel('Slow server (4 s)').check()
+  await demo.getByRole('button', { name: 'Export CSV' }).click()
+  await expect(status).toHaveText('Exporting…')
+  await demo.getByRole('button', { name: 'Cancel' }).click()
+  await expect(status).toHaveText('Cancelled.')
+  await expect(demo.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+  await expect(demo.locator('.export-csv')).toContainText('1,Ada,12')
+  // Left to run, the slow export hits the 2.5 s timeout: an error, so onError writes the status.
+  await demo.getByRole('button', { name: 'Export CSV' }).click()
+  await expect(status).toHaveText('Timed out after 2.5 s.', { timeout: 6000 })
 })

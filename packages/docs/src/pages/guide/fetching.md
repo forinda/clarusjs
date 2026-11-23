@@ -2,7 +2,7 @@
 title: "Fetching data"
 group: "Interactivity"
 order: 9
-description: "clarusjs/fetch: islands fetch their own data in the browser, in parallel, chained or batched into one request, with retry and refetch."
+description: "clarusjs/fetch: islands fetch their own data in the browser, in parallel, chained or batched, any response type, with retry, refetch, timeouts, cancelling and error callbacks."
 ---
 
 # Fetching data
@@ -98,6 +98,63 @@ const feed = resource(load, {
 
 `refetch()` runs it now, for a Refresh button or after you've saved something. In code that needs the data itself, `await items.ready()` waits for the first answer (in a handler or an async function; a script's top level can't `await`). `mutate(value)` shows a value right away (an optimistic update); the next run replaces it.
 
+## Any response, and sending data
+
+`json()` reads JSON. `request()` reads whatever the server sends, by its `Content-Type`: JSON (`application/json`, and `+json` types such as `application/problem+json`), text (`text/*` and XML), or else a `Blob`. A `204` gives `undefined`. To choose yourself, pass `as`: `'json'`, `'text'`, `'blob'`, `'arrayBuffer'`, `'formData'`, `'stream'` (the body as a `ReadableStream`) or `'response'` (the `Response` itself).
+
+```ts
+const csv = await request<string>('/api/export')                // text/csv: read as text
+const photo = await request<Blob>(`/api/photos/${id}`)          // image/png: a Blob
+const rows = await request('/api/feed', { parse: { 'application/x-ndjson': ndjson } }) // your own reader
+```
+
+A plain object or array as `body` is sent as JSON, with `Content-Type: application/json` unless you set one. `FormData`, `URLSearchParams`, a `Blob` or a string go as `fetch` sends them.
+
+```ts
+await request(`/api/posts/${id}`, { method: 'PATCH', body: { title } })
+```
+
+A response that isn't 2xx throws, whatever you asked to read. The error has the `status` and the body read the same way, as `data`, so a `422`'s field errors are at hand (`e.data.errors`).
+
+## Cancelling and timeouts
+
+`abort()` cancels a resource's run in flight. That isn't a failure: `loading` goes back to false, the last value stays, and `error` stays empty. `timeout` (ms) fails a run that takes too long, retries included, with a `TimeoutError`. That one is an error. `request()` takes `timeout` too, on top of the `signal` you pass.
+
+<exportDemo />
+
+```tscl
+<script>
+  import { request, resource } from 'clarusjs/fetch'
+  const csv = resource(({ signal }) => request('/api/export', { signal }), {
+    refetch: { onStart: false }, // waits for the button
+    timeout: 2500,
+  })
+</script>
+
+<button (click)="csv.refetch()" [disabled]="csv.loading">Export CSV</button>
+<button (click)="csv.abort()" [disabled]="!csv.loading">Cancel</button>
+```
+
+## Errors
+
+Use whichever fits:
+
+- **State in the template.** `error` holds the last run's error, until the next run starts: `@if (feed.error) { … }`.
+- **Callbacks, once per request.** `onSuccess(value)`, `onError(error)` and `onSettled(value, error)`. They are events: the same error twice calls `onError` twice, which is what a toast wants. A cancel calls none of them; with `retry`, `onError` runs after the last attempt.
+- **One place for toasts.** `configure()` sets handlers that run after every resource's own callbacks, with the resource's `meta`. A resource's own `onError` returning `false` skips them (it handled the error).
+- **An effect, for something that lasts.** A banner shown while an error stands: `effect(() => banner.set(feed.error ? 'Offline' : ''))`.
+
+```ts
+// once, in a module every island imports (a store)
+configure({
+  onError: (e, { meta }) => { if (!meta?.silent) toast.error(String(e)) },
+  onSuccess: (_, { meta }) => { if (meta?.success) toast(String(meta.success)) },
+})
+
+const stats = resource(load, { meta: { silent: true } })        // no toast for this one
+const feed = resource(load, { onError: () => false })           // handled here instead
+```
+
 ## Caching
 
 Give a resource a `key`, and its answers are cached by it: a key seen before comes back without a request. This list has 20,000 records, 10 per page. Go forward and back: pages you've seen don't ask the server again, the next page is fetched ahead, and the previous page stays on screen while a new one loads. **Rename the first row** changes a record, then invalidates every cached page.
@@ -140,6 +197,7 @@ To skip that first browser fetch, set `refetch: { onStart: false }`. The resourc
 
 - **Keep answers across full page loads:** the cache (with `key`) lives in the page; a reload starts it empty.
 - **Merge different endpoints into one request:** write a server route that combines them, and batch that.
-- **Mutations:** send them with `fetch` (or a form, see [Form validation](./form-validation.md)), then `refetch()` or `mutate()`.
+- **Mutations:** send them with `request()` (or a form, see [Form validation](./form-validation.md)), then `refetch()`, `mutate()` or `invalidate()`.
+- **Progress:** there's no upload or download progress. For a progress bar, read `as: 'stream'` and count the chunks yourself.
 
 Every option and its exact behaviour is in the [clarusjs/fetch reference](/reference/fetch).
