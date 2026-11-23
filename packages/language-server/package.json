@@ -1,6 +1,6 @@
 {
   "name": "@clarusjs/language-server",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "The clarusjs language server (clarusjs-ls): .tscl templates in any editor, from the clarusjs compiler.",
   "type": "module",
   "license": "MIT",
