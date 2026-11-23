@@ -32,6 +32,11 @@ test('blocks: @if/@else if/@else/@for/@empty/@slot openers and their closing bra
   )
 })
 
+test('#430: @await / @then / @catch openers, their headers and closing braces are blanked like @if', () => {
+  const source = "@await (load(1)) {<i></i>} @then (rows) {<ul></ul>} @catch (e) {<b></b>}\n"
+  expect(view(source)).toBe('··················<i></i>················<ul></ul>··············<b></b>·\n')
+})
+
 test('binding values are blanked; their names stay for the HTML service; script bodies are blanked', () => {
   expect(view('<input [value]="a.b" (input)="go($event)" [(checked)]="c" title="x {{ y }}">\n<script>\n  let a = 1\n</script>\n'))
     .toBe('<input·[value]="···"·(input)="··········"·[(checked)]="·"·title="x········">\n<script>\n···········\n</script>\n')

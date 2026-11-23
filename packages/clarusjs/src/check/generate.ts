@@ -78,6 +78,14 @@ export function generateTs(source: string, file: string, options: { loader?: str
       emit('\n')
     }
   }
+  // <script server> (#430): its imports at the top too (node: allowed: it runs on the server only).
+  const serverScript = parsed.serverScript ? splitImports(parsed.serverScript.code, file, source, parsed.serverScript.start, true) : null
+  if (parsed.serverScript && serverScript) {
+    for (const imp of serverScript.imports) {
+      copy(imp.text, parsed.serverScript.start + imp.start)
+      emit('\n')
+    }
+  }
 
   // @type: local aliases (not exported: other files see them only through Inputs).
   for (const t of parsed.types) {
@@ -113,7 +121,9 @@ export function generateTs(source: string, file: string, options: { loader?: str
   }
   // Inputs are read-only, all the way down: they belong to the parent (copy one into state() to change it here).
   emit('export type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
-  emit('\nexport default function __cl_check(__cl_props: __cl_Readonly<Inputs>) {\n')
+  // A <script server> may await at the top level: the check function is async then, as render is.
+  const awaits = !!parsed.serverScript && /\bawait\b/.test(parsed.serverScript.code)
+  emit(`\nexport default ${awaits ? 'async ' : ''}function __cl_check(__cl_props: __cl_Readonly<Inputs>) {\n`)
   // Inputs are constants; @model inputs may be written (the write goes to the parent), so they are `let`.
   for (const [keyword, list] of [['const', parsed.inputs.filter((x) => !x.model)], ['let', parsed.inputs.filter((x) => x.model)]] as const) {
     if (!list.length) continue
@@ -130,22 +140,24 @@ export function generateTs(source: string, file: string, options: { loader?: str
     // An input the template doesn't read isn't an unused variable of this generated code.
     emit(`  __cl_use([${list.map((x) => x.name).join(', ')}])\n`)
   }
-  if (parsed.script && script) {
-    // The script in verbatim pieces: its imports (already at the top) are blanked, and untyped parameters annotated.
-    const body = script.body
+  // A script in verbatim pieces: its imports (already at the top) are blanked, and untyped parameters annotated.
+  const copyScript = (from: { code: string; start: number }, split: { imports: { text: string; start: number }[]; body: string }) => {
+    const body = split.body
     const cuts = [
-      ...script.imports.map((imp) => ({ at: imp.start, end: imp.start + imp.text.length, text: body.slice(imp.start, imp.start + imp.text.length) })),
-      ...untypedParams(parsed.script.code).map((e) => ({ ...e, end: e.at })),
+      ...split.imports.map((imp) => ({ at: imp.start, end: imp.start + imp.text.length, text: body.slice(imp.start, imp.start + imp.text.length) })),
+      ...untypedParams(from.code).map((e) => ({ ...e, end: e.at })),
     ].sort((a, b) => a.at - b.at)
     let pos = 0
     for (const cut of cuts) {
-      if (cut.at > pos) copy(body.slice(pos, cut.at), parsed.script.start + pos)
+      if (cut.at > pos) copy(body.slice(pos, cut.at), from.start + pos)
       emit(cut.text)
       pos = Math.max(pos, cut.end)
     }
-    if (body.length > pos) copy(body.slice(pos), parsed.script.start + pos)
+    if (body.length > pos) copy(body.slice(pos), from.start + pos)
     emit('\n;\n') // the script may end without a semicolon; what follows must not continue its last statement
   }
+  if (parsed.serverScript && serverScript) copyScript(parsed.serverScript, serverScript)
+  if (parsed.script && script) copyScript(parsed.script, script)
 
   const use = (expr: string, start: number) => {
     emit('  __cl_use((')
@@ -201,6 +213,28 @@ export function generateTs(source: string, file: string, options: { loader?: str
           emit('  }\n')
         })
         return
+      case 'await': {
+        // The expression is checked once; @then's name is what it resolves to, @catch's an unknown error (#430).
+        emit('  { const __cl_aw = (')
+        copy(node.expr, at(node.expr, node.exprStart))
+        emit(');\n')
+        emit('  {\n')
+        node.pending.forEach(visit)
+        emit('  }\n')
+        for (const [b, type] of [[node.then, 'Awaited<typeof __cl_aw>'], [node.catch, 'any']] as const) {
+          if (!b) continue
+          emit('  { const ')
+          copy(b.name, b.nameStart)
+          emit(`: ${type} = null!; __cl_use(${b.name})\n`)
+          const outer = guards.splice(0) // inside, its name shadows outer ones (as a @for item does)
+          guards.push(...outer.filter((g) => !referencesNames(g, new Set([b.name]))))
+          b.children.forEach(visit)
+          guards.splice(0, guards.length, ...outer)
+          emit('  }\n')
+        }
+        emit('  }\n')
+        return
+      }
       case 'for': {
         emit('  for (const ')
         copy(node.item, node.itemStart)

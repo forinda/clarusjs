@@ -86,6 +86,8 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
   const ATTR = fresh((p) => `__cl${p}_attr`)
   const INLINE = fresh((p) => `__cl${p}_inline`) // a word: Prettier never breaks inside one
   const SLOT = fresh((p) => `@defer (__cl${p}_slot__`)
+  // @await / @then / @catch (#430) as an @if / @else if chain Angular formats; each header is kept as written.
+  const HEAD = fresh((p) => `__cl${p}_head`)
   const saved: string[] = []
   const save = (original: string) => saved.push(original) - 1
 
@@ -153,6 +155,7 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
       else if (n.type === 'element') collect(n.children)
       else if (n.type === 'if') n.branches.forEach((b) => collect(b.children))
       else if (n.type === 'for') { collect(n.children); if (n.empty) collect(n.empty) }
+      else if (n.type === 'await') [n.pending, ...(n.then ? [n.then.children] : []), ...(n.catch ? [n.catch.children] : [])].forEach(collect)
       else collect(n.children)
     }
   }
@@ -169,7 +172,7 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
     }
     return source.length
   }
-  const HEADER = /^@(if|for|slot|else\s+if)\s*\(/
+  const HEADER = /^@(if|for|slot|await|then|catch|else\s+if)\s*\(/
 
   /**
    * The end of the block starting at `start` (after its last `}`, @else/@empty branches included). A single space
@@ -196,7 +199,7 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
       const close = i + 1
       let next = close
       while (next < source.length && /\s/.test(source[next]!)) next++
-      if (!/^@(else|empty)(?![\w$-])/.test(source.slice(next, next + 7))) return close
+      if (!/^@(else|empty|then|catch)(?![\w$-])/.test(source.slice(next, next + 7))) return close
       if (next !== close + 1 || source[close] !== ' ') edits.push({ start: close, end: next, text: ' ' })
       i = next
     }
@@ -266,6 +269,16 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
         }
         if (n.type === 'if') for (const b of n.branches) visit(b.children, false, false, true)
         else if (n.type === 'for') { visit(n.children, false, false, true); if (n.empty) visit(n.empty, false, false, true) }
+        else if (n.type === 'await') {
+          // Each header becomes @if (…) or @else if (…) around a saved copy of it.
+          const header = (at: number, keyword: string) => {
+            const end = parenEnd(source.indexOf('(', at)) + 1
+            edits.push({ start: at, end, text: `${keyword} (${HEAD}${save(source.slice(at, end))}_)` })
+          }
+          header(n.start, '@if')
+          for (const b of [n.then, n.catch]) if (b) header(source.lastIndexOf('@', b.nameStart), '@else if')
+          for (const kids of [n.pending, ...(n.then ? [n.then.children] : []), ...(n.catch ? [n.catch.children] : [])]) visit(kids, false, false, true)
+        }
         else visit(n.children, false, false, true)
       }
     }
@@ -293,6 +306,7 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
     text,
     restore: (formatted) => formatted
       .replaceAll(SLOT, '@slot(')
+      .replace(new RegExp(`@(?:else if|if) \\(${HEAD}(\\d+)_\\)`, 'g'), back)
       .replaceAll(AT, '@')
       .replaceAll(LB, '{')
       .replaceAll(RB, '}')
@@ -324,7 +338,7 @@ function canLayout(n: TemplateNode, prev: TemplateNode | undefined, next: Templa
   const after = (x: TemplateNode | undefined) => (x ? (x.type === 'text' ? /^\s/.test(x.value) : blockish(x)) : edgeOk)
   // Inside a branch: its first and last nodes (the block's own edges are safe once its outside is).
   const inside = (kids: TemplateNode[]) => !kids.length || (edge(kids[0]!, 'start') && edge(kids[kids.length - 1]!, 'end'))
-  const branches = n.type === 'if' ? n.branches.map((b) => b.children) : n.type === 'for' ? [n.children, ...(n.empty ? [n.empty] : [])] : n.type === 'fill' ? [n.children] : []
+  const branches = n.type === 'if' ? n.branches.map((b) => b.children) : n.type === 'await' ? [n.pending, ...(n.then ? [n.then.children] : []), ...(n.catch ? [n.catch.children] : [])] : n.type === 'for' ? [n.children, ...(n.empty ? [n.empty] : [])] : n.type === 'fill' ? [n.children] : []
   return before(prev) && after(next) && branches.every(inside)
 }
 
@@ -341,6 +355,7 @@ function blockish(n: TemplateNode): boolean {
   if (n.type === 'if') return n.branches.every((b) => b.children.every(blockish))
   if (n.type === 'for') return n.children.every(blockish) && (n.empty ?? []).every(blockish)
   if (n.type === 'fill') return n.children.every(blockish)
+  if (n.type === 'await') return [n.pending, ...(n.then ? [n.then.children] : []), ...(n.catch ? [n.catch.children] : [])].every((kids) => kids.every(blockish))
   return false
 }
 

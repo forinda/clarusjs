@@ -12,6 +12,12 @@ export type Attr =
   | { kind: 'prop'; name: string; expr: string; start: number } // [start]="..."
   | { kind: 'model'; name: string; expr: string; start: number } // [(value)]="form.name": two-way binding
   | { kind: 'interp'; name: string; parts: (string | { expr: string; start: number })[]; start: number } // a="x {{ y }}"
+/** An @await's lists of children: pending, then @then's and @catch's (those it has). */
+export const awaitLists = (n: Extract<TemplateNode, { type: 'await' }>): TemplateNode[][] => [n.pending, ...(n.then ? [n.then.children] : []), ...(n.catch ? [n.catch.children] : [])]
+
+/** An @await's @then or @catch: the name it binds, and its content. */
+export type AwaitBranch = { name: string; nameStart: number; children: TemplateNode[] }
+
 /**
  * A node of a template's syntax tree: an element, text, a `{{ }}` hole, an `@if`, an `@for`, a slot fill…
  * @see https://clarusjs.com/reference/compiler#parse
@@ -22,6 +28,8 @@ export type TemplateNode =
   | { type: 'expr'; expr: string; start: number; json?: true } // {{ expr }}; json: written as JSON (JSON-LD)
   | { type: 'raw'; value: string; start: number } // content of a `verbatim` element, shown as text
   | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
+  // @await (promise) { pending } @then (value) { … } @catch (error) { … } (#430)
+  | { type: 'await'; expr: string; exprStart: number; pending: TemplateNode[]; then: AwaitBranch | null; catch: AwaitBranch | null; start: number }
   | { type: 'fill'; name: string; children: TemplateNode[]; start: number } // @slot('name') { … } inside a component tag
   | { type: 'for'; item: string; list: string; track: string | null; headStart: number; itemStart: number; listStart: number; trackStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
 // model: declared with @model, the one kind of input a component may write (two-way binding, [(name)] at the use site).
@@ -55,6 +63,8 @@ export type ParsedFile = {
   types: TypeDecl[]
   dataImports: DataImport[]
   script?: { code: string; start: number } // start = offset of the first char inside <script>
+  /** <script server> (#430): runs at render on the server only. `tag` = offset of `<script`. */
+  serverScript?: { code: string; start: number; tag: number }
   // Top-level <style> blocks: `scoped` ones are scoped to the component; `global` and `plain` (no attribute) aren't.
   // `tag`: where the <style> tag starts.
   styles: { css: string; mode: 'scoped' | 'global' | 'plain'; start: number; tag: number }[]
@@ -311,6 +321,40 @@ export function parse(source: string, file: string): ParsedFile {
     return fail(`unclosed ( after ${keyword}`, open)
   }
 
+  // @await (promise) { pending } @then (value) { … } @catch (error) { … }: @then and @catch optional, in that order.
+  function awaitBlock(): TemplateNode {
+    const start = i
+    i += 6
+    const { cond: expr, condStart: exprStart } = condition('@await')
+    const open = () => {
+      while (/\s/.test(source[i] ?? '')) i++
+      if (source[i] !== '{') fail('expected { to open the block', i)
+      i++
+    }
+    open()
+    const pending = children({ tag: '@await', start, block: true })
+    let then: AwaitBranch | null = null
+    let caught: AwaitBranch | null = null
+    for (;;) {
+      const save = i
+      while (/\s/.test(source[i] ?? '')) i++
+      const kw = /^@(then|catch)[\s(]/.exec(source.slice(i, i + 7))?.[1]
+      if (!kw) { i = save; break }
+      const at = i
+      if (kw === 'then' && caught) fail('@then comes before @catch', at)
+      if ((kw === 'then' && then) || (kw === 'catch' && caught)) fail(`only one @${kw} per @await`, at)
+      i += kw.length + 1
+      const { cond: name, condStart: nameStart } = condition(`@${kw}`)
+      const what = kw === 'then' ? 'value' : 'error'
+      if (!/^[A-Za-z_$][\w$]*$/.test(name)) fail(`@${kw} takes a name for the ${what}: @${kw} (${what})`, nameStart)
+      open()
+      const branch = { name, nameStart, children: children({ tag: `@${kw}`, start: at, block: true }) }
+      if (kw === 'then') then = branch
+      else caught = branch
+    }
+    return { type: 'await', expr, exprStart, pending, then, catch: caught, start }
+  }
+
   // @if (a) { … } @else if (b) { … } @else { … }
   function ifBlock(): TemplateNode {
     const start = i
@@ -433,6 +477,10 @@ export function parse(source: string, file: string): ParsedFile {
         i = end + 3
       } else if (/^@if[\s(]/.test(source.slice(i, i + 4))) {
         flush(); nodes.push(ifBlock()); textStart = i
+      } else if (/^@await[\s(]/.test(source.slice(i, i + 7))) {
+        flush(); nodes.push(awaitBlock()); textStart = i
+      } else if (/^@(then|catch)[\s(]/.test(source.slice(i, i + 7))) {
+        fail(`${/^@\w+/.exec(source.slice(i))![0]} without @await before it`, i)
       } else if (/^@for[\s(]/.test(source.slice(i, i + 5))) {
         flush(); nodes.push(forBlock()); textStart = i
       } else if (/^@slot[\s(]/.test(source.slice(i, i + 6))) {
@@ -487,6 +535,16 @@ export function parse(source: string, file: string): ParsedFile {
           const kids: TemplateNode[] = hole ? [{ type: 'expr', expr: hole[1]!.trim(), start: at, json: true }] : body ? [{ type: 'text', value: body, start: i }] : []
           nodes.push({ type: 'element', tag, attrs: list, children: kids, start })
           i = selfClosing ? i : end + '</script>'.length
+        } else if (tag === 'script' && list.some((a) => a.name === 'server')) {
+          // <script server>: the component's server-only script (#430), run at render; it can await.
+          if (parent) fail('<script server> must be at the top level (it runs once per render, before the template)', start)
+          if (out.serverScript) fail('only one <script server> block is allowed', start)
+          const other = list.find((a) => a.name !== 'server')
+          if (other) fail('<script server> takes no other attributes', other.start)
+          const end = source.indexOf('</script>', i)
+          if (end === -1) fail('unclosed <script server>', start)
+          out.serverScript = { code: source.slice(i, end), start: i, tag: start }
+          i = end + '</script>'.length
         } else if (tag === 'script') {
           if (parent) fail('<script> must be at the top level (a component script); add `inline` for a script that runs where it stands', start)
           if (out.script) fail('only one <script> block is allowed', start)

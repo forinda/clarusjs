@@ -3,7 +3,7 @@
 // class, __cl_classValue([...]) in the order written, toggles last: the existing attribute path then escapes it, merges
 // the scope class (markRoots, which runs after) and updates it in islands. An element with only class="…", or only a
 // bound [class] (attrValue normalizes an object or an array there), is untouched.
-import type { Attr, TemplateNode } from './parse.ts'
+import { awaitLists, type Attr, type TemplateNode } from './parse.ts'
 
 /** A [...]="attrs" spread's expression (#405), if the element has one. */
 const spreadOf = (node: Extract<TemplateNode, { type: 'element' }>): string | undefined => (node.attrs.find((a) => a.kind === 'prop' && a.name === '...') as { expr: string } | undefined)?.expr
@@ -56,5 +56,6 @@ export function foldClass(nodes: TemplateNode[], components: Set<string>): void 
       foldClass(node.children, components)
       if (node.empty) foldClass(node.empty, components)
     } else if (node.type === 'fill') foldClass(node.children, components)
+    else if (node.type === 'await') for (const kids of awaitLists(node)) foldClass(kids, components)
   }
 }

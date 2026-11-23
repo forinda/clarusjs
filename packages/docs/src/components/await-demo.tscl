@@ -1,0 +1,39 @@
+{{-- The Fetching guide's @await demo (#430): the server renders "Loading…" for the island; the browser fetches the
+     page and swaps in the rows (or the error). Next page asks again: back to Loading, and only the newest answer shows. --}}
+
+<script>
+  import { json } from 'clarusjs/fetch'
+  let page = state(1)
+  const load = (p) => json(`/api/demo-records?page=${p}&size=3`)
+</script>
+
+<section class="demo-panel" id="await-demo">
+  @await (load(page)) {
+    <p class="demo-muted">Loading page {{ page }}…</p>
+  } @then (data) {
+    <ul>
+      @for (row of data.rows; track row.id) {
+        <li>{{ row.name }}</li>
+      }
+    </ul>
+    <button type="button" (click)="page = page + 1">Next page</button>
+  } @catch (e) {
+    <p role="alert">Couldn't load page {{ page }}.</p>
+    <button type="button" (click)="page = page">Try again</button>
+  }
+</section>
+
+<style scoped>
+  :scope {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  ul {
+    margin: 0 0 12px;
+    padding-left: 1.2rem;
+  }
+  .demo-muted {
+    color: var(--muted);
+  }
+</style>

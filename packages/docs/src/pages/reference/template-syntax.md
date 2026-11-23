@@ -20,10 +20,12 @@ description: "Every directive and binding in .tscl templates, on one page."
 | `(event)="handler"` | handle an event (islands) | [Islands](/guide/islands) |
 | `@if (a) { } @else if (b) { } @else { }` | conditional branches | [Conditionals](/guide/conditionals) |
 | `@for (x of xs; track x.id) { } @empty { }` | repeat content | [Lists](/guide/lists) |
+| `@await (p) { } @then (v) { } @catch (e) { }` | show a promise's states: pending, its value, its error | [Fetching data](/guide/fetching#in-an-island-await) |
 | `<slot />, <slot name="x">fallback</slot>` | where wrapped content goes | [Slots](/guide/slots) |
 | `@slot('x') { }` | fill a named slot | [Slots](/guide/slots) |
 | `verbatim` attribute | show content as text | [Verbatim](/guide/verbatim) |
 | `<script> … </script>` | make a component interactive | [State](/guide/state) |
+| `<script server> … </script>` | run code on the server at render, with `await`; nothing ships | [Fetching data](/guide/fetching#on-the-server) |
 | `<script inline> … </script>` | a script written out as is, run where it stands | [Styles](/guide/styles) |
 | `<style scoped> … </style>`, `<style>`, `<style global>` | the component's CSS, scoped to it (`scoped`) or global | [Styles](/guide/styles) |
 | `{{-- comment --}}` | a template comment, removed from the output |  |

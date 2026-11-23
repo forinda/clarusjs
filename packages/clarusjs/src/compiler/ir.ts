@@ -3,7 +3,7 @@ import { parseExpressionAt } from 'acorn'
 import { iconElement, type IconResolver } from './icon.ts'
 import { ClarusError } from './errors.ts'
 import { FOR_IMPLICIT, importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
-import { analyzeScript, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, splitImports, type Signals } from './script.ts'
+import { analyzeScript, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, serverScriptParts, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
   | { kind: 'static'; html: string }
@@ -22,6 +22,8 @@ export type IRNode =
   | { kind: 'connect'; expr: string; index: number }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
   | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
+  // @await (#430): `block` shares @if's markers (<!--[bN:K-->, K = 0 pending, 1 then, 2 catch); -1 outside islands.
+  | { kind: 'await'; expr: string; pending: IRNode[]; then: { name: string; nodes: IRNode[] } | null; catch: { name: string; nodes: IRNode[] } | null; block: number }
   // @for / @empty. block = -1 outside islands; inside an island, the list's marker index. `item` and `$index` are in
   // scope in `nodes`; `track` (or the index) keys rows.
   | { kind: 'for'; item: string; list: string; track: string | null; nodes: IRNode[]; empty: IRNode[] | null; block: number }
@@ -34,6 +36,8 @@ export type ComponentIR = {
   imports: ImportDecl[]
   script?: string // without its import statements, which are in scriptImports
   scriptImports: string[]
+  /** <script server> (#430): its hoisted imports, its body (run at the top of render), and whether it awaits. */
+  server?: { imports: string[]; body: string; awaits: boolean }
   dataImports: DataImport[]
   signals: Signals
   stateful: boolean
@@ -60,6 +64,11 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
   const warnings: ClarusError[] = []
+  const ss = parsed.serverScript
+  // ponytail: not in an island yet: its names would be gone when the island re-renders in the browser. Lift it when
+  // islands can take server values as props automatically.
+  if (ss && stateful) fail('<script server> runs on the server only, and this component is an island (it has a <script> or a @model input): load the data in a parent, or in a page\'s <script server>, and pass it to the island as props', ss.tag)
+  const server = ss ? serverScriptParts(ss.code, file, source, ss.start) : undefined
   // This component's @model inputs: fields bound to them take their path from the parent (see modelPath).
   const modelNames = new Set(parsed.inputs.filter((i) => i.model).map((i) => i.name))
   const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
@@ -174,6 +183,26 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       out = parent
       scopeKey = parentScope
       out.push({ kind: 'if', branches, block })
+      return
+    }
+    if (node.type === 'await') {
+      checkExpr(node.expr, file, source, node.exprStart)
+      const block = stateful ? blockCount++ : -1
+      const parent = out
+      const parentScope = scopeKey
+      const lowerBranch = (children: TemplateNode[], k: number) => {
+        const list: IRNode[] = []
+        out = list
+        if (stateful) scopeKey = `${block}.${k}`
+        children.forEach((child) => visit(child, rawText))
+        return list
+      }
+      const pending = lowerBranch(node.pending, 0)
+      const then = node.then ? { name: node.then.name, nodes: lowerBranch(node.then.children, 1) } : null
+      const caught = node.catch ? { name: node.catch.name, nodes: lowerBranch(node.catch.children, 2) } : null
+      out = parent
+      scopeKey = parentScope
+      out.push({ kind: 'await', expr: node.expr, pending, then, catch: caught, block })
       return
     }
     if (node.type === 'for') {
@@ -472,6 +501,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     imports: parsed.imports,
     script: parsed.script ? split.body : undefined,
     scriptImports: split.imports.map((imp) => imp.text),
+    ...(server ? { server } : {}),
     dataImports: parsed.dataImports,
     signals,
     stateful,

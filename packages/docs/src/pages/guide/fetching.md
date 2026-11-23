@@ -128,7 +128,57 @@ Give a resource a `key`, and its answers are cached by it: a key seen before com
 
 ## On the server
 
-Nothing is fetched while the server renders the page. A resource there is in its loading state, so the HTML shows your loading text and the browser fills it in. If the page's `load()` already has the data, pass it as `initial`: the server HTML shows it, and the browser fetches again to bring it up to date.
+`clarusjs/fetch` is for the browser: nothing is fetched while the server renders the page. To fetch on the server, so the data is in the HTML and no JavaScript ships, `await` in a `<script server>`. It runs while the page renders (at build for a static route, per request for a server one), its imports stay on the server (`node:` modules too), and its names are there for the template.
+
+```tscl
+<script server>
+  import { json } from 'clarusjs/fetch'
+  const posts = await json('https://jsonplaceholder.typicode.com/posts')
+</script>
+
+@for (post of posts.slice(0, 5); track post.id) {
+  <h2>{{ post.title }}</h2>
+}
+```
+
+- **It doesn't make the component an island.** It runs once per render, on the server, and is gone afterwards.
+- **Not in an island.** An island's own `<script>` can't `await` at the top level, and a component with a `<script server>` can't be one, or sit inside one: the island re-renders its children in the browser, where they couldn't wait. Load the data here and pass it to the island as props.
+- **Not in a client route.** Its page renders in the browser. Make the route `static` or `server`.
+- A page's [`load()`](/guide/routing#loading-data) does the same from a separate file, and also gets the request (`params`, `cookies`, `locals`). Use `load()` when you need those, or to share the loading between pages.
+
+This site's [explained page](/guide/explained) uses one: it computes its numbers and awaits the commit it was built from.
+
+### In an island: `@await`
+
+An island can't wait on the server: it attaches in the browser. To show a promise's states in its template, use `@await`. The server renders the pending branch; the browser swaps in `@then` with the value, or `@catch` with the error, when the promise settles.
+
+```tscl
+<script>
+  import { json } from 'clarusjs/fetch'
+  let page = state(1)
+  const load = (p) => json(`/api/records?page=${p}`)
+</script>
+
+@await (load(page)) {
+  <p>Loading page {{ page }}…</p>
+} @then (data) {
+  @for (row of data.rows; track row.id) { <li>{{ row.name }}</li> }
+  <button (click)="page = page + 1">Next page</button>
+} @catch (e) {
+  <p role="alert">Couldn't load it.</p>
+}
+```
+
+<awaitDemo />
+
+- **It follows its signals.** When `page` changes, a new promise starts and the block shows the pending branch again. Only the newest promise's answer is shown; an older one that settles later is ignored.
+- **`@then` and `@catch` are optional,** and come in that order. Their names (`data`, `e`) are theirs alone.
+- **Outside islands** (a page, or a component without a `<script>`), the server awaits the promise itself and renders `@then` or `@catch` into the HTML, like a `<script server>` that awaits. Without `@catch`, a rejection fails the page, as a failing `load()` does.
+- **`@await` or `resource()`?** `@await` shows one promise in the template. `resource()` adds what an island usually wants around it: the last value kept while it reloads, `retry`, `refetch()`, caching, `abort()` and callbacks.
+
+### A resource with a starting value
+
+A resource there is in its loading state, so the HTML shows your loading text and the browser fills it in. If the server already has the data, from `load()` or a `<script server>`, pass it as `initial`: the server HTML shows it, and the browser fetches again to bring it up to date.
 
 ```ts
 const stats = resource(load, { initial: props.stats })
