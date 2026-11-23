@@ -1,0 +1,40 @@
+{{-- The Attributes guide's live example: a class toggle, a style property and a spread, following state. --}}
+
+<script>
+  let on = state(false)
+  let hue = state(180)
+  const extra = derived(() =>
+    on ? { 'aria-pressed': 'true', title: 'On' } : { 'aria-pressed': 'false', title: 'Off' },
+  )
+</script>
+
+<div class="attr-demo">
+  <button type="button" class="attr-demo-button" [class.on]="on" [style.--hue]="hue" [...]="extra" (click)="on = !on">
+    {{ on ? 'On' : 'Off' }}
+  </button>
+  <label>Hue <input type="range" min="0" max="360" [(value)]="hue" /></label>
+</div>
+<style scoped>
+  .attr-demo {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 8px 0 20px;
+  }
+  .attr-demo-button {
+    min-width: 72px;
+    padding: 8px 14px;
+    border: 2px solid hsl(var(--hue) 60% 40%);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .attr-demo-button.on {
+    background: hsl(var(--hue) 60% 40%);
+    color: #fff;
+  }
+</style>

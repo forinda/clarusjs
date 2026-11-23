@@ -35,3 +35,9 @@ test('without scoped styles, slot content gets no class (no class on every parag
   const { render } = await importCode(server(plain, 'page.tscl', 'page-1'), 'ssc3', { './layout.tscl': server(layout, 'layout.tscl', 'layout-1') }, true)
   expect(render({})).toContain('<p>Hi</p>')
 })
+
+test('#418 with #403: a bound [class] in the content passed to a layout keeps its value and gets the scope class', async () => {
+  const src = "@import layout from './layout.tscl'\n@input on: boolean = true\n<layout><p [class]=\"{ note: on }\">Hi</p></layout>\n<style scoped>\n  .note { color: red; }\n</style>\n"
+  const { render } = await importCode(server(src, 'page.tscl', 'page-1'), 'ssc4', { './layout.tscl': server(layout, 'layout.tscl', 'layout-1') }, true)
+  expect(render({})).toContain('<p class="note cl-c-page-1">Hi</p>')
+})

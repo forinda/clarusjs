@@ -7,6 +7,7 @@ import { parse, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
+import { foldClass } from './class-style.ts'
 export { checkIcons, type IconResolver } from './icon.ts'
 import type { IconResolver } from './icon.ts'
 export { lint, lintRules, type LintRule, type LintLevel, type LintConfig, type LintMessage, type LintRuleDef, type LintContext, type LintElement } from './lint.ts'
@@ -58,6 +59,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
   // Every component's top-level elements carry its scope class, styled or not: a parent's scope then takes in a
   // child's top-level element and stops inside it.
   const id = options.scope ?? scopeId(options.file)
+  foldClass(parsed.nodes, new Set(parsed.imports.map((imp) => imp.name)))
   // Slot content is marked only when this component has scoped styles to reach it (#418): no class on every
   // paragraph of every Markdown page otherwise.
   markRoots(parsed.nodes, `cl-c-${id}`, new Set(parsed.imports.map((imp) => imp.name)), parsed.styles.some((st) => st.mode === 'scoped'))
@@ -109,12 +111,12 @@ function markSlotContent(nodes: TemplateNode[], cls: string, components: Set<str
       if (node.empty) markSlotContent(node.empty, cls, components)
     } else if (node.type === 'element' && components.has(node.tag)) markSlotContent(node.children, cls, components)
     else if (node.type === 'element' && !UNMARKED.has(node.tag)) {
-      const at = node.attrs.findIndex((a) => a.name === 'class')
+      const at = node.attrs.findIndex((a) => a.name === 'class' && a.kind !== 'event')
       const own = node.attrs[at]
       if (!own) node.attrs.push({ kind: 'static', name: 'class', value: cls, start: node.start })
       else if (own.kind === 'static') node.attrs[at] = { ...own, value: own.value === true || !own.value ? cls : `${own.value} ${cls}` }
       else if (own.kind === 'interp') own.parts.push(` ${cls}`)
-      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr.startsWith('__cl_classValue(') ? own.expr : `__cl_classValue(${own.expr})`, start: own.start }, ` ${cls}`], start: own.start }
+      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr.startsWith('__cl_classValue(') ? own.expr : `__cl_classValue((${own.expr}))`, start: own.start }, ` ${cls}`], start: own.start }
     }
   }
 }
@@ -122,14 +124,15 @@ function markSlotContent(nodes: TemplateNode[], cls: string, components: Set<str
 function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>, slots = false): void {
   for (const node of nodes) {
     if (node.type === 'element' && !components.has(node.tag) && !UNMARKED.has(node.tag)) {
-      const at = node.attrs.findIndex((a) => a.name === 'class')
+      const at = node.attrs.findIndex((a) => a.name === 'class' && a.kind !== 'event')
       const own = node.attrs[at]
       const passed = { expr: '__cl_class', start: node.start }
       if (!own) node.attrs.push({ kind: 'interp', name: 'class', parts: [cls, passed], start: node.start })
       else if (own.kind === 'static') node.attrs[at] = { kind: 'interp', name: 'class', parts: [own.value === true || !own.value ? cls : `${own.value} ${cls}`, passed], start: own.start }
       else if (own.kind === 'interp') own.parts.push(` ${cls}`, passed)
       // ponytail: a bound [class] that is null/false still gets the scope class (the class can't go away entirely).
-      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr, start: own.start }, ` ${cls}`, passed], start: own.start }
+      // classValue: the bound value may be an object or an array (#403), joined here with the scope class as text.
+      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr.startsWith('__cl_classValue(') ? own.expr : `__cl_classValue((${own.expr}))`, start: own.start }, ` ${cls}`, passed], start: own.start }
     } else if (node.type === 'element' && components.has(node.tag)) {
       // Content passed to a component (#418: a page's content inside its layout) is this component's own: its
       // top-level elements get the scope class too (not the class passed to this component, which is for its own

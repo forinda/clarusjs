@@ -1,0 +1,10 @@
+{{-- Class forms: a toggle, an object and an array, merged with the written class; reactive in an island. --}}
+<script>
+  let open = state(false)
+  let size = state('big')
+</script>
+
+<button type="button" class="tab" [class.open]="open" (click)="open = !open">Toggle</button>
+<p [class]="{ shown: open, [size]: true }">Object</p>
+<p [class]="['card', open && 'card-open']">Array</p>
+<p class="note">Untouched</p>

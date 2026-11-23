@@ -22,7 +22,8 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     hasHoles && 'holes as __cl_holes',
     hasHoles && 'text as __cl_text',
     ir.events.length > 0 && 'on as __cl_on',
-    all.some((n) => n.kind === 'attr' && n.reactive) && 'attr as __cl_attr',
+    all.some((n) => n.kind === 'attr' && n.reactive && n.name !== '...') && 'attr as __cl_attr',
+    all.some((n) => n.kind === 'attr' && n.reactive && n.name === '...') && 'spread as __cl_spread',
     hasBlocks && 'block as __cl_block',
     hasFors && 'forBlock as __cl_for',
     all.some((n) => n.kind === 'for' && n.block >= 0 && rowNames(n, ir.events).some((x) => x !== '$count')) && 'derived as __cl_derived',
@@ -32,10 +33,13 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     ir.inputs.some((i) => kinds.has('input') || i.model) && 'batch as __cl_batch',
     // Branch and row HTML is rendered in the browser with the same helpers as on the server.
     rendersHtml && 'escape as __cl_escape',
-    rendersHtml && all.some((n) => n.kind === 'attr') && 'attrHtml as __cl_attrHtml',
+    rendersHtml && all.some((n) => n.kind === 'attr' && n.name !== '...') && 'attrHtml as __cl_attrHtml',
+    rendersHtml && all.some((n) => n.kind === 'attr' && n.name === '...') && 'spreadHtml as __cl_spreadHtml',
     rendersHtml && hasBlocks && 'blockHtml as __cl_blockHtml',
     rendersHtml && hasFors && 'forHtml as __cl_forHtml',
     hasRegions && 'regionHtml as __cl_regionHtml',
+    all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_classValue(')) && 'classValue as __cl_classValue',
+    all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_styleValue(')) && 'styleValue as __cl_styleValue',
   ].filter(Boolean)
 
   let out = used.length ? `import { ${used.join(', ')} } from 'clarusjs/runtime'\n` : ''
@@ -96,7 +100,8 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
   if (holes.length) lines.push(`const __cl_h = __cl_holes(${ctx})`)
   for (const h of [...holes].sort((a, b) => a.index - b.index)) lines.push(`__cl_text(__cl_h[${h.index}], () => ${wrapExpr(rw.expr(h.expr))})`)
   for (const a of nodes) {
-    if (a.kind === 'attr' && a.reactive) lines.push(`__cl_attr(${ctx}, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, rw.expr)}${tagArg(a)})`)
+    if (a.kind === 'attr' && a.reactive && a.name === '...') lines.push(`__cl_spread(${ctx}, ${a.index}, () => ${attrValueExpr(a.value, rw.expr)}, ${JSON.stringify(a.skip ?? [])}, ${JSON.stringify(a.tag)})`)
+    else if (a.kind === 'attr' && a.reactive) lines.push(`__cl_attr(${ctx}, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, rw.expr)}${tagArg(a)})`)
     if (a.kind === 'connect') lines.push(`__cl_connect(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)
   }
   for (const e of ir.events.filter((ev) => ev.scope === scope)) {
