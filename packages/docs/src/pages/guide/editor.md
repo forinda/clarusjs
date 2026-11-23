@@ -11,7 +11,7 @@ description: "Editor support for .tscl templates: the clarusjs language server i
 
 ## VS Code
 
-Install **clarusjs** (`forinda.clarusjs-vscode`) from the Extensions view. It runs [the language server](#the-language-server) for you, so it gives everything listed there, plus (hover and completion inside expressions and scripts come from TypeScript: see below):
+Install **clarusjs** (`forinda.clarusjs-vscode`) from the Extensions view, and keep it up to date: it bundles the language server, so new template features reach the editor with the extension's releases. A version older than the project's clarusjs can report what it doesn't know yet as errors (before 0.3.0, every `<icon>` showed *icons are resolved at build time*), though the site builds fine. It runs [the language server](#the-language-server) for you, so it gives everything listed there, plus (hover and completion inside expressions and scripts come from TypeScript: see below):
 
 - **Highlighting.** HTML, with TypeScript wherever a template holds code: `{{ }}` holes, `[prop]`, `(event)` and `[(model)]` bindings, `@if`/`@for` conditions, `@input`/`@model` types, `@type`/`@interface` and `<script>`. CSS in `<style>`, and `{{-- comments --}}`.
 - **Snippets.** Type the prefix and press Tab:
@@ -33,7 +33,8 @@ Install **clarusjs** (`forinda.clarusjs-vscode`) from the Extensions view. It ru
 
 - **Template errors as you type,** from the clarusjs compiler, at their place.
 - **HTML, CSS and Emmet** in templates and `<style>`, with the binding forms of attributes: `[disabled]`, `(click)`, and `[(value)]`/`[(checked)]` on fields.
-- **Components:** the components a file imports complete as tags; inside `<card ` the completions offer its inputs (`[title]`), its models (`[(value)]`) and the events its script sends (`(rate)`). Hover `<card>` for where it comes from and what it takes; go to definition from the tag or its `@import`.
+- **Components:** the components a file imports complete as tags; inside `<card ` the completions offer its inputs (`[title]`), its models (`[(value)]`) and the events its script sends (`(rate)`). Hover `<card>` for where it comes from and what it takes, or one of its attributes (`[title]`, `[(open)]`, `(rate)`) for that input's type and default, or the event; go to definition from the tag or its `@import`.
+- **Icons:** `<icon name="…">` completes set and icon names from the sets the project installed, with a preview, and hovering the name shows the icon. An unknown name or a missing set is an error at its place.
 - **References and renames:** Find All References on a component; rename a component in a file; renaming or moving a `.tscl` file updates every `@import` that points to it, Markdown pages included.
 - **Semantic colouring** of the template syntax, for editors without the TextMate grammar.
 
@@ -46,6 +47,20 @@ npm install -g @clarusjs/language-server
 Installed in a project instead (`npm install -D @clarusjs/language-server`), the command is `node_modules/.bin/clarusjs-ls`: give editors that path in place of `clarusjs-ls`.
 
 **Trust.** Started with `initializationOptions: { trusted: true }`, the server uses the project's own `clarusjs` compiler (when it's recent enough), so the editor agrees with the build; otherwise the one bundled with it. That runs code from the project's `node_modules/clarusjs`, so set it only for projects you trust (the examples below set it; drop it for others). VS Code passes your workspace trust.
+
+### What hovers without TypeScript, and what needs it
+
+The language server reads templates; it doesn't know your types. TypeScript does, through the content mapper below:
+
+| You hover | Without the content mapper | With it (TypeScript 7.1) |
+|---|---|---|
+| a component tag, `<card>` | where it comes from, its inputs, models and events | the same |
+| a component's attribute, `[title]` | the input's declared type and default | the same, and the bound value's type |
+| an `<icon>` name | the icon | the same |
+| a variable or function in `<script>` | nothing | its type, its signature, go to definition |
+| an expression in `{{ }}` or a binding | nothing | its type, and type errors as you type |
+
+So hovering `stamp` in a script, or `notes.value` in a hole, shows nothing until the content mapper is set up.
 
 ## Type errors as you type
 
@@ -61,7 +76,9 @@ Add it to `tsconfig.json`, next to `compilerOptions`:
 }
 ```
 
-- **TypeScript 7.1 or later.** On 7.0 the entry is ignored; `clarusjs check` (below) works on both.
+- **TypeScript 7.1 or later.** On 7.0 the entry is ignored; `clarusjs check` (below) works on both. While 7.1 is in beta, install it with `npm install -D typescript@beta`.
+- **VS Code must use the project's TypeScript.** Open a `.tscl` or `.ts` file, run **TypeScript: Select TypeScript Version** from the Command Palette and pick **Use Workspace Version**. The TypeScript VS Code bundles may be older than 7.1, and then the mapper doesn't run.
+- **`paths` start with `./`.** TypeScript 7 has no `baseUrl`, so a `paths` target is relative to the `tsconfig.json` and must say so: `"~/*": ["./src/*"]`. Without the `./`, TypeScript stops with `TS5090: Non-relative paths are not allowed`, and nothing is checked.
 - **Trust.** A mapper is code that runs while TypeScript checks: VS Code runs it in a trusted workspace, and `tsc` only with `--runExternalCode` (`tsc --noEmit --runExternalCode`).
 - **Template syntax errors** (an unclosed `@if` or `<div>`, while you type) are reported as `clarus` errors, and the rest of the file keeps its hover, completion and errors in the editor. `tsc` on the command line, as for any syntax error, reports type errors again once it's fixed.
 - **Scripts are JavaScript.** Parameters of a script's own functions are typed `any`, so a strict project doesn't flag them; callbacks keep the type their context gives them.
