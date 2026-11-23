@@ -817,12 +817,16 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
             // Every page loads Vite's client in dev, islands or not: a page that ships no JavaScript would otherwise
             // never hear a change (a <style> edit, a layout edit) and keep showing the old one until a manual reload.
             if (html && req.method !== 'HEAD') {
-              const text = await response.text()
-              const client = `<script type="module" src="${server.config.base}@vite/client"></script>`
-              const out = /<\/head>/i.test(text) && !text.includes('/@vite/client') ? text.replace(/<\/head>/i, `${client}</head>`) : text
-              const headers = new Headers(response.headers)
-              headers.delete('content-length')
-              response = new Response(out, { status: response.status, statusText: response.statusText, headers })
+              // Read a copy: a response that isn't changed (a fragment, a bodyless 304) is sent as it came.
+              const text = await response.clone().text()
+              // An existing client is a <script> loading it, not the URL written anywhere (a code sample).
+              const has = /<script\b[^>]*\ssrc=["'][^"']*\/@vite\/client["']/i.test(text)
+              if (!has && /<\/head>/i.test(text)) {
+                const client = `<script type="module" src="${server.config.base}@vite/client"></script>`
+                const headers = new Headers(response.headers)
+                headers.delete('content-length')
+                response = new Response(text.replace(/<\/head>/i, `${client}</head>`), { status: response.status, statusText: response.statusText, headers })
+              }
             }
             await sendResponse(res, response)
           } catch (err) {
