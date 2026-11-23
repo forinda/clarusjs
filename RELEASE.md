@@ -76,7 +76,7 @@ looks up pull requests on GitHub. CI provides one automatically.
 
 ## VS Code extension
 
-`packages/vscode` (`clarusjs-vscode`, publisher `forinda`: `forinda.clarusjs-vscode` on the Marketplace) is private to the workspace: it has no changesets, and the release workflow doesn't touch it. It's versioned and published by hand. The extension bundles the language server (`@clarusjs/language-server`, which bundles the `clarusjs` compiler), so changes to either reach VS Code only with the extension's next release: release the extension after a release that changes them. Type checking inside templates comes from the `clarusjs` package (the content mapper), released as usual.
+`packages/vscode` (`clarusjs-vscode`, publisher `forinda`: `forinda.clarusjs-vscode` on the Marketplace) is private to the workspace: it has no changesets (a changeset naming it would never be consumed and would stop the release workflow from publishing, so `pnpm test` fails on one; note the change under `## Unreleased` in its CHANGELOG instead), and the release workflow doesn't touch it. It's versioned and published by hand. The extension bundles the language server (`@clarusjs/language-server`, which bundles the `clarusjs` compiler), so changes to either reach VS Code only with the extension's next release: release the extension after a release that changes them. Type checking inside templates comes from the `clarusjs` package (the content mapper), released as usual.
 
 1. **Changelog and version**, in a PR named `chore(vscode): release X.Y.Z`:
    - add `## X.Y.Z` at the top of `packages/vscode/CHANGELOG.md`, written for users like the entries below it;
