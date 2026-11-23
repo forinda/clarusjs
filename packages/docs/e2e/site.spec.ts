@@ -451,7 +451,7 @@ test('the generated Netlify function serves only the server routes', async () =>
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
   // The pages and endpoints, each with its fragment path (endpoints have none: a 404).
-  expect(fn).toContain('export const config = {"path":["/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
+  expect(fn).toContain('export const config = {"path":["/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -1637,10 +1637,10 @@ test('#259 h(): the playground builds HTML in load() with h(), and the page show
   await expect(built.locator('em')).toHaveText('built with h()')
 })
 
-test('#241 forms: a checkbox group and a <select multiple> bind arrays, starting from the server\'s selection', async ({ page }) => {
-  // Before JavaScript: the server already rendered the choices.
-  const html = await (await page.request.get('/guide/forms')).text()
-  expect(html).toMatch(/<option value="en"[^>]* selected/) // an option from @for, selected by the server
+test('#241 forms: a checkbox group and the languages combobox bind arrays, starting from the server\'s selection', async ({ page }) => {
+  // Before JavaScript: the server already rendered the choices (the checkbox checked, the language's chip).
+  const html = (await (await page.request.get('/guide/forms')).text()).replace(/<!--.*?-->/g, '')
+  expect(html).toMatch(/<span class="chip[^"]*">English\s*<button/)
   await page.goto('/guide/forms')
   const form = page.locator('form.signup').first()
   await expect(page.locator('cl-island[c="signup-form"]').first()).toHaveAttribute('data-cl-ready', '')
@@ -1648,7 +1648,9 @@ test('#241 forms: a checkbox group and a <select multiple> bind arrays, starting
   await expect(out).toHaveText("Topics: news · Languages: en")
   await form.getByRole('checkbox', { name: 'Releases' }).check()
   await form.getByRole('checkbox', { name: 'News' }).uncheck()
-  await form.getByLabel('Languages').selectOption(['en', 'sw'])
+  const languages = form.getByRole('combobox', { name: 'Languages' })
+  await languages.fill('kis')
+  await languages.press('Enter')
   await expect(out).toHaveText('Topics: releases · Languages: en, sw')
 })
 
@@ -2034,4 +2036,72 @@ test('#430 @await: the island shows Loading, then the rows; Next page loads agai
   failNext = true
   await demo.getByRole('button', { name: 'Next page' }).click()
   await expect(demo.getByRole('alert')).toHaveText("Couldn't load page 3.")
+})
+
+test('combobox: search narrows the list; one pick by keyboard and by click; several as chips, removed by button and Backspace', async ({ page }) => {
+  await page.goto('/guide/forms#a-combobox')
+  const demo = page.locator('#combobox-demo')
+  for (const island of await demo.locator('cl-island').all()) await expect(island).toHaveAttribute('data-cl-ready', '')
+  const picked = demo.locator('.picked code')
+  await expect(picked).toHaveText('{"country":"","languages":["en"],"city":""}')
+  // One pick: type to search, arrows to move, Enter to pick; the field then shows its label.
+  const country = demo.getByRole('combobox', { name: 'Country' })
+  await expect(country).toHaveAttribute('aria-expanded', 'false')
+  await country.fill('an')
+  await expect(country).toHaveAttribute('aria-expanded', 'true')
+  const countries = demo.getByRole('listbox', { name: 'Country' })
+  await expect(countries.getByRole('option')).toHaveText(['Ghana', 'Tanzania', 'Uganda', 'Rwanda'])
+  await country.press('ArrowDown')
+  await expect(country).toHaveAttribute('aria-activedescendant', 'demo-country-tz')
+  await country.press('Enter')
+  await expect(picked).toHaveText('{"country":"tz","languages":["en"],"city":""}')
+  await expect(country).toHaveValue('Tanzania')
+  await expect(countries).toBeHidden()
+  // Nothing matches: said so; Esc closes.
+  await country.fill('zzz')
+  await expect(demo.getByRole('status').first()).toHaveText('No match for "zzz"')
+  await country.press('Escape')
+  await expect(country).toHaveAttribute('aria-expanded', 'false')
+  // By click.
+  await country.click()
+  await countries.getByRole('option', { name: 'Kenya' }).click()
+  await expect(picked).toHaveText('{"country":"ke","languages":["en"],"city":""}')
+  // Several: chips, each with a remove button; the list stays open; Backspace removes the last one.
+  const languages = demo.getByRole('combobox', { name: 'Languages' })
+  await languages.click()
+  const list = demo.getByRole('listbox', { name: 'Languages' })
+  await expect(list).toHaveAttribute('aria-multiselectable', 'true')
+  await list.getByRole('option', { name: 'Swahili' }).click()
+  await languages.fill('fr')
+  await languages.press('Enter')
+  await expect(picked).toHaveText('{"country":"ke","languages":["en","sw","fr"],"city":""}')
+  await expect(list.getByRole('option', { name: /English/ })).toHaveAttribute('aria-selected', 'true')
+  await demo.getByRole('button', { name: 'Remove English' }).click()
+  await expect(picked).toHaveText('{"country":"ke","languages":["sw","fr"],"city":""}')
+  await languages.press('Backspace')
+  await expect(picked).toHaveText('{"country":"ke","languages":["sw"],"city":""}')
+  // Leaving closes it.
+  await page.getByRole('heading', { name: 'A combobox' }).click()
+  await expect(list).toBeHidden()
+})
+
+test('combobox: options from the server, asked once typing pauses, the newest search wins; the pick keeps its label', async ({ page }) => {
+  const asked: string[] = []
+  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-cities') asked.push(u.searchParams.get('q')!) })
+  await page.goto('/guide/forms#a-combobox')
+  const demo = page.locator('#combobox-demo')
+  for (const island of await demo.locator('cl-island').all()) await expect(island).toHaveAttribute('data-cl-ready', '')
+  expect(asked).toEqual([]) // nothing until it opens
+  const city = demo.getByRole('combobox', { name: 'City' })
+  await city.pressSequentially('nai', { delay: 30 }) // keys closer than the 200 ms debounce: one search
+  await expect(demo.getByRole('listbox', { name: 'City' }).getByRole('option')).toHaveText(['Nairobi'])
+  expect(asked.filter((q) => q !== '')).toEqual(['nai'])
+  await city.press('Enter')
+  await expect(demo.locator('.picked code')).toHaveText('{"country":"","languages":["en"],"city":"nairobi"}')
+  await expect(city).toHaveValue('Nairobi') // its label, though no search lists it now
+  // Searching: said while the server works.
+  await city.click()
+  await city.fill('lu')
+  await expect(demo.getByRole('status').filter({ hasText: 'Searching…' })).toBeVisible()
+  await expect(demo.getByRole('listbox', { name: 'City' }).getByRole('option')).toHaveText(['Luanda', 'Lusaka'])
 })

@@ -1,0 +1,268 @@
+{{--
+  A combobox: pick one option, or several with [multiple]="true", from a list you can search by typing.
+  Copy this file into your project. Bind the pick with [(value)] (a string), or the picks with [(values)] (a list).
+
+  <combobox [id]="'country'" [label]="'Country'" [options]="countries" [(value)]="form.country" />
+  <combobox [id]="'topics'" [label]="'Topics'" [options]="topics" [multiple]="true" [(values)]="form.topics" />
+
+  Remote options: give [src] a URL; typing asks it for `src?q=<search>` (JSON: [{ value, label }]), 200 ms after the
+  last key, and the newest search wins. <combobox [id]="'city'" [label]="'City'" [src]="'/api/cities'" [(value)]="city" />
+
+  Keyboard: ↑ ↓ move, Home / End jump, Enter picks, Esc closes, Backspace in an empty search removes the last pick.
+  Give each one its own id: its listbox and options are named after it.
+--}}
+@type Option = { value: string; label: string }
+@input id: string = 'combobox'
+@input label: string = 'Fruit'
+@input options: Option[] = [
+  { value: 'apple', label: 'Apple' },
+  { value: 'apricot', label: 'Apricot' },
+  { value: 'banana', label: 'Banana' },
+  { value: 'cherry', label: 'Cherry' },
+  { value: 'grape', label: 'Grape' },
+  { value: 'mango', label: 'Mango' },
+  { value: 'orange', label: 'Orange' },
+  { value: 'pear', label: 'Pear' },
+]
+@input multiple: boolean = false
+@input placeholder: string = 'Search…'
+@input src: string = ''
+@model value: string = ''
+@model values: string[] = []
+
+<script>
+  import { json, resource } from 'clarusjs/fetch'
+  let query = state('')
+  let term = state('') // the search sent to src: the query, 200 ms after the last key
+  let known = state({}) // labels of remote options picked, by value (the next search may not list them)
+  let timer
+  let open = state(false)
+  let active = state(0)
+  // What's chosen, as a list in both modes.
+  const chosen = derived(() => (multiple ? values : value ? [value] : []))
+  // With src: the server's answer for the term, cached by it; nothing is asked until the list opens.
+  const remote = resource(
+    ({ signal }) =>
+      src && open ? json(src + (src.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(term), { signal }) : false,
+    { key: () => (src && open ? ['combobox', src, term] : false) },
+  )
+  // The options matching what's typed (by label, ignoring case), or the server's.
+  const shown = derived(() => {
+    if (src) return remote.value ?? []
+    const q = query.trim().toLowerCase()
+    return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options
+  })
+  const labelOf = (v) => known[v] ?? options.find((o) => o.value === v)?.label ?? v
+  const status = derived(() => {
+    if (!open) return ''
+    if (src && remote.loading) return 'Searching…'
+    if (src && remote.error) return "Couldn't load the options."
+    return shown.length ? '' : 'No match for "' + query + '"'
+  })
+
+  function show() {
+    open = true
+    active = Math.max(
+      0,
+      shown.findIndex((o) => chosen.includes(o.value)),
+    )
+  }
+  function pick(option) {
+    if (src) known = { ...known, [option.value]: option.label }
+    if (multiple) {
+      values = chosen.includes(option.value) ? chosen.filter((v) => v !== option.value) : [...chosen, option.value]
+    } else {
+      value = option.value
+      open = false
+    }
+    query = ''
+    term = ''
+  }
+  function remove(v) {
+    values = chosen.filter((x) => x !== v)
+  }
+  function type(text) {
+    query = text
+    open = true
+    active = 0
+    clearTimeout(timer)
+    timer = setTimeout(() => (term = text), src ? 200 : 0)
+  }
+  function key(event) {
+    const last = shown.length - 1
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (!open) return show()
+      active = event.key === 'ArrowDown' ? Math.min(active + 1, last) : Math.max(active - 1, 0)
+    } else if (open && (event.key === 'Home' || event.key === 'End')) {
+      event.preventDefault()
+      active = event.key === 'Home' ? 0 : last
+    } else if (event.key === 'Enter' && open && shown[active]) {
+      event.preventDefault()
+      pick(shown[active])
+    } else if (event.key === 'Escape' && open) {
+      event.preventDefault()
+      open = false
+      query = '' // back to what's chosen
+    } else if (event.key === 'Backspace' && multiple && !query && chosen.length) {
+      remove(chosen[chosen.length - 1])
+    }
+  }
+  // Closes when focus leaves the whole combobox (a click outside, Tab away).
+  function leave(event) {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      open = false
+      query = ''
+    }
+  }
+</script>
+
+<div class="combobox" (focusout)="leave($event)">
+  <label [for]="id + '-input'">{{ label }}</label>
+  <div class="control">
+    @if (multiple) {
+      @for (v of chosen; track v) {
+        <span class="chip"
+          >{{ labelOf(v) }}
+          <button type="button" [aria-label]="'Remove ' + labelOf(v)" (click)="remove(v)">×</button></span
+        >
+      }
+    }
+    <input
+      [id]="id + '-input'"
+      role="combobox"
+      autocomplete="off"
+      aria-autocomplete="list"
+      [aria-expanded]="open ? 'true' : 'false'"
+      [aria-controls]="id + '-list'"
+      [aria-activedescendant]="open && shown[active] ? id + '-' + shown[active].value : false"
+      [placeholder]="multiple || !chosen.length ? placeholder : false"
+      [value]="open || multiple ? query : labelOf(value)"
+      (input)="type($event.target.value)"
+      (click)="show()"
+      (keydown)="key($event)"
+    />
+  </div>
+  <ul
+    [id]="id + '-list'"
+    role="listbox"
+    [aria-label]="label"
+    [aria-multiselectable]="multiple ? 'true' : false"
+    [hidden]="!open"
+    (mousedown)="$event.preventDefault()"
+  >
+    @for (option of shown; track option.value) {
+      <li
+        [id]="id + '-' + option.value"
+        role="option"
+        [aria-selected]="chosen.includes(option.value) ? 'true' : 'false'"
+        [class.active]="$index === active"
+        (click)="pick(option)"
+      >
+        {{ option.label }}
+      </li>
+    }
+  </ul>
+  <p class="empty" role="status">{{ status }}</p>
+</div>
+
+<style scoped>
+  :scope {
+    position: relative;
+    display: grid;
+    gap: 6px;
+    max-width: 360px;
+  }
+  label {
+    font: 600 13px var(--sans);
+    color: var(--muted);
+  }
+  .control {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    min-height: 32px;
+    padding: 2px 6px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--bg);
+  }
+  .control:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  input {
+    flex: 1;
+    min-width: 6ch;
+    min-height: 26px;
+    border: 0;
+    padding: 0 4px;
+    background: none;
+    color: var(--fg);
+    font: 14px var(--sans);
+    outline: none;
+  }
+  input::placeholder {
+    color: var(--muted);
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 2px 0 8px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--fg);
+    font-size: 13px;
+  }
+  .chip button {
+    min-width: 24px;
+    min-height: 24px;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .chip button:hover {
+    color: var(--accent);
+  }
+  ul {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    max-height: 240px;
+    overflow-y: auto;
+    margin: 4px 0 0;
+    padding: 4px;
+    list-style: none;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--bg);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  }
+  li {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  li.active {
+    background: var(--accent-soft);
+  }
+  li[aria-selected='true']::after {
+    content: ' ✓';
+    color: var(--accent);
+  }
+  .empty {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .empty:empty {
+    display: none;
+  }
+</style>
