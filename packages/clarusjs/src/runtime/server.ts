@@ -26,6 +26,21 @@ export function join(parts: unknown[]): string | Promise<string> {
   return parts.some((p) => p instanceof Promise) ? Promise.all(parts).then((all) => all.join('')) : parts.join('')
 }
 
+/**
+ * An @await outside islands (#430): the server waits for the promise and renders @then with the value or @catch
+ * with the error; without @catch, a rejection fails the render. @internal
+ */
+export async function awaitHtml(promise: unknown, then: ((v: unknown) => string | Promise<string>) | null, caught: ((e: unknown) => string | Promise<string>) | null): Promise<string> {
+  let value: unknown
+  try {
+    value = await promise
+  } catch (err) {
+    if (!caught) throw err
+    return caught(err)
+  }
+  return then ? then(value) : ''
+}
+
 /** A child component's HTML inside an island: a promise (it awaits) is an error naming both. @internal */
 export function sync(html: string | Promise<string>, child: string, island: string): string {
   if (typeof html === 'string') return html

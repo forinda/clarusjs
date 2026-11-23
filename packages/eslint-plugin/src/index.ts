@@ -37,6 +37,7 @@ function* expressions(nodes: TemplateNode[]): Generator<string> {
     } else if (n.type === 'if') for (const b of n.branches) { if (b.cond) yield b.cond; yield* expressions(b.children) }
     else if (n.type === 'for') { yield n.list; if (n.track) yield n.track; yield* expressions(n.children); if (n.empty) yield* expressions(n.empty) }
     else if (n.type === 'fill') yield* expressions(n.children)
+    else if (n.type === 'await') { yield n.expr; for (const kids of [n.pending, ...(n.then ? [n.then.children] : []), ...(n.catch ? [n.catch.children] : [])]) yield* expressions(kids) }
   }
 }
 

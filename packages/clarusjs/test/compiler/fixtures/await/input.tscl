@@ -1,0 +1,17 @@
+{{-- #430: an island that loads a user's posts in the browser. The server renders "Loading…"; the browser swaps in
+     the posts (or the error) when the promise settles, and loads again when `user` changes. --}}
+<script>
+  let user = state(1)
+  const posts = (id) => fetch(`https://jsonplaceholder.typicode.com/posts?userId=${id}`).then((r) => r.json())
+</script>
+
+<section>
+  @await (posts(user)) {
+    <p>Loading…</p>
+  } @then (list) {
+    <p>{{ list.length }} posts by user {{ user }}</p>
+    <button (click)="user = user + 1">Next user</button>
+  } @catch (error) {
+    <p role="alert">{{ error.message }}</p>
+  }
+</section>

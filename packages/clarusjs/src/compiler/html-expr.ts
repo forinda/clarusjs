@@ -20,7 +20,7 @@ export const asWritten: Rewriter = { expr: (e) => e, without: () => asWritten }
 export type ServerCtx = { island: string | null }
 
 /** Could this HTML be a promise: does it call a component or place a slot (whose content may await)? */
-const mayWait = (nodes: IRNode[]) => walk(nodes).some((n) => n.kind === 'component' || n.kind === 'slot')
+const mayWait = (nodes: IRNode[]) => walk(nodes).some((n) => n.kind === 'component' || n.kind === 'slot' || (n.kind === 'await' && n.block < 0))
 
 export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: ServerCtx): string {
   const parts = nodes.map((n) => {
@@ -40,6 +40,13 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: Server
       }
       const branches = n.branches.map((b) => `() => ${htmlExpr(b.nodes, rw, ctx)}`).join(', ')
       return `__cl_blockHtml(${n.block}, ${whichExpr(n, rw)}, [${branches}])`
+    }
+    if (n.kind === 'await') {
+      // In an island (server, and branch HTML in the browser): the pending branch; the browser swaps in the rest.
+      if (n.block >= 0) return `__cl_blockHtml(${n.block}, 0, [() => ${htmlExpr(n.pending, rw, ctx)}])`
+      // Outside islands the server awaits it: @then's HTML with the value, or @catch's with the error.
+      const branch = (b: { name: string; nodes: IRNode[] } | null) => (b ? `(${b.name}) => ${htmlExpr(b.nodes, rw.without([b.name]), ctx)}` : 'null')
+      return `__cl_awaitHtml(${wrapExpr(rw.expr(n.expr))}, ${branch(n.then)}, ${branch(n.catch)})`
     }
     if (n.kind === 'for') {
       const list = wrapExpr(rw.expr(n.list))
@@ -104,6 +111,7 @@ export function walk(nodes: IRNode[]): IRNode[] {
   return nodes.flatMap((n) => [
     n,
     ...(n.kind === 'if' ? n.branches.flatMap((b) => walk(b.nodes))
+      : n.kind === 'await' ? [...walk(n.pending), ...walk(n.then?.nodes ?? []), ...walk(n.catch?.nodes ?? [])]
       : n.kind === 'for' ? [...walk(n.nodes), ...walk(n.empty ?? [])]
       : n.kind === 'component' ? [...walk(n.children), ...n.fills.flatMap((f) => walk(f.nodes))]
       : n.kind === 'slot' ? walk(n.fallback)

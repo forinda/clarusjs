@@ -1565,8 +1565,8 @@ test('#258 fetching: cards batch into one request, the feed waits on the user an
 })
 
 test('#287 caching: seen pages make no request, invalidate refetches what\'s shown', async ({ page }) => {
-  const asked: string[] = [] // the page param of each list request (renames are left out)
-  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-records' && r.method() === 'GET') asked.push(u.searchParams.get('page')!) })
+  const asked: string[] = [] // the page param of each list request (renames, and the @await demo's size=3, left out)
+  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-records' && r.method() === 'GET' && u.searchParams.get('size') === '10') asked.push(u.searchParams.get('page')!) })
   await page.goto('/guide/fetching#caching')
   const list = page.locator('#record-list')
   await expect(list.locator('li').first()).toHaveText('Record 1')
@@ -2018,4 +2018,20 @@ test('#430 <script server>: /guide/explained computes its numbers and awaits the
   expect(html).not.toContain('child_process') // the server script's code and imports stay on the server
   await page.goto('/guide/explained')
   await expect(page.locator('.explained-stats li strong').first()).toHaveText(/^\d+$/)
+})
+
+test('#430 @await: the island shows Loading, then the rows; Next page loads again; a failure shows @catch', async ({ page }) => {
+  let failNext = false
+  await page.route('**/api/demo-records?page=*&size=3', (route) => (failNext ? route.fulfill({ status: 503, body: 'down' }) : route.continue()))
+  const html = await (await page.request.get('/guide/fetching')).text()
+  expect(html.replace(/<!--.*?-->/g, '')).toContain('Loading page 1…') // the server renders the pending branch
+  await page.goto('/guide/fetching#in-an-island-await')
+  const demo = page.locator('#await-demo')
+  await expect(demo.locator('li')).toHaveCount(3)
+  await expect(demo.locator('li').first()).toHaveText(/^Record 1( \(renamed\))?$/)
+  await demo.getByRole('button', { name: 'Next page' }).click()
+  await expect(demo.locator('li').first()).toHaveText(/^Record 4( \(renamed\))?$/)
+  failNext = true
+  await demo.getByRole('button', { name: 'Next page' }).click()
+  await expect(demo.getByRole('alert')).toHaveText("Couldn't load page 3.")
 })

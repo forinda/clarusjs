@@ -11,7 +11,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
   const kinds = new Set(ir.signals.values())
   const all = walk(ir.nodes)
   const hasHoles = all.some((n) => n.kind === 'hole' && n.reactive)
-  const hasBlocks = all.some((n) => n.kind === 'if' && n.block >= 0)
+  const hasBlocks = all.some((n) => (n.kind === 'if' || n.kind === 'await') && n.block >= 0)
   const hasFors = all.some((n) => n.kind === 'for' && n.block >= 0)
   const hasRegions = all.some((n) => n.kind === 'component' && n.region >= 0)
   const rendersHtml = hasBlocks || hasFors || hasRegions
@@ -25,6 +25,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     all.some((n) => n.kind === 'attr' && n.reactive && n.name !== '...') && 'attr as __cl_attr',
     all.some((n) => n.kind === 'attr' && n.reactive && n.name === '...') && 'spread as __cl_spread',
     hasBlocks && 'block as __cl_block',
+    all.some((n) => n.kind === 'await' && n.block >= 0) && 'awaited as __cl_awaited',
     hasFors && 'forBlock as __cl_for',
     all.some((n) => n.kind === 'for' && n.block >= 0 && rowNames(n, ir.events).some((x) => x !== '$count')) && 'derived as __cl_derived',
     hasRegions && 'region as __cl_region',
@@ -122,6 +123,19 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
       const branches = n.branches.map((b, i) =>
         `    { html: () => ${htmlExpr(b.nodes, rw)}, wire: ${fn('', wiring(ir, b.nodes, `${n.block}.${i}`, ctx, signals, depth))} },`)
       lines.push(`__cl_block(${ctx}, ${n.block}, () => ${whichExpr(n, rw)}, [\n${branches.join('\n')}\n  ])`)
+    }
+    if (n.kind === 'await' && n.block >= 0) {
+      // The promise's state (0 pending, 1 then, 2 catch) drives an ordinary block; @then / @catch get the value.
+      const a = `__cl_a${n.block}`
+      lines.push(`const ${a} = __cl_awaited(() => ${wrapExpr(rw.expr(n.expr))})`)
+      const named = (b: { name: string; nodes: IRNode[] } | null, k: number) => {
+        if (!b) return `    { html: () => "", wire: () => {} },`
+        const plain = rw.without([b.name])
+        const wire = wiring(ir, b.nodes, `${n.block}.${k}`, ctx, new Map([...signals].filter(([name]) => name !== b.name)), depth)
+        return `    { html: () => ((${b.name}) => ${htmlExpr(b.nodes, plain)})(${a}.v()), wire: ${fn('', wire.length ? [`const ${b.name} = ${a}.v()`, ...wire] : [])} },`
+      }
+      const branches = [`    { html: () => ${htmlExpr(n.pending, rw)}, wire: ${fn('', wiring(ir, n.pending, `${n.block}.0`, ctx, signals, depth))} },`, named(n.then, 1), named(n.catch, 2)]
+      lines.push(`__cl_block(${ctx}, ${n.block}, () => ${a}.k(), [\n${branches.join('\n')}\n  ])`)
     }
     if (n.kind === 'for' && n.block >= 0) {
       // In row HTML `item` and `$index` are plain values; while wiring a row they are that row's signals.
