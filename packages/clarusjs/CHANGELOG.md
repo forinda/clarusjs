@@ -1,5 +1,29 @@
 # clarusjs
 
+## 0.14.0
+
+### Minor Changes
+
+- [#438](https://github.com/forinda/clarusjs/pull/438) [`e78455e`](https://github.com/forinda/clarusjs/commit/e78455e2518ff3a9cfacb7b02aeb814764c00ef0) Thanks [@forinda](https://github.com/forinda)! - `@await (promise) { pending } @then (value) { … } @catch (error) { … }` ([#430](https://github.com/forinda/clarusjs/issues/430)). In an island the server renders the pending branch and the browser swaps in `@then` or `@catch` when the promise settles; when the expression's signals change a new promise starts, and only the newest one's answer shows. Outside islands the server awaits it and renders `@then` or `@catch` into the HTML (without `@catch`, a rejection fails the render). It reuses the `@if` block markers (`<!--[bN:0-->`). `clarusjs check` types `@then`'s name as the promise's value.
+
+- [#435](https://github.com/forinda/clarusjs/pull/435) [`39e91e8`](https://github.com/forinda/clarusjs/commit/39e91e85b3c7a20be06f8575083f1e000ac22318) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/fetch`: `action()`, for one-off async calls such as save, delete or like ([#429](https://github.com/forinda/clarusjs/issues/429)). It has `pending`, `error` and `result` for the template. `run(input)` never rejects (a failure lands in `error` and the callbacks); `runAsync(input)` does. A call while one runs joins it (no double submit), or with `concurrency: 'latest'` cancels it. It takes `abort()`, `timeout`, `onSuccess` / `onError` / `onSettled` (with the input), and `meta` for `configure()`'s handlers. Created in an island, a call in flight is cancelled when the island goes away.
+
+  A resource's or action's `timeout` is reported as a `TimeoutError` even when the client rejects with its own error on abort (axios: `CanceledError`). The Fetching guide shows axios, ky or your own client with `resource()` and `action()`.
+
+- [#434](https://github.com/forinda/clarusjs/pull/434) [`e22f57a`](https://github.com/forinda/clarusjs/commit/e22f57a12aa241c1d5f8033d35a437cc64d4e3e0) Thanks [@forinda](https://github.com/forinda)! - `clarusjs/fetch`: any response, cancelling, timeouts and error callbacks ([#431](https://github.com/forinda/clarusjs/issues/431)).
+
+  - `request(url, options)` reads the body by its `Content-Type` (JSON for `application/json` and `+json`, text for `text/*` and XML, else a `Blob`; `undefined` for a 204), or as `as` says (`json`, `text`, `blob`, `arrayBuffer`, `formData`, `stream`, `response`); `parse` adds your own readers per content type. A plain object or array `body` is sent as JSON. A non-2xx response throws with `status` and `data` (the error body). `timeout` aborts with a `TimeoutError`. `as` sets the result's type (`text`: `string`, `response`: `Response`…). `json()` and the new `text()` are its shorthands; a `json()` error now has `data` too.
+  - `resource()`: `abort()` cancels the run in flight (not an error), `timeout` fails a slow run (an error), and `onSuccess` / `onError` / `onSettled` run once per request, with `meta`.
+  - `configure({ onSuccess, onError })`: handlers every resource calls after its own callbacks, for toasts in one place; a callback returning `false` skips them.
+
+- [#437](https://github.com/forinda/clarusjs/pull/437) [`8215ea7`](https://github.com/forinda/clarusjs/commit/8215ea7cdbe851e8dbaf845601fbad5becdee2d0) Thanks [@forinda](https://github.com/forinda)! - `<script server>`: code that runs on the server while a page or component renders, and can `await` ([#430](https://github.com/forinda/clarusjs/issues/430)). Its names are there for the template, its imports never reach the browser (`node:` modules too), and it doesn't make the component an island. A component that awaits there renders asynchronously; its parents join what it returns, and stay synchronous when nothing they contain awaits. It isn't allowed in an island, inside one, or in a client route (located errors). The request handler, `render()` and `h()` from `clarusjs/views` await async renders, and component loaders' data now stays with its own render across `await`s (`AsyncLocalStorage`). An island's `<script>` still can't `await` at the top level; its error now names `<script server>` and `resource()`.
+
+### Patch Changes
+
+- [#445](https://github.com/forinda/clarusjs/pull/445) [`a0ee549`](https://github.com/forinda/clarusjs/commit/a0ee549af5a36b7b4ace50ab42627acd102d7259) Thanks [@forinda](https://github.com/forinda)! - In `vite dev`, every page loads Vite's client, islands or not. A page without islands loaded no JavaScript at all, so edits to its styles, its layout or a global stylesheet never reached the browser until a manual reload.
+
+- [#441](https://github.com/forinda/clarusjs/pull/441) [`f194846`](https://github.com/forinda/clarusjs/commit/f1948466a96d486f3067171c51290bb0297be839) Thanks [@forinda](https://github.com/forinda)! - A `.tscl` file imported with `?raw`, `?url` or `?inline` (a code sample, a playground example) is left to Vite instead of being compiled as a component, which failed the build.
+
 ## 0.13.0
 
 ### Minor Changes
