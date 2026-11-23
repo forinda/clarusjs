@@ -907,13 +907,31 @@ test('large forms: a section, lines bound by index, derived total and validation
   // The fields are islands of their own, attached separately: wait for them before typing.
   for (const field of await order.locator('cl-island[c="text-field"]').all()) await expect(field).toHaveAttribute('data-cl-ready', '')
   await expect(order.locator('.order-total')).toHaveText('Total: 4')
+  // Nothing is wrong before you've done anything; placeholders show what goes where.
+  await expect(order.getByRole('alert')).toHaveCount(0)
+  await expect(order.getByLabel('Name')).toHaveAttribute('placeholder', 'Ada Lovelace')
+  await expect(order.getByLabel('Email')).toHaveAttribute('placeholder', 'ada@example.com')
+  await expect(order.getByLabel('Item 1')).toHaveAttribute('placeholder', 'Item')
+  // A field's error shows under that field once you leave it, then follows what you type.
+  const nameField = order.locator('.text-field').filter({ has: page.getByLabel('Name') })
+  const emailField = order.locator('.text-field').filter({ has: page.getByLabel('Email') })
+  await order.getByLabel('Email').fill('ada@')
+  await expect(emailField.getByRole('alert')).toHaveCount(0) // still typing
+  await order.getByLabel('Name').focus() // left the email field
+  await expect(emailField.getByRole('alert')).toHaveText('Enter an email like ada@example.com.')
+  await expect(order.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true')
+  await order.getByLabel('Email').fill('ada@example.com')
+  await expect(emailField.getByRole('alert')).toHaveCount(0)
+  await expect(nameField.getByRole('alert')).toHaveText('Enter a name.') // Name was left empty (focused, then Email): its own error, under it
+  // Send shows what's still wrong, each under its field.
   await order.getByRole('button', { name: 'Send' }).click()
-  await expect(order.locator('.order-error')).toHaveText('Enter a name.')
+  await expect(nameField.getByRole('alert')).toHaveText('Enter a name.')
   await order.getByLabel('Name').fill('Ada')
+  await expect(nameField.getByRole('alert')).toHaveCount(0)
   await order.getByLabel('Quantity 1').fill('3')
   await expect(order.locator('.order-total')).toHaveText('Total: 12')
   await order.getByRole('button', { name: 'Add a line' }).click()
-  await expect(order.locator('.order-error')).toHaveText('Every line needs an item.')
+  await expect(order.locator('.order-lines-error')).toHaveText('Every line needs an item.')
   await order.getByLabel('Item 2').fill('Pen')
   await order.getByLabel('Price 2').fill('2.5')
   await expect(order.locator('.order-total')).toHaveText('Total: 14.5')
@@ -2084,4 +2102,11 @@ test('#430 @await: the island shows Loading, then the rows; Next page loads agai
   failNext = true
   await demo.getByRole('button', { name: 'Next page' }).click()
   await expect(demo.getByRole('alert')).toHaveText("Couldn't load page 3.")
+})
+
+test('form validation: every text field has a placeholder showing what to write', async ({ page }) => {
+  const demo = await stepsDemo(page)
+  await expect(demo.locator('#signup-name')).toHaveAttribute('placeholder', 'Ada Lovelace')
+  await expect(demo.locator('#signup-email')).toHaveAttribute('placeholder', 'ada@example.com')
+  await expect(demo.locator('#signup-username')).toHaveAttribute('placeholder', 'ada')
 })

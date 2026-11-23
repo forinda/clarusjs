@@ -44,21 +44,35 @@
     <legend>Your details</legend>
     <div class="field" data-cl-field>
       <label for="signup-name">Name</label>
-      <input id="signup-name" required minlength="2" autocomplete="off" [(value)]="signup.name" />
+      <input
+        id="signup-name"
+        required
+        minlength="2"
+        autocomplete="off"
+        placeholder="Ada Lovelace"
+        [(value)]="signup.name"
+      />
       <small data-cl-message></small>
     </div>
     <div class="field" data-cl-field>
       <label for="signup-email">Email</label>
-      <input id="signup-email" type="email" required autocomplete="off" [(value)]="signup.email" />
+      <input
+        id="signup-email"
+        type="email"
+        required
+        autocomplete="off"
+        placeholder="ada@example.com"
+        [(value)]="signup.email"
+      />
       <small data-cl-message></small>
     </div>
-    <div class="steps-nav"><button type="button" (click)="f.next()">Next</button></div>
+    <div class="steps-nav"><button type="button" class="primary" (click)="f.next()">Next</button></div>
   </fieldset>
   <fieldset id="signup-account" data-cl-step>
     <legend>Your account</legend>
     <div class="field" data-cl-field>
       <label for="signup-username">Username</label>
-      <input id="signup-username" required autocomplete="off" [(value)]="signup.username" />
+      <input id="signup-username" required autocomplete="off" placeholder="ada" [(value)]="signup.username" />
       <small data-cl-message></small>
     </div>
     <div class="field" data-cl-field>
@@ -71,7 +85,8 @@
       <small data-cl-message></small>
     </div>
     <div class="steps-nav">
-      <button type="button" (click)="f.back()">Back</button> <button type="button" (click)="f.next()">Next</button>
+      <button type="button" (click)="f.back()">Back</button>
+      <button type="button" class="primary" (click)="f.next()">Next</button>
     </div>
   </fieldset>
   <fieldset id="signup-confirm" data-cl-step>
@@ -81,7 +96,8 @@
       <small data-cl-message></small>
     </div>
     <div class="steps-nav">
-      <button type="button" (click)="f.back()">Back</button> <button [disabled]="f.submitting">Create account</button>
+      <button type="button" (click)="f.back()">Back</button>
+      <button class="primary" [disabled]="f.submitting">Create account</button>
     </div>
   </fieldset>
   @if (welcome) {
@@ -158,12 +174,44 @@
   }
   input:not([type='checkbox']),
   select {
-    font: inherit;
-    padding: 6px 10px;
+    min-height: 32px;
+    font: 14px var(--sans);
+    padding: 0 10px;
     border: 1px solid var(--rule);
-    border-radius: 8px;
+    border-radius: 6px;
     background: var(--bg);
     color: var(--fg);
+  }
+  /* Thin controls: 32px tall, 1px lines; the main action in the accent colour. */
+  button {
+    min-height: 32px;
+    padding: 0 12px;
+    font: 500 14px var(--sans);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+    transition:
+      border-color 0.15s,
+      color 0.15s;
+  }
+  button:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  button.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+  }
+  button.primary:hover:not(:disabled) {
+    color: var(--bg);
+    background: color-mix(in srgb, var(--accent) 85%, var(--fg));
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: default;
   }
   [aria-invalid='true'] {
     border-color: var(--bad);
