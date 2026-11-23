@@ -17,7 +17,7 @@ description: "Wrap content with <slot />, named slots and fallback content."
 <card><p>Inside the card.</p></card>
 ```
 
-The content belongs to the page that writes it, so its holes read the page's inputs. This is how layouts work: this site's layout is a component, and every page wraps its content in it.
+The content belongs to the page that writes it, so its holes read the page's inputs. This is how [layouts](/guide/layouts) work: this site's layout is a component, and every page wraps its content in it.
 
 ## Named slots
 
