@@ -69,6 +69,7 @@ It doubles as the end-to-end test of the framework: `pnpm docs:test` builds it a
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and changesets, and [AGENTS.md](AGENTS.md) for the layout and
 the rules the code follows. Report security problems privately as described in [SECURITY.md](SECURITY.md).
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

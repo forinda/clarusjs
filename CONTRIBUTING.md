@@ -9,6 +9,8 @@ small reproduction, fixes with tests, and feedback on the design in [docs/archit
 - **Features and design changes:** open an issue first. Some things are fixed on purpose (the HTML markers, the rule
   that server code never reaches the client), and it's better to talk before you write code.
 - **Security problems:** don't open an issue; follow [SECURITY.md](SECURITY.md).
+- **Conduct:** everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md), which also says how to report a
+  problem privately.
 
 ## Setup
 
