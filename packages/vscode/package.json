@@ -95,7 +95,7 @@
   "devDependencies": {
     "@clarusjs/language-server": "workspace:*",
     "@types/node": "^26.6.6",
-    "@types/vscode": "~1.91.0",
+    "@types/vscode": "~1.146.0",
     "@volar/test-utils": "~2.4.31",
     "@vscode/vsce": "^4.1.1",
     "clarusjs": "workspace:*",
