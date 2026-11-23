@@ -261,7 +261,10 @@ test('#40: a page links the stylesheets it imports, processed and hashed by Vite
 // Loaded only by islands with [engine], so pages without forms pay nothing (checked below).
 // 2.5 KB (was 1.5): the keyed result cache (#287: keys, freshness, invalidate, setData, prefetch, dropping unused
 // entries) goes into the same entry, which is at 1.49 KB without it.
-test('size budget: clarusjs/fetch stays within 2.5 KB gzip on its own, and a site without it ships none of it', async () => {
+// 4 KB: #431 (request() for any response type, bodies, timeout, abort(), callbacks and configure()) takes the whole
+// module from 2,535 B to 3,190 B, and #429's action() adds ~0.4 KB. An island pays only for what it imports: the
+// common resource + json is checked on its own below (2,070 B before #431, 2,689 B with it).
+test('size budget: clarusjs/fetch stays within 4 KB gzip on its own, and a site without it ships none of it', async () => {
   const { build: viteBuild } = await import('vite')
   const out = (await viteBuild({
     configFile: false, logLevel: 'silent',
@@ -269,10 +272,23 @@ test('size budget: clarusjs/fetch stays within 2.5 KB gzip on its own, and a sit
   })) as { output: { type: string; code?: string }[] }[]
   const code = out[0]!.output.find((o) => o.type === 'chunk')!.code!
   const size = gzipSync(code, { level: 9 }).length
-  expect(size, `clarusjs/fetch: ${size} B gzip`).toBeLessThanOrEqual(2.5 * KB)
+  expect(size, `clarusjs/fetch: ${size} B gzip`).toBeLessThanOrEqual(4 * KB)
   // The fixture site doesn't fetch: none of it is in its assets.
   const assets = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
   for (const f of assets) for (const marker of ['batch: no answer for', 'onStart']) expect(readFileSync(resolve(client, 'assets', f), 'utf8'), `${f}: ${marker}`).not.toContain(marker)
+}, 60_000)
+
+test('size budget: an island importing resource and json from clarusjs/fetch pays at most 3 KB gzip for them', async () => {
+  const { build: viteBuild } = await import('vite')
+  const dir = mkdtempSync(resolve(tmpdir(), 'clarusjs-fetch-'))
+  const entry = resolve(dir, 'island.js')
+  writeFileSync(entry, `export { resource, json } from ${JSON.stringify(resolve(import.meta.dirname, '../src/fetch/index.ts'))}\n`)
+  const out = (await viteBuild({
+    configFile: false, logLevel: 'silent',
+    build: { write: false, minify: true, lib: { entry, formats: ['es'], fileName: 'island' }, rollupOptions: { external: [/\/runtime\//] } },
+  })) as { output: { type: string; code?: string }[] }[]
+  const size = gzipSync(out[0]!.output.find((o) => o.type === 'chunk')!.code!, { level: 9 }).length
+  expect(size, `resource + json: ${size} B gzip`).toBeLessThanOrEqual(3 * KB)
 }, 60_000)
 
 test('size budget: clarusjs/forms stays within 3.5 KB gzip on its own, and a site without forms ships none of it', async () => {
