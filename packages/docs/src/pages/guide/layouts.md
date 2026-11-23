@@ -1,0 +1,162 @@
+---
+title: "Layouts"
+group: "Templates"
+order: 8
+description: "A layout is a component that renders the whole document around a page: its head, its header and footer, and a slot for the page. Inputs, named slots, head tags, styles, nesting and Markdown pages."
+---
+
+# Layouts
+
+<p class="lead">A layout is an ordinary component that renders the whole document (<code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, <code>&lt;body&gt;</code>) with a <code>&lt;slot /&gt;</code> where the page goes. A page wraps its content in it. There's no special file or folder: a page uses the layout it imports.</p>
+
+## A layout and a page
+
+```tscl
+{{-- src/layouts/site.tscl --}}
+@import '~/styles.css'
+@input title: string = 'My site'
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+  </head>
+  <body>
+    <header><a href="/">My site</a></header>
+    <main><slot /></main>
+    <footer>© 2026</footer>
+  </body>
+</html>
+```
+
+```tscl
+{{-- src/pages/about.tscl --}}
+@import site from '~/layouts/site.tscl'
+
+<site [title]="'About'">
+  <h1>About us</h1>
+  <p>Everything between the tags goes to the layout's slot.</p>
+</site>
+```
+
+The content belongs to the page that writes it: its `{{ }}` holes read the page's inputs and data, not the layout's. Layouts live in `src/layouts/` by convention ([project structure](/guide/project-structure)); any folder works.
+
+## What the server adds
+
+You write the document; clarusjs completes it when the page is served or built:
+
+- **`<!doctype html>`** if the page has none.
+- **Stylesheets:** every component's `<style>`, and the CSS files components import, as `<link>`s in the `<head>`.
+- **The island loader**, only on a page that has islands. A page without islands ships no JavaScript.
+- **Site-wide head tags** from the plugin's `head` option: a title template (`'%s · My site'`), and with `site`, the canonical URL and social cards. A tag the page sets itself wins.
+- **A document**, for a page that isn't one: a page without `<html>` (or without a layout) gets a minimal document around it, so it's still a valid page.
+- **In dev, Vite's client**, so editing a layout, a style or a stylesheet updates the browser.
+
+## Inputs: a title, a description
+
+A layout takes inputs like any component: the title, a description, the current path for navigation. Give them defaults so a page only sets what it needs.
+
+```tscl
+{{-- src/layouts/site.tscl --}}
+@input title: string = 'My site'
+@input description: string = ''
+@input path: string = '/'
+
+<head>
+  <title>{{ title }}</title>
+  @if (description) { <meta name="description" [content]="description" /> }
+</head>
+…
+<nav>
+  <a href="/docs" [aria-current]="path.startsWith('/docs') ? 'page' : false">Docs</a>
+</nav>
+```
+
+`clarusjs check` checks what a page passes against these inputs, as for any component.
+
+## Named slots: a sidebar, a hero
+
+The page fills the default slot; named slots take other parts. A slot's own content is the fallback when the page leaves it empty.
+
+```tscl
+{{-- src/layouts/docs.tscl --}}
+<body>
+  <aside><slot name="sidebar"><nav>…the default menu…</nav></slot></aside>
+  <main><slot /></main>
+</body>
+
+{{-- a page --}}
+<docs>
+  @slot('sidebar') { <nav>…this section's menu…</nav> }
+  <h1>Getting started</h1>
+</docs>
+```
+
+See [Slots](/guide/slots) for the rules.
+
+## Tags in the head, from a page
+
+A page can add tags to the `<head>` the layout renders without the layout knowing about them: put them in `<cl-head>`, anywhere in the page, and the server moves them there.
+
+```tscl
+<site [title]="'Draft'">
+  <cl-head><meta name="robots" content="noindex" /></cl-head>
+  <h1>Not ready yet</h1>
+</site>
+```
+
+A page's tag wins over the layout's and the site's with the same key (the title, a `meta` name or property, the canonical link).
+
+## Styles
+
+- **Site-wide CSS:** import a stylesheet in the layout (`@import '~/styles.css'`); every page using the layout gets it. It goes through Vite, so Tailwind, PostCSS and `url()`s work.
+- **The layout's own markup:** a `<style scoped>` in the layout styles its header, footer and other elements.
+- **The page's content:** a `<style scoped>` in the page reaches its content inside the layout too: the page's elements carry the page's scope class, even in the layout's slot.
+- **A theme set before the first paint:** a `<script inline>` at the top of the layout's `<head>` ([Styles](/guide/styles)).
+
+## Layouts inside layouts
+
+A section's layout can wrap the site's: it adds what the section shares (a sidebar, a breadcrumb) and passes the rest on.
+
+```tscl
+{{-- src/layouts/docs.tscl --}}
+@import site from './site.tscl'
+@input title: string
+
+<site [title]="title + ' · Docs'">
+  <div class="docs">
+    <aside>…</aside>
+    <article><slot /></article>
+  </div>
+</site>
+```
+
+There's no nesting by folder: a page under `src/pages/docs/` uses the docs layout because it imports it. That keeps each page's layout visible in the page itself.
+
+## Islands in a layout
+
+A layout can contain islands: a theme toggle, a search box, a menu button. They ship on every page that uses the layout, so keep them small and give them an [attach mode](/guide/lazy-attach) (`attach="idle"`, `"visible"` or `"interaction"`) when they aren't needed right away. A layout itself has no `<script>` of its own in the usual case: a `<script>` would make the whole layout one island, with everything inside it.
+
+## Markdown pages
+
+With `@clarusjs/content`, Markdown pages are rendered inside a layout you name once in the config; frontmatter can pick another per page, or none.
+
+```ts
+// vite.config.ts
+clarusjs({ sources: [markdown({ layout: '/src/layouts/docs.tscl' })] })
+```
+
+```md
+---
+title: Release notes
+layout: /src/layouts/plain.tscl
+---
+```
+
+The page's `title`, `description` and route (`path`) are passed to the layout as inputs. See [Markdown pages](/guide/markdown).
+
+## A theme
+
+A layout can come from a package: this site's is [`@clarusjs/theme-docs`](/guide/docs-theme), configured by inputs and extended through slots. [Writing a theme](/guide/writing-a-theme) shows how to make one.
