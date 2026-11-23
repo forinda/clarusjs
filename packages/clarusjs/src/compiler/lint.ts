@@ -171,6 +171,7 @@ export function lint(source: string, file: string, config: LintConfig = {}, extr
   const corpus = [
     ...expressions(parsed.nodes),
     parsed.script?.code ?? '',
+    parsed.serverScript?.code ?? '', // #430
     ...parsed.inputs.flatMap((i) => [i.type, i.default ?? '']),
     ...parsed.types.map((t) => t.type),
   ].join('\n')

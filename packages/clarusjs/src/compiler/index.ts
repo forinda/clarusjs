@@ -77,6 +77,8 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     const statements = head.split(';').map((x) => x.trim()).filter(Boolean).map((x) => `${x};\n`).join('')
     css += `${statements}@scope (.cl-c-${id}) to ([class*="cl-c-"]:not(.cl-c-${id}) > *) {${s.css.slice(head.length).replace(/\s*$/, '')}\n}\n`
   }
+  // renderImports: a render module that runs in the browser (a client route's page, a child an island re-renders).
+  if (options.renderImports && parsed.serverScript) throw new ClarusError('<script server> runs on the server only, and this component renders in the browser (a client route, or a child of an island, which re-renders it): make the route static or server, or render the component outside the island', options.file, source, parsed.serverScript.tag)
   const ir = lower(parsed, options.file, source, { collapseWhitespace: options.collapseWhitespace, icon: options.icon })
   warnings.push(...ir.warnings)
   if (options.target === 'client') return { code: emitClient(ir, options.hot), stateful: ir.stateful, css, warnings }

@@ -18,6 +18,21 @@ export function island(name: string, src: string, props: Record<string, unknown>
   return `<cl-island c="${escape(name)}" src="${escape(src)}" p="${escape(toBrowser(props))}"${s}${a}${d}>${html}</cl-island>`
 }
 
+/**
+ * The parts of a template level that calls components or places slots (#430): joined into a string, or into a
+ * promise of one when a part is a promise (a component that awaits in its <script server>). @internal
+ */
+export function join(parts: unknown[]): string | Promise<string> {
+  return parts.some((p) => p instanceof Promise) ? Promise.all(parts).then((all) => all.join('')) : parts.join('')
+}
+
+/** A child component's HTML inside an island: a promise (it awaits) is an error naming both. @internal */
+export function sync(html: string | Promise<string>, child: string, island: string): string {
+  if (typeof html === 'string') return html
+  html.catch(() => {}) // its own rejection isn't the error to report
+  throw new Error(`[clarusjs] <${child}> awaits in its <script server>, so it can't be inside the island <${island}>: an island re-renders its children in the browser, where it can't wait. Render <${child}> outside the island, or load its data in a parent and pass it in as props`)
+}
+
 /** ` name="value"`, ` name` (true) or '' (false/null/undefined), escaped and URL-checked. @internal */
 export const attr = attrHtml
 
@@ -40,7 +55,10 @@ export function toBrowser(value: unknown, path = '', seen = new Set<object>()): 
  * compiled components that have a loader. @internal
  */
 export function loaded(key: string): object {
-  return (globalThis as { __clLoaded?: Map<string, object> }).__clLoaded?.get(key) ?? {}
+  // The server handler keeps each render's data in an AsyncLocalStorage (#430: a render may pause at an await);
+  // this module stays free of Node APIs (it also runs in the docs playground), so it only reads it.
+  const scope = globalThis as { __clLoaded?: Map<string, object>; __clLoadedStore?: { getStore(): Map<string, object> | undefined } }
+  return (scope.__clLoadedStore?.getStore() ?? scope.__clLoaded)?.get(key) ?? {}
 }
 
 /**

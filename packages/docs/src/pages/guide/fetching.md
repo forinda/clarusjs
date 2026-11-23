@@ -128,7 +128,29 @@ Give a resource a `key`, and its answers are cached by it: a key seen before com
 
 ## On the server
 
-Nothing is fetched while the server renders the page. A resource there is in its loading state, so the HTML shows your loading text and the browser fills it in. If the page's `load()` already has the data, pass it as `initial`: the server HTML shows it, and the browser fetches again to bring it up to date.
+`clarusjs/fetch` is for the browser: nothing is fetched while the server renders the page. To fetch on the server, so the data is in the HTML and no JavaScript ships, `await` in a `<script server>`. It runs while the page renders (at build for a static route, per request for a server one), its imports stay on the server (`node:` modules too), and its names are there for the template.
+
+```tscl
+<script server>
+  import { json } from 'clarusjs/fetch'
+  const posts = await json('https://jsonplaceholder.typicode.com/posts')
+</script>
+
+@for (post of posts.slice(0, 5); track post.id) {
+  <h2>{{ post.title }}</h2>
+}
+```
+
+- **It doesn't make the component an island.** It runs once per render, on the server, and is gone afterwards.
+- **Not in an island.** An island's own `<script>` can't `await` at the top level, and a component with a `<script server>` can't be one, or sit inside one: the island re-renders its children in the browser, where they couldn't wait. Load the data here and pass it to the island as props.
+- **Not in a client route.** Its page renders in the browser. Make the route `static` or `server`.
+- A page's [`load()`](/guide/routing#loading-data) does the same from a separate file, and also gets the request (`params`, `cookies`, `locals`). Use `load()` when you need those, or to share the loading between pages.
+
+This site's [explained page](/guide/explained) uses one: it computes its numbers and awaits the commit it was built from.
+
+### A resource with a starting value
+
+A resource there is in its loading state, so the HTML shows your loading text and the browser fills it in. If the server already has the data, from `load()` or a `<script server>`, pass it as `initial`: the server HTML shows it, and the browser fetches again to bring it up to date.
 
 ```ts
 const stats = resource(load, { initial: props.stats })

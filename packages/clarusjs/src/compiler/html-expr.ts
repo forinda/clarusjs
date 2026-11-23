@@ -12,10 +12,20 @@ import { wrapExpr } from './script.ts'
 export type Rewriter = { expr(e: string): string; without(names: string[]): Rewriter }
 export const asWritten: Rewriter = { expr: (e) => e, without: () => asWritten }
 
-export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
+/**
+ * Server output only (#430): `island` is the component's name when it's an island, null when it isn't. Outside
+ * islands, a level that calls a component or places a slot joins its parts with __cl_join (a string, or a promise
+ * when an awaiting component is in it); inside an island, a component call is checked not to be a promise.
+ */
+export type ServerCtx = { island: string | null }
+
+/** Could this HTML be a promise: does it call a component or place a slot (whose content may await)? */
+const mayWait = (nodes: IRNode[]) => walk(nodes).some((n) => n.kind === 'component' || n.kind === 'slot')
+
+export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: ServerCtx): string {
   const parts = nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
-    if (n.kind === 'slot') return `(__cl_slots?.[${JSON.stringify(n.name)}] ?? ${n.fallback.length ? `(${htmlExpr(n.fallback, rw)})` : '""'})`
+    if (n.kind === 'slot') return `(__cl_slots?.[${JSON.stringify(n.name)}] ?? ${n.fallback.length ? `(${htmlExpr(n.fallback, rw, ctx)})` : '""'})`
     if (n.kind === 'connect') return '""' // its marker is static; the browser connects it
     if (n.kind === 'attr' && n.name === '...') return `__cl_spreadHtml(${attrValueExpr(n.value, rw.expr)}, ${JSON.stringify(n.skip ?? [])}, ${JSON.stringify(n.tag)}${rw === asWritten && n.where ? `, ${JSON.stringify(n.where)}` : ''})` // the place, for warnings: server code only
     if (n.kind === 'attr') return `__cl_attrHtml(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, rw.expr)}${tagArg(n)})`
@@ -23,39 +33,43 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten): string {
       if (n.block === -1) {
         // Outside islands: a plain choice, no markers.
         const last = n.branches[n.branches.length - 1]!
-        let expr = last.cond === null ? `(${htmlExpr(last.nodes, rw)})` : '""'
+        let expr = last.cond === null ? `(${htmlExpr(last.nodes, rw, ctx)})` : '""'
         const conditional = last.cond === null ? n.branches.slice(0, -1) : n.branches
-        for (const b of [...conditional].reverse()) expr = `(${wrapExpr(rw.expr(b.cond!))} ? (${htmlExpr(b.nodes, rw)}) : ${expr})`
+        for (const b of [...conditional].reverse()) expr = `(${wrapExpr(rw.expr(b.cond!))} ? (${htmlExpr(b.nodes, rw, ctx)}) : ${expr})`
         return expr
       }
-      const branches = n.branches.map((b) => `() => ${htmlExpr(b.nodes, rw)}`).join(', ')
+      const branches = n.branches.map((b) => `() => ${htmlExpr(b.nodes, rw, ctx)}`).join(', ')
       return `__cl_blockHtml(${n.block}, ${whichExpr(n, rw)}, [${branches}])`
     }
     if (n.kind === 'for') {
       const list = wrapExpr(rw.expr(n.list))
-      const row = `(${rowParams(n)}) => ${htmlExpr(n.nodes, rw.without([n.item, ...FOR_IMPLICIT]))}`
-      const empty = n.empty ? `() => ${htmlExpr(n.empty, rw)}` : 'null'
+      const row = `(${rowParams(n)}) => ${htmlExpr(n.nodes, rw.without([n.item, ...FOR_IMPLICIT]), ctx)}`
+      const empty = n.empty ? `() => ${htmlExpr(n.empty, rw, ctx)}` : 'null'
       if (n.block >= 0) return `__cl_forHtml(${n.block}, ${list}, ${row}, ${empty})`
-      // Outside islands: a plain loop, no markers.
-      return `((__cl_l) => __cl_l.length ? __cl_l.map(${row}).join("") : ${n.empty ? `(${htmlExpr(n.empty, rw)})` : '""'})([...(${list} ?? [])])`
+      // Outside islands: a plain loop, no markers. Rows that may await are joined (a promise if one does).
+      const rows = ctx && !ctx.island && mayWait(n.nodes) ? `__cl_join(__cl_l.map(${row}))` : `__cl_l.map(${row}).join("")`
+      return `((__cl_l) => __cl_l.length ? ${rows} : ${n.empty ? `(${htmlExpr(n.empty, rw, ctx)})` : '""'})([...(${list} ?? [])])`
     }
     if (n.kind === 'component') {
-      const call = componentCall(n, rw)
+      const plain = componentCall(n, rw, ctx)
+      // In an island: a child that awaits (a promise) is an error naming both, when the server renders it.
+      const call = ctx?.island ? `__cl_sync(${plain}, ${JSON.stringify(n.name)}, ${JSON.stringify(ctx.island)})` : plain
       return n.region >= 0 ? `__cl_regionHtml(${n.region}, () => ${call})` : call
     }
     if (n.json) return `__cl_json(${wrapExpr(rw.expr(n.expr))})`
     const value = `__cl_escape(${wrapExpr(rw.expr(n.expr))})`
     return n.reactive ? `"<!--[${n.index}-->" + ${value} + "<!--]-->"` : value
   })
+  if (ctx && !ctx.island && mayWait(nodes)) return `__cl_join([${parts.join(', ')}])`
   return parts.length ? parts.join(' + ') : '""'
 }
 
 /** `render_child({ props }, { slots })` for a component node. */
-export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rewriter): string {
+export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rewriter, ctx?: ServerCtx): string {
   const props = n.props.map((p) => (p.name === '...' ? `...${wrapExpr(rw.expr(p.expr))}` : `${p.name}: ${wrapExpr(rw.expr(p.expr))}`)).join(', ') // a spread first (#406)
   const slots = [
-    ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw)}`] : []),
-    ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw)}`),
+    ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw, ctx)}`] : []),
+    ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw, ctx)}`),
   ]
   const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
   // Render options: when to attach, and (for the forms engine) the path this component is bound to.

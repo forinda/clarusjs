@@ -1,11 +1,12 @@
 // IR → server module: `render(props) → string`. Runs at build time or per request.
 import type { ComponentIR } from './ir.ts'
-import { htmlExpr, walk } from './html-expr.ts'
+import { asWritten, htmlExpr, walk } from './html-expr.ts'
 import { rewriteServer } from './script.ts'
 import { indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = false, loader?: string): string {
   const all = walk(ir.nodes)
+  const html = htmlExpr(ir.nodes, asWritten, { island: ir.stateful ? ir.name : null })
   const runtime = [
     'escape as __cl_escape',
     all.some((n) => n.kind === 'hole' && n.json) && 'json as __cl_json',
@@ -18,17 +19,20 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     all.some((n) => n.kind === 'for' && n.block >= 0) && 'forHtml as __cl_forHtml',
     all.some((n) => n.kind === 'component' && n.region >= 0) && 'regionHtml as __cl_regionHtml',
     loader && 'loaded as __cl_loaded',
+    html.includes('__cl_join(') && 'join as __cl_join',
+    html.includes('__cl_sync(') && 'sync as __cl_sync',
   ].filter(Boolean).join(', ')
   let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
   for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}${renderImports ? '?render' : ''}'\n`
   for (const d of ir.dataImports) out += `import ${d.clause} from '${d.from}'\n`
   for (const line of ir.scriptImports) out += `${line}\n`
+  for (const line of ir.server?.imports ?? []) out += `${line}\n`
 
-  const html = htmlExpr(ir.nodes)
   // An island carries the class its parent passed to the browser, which re-renders its blocks with it.
   const props = `{ ${[...ir.inputs.map((i) => i.name), '...(__cl_opts?.class && { __cl_class: __cl_opts.class })'].join(', ')} }`
 
-  out += `\nexport function render(__cl_props = {}, __cl_slots, __cl_opts) {\n`
+  // A <script server> that awaits makes render async (#430): its parents join what it returns.
+  out += `\nexport ${ir.server?.awaits ? 'async ' : ''}function render(__cl_props = {}, __cl_slots, __cl_opts) {\n`
   if (ir.stateful) out += `  if (__cl_slots !== undefined) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> does not accept children yet`)})\n`
   else {
     out += unknownSlotCheck(ir)
@@ -39,6 +43,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
   out += inputsLine(ir)
   out += `  const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""\n`
   if (ir.script) out += indentScript(rewriteServer(ir.script))
+  if (ir.server) out += indentScript(ir.server.body)
   out += ir.stateful
     ? `  return __cl_island(${JSON.stringify(ir.name)}, ${JSON.stringify(clientUrl)}, ${props}, ${html}, ${stateArg(ir)}, __cl_opts?.attach, __cl_opts?.paths)\n`
     : `  return ${html}\n`

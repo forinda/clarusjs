@@ -2011,3 +2011,11 @@ test('what clarusjs is: a button says the name (the browser\'s speech, KLAIR-us 
   await button.click()
   await expect.poll(() => page.evaluate(() => (window as unknown as { __said: unknown[] }).__said)).toEqual([{ text: 'Klair-us', lang: 'en-US' }])
 })
+
+test('#430 <script server>: /guide/explained computes its numbers and awaits the build\'s commit on the server; nothing of it ships', async ({ page }) => {
+  const html = await (await page.request.get('/guide/explained')).text()
+  expect(html).toMatch(/Built from commit <code>[0-9a-f]{7,}<\/code>/)
+  expect(html).not.toContain('child_process') // the server script's code and imports stay on the server
+  await page.goto('/guide/explained')
+  await expect(page.locator('.explained-stats li strong').first()).toHaveText(/^\d+$/)
+})

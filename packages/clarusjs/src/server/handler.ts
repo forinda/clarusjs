@@ -1,5 +1,6 @@
 import { modeFor, type ModeTable } from './modes.ts'
-import { toBrowser, withLoaded } from '../runtime/server.ts'
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { toBrowser } from '../runtime/server.ts'
 import { completeHead, type HeadOptions, type SiteOptions } from './head.ts'
 import { escape } from '../runtime/html.ts'
 
@@ -10,7 +11,11 @@ const safeJson = (json: string) => json.replace(/</g, '\\u003c')
 
 // The fetch handler: Request → Response. Same function for dev, per-request SSR and (later) build-time prerender.
 
-type PageModule = { render(props?: object): string }
+type PageModule = { render(props?: object): string | Promise<string> }
+
+/** Each render's component loader data (#97), read by loaded() (runtime/server.ts) across awaits (#430). */
+const loadedStore = new AsyncLocalStorage<Map<string, object>>()
+;(globalThis as { __clLoadedStore?: AsyncLocalStorage<Map<string, object>> }).__clLoadedStore = loadedStore
 type Params = Record<string, string>
 /**
  * `[page].load.ts`: data for a route, server only. entries() lists a dynamic route's pages to prerender; load()
@@ -455,7 +460,9 @@ export function createHandler(
       let html: string
       try {
         const module = await found.route.load()
-        html = withLoaded(componentData, () => module.render(props))
+        // Awaited: a page or a component in it may await in its <script server> (#430). Component loaders' data is
+        // this render's, even while it waits (see loaded() in runtime/server.ts).
+        html = await loadedStore.run(componentData, () => module.render(props))
       } catch (err) {
         return fail(`${found.route.file}: render failed: ${(err as Error)?.message ?? err}`, err)
       }

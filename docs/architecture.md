@@ -202,6 +202,27 @@ export function attach(__cl_root, __cl_props = {}, __cl_state) {
 "magic", and it's visible in the output. Names clarusjs generates start with
 `__cl_`, so they never collide with names in your `<script>`.
 
+### 4.4 `await` in a script: async render (#430)
+
+A page or a component without an island can `await` at the top level of its `<script>`
+(`const posts = await json(url)`): the awaited data is in the HTML, and nothing ships. Its
+server output is `export async function render(…)`, which returns a `Promise<string>`.
+
+- **Composition stays synchronous unless it has to wait.** A parent can't know whether a child
+  awaits (each file is compiled alone), so where a template calls a component or places slot
+  content, the server output joins its parts with `__cl_join([…])`: a string when every part is
+  a string (as before), a promise of one when a part is a promise. A page with no awaiting
+  component anywhere renders synchronously, as before.
+- **Not in islands.** An island's script still can't `await` at the top level (a located
+  compile error naming `resource()` and `@await`): the browser attaches without waiting. An
+  awaiting component *inside* an island is an error when the server renders it (the island
+  re-renders its children in the browser, where it can't wait).
+- **Who awaits.** The request handler, `render(name, props)` from `clarusjs/server`, the build's
+  prerender and the client router `await` a page's render; nothing else changes.
+- **Component loaders' data** (`loaded()`) is kept per render with `AsyncLocalStorage` by the
+  server handler, so a render paused at an `await` never sees another request's data.
+  `runtime/server` itself stays free of Node APIs (it also runs in the docs playground).
+
 ## 5. The HTML contract
 
 What the server writes, and what the client reads. This is the hardest thing

@@ -24,6 +24,7 @@ description: "Every directive and binding in .tscl templates, on one page."
 | `@slot('x') { }` | fill a named slot | [Slots](/guide/slots) |
 | `verbatim` attribute | show content as text | [Verbatim](/guide/verbatim) |
 | `<script> … </script>` | make a component interactive | [State](/guide/state) |
+| `<script server> … </script>` | run code on the server at render, with `await`; nothing ships | [Fetching data](/guide/fetching#on-the-server) |
 | `<script inline> … </script>` | a script written out as is, run where it stands | [Styles](/guide/styles) |
 | `<style scoped> … </style>`, `<style>`, `<style global>` | the component's CSS, scoped to it (`scoped`) or global | [Styles](/guide/styles) |
 | `{{-- comment --}}` | a template comment, removed from the output |  |

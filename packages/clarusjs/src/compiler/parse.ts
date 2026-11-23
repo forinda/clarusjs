@@ -55,6 +55,8 @@ export type ParsedFile = {
   types: TypeDecl[]
   dataImports: DataImport[]
   script?: { code: string; start: number } // start = offset of the first char inside <script>
+  /** <script server> (#430): runs at render on the server only. `tag` = offset of `<script`. */
+  serverScript?: { code: string; start: number; tag: number }
   // Top-level <style> blocks: `scoped` ones are scoped to the component; `global` and `plain` (no attribute) aren't.
   // `tag`: where the <style> tag starts.
   styles: { css: string; mode: 'scoped' | 'global' | 'plain'; start: number; tag: number }[]
@@ -487,6 +489,16 @@ export function parse(source: string, file: string): ParsedFile {
           const kids: TemplateNode[] = hole ? [{ type: 'expr', expr: hole[1]!.trim(), start: at, json: true }] : body ? [{ type: 'text', value: body, start: i }] : []
           nodes.push({ type: 'element', tag, attrs: list, children: kids, start })
           i = selfClosing ? i : end + '</script>'.length
+        } else if (tag === 'script' && list.some((a) => a.name === 'server')) {
+          // <script server>: the component's server-only script (#430), run at render; it can await.
+          if (parent) fail('<script server> must be at the top level (it runs once per render, before the template)', start)
+          if (out.serverScript) fail('only one <script server> block is allowed', start)
+          const other = list.find((a) => a.name !== 'server')
+          if (other) fail('<script server> takes no other attributes', other.start)
+          const end = source.indexOf('</script>', i)
+          if (end === -1) fail('unclosed <script server>', start)
+          out.serverScript = { code: source.slice(i, end), start: i, tag: start }
+          i = end + '</script>'.length
         } else if (tag === 'script') {
           if (parent) fail('<script> must be at the top level (a component script); add `inline` for a script that runs where it stands', start)
           if (out.script) fail('only one <script> block is allowed', start)
