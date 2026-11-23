@@ -28,7 +28,7 @@ test('top-level await: render is async and resolves to the HTML with the awaited
 })
 
 test('its imports are hoisted to the server module (node: too); inputs are readable in it', async () => {
-  const src = "@input id: number = 2\n<script server>\n  import { join } from 'node:path'\n  import { names } from './data.ts'\n  const name = names[id]\n  const path = join('a', 'b')\n</script>\n<p>{{ name }} {{ path }}</p>\n"
+  const src = "@input id: number = 2\n<script server>\n  import { join } from 'node:path/posix'\n  import { names } from './data.ts'\n  const name = names[id]\n  const path = join('a', 'b')\n</script>\n<p>{{ name }} {{ path }}</p>\n"
   const { render } = await load(src, { './data.ts': "export const names = ['zero', 'one', 'two']\n" })
   expect(render({})).toBe('<p>two a/b</p>')
   expect(render({ id: 1 })).toBe('<p>one a/b</p>')
