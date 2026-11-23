@@ -4,10 +4,11 @@
 import * as runtime from 'clarusjs/runtime'
 import * as server from 'clarusjs/runtime/server'
 import * as forms from 'clarusjs/forms'
+import * as fetching from 'clarusjs/fetch'
 
 type Message = { id: number; server: string; client: string | null; css?: string }
 
-;(globalThis as { __cl_repl?: object }).__cl_repl = { 'clarusjs/runtime': runtime, 'clarusjs/runtime/server': server, 'clarusjs/forms': forms }
+;(globalThis as { __cl_repl?: object }).__cl_repl = { 'clarusjs/runtime': runtime, 'clarusjs/runtime/server': server, 'clarusjs/forms': forms, 'clarusjs/fetch': fetching }
 
 let current = 0 // the run's id, for errors thrown later (an event handler, a timer)
 

@@ -60,3 +60,15 @@ test('a source whose extension Vite treats as an asset (.txt) still gets the fil
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ sources: [txt] })] })).buildApp()
   expect(unscoped(readFileSync(resolve(root, 'dist/client/readme/index.html'), 'utf8'))).toContain('<p>Plain text page.</p>')
 }, 120_000)
+
+test('a .tscl imported with ?raw is its text, not a compiled component (a playground example, a code sample)', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'clarusjs-raw-'))
+  const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
+  w('src/components/pill.tscl', '<script>\n  let n = state(0)\n</script>\n<b class="pill" (click)="n++">{{ n }}</b>\n')
+  w('src/sample.ts', "import source from './components/pill.tscl?raw'\nexport const sample: string = source\n")
+  w('src/pages/index.tscl', "@import { sample } from '../sample.ts'\n<pre>{{ sample }}</pre>\n")
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp()
+  expect(readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')).toContain('&lt;b class=&quot;pill&quot; (click)=&quot;n++&quot;&gt;{{ n }}&lt;/b&gt;')
+}, 120_000)

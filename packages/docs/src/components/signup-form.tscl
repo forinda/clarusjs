@@ -1,5 +1,6 @@
 {{-- A form from field components: one state object, written back copy-on-write; reset needs no cloning. --}}
 @import textField from './text-field.tscl'
+@import combobox from './combobox.tscl'
 
 <script>
   // The choices, as data: the radios, checkboxes and options below are loops over them.
@@ -12,9 +13,12 @@
     { id: 'releases', label: 'Releases' },
   ]
   const langs = [
-    { id: 'en', label: 'English' },
-    { id: 'sw', label: 'Kiswahili' },
-    { id: 'fr', label: 'Français' },
+    { value: 'en', label: 'English' },
+    { value: 'sw', label: 'Kiswahili' },
+    { value: 'fr', label: 'Français' },
+    { value: 'ar', label: 'العربية (Arabic)' },
+    { value: 'am', label: 'አማርኛ (Amharic)' },
+    { value: 'yo', label: 'Yorùbá' },
   ]
   let form = state({ name: '', email: '', plan: 'free', updates: false, topics: ['news'], langs: ['en'] })
   const initial = form // the starting value, taken from the state itself
@@ -40,14 +44,14 @@
       <label><input type="checkbox" [value]="t.id" [(value)]="form.topics" /> {{ t.label }}</label>
     }
   </fieldset>
-  <label class="langs"
-    ><span>Languages</span>
-    <select multiple size="3" [(value)]="form.langs">
-      @for (l of langs; track l.id) {
-        <option [value]="l.id">{{ l.label }}</option>
-      }
-    </select>
-  </label>
+  <combobox
+    [id]="'signup-langs'"
+    [label]="'Languages'"
+    [options]="langs"
+    [multiple]="true"
+    [placeholder]="'Search languages…'"
+    [(values)]="form.langs"
+  />
   <p class="signup-lists">
     Topics: {{ form.topics.join(', ') || 'none' }} · Languages: {{ form.langs.join(', ') || 'none' }}
   </p>
@@ -142,26 +146,6 @@
     align-items: center;
     gap: 8px;
     cursor: pointer;
-  }
-  .langs {
-    display: grid;
-    gap: 6px;
-  }
-  .langs span {
-    font: 600 13px var(--sans);
-    color: var(--muted);
-  }
-  .langs select {
-    font: inherit;
-    padding: 6px;
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-    background: var(--bg);
-    color: var(--fg);
-  }
-  .langs select:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
   }
   .signup-lists {
     margin: 0;

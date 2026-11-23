@@ -1,4 +1,5 @@
 // The playground's examples: the first opens by default. Each is a whole component, interactive in the preview.
+import combobox from '../components/combobox.tscl?raw' // the site's own combobox, as a file to copy
 
 /** A playground example. */
 export type Starter = { name: string; source: string }
@@ -173,6 +174,7 @@ export const starters: Starter[] = [
 </style>
 `,
   },
+  { name: 'Combobox', source: combobox },
   {
     name: 'Attributes',
     source: `{{-- Attribute bindings, from one attribute to a whole object of them. --}}

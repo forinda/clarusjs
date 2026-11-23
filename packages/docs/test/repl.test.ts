@@ -85,13 +85,17 @@ describe('prepare (the page, before posting to the frame)', () => {
     expect(prepare(code)).toBe(code)
   })
 
+  test('clarusjs/fetch is supported too (resource, action, request: the combobox example uses it)', () => {
+    expect(prepare("import { json, resource } from 'clarusjs/fetch'\n")).toBe("const { json, resource } = globalThis.__cl_repl['clarusjs/fetch']\n")
+  })
+
   test('clarusjs/forms is supported too (the forms engine: [engine], schemas, steps)', () => {
     expect(prepare("import { form } from 'clarusjs/forms'\n")).toBe("const { form } = globalThis.__cl_repl['clarusjs/forms']\n")
   })
 
   test('other imports are refused, naming the module', () => {
-    expect(() => prepare("import x from 'lodash'\n")).toThrow("the playground supports imports from clarusjs/runtime and clarusjs/forms only, not 'lodash'")
-    expect(() => prepare("import { resource } from 'clarusjs/fetch'\n")).toThrow("not 'clarusjs/fetch'")
+    expect(() => prepare("import x from 'lodash'\n")).toThrow("the playground supports imports from clarusjs/runtime, clarusjs/forms and clarusjs/fetch only, not 'lodash'")
+    expect(() => prepare("import { render } from 'clarusjs/views'\n")).toThrow("not 'clarusjs/views'") // server code
     expect(() => prepare("import * as r from 'clarusjs/runtime'\n")).toThrow('import { … } from')
   })
 
@@ -153,10 +157,10 @@ describe('frameDoc', () => {
 })
 
 describe('starters', () => {
-  test('counter, todo, form, checkout, attributes and conditional; each compiles for server and client without warnings, and passes lint', async () => {
+  test('counter, todo, form, checkout, combobox, attributes and conditional; each compiles for server and client without warnings, and passes lint', async () => {
     const { starters } = await import('../src/repl/starters.ts')
     const { compile, lint } = await import('clarusjs/compiler')
-    expect(starters.map((s) => s.name)).toEqual(['Counter', 'Todo list', 'Form', 'Checkout', 'Attributes', 'Conditional'])
+    expect(starters.map((s) => s.name)).toEqual(['Counter', 'Todo list', 'Form', 'Checkout', 'Combobox', 'Attributes', 'Conditional'])
     for (const s of starters) {
       const server = compile(s.source, { file: 'App.tscl', target: 'server', clientUrl: '/app.js' })
       const client = compile(s.source, { file: 'App.tscl', target: 'client' })

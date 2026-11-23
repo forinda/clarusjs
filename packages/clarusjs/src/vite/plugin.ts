@@ -681,6 +681,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     transform: {
       filter: { id: fileRe },
       async handler(raw, id) {
+        // Imported as text, a URL or inline (component.tscl?raw for a code sample): Vite's, never compiled.
+        if (/[?&](raw|url|inline)\b/.test(id)) return null
         const file = id.replace(/\?.*$/, '')
         // A page source's file is compiled from the .tscl text it produces: only under src/pages, and never when it is
         // imported as text or a URL (CHANGELOG.md?raw stays a string).

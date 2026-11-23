@@ -211,6 +211,17 @@ test.describe('/repl', () => {
     await expect(frame.getByRole('status')).toContainText('Thanks, Ada! Your order is placed.')
   })
 
+  test('the Combobox example is the site\'s combobox file: search and pick in the preview', async ({ page }) => {
+    await open(page)
+    await page.getByLabel('Example').selectOption('Combobox')
+    const frame = preview(page)
+    const input = frame.getByRole('combobox', { name: 'Fruit' })
+    await input.fill('ap')
+    await expect(frame.getByRole('option')).toHaveText(['Apple', 'Apricot', 'Grape'])
+    await input.press('Enter')
+    await expect(input).toHaveValue('Apple')
+  })
+
   test('the Attributes example: toggles, objects, a style property and a spread, all following state', async ({ page }) => {
     await open(page)
     await page.getByLabel('Example').selectOption('Attributes')

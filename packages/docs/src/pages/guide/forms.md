@@ -26,7 +26,7 @@ description: "Bind form fields two ways with [(value)] and @model, keep one stat
 More kinds of fields:
 
 - **A group of checkboxes** binds an array with `[(value)]` on each: a checkbox is checked when the array includes its value, and toggling adds or removes it (`<input type="checkbox" value="news" [(value)]="form.topics">`). A single checkbox is a boolean, with `[(checked)]`.
-- **`<select multiple>`** with `[(value)]` binds an array of the selected values.
+- **`<select multiple>`** with `[(value)]` binds an array of the selected values. For a long list, the [combobox](#a-combobox) below searches as you type; the demo's Languages uses it.
 - **Number and range inputs** write numbers. A field that isn't a number, such as an empty one, stays a string.
 - **While an input method composes text** (Japanese, Chinese, Korean…), nothing is written; the composed text is, when it's done.
 - **A bound `<select>`'s options** render `selected` on the server, so the choice shows before any JavaScript.
@@ -51,6 +51,24 @@ Inputs are read-only: a component never writes what its parent gives it. The one
 When the field writes `value`, the write goes to the form, which updates its state, and the new value comes back to the field as an input, in place. The form stays the one owner of the data. A field with no parent binding it (an island on its own) keeps the value itself.
 
 `clarusjs check` makes sure `[(x)]` names a `@model` of that component, and that the target can be written: binding to a read-only input is an error.
+
+## A combobox
+
+A text field that filters a list as you type, for one pick or several. This site's is one `.tscl` file you can copy: [`combobox.tscl`](https://github.com/forinda/clarusjs/blob/main/packages/docs/src/components/combobox.tscl), also in the [playground](/repl) as *Combobox*. Bind one pick with `[(value)]`, or several with `[multiple]="true"` and `[(values)]`:
+
+```tscl
+<combobox [id]="'country'" [label]="'Country'" [options]="countries" [(value)]="form.country" />
+<combobox [id]="'languages'" [label]="'Languages'" [options]="languages" [multiple]="true" [(values)]="form.languages" />
+<combobox [id]="'city'" [label]="'City'" [src]="'/api/cities'" [(value)]="form.city" />
+```
+
+<comboboxDemo />
+
+- **Keyboard:** ↑ and ↓ move through the options, Home and End jump, Enter picks, Esc closes, and Backspace in an empty search removes the last pick.
+- **Accessible:** the input is a `role="combobox"` that points to its `role="listbox"`; the highlighted option is its `aria-activedescendant`, picked ones are `aria-selected`, and "No match" is announced.
+- **Two `@model`s:** `value` (a string) and `values` (a list). Each binds two ways with its own type, so `clarusjs check` knows a single pick is a string.
+- **Options from the server:** give `[src]` a URL instead of `[options]`. Typing asks `src?q=<search>` for a JSON list of `{ value, label }`, 200 ms after the last key; each search is cached, and an older one in flight is cancelled when a newer one starts (it's a [`resource()`](/guide/fetching)). "Searching…" and errors show in its status line. The demo's City searches [an endpoint](https://github.com/forinda/clarusjs/blob/main/packages/docs/src/pages/api/demo-cities.ts) of this site.
+- **Give each one its own `id`:** its listbox and options are named after it.
 
 ## Reset and undo
 

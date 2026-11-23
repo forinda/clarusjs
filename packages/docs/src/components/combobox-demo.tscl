@@ -1,0 +1,67 @@
+{{-- The Forms guide's combobox demo: one pick, several picks, and a pick searched on the server, bound into one state object. --}}
+@import combobox from './combobox.tscl'
+
+<script>
+  const countries = [
+    { value: 'ke', label: 'Kenya' },
+    { value: 'gh', label: 'Ghana' },
+    { value: 'ng', label: 'Nigeria' },
+    { value: 'za', label: 'South Africa' },
+    { value: 'tz', label: 'Tanzania' },
+    { value: 'ug', label: 'Uganda' },
+    { value: 'rw', label: 'Rwanda' },
+    { value: 'et', label: 'Ethiopia' },
+  ]
+  const languages = [
+    { value: 'en', label: 'English' },
+    { value: 'sw', label: 'Swahili' },
+    { value: 'fr', label: 'French' },
+    { value: 'ar', label: 'Arabic' },
+    { value: 'yo', label: 'Yoruba' },
+    { value: 'am', label: 'Amharic' },
+  ]
+  let picked = state({ country: '', languages: ['en'], city: '' })
+</script>
+
+<div class="combobox-demo" id="combobox-demo">
+  <combobox
+    [id]="'demo-country'"
+    [label]="'Country'"
+    [options]="countries"
+    [placeholder]="'Search countries…'"
+    [(value)]="picked.country"
+  />
+  <combobox
+    [id]="'demo-languages'"
+    [label]="'Languages'"
+    [options]="languages"
+    [multiple]="true"
+    [(values)]="picked.languages"
+  />
+  <combobox
+    [id]="'demo-city'"
+    [label]="'City'"
+    [src]="'/api/demo-cities'"
+    [placeholder]="'Search cities…'"
+    [(value)]="picked.city"
+  />
+  <p class="picked">
+    Chosen: <code>{{ JSON.stringify(picked) }}</code>
+  </p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 16px;
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  .picked {
+    margin: 0;
+    font-size: 14px;
+    color: var(--muted);
+  }
+</style>
