@@ -1,5 +1,6 @@
 // The clarusjs Vite plugin: a thin adapter around the compiler.
 // Server environment gets render(), client environment gets attach(). Dev requests go through the fetch handler.
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, watch as watchFs, writeFileSync } from 'node:fs'
 import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib'
 import { createRequire } from 'node:module'
@@ -23,7 +24,7 @@ import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
 import { rootLinks, routeFromFile } from '../server/handler.ts'
 import { basePath } from '../server/head.ts'
 import type { HeadTag, SiteOptions } from '../server/head.ts'
-import { sendResponse, toRequest } from './node.ts'
+import { acceptsEncoding, sendResponse, toRequest } from './node.ts'
 import { resolveIcon } from '../icons.ts'
 
 /** <icon> names, found in the sets installed for the package `file` is in (clarusjs/icons). */
@@ -753,6 +754,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           // A built page wins; anything else (assets, /x.css) falls through to Vite's static files.
           const file = resolve(outDir, `.${inBase.replace(/\/?$/, '/')}index.html`)
           if (file.startsWith(outDir + sep) && existsSync(file)) req.url = base + file.slice(outDir.length + 1).replace(/\\/g, '/')
+          precompressed(req, res, outDir, base)
         }
         next()
       })
@@ -818,6 +820,33 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     },
   }
 }
+
+/**
+ * vite preview serves a file's precompressed copy (`x.js.br`, `x.js.gz`, written by `compress`) when the browser
+ * accepts it, as nginx gzip_static and production hosts do, so what preview measures is what ships. It only points
+ * the request at the copy: Vite's static server (sirv) then sends it with `Content-Encoding` and the original's type.
+ */
+function precompressed(req: IncomingMessage, res: ServerResponse, outDir: string, base: string): void {
+  // A byte range is of the file as stored: the original.
+  if ((req.method !== 'GET' && req.method !== 'HEAD') || req.headers.range) return
+  const [path, query] = (req.url ?? '/').split('?') as [string, string | undefined]
+  if (!path.startsWith(base)) return
+  let file: string
+  try {
+    file = resolve(outDir, decodeURIComponent(path.slice(base.length)))
+  } catch {
+    return
+  }
+  if (!file.startsWith(outDir + sep) || !existsSync(file)) return
+  const copies = (['br', 'gzip'] as const).filter((enc) => existsSync(file + (enc === 'br' ? '.br' : '.gz')))
+  if (!copies.length) return
+  // Which file answers depends on Accept-Encoding.
+  res.setHeader('Vary', 'Accept-Encoding')
+  const accept = String(req.headers['accept-encoding'] ?? '')
+  const pick = copies.find((enc) => acceptsEncoding(accept, enc))
+  if (pick) req.url = `${path}${pick === 'br' ? '.br' : '.gz'}${query === undefined ? '' : `?${query}`}`
+}
+
 
 /**
  * Precompressed copies for self-hosted servers that serve them directly (nginx gzip_static/brotli_static, Caddy

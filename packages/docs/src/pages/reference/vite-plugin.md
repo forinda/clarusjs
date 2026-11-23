@@ -139,7 +139,7 @@ At `vite build`, each run of whitespace in template text becomes one character: 
 
 **Type:** `boolean` · **Default:** `false`
 
-At `vite build`, writes `.br` and `.gz` copies next to each HTML, JavaScript, CSS, SVG, JSON and XML file in `dist/client` (with Node's own `zlib`, best compression), keeping each only when it's smaller than the original. For servers that send precompressed files as they are: nginx (`gzip_static`, `brotli_static`), Caddy (`precompressed`). Netlify, Vercel, Cloudflare and most static hosts compress on their own, so leave it off there. Pages that server routes render per request are compressed by the host, or by a small wrapper around the handler.
+At `vite build`, writes `.br` and `.gz` copies next to each HTML, JavaScript, CSS, SVG, JSON and XML file in `dist/client` (with Node's own `zlib`, best compression), keeping each only when it's smaller than the original. For servers that send precompressed files as they are: nginx (`gzip_static`, `brotli_static`), Caddy (`precompressed`). Netlify, Vercel, Cloudflare and most static hosts compress on their own, so leave it off there. `vite preview` serves the copies too (brotli first, then gzip, as the browser's `Accept-Encoding` allows, with `Vary: Accept-Encoding`), so what you measure there is what such a server sends. Pages that server routes render per request are compressed by the host, or by a small wrapper around the handler.
 
 ## 404 page
 

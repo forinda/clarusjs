@@ -60,7 +60,9 @@ export function compile(source: string, options: CompileOptions): CompileResult 
   // child's top-level element and stops inside it.
   const id = options.scope ?? scopeId(options.file)
   foldClass(parsed.nodes, new Set(parsed.imports.map((imp) => imp.name)))
-  markRoots(parsed.nodes, `cl-c-${id}`, new Set(parsed.imports.map((imp) => imp.name)))
+  // Slot content is marked only when this component has scoped styles to reach it (#418): no class on every
+  // paragraph of every Markdown page otherwise.
+  markRoots(parsed.nodes, `cl-c-${id}`, new Set(parsed.imports.map((imp) => imp.name)), parsed.styles.some((st) => st.mode === 'scoped'))
   let css = ''
   for (const s of parsed.styles) {
     if (s.mode === 'plain') {
@@ -99,7 +101,27 @@ const UNMARKED = new Set(['slot', 'cl-head', 'script', 'style', 'html', 'title',
  * then the class its parent passed (`<card class="wide">`): `__cl_class`, ' wide' or '', which render() and attach()
  * define.
  */
-function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>): void {
+/** The scope class on the top-level elements of content passed to a component (static, merged with their own class). */
+function markSlotContent(nodes: TemplateNode[], cls: string, components: Set<string>): void {
+  for (const node of nodes) {
+    if (node.type === 'fill') markSlotContent(node.children, cls, components)
+    else if (node.type === 'if') for (const b of node.branches) markSlotContent(b.children, cls, components)
+    else if (node.type === 'for') {
+      markSlotContent(node.children, cls, components)
+      if (node.empty) markSlotContent(node.empty, cls, components)
+    } else if (node.type === 'element' && components.has(node.tag)) markSlotContent(node.children, cls, components)
+    else if (node.type === 'element' && !UNMARKED.has(node.tag)) {
+      const at = node.attrs.findIndex((a) => a.name === 'class' && a.kind !== 'event')
+      const own = node.attrs[at]
+      if (!own) node.attrs.push({ kind: 'static', name: 'class', value: cls, start: node.start })
+      else if (own.kind === 'static') node.attrs[at] = { ...own, value: own.value === true || !own.value ? cls : `${own.value} ${cls}` }
+      else if (own.kind === 'interp') own.parts.push(` ${cls}`)
+      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr.startsWith('__cl_classValue(') ? own.expr : `__cl_classValue((${own.expr}))`, start: own.start }, ` ${cls}`], start: own.start }
+    }
+  }
+}
+
+function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>, slots = false): void {
   for (const node of nodes) {
     if (node.type === 'element' && !components.has(node.tag) && !UNMARKED.has(node.tag)) {
       const at = node.attrs.findIndex((a) => a.name === 'class' && a.kind !== 'event')
@@ -111,11 +133,16 @@ function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>):
       // ponytail: a bound [class] that is null/false still gets the scope class (the class can't go away entirely).
       // classValue: the bound value may be an object or an array (#403), joined here with the scope class as text.
       else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr.startsWith('__cl_classValue(') ? own.expr : `__cl_classValue((${own.expr}))`, start: own.start }, ` ${cls}`, passed], start: own.start }
+    } else if (node.type === 'element' && components.has(node.tag)) {
+      // Content passed to a component (#418: a page's content inside its layout) is this component's own: its
+      // top-level elements get the scope class too (not the class passed to this component, which is for its own
+      // top-level output), default slot and @slot('name') fills alike.
+      if (slots) markSlotContent(node.children, cls, components)
     } else if (node.type === 'if') {
-      for (const b of node.branches) markRoots(b.children, cls, components)
+      for (const b of node.branches) markRoots(b.children, cls, components, slots)
     } else if (node.type === 'for') {
-      markRoots(node.children, cls, components)
-      if (node.empty) markRoots(node.empty, cls, components)
+      markRoots(node.children, cls, components, slots)
+      if (node.empty) markRoots(node.empty, cls, components, slots)
     }
   }
 }
