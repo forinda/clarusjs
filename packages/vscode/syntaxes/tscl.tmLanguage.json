@@ -165,9 +165,9 @@
     "block": {
       "patterns": [
         {
-          "comment": "@if (\u2026) {, @else if (\u2026) {, @for (item of list; track key) {",
+          "comment": "@if (\u2026) {, @else if (\u2026) {, @for (item of list; track key) {, @await (\u2026) {, @then (value) {, @catch (error) {",
           "name": "meta.block.control.tscl",
-          "begin": "(@)(if|else\\s+if|for)\\s*(\\()",
+          "begin": "(@)(if|else\\s+if|for|await|then|catch)\\s*(\\()",
           "end": "\\)",
           "beginCaptures": {
             "1": {

@@ -232,3 +232,23 @@ test('a kept hole is restored when Prettier wraps it', async () => {
   expect(out).toContain('{{ (a || b) | c }}')
   expect(out).not.toContain('__cl')
 })
+
+test('#430: @await, @then and @catch are laid out like @if / @else, their headers as written, and stay stable', async () => {
+  const input = '<section>\n@await (load(id,  2)) { <p>Loading…</p> } @then (rows) {\n<ul>@for (r of rows; track r.id) {<li>{{ r.name }}</li>}</ul> } @catch (e) { <p role="alert">{{ e.message }}</p> }\n</section>\n'
+  const out = await format(input, { parser: 'tscl', plugins: [plugin] })
+  expect(out).toBe(`<section>
+  @await (load(id,  2)) {
+    <p>Loading…</p>
+  } @then (rows) {
+    <ul>
+      @for (r of rows; track r.id) {
+        <li>{{ r.name }}</li>
+      }
+    </ul>
+  } @catch (e) {
+    <p role="alert">{{ e.message }}</p>
+  }
+</section>
+`)
+  expect(await format(out, { parser: 'tscl', plugins: [plugin] })).toBe(out)
+})

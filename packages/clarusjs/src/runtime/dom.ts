@@ -145,6 +145,28 @@ const onlyIsland = (nodes: Node[]): Element | null => {
   return kept.length === 1 && (kept[0] as Element).localName === 'cl-island' ? (kept[0] as Element) : null
 }
 
+/**
+ * An @await's promise in an island (#430): `k()` is 0 while it's pending, 1 once it resolved, 2 once it rejected
+ * (tracked, so a block follows it); `v()` is the value or error. When the expression's signals change, a new
+ * promise starts (back to pending) and only the newest one's answer counts. @internal
+ */
+export function awaited(fn: () => unknown): { k(): number; v(): unknown } {
+  const k = state(0)
+  let v: unknown
+  let run = 0
+  onDispose(() => { run++ }) // an answer after the island is gone changes nothing
+  effect(() => {
+    const p = fn()
+    const id = ++run
+    untrack(() => k.set(0))
+    Promise.resolve(p).then(
+      (x) => { if (id === run) { v = x; k.set(1) } },
+      (e) => { if (id === run) { v = e; k.set(2) } },
+    )
+  })
+  return { k: () => k.get(), v: () => v }
+}
+
 /** @internal Compiled components call this; apps don't. */
 export function region(ctx: Ctx, index: number, html: () => string, wire: () => void): void {
   const r = scan(ctx).regions[index]

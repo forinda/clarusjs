@@ -54,10 +54,10 @@ test('script syntax errors point into the .tscl file', () => {
   }
 })
 
-test('top-level await in a <script> is a located error (render and attach are synchronous); await inside functions is fine', () => {
+test('top-level await in an island\'s <script> is a located error naming <script server> (attach is synchronous); await inside functions is fine', () => {
   const err = (src: string) => { try { compile(src, { file: 'x.tscl', target: 'client' }) } catch (e) { return (e as Error).message } return 'no error' }
   for (const [code, col] of [['const r = await load()', 13], ['for await (const x of xs) {}', 3], ['if (a) { b = await c }', 16]] as const) {
-    expect(err(`<script>\n  ${code}\n</script>\n<p>x</p>`), code).toMatch(new RegExp(`^x\\.tscl:2:${col} top-level await isn't supported in a <script>`))
+    expect(err(`<script>\n  ${code}\n</script>\n<p>x</p>`), code).toMatch(new RegExp(`^x\\.tscl:2:${col} an island's <script> can't await at the top level .*<script server>`))
   }
   expect(err('<script>\n  async function go() { await fetch("/x") }\n  const f = async () => { for await (const x of y) {} }\n  class A { async m() { await 1 } }\n</script>\n<p>x</p>')).toBe('no error')
 })

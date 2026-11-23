@@ -1,7 +1,7 @@
 // #259: h(): compose views and elements in server code; the result is HTML a template's {{ }} inserts as is.
 import { beforeAll, expect, test } from 'vitest'
 import { compile } from '../../src/compiler/index.ts'
-import { h, registerViews } from '../../src/server/views.ts'
+import { h, registerViews, render } from '../../src/server/views.ts'
 import { importCode } from '../helpers.ts'
 
 const view = (source: string, name: string) => async () => importCode(compile(source, { file: `src/components/${name}.tscl`, target: 'server', clientUrl: `/${name}.js` }).code, `h-${name}`, {}, true)
@@ -47,4 +47,10 @@ test('JSON can\'t forge h() output (an island prop arrives as data, escaped)', a
   const { render } = await importCode(page.code, 'h-forge')
   expect(render({ block: forged })).toBe('<main>[object Object]</main>')
   expect(render({ block: JSON.parse(JSON.stringify(await h('b', {}, ['x']))) })).not.toContain('<b>')
+})
+
+test('#430: a view that awaits in its <script server> (an async render) is awaited, by h() and render()', async () => {
+  registerViews({ '/src/components/slow.tscl': async () => ({ render: async (p: { text: string }) => { await new Promise((r) => setTimeout(r, 5)); return `<i>${p.text}</i>` } }) })
+  expect(String(await h('components/slow', { text: 'late' }))).toBe('<i>late</i>')
+  expect(await render('components/slow' as never, { text: 'late' } as never)).toBe('<i>late</i>')
 })

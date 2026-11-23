@@ -4,7 +4,7 @@
 
 import { attrHtml, escape, HTML } from '../runtime/html.ts'
 
-type View = { render(props?: object, slots?: Record<string, string>): string }
+type View = { render(props?: object, slots?: Record<string, string>): string | Promise<string> } // async: a <script server> that awaits (#430)
 type Registry = Record<string, () => Promise<View>>
 
 /**
@@ -112,7 +112,7 @@ export async function h<N extends ViewName>(name: N | (string & {}), props: (N e
     const entries = Object.entries(named ? (children as Record<string, Children>) : { default: children as Children })
     const filled = await Promise.all(entries.map(([, content]) => childrenHtml(content)))
     entries.forEach(([slot], k) => { if (filled[k]) slots[slot] = filled[k]! }) // only slots with content: a view without a <slot /> takes no children
-    return html((await load()).render(props as object, Object.keys(slots).length ? slots : undefined))
+    return html(await (await load()).render(props as object, Object.keys(slots).length ? slots : undefined))
   }
   const tag = name.toLowerCase()
   if (!/^[a-z][a-z0-9-]*$/.test(tag)) throw new Error(`h(): "${name}" isn't a tag or a view name (views have a /, such as "components/card")`)

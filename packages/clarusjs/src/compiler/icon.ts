@@ -2,7 +2,7 @@
 // stays pure: clarusjs/vite, clarusjs check and the editor pass `resolveIcon` from clarusjs/icons).
 import type { IconLookup } from '../icons.ts'
 import { ClarusError } from './errors.ts'
-import type { Attr, ParsedFile, TemplateNode } from './parse.ts'
+import { awaitLists, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
 
 /**
  * Finds an icon by `set:name` for `<icon>`: `resolveIcon` from clarusjs/icons, bound to the file being compiled.
@@ -83,6 +83,7 @@ export function checkIcons(parsed: ParsedFile, file: string, source: string, ico
         walk(node.children)
         if (node.empty) walk(node.empty)
       } else if (node.type === 'fill') walk(node.children)
+      else if (node.type === 'await') for (const kids of awaitLists(node)) walk(kids)
     }
   }
   walk(parsed.nodes)

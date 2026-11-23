@@ -3,7 +3,7 @@ import { emitClient } from './emit-client.ts'
 import { ClarusError } from './errors.ts'
 import { emitServer } from './emit-server.ts'
 import { lower } from './ir.ts'
-import { parse, type TemplateNode } from './parse.ts'
+import { awaitLists, parse, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
@@ -77,6 +77,8 @@ export function compile(source: string, options: CompileOptions): CompileResult 
     const statements = head.split(';').map((x) => x.trim()).filter(Boolean).map((x) => `${x};\n`).join('')
     css += `${statements}@scope (.cl-c-${id}) to ([class*="cl-c-"]:not(.cl-c-${id}) > *) {${s.css.slice(head.length).replace(/\s*$/, '')}\n}\n`
   }
+  // renderImports: a render module that runs in the browser (a client route's page, a child an island re-renders).
+  if (options.renderImports && parsed.serverScript) throw new ClarusError('<script server> runs on the server only, and this component renders in the browser (a client route, or a child of an island, which re-renders it): make the route static or server, or render the component outside the island', options.file, source, parsed.serverScript.tag)
   const ir = lower(parsed, options.file, source, { collapseWhitespace: options.collapseWhitespace, icon: options.icon })
   warnings.push(...ir.warnings)
   if (options.target === 'client') return { code: emitClient(ir, options.hot), stateful: ir.stateful, css, warnings }
@@ -109,7 +111,8 @@ function markSlotContent(nodes: TemplateNode[], cls: string, components: Set<str
     else if (node.type === 'for') {
       markSlotContent(node.children, cls, components)
       if (node.empty) markSlotContent(node.empty, cls, components)
-    } else if (node.type === 'element' && components.has(node.tag)) markSlotContent(node.children, cls, components)
+    } else if (node.type === 'await') for (const kids of awaitLists(node)) markSlotContent(kids, cls, components)
+    else if (node.type === 'element' && components.has(node.tag)) markSlotContent(node.children, cls, components)
     else if (node.type === 'element' && !UNMARKED.has(node.tag)) {
       const at = node.attrs.findIndex((a) => a.name === 'class' && a.kind !== 'event')
       const own = node.attrs[at]
@@ -143,6 +146,8 @@ function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>, 
     } else if (node.type === 'for') {
       markRoots(node.children, cls, components, slots)
       if (node.empty) markRoots(node.empty, cls, components, slots)
+    } else if (node.type === 'await') {
+      for (const kids of awaitLists(node)) markRoots(kids, cls, components, slots)
     }
   }
 }

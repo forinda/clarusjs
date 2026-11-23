@@ -170,19 +170,36 @@ function signalCall(init: N | null | undefined): 'state' | 'derived' | 'shared' 
  * Island scripts are bundled for the browser, so `node:` imports are a build error.
  */
 /** Import statements (text and offset in `code`), and the body with them blanked out. */
-export function splitImports(code: string, file: string, source: string, offset: number): { imports: { text: string; start: number }[]; body: string } {
+export function splitImports(code: string, file: string, source: string, offset: number, server = false): { imports: { text: string; start: number }[]; body: string } {
   const imports: { text: string; start: number }[] = []
   let body = code
   for (const stmt of parseScript(code, file, source, offset).body as N[]) {
     if (stmt.type !== 'ImportDeclaration') continue
     const from = String(stmt.source.value)
-    if (from.startsWith('node:')) {
+    if (!server && from.startsWith('node:')) {
       throw new ClarusError(`\`${from}\` can't be imported in an island script: the script is bundled for the browser`, file, source, offset + stmt.start)
     }
     imports.push({ text: code.slice(stmt.start, stmt.end), start: stmt.start })
     body = body.slice(0, stmt.start) + code.slice(stmt.start, stmt.end).replace(/[^\n]/g, ' ') + body.slice(stmt.end)
   }
   return { imports, body }
+}
+
+/**
+ * A `<script server>` (#430): its imports (hoisted to the server module, `node:` allowed: it never reaches a browser),
+ * the rest (run at the top of render), and whether it awaits at the top level (then render is async).
+ */
+export function serverScriptParts(code: string, file: string, source: string, offset: number): { imports: string[]; body: string; awaits: boolean } {
+  const ast = parseScript(code, file, source, offset)
+  const imports: string[] = []
+  let body = code
+  for (const stmt of ast.body as N[]) {
+    if (stmt.type.startsWith('Export')) throw new ClarusError('a <script server> cannot export anything: its names are for the template', file, source, offset + stmt.start)
+    if (stmt.type !== 'ImportDeclaration') continue
+    imports.push(code.slice(stmt.start, stmt.end))
+    body = body.slice(0, stmt.start) + code.slice(stmt.start, stmt.end).replace(/[^\n]/g, ' ') + body.slice(stmt.end)
+  }
+  return { imports, body, awaits: !!topLevelAwait(ast) }
 }
 
 /**
@@ -249,7 +266,7 @@ export function analyzeScript(code: string, file: string, source: string, offset
   }
   // render() and attach() are synchronous: an await outside any function would be invalid JavaScript in them.
   const tla = topLevelAwait(ast)
-  if (tla) throw new ClarusError("top-level await isn't supported in a <script> (rendering is synchronous): await inside a function, such as a resource's fetcher or an event handler", file, source, offset + tla.start)
+  if (tla) throw new ClarusError("an island's <script> can't await at the top level (the browser attaches it without waiting): await data on the server in a <script server>, or in the browser inside a function, such as a resource()'s fetcher or an event handler", file, source, offset + tla.start)
   for (const stmt of ast.body as N[]) {
     if (stmt.type.startsWith('Export')) {
       throw new ClarusError('a <script> cannot export anything', file, source, offset + stmt.start)
