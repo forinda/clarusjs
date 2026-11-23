@@ -116,13 +116,6 @@
 .event-log { margin: 0; color: var(--muted); font-size: 14px; }
 
 /* Forms guide: the order demo. */
-.order { display: grid; gap: 12px; max-width: 560px; margin: 16px 0; }
-.order fieldset { display: grid; gap: 8px; border: 1px solid var(--rule); border-radius: 12px; padding: 12px 16px; }
-.order-line { display: grid; grid-template-columns: 1fr 72px 72px auto; gap: 6px; }
-.order-line input { font: inherit; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--fg); min-width: 0; }
-.order-error { margin: 0; color: var(--bad); }
-.order-add { justify-self: start; }
-.order-sent { font-size: 13px; overflow-x: auto; }
 
 /* Playground (/repl): an app under the header, laid out like other playgrounds. A toolbar, then the editor and the
    output side by side (a divider sets the split), filling the window; stacked on phones. The editor is a textarea over
