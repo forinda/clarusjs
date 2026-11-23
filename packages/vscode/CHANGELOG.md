@@ -1,5 +1,9 @@
 # clarusjs for VS Code
 
+## Unreleased
+
+- The extension bundles minimatch 11 (GHSA-g3hv-75wg-m249, a pattern amplification in minimatch before 11.0.1).
+
 ## 0.2.0
 
 The extension now runs the clarusjs language server (`@clarusjs/language-server`, bundled), the same one other editors use.
