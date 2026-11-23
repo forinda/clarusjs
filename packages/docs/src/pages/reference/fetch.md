@@ -2,7 +2,7 @@
 title: "clarusjs/fetch"
 group: "APIs"
 order: 2
-description: "resource(), batch() and json(): the exact contract of each, with parameters, return values, caveats and usage."
+description: "resource(), action(), batch(), request(), json(), text() and configure(): the exact contract of each, with parameters, return values, caveats and usage."
 ---
 
 # clarusjs/fetch
@@ -10,7 +10,7 @@ description: "resource(), batch() and json(): the exact contract of each, with p
 <p class="lead">Data an island fetches itself, in the browser. For the how-to with a live dashboard, see <a href="/guide/fetching">Fetching data</a>.</p>
 
 ```ts
-import { resource, batch, json } from 'clarusjs/fetch'
+import { resource, action, batch, request, json, text, configure } from 'clarusjs/fetch'
 ```
 
 ## resource()
@@ -23,7 +23,7 @@ Runs `fetcher` and gives its answer as `value`, `loading` and `error`. It runs a
 
 ### Parameters
 
-- **`fetcher({ signal })`**: returns the value, or a promise of it; it can be `async`. Return `undefined`, `null` or `false` for "not ready": no request is sent. An async fetcher resolving to `undefined` is "not ready" too, and the last value is kept. Pass `signal` on to `fetch`, so a superseded or abandoned request is cancelled. The fetcher runs in an effect, so it re-runs when a signal it reads changes.
+- **`fetcher({ signal })`**: returns the value, or a promise of it; it can be `async`. Any client works (`request()`, `fetch`, axios, ky: see [With axios, ky or your own client](/guide/fetching#with-axios-ky-or-your-own-client)). Return `undefined`, `null` or `false` for "not ready": no request is sent. An async fetcher resolving to `undefined` is "not ready" too, and the last value is kept. Pass `signal` on to `fetch`, so a superseded or abandoned request is cancelled. The fetcher runs in an effect, so it re-runs when a signal it reads changes.
 - **`options`** (optional):
   - **`initial`**: the starting value, such as data from the page's `load()`. It's shown in the server HTML, and `loading` is false while the browser fetches again.
   - **`retry`**: how many more attempts after a failure (default `0`), or `{ count, delay(attempt) }`. The default delay is 500 ms, doubling, at most 8 s.
@@ -34,6 +34,9 @@ Runs `fetcher` and gives its answer as `value`, `loading` and `error`. It runs a
   - **`key`**: a function returning the cache key, an array such as `['items', { page }]`. Answers are cached by it and shared by every resource on the page; a key seen before is served without a request until it's invalidated. A falsy key means "not ready". See [Caching](#caching).
   - **`stale`** (ms, with `key`): a cached answer older than this is fetched again when used. Unset: fresh until invalidated. `0`: always fetched.
   - **`keep`** (ms, with `key`, default 5 minutes): how long an answer nothing shows stays cached.
+  - **`timeout`** (ms): fail a run that takes longer, retries included, with a `TimeoutError` (an error, unlike `abort()`). The fetcher's `signal` aborts with it.
+  - **`onSuccess(value)`**, **`onError(error)`**, **`onSettled(value, error)`**: called once per request that settles, in the browser. A cancelled run calls none; with `retry`, after the last attempt; a cache hit isn't a request. `onSuccess` or `onError` returning `false` skips [`configure()`](#configure)'s handler. A callback that throws is reported (`reportError`) and changes nothing.
+  - **`meta`**: any object, passed to `configure()`'s handlers (`{ success: 'Saved' }`, `{ silent: true }`).
 
 ### Returns
 
@@ -43,6 +46,7 @@ A `Resource<T>`:
 - **`loading`**: `true` while a run is in flight (not while revalidating `initial` on attach).
 - **`error`**: the last run's error, or `undefined`. It's cleared when a run starts.
 - **`refetch()`**: run now, cancelling a run in flight. Returns a promise that settles when this run ends (with its retries), or when a newer run replaces it.
+- **`abort()`**: cancel the run in flight. `loading` goes back to `false`, `value` stays, `error` stays empty, and no callback runs. A keyed request still fills the cache for other resources.
 - **`mutate(value)`**: show `value` now, for example an optimistic update. The next run replaces it.
 - **`ready()`**: a promise of the first answer. It resolves with `value` once there is one (at once if there already is), or rejects with the first run's error. On the server it resolves with `initial`. Use it in an event handler or an async function: a script's top level can't `await`.
 
@@ -247,14 +251,115 @@ export const stats = batch((keys, { signal }) => json(`/api/stats?keys=${keys.jo
 const stat = resource(() => stats.get(key))
 ```
 
+## action()
+
+```ts
+action<I = void, R = unknown>(fn, options?): Action<I, R>
+```
+
+A one-off async call from the browser (save, delete, like), with its state for the template.
+
+### Parameters
+
+- **`fn(input, { signal })`**: runs the call; returns the answer or a promise of it, from any client (`request()`, axios, ky…). Pass `signal` on to it. The call ends when `signal` aborts (a cancel or a timeout) even if `fn` doesn't use it.
+- **`options`** (optional):
+  - **`timeout`** (ms): fail a call that takes longer, with a `TimeoutError` (an error).
+  - **`concurrency`**: what a call while one runs does. `'join'` (default): it shares the call in flight (no double submit). `'latest'`: it cancels the call in flight and runs.
+  - **`onSuccess(result, input)`**, **`onError(error, input)`**, **`onSettled(result, error, input)`**, **`meta`**: as for [`resource()`](#resource), once per call. A cancelled call calls none.
+
+### Returns
+
+An `Action<I, R>`:
+
+- **`pending`**: a call is in flight.
+- **`error`**: the last call's error (a timeout, not a cancel). Cleared when a call starts.
+- **`result`**: the last successful answer, kept until the next success.
+- **`run(input)`**: call it. Resolves to the answer, or `undefined` if it failed or was cancelled. Never rejects.
+- **`runAsync(input)`**: call it, and reject with the error (or the `AbortError` of a cancel).
+- **`abort()`**: cancel the call in flight. `pending` goes back to `false`, no error, no callbacks.
+
+### Caveats
+
+- **On the server nothing runs:** `run()` and `runAsync()` resolve `undefined`.
+- **Created in an island,** a call in flight is cancelled when the island goes away.
+- **One input.** For several values, pass an object: `save.run({ id, title })`.
+
+### Usage
+
+```ts
+const save = action((draft: Draft, { signal }) => request('/api/drafts', { method: 'POST', body: draft, signal }), {
+  timeout: 10_000,
+  meta: { success: 'Saved' },
+})
+// <button (click)="save.run(draft)" [disabled]="save.pending">Save</button>
+try { await save.runAsync(draft); go('/drafts') } catch {}
+```
+
+## request()
+
+```ts
+request<T = any>(url, options?): Promise<T>
+```
+
+`fetch(url, options)`, then the response read by its `Content-Type`:
+
+| Content-Type | Read as |
+|---|---|
+| `application/json`, `*/*+json` (`application/problem+json`) | JSON |
+| `text/*`, `*/*xml` | text |
+| anything else | `Blob` |
+| a `204` response | `undefined` |
+
+A response that isn't 2xx throws an `Error` naming the URL and status (`/api/me: 404 Not Found`), with `status` and `data` (the body, read the same way), so `retry` and `error` see it. `T` defaults to `any`.
+
+### Parameters
+
+- **`url`**: a string or `URL`.
+- **`options`**: `fetch`'s options, and:
+  - **`body`**: what `fetch` takes, or a plain object or array, sent as JSON with `Content-Type: application/json` unless you set one;
+  - **`as`**: what to read, whatever the `Content-Type`: `'json'`, `'text'`, `'blob'`, `'arrayBuffer'`, `'formData'`, `'stream'` (the `ReadableStream`), `'response'` (the `Response`, unread);
+  - **`parse`**: your own readers by content type, without parameters (`{ 'application/x-ndjson': (res) => … }`), ahead of the built-in ones and `as`;
+  - **`timeout`** (ms): abort with a `TimeoutError`, together with `signal`.
+
+### Usage
+
+```ts
+const csv = await request<string>('/api/export', { timeout: 10_000 })
+await request(`/api/posts/${id}`, { method: 'PATCH', body: { title } })
+try { await request('/api/signup', { method: 'POST', body: form }) } catch (e) { errors = e.data?.errors }
+```
+
 ## json()
 
 ```ts
-json<T = any>(url, init?): Promise<T>
+json<T = any>(url, options?): Promise<T>
 ```
 
-`fetch(url, init)`, then the response's JSON. A response that isn't 2xx throws an `Error` naming the URL and the status (`/api/me: 503 Service Unavailable`), with the code in its `status` property, so `retry` and `error` see it (`if (user.error?.status === 404) …`). `T` defaults to `any`, as `Response.json()` does.
+`request()` with `as: 'json'`: the body as JSON, whatever the `Content-Type`. Errors as `request()`'s (`status`, `data`). Its options are `request()`'s, and are passed on to `fetch` without the clarusjs ones.
 
 ```ts
 const me = resource(({ signal }) => json<User>('/api/me', { signal }))
+```
+
+## text()
+
+```ts
+text(url, options?): Promise<string>
+```
+
+`request()` with `as: 'text'`.
+
+## configure()
+
+```ts
+configure({ onSuccess?, onError? }): void
+```
+
+Sets handlers every resource and action calls after its own callbacks: one place for toasts. Each gets the value or error, and `{ meta }` (the resource's `meta`). A resource's own `onSuccess` or `onError` returning `false` skips them. Calling it again replaces the handlers. Call it once, in a module every island imports.
+
+```ts
+configure({
+  onError: (e, { meta }) => { if (!meta?.silent) toast.error(String(e)) },
+  onSuccess: (_, { meta }) => { if (meta?.success) toast(String(meta.success)) },
+})
 ```

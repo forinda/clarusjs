@@ -1,4 +1,5 @@
-{{-- A larger form: one state object with a section, repeating lines bound by index, derived total and validation. --}}
+{{-- A larger form: one state object with a section, repeating lines bound by index, derived total and validation.
+     Each field's error shows under it once you've left it, or after Send; then it follows what you type. --}}
 @import textField from './text-field.tscl'
 
 <script>
@@ -7,8 +8,10 @@
   const total = derived(() => order.lines.reduce((sum, line) => sum + Number(line.qty) * Number(line.price), 0))
   const errors = derived(() => ({
     name: order.customer.name.trim() ? '' : 'Enter a name.',
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.customer.email) ? '' : 'Enter an email like ada@example.com.',
     lines: order.lines.some((line) => !line.item.trim()) ? 'Every line needs an item.' : '',
   }))
+  let tried = state(false) // after a Send: every error shows, not only those of fields you've left
   let sent = state('')
   function addLine() {
     order = { ...order, lines: [...order.lines, { item: '', qty: '1', price: '0' }] }
@@ -17,7 +20,8 @@
     order = { ...order, lines: order.lines.filter((_, i) => i !== index) }
   }
   function submit() {
-    if (errors.name || errors.lines) return
+    tried = true
+    if (errors.name || errors.email || errors.lines) return
     sent = JSON.stringify(order)
   }
 </script>
@@ -25,17 +29,27 @@
 <form class="order" (submit)="$event.preventDefault(); submit()">
   <fieldset>
     <legend>Customer</legend>
-    <textField [label]="'Name'" [(value)]="order.customer.name" />
-    <textField [label]="'Email'" [type]="'email'" [(value)]="order.customer.email" />
-    @if (errors.name) {
-      <p class="order-error">{{ errors.name }}</p>
-    }
+    <textField
+      [label]="'Name'"
+      [placeholder]="'Ada Lovelace'"
+      [error]="errors.name"
+      [show]="tried"
+      [(value)]="order.customer.name"
+    />
+    <textField
+      [label]="'Email'"
+      [type]="'email'"
+      [placeholder]="'ada@example.com'"
+      [error]="errors.email"
+      [show]="tried"
+      [(value)]="order.customer.email"
+    />
   </fieldset>
   <fieldset>
     <legend>Lines</legend>
     @for (line of order.lines; track $index) {
       <div class="order-line">
-        <input [aria-label]="'Item ' + ($index + 1)" [(value)]="order.lines[$index].item" />
+        <input [aria-label]="'Item ' + ($index + 1)" placeholder="Item" [(value)]="order.lines[$index].item" />
         <input type="number" min="0" [aria-label]="'Quantity ' + ($index + 1)" [(value)]="order.lines[$index].qty" />
         <input
           type="number"
@@ -48,14 +62,105 @@
       </div>
     }
     <button type="button" class="order-add" (click)="addLine()">Add a line</button>
-    @if (errors.lines) {
-      <p class="order-error">{{ errors.lines }}</p>
+    @if (errors.lines && tried) {
+      <p class="order-error order-lines-error" role="alert">{{ errors.lines }}</p>
     }
   </fieldset>
   <p class="order-total">Total: {{ total }}</p>
-  <button type="submit">Send</button>
-  <button type="button" class="order-reset" (click)="order = initial; sent = ''">Reset</button>
+  <div class="order-actions">
+    <button type="submit" class="primary">Send</button>
+    <button type="button" class="order-reset" (click)="order = initial; sent = ''; tried = false">Reset</button>
+  </div>
   @if (sent) {
     <pre class="order-sent">{{ sent }}</pre>
   }
 </form>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    max-width: 560px;
+    margin: 16px 0;
+  }
+  fieldset {
+    display: grid;
+    gap: 10px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 12px 16px;
+  }
+  .order-line {
+    display: grid;
+    grid-template-columns: 1fr 72px 72px auto;
+    gap: 6px;
+  }
+  .order-line input {
+    min-width: 0;
+  }
+  input:not([type='checkbox']),
+  select {
+    min-height: 32px;
+    font: 14px var(--sans);
+    padding: 0 10px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  /* Thin controls: 32px tall, 1px lines; the main action in the accent colour. */
+  button {
+    min-height: 32px;
+    padding: 0 12px;
+    font: 500 14px var(--sans);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+    transition:
+      border-color 0.15s,
+      color 0.15s;
+  }
+  button:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  button.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+  }
+  button.primary:hover:not(:disabled) {
+    color: var(--bg);
+    background: color-mix(in srgb, var(--accent) 85%, var(--fg));
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .order-line button {
+    min-width: 32px;
+    padding: 0;
+  }
+  .order-error {
+    margin: 0;
+    color: var(--bad);
+    font-size: 13px;
+  }
+  .order-add {
+    justify-self: start;
+  }
+  .order-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .order-total {
+    margin: 0;
+    font-weight: 600;
+  }
+  .order-sent {
+    font-size: 13px;
+    overflow-x: auto;
+  }
+</style>

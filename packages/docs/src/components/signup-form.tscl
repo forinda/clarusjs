@@ -29,8 +29,8 @@
 </script>
 
 <form class="signup" (submit)="$event.preventDefault()">
-  <textField [label]="'Name'" [(value)]="form.name" />
-  <textField [label]="'Email'" [type]="'email'" [(value)]="form.email" />
+  <textField [label]="'Name'" [placeholder]="'Ada Lovelace'" [(value)]="form.name" />
+  <textField [label]="'Email'" [type]="'email'" [placeholder]="'ada@example.com'" [(value)]="form.email" />
   <fieldset class="plan">
     <legend>Plan</legend>
     @for (p of plans; track p.id) {
@@ -180,5 +180,25 @@
     color: var(--muted);
     cursor: not-allowed;
     opacity: 0.7;
+  }
+  /* A thin button, like the other form demos'. */
+  button {
+    justify-self: start;
+    min-height: 32px;
+    padding: 0 12px;
+    font: 500 14px var(--sans);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: default;
   }
 </style>

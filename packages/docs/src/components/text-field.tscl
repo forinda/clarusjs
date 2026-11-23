@@ -1,14 +1,38 @@
-{{-- A form field: its label is read-only, its value is a @model the form binds two ways ([(value)]). --}}
+{{-- A form field: its label is read-only, its value is a @model the form binds two ways ([(value)]). Its error shows
+     under it once you've left it (or once the form says so with [show], after a submit), then follows what you type. --}}
 @input label: string
 @input type: string = 'text'
+@input placeholder: string = ''
+@input error: string = ''
+@input show: boolean = false
 @model value: string = ''
 
-<label class="text-field"
-  ><span>{{ label }}</span> <input [type]="type" [(value)]="value" autocomplete="off"
-/></label>
+<script>
+  let left = state(false)
+</script>
+
+<div class="text-field">
+  <label
+    ><span>{{ label }}</span>
+    <input
+      [type]="type"
+      [(value)]="value"
+      [placeholder]="placeholder || false"
+      [aria-invalid]="error && (left || show) ? 'true' : false"
+      (blur)="left = true"
+      autocomplete="off"
+  /></label>
+  @if (error && (left || show)) {
+    <small class="field-error" role="alert">{{ error }}</small>
+  }
+</div>
 
 <style scoped>
   :scope {
+    display: grid;
+    gap: 6px;
+  }
+  label {
     display: grid;
     gap: 6px;
   }
@@ -17,15 +41,20 @@
     color: var(--muted);
   }
   input {
-    font: inherit;
-    padding: 8px 12px;
+    min-height: 32px;
+    font: 14px var(--sans);
+    padding: 0 10px;
     border: 1px solid var(--rule);
-    border-radius: 8px;
+    border-radius: 6px;
     background: var(--bg);
     color: var(--fg);
     transition:
       border-color 0.15s,
       box-shadow 0.15s;
+  }
+  input::placeholder {
+    color: var(--muted);
+    opacity: 0.8;
   }
   input:hover {
     border-color: color-mix(in srgb, var(--accent) 40%, var(--rule));
@@ -36,5 +65,12 @@
     outline-offset: 2px;
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  input[aria-invalid='true'] {
+    border-color: var(--bad);
+  }
+  .field-error {
+    color: var(--bad);
+    font-size: 13px;
   }
 </style>

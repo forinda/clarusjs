@@ -451,7 +451,7 @@ test('the generated Netlify function serves only the server routes', async () =>
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
   // The pages and endpoints, each with its fragment path (endpoints have none: a 404).
-  expect(fn).toContain('export const config = {"path":["/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
+  expect(fn).toContain('export const config = {"path":["/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -907,13 +907,31 @@ test('large forms: a section, lines bound by index, derived total and validation
   // The fields are islands of their own, attached separately: wait for them before typing.
   for (const field of await order.locator('cl-island[c="text-field"]').all()) await expect(field).toHaveAttribute('data-cl-ready', '')
   await expect(order.locator('.order-total')).toHaveText('Total: 4')
+  // Nothing is wrong before you've done anything; placeholders show what goes where.
+  await expect(order.getByRole('alert')).toHaveCount(0)
+  await expect(order.getByLabel('Name')).toHaveAttribute('placeholder', 'Ada Lovelace')
+  await expect(order.getByLabel('Email')).toHaveAttribute('placeholder', 'ada@example.com')
+  await expect(order.getByLabel('Item 1')).toHaveAttribute('placeholder', 'Item')
+  // A field's error shows under that field once you leave it, then follows what you type.
+  const nameField = order.locator('.text-field').filter({ has: page.getByLabel('Name') })
+  const emailField = order.locator('.text-field').filter({ has: page.getByLabel('Email') })
+  await order.getByLabel('Email').fill('ada@')
+  await expect(emailField.getByRole('alert')).toHaveCount(0) // still typing
+  await order.getByLabel('Name').focus() // left the email field
+  await expect(emailField.getByRole('alert')).toHaveText('Enter an email like ada@example.com.')
+  await expect(order.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true')
+  await order.getByLabel('Email').fill('ada@example.com')
+  await expect(emailField.getByRole('alert')).toHaveCount(0)
+  await expect(nameField.getByRole('alert')).toHaveText('Enter a name.') // Name was left empty (focused, then Email): its own error, under it
+  // Send shows what's still wrong, each under its field.
   await order.getByRole('button', { name: 'Send' }).click()
-  await expect(order.locator('.order-error')).toHaveText('Enter a name.')
+  await expect(nameField.getByRole('alert')).toHaveText('Enter a name.')
   await order.getByLabel('Name').fill('Ada')
+  await expect(nameField.getByRole('alert')).toHaveCount(0)
   await order.getByLabel('Quantity 1').fill('3')
   await expect(order.locator('.order-total')).toHaveText('Total: 12')
   await order.getByRole('button', { name: 'Add a line' }).click()
-  await expect(order.locator('.order-error')).toHaveText('Every line needs an item.')
+  await expect(order.locator('.order-lines-error')).toHaveText('Every line needs an item.')
   await order.getByLabel('Item 2').fill('Pen')
   await order.getByLabel('Price 2').fill('2.5')
   await expect(order.locator('.order-total')).toHaveText('Total: 14.5')
@@ -2014,6 +2032,56 @@ test('what clarusjs is: a button says the name (the browser\'s speech, KLAIR-us 
   await expect.poll(() => page.evaluate(() => (window as unknown as { __said: unknown[] }).__said)).toEqual([{ text: 'Klair-us', lang: 'en-US' }])
 })
 
+test('#431 fetching: a CSV read as text, Cancel aborts without an error, a slow server times out, onSuccess/onError say so', async ({ page }) => {
+  await page.goto('/guide/fetching#cancelling-and-timeouts')
+  const demo = page.locator('#export')
+  await expect(demo.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+  const status = demo.getByRole('status')
+  await demo.getByRole('button', { name: 'Export CSV' }).click()
+  await expect(status).toHaveText('Exported 3 rows.')
+  await expect(demo.locator('.export-csv')).toContainText('1,Ada,12')
+  // Cancel while the slow server works: idle again, no error, the last CSV kept.
+  await demo.getByLabel('Slow server (4 s)').check()
+  await demo.getByRole('button', { name: 'Export CSV' }).click()
+  await expect(status).toHaveText('Exporting…')
+  await demo.getByRole('button', { name: 'Cancel' }).click()
+  await expect(status).toHaveText('Cancelled.')
+  await expect(demo.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+  await expect(demo.locator('.export-csv')).toContainText('1,Ada,12')
+  // Left to run, the slow export hits the 2.5 s timeout: an error, so onError writes the status.
+  await demo.getByRole('button', { name: 'Export CSV' }).click()
+  await expect(status).toHaveText('Timed out after 2.5 s.', { timeout: 6000 })
+})
+
+test('#429 fetching: Rename is an action: pending while it runs, a second click joins it, a failure shows its error', async ({ page }) => {
+  let posts = 0
+  let fail = false
+  await page.route('**/api/demo-records', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue()
+    posts++
+    await new Promise((done) => setTimeout(done, 400))
+    return fail ? route.fulfill({ status: 500, body: 'down' }) : route.continue()
+  })
+  await page.goto('/guide/fetching#caching')
+  const list = page.locator('#record-list')
+  await expect(list.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+  // Records matching 77 only: the server keeps renames in memory, and the caching test checks page 1.
+  await list.getByLabel('Filter records').fill('77')
+  await expect(list.locator('li').first()).toHaveText(/^Record 77/)
+  const rename = list.getByRole('button', { name: /Rename the first row|Renaming…/ })
+  await rename.click()
+  await expect(rename).toHaveText('Renaming…')
+  await expect(rename).toBeDisabled()
+  await rename.dispatchEvent('click') // a second click while it runs (the button is disabled; the action joins anyway)
+  await expect(rename).toHaveText('Rename the first row')
+  expect(posts).toBe(1)
+  await expect(list.getByRole('alert')).toHaveCount(0)
+  fail = true
+  await rename.click()
+  await expect(list.getByRole('alert')).toHaveText("Couldn't rename it. Try again.")
+  await expect(rename).toBeEnabled()
+})
+
 test('#430 <script server>: /guide/explained computes its numbers and awaits the build\'s commit on the server; nothing of it ships', async ({ page }) => {
   const html = await (await page.request.get('/guide/explained')).text()
   expect(html).toMatch(/Built from commit <code>[0-9a-f]{7,}<\/code>/)
@@ -2104,4 +2172,11 @@ test('combobox: options from the server, asked once typing pauses, the newest se
   await city.fill('lu')
   await expect(demo.getByRole('status').filter({ hasText: 'Searching…' })).toBeVisible()
   await expect(demo.getByRole('listbox', { name: 'City' }).getByRole('option')).toHaveText(['Luanda', 'Lusaka'])
+})
+
+test('form validation: every text field has a placeholder showing what to write', async ({ page }) => {
+  const demo = await stepsDemo(page)
+  await expect(demo.locator('#signup-name')).toHaveAttribute('placeholder', 'Ada Lovelace')
+  await expect(demo.locator('#signup-email')).toHaveAttribute('placeholder', 'ada@example.com')
+  await expect(demo.locator('#signup-username')).toHaveAttribute('placeholder', 'ada')
 })
