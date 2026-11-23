@@ -21,7 +21,7 @@ test('page is server-rendered with the counters as the only islands', async () =
   expect(unscoped(html)).toContain('<h1>clarusjs POC</h1>')
   expect(unscoped(html)).toContain('<p>Hello, world!</p>')
   expect(html.match(/<cl-island c="counter"/g)).toHaveLength(2)
-  expect(html.match(/<script/g)).toHaveLength(1)
+  expect(html.match(/<script/g)).toHaveLength(2) // the island loader, and Vite's client (dev)
 })
 
 test('loader is served as JS', async () => {

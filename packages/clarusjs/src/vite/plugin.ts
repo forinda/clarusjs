@@ -810,9 +810,20 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
               if (to !== undefined) return void res.writeHead(301, { location: to }).end()
             }
             const app = await env.runner.import<{ default: { fetch(r: Request): Promise<Response> } }>(ENTRY)
-            const response = await app.default.fetch(toRequest(req))
+            let response = await app.default.fetch(toRequest(req))
+            const html = response.headers.get('content-type')?.startsWith('text/html')
             // The 404 page (HTML) is the answer; a plain 404 falls through to Vite.
-            if (response.status === 404 && !response.headers.get('content-type')?.startsWith('text/html')) return next()
+            if (response.status === 404 && !html) return next()
+            // Every page loads Vite's client in dev, islands or not: a page that ships no JavaScript would otherwise
+            // never hear a change (a <style> edit, a layout edit) and keep showing the old one until a manual reload.
+            if (html && req.method !== 'HEAD') {
+              const text = await response.text()
+              const client = `<script type="module" src="${server.config.base}@vite/client"></script>`
+              const out = /<\/head>/i.test(text) && !text.includes('/@vite/client') ? text.replace(/<\/head>/i, `${client}</head>`) : text
+              const headers = new Headers(response.headers)
+              headers.delete('content-length')
+              response = new Response(out, { status: response.status, statusText: response.statusText, headers })
+            }
             await sendResponse(res, response)
           } catch (err) {
             next(err)
