@@ -1,0 +1,58 @@
+{{-- Fetching recipes: a token that expires. The api() wrapper adds it to each request; on a 401 it gets a new one
+     and tries once more. The demo's tokens last 3 seconds. --}}
+
+<script>
+  import { action, request } from 'clarusjs/fetch'
+  let token = ''
+  let refreshed = state(0)
+  async function refresh() {
+    token = (await request('/api/demo-auth', { method: 'POST' })).token
+    refreshed = refreshed + 1
+  }
+  const expired = (e) => e?.status === 401
+  async function api(path, options = {}) {
+    if (!token) await refresh()
+    const call = () => request(path, { ...options, headers: { authorization: 'Bearer ' + token } })
+    try {
+      return await call()
+    } catch (e) {
+      if (!expired(e)) throw e
+      await refresh() // expired: a new token, then once more
+      return call()
+    }
+  }
+  const ask = action((_, { signal }) => api('/api/demo-auth', { signal }))
+</script>
+
+<div id="recipe-token">
+  <p>
+    <button type="button" [disabled]="ask.pending" (click)="ask.run()">Ask for the secret</button>
+  </p>
+  <p role="status">
+    @if (ask.result) {
+      <span class="secret">{{ ask.result.secret }}</span> Tokens fetched:
+      <strong class="refreshed">{{ refreshed }}</strong
+      >.
+    }
+  </p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+</style>

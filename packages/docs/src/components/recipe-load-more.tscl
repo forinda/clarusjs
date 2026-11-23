@@ -1,0 +1,49 @@
+{{-- Fetching recipes: load more. Each page is a run of the same resource; onSuccess appends its rows. --}}
+
+<script>
+  import { json, resource } from 'clarusjs/fetch'
+  let page = state(1)
+  let rows = state([])
+  let pages = state(1)
+  const batch = resource(({ signal }) => json('/api/demo-records?page=' + page + '&size=5', { signal }), {
+    onSuccess: (data) => {
+      rows = [...rows, ...data.rows]
+      pages = data.pages
+    },
+  })
+</script>
+
+<div id="recipe-load-more">
+  <ul>
+    @for (row of rows; track row.id) {
+      <li>{{ row.name }}</li>
+    }
+  </ul>
+  @if (page < pages) {
+    <button type="button" [disabled]="batch.loading" (click)="page = page + 1">
+      {{ batch.loading ? 'Loading…' : 'Load more' }}
+    </button>
+  } @else {
+    <p class="muted">That's all of them.</p>
+  }
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+</style>

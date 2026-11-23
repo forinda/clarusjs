@@ -1,0 +1,51 @@
+{{-- Fetching recipes: an optimistic update. The count goes up at once; if the server fails, it goes back down. --}}
+
+<script>
+  import { action, json, request, resource } from 'clarusjs/fetch'
+  let fail = state(false)
+  const likes = resource(({ signal }) => json('/api/demo-likes', { signal }))
+  const like = action(
+    (_, { signal }) => request('/api/demo-likes' + (fail ? '?fail=1' : ''), { method: 'POST', signal }),
+    {
+      onSuccess: (data) => likes.mutate(data), // the server's count
+      onError: () => likes.mutate({ likes: likes.value.likes - 1 }), // roll back
+    },
+  )
+  const why = (e) => e?.data?.error ?? 'It failed.' // the server's message, from a non-2xx answer
+  function tap() {
+    likes.mutate({ likes: likes.value.likes + 1 }) // shown now
+    like.run()
+  }
+</script>
+
+<div id="recipe-optimistic">
+  <p>
+    <button type="button" [disabled]="!likes.value || like.pending" (click)="tap()">
+      ♥ {{ likes.value ? likes.value.likes : '…' }}
+    </button>
+    <label><input type="checkbox" [(checked)]="fail" /> Make the server fail</label>
+  </p>
+  @if (like.error) {
+    <p class="muted" role="alert">{{ why(like.error) }} The count went back.</p>
+  }
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+</style>

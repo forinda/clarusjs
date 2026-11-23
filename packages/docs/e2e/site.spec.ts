@@ -39,13 +39,16 @@ async function visit(page: Page, path: string) {
 
 for (const { path, title } of pages) {
   test(`${path} renders with its own title and no console errors`, async ({ page }) => {
+    // The recipes' external API, answered here: this test mustn't depend on the network.
+    await page.route('https://jsonplaceholder.typicode.com/**', (route) =>
+      route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: route.request().url().includes('/users/') ? { id: 1, name: 'Leanne Graham' } : [] }))
     const { response, errors } = await visit(page, path)
     expect(response?.status()).toBe(200)
     await expect(page).toHaveTitle(new RegExp(esc(title)))
     await expect(page).toHaveTitle(/clarusjs/)
     await expect(page.locator('h1')).toHaveCount(1)
-    // The Fetching guide's demo fails one request on purpose (to show a retry); the browser logs that 503.
-    expect(errors.filter((e) => !(path === '/guide/fetching' && /status of 503/.test(e)))).toEqual([])
+    // The Fetching guide's demo and the retry recipe fail one request on purpose; the browser logs that 503.
+    expect(errors.filter((e) => !(['/guide/fetching', '/guide/fetching-recipes'].includes(path) && /status of 503/.test(e)))).toEqual([])
   })
 }
 
@@ -451,7 +454,7 @@ test('the generated Netlify function serves only the server routes', async () =>
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
   // The pages and endpoints, each with its fragment path (endpoints have none: a 404).
-  expect(fn).toContain('export const config = {"path":["/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
+  expect(fn).toContain('export const config = {"path":["/api/demo-auth","/api/demo-auth/","/api/demo-auth/index.frag.html","/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-clock","/api/demo-clock/","/api/demo-clock/index.frag.html","/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-likes","/api/demo-likes/","/api/demo-likes/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/api/demo-upload","/api/demo-upload/","/api/demo-upload/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -2179,4 +2182,119 @@ test('form validation: every text field has a placeholder showing what to write'
   await expect(demo.locator('#signup-name')).toHaveAttribute('placeholder', 'Ada Lovelace')
   await expect(demo.locator('#signup-email')).toHaveAttribute('placeholder', 'ada@example.com')
   await expect(demo.locator('#signup-username')).toHaveAttribute('placeholder', 'ada')
+})
+
+// #454: Fetching recipes, each live recipe doing what its code says.
+async function recipe(page: import('@playwright/test').Page, id: string) {
+  const box = page.locator('#' + id)
+  await expect(box.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+  return box
+}
+
+test('#454 recipes: search waits for a pause, then shows the matches', async ({ page }) => {
+  const asked: string[] = []
+  page.on('request', (r) => { const u = new URL(r.url()); if (u.pathname === '/api/demo-cities') asked.push(u.searchParams.get('q')!) })
+  await page.goto('/guide/fetching-recipes#search-as-you-type')
+  const box = await recipe(page, 'recipe-search')
+  await box.getByRole('searchbox').pressSequentially('nai', { delay: 40 })
+  await expect(box.getByRole('listitem')).toHaveText(['Nairobi'])
+  expect(asked).toEqual(['nai'])
+})
+
+test('#454 recipes: load more appends the next page', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#load-more')
+  const box = await recipe(page, 'recipe-load-more')
+  await expect(box.getByRole('listitem')).toHaveCount(5)
+  await box.getByRole('button', { name: 'Load more' }).click()
+  await expect(box.getByRole('listitem')).toHaveCount(10)
+  await expect(box.getByRole('listitem').nth(5)).toHaveText(/^Record 6/)
+})
+
+test('#454 recipes: polling asks again every 2 seconds', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#polling')
+  const box = await recipe(page, 'recipe-poll')
+  const asked = box.locator('.asked')
+  await expect(asked).toHaveText(/^\d+$/)
+  const first = Number(await asked.textContent())
+  await expect.poll(async () => Number(await asked.textContent()), { timeout: 6000 }).toBeGreaterThan(first)
+})
+
+test('#454 recipes: an optimistic like shows at once, and rolls back when the server fails', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#optimistic-update-with-rollback')
+  const box = await recipe(page, 'recipe-optimistic')
+  const button = box.getByRole('button', { name: /♥/ })
+  await expect(button).toHaveText(/♥ \d+/)
+  const before = Number((await button.textContent())!.replace(/\D/g, ''))
+  await button.click()
+  await expect(button).toHaveText(`♥ ${before + 1}`) // at once
+  await expect(button).toBeEnabled() // the server answered
+  await expect(button).toHaveText(`♥ ${before + 1}`)
+  await box.getByLabel('Make the server fail').check()
+  await button.click()
+  await expect(button).toHaveText(`♥ ${before + 2}`)
+  await expect(box.getByRole('alert')).toContainText('The count went back.')
+  await expect(button).toHaveText(`♥ ${before + 1}`)
+})
+
+test('#454 recipes: a chain and parallel requests to an external API (answered here, not by the network)', async ({ page }) => {
+  await page.route('https://jsonplaceholder.typicode.com/**', (route) => {
+    const u = new URL(route.request().url())
+    const id = Number(u.searchParams.get('userId') ?? u.pathname.split('/').pop())
+    const headers = { 'access-control-allow-origin': '*' } // as the real API sends
+    if (u.pathname.startsWith('/users/')) return route.fulfill({ headers, json: { id, name: id === 1 ? 'Leanne Graham' : 'Ervin Howell' } })
+    if (u.pathname === '/posts') return route.fulfill({ headers, json: Array.from({ length: 10 }, (_, i) => ({ id: i, userId: id })) })
+    return route.fulfill({ headers, json: [{ completed: false }, { completed: true }, { completed: false }] })
+  })
+  await page.goto('/guide/fetching-recipes#requests-in-a-chain-and-in-parallel')
+  const box = await recipe(page, 'recipe-chain')
+  await expect(box.getByRole('status')).toHaveText(/Leanne Graham wrote 10 posts and has\s+2 todos left\./)
+  await box.getByLabel('User').selectOption('2')
+  await expect(box.getByRole('status')).toHaveText(/Ervin Howell wrote 10 posts/)
+})
+
+test('#454 recipes: an expired token is refreshed once, and the request still answers', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#a-token-that-expires')
+  const box = await recipe(page, 'recipe-token')
+  await box.getByRole('button', { name: 'Ask for the secret' }).click()
+  await expect(box.locator('.secret')).toHaveText('The cake is in the fridge.')
+  await expect(box.locator('.refreshed')).toHaveText('1')
+  await page.waitForTimeout(3300) // the token expires
+  await box.getByRole('button', { name: 'Ask for the secret' }).click()
+  await expect(box.locator('.refreshed')).toHaveText('2')
+  await expect(box.locator('.secret')).toHaveText('The cake is in the fridge.')
+})
+
+test('#454 recipes: retry with backoff succeeds on the second attempt', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#retry-with-backoff')
+  const box = await recipe(page, 'recipe-retry')
+  await expect(box.getByRole('status')).toHaveText(/visits, after 2 attempts\./)
+})
+
+test('#454 recipes: prefetch on hover makes the click instant', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#prefetch-on-hover')
+  const box = await recipe(page, 'recipe-prefetch')
+  await expect(box.getByRole('listitem').first()).toBeVisible()
+  const two = box.getByRole('button', { name: 'Page 2' })
+  const fetched = page.waitForResponse((r) => r.url().includes('/api/demo-records') && r.url().includes('page=2'))
+  await two.hover()
+  await fetched
+  let requested = false
+  page.on('request', (r) => { if (r.url().includes('/api/demo-records') && r.url().includes('page=2')) requested = true })
+  await two.click()
+  await expect(two).toHaveAttribute('aria-current', 'page')
+  await expect(box.getByRole('status')).toHaveText('') // no loading: it came from the cache
+  expect(requested).toBe(false)
+})
+
+test('#454 recipes: an upload sends the file, and Cancel stops one', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#uploading-a-file')
+  const box = await recipe(page, 'recipe-upload')
+  await box.getByLabel('A file (up to 1 MB)').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello world') })
+  await box.getByRole('button', { name: 'Upload' }).click()
+  await expect(box.getByRole('status')).toHaveText('Uploading notes.txt…')
+  await expect(box.getByRole('status')).toHaveText('Uploaded notes.txt (11 bytes).')
+  await box.getByRole('button', { name: 'Upload' }).click()
+  await box.getByRole('button', { name: 'Cancel' }).click()
+  await expect(box.getByRole('status')).toHaveText('Uploaded notes.txt (11 bytes).') // the last one; the cancelled one left no error
+  await expect(box.getByRole('button', { name: 'Cancel' })).toBeDisabled()
 })

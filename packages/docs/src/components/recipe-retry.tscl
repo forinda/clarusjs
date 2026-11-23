@@ -1,0 +1,50 @@
+{{-- Fetching recipes: retry with backoff. The demo server fails the first request; the resource waits 300 ms, then
+     600 ms…, and shows the attempts it took. --}}
+
+<script>
+  import { json, resource } from 'clarusjs/fetch'
+  let attempts = state(0)
+  let n = 0
+  const once = Math.random().toString(36).slice(2) // the demo server fails each id once
+  const visits = resource(
+    ({ signal }) => {
+      n++
+      const answer = json('/api/demo-stats?keys=visits&fail=' + once, { signal })
+      answer.finally(() => (attempts = n)).catch(() => {})
+      return answer
+    },
+    { retry: { count: 3, delay: (attempt) => 300 * 2 ** (attempt - 1) } },
+  )
+</script>
+
+<div id="recipe-retry">
+  <p role="status">
+    @if (visits.value) {
+      {{ visits.value.visits }} visits, after <strong class="attempts">{{ attempts }}</strong> attempts.
+    } @else if (visits.error) {
+      Still failing after {{ attempts }} attempts.
+    } @else {
+      Loading…
+    }
+  </p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+</style>

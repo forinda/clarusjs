@@ -1,0 +1,39 @@
+{{-- Fetching recipes: polling. Asked again every 2 seconds while the page is visible, and when it's shown again. --}}
+
+<script>
+  import { json, resource } from 'clarusjs/fetch'
+  const clock = resource(({ signal }) => json('/api/demo-clock', { signal }), {
+    refetch: { interval: 2000, focus: true },
+  })
+</script>
+
+<div id="recipe-poll">
+  <p role="status">
+    @if (clock.value) {
+      Server time <strong class="time">{{ clock.value.now.slice(11, 19) }}</strong
+      >, asked <strong class="asked">{{ clock.value.asked }}</strong> times.
+    } @else {
+      Asking the server…
+    }
+  </p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+</style>

@@ -326,4 +326,4 @@ To skip that first browser fetch, set `refetch: { onStart: false }`. The resourc
 - **Merge different endpoints into one request:** write a server route that combines them, and batch that.
 - **Progress:** there's no upload or download progress. For a progress bar, read `as: 'stream'` and count the chunks yourself.
 
-Every option and its exact behaviour is in the [clarusjs/fetch reference](/reference/fetch).
+Every option and its exact behaviour is in the [clarusjs/fetch reference](/reference/fetch). For whole patterns to copy (search as you type, load more, optimistic updates, token refresh, uploads, external APIs), see [Fetching recipes](/guide/fetching-recipes).
