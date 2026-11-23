@@ -1,6 +1,6 @@
 {
   "name": "@clarusjs/prettier-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Format clarusjs .tscl components with Prettier",
   "license": "MIT",
   "type": "module",
@@ -30,7 +30,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "peerDependencies": {
-    "clarusjs": ">=0.13.0",
+    "clarusjs": ">=0.14.0",
     "prettier": "^3.6.0"
   },
   "devDependencies": {

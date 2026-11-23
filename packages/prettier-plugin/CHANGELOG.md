@@ -1,5 +1,16 @@
 # @clarusjs/prettier-plugin
 
+## 0.2.0
+
+### Minor Changes
+
+- [#438](https://github.com/forinda/clarusjs/pull/438) [`e78455e`](https://github.com/forinda/clarusjs/commit/e78455e2518ff3a9cfacb7b02aeb814764c00ef0) Thanks [@forinda](https://github.com/forinda)! - `@await`, `@then` and `@catch` blocks ([#430](https://github.com/forinda/clarusjs/issues/430)): the Prettier plugin lays them out like `@if` / `@else` (headers kept as written), the language server hides them from the HTML service and completes the keywords, and the ESLint plugin reads their expressions.
+
+### Patch Changes
+
+- Updated dependencies [[`e78455e`](https://github.com/forinda/clarusjs/commit/e78455e2518ff3a9cfacb7b02aeb814764c00ef0), [`a0ee549`](https://github.com/forinda/clarusjs/commit/a0ee549af5a36b7b4ace50ab42627acd102d7259), [`39e91e8`](https://github.com/forinda/clarusjs/commit/39e91e85b3c7a20be06f8575083f1e000ac22318), [`e22f57a`](https://github.com/forinda/clarusjs/commit/e22f57a12aa241c1d5f8033d35a437cc64d4e3e0), [`8215ea7`](https://github.com/forinda/clarusjs/commit/8215ea7cdbe851e8dbaf845601fbad5becdee2d0), [`f194846`](https://github.com/forinda/clarusjs/commit/f1948466a96d486f3067171c51290bb0297be839)]:
+  - clarusjs@0.14.0
+
 ## 0.1.0
 
 ### Minor Changes

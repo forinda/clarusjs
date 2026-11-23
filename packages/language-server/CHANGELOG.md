@@ -1,5 +1,11 @@
 # @clarusjs/language-server
 
+## 0.5.0
+
+### Minor Changes
+
+- [#438](https://github.com/forinda/clarusjs/pull/438) [`e78455e`](https://github.com/forinda/clarusjs/commit/e78455e2518ff3a9cfacb7b02aeb814764c00ef0) Thanks [@forinda](https://github.com/forinda)! - `@await`, `@then` and `@catch` blocks ([#430](https://github.com/forinda/clarusjs/issues/430)): the Prettier plugin lays them out like `@if` / `@else` (headers kept as written), the language server hides them from the HTML service and completes the keywords, and the ESLint plugin reads their expressions.
+
 ## 0.4.0
 
 ### Minor Changes
