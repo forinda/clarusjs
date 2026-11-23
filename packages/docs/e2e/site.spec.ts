@@ -2032,3 +2032,32 @@ test('#431 fetching: a CSV read as text, Cancel aborts without an error, a slow 
   await demo.getByRole('button', { name: 'Export CSV' }).click()
   await expect(status).toHaveText('Timed out after 2.5 s.', { timeout: 6000 })
 })
+
+test('#429 fetching: Rename is an action: pending while it runs, a second click joins it, a failure shows its error', async ({ page }) => {
+  let posts = 0
+  let fail = false
+  await page.route('**/api/demo-records', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue()
+    posts++
+    await new Promise((done) => setTimeout(done, 400))
+    return fail ? route.fulfill({ status: 500, body: 'down' }) : route.continue()
+  })
+  await page.goto('/guide/fetching#caching')
+  const list = page.locator('#record-list')
+  await expect(list.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+  // Records matching 77 only: the server keeps renames in memory, and the caching test checks page 1.
+  await list.getByLabel('Filter records').fill('77')
+  await expect(list.locator('li').first()).toHaveText(/^Record 77/)
+  const rename = list.getByRole('button', { name: /Rename the first row|Renaming…/ })
+  await rename.click()
+  await expect(rename).toHaveText('Renaming…')
+  await expect(rename).toBeDisabled()
+  await rename.dispatchEvent('click') // a second click while it runs (the button is disabled; the action joins anyway)
+  await expect(rename).toHaveText('Rename the first row')
+  expect(posts).toBe(1)
+  await expect(list.getByRole('alert')).toHaveCount(0)
+  fail = true
+  await rename.click()
+  await expect(list.getByRole('alert')).toHaveText("Couldn't rename it. Try again.")
+  await expect(rename).toBeEnabled()
+})

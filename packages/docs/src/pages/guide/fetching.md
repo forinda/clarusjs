@@ -116,6 +116,58 @@ await request(`/api/posts/${id}`, { method: 'PATCH', body: { title } })
 
 A response that isn't 2xx throws, whatever you asked to read. The error has the `status` and the body read the same way, as `data`, so a `422`'s field errors are at hand (`e.data.errors`).
 
+## With axios, ky or your own client
+
+`resource()` and `action()` take any function that returns a promise, so an HTTP client you already use works as it is. Two things to carry over:
+
+- **Pass `signal` on.** It's how a newer run, `abort()`, `timeout` and an island going away cancel the request. axios, ky and `fetch` all take an `AbortSignal` as `signal`.
+- **Let errors throw.** `retry`, `error` and `onError` see whatever the client throws. axios throws an `AxiosError` for a non-2xx response, with the status at `error.response.status`, where `request()` puts it at `error.status`.
+
+```ts
+// api.ts: one client for the site, with its own base URL and interceptors (auth, logging)
+import axios from 'axios'
+export const api = axios.create({ baseURL: '/api' })
+api.interceptors.request.use((config) => ({ ...config, headers: { ...config.headers, 'x-client': 'web' } }))
+```
+
+```tscl
+<script>
+  import { action, configure, invalidate, resource } from 'clarusjs/fetch'
+  import { api } from '~/api.ts'
+  const posts = resource(({ signal }) => api.get('/posts', { signal }).then((res) => res.data), { key: () => ['posts'] })
+  const remove = action((id, { signal }) => api.delete(`/posts/${id}`, { signal }), {
+    onSuccess: () => invalidate(['posts']),
+    onError: (e) => { if (e.response?.status === 404) return false }, // gone already: no toast
+  })
+</script>
+```
+
+In `configure()`'s handlers, read the status the way your client reports it (`e.response?.status` for axios, `e.status` for `request()`). Whatever the client throws when its `signal` aborts (axios: `CanceledError`), a cancel is still no error and no callbacks, and a `timeout` is still a `TimeoutError`.
+
+## Actions: save, delete, like
+
+`resource()` reads. For a one-off call from a button, use `action()`: it gives `pending`, `error` and `result` for the template, and runs the request when you call `run()`.
+
+```tscl
+<script>
+  import { action, invalidate, request } from 'clarusjs/fetch'
+  const remove = action((id, { signal }) => request(`/api/posts/${id}`, { method: 'DELETE', signal }), {
+    meta: { success: 'Deleted' },          // for configure()'s toast
+    onSuccess: () => invalidate(['posts']), // the lists showing posts fetch again
+  })
+</script>
+
+<button (click)="remove.run(post.id)" [disabled]="remove.pending">Delete</button>
+@if (remove.error) { <p role="alert">Couldn't delete it.</p> }
+```
+
+- **`run(input)` never rejects.** A failure lands in `error`, `onError` and `configure()`'s handler, so a click can't leave an unhandled error. **`runAsync(input)`** rejects, for `try`/`catch` or `await`ing one action after another.
+- **A second call while one runs joins it**: one request, the same answer, no double submit. With `concurrency: 'latest'`, it cancels the one in flight instead (a search as you type).
+- **`abort()`, `timeout`, the callbacks and `meta`** work as they do for a resource. Created in an island, a call in flight is cancelled when the island goes away.
+- **Optimistic updates:** change what's shown first (`setData()` or a resource's `mutate()`), and put it back in `onError`.
+
+The caching demo below renames a record with an action: the button says *Renaming…* while it runs.
+
 ## Cancelling and timeouts
 
 `abort()` cancels a resource's run in flight. That isn't a failure: `loading` goes back to false, the last value stays, and `error` stays empty. `timeout` (ms) fails a run that takes too long, retries included, with a `TimeoutError`. That one is an error. `request()` takes `timeout` too, on top of the `signal` you pass.
@@ -141,7 +193,7 @@ Use whichever fits:
 
 - **State in the template.** `error` holds the last run's error, until the next run starts: `@if (feed.error) { … }`.
 - **Callbacks, once per request.** `onSuccess(value)`, `onError(error)` and `onSettled(value, error)`. They are events: the same error twice calls `onError` twice, which is what a toast wants. A cancel calls none of them; with `retry`, `onError` runs after the last attempt.
-- **One place for toasts.** `configure()` sets handlers that run after every resource's own callbacks, with the resource's `meta`. A resource's own `onError` returning `false` skips them (it handled the error).
+- **One place for toasts.** `configure()` sets handlers that run after every resource's and action's own callbacks, with its `meta`. An own `onError` returning `false` skips them (it handled the error).
 - **An effect, for something that lasts.** A banner shown while an error stands: `effect(() => banner.set(feed.error ? 'Offline' : ''))`.
 
 ```ts
@@ -197,7 +249,6 @@ To skip that first browser fetch, set `refetch: { onStart: false }`. The resourc
 
 - **Keep answers across full page loads:** the cache (with `key`) lives in the page; a reload starts it empty.
 - **Merge different endpoints into one request:** write a server route that combines them, and batch that.
-- **Mutations:** send them with `request()` (or a form, see [Form validation](./form-validation.md)), then `refetch()`, `mutate()` or `invalidate()`.
 - **Progress:** there's no upload or download progress. For a progress bar, read `as: 'stream'` and count the chunks yourself.
 
 Every option and its exact behaviour is in the [clarusjs/fetch reference](/reference/fetch).
