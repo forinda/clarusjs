@@ -30,7 +30,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "peerDependencies": {
-    "clarusjs": ">=0.12.0",
+    "clarusjs": ">=0.13.0",
     "eslint": "^9.0.0 || ^10.0.0"
   },
   "devDependencies": {

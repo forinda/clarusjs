@@ -1,5 +1,27 @@
 # @clarusjs/theme-docs
 
+## 0.4.0
+
+### Minor Changes
+
+- [#374](https://github.com/forinda/clarusjs/pull/374) [`bbae6a5`](https://github.com/forinda/clarusjs/commit/bbae6a56193f49bd7de68afe6e2385fbdaa65283) Thanks [@forinda](https://github.com/forinda)! - The phone drawer, redesigned: "Menu" with a close button, a switch between the sections (`switch: false` leaves one out), the groups at a larger size without icons or the search box (the header's button is there), and a links row pinned to the bottom: the new `menuLinks` config, then the social links. The drawer no longer repeats every section as a link.
+
+- [#374](https://github.com/forinda/clarusjs/pull/374) [`234e25b`](https://github.com/forinda/clarusjs/commit/234e25b9f48e6ceb2fcd341d66c623e3c90ed166) Thanks [@forinda](https://github.com/forinda)! - The Learn path beside a lesson (from 1024px): the course and how many lessons are done, each lesson with the XP it can earn and its `minutes` (frontmatter), marked done, next or locked from the progress in this browser, the steps of the lesson you're on following the lesson bar, and your XP and badges linking to the progress page. Lesson items get `xp` (counted from the page: 50, plus 10 a step and 20 a quiz) and `minutes`. New `--xp` and `--xp-soft` tokens color XP and badges in both themes.
+
+- [#374](https://github.com/forinda/clarusjs/pull/374) [`3b285d0`](https://github.com/forinda/clarusjs/commit/3b285d0a01023d068917118d8f7ba03fac370688) Thanks [@forinda](https://github.com/forinda)! - The docs sidebar, redesigned: a search box at the top (it opens the search dialog; the header's button hides where the sidebar shows), each group with an `icon` and a chevron and collapsible (`collapsed: true`; the current page's group is always open, with no JavaScript), pages on a guide line with the current one marked by a bar, and badges (`badge: "New"` in a page's frontmatter or on an item). The theme's utilities are now unlayered, so they win over its base rules for elements as specificity says.
+
+### Patch Changes
+
+- [#388](https://github.com/forinda/clarusjs/pull/388) [`e345799`](https://github.com/forinda/clarusjs/commit/e345799f64702bd5140f8bbca742c933beac1d7a) Thanks [@forinda](https://github.com/forinda)! - Accessibility fixes from a full audit of clarusjs.com. Theme: on phones the header's search button keeps its "Search" name for screen readers (the label is hidden visually, not removed), and a lesson's step segments are 24px tap targets (the bars still draw 8px high). Content: Markdown tables take focus (`tabindex="0"`), so one that scrolls sideways on a small screen can be scrolled from the keyboard.
+
+- [#374](https://github.com/forinda/clarusjs/pull/374) [`447f18b`](https://github.com/forinda/clarusjs/commit/447f18b2d6643f84b623c289f860b808c35097f2) Thanks [@forinda](https://github.com/forinda)! - The theme's stylesheet source uses `@apply` for keywords and token colours. The built CSS renders the same: sizes stay in px.
+
+- [#374](https://github.com/forinda/clarusjs/pull/374) [`c0f6e00`](https://github.com/forinda/clarusjs/commit/c0f6e00d9707ca2077d453c1bce61f80b8ab1789) Thanks [@forinda](https://github.com/forinda)! - The theme's Tailwind classes drop the `tw:` prefix (`flex`, `bg-surface`). Tailwind now reads only the `class="…"` attributes of the theme's templates (`scripts/classes.js`), so words in their text no longer become utilities, and a test keeps the theme's own class names from also being utilities. The built stylesheet holds only the utilities the theme uses.
+
+- [#374](https://github.com/forinda/clarusjs/pull/374) [`8354019`](https://github.com/forinda/clarusjs/commit/83540197dc9078c3070bc9e0169b57d970fcdabc) Thanks [@forinda](https://github.com/forinda)! - The theme's stylesheet is now written with Tailwind and built to the plain `theme.css` the package ships: sites need no Tailwind, and the page looks the same (pixel-identical on the docs site). Its utilities are built on the tokens, so `--accent` and the others still restyle everything.
+- Updated dependencies [[`01f21e4`](https://github.com/forinda/clarusjs/commit/01f21e454db0bdf81d405c8ff580a6847e6b51b0), [`77853de`](https://github.com/forinda/clarusjs/commit/77853decd380c972d094bdb871f90f4479029548), [`6cc6ec9`](https://github.com/forinda/clarusjs/commit/6cc6ec95031e6f963ceba74af85f5cb90aad6ba2), [`e5650c7`](https://github.com/forinda/clarusjs/commit/e5650c787206ce8a13cf26613f02a47659c94c19), [`3a302a4`](https://github.com/forinda/clarusjs/commit/3a302a419ef8b341866c661e9b04dad94f7b541f), [`e87ad85`](https://github.com/forinda/clarusjs/commit/e87ad8538c44ec5327097fb33cfd4702066fad30), [`b1d211f`](https://github.com/forinda/clarusjs/commit/b1d211f2192d3e379d834bf442ca932fcba16547), [`4d93a7b`](https://github.com/forinda/clarusjs/commit/4d93a7bfb58663d8f01f9c3b0c9767740827fb5d), [`96d7ea1`](https://github.com/forinda/clarusjs/commit/96d7ea13dbe40ec8ee395374cb84d6beba68d396), [`e8734bf`](https://github.com/forinda/clarusjs/commit/e8734bf2f3e2b512b45949522500ace2ccdc7bfb), [`dff8f40`](https://github.com/forinda/clarusjs/commit/dff8f40dcd4f0b2cbf8cafd6dbe990462eb77212), [`c5dd711`](https://github.com/forinda/clarusjs/commit/c5dd711258cab06354c990cda5b7c87d728ca1c7), [`6fd8398`](https://github.com/forinda/clarusjs/commit/6fd839848dbbeb34db573f2f8ae25c1d5f29757c), [`2bc1db9`](https://github.com/forinda/clarusjs/commit/2bc1db9f298d9e07e77d8a44d8dd32f3c90f4d85)]:
+  - clarusjs@0.13.0
+
 ## 0.3.0
 
 ### Minor Changes

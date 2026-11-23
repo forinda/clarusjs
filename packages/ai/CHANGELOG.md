@@ -1,5 +1,13 @@
 # @clarusjs/ai
 
+## 0.1.2
+
+### Patch Changes
+
+- [#387](https://github.com/forinda/clarusjs/pull/387) [`77853de`](https://github.com/forinda/clarusjs/commit/77853decd380c972d094bdb871f90f4479029548) Thanks [@forinda](https://github.com/forinda)! - Built-in icons: `<icon name="lucide:rocket" />` renders an inline SVG at build time from any Iconify set the project installs (`pnpm add -D @iconify-json/lucide`), with no JavaScript. It's 1em high with its width in proportion, takes the text colour, and is `aria-hidden` unless labelled. The name must be static; a missing set or icon is an error at `file:line:col` with the closest names, in the build, `clarusjs check` and the editor. The editor completes sets and icon names and previews an icon on hover; the MCP `compile` tool resolves icons too. New `clarusjs/icons` (Node only) reads the sets; `CompileOptions.icon` passes them to the compiler.
+- Updated dependencies [[`01f21e4`](https://github.com/forinda/clarusjs/commit/01f21e454db0bdf81d405c8ff580a6847e6b51b0), [`77853de`](https://github.com/forinda/clarusjs/commit/77853decd380c972d094bdb871f90f4479029548), [`6cc6ec9`](https://github.com/forinda/clarusjs/commit/6cc6ec95031e6f963ceba74af85f5cb90aad6ba2), [`e5650c7`](https://github.com/forinda/clarusjs/commit/e5650c787206ce8a13cf26613f02a47659c94c19), [`3a302a4`](https://github.com/forinda/clarusjs/commit/3a302a419ef8b341866c661e9b04dad94f7b541f), [`e87ad85`](https://github.com/forinda/clarusjs/commit/e87ad8538c44ec5327097fb33cfd4702066fad30), [`b1d211f`](https://github.com/forinda/clarusjs/commit/b1d211f2192d3e379d834bf442ca932fcba16547), [`4d93a7b`](https://github.com/forinda/clarusjs/commit/4d93a7bfb58663d8f01f9c3b0c9767740827fb5d), [`96d7ea1`](https://github.com/forinda/clarusjs/commit/96d7ea13dbe40ec8ee395374cb84d6beba68d396), [`e8734bf`](https://github.com/forinda/clarusjs/commit/e8734bf2f3e2b512b45949522500ace2ccdc7bfb), [`dff8f40`](https://github.com/forinda/clarusjs/commit/dff8f40dcd4f0b2cbf8cafd6dbe990462eb77212), [`c5dd711`](https://github.com/forinda/clarusjs/commit/c5dd711258cab06354c990cda5b7c87d728ca1c7), [`6fd8398`](https://github.com/forinda/clarusjs/commit/6fd839848dbbeb34db573f2f8ae25c1d5f29757c), [`2bc1db9`](https://github.com/forinda/clarusjs/commit/2bc1db9f298d9e07e77d8a44d8dd32f3c90f4d85)]:
+  - clarusjs@0.13.0
+
 ## 0.1.1
 
 ### Patch Changes

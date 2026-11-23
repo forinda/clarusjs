@@ -1,5 +1,39 @@
 # clarusjs
 
+## 0.13.0
+
+### Minor Changes
+
+- [#408](https://github.com/forinda/clarusjs/pull/408) [`01f21e4`](https://github.com/forinda/clarusjs/commit/01f21e454db0bdf81d405c8ff580a6847e6b51b0) Thanks [@forinda](https://github.com/forinda)! - Class forms: `[class.active]="on"` toggles one class, and a bound `[class]` takes a string, an object (its truthy keys) or an array (falsy entries dropped, nested allowed), like clsx. All of an element's class sources merge, each class once, with the scope class, on the server and in islands; `clarusjs check` types them. `classValue()` is exported from the runtime. They used to compile to `class.active` and `[object Object]`.
+
+- [#387](https://github.com/forinda/clarusjs/pull/387) [`77853de`](https://github.com/forinda/clarusjs/commit/77853decd380c972d094bdb871f90f4479029548) Thanks [@forinda](https://github.com/forinda)! - Built-in icons: `<icon name="lucide:rocket" />` renders an inline SVG at build time from any Iconify set the project installs (`pnpm add -D @iconify-json/lucide`), with no JavaScript. It's 1em high with its width in proportion, takes the text colour, and is `aria-hidden` unless labelled. The name must be static; a missing set or icon is an error at `file:line:col` with the closest names, in the build, `clarusjs check` and the editor. The editor completes sets and icon names and previews an icon on hover; the MCP `compile` tool resolves icons too. New `clarusjs/icons` (Node only) reads the sets; `CompileOptions.icon` passes them to the compiler.
+
+- [#401](https://github.com/forinda/clarusjs/pull/401) [`e87ad85`](https://github.com/forinda/clarusjs/commit/e87ad8538c44ec5327097fb33cfd4702066fad30) Thanks [@forinda](https://github.com/forinda)! - The sitemap lists each page's translations: its head's `<link rel="alternate" hreflang="…" href="…">` tags become `<xhtml:link>` alternates with absolute URLs (and stay in the page).
+
+- [#397](https://github.com/forinda/clarusjs/pull/397) [`b1d211f`](https://github.com/forinda/clarusjs/commit/b1d211f2192d3e379d834bf442ca932fcba16547) Thanks [@forinda](https://github.com/forinda)! - The sitemap lists each page's images with Google's image extension: every `<img>` resolved to an absolute URL, except decorative ones (`alt=""`) and `data:` URLs. `sitemap: { images: false }` leaves them out.
+
+- [#398](https://github.com/forinda/clarusjs/pull/398) [`4d93a7b`](https://github.com/forinda/clarusjs/commit/4d93a7bfb58663d8f01f9c3b0c9767740827fb5d) Thanks [@forinda](https://github.com/forinda)! - `sitemap: { include }` adds URLs the build can't list (server and client routes): a list of paths, or a function returning one (async, to read them from a database at build time).
+
+- [#400](https://github.com/forinda/clarusjs/pull/400) [`96d7ea1`](https://github.com/forinda/clarusjs/commit/96d7ea13dbe40ec8ee395374cb84d6beba68d396) Thanks [@forinda](https://github.com/forinda)! - Past 50,000 URLs, the build splits the sitemap into `sitemap-1.xml`, `sitemap-2.xml`… with `sitemap.xml` as their index, so its address doesn't change.
+
+- [#396](https://github.com/forinda/clarusjs/pull/396) [`e8734bf`](https://github.com/forinda/clarusjs/commit/e8734bf2f3e2b512b45949522500ace2ccdc7bfb) Thanks [@forinda](https://github.com/forinda)! - A page sets its own sitemap date: `<cl-head><meta name="sitemap:lastmod" content="2026-11-01"></cl-head>` (or `lastmod:` in Markdown frontmatter) wins over the git date and is removed from the built page; a value that isn't a date fails the build, naming the page.
+
+- [#412](https://github.com/forinda/clarusjs/pull/412) [`dff8f40`](https://github.com/forinda/clarusjs/commit/dff8f40dcd4f0b2cbf8cafd6dbe990462eb77212) Thanks [@forinda](https://github.com/forinda)! - Spread props onto a component with `[...]="props"`: every key is a prop, and props written on the tag win. `clarusjs check` types it against the child's inputs: the spread must provide the required inputs the tag doesn't write, with the right types.
+
+- [#411](https://github.com/forinda/clarusjs/pull/411) [`c5dd711`](https://github.com/forinda/clarusjs/commit/c5dd711258cab06354c990cda5b7c87d728ca1c7) Thanks [@forinda](https://github.com/forinda)! - Spread attributes onto an element with `[...]="attrs"`. Attributes written on the element win (whatever the order or case), and `class` and `style` merge, the spread's first. Each value is escaped and URL-checked like `[attr]`. Event handlers, `srcdoc`, invalid names, JSX names (`className`, `htmlFor`) and object values are dropped, with a warning naming the place. A spread is refused on elements that load things (`iframe`, `frame`, `embed`, `object`, `base`, `link`, `meta`). In islands it follows state, removing keys that disappear. `{...x}` and dotted names other than `class.` / `style.` are now build errors instead of being written out. An empty `class` or `style` value removes the attribute rather than writing `class=""`.
+
+- [#409](https://github.com/forinda/clarusjs/pull/409) [`6fd8398`](https://github.com/forinda/clarusjs/commit/6fd839848dbbeb34db573f2f8ae25c1d5f29757c) Thanks [@forinda](https://github.com/forinda)! - Style forms: `[style.color]="c"` (and custom properties, `[style.--accent]`, or camelCase, `[style.fontSize]`) sets one property, removed when the value is `null`, `undefined` or `false`; a bound `[style]` takes an object (camelCase keys to kebab-case, no units added). They merge with a written `style="…"`, on the server and in islands; `clarusjs check` types them. `styleValue()` is exported from the runtime. They used to compile to `style.color="…"` and `[object Object]`.
+
+### Patch Changes
+
+- [#422](https://github.com/forinda/clarusjs/pull/422) [`6cc6ec9`](https://github.com/forinda/clarusjs/commit/6cc6ec95031e6f963ceba74af85f5cb90aad6ba2) Thanks [@forinda](https://github.com/forinda)! - `vite preview` serves the precompressed copies that `compress` writes: the `.br` copy, else the `.gz` one, that the browser's `Accept-Encoding` accepts (not `q=0`), with `Content-Encoding`, the original's type and `Vary: Accept-Encoding`. A byte range, or a browser that accepts neither, gets the original. What preview sends now matches nginx `gzip_static` / Caddy `precompressed` with the same build.
+
+- [#416](https://github.com/forinda/clarusjs/pull/416) [`e5650c7`](https://github.com/forinda/clarusjs/commit/e5650c787206ce8a13cf26613f02a47659c94c19) Thanks [@forinda](https://github.com/forinda)! - The README says how to pronounce clarusjs: KLAIR-us, from the Latin _clarus_, "clear, bright".
+
+- [#420](https://github.com/forinda/clarusjs/pull/420) [`3a302a4`](https://github.com/forinda/clarusjs/commit/3a302a419ef8b341866c661e9b04dad94f7b541f) Thanks [@forinda](https://github.com/forinda)! - A component's `<style scoped>` reaches the content it passes to another component, such as a page's content inside its layout (`<docs>…</docs>`): when the component has a `<style scoped>`, the top-level elements of slot content (default and `@slot('name')`) get its scope class, as its own top-level elements do (without one, no class is added). Child components' roots keep their own class only.
+
+- [#414](https://github.com/forinda/clarusjs/pull/414) [`2bc1db9`](https://github.com/forinda/clarusjs/commit/2bc1db9f298d9e07e77d8a44d8dd32f3c90f4d85) Thanks [@forinda](https://github.com/forinda)! - `.clarusjs/views.d.ts` writes a type import from the built-in `~/` alias as a path from `.clarusjs/` (`../src/…`), so it resolves without a `paths` entry in tsconfig.
+
 ## 0.12.0
 
 ### Minor Changes
