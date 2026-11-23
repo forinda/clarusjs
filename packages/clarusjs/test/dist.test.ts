@@ -95,9 +95,11 @@ test('the clarusjs command is built, with a shebang', () => {
 // 100 / 350 KB before: the forms engine (#250: clarusjs/forms, steps, submit) takes the package past 90 / 320 KB, which
 // the editor epic (#45: the content mapper, tolerant parsing) had nearly filled (88 / 304 KB).
 // 90 / 320 KB before: the TypeScript epic (#211); 80 / 290 KB: the navigation epic (#169); 70 / 250 KB before that.
-test('size budget: the published package stays small (tarball 130 KB, unpacked 470 KB)', () => {
+// 135 KB tarball: main is at 129,399 B; the attributes epic (#402: class and style forms, spread onto elements and
+// components, with their checker types and docs) takes it to 133,568 B. Unpacked stays 470 KB (469,786 B with it).
+test('size budget: the published package stays small (tarball 135 KB, unpacked 470 KB)', () => {
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
-  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(130 * 1024)
+  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(135 * 1024)
   expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(470 * 1024)
 }, 30_000) // npm pack takes over 5 s when every package's tests run at once
 
