@@ -174,6 +174,9 @@ settings:
 overrides:
   minimatch@>=7.0.0 <11.0.1: ^11.0.1
 
+patchedDependencies:
+  vscode-languageclient@11.0.0: 6fd2cd4004bbaec1b330b02a17431548516aa43c7a79434323952e918c1d30ac
+
 importers:
 
   .:
@@ -482,7 +485,7 @@ importers:
         version: 5.1.1(@types/node@26.6.6)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
       vscode-languageclient:
         specifier: ^11.0.0
-        version: 11.0.0
+        version: 11.0.0(patch_hash=6fd2cd4004bbaec1b330b02a17431548516aa43c7a79434323952e918c1d30ac)
       vscode-uri:
         specifier: ^3.2.0
         version: 3.2.0
@@ -4943,7 +4946,7 @@ snapshots:
 
   vscode-jsonrpc@8.2.0: {}
 
-  vscode-languageclient@11.0.0:
+  vscode-languageclient@11.0.0(patch_hash=6fd2cd4004bbaec1b330b02a17431548516aa43c7a79434323952e918c1d30ac):
     dependencies:
       minimatch: 11.0.9
       semver: 7.8.6
