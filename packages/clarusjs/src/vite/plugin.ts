@@ -694,7 +694,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  componentLoaders: ${JSON.stringify(componentLoaders)},\n` +
         `  componentData: import.meta.glob(['/src/**/*.load.ts', '!/src/pages/**']),\n` +
         // Endpoints: the other .ts files under src/pages, exporting GET, POST, … (see the server reference).
-        `  endpoints: import.meta.glob(['/src/pages/**/*.ts', '!/src/pages/**/*.load.ts', '!/src/pages/**/*.d.ts']),\n` +
+        `  guards: import.meta.glob('/src/pages/**/+guard.ts'),\n` +
+        `  endpoints: import.meta.glob(['/src/pages/**/*.ts', '!/src/pages/**/*.load.ts', '!/src/pages/**/*.d.ts', '!/src/pages/**/+*']),\n` +
         `  modes: ${JSON.stringify(modes)},\n` +
         `  routerUrl: ${JSON.stringify(routerUrl)},\n` +
         `  client: ${JSON.stringify(client)},\n` +
