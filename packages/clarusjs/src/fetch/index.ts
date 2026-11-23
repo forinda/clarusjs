@@ -56,13 +56,13 @@ export type ResourceOptions<T> = {
  * on `error` is for state). A cancel calls none of them; with `retry`, after the last attempt. Browser only.
  * @see https://clarusjs.com/guide/fetching#errors
  */
-export type Callbacks<T> = {
-  /** It succeeded. Return `false` to skip `configure()`'s `onSuccess`. */
-  onSuccess?(value: T): unknown
+export type Callbacks<T, I = void> = {
+  /** It succeeded (an action's input second). Return `false` to skip `configure()`'s `onSuccess`. */
+  onSuccess?(value: T, input: I): unknown
   /** It failed (a timeout too). Return `false` to skip `configure()`'s `onError` (handled here). */
-  onError?(error: unknown): unknown
+  onError?(error: unknown, input: I): unknown
   /** After either, last: `(value, undefined)` or `(undefined, error)`. */
-  onSettled?(value: T | undefined, error: unknown): unknown
+  onSettled?(value: T | undefined, error: unknown, input: I): unknown
   /** Anything for `configure()`'s handlers: `{ success: 'Saved' }`, `{ silent: true }`. */
   meta?: Record<string, unknown>
 }
@@ -99,11 +99,11 @@ const call = (fn: ((...a: any[]) => unknown) | undefined, ...args: unknown[]): u
   try { return fn?.(...args) } catch (err) { (globalThis.reportError ?? console.error)(err) }
 }
 /** A settled request: the instance's callbacks, then the global handlers unless the instance said `false`. */
-const settled = <T>(o: Callbacks<T>, ok: boolean, value: unknown, err: unknown): void => {
+const settled = <T, I>(o: Callbacks<T, I>, ok: boolean, value: unknown, err: unknown, input?: I): void => {
   const ctx = { meta: o.meta }
-  if (ok) { if (call(o.onSuccess, value) !== false) call(handlers.onSuccess, value, ctx) }
-  else if (call(o.onError, err) !== false) call(handlers.onError, err, ctx)
-  call(o.onSettled, ok ? value : undefined, ok ? undefined : err)
+  if (ok) { if (call(o.onSuccess, value, input) !== false) call(handlers.onSuccess, value, ctx) }
+  else if (call(o.onError, err, input) !== false) call(handlers.onError, err, ctx)
+  call(o.onSettled, ok ? value : undefined, ok ? undefined : err, input)
 }
 
 /** `signal`, also aborted after `ms` with a `TimeoutError`. */
@@ -227,7 +227,8 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
       return (keyed ? (out as Promise<T>) : retrying(out, () => fetcher({ signal }), signal)).then(
         // An async "not ready" resolves to undefined: keep the value.
         (v) => { if (latest()) { if (!keyed && v !== undefined) value.set(v); loading.set(false); busy = false; if (v !== undefined) settled(options, true, v, undefined) } },
-        (err) => { if (latest()) { error.set(err); loading.set(false); busy = false; settled(options, false, undefined, err) } },
+        // Aborted (a timeout here): its reason, whatever the client threw for it (axios: CanceledError).
+        (e) => { if (latest()) { const err = signal.aborted ? signal.reason : e; error.set(err); loading.set(false); busy = false; settled(options, false, undefined, err) } },
       )
     })
   }
@@ -287,6 +288,95 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
     },
   }
   return self
+}
+
+/**
+ * A one-off async call (delete, save, like): what `action()` gives. Its getters read signals.
+ * @see https://clarusjs.com/reference/fetch#action
+ */
+export type Action<I, R> = {
+  /** A call is in flight. */
+  readonly pending: boolean
+  /** The last call's error (a timeout too, not a cancel), cleared when a call starts. */
+  readonly error: unknown
+  /** The last successful call's answer, kept until the next success. */
+  readonly result: R | undefined
+  /** Call it: resolves to the answer, or `undefined` if it failed or was cancelled. Never rejects. */
+  run(input: I): Promise<R | undefined>
+  /** Call it, and reject if it fails or is cancelled (for try/catch and chains). */
+  runAsync(input: I): Promise<R>
+  /** Cancel the call in flight: back to idle, no error, no callbacks. */
+  abort(): void
+}
+
+/**
+ * `action()`'s options: `timeout`, `concurrency`, and the callbacks and `meta` a resource takes.
+ * @see https://clarusjs.com/reference/fetch#action
+ */
+export type ActionOptions<I, R> = {
+  /** Fail a call after this many ms, with a `TimeoutError`. */
+  timeout?: number
+  /** A call while one runs: `'join'` (default) shares the one in flight (no double submit); `'latest'` cancels it. */
+  concurrency?: 'join' | 'latest'
+} & Callbacks<R, I>
+
+/** Rejects with the signal's reason when it aborts: a call ends on cancel or timeout even if it ignores `signal`. */
+const aborted = (signal: AbortSignal) => new Promise<never>((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
+
+/**
+ * A one-off async call from the browser (delete, save, like), with `pending`, `error` and `result` for the template.
+ * `run()` never rejects (the error lands in `error`, `onError` and `configure()`'s handler); `runAsync()` does. A
+ * call while one runs joins it; created in an island, the call is cancelled when the island goes away. On the server
+ * nothing runs.
+ *
+ * @param fn Gets the input and `{ signal }` (pass it on to `request()`); returns the answer or a promise of it.
+ * @param options `timeout`, `concurrency` (`'join'` or `'latest'`), `onSuccess` / `onError` / `onSettled`, `meta`.
+ * @example
+ * ```ts
+ * const remove = action((id: number, { signal }) => request(`/api/posts/${id}`, { method: 'DELETE', signal }), {
+ *   meta: { success: 'Deleted' },
+ *   onSuccess: () => invalidate(['posts']),
+ * })
+ * // <button (click)="remove.run(post.id)" [disabled]="remove.pending">Delete</button>
+ * ```
+ * @see https://clarusjs.com/reference/fetch#action
+ */
+export function action<I = void, R = unknown>(fn: (input: I, ctx: { signal: AbortSignal }) => R | Promise<R>, options: ActionOptions<I, R> = {}): Action<I, R> {
+  const pending = state(false)
+  const error = state<unknown>(undefined)
+  const result = state<R | undefined>(undefined)
+  let controller: AbortController | undefined
+  let current: Promise<R> | undefined
+  const abort = () => { controller?.abort(); controller = current = undefined; pending.set(false) }
+  if (browser) onDispose(abort)
+  const runAsync = (input: I): Promise<R> => {
+    if (!browser) return Promise.resolve(undefined as R)
+    if (current && options.concurrency !== 'latest') return current
+    abort()
+    const c = (controller = new AbortController())
+    const signal = within(c.signal, options.timeout)
+    const mine = () => controller === c // not cancelled, nor replaced
+    const end = () => { controller = current = undefined }
+    error.set(undefined)
+    pending.set(true)
+    const p = Promise.race([(async () => fn(input, { signal }))(), aborted(signal)]).then(
+      (v) => { if (mine()) { end(); group(() => { result.set(v); pending.set(false) }); settled(options, true, v, undefined, input) } return v },
+      (e) => {
+        const err = signal.aborted ? signal.reason : e // a timeout or cancel, whatever the client threw (axios: CanceledError)
+        if (mine()) { end(); group(() => { error.set(err); pending.set(false) }); settled(options, false, undefined, err, input) }
+        throw err
+      },
+    )
+    return (current = p)
+  }
+  return {
+    get pending() { return pending.get() },
+    get error() { return error.get() },
+    get result() { return result.get() },
+    run: (input) => runAsync(input).catch(() => undefined),
+    runAsync,
+    abort,
+  }
 }
 
 // The keyed cache (#287): one entry per key, shared by every resource on the page. In the browser only.

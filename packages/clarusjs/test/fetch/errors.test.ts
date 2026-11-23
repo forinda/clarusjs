@@ -2,7 +2,7 @@
 // #431: a resource can be cancelled (abort(), not an error) or time out (an error); its outcome reaches callbacks
 // (onSuccess, onError, onSettled), once per run, and then the handlers given to configure() (toasts in one place).
 import { afterEach, expect, test, vi } from 'vitest'
-import { configure, resource } from '../../src/fetch/index.ts'
+import { action, configure, resource } from '../../src/fetch/index.ts'
 import { deferred, flush } from './helpers.ts'
 
 afterEach(() => { configure({}); vi.unstubAllGlobals() })
@@ -83,4 +83,17 @@ test('a callback that throws is reported, and the resource\'s state stays as the
   expect(r).toMatchObject({ value: 7, loading: false, error: undefined })
   expect(report).toHaveBeenCalledWith(expect.objectContaining({ message: 'toast broke' }))
   report.mockRestore()
+})
+
+test('a client that rejects with its own error on abort (axios: CanceledError) still reports a timeout as TimeoutError', async () => {
+  class CanceledError extends Error { name = 'CanceledError' }
+  const client = (signal: AbortSignal) => new Promise<never>((_, reject) => signal.addEventListener('abort', () => reject(new CanceledError('canceled'))))
+  const onError = vi.fn()
+  const r = resource(({ signal }) => client(signal), { timeout: 20, onError })
+  const a = action((_: void, { signal }) => client(signal), { timeout: 20 })
+  await a.run()
+  await new Promise((done) => setTimeout(done, 40))
+  expect(r.error).toMatchObject({ name: 'TimeoutError' })
+  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ name: 'TimeoutError' }), undefined)
+  expect(a.error).toMatchObject({ name: 'TimeoutError' })
 })

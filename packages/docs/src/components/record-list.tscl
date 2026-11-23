@@ -3,7 +3,7 @@
 
 <script>
   import { effect } from 'clarusjs/runtime'
-  import { invalidate, json, prefetch, resource } from 'clarusjs/fetch'
+  import { action, invalidate, json, prefetch, request, resource } from 'clarusjs/fetch'
   let page = state(1)
   let q = state('')
   const url = (p, query) => `/api/demo-records?page=${p}&size=10&q=${encodeURIComponent(query)}`
@@ -18,16 +18,13 @@
     if (shown && p < shown.pages)
       prefetch(['records', { page: p + 1, q: query }], ({ signal }) => json(url(p + 1, query), { signal }))
   })
-  async function rename() {
-    const row = list.value?.rows[0]
-    if (!row) return
-    await fetch('/api/demo-records', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ rename: row.id }),
-    })
-    invalidate(['records']) // every cached page: the one on screen fetches again now, the others when opened
-  }
+  // An action (#429): pending while it runs (a second click joins it), its error for the template, then invalidate.
+  const rename = action(
+    (id, { signal }) => request('/api/demo-records', { method: 'POST', body: { rename: id }, signal }),
+    {
+      onSuccess: () => invalidate(['records']), // every cached page: the one on screen fetches again now, the others when opened
+    },
+  )
 </script>
 
 <section class="demo-panel" id="record-list">
@@ -53,7 +50,12 @@
   }
   <button type="button" (click)="page = page - 1" [disabled]="page <= 1">Previous</button>
   <button type="button" (click)="page = page + 1" [disabled]="!list.value || page >= list.value.pages">Next</button>
-  <button type="button" (click)="rename()">Rename the first row</button>
+  <button type="button" (click)="list.value && rename.run(list.value.rows[0].id)" [disabled]="rename.pending">
+    {{ rename.pending ? 'Renaming…' : 'Rename the first row' }}
+  </button>
+  @if (rename.error) {
+    <p role="alert">Couldn't rename it. Try again.</p>
+  }
 </section>
 
 <style scoped>

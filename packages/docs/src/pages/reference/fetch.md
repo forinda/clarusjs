@@ -2,7 +2,7 @@
 title: "clarusjs/fetch"
 group: "APIs"
 order: 2
-description: "resource(), batch(), request(), json(), text() and configure(): the exact contract of each, with parameters, return values, caveats and usage."
+description: "resource(), action(), batch(), request(), json(), text() and configure(): the exact contract of each, with parameters, return values, caveats and usage."
 ---
 
 # clarusjs/fetch
@@ -10,7 +10,7 @@ description: "resource(), batch(), request(), json(), text() and configure(): th
 <p class="lead">Data an island fetches itself, in the browser. For the how-to with a live dashboard, see <a href="/guide/fetching">Fetching data</a>.</p>
 
 ```ts
-import { resource, batch, request, json, text, configure } from 'clarusjs/fetch'
+import { resource, action, batch, request, json, text, configure } from 'clarusjs/fetch'
 ```
 
 ## resource()
@@ -251,6 +251,50 @@ export const stats = batch((keys, { signal }) => json(`/api/stats?keys=${keys.jo
 const stat = resource(() => stats.get(key))
 ```
 
+## action()
+
+```ts
+action<I = void, R = unknown>(fn, options?): Action<I, R>
+```
+
+A one-off async call from the browser (save, delete, like), with its state for the template.
+
+### Parameters
+
+- **`fn(input, { signal })`**: runs the call; returns the answer or a promise of it. Pass `signal` on to `request()`. The call ends when `signal` aborts (a cancel or a timeout) even if `fn` doesn't use it.
+- **`options`** (optional):
+  - **`timeout`** (ms): fail a call that takes longer, with a `TimeoutError` (an error).
+  - **`concurrency`**: what a call while one runs does. `'join'` (default): it shares the call in flight (no double submit). `'latest'`: it cancels the call in flight and runs.
+  - **`onSuccess(result, input)`**, **`onError(error, input)`**, **`onSettled(result, error, input)`**, **`meta`**: as for [`resource()`](#resource), once per call. A cancelled call calls none.
+
+### Returns
+
+An `Action<I, R>`:
+
+- **`pending`**: a call is in flight.
+- **`error`**: the last call's error (a timeout, not a cancel). Cleared when a call starts.
+- **`result`**: the last successful answer, kept until the next success.
+- **`run(input)`**: call it. Resolves to the answer, or `undefined` if it failed or was cancelled. Never rejects.
+- **`runAsync(input)`**: call it, and reject with the error (or the `AbortError` of a cancel).
+- **`abort()`**: cancel the call in flight. `pending` goes back to `false`, no error, no callbacks.
+
+### Caveats
+
+- **On the server nothing runs:** `run()` and `runAsync()` resolve `undefined`.
+- **Created in an island,** a call in flight is cancelled when the island goes away.
+- **One input.** For several values, pass an object: `save.run({ id, title })`.
+
+### Usage
+
+```ts
+const save = action((draft: Draft, { signal }) => request('/api/drafts', { method: 'POST', body: draft, signal }), {
+  timeout: 10_000,
+  meta: { success: 'Saved' },
+})
+// <button (click)="save.run(draft)" [disabled]="save.pending">Save</button>
+try { await save.runAsync(draft); go('/drafts') } catch {}
+```
+
 ## request()
 
 ```ts
@@ -311,7 +355,7 @@ text(url, options?): Promise<string>
 configure({ onSuccess?, onError? }): void
 ```
 
-Sets handlers every resource calls after its own callbacks: one place for toasts. Each gets the value or error, and `{ meta }` (the resource's `meta`). A resource's own `onSuccess` or `onError` returning `false` skips them. Calling it again replaces the handlers. Call it once, in a module every island imports.
+Sets handlers every resource and action calls after its own callbacks: one place for toasts. Each gets the value or error, and `{ meta }` (the resource's `meta`). A resource's own `onSuccess` or `onError` returning `false` skips them. Calling it again replaces the handlers. Call it once, in a module every island imports.
 
 ```ts
 configure({
