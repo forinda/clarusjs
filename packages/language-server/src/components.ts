@@ -15,7 +15,7 @@ const EVENT = /new\s+CustomEvent\(\s*(['"])([^'"]+)\1/g
 const DIRECTIVES = ['@if', '@else', '@for', '@empty', '@await', '@then', '@catch', '@slot', '@import', '@input', '@model', '@type', '@interface']
 const Kind = { Property: 10, Event: 23, Keyword: 14, File: 17, Class: 7, Module: 9, Value: 12 } as const
 
-type Info = { inputs: { name: string; type: string; optional: boolean; model: boolean }[]; events: string[] }
+type Info = { inputs: { name: string; type: string; optional: boolean; model: boolean; default?: string }[]; events: string[] }
 
 /** What the component an import names takes: its inputs and models (whole types) and the events its script sends. */
 function interfaceOf(project: Project, imp: Import): Info | undefined {
@@ -23,7 +23,7 @@ function interfaceOf(project: Project, imp: Import): Info | undefined {
   if (!parsed) return undefined
   const script = parsed.script?.code ?? ''
   return {
-    inputs: parsed.inputs.map((i) => ({ name: i.name, type: i.type, optional: i.default !== undefined, model: !!i.model })),
+    inputs: parsed.inputs.map((i) => ({ name: i.name, type: i.type, optional: i.default !== undefined, model: !!i.model, ...(i.default !== undefined ? { default: i.default } : {}) })),
     events: [...new Set([...script.matchAll(EVENT)].map((m) => m[2]!))],
   }
 }
@@ -84,6 +84,8 @@ const tagAt = (text: string, offset: number) => tagsIn(text).find((t) => offset 
 export function hover(project: Project, path: string, text: string, offset: number): Hover | undefined {
   const icon = iconAt(project, path, text, offset)
   if (icon) return icon
+  const prop = propAt(project, path, text, offset)
+  if (prop) return prop
   const tag = tagAt(text, offset)
   const imp = tag && importNamed(project, path, tag.name)
   if (!tag || !imp) return undefined
@@ -129,4 +131,34 @@ function iconAt(project: Project, path: string, text: string, offset: number): H
   const svg = iconSvg(found.data, 'width="48" height="48"').replaceAll('currentColor', '#888')
   const value = `![${name}](data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')})\n\n\`${name}\``
   return { contents: { kind: 'markdown', value }, range: { start: positionAt(text, ctx.start), end: positionAt(text, ctx.start + name.length) } }
+}
+
+/**
+ * Hover on a component's attribute (`[title]`, `title="…"`, `[(open)]`, `(rate)`): the input or model as the
+ * component declares it (whole type, default), or the event it sends. Read from the component's own parse, so it
+ * works without TypeScript; with TypeScript 7.1's content mapper, the binding's value gets TypeScript's hover too.
+ */
+function propAt(project: Project, path: string, text: string, offset: number): Hover | undefined {
+  const ctx = contextAt(text, offset)
+  if (ctx.kind !== 'attr-name') return undefined
+  const imp = importNamed(project, path, ctx.tag)
+  const info = imp && interfaceOf(project, imp)
+  if (!info) return undefined
+  const whole = ctx.prefix + /^[\w$.:()\[\]-]*/.exec(text.slice(offset))![0] // the name the cursor is in
+  const { start } = ctx
+  const event = /^\(([\w$.:-]+)\)$/.exec(whole)?.[1]
+  if (event) {
+    if (!info.events.includes(event)) return undefined
+    return result(`Event \`${event}\` from \`<${ctx.tag}>\`: its data is \`$event.detail\``)
+  }
+  const name = /^\[\(([\w$-]+)\)\]$|^\[([\w$-]+)\]$|^([\w$-]+)$/.exec(whole)?.slice(1).find(Boolean)
+  const input = name && info.inputs.find((i) => i.name === name)
+  if (!input) return undefined
+  const decl = `${input.name}${input.optional ? '?' : ''}: ${input.type}${input.default !== undefined ? ` = ${input.default}` : ''}`
+  const kind = input.model ? `Model of \`<${ctx.tag}>\`, two-way with \`[(${input.name})]\`` : `Input of \`<${ctx.tag}>\``
+  return result('```ts\n' + decl + '\n```\n\n' + `${kind} (from \`${imp.specifier}\`)`)
+
+  function result(value: string): Hover {
+    return { contents: { kind: 'markdown', value }, range: { start: positionAt(text, start), end: positionAt(text, start + whole.length) } }
+  }
 }
