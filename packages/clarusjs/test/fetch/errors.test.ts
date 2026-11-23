@@ -59,8 +59,8 @@ test('the same error twice still calls onError twice (an event per run, unlike a
 test('with retry, onError runs once, after the last attempt', async () => {
   const onError = vi.fn()
   const fetcher = vi.fn(() => Promise.reject(new Error('x')))
-  resource(fetcher, { retry: { count: 2, delay: () => 1 }, onError })
-  await new Promise((done) => setTimeout(done, 30))
+  const r = resource(fetcher, { retry: { count: 2, delay: () => 1 }, onError })
+  await expect(r.ready()).rejects.toThrow('x') // settles after the last attempt (no fixed wait)
   expect(fetcher).toHaveBeenCalledTimes(3)
   expect(onError).toHaveBeenCalledTimes(1)
 })
@@ -96,4 +96,24 @@ test('a client that rejects with its own error on abort (axios: CanceledError) s
   expect(r.error).toMatchObject({ name: 'TimeoutError' })
   expect(onError).toHaveBeenCalledWith(expect.objectContaining({ name: 'TimeoutError' }), undefined)
   expect(a.error).toMatchObject({ name: 'TimeoutError' })
+})
+
+test('#434 review: a keyed resource joining another\'s request still times out on its own timeout', async () => {
+  const slow = () => new Promise<number>((done) => setTimeout(() => done(1), 80))
+  const onError = vi.fn()
+  resource(slow, { key: () => ['joined-timeout'] }) // starts the shared request
+  const late = resource(slow, { key: () => ['joined-timeout'], timeout: 20, onError })
+  await new Promise((done) => setTimeout(done, 40))
+  expect(late.loading).toBe(false)
+  expect(late.error).toMatchObject({ name: 'TimeoutError' })
+  expect(onError).toHaveBeenCalledTimes(1)
+})
+
+test('#434 review: a keyed resource cancelled with abort() keeps its value when the shared request answers', async () => {
+  let n = 0
+  const r = resource(() => new Promise<number>((done) => setTimeout(() => done(++n), 20)), { key: () => ['aborted-keyed'], initial: 0 })
+  void r.refetch()
+  r.abort()
+  await new Promise((done) => setTimeout(done, 40))
+  expect(r.value).toBe(0)
 })

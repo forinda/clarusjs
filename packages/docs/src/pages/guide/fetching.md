@@ -132,7 +132,7 @@ api.interceptors.request.use((config) => ({ ...config, headers: { ...config.head
 
 ```tscl
 <script>
-  import { action, configure, invalidate, resource } from 'clarusjs/fetch'
+  import { action, invalidate, resource } from 'clarusjs/fetch'
   import { api } from '~/api.ts'
   const posts = resource(({ signal }) => api.get('/posts', { signal }).then((res) => res.data), { key: () => ['posts'] })
   const remove = action((id, { signal }) => api.delete(`/posts/${id}`, { signal }), {
@@ -142,7 +142,32 @@ api.interceptors.request.use((config) => ({ ...config, headers: { ...config.head
 </script>
 ```
 
-In `configure()`'s handlers, read the status the way your client reports it (`e.response?.status` for axios, `e.status` for `request()`). Whatever the client throws when its `signal` aborts (axios: `CanceledError`), a cancel is still no error and no callbacks, and a `timeout` is still a `TimeoutError`.
+With ky, the same: `ky.get('/api/posts', { signal }).json()` in the fetcher; its `HTTPError` has the status at `error.response.status`.
+
+In `configure()`'s handlers, read the status the way your client reports it (`e.response?.status` for axios and ky, `e.status` for `request()`). Whatever the client throws when its `signal` aborts (axios: `CanceledError`), a cancel is still no error and no callbacks, and a `timeout` is still a `TimeoutError`.
+
+### Your own fetcher
+
+Without a library, wrap `request()` once for the site: the base URL, the auth header, and the error your handlers expect. Every resource and action then calls the wrapper, and passes `signal` through.
+
+```ts
+// api.ts
+import { request, type RequestOptions } from 'clarusjs/fetch'
+
+export function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers = new Headers(options.headers)
+  const token = localStorage.getItem('token')
+  if (token) headers.set('authorization', `Bearer ${token}`)
+  return request<T>(`/api${path}`, { timeout: 10_000, ...options, headers })
+}
+```
+
+```ts
+const me = resource(({ signal }) => api<User>('/me', { signal }))
+const save = action((draft: Draft, { signal }) => api('/drafts', { method: 'POST', body: draft, signal }))
+```
+
+A non-2xx answer still throws with `status` and `data` (the server's error body), so one `configure({ onError })` can turn a `401` into a redirect to sign in and a `422` into its field errors.
 
 ## Actions: save, delete, like
 

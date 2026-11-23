@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // #431: request(): fetch that throws on non-2xx for any body type, reads the body by its Content-Type (or `as`),
 // sends plain objects as JSON, and times out. json() and text() are its shorthands.
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, expectTypeOf, test, vi } from 'vitest'
 import { json, request, text } from '../../src/fetch/index.ts'
 
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
@@ -91,4 +91,24 @@ test('timeout aborts the request with a TimeoutError, combined with the caller\'
   const p = request('/slow', { timeout: 10_000, signal: c.signal })
   c.abort()
   await expect(p).rejects.toMatchObject({ name: 'AbortError' })
+})
+
+test('#434 review: a custom parse that throws on an error response still gives the HTTP error (status, no data)', async () => {
+  serve(() => typed('x', 'application/x-broken', 500))
+  await expect(request('/x', { parse: { 'application/x-broken': () => { throw new Error('parser broke') } } })).rejects.toMatchObject({ status: 500, data: undefined })
+})
+
+test('#434 review: `as` gives the result type (text: string, response: Response…); request<T> and parse stay any or T', () => {
+  // Types only: never called (a request with as: 'formData' on JSON would reject).
+  const types = () => {
+    expectTypeOf(request('/x', { as: 'text' })).resolves.toEqualTypeOf<string>()
+    expectTypeOf(request('/x', { as: 'blob' })).resolves.toEqualTypeOf<Blob>()
+    expectTypeOf(request('/x', { as: 'arrayBuffer' })).resolves.toEqualTypeOf<ArrayBuffer>()
+    expectTypeOf(request('/x', { as: 'formData' })).resolves.toEqualTypeOf<FormData>()
+    expectTypeOf(request('/x', { as: 'response' })).resolves.toEqualTypeOf<Response>()
+    expectTypeOf(request('/x', { as: 'stream' })).resolves.toEqualTypeOf<ReadableStream<Uint8Array> | null>()
+    expectTypeOf(request<{ a: number }>('/x')).resolves.toEqualTypeOf<{ a: number }>()
+    expectTypeOf(request('/x', { as: 'text', parse: { 'text/plain': () => 1 } })).resolves.toBeAny()
+  }
+  expect(types).toBeTypeOf('function')
 })

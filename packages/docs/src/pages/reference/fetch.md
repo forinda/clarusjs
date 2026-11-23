@@ -23,7 +23,7 @@ Runs `fetcher` and gives its answer as `value`, `loading` and `error`. It runs a
 
 ### Parameters
 
-- **`fetcher({ signal })`**: returns the value, or a promise of it; it can be `async`. Return `undefined`, `null` or `false` for "not ready": no request is sent. An async fetcher resolving to `undefined` is "not ready" too, and the last value is kept. Pass `signal` on to `fetch`, so a superseded or abandoned request is cancelled. The fetcher runs in an effect, so it re-runs when a signal it reads changes.
+- **`fetcher({ signal })`**: returns the value, or a promise of it; it can be `async`. Any client works (`request()`, `fetch`, axios, ky: see [With axios, ky or your own client](/guide/fetching#with-axios-ky-or-your-own-client)). Return `undefined`, `null` or `false` for "not ready": no request is sent. An async fetcher resolving to `undefined` is "not ready" too, and the last value is kept. Pass `signal` on to `fetch`, so a superseded or abandoned request is cancelled. The fetcher runs in an effect, so it re-runs when a signal it reads changes.
 - **`options`** (optional):
   - **`initial`**: the starting value, such as data from the page's `load()`. It's shown in the server HTML, and `loading` is false while the browser fetches again.
   - **`retry`**: how many more attempts after a failure (default `0`), or `{ count, delay(attempt) }`. The default delay is 500 ms, doubling, at most 8 s.
@@ -261,7 +261,7 @@ A one-off async call from the browser (save, delete, like), with its state for t
 
 ### Parameters
 
-- **`fn(input, { signal })`**: runs the call; returns the answer or a promise of it. Pass `signal` on to `request()`. The call ends when `signal` aborts (a cancel or a timeout) even if `fn` doesn't use it.
+- **`fn(input, { signal })`**: runs the call; returns the answer or a promise of it, from any client (`request()`, axios, ky…). Pass `signal` on to it. The call ends when `signal` aborts (a cancel or a timeout) even if `fn` doesn't use it.
 - **`options`** (optional):
   - **`timeout`** (ms): fail a call that takes longer, with a `TimeoutError` (an error).
   - **`concurrency`**: what a call while one runs does. `'join'` (default): it shares the call in flight (no double submit). `'latest'`: it cancels the call in flight and runs.

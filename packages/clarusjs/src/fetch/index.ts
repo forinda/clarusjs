@@ -155,9 +155,11 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
   const keyed = browser && !!options.key
   let entry: Entry | undefined // the cache entry this (keyed) resource shows
   let force = false // refetch(): fetch even when the cache has a fresh answer
+  let cancelled = -1 // the entry request (its seq) an abort() left in flight: its answer isn't shown here
   const user: User = {
     keep: options.keep ?? KEEP,
-    push: (v) => { if (!disposed) value.set(v as T) }, // answers reach a keyed resource only through its entry
+    // Answers reach a keyed resource only through its entry; not the one a cancelled run left in flight (abort()).
+    push: (v, seq) => { if (!disposed && seq !== cancelled) value.set(v as T) },
     rerun: () => { if (stop) tick.set(untrack(tick.get) + 1) }, // invalidated: run again (a miss), not forced
   }
   const join = (e?: Entry) => {
@@ -175,6 +177,7 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
 
   const run = () => {
     tick.get()
+    cancelled = -1 // a new run shows what it gets, even from the request a cancelled one left
     const forced = force
     force = false
     controller?.abort()
@@ -224,7 +227,9 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
       busy = true
       const latest = () => id === runs && !disposed
       // Keyed answers arrive through the entry (store → push), only if still its newest.
-      return (keyed ? (out as Promise<T>) : retrying(out, () => fetcher({ signal }), signal)).then(
+      // Keyed: the entry's request may be shared, so this run waits for it or for its own signal (a timeout), whichever
+      // comes first; the request itself goes on for the other resources and the cache.
+      return (keyed ? Promise.race([out as Promise<T>, aborted(signal)]) : retrying(out, () => fetcher({ signal }), signal)).then(
         // An async "not ready" resolves to undefined: keep the value.
         (v) => { if (latest()) { if (!keyed && v !== undefined) value.set(v); loading.set(false); busy = false; if (v !== undefined) settled(options, true, v, undefined) } },
         // Aborted (a timeout here): its reason, whatever the client threw for it (axios: CanceledError).
@@ -273,6 +278,7 @@ export function resource<T>(fetcher: Fetcher<T>, options: ResourceOptions<T> = {
     abort() {
       if (!controller) return
       runs++ // its answer, or its abort, is no longer this resource's
+      if (entry?.pending) cancelled = entry.seq // keyed: the request goes on for others; its answer isn't shown here
       controller.abort()
       controller = undefined
       busy = false
@@ -358,7 +364,6 @@ export function action<I = void, R = unknown>(fn: (input: I, ctx: { signal: Abor
     const mine = () => controller === c // not cancelled, nor replaced
     const end = () => { controller = current = undefined }
     error.set(undefined)
-    pending.set(true)
     const p = Promise.race([(async () => fn(input, { signal }))(), aborted(signal)]).then(
       (v) => { if (mine()) { end(); group(() => { result.set(v); pending.set(false) }); settled(options, true, v, undefined, input) } return v },
       (e) => {
@@ -367,7 +372,9 @@ export function action<I = void, R = unknown>(fn: (input: I, ctx: { signal: Abor
         throw err
       },
     )
-    return (current = p)
+    current = p // before pending is announced: a call made from its subscribers joins this one
+    pending.set(true)
+    return p
   }
   return {
     get pending() { return pending.get() },
@@ -380,7 +387,7 @@ export function action<I = void, R = unknown>(fn: (input: I, ctx: { signal: Abor
 }
 
 // The keyed cache (#287): one entry per key, shared by every resource on the page. In the browser only.
-type User = { keep: number; push(v: unknown): void; rerun(): void }
+type User = { keep: number; push(v: unknown, seq: number): void; rerun(): void }
 type Entry = {
   key: unknown[]; value?: unknown; has: boolean; at: number; invalid: boolean
   seq: number // bumped by each request, invalidate(), setData() and mutate(): only the newest answer is stored
@@ -410,7 +417,7 @@ const release = (e: Entry, leaving?: User) => {
 const store = (e: Entry, v: unknown, seq: number) => {
   if (seq !== e.seq) return
   Object.assign(e, { value: v, has: true, at: Date.now(), invalid: false })
-  for (const u of e.users) u.push(v)
+  for (const u of e.users) u.push(v, seq)
 }
 /** The entry's newest request: stores what it gets (if still newest). */
 const track = <T>(e: Entry, answer: Promise<T>): Promise<T> => {
@@ -592,6 +599,9 @@ const read = (res: Response, as: ReadAs | undefined, parse: RequestOptions['pars
   return type.startsWith('text/') || type.endsWith('xml') ? res.text() : res.blob()
 }
 
+/** What `request()` resolves to for each built-in `as` (without `parse`, which can read anything). */
+type ReadResult = { text: string; blob: Blob; arrayBuffer: ArrayBuffer; formData: FormData; response: Response; stream: ReadableStream<Uint8Array> | null }
+
 /**
  * `fetch`, then the response read by its `Content-Type` (or as `as` says). A response that isn't 2xx throws an Error
  * naming the URL and status, with `status` and the error body (`data`), so a resource's `retry` and `error` see it.
@@ -604,7 +614,9 @@ const read = (res: Response, as: ReadAs | undefined, parse: RequestOptions['pars
  * ```
  * @see https://clarusjs.com/reference/fetch#request
  */
-export async function request<T = any>(url: string | URL, options: RequestOptions = {}): Promise<T> {
+export function request<A extends keyof ReadResult>(url: string | URL, options: RequestOptions & { as: A; parse?: undefined }): Promise<ReadResult[A]>
+export function request<T = any>(url: string | URL, options?: RequestOptions): Promise<T>
+export async function request(url: string | URL, options: RequestOptions = {}): Promise<unknown> {
   const { as, parse, timeout, body, ...init } = options
   if (body !== undefined) {
     const plain = body !== null && typeof body === 'object' && (Array.isArray(body) || [Object.prototype, null].includes(Object.getPrototypeOf(body)))
@@ -618,10 +630,10 @@ export async function request<T = any>(url: string | URL, options: RequestOption
   const res = await fetch(url, init as RequestInit)
   if (!res.ok) {
     // Read it (so the request ends: a browser keeps an unread body's request open), and keep it: a 422's errors.
-    const data = await Promise.resolve(read(res, as === 'response' || as === 'stream' ? 'text' : undefined, parse)).catch(() => undefined)
+    const data = await Promise.resolve().then(() => read(res, as === 'response' || as === 'stream' ? 'text' : undefined, parse)).catch(() => undefined)
     throw Object.assign(new Error(`${url}: ${res.status} ${res.statusText}`.trim()), { status: res.status, data })
   }
-  return read(res, as, parse) as T
+  return read(res, as, parse)
 }
 
 /**

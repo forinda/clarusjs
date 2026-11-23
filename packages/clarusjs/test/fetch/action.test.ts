@@ -105,3 +105,12 @@ test('created in an island scope, the call in flight is aborted when the island 
   expect(await p).toBeUndefined()
   await flush()
 })
+
+test('#434 review: a call made from a pending subscriber joins the call that announced it (one fn run)', async () => {
+  const { effect } = await import('../../src/runtime/index.ts')
+  const fn = vi.fn(() => new Promise((done) => setTimeout(done, 5)))
+  const a = action(fn)
+  effect(() => { if (a.pending) void a.run() })
+  await a.run()
+  expect(fn).toHaveBeenCalledTimes(1)
+})
