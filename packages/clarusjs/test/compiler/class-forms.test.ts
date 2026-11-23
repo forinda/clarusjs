@@ -58,3 +58,22 @@ test('[class.x] on a component tag is a located error (a component takes a stati
   expect(err).toBeInstanceOf(ClarusError)
   expect((err as Error).message).toMatch(/p\.tscl:3:7 .*static class/)
 })
+
+test('#408 review: interpolation in a folded class joins like any attribute (null is empty, numbers are text)', async () => {
+  const out = await html('@input maybe: string | null = null\n@input a: number = 1\n@input b: number = 2\n<div><p class="base {{ maybe }}" [class.on]="true">x</p><i class="n{{ a }}{{ b }}" [class.on]="true">y</i></div>\n')
+  expect(out).toContain('<p class="base on">')
+  expect(out).not.toContain('null')
+  expect(out).toContain('<i class="n12 on">')
+})
+
+test('#408 review: an event named (class) is left alone, never folded into the class value', async () => {
+  const { code } = compile('<script>\n  let on = $state(false)\n</script>\n<div><button (class)="on = true" [class.active]="on">b</button></div>\n', { file: 'c.tscl', target: 'client', scope: 's' })
+  expect(code).not.toMatch(/__cl_classValue\(\[[^\]]*on = true/)
+  const server = compile('<script>\n  let x = $state(0)\n</script>\n<div><button (class)="x = 1" [class.active]="false" (style)="x = 2" [style.color]="\'red\'">b</button></div>\n', { file: 'c.tscl', target: 'server', scope: 's', clientUrl: '/c.js' }).code
+  expect(server).not.toContain('x = 1')
+  expect(server).not.toContain('x = 2')
+})
+
+test('#408 review: a top-level [class] with a comma expression keeps its value whole', async () => {
+  expect(await html('<p [class]="0, \'b\'">x</p>\n')).toMatch(/<p class="b cl-c-s/)
+})

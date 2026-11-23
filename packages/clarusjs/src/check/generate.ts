@@ -49,7 +49,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   const text = 'string | number | boolean | null | undefined'
   // class (#403) takes what classValue does: a string, an array or an object of class names; a toggle ([class.x])
   // is read as true or false, so it takes anything.
-  emit(`export type __cl_Class = ${text} | __cl_Class[] | { [name: string]: unknown }\n`)
+  emit(`export type __cl_Class = ${text} | readonly __cl_Class[] | { [name: string]: unknown }\n`)
   // style (#404): a string, an object of properties (or an array of those); one property ([style.x]) takes text.
   emit(`export type __cl_Style = ${text} | __cl_Style[] | { [property: string]: ${text} }\n`)
   emit(`type __cl_AttrOf<T extends string, P extends string> = P extends '...' ? { [name: string]: unknown } | null | undefined : P extends 'class' ? __cl_Class : P extends \`class.\${string}\` ? unknown : P extends 'style' ? __cl_Style : T extends keyof HTMLElementTagNameMap ? P extends keyof HTMLElementTagNameMap[T] ? (HTMLElementTagNameMap[T][P] extends boolean ? boolean | null | undefined : ${text}) : ${text} : ${text}\n`)

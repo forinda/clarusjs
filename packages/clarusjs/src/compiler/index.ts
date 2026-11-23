@@ -102,7 +102,7 @@ const UNMARKED = new Set(['slot', 'cl-head', 'script', 'style', 'html', 'title',
 function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>): void {
   for (const node of nodes) {
     if (node.type === 'element' && !components.has(node.tag) && !UNMARKED.has(node.tag)) {
-      const at = node.attrs.findIndex((a) => a.name === 'class')
+      const at = node.attrs.findIndex((a) => a.name === 'class' && a.kind !== 'event')
       const own = node.attrs[at]
       const passed = { expr: '__cl_class', start: node.start }
       if (!own) node.attrs.push({ kind: 'interp', name: 'class', parts: [cls, passed], start: node.start })
@@ -110,7 +110,7 @@ function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>):
       else if (own.kind === 'interp') own.parts.push(` ${cls}`, passed)
       // ponytail: a bound [class] that is null/false still gets the scope class (the class can't go away entirely).
       // classValue: the bound value may be an object or an array (#403), joined here with the scope class as text.
-      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr.startsWith('__cl_classValue(') ? own.expr : `__cl_classValue(${own.expr})`, start: own.start }, ` ${cls}`, passed], start: own.start }
+      else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr.startsWith('__cl_classValue(') ? own.expr : `__cl_classValue((${own.expr}))`, start: own.start }, ` ${cls}`, passed], start: own.start }
     } else if (node.type === 'if') {
       for (const b of node.branches) markRoots(b.children, cls, components)
     } else if (node.type === 'for') {

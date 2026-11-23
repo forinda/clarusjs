@@ -282,3 +282,7 @@ test('#267: a radio group bound with [(value)] to a union type-checks (each radi
 <input type="radio" value="gold" [(value)]="plan">
 ` })).toEqual([expect.stringMatching(/^src\/components\/plan\.tscl:2:\d+ .*'"gold"'.*'"free" \| "pro"'/)])
 })
+
+test('#408 review: [class] takes a readonly string array input', () => {
+  expect(check({ 'src/pages/index.tscl': '@input classes: string[] = []\n<p [class]="classes">x</p>\n' })).toEqual([])
+})
