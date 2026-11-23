@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `@await`, `@then` and `@catch` are highlighted as control keywords, with TypeScript in their parentheses.
 - The extension bundles minimatch 11 (GHSA-g3hv-75wg-m249, a pattern amplification in minimatch before 11.0.1).
 
 ## 0.2.0

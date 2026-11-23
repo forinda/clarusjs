@@ -3,7 +3,7 @@ import { emitClient } from './emit-client.ts'
 import { ClarusError } from './errors.ts'
 import { emitServer } from './emit-server.ts'
 import { lower } from './ir.ts'
-import { parse, type TemplateNode } from './parse.ts'
+import { awaitLists, parse, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
@@ -111,7 +111,8 @@ function markSlotContent(nodes: TemplateNode[], cls: string, components: Set<str
     else if (node.type === 'for') {
       markSlotContent(node.children, cls, components)
       if (node.empty) markSlotContent(node.empty, cls, components)
-    } else if (node.type === 'element' && components.has(node.tag)) markSlotContent(node.children, cls, components)
+    } else if (node.type === 'await') for (const kids of awaitLists(node)) markSlotContent(kids, cls, components)
+    else if (node.type === 'element' && components.has(node.tag)) markSlotContent(node.children, cls, components)
     else if (node.type === 'element' && !UNMARKED.has(node.tag)) {
       const at = node.attrs.findIndex((a) => a.name === 'class' && a.kind !== 'event')
       const own = node.attrs[at]
@@ -145,6 +146,8 @@ function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>, 
     } else if (node.type === 'for') {
       markRoots(node.children, cls, components, slots)
       if (node.empty) markRoots(node.empty, cls, components, slots)
+    } else if (node.type === 'await') {
+      for (const kids of awaitLists(node)) markRoots(kids, cls, components, slots)
     }
   }
 }

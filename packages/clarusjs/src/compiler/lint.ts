@@ -3,7 +3,7 @@
 // LintRuleDef: the built-in ones below, and a project's own (the plugin's `lintRules`).
 
 import { ClarusError } from './errors.ts'
-import { importNames, parse, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
+import { awaitLists, importNames, parse, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
 
 /**
  * The built-in rules' names.
@@ -63,6 +63,7 @@ function* elements(nodes: TemplateNode[]): Generator<LintElement> {
     else if (n.type === 'if') for (const b of n.branches) yield* elements(b.children)
     else if (n.type === 'for') { yield* elements(n.children); if (n.empty) yield* elements(n.empty) }
     else if (n.type === 'fill') yield* elements(n.children)
+    else if (n.type === 'await') for (const kids of awaitLists(n)) yield* elements(kids)
   }
 }
 
@@ -79,6 +80,7 @@ function* expressions(nodes: TemplateNode[]): Generator<string> {
     } else if (n.type === 'if') for (const b of n.branches) { if (b.cond) yield b.cond; yield* expressions(b.children) }
     else if (n.type === 'for') { yield n.list; if (n.track) yield n.track; yield* expressions(n.children); if (n.empty) yield* expressions(n.empty) }
     else if (n.type === 'fill') yield* expressions(n.children)
+    else if (n.type === 'await') { yield n.expr; for (const kids of awaitLists(n)) yield* expressions(kids) }
   }
 }
 
@@ -92,6 +94,7 @@ function named(nodes: TemplateNode[], components: Set<string>): boolean {
     if (n.type === 'expr' || n.type === 'raw') return true
     if (n.type === 'if') return n.branches.some((b) => named(b.children, components))
     if (n.type === 'for') return named(n.children, components)
+    if (n.type === 'await') return awaitLists(n).some((kids) => named(kids, components))
     if (n.type !== 'element') return false
     if (components.has(n.tag) || n.tag === 'slot' || n.tag === 'title' || labelled(n)) return true
     if (n.tag === 'img') return n.attrs.some((a) => a.name === 'alt' && !(a.kind === 'static' && (a.value === true || a.value.trim() === '')))

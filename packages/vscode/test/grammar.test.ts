@@ -113,3 +113,9 @@ test('review #233: a one-line directive ends at its line; the next line is templ
 test('review #233: language-configuration.json is valid JSON', () => {
   expect(() => JSON.parse(readFileSync(resolve(import.meta.dirname, '../language-configuration.json'), 'utf8'))).not.toThrow()
 })
+
+test('#430: @await, @then and @catch are control keywords, with TypeScript in their parentheses', () => {
+  const src = "@await (load(id)) {<i>…</i>} @then (rows) {<b>{{ rows.length }}</b>} @catch (e) {<u>{{ e }}</u>}\n"
+  for (const word of ['await', 'then', 'catch']) expect(scopesOf(src, word)).toContain('keyword.control.flow.tscl')
+  expect(scopesOf(src, 'load')).toContain('meta.embedded.expression.tscl')
+})

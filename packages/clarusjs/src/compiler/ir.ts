@@ -22,6 +22,8 @@ export type IRNode =
   | { kind: 'connect'; expr: string; index: number }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
   | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
+  // @await (#430): `block` shares @if's markers (<!--[bN:K-->, K = 0 pending, 1 then, 2 catch); -1 outside islands.
+  | { kind: 'await'; expr: string; pending: IRNode[]; then: { name: string; nodes: IRNode[] } | null; catch: { name: string; nodes: IRNode[] } | null; block: number }
   // @for / @empty. block = -1 outside islands; inside an island, the list's marker index. `item` and `$index` are in
   // scope in `nodes`; `track` (or the index) keys rows.
   | { kind: 'for'; item: string; list: string; track: string | null; nodes: IRNode[]; empty: IRNode[] | null; block: number }
@@ -181,6 +183,26 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       out = parent
       scopeKey = parentScope
       out.push({ kind: 'if', branches, block })
+      return
+    }
+    if (node.type === 'await') {
+      checkExpr(node.expr, file, source, node.exprStart)
+      const block = stateful ? blockCount++ : -1
+      const parent = out
+      const parentScope = scopeKey
+      const lowerBranch = (children: TemplateNode[], k: number) => {
+        const list: IRNode[] = []
+        out = list
+        if (stateful) scopeKey = `${block}.${k}`
+        children.forEach((child) => visit(child, rawText))
+        return list
+      }
+      const pending = lowerBranch(node.pending, 0)
+      const then = node.then ? { name: node.then.name, nodes: lowerBranch(node.then.children, 1) } : null
+      const caught = node.catch ? { name: node.catch.name, nodes: lowerBranch(node.catch.children, 2) } : null
+      out = parent
+      scopeKey = parentScope
+      out.push({ kind: 'await', expr: node.expr, pending, then, catch: caught, block })
       return
     }
     if (node.type === 'for') {

@@ -213,6 +213,28 @@ export function generateTs(source: string, file: string, options: { loader?: str
           emit('  }\n')
         })
         return
+      case 'await': {
+        // The expression is checked once; @then's name is what it resolves to, @catch's an unknown error (#430).
+        emit('  { const __cl_aw = (')
+        copy(node.expr, at(node.expr, node.exprStart))
+        emit(');\n')
+        emit('  {\n')
+        node.pending.forEach(visit)
+        emit('  }\n')
+        for (const [b, type] of [[node.then, 'Awaited<typeof __cl_aw>'], [node.catch, 'any']] as const) {
+          if (!b) continue
+          emit('  { const ')
+          copy(b.name, b.nameStart)
+          emit(`: ${type} = null!; __cl_use(${b.name})\n`)
+          const outer = guards.splice(0) // inside, its name shadows outer ones (as a @for item does)
+          guards.push(...outer.filter((g) => !referencesNames(g, new Set([b.name]))))
+          b.children.forEach(visit)
+          guards.splice(0, guards.length, ...outer)
+          emit('  }\n')
+        }
+        emit('  }\n')
+        return
+      }
       case 'for': {
         emit('  for (const ')
         copy(node.item, node.itemStart)

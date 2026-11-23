@@ -9,8 +9,8 @@ export type Scan = { blank: Range[]; styles: Range[]; scripts: Range[] }
 const DIRECTIVE = /^[ \t]*@(import|input|model|type|interface)(?![\w$-])/
 // As the compiler reads them: @if/@for/@slot need a space or `(` after (an email's @if.com isn't one); @else and
 // @empty only follow a block's closing brace.
-export const OPENER = /^@(if|for|slot)(?=[\s(])/
-export const FOLLOWER = /^@(else\s+if(?=[\s(])|else(?=[\s{])|empty(?=[\s{]))/
+export const OPENER = /^@(if|for|slot|await)(?=[\s(])/
+export const FOLLOWER = /^@(else\s+if(?=[\s(])|else(?=[\s{])|empty(?=[\s{])|then(?=[\s(])|catch(?=[\s(]))/ // @then / @catch: #430
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
 /** Index after the quote that closes the string starting at `i` (s[i] is the quote), or the end. */
@@ -172,7 +172,7 @@ export function scan(s: string): Scan {
       const k = skipSpace(s, i)
       const f = FOLLOWER.exec(s.slice(k, k + 12))
       if (f) {
-        const head = blockHead(s, k, k + f[0].length, f[1]!.startsWith('else ') || /^else\s+if/.test(f[1]!))
+        const head = blockHead(s, k, k + f[0].length, f[1]!.startsWith('else ') || /^(else\s+if|then|catch)/.test(f[1]!))
         if (head.opened) blocks.push(depth)
         out.blank.push([k, head.end])
         i = head.end

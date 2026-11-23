@@ -148,6 +148,34 @@ Give a resource a `key`, and its answers are cached by it: a key seen before com
 
 This site's [explained page](/guide/explained) uses one: it computes its numbers and awaits the commit it was built from.
 
+### In an island: `@await`
+
+An island can't wait on the server: it attaches in the browser. To show a promise's states in its template, use `@await`. The server renders the pending branch; the browser swaps in `@then` with the value, or `@catch` with the error, when the promise settles.
+
+```tscl
+<script>
+  import { json } from 'clarusjs/fetch'
+  let page = state(1)
+  const load = (p) => json(`/api/records?page=${p}`)
+</script>
+
+@await (load(page)) {
+  <p>Loading page {{ page }}…</p>
+} @then (data) {
+  @for (row of data.rows; track row.id) { <li>{{ row.name }}</li> }
+  <button (click)="page = page + 1">Next page</button>
+} @catch (e) {
+  <p role="alert">Couldn't load it.</p>
+}
+```
+
+<awaitDemo />
+
+- **It follows its signals.** When `page` changes, a new promise starts and the block shows the pending branch again. Only the newest promise's answer is shown; an older one that settles later is ignored.
+- **`@then` and `@catch` are optional,** and come in that order. Their names (`data`, `e`) are theirs alone.
+- **Outside islands** (a page, or a component without a `<script>`), the server awaits the promise itself and renders `@then` or `@catch` into the HTML, like a `<script server>` that awaits. Without `@catch`, a rejection fails the page, as a failing `load()` does.
+- **`@await` or `resource()`?** `@await` shows one promise in the template. `resource()` adds what an island usually wants around it: the last value kept while it reloads, `retry`, `refetch()`, caching, `abort()` and callbacks.
+
 ### A resource with a starting value
 
 A resource there is in its loading state, so the HTML shows your loading text and the browser fills it in. If the server already has the data, from `load()` or a `<script server>`, pass it as `initial`: the server HTML shows it, and the browser fetches again to bring it up to date.
