@@ -63,6 +63,10 @@ Rendering only `<card />` and writing `:scope {}` styles nothing: `:scope` is th
 
 The `cl-c-` class prefix is reserved for these marks.
 
+### A page inside its layout
+
+A page usually wraps its content in a layout (`<docs>…</docs>`). That content is still the page's: when the page has a `<style scoped>`, the top-level elements it passes to the layout (to its default slot and to `@slot('name')`) carry the page's class too, so the page's rules reach them. This site's home page styles its bento grid that way. Without a `<style scoped>`, no class is added.
+
 ## Global styles
 
 A `<style>` without `scoped` is plain CSS for the whole page, such as custom properties for the site. Write `<style global>` to say so.
