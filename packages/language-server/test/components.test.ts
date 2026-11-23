@@ -74,6 +74,29 @@ test('hover on a component tag: where it comes from, its inputs with whole types
   expect(shown.value).toContain('`(rate)`')
 })
 
+test('hover on a component\'s prop: the input\'s declared type and default, two-way models, events', async () => {
+  const { at } = await setup()
+  const text = (marked: string) => (at(marked, hover)?.contents as { value: string } | undefined)?.value ?? ''
+  // [title]: a required input; the hover covers the whole attribute name.
+  const title = at(`${IMPORT}<card [ti§tle]="'x'" />\n`, hover)!
+  expect((title.contents as { value: string }).value).toContain('title: string')
+  expect((title.contents as { value: string }).value).toContain('Input of `<card>`')
+  expect(title.range).toEqual({ start: { line: 1, character: 6 }, end: { line: 1, character: 13 } })
+  // A static attribute names the same input.
+  expect(text(`${IMPORT}<card ti§tle="x" />\n`)).toContain('title: string')
+  // A multi-line type is shown whole.
+  expect(text(`${IMPORT}<card [us§er]="u" />\n`)).toContain('user: {\n  name: string\n  admin: boolean\n}')
+  // A model, two-way, with its default.
+  const open = text(`${IMPORT}<card [(op§en)]="o" />\n`)
+  expect(open).toContain('open?: boolean = false')
+  expect(open).toContain('two-way')
+  // An event the component sends.
+  expect(text(`${IMPORT}<card (ra§te)="go($event)" />\n`)).toContain('`$event.detail`')
+  // Not a component's attribute: nothing (HTML hovers are the HTML service's).
+  expect(at(`${IMPORT}<p cl§ass="x"></p>\n`, hover)).toBeUndefined()
+  expect(at(`${IMPORT}<card [unk§nown]="1" />\n`, hover)).toBeUndefined()
+})
+
 test('go to definition: a component tag, and its @import specifier, lead to the file', async () => {
   const { at, root } = await setup()
   const card = resolve(root, 'src/components/card.tscl')
