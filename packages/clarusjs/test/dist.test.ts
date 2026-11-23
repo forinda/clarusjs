@@ -97,10 +97,12 @@ test('the clarusjs command is built, with a shebang', () => {
 // 90 / 320 KB before: the TypeScript epic (#211); 80 / 290 KB: the navigation epic (#169); 70 / 250 KB before that.
 // 135 KB tarball: main is at 129,399 B; the attributes epic (#402: class and style forms, spread onto elements and
 // components, with their checker types and docs) takes it to 133,568 B. Unpacked stays 470 KB (469,786 B with it).
-test('size budget: the published package stays small (tarball 135 KB, unpacked 470 KB)', () => {
+// 140 / 500 KB: clarusjs/fetch's request(), callbacks and action() (#431, #429), with their JSDoc and types, take the
+// package to 137,356 B packed and 484,890 B unpacked.
+test('size budget: the published package stays small (tarball 140 KB, unpacked 500 KB)', () => {
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
-  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(135 * 1024)
-  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(470 * 1024)
+  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(140 * 1024)
+  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(500 * 1024)
 }, 30_000) // npm pack takes over 5 s when every package's tests run at once
 
 test('#197: sideEffects lists only the browser scripts that start work when loaded (bundlers drop the rest when unused)', () => {
