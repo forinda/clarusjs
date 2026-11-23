@@ -22,6 +22,7 @@ description: "Every directive and binding in .tscl templates, on one page."
 | `@for (x of xs; track x.id) { } @empty { }` | repeat content | [Lists](/guide/lists) |
 | `@await (p) { } @then (v) { } @catch (e) { }` | show a promise's states: pending, its value, its error | [Fetching data](/guide/fetching#in-an-island-await) |
 | `<slot />, <slot name="x">fallback</slot>` | where wrapped content goes | [Slots](/guide/slots) |
+| `<icon name="set:name" />` | an icon, inlined as SVG at build time (built in, no import) | [Icons](/guide/icons) |
 | `@slot('x') { }` | fill a named slot | [Slots](/guide/slots) |
 | `verbatim` attribute | show content as text | [Verbatim](/guide/verbatim) |
 | `<script> … </script>` | make a component interactive | [State](/guide/state) |

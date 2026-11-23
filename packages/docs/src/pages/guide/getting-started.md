@@ -65,7 +65,7 @@ my-site/
 
 While the dev server runs, saving a file updates the open page: an island is swapped in place and keeps its state, anything else reloads the page (see [Islands](/guide/islands#editing-an-island)).
 
-Next: [project structure](/guide/project-structure) for where components, styles and data go, or the [Learn path](/learn/first-page) to build a site step by step.
+Next: [project structure](/guide/project-structure) for where components, styles and data go, [layouts](/guide/layouts) for the page around your content, [icons](/guide/icons) to add any Iconify icon with no JavaScript, or the [Learn path](/learn/first-page) to build a site step by step.
 
 ## From a Vite template
 
