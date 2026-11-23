@@ -26,6 +26,8 @@ Import a component by name, then use it as a tag. Pass inputs with `[name]="expr
 <greeting [name]="'world'" />
 ```
 
+One tag is built in and needs no import: `<icon name="lucide:search" />` renders an inline SVG when the site builds, from any Iconify set you install, with no JavaScript. See [Icons](/guide/icons).
+
 ## Importing data
 
 Import values a template needs with `@import { … } from '…'`, or `@import data from './data.json'`. In a server-rendered component without a script the import only runs on the server, so it can even read files at build time. In an interactive component, or a page on a client route (rendered in the browser), it is sent to the browser with the component's code: there, read files in `load()` and return only public data.
