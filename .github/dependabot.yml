@@ -15,3 +15,7 @@ updates:
       minor-and-patch:
         update-types: ["minor", "patch"]
     labels: ["dependencies"]
+    ignore:
+      # @types/vscode must not be newer than the extension's engines.vscode (the oldest VS Code it supports), or
+      # packaging fails. It moves with engines.vscode, by hand.
+      - dependency-name: "@types/vscode"
