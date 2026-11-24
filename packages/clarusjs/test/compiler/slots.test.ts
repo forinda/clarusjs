@@ -93,7 +93,7 @@ test('a slot name may repeat; both places get the content', async () => {
 })
 
 test('slot and @slot errors are located', () => {
-  expect(compileError('<slot class="x" />').message).toMatch(/^x\.tscl:1:7 .*<slot> only takes name=/)
+  expect(compileError('<slot class="x" />').message).toMatch(/^x\.tscl:1:7 .*<slot> only takes name="…", and the data it passes to its fill as \[name\]=/)
   expect(compileError(`@import card from './card.tscl'\n<card>@slot('a') {1} @slot('a') {2}</card>`).message).toMatch(/^x\.tscl:2:22 .*filled twice/)
   expect(compileError(`<div>@slot('a') {1}</div>`).message).toMatch(/^x\.tscl:1:6 .*@slot only works directly inside a component tag/)
   expect(compileError(`@import card from './card.tscl'\n<card>@slot(name) {1}</card>`).message).toMatch(/^x\.tscl:2:7 .*@slot needs a quoted name/)

@@ -286,3 +286,14 @@ test('#267: a radio group bound with [(value)] to a union type-checks (each radi
 test('#408 review: [class] takes a readonly string array input', () => {
   expect(check({ 'src/pages/index.tscl': '@input classes: string[] = []\n<p [class]="classes">x</p>\n' })).toEqual([])
 })
+
+test('#455: a slot\'s data is checked where the child passes it, and a fill that receives it type-checks', () => {
+  const list = '@input rows: { id: number; name: string }[]\n<ul>@for (r of rows; track r.id) {<li><slot name="row" [item]="r" [index]="$index">{{ r.name }}</slot></li>}</ul>\n'
+  const page = "@import list from '../components/list.tscl'\n<list [rows]=\"[{ id: 1, name: 'Ada' }]\">@slot('row', { item, index }) {<b>{{ index }} {{ item.name }}</b>}</list>\n"
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page })).toEqual([])
+  const wrong = list.replace('[item]="r"', '[item]="nope"')
+  expect(check({ 'src/components/list.tscl': wrong })).toEqual(["src/components/list.tscl:2:64 Cannot find name 'nope'."])
+  // A fill may use only some of what it receives (noUnusedLocals is on here).
+  const some = page.replace('{{ index }} {{ item.name }}', '{{ item.name }}')
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': some })).toEqual([])
+})

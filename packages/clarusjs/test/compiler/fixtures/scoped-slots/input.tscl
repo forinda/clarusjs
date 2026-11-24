@@ -1,0 +1,11 @@
+{{-- #455: a list that lets the page render each row. Its row slot passes the item and its index; unfilled, it shows
+     the name. --}}
+@input rows: { id: number; name: string }[]
+
+<ul>
+  @for (r of rows; track r.id) {
+    <li><slot name="row" [item]="r" [index]="$index">{{ r.name }}</slot></li>
+  } @empty {
+    <li><slot name="empty">Nothing here.</slot></li>
+  }
+</ul>

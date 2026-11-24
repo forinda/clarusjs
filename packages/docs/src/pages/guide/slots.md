@@ -2,7 +2,7 @@
 title: "Slots"
 group: "Templates"
 order: 7
-description: "Wrap content with <slot />, named slots and fallback content."
+description: "Wrap content with <slot />, named slots and fallback content, and slots that pass data to their content."
 ---
 
 # Slots
@@ -36,3 +36,33 @@ Give slots names, and fill them from the parent with `@slot('name') { … }`; ev
   <p>Everything else is the default slot.</p>
 </panel>
 ```
+
+## Slots that pass data
+
+A component can hand data to the content filling a slot. A list renders its rows, and lets the page decide what each row looks like:
+
+```tscl
+{{-- components/item-list.tscl --}}
+@input items: { id: string; label: string }[]
+<ul>
+  @for (item of items; track item.id) {
+    <li><slot name="row" [item]="item" [index]="$index">{{ item.label }}</slot></li>
+  }
+</ul>
+
+{{-- a page --}}
+<itemList [items]="steps">
+  @slot('row', { item, index }) {
+    <strong>{{ index + 1 }}.</strong> {{ item.label }}
+  }
+</itemList>
+```
+
+- **The component passes values** with bindings on `<slot>`: `[item]="item"`, `[label]="'Total'"`. The slot's own content is still the fallback, shown when nothing fills it, and it can use the same values.
+- **The fill names them** after the slot's name, like a function's parameter: `{ item, index }`, `{ item: step }` to rename, `{ item, note = '' }` for a default, or `props` for all of them. They're the fill's own; the page's other names are there too.
+- **The default slot** passes data the same way: `<slot [item]="item" />`, filled by `@slot('default', { item }) { … }`.
+- **A fill that takes nothing** works as before, even on a slot that passes data.
+
+<slotsDemo />
+
+`clarusjs check` checks the values where the component passes them; the names a fill receives are typed `any` for now. A fill that receives data can't be inside an [island](/guide/islands) yet (the compiler says so at its place): render that component outside the island, or pass the data in as props.

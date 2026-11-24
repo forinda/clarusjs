@@ -19,6 +19,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     all.some((n) => n.kind === 'await' && n.block < 0) && 'awaitHtml as __cl_awaitHtml',
     all.some((n) => n.kind === 'for' && n.block >= 0) && 'forHtml as __cl_forHtml',
     all.some((n) => n.kind === 'component' && n.region >= 0) && 'regionHtml as __cl_regionHtml',
+    all.some((n) => n.kind === 'slot') && 'slot as __cl_slot',
     loader && 'loaded as __cl_loaded',
     html.includes('__cl_join(') && 'join as __cl_join',
     html.includes('__cl_sync(') && 'sync as __cl_sync',

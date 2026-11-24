@@ -2184,6 +2184,20 @@ test('form validation: every text field has a placeholder showing what to write'
   await expect(demo.locator('#signup-username')).toHaveAttribute('placeholder', 'ada')
 })
 
+test('#455 scoped slots: the page renders each row of the list with the data its slot passes, on the server', async ({ page }) => {
+  const html = (await (await page.request.get('/guide/slots')).text()).replace(/<!--.*?-->/g, '')
+  await page.goto('/guide/slots#slots-that-pass-data')
+  const demo = page.locator('#slots-demo')
+  const plain = demo.getByRole('region', { name: 'Unfilled: the list\'s own rows' })
+  await expect(plain.getByRole('listitem')).toHaveText(['Make a page', 'Add an island', 'Ship it'])
+  const filled = demo.getByRole('region', { name: 'Filled: the page renders each row' })
+  await expect(filled.getByRole('listitem')).toHaveText(['1. Make a page first-page', '2. Add an island first-island', '3. Ship it ship-it'])
+  await expect(filled.locator('strong').first()).toHaveText('1.')
+  const empty = demo.getByRole('region', { name: 'Empty, with the page\'s message' })
+  await expect(empty.getByRole('link', { name: 'Start the Learn path' })).toHaveAttribute('href', '/learn/first-page')
+  expect(html).toMatch(/<strong[^>]*>1\.<\/strong>\s*Make a page/) // in the server's HTML: no JavaScript involved
+})
+
 // #454: Fetching recipes, each live recipe doing what its code says.
 async function recipe(page: import('@playwright/test').Page, id: string) {
   const box = page.locator('#' + id)

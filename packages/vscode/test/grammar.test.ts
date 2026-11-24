@@ -125,3 +125,9 @@ test('#430: <script server> is TypeScript, like <script>', () => {
   expect(scopesOf(src, 'const')).toContain('source.ts')
   expect(scopesOf(src, 'await')).toContain('source.ts')
 })
+
+test('#455: @slot(\'row\', { item }): the keyword, the slot name, and the names it receives as TypeScript', () => {
+  const src = "<list>@slot('row', { item, index }) {<b>{{ item.name }}</b>}</list>\n"
+  expect(scopesOf(src, 'slot')).toContain('keyword.control.flow.tscl')
+  expect(scopesOf(src, 'item')).toContain('meta.embedded.expression.tscl')
+})

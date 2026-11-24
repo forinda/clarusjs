@@ -1,5 +1,13 @@
 # clarusjs for VS Code
 
+## Unreleased
+
+- `@slot('row', { item })`: the names a fill receives are highlighted as TypeScript.
+
+## 0.3.1
+
+- Fix: the language server stopped right after starting ("n.makeRe is not a function"), so 0.3.0 had no errors, hovers or completion in `.tscl` files.
+
 ## 0.3.0
 
 - **Icons.** `<icon name="set:name" />` works in the editor: names complete from the Iconify sets the project installed, with a preview of each icon; hover shows the icon; an unknown name or a missing set is an error at its place. Before, every `<icon>` was reported as "icons are resolved at build time".

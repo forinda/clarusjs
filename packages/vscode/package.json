@@ -2,7 +2,7 @@
   "name": "clarusjs-vscode",
   "displayName": "clarusjs",
   "description": "clarusjs .tscl templates: the clarusjs language server (template errors, HTML/CSS/Emmet, components, references, renames), highlighting, snippets, file icon.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "publisher": "forinda",
   "license": "MIT",
