@@ -2538,7 +2538,7 @@ test('#465 parts: dialog and popover open with no JavaScript of their own, the a
 })
 
 // #467: the Components section, a page per part, styled by @clarusjs/ui; axe on every one.
-for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox', 'tabs', 'radio', 'tooltip']) {
+for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox', 'tabs', 'radio', 'tooltip', 'menu']) {
   test(`#467 components/${part}: the demo works and has no axe violations`, async ({ page }) => {
     await page.goto(`/components/${part}`)
     const gallery = page.locator(`[data-gallery="${part}"]`)
@@ -2616,6 +2616,31 @@ test('#465 tooltip: shown on hover and on focus, described by its trigger, close
   await expect(tip).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(tip).toBeHidden()
+})
+
+test('#465 menu: the trigger opens the list and focus moves in; arrows, typeahead and Enter pick; Escape closes', async ({ page }) => {
+  await page.goto('/components/menu')
+  await expect(page.locator('[data-gallery="menu"]').locator('xpath=ancestor::cl-island').first()).toHaveAttribute('data-cl-ready', '')
+  const trigger = page.getByRole('button', { name: 'Actions' })
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await trigger.click()
+  const menu = page.getByRole('menu', { name: 'Actions' })
+  await expect(menu).toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(menu.getByRole('menuitem', { name: 'Copy' })).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(menu.getByRole('menuitem', { name: 'Rename' })).toBeFocused()
+  await page.keyboard.press('ArrowDown') // Archive is disabled: skipped
+  await expect(menu.getByRole('menuitem', { name: 'Delete' })).toBeFocused()
+  await page.keyboard.press('r')
+  await expect(menu.getByRole('menuitem', { name: 'Rename' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.gallery-out')).toHaveText('Picked: rename')
+  await expect(menu).toBeHidden()
+  await trigger.click()
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
 })
 
 test('#467 components: @clarusjs/ui styles the parts in the site\'s tokens; interactions on a few pages', async ({ page }) => {

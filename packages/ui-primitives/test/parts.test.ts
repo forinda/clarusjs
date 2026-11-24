@@ -156,3 +156,23 @@ test('tooltip: popover="hint" anchored to its trigger, which describes itself by
   expect(statefulOf('tooltip')).toBe(false)
   expect(statefulOf('tooltip-trigger')).toBe(true)
 })
+
+test('menu: a popover list of menu items opened by its trigger, named from context; only the root is an island', async () => {
+  const page = `@import menu from './menu.tscl'
+@import menuTrigger from './menu-trigger.tscl'
+@import menuList from './menu-list.tscl'
+@import menuItem from './menu-item.tscl'
+<menu id="file">
+  <menuTrigger>File</menuTrigger>
+  <menuList><menuItem value="new">New</menuItem><menuItem value="open" [disabled]="true">Open…</menuItem></menuList>
+</menu>
+`
+  expect(await renderPage(page, ['menu', 'menu-trigger', 'menu-list', 'menu-item'])).toBe('<div data-part="menu">'
+    + '<button type="button" id="file-trigger" popovertarget="file-list" aria-haspopup="menu" aria-controls="file-list" aria-expanded="false" style="anchor-name: --file" data-part="trigger">File</button>'
+    + '<div id="file-list" popover="auto" role="menu" aria-labelledby="file-trigger" style="position-anchor: --file; position-area: bottom span-right; position-try-fallbacks: flip-block, flip-inline" data-part="menu-list">'
+    + '<button type="button" role="menuitem" tabindex="-1" data-value="new" data-part="menu-item">New</button>'
+    + '<button type="button" role="menuitem" tabindex="-1" data-value="open" aria-disabled="true" data-part="menu-item">Open…</button>'
+    + '</div></div>')
+  expect(statefulOf('menu')).toBe(true)
+  for (const p of ['menu-trigger', 'menu-list', 'menu-item']) expect(statefulOf(p)).toBe(false)
+})
