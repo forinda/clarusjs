@@ -17,7 +17,7 @@ const clarus = (path: string) => pathToFileURL(resolve(import.meta.dirname, '../
 const runtime = clarus('runtime/server.ts')
 async function render(name: string, props: Record<string, unknown>, slots?: Record<string, string>): Promise<string> {
   const { code, stateful } = compile(part(name), { file: `${name}.tscl`, target: 'server', clientUrl: `/${name}.js`, collapseWhitespace: true })
-  const mod = await import(`data:text/javascript,${encodeURIComponent(code.replaceAll("'clarusjs/runtime/server'", `'${runtime}'`).replaceAll("'clarusjs/fetch'", `'${clarus('fetch/index.ts')}'`))}`)
+  const mod = await import(`data:text/javascript,${encodeURIComponent(code.replaceAll("'clarusjs/runtime/server'", `'${runtime}'`).replaceAll("'clarusjs/fetch'", `'${clarus('fetch/index.ts')}'`).replaceAll("'clarusjs/runtime'", `'${clarus('runtime/index.ts')}'`).replaceAll("'@clarusjs/ui-primitives'", `'${pathToFileURL(resolve(import.meta.dirname, '../src/index.js')).href}'`))}`)
   void stateful
   return unscoped(await mod.render(props, slots))
 }
@@ -75,6 +75,8 @@ test('every part type-checks and lints clean (clarusjs check --strict, as a proj
   writeFileSync(resolve(root, 'package.json'), '{}')
   mkdirSync(resolve(root, 'node_modules'))
   symlinkSync(resolve(import.meta.dirname, '../node_modules/clarusjs'), resolve(root, 'node_modules/clarusjs'), 'junction') // the combobox imports clarusjs/fetch
+  mkdirSync(resolve(root, 'node_modules/@clarusjs'))
+  symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/@clarusjs/ui-primitives'), 'junction') // tabs import its behaviours
   for (const f of readdirSync(resolve(import.meta.dirname, '../src')).filter((f: string) => f.endsWith('.tscl'))) {
     cpSync(resolve(import.meta.dirname, '../src', f), resolve(root, 'src/components', f))
   }
@@ -99,4 +101,37 @@ test('combobox: headless, data-part on each element and data-highlighted on the 
   const html = await render('combobox', { id: 'c', label: 'Fruit', options: [{ value: 'a', label: 'Apple' }] })
   for (const p of ['combobox', 'label', 'control', 'input', 'listbox', 'option', 'status']) expect(html).toContain(`data-part="${p}"`)
   expect(html).toContain('role="combobox"')
+})
+
+// A page made of several parts: every module written to a temp folder, its ./x.tscl imports pointing at the others.
+async function renderPage(page: string, parts: string[]): Promise<string> {
+  const { mkdirSync, mkdtempSync, writeFileSync } = await import('node:fs')
+  mkdirSync(resolve(import.meta.dirname, '.tmp'), { recursive: true })
+  const dir = mkdtempSync(resolve(import.meta.dirname, '.tmp/page-'))
+  const fix = (code: string) => code.replaceAll("'clarusjs/runtime/server'", `'${runtime}'`).replaceAll("'clarusjs/runtime'", `'${clarus('runtime/index.ts')}'`)
+    .replaceAll("'@clarusjs/ui-primitives'", `'${pathToFileURL(resolve(import.meta.dirname, '../src/index.js')).href}'`)
+    .replace(/from '\.\/([\w-]+)\.tscl'/g, (_, f) => `from './${f}.mjs'`)
+  const server = (source: string, file: string) => compile(source, { file, target: 'server', clientUrl: `/${file}.js`, collapseWhitespace: true }).code
+  for (const name of parts) writeFileSync(resolve(dir, `${name}.mjs`), fix(server(part(name), `${name}.tscl`)))
+  writeFileSync(resolve(dir, 'page.mjs'), fix(server(page, 'page.tscl')))
+  const mod = await import(pathToFileURL(resolve(dir, 'page.mjs')).href)
+  return unscoped(await mod.render({}))
+}
+
+test('tabs: Radix-shaped, on context; the server writes every ARIA attribute and hidden; only the root is an island', async () => {
+  const page = `@import tabs from './tabs.tscl'
+@import tabList from './tab-list.tscl'
+@import tab from './tab.tscl'
+@import tabPanel from './tab-panel.tscl'
+<tabs id="install" label="Install" value="pnpm">
+  <tabList><tab value="npm">npm</tab><tab value="pnpm">pnpm</tab></tabList>
+  <tabPanel value="npm">a</tabPanel><tabPanel value="pnpm">b</tabPanel>
+</tabs>
+`
+  const tab = (v: string, on: boolean) => `<button type="button" role="tab" id="install-tab-${v}" aria-controls="install-panel-${v}" aria-selected="${on}" tabindex="${on ? 0 : -1}" data-value="${v}" data-part="tab">${v}</button>`
+  const panel = (v: string, text: string, on: boolean) => `<div role="tabpanel" id="install-panel-${v}" aria-labelledby="install-tab-${v}" tabindex="0"${on ? '' : ' hidden'} data-part="panel">${text}</div>`
+  expect(await renderPage(page, ['tabs', 'tab-list', 'tab', 'tab-panel'])).toBe('<div data-part="tabs"><div role="tablist" aria-label="Install" data-part="list">'
+    + tab('npm', false) + tab('pnpm', true) + '</div>' + panel('npm', 'a', false) + panel('pnpm', 'b', true) + '</div>')
+  expect(statefulOf('tabs')).toBe(true)
+  for (const p of ['tab-list', 'tab', 'tab-panel']) expect(statefulOf(p)).toBe(false)
 })

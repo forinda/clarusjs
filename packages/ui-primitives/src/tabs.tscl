@@ -1,0 +1,59 @@
+{{--
+  Tabs (#465): a tab list over panels, Radix-shaped. The root is a small island; <tab-list>, <tab> and <tab-panel>
+  have no script, ship nothing, and read the selection from context, so the server writes every ARIA attribute and
+  hidden. Arrow keys, Home and End move between tabs and select them. Bind the selected value with [(value)];
+  (change) comes first with the new value, and $info.cancel() keeps the current tab.
+
+  <tabs id="install" label="Install" value="npm">
+    <tab-list>
+      <tab value="npm">npm</tab>
+      <tab value="pnpm">pnpm</tab>
+    </tab-list>
+    <tab-panel value="npm">npm i clarusjs</tab-panel>
+    <tab-panel value="pnpm">pnpm add clarusjs</tab-panel>
+  </tabs>
+
+  Give each one its own id: its tabs and panels are named after it.
+--}}
+@input id: string
+@input label: string
+@model value: string
+@event change: string
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  import { rovingFocus } from '@clarusjs/ui-primitives'
+  provide('tabs', { id, label, value })
+  // The tabs and panels are the page's server HTML (no markers of their own): wired here, by data-value and id.
+  // Only this group's: a tabs group nested in a panel has its own.
+  function wire(el) {
+    const own = (node) => node.closest('[data-part="tabs"]') === el
+    const click = (event) => {
+      const tab = event.target.closest('[role="tab"]')
+      if (!tab || !own(tab)) return
+      const next = tab.dataset.value
+      if (next !== value && emit('change', next, { reason: 'select', event })) value = next
+    }
+    el.addEventListener('click', click)
+    const list = [...el.querySelectorAll('[role="tablist"]')].find(own)
+    const stopKeys = list ? rovingFocus(list, { onMove: (tab) => tab.click() }) : () => {}
+    const stopSync = effect(() => {
+      const selected = value
+      for (const tab of el.querySelectorAll('[role="tab"]')) {
+        if (!own(tab)) continue
+        tab.setAttribute('aria-selected', String(tab.dataset.value === selected))
+        tab.tabIndex = tab.dataset.value === selected ? 0 : -1
+      }
+      for (const panel of el.querySelectorAll('[role="tabpanel"]')) {
+        if (own(panel)) panel.hidden = panel.id !== id + '-panel-' + selected
+      }
+    })
+    return () => {
+      el.removeEventListener('click', click)
+      stopKeys()
+      stopSync()
+    }
+  }
+</script>
+
+<div data-part="tabs" [use]="wire"><slot /></div>

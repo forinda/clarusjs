@@ -1,0 +1,17 @@
+{{--
+  Tab panel (#465): what one <tab> shows, inside <tabs>; [value] matches its tab. The server renders it hidden unless
+  it's the selected one, so nothing jumps when the page loads.
+--}}
+@context tabs: { id: string; value: string }
+@input value: string
+
+<div
+  role="tabpanel"
+  [id]="tabs.id + '-panel-' + value"
+  [aria-labelledby]="tabs.id + '-tab-' + value"
+  tabindex="0"
+  [hidden]="value !== tabs.value"
+  data-part="panel"
+>
+  <slot />
+</div>

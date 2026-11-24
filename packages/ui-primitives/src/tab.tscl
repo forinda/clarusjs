@@ -1,0 +1,16 @@
+{{-- Tab (#465): one tab inside <tab-list>; [value] names the <tab-panel> it shows. Selected state comes from <tabs>. --}}
+@context tabs: { id: string; value: string }
+@input value: string
+
+<button
+  type="button"
+  role="tab"
+  [id]="tabs.id + '-tab-' + value"
+  [aria-controls]="tabs.id + '-panel-' + value"
+  [aria-selected]="value === tabs.value ? 'true' : 'false'"
+  [tabindex]="value === tabs.value ? 0 : -1"
+  [data-value]="value"
+  data-part="tab"
+>
+  <slot />
+</button>

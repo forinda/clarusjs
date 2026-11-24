@@ -2,7 +2,7 @@
 title: "UI primitives"
 group: "Interactivity"
 order: 11
-description: "Accessible behaviours and headless parts from @clarusjs/ui-primitives: roving focus, typeahead, dismiss, transitions and positioning with [use]; dialog, popover, accordion, switch, checkbox and field."
+description: "Accessible behaviours and headless parts from @clarusjs/ui-primitives: roving focus, typeahead, dismiss, transitions and positioning with [use]; dialog, popover, accordion, tabs, switch, checkbox and field."
 ---
 
 # UI primitives
@@ -94,6 +94,7 @@ Headless components in the same package, as `.tscl` files: they render the platf
 | `dialog.tscl`, `dialog-trigger.tscl`, `dialog-close.tscl` | `<dialog>` opened with the browser's command invokers (`commandfor`, `command="show-modal"`); focus kept in it, the page inert, Escape and (`dismissible`) a click outside close it | none |
 | `popover.tscl`, `popover-trigger.tscl` | the `popover` attribute and `popovertarget`, placed by CSS anchor positioning (`side`, `align`), flipping when there's no room | none |
 | `accordion-item.tscl` | `<details>`; the same `group` makes items exclusive | none |
+| `tabs.tscl`, `tab-list.tscl`, `tab.tscl`, `tab-panel.tscl` | Radix-shaped tabs: the parts read the selection from [context](/guide/context), so the server writes their ARIA and `hidden`; arrow keys, Home and End (`rovingFocus`); `[(value)]`, `(change)` ([Tabs](/components/tabs)) | a small island (the root) |
 | `switch.tscl`, `checkbox.tscl` | a native checkbox in its label (`role="switch"` for the switch), `[(checked)]` | a small island |
 | `field.tscl` | label, input, description and error wired by id; the error shows once left, or with `[show]` | a small island |
 | `select.tscl` | a native `<select>`, the customizable one (`appearance: base-select`) where the browser has it; `[(value)]`, `(change)` | a small island |
@@ -103,4 +104,4 @@ Headless components in the same package, as `.tscl` files: they render the platf
 - **Attributes you add land on their root** (`id`, `aria-*`, `data-*`: see [Attributes on a component](/guide/components#attributes-on-a-component)), and a `class` merges.
 - **Field sends `(blur)`** ([component events](/guide/events#from-a-child-island-to-its-parent)).
 
-Tabs, menus and tooltips, which need JavaScript around content you write, come next.
+Menus, tooltips and radio groups, built on [context](/guide/context) like Tabs, come next.
