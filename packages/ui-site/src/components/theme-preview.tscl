@@ -173,12 +173,14 @@
     color: var(--ui-sidebar-accent-fg);
   }
   .brand {
+    color: var(--ui-sidebar-fg);
     margin: 0 8px 0 0;
     padding: 6px 4px;
     font-family: var(--ui-font-heading);
     font-weight: 700;
   }
   .main {
+    color: var(--ui-fg);
     display: grid;
     gap: 16px;
     padding: 16px;

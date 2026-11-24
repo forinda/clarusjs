@@ -40,7 +40,7 @@ function toOklch(hex: string): [number, number, number] {
   const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s
   return [L, Math.hypot(A, B), Math.atan2(B, A)]
 }
-function fromOklch([L, C, h]: [number, number, number]): string {
+export function fromOklch([L, C, h]: [number, number, number]): string {
   const A = C * Math.cos(h), B = C * Math.sin(h)
   const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3
   const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3

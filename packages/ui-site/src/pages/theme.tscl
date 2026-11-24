@@ -1,5 +1,6 @@
 @import site from '~/layouts/site.tscl'
 @import themePreview from '~/components/theme-preview.tscl'
+@import themeBuilder from '~/components/theme-builder.tscl'
 
 <site
   [title]="'Theme'"
@@ -10,5 +11,35 @@
   <p class="lead">
     Every component styles itself with the <code>--ui-</code> tokens. Change them here and see the whole set at once.
   </p>
-  <themePreview />
+  <div class="workbench">
+    <themeBuilder />
+    <themePreview />
+  </div>
 </site>
+
+<style scoped>
+  .workbench {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tb-toolbar {
+    order: -1;
+  }
+  @media (min-width: 960px) {
+    .workbench {
+      grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr);
+      grid-template-areas: 'panel toolbar' 'panel preview';
+      align-items: start;
+    }
+    .theme-builder {
+      grid-area: panel;
+    }
+    .tb-toolbar {
+      grid-area: toolbar;
+    }
+    [data-ui-preview] {
+      grid-area: preview;
+    }
+  }
+</style>
