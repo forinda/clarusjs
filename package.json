@@ -38,6 +38,6 @@
     "@changesets/cli": "3.0.3",
     "@clarusjs/prettier-plugin": "workspace:*",
     "clarusjs": "workspace:*",
-    "prettier": "3.9.10"
+    "prettier": "3.10.1"
   }
 }
