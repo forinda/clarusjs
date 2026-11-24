@@ -42,4 +42,5 @@ Headless `.tscl` components on the platform's own elements, no styles. Import th
 | `popover`, `popover-trigger` | the `popover` attribute and CSS anchor positioning: no JavaScript |
 | `accordion-item` | `<details name>`: no JavaScript |
 | `switch`, `checkbox` | a native checkbox in its label, `[(checked)]` |
+| `tabs`, `tab-panel` | a tab list (an island, `rovingFocus`) over panels rendered on the server with their ARIA and `hidden` |
 | `field` | label, input, description and error wired by id; Base UI's `data-touched`, `data-dirty`, `data-invalid` |

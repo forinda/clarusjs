@@ -2,7 +2,7 @@
 title: "UI primitives"
 group: "Interactivity"
 order: 11
-description: "Accessible behaviours and headless parts from @clarusjs/ui-primitives: roving focus, typeahead, dismiss, transitions and positioning with [use]; dialog, popover, accordion, switch, checkbox and field."
+description: "Accessible behaviours and headless parts from @clarusjs/ui-primitives: roving focus, typeahead, dismiss, transitions and positioning with [use]; dialog, popover, accordion, tabs, switch, checkbox and field."
 ---
 
 # UI primitives
@@ -94,6 +94,7 @@ Headless components in the same package, as `.tscl` files: they render the platf
 | `dialog.tscl`, `dialog-trigger.tscl`, `dialog-close.tscl` | `<dialog>` opened with the browser's command invokers (`commandfor`, `command="show-modal"`); focus kept in it, the page inert, Escape and (`dismissible`) a click outside close it | none |
 | `popover.tscl`, `popover-trigger.tscl` | the `popover` attribute and `popovertarget`, placed by CSS anchor positioning (`side`, `align`), flipping when there's no room | none |
 | `accordion-item.tscl` | `<details>`; the same `group` makes items exclusive | none |
+| `tabs.tscl`, `tab-panel.tscl` | a tab list with arrow keys, Home and End (`rovingFocus`), over panels the page writes: each is server HTML with its ARIA and `hidden`, so nothing jumps; `[(value)]`, `(change)` ([Tabs](/components/tabs)) | a small island (the list) |
 | `switch.tscl`, `checkbox.tscl` | a native checkbox in its label (`role="switch"` for the switch), `[(checked)]` | a small island |
 | `field.tscl` | label, input, description and error wired by id; the error shows once left, or with `[show]` | a small island |
 | `select.tscl` | a native `<select>`, the customizable one (`appearance: base-select`) where the browser has it; `[(value)]`, `(change)` | a small island |

@@ -1,0 +1,20 @@
+{{-- The Tabs page's demo (#465): a component without a script, so it can hand the tabs island its panels. --}}
+@import uiTabs from '@clarusjs/ui-primitives/tabs.tscl'
+@import uiTabPanel from '@clarusjs/ui-primitives/tab-panel.tscl'
+
+<div class="tabs-demo">
+  <uiTabs id="gallery-install" label="Install" [tabs]="['npm', 'pnpm', 'yarn']" data-gallery="tabs">
+    <uiTabPanel group="gallery-install" [index]="0"><code>npm i clarusjs</code></uiTabPanel>
+    <uiTabPanel group="gallery-install" [index]="1"><code>pnpm add clarusjs</code></uiTabPanel>
+    <uiTabPanel group="gallery-install" [index]="2"><code>yarn add clarusjs</code></uiTabPanel>
+  </uiTabs>
+</div>
+
+<style scoped>
+  :scope {
+    margin: 16px 0;
+    padding: 20px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+</style>

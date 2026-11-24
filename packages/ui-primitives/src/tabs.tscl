@@ -1,0 +1,54 @@
+{{--
+  Tabs (#465): a tab list (an island) around panels the page writes as <tab-panel>s, which the server renders with
+  their ARIA and hidden. Arrow keys, Home and End move between tabs and select them. Bind the selected index with
+  [(value)]; (change) comes first with the new index, and $info.cancel() keeps the tab.
+
+  <tabs id="install" label="Install" [tabs]="['npm', 'pnpm']" [(value)]="tab">
+    <tab-panel group="install" [index]="0">npm i clarusjs</tab-panel>
+    <tab-panel group="install" [index]="1">pnpm add clarusjs</tab-panel>
+  </tabs>
+
+  Starting on another tab: give each panel the same [selected] too, so the server hides the right ones.
+--}}
+@input id: string
+@input label: string
+@input tabs: string[]
+@model value: number = 0
+@event change: number
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  import { rovingFocus } from '@clarusjs/ui-primitives'
+  function pick(index, event) {
+    if (index !== value && emit('change', index, { reason: 'select', event })) value = index
+  }
+  // The panels are the page's, rendered on the server: this keeps their hidden in step with value (and [(value)]).
+  const panels = () =>
+    effect(() => {
+      for (let i = 0; i < tabs.length; i++) {
+        const panel = document.getElementById(id + '-panel-' + i)
+        if (panel) panel.hidden = i !== value
+      }
+    })
+  const keys = (el) => rovingFocus(el, { onMove: (tab) => tab.click() })
+</script>
+
+<div data-part="tabs" [use]="panels">
+  <div role="tablist" [aria-label]="label" data-part="list" [use]="keys">
+    @for (t of tabs; track $index) {
+      <button
+        type="button"
+        role="tab"
+        [id]="id + '-tab-' + $index"
+        [aria-controls]="id + '-panel-' + $index"
+        [aria-selected]="$index === value ? 'true' : 'false'"
+        [tabindex]="$index === value ? 0 : -1"
+        (click)="pick($index, $event)"
+        data-part="tab"
+      >
+        {{ t }}
+      </button>
+    }
+  </div>
+  <slot />
+</div>

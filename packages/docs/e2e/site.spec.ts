@@ -2538,7 +2538,7 @@ test('#465 parts: dialog and popover open with no JavaScript of their own, the a
 })
 
 // #467: the Components section, a page per part, styled by @clarusjs/ui; axe on every one.
-for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox']) {
+for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox', 'tabs']) {
   test(`#467 components/${part}: the demo works and has no axe violations`, async ({ page }) => {
     await page.goto(`/components/${part}`)
     const gallery = page.locator(`[data-gallery="${part}"]`)
@@ -2546,6 +2546,27 @@ for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select
     expect((await (await axe(page)).include(`[data-gallery="${part}"]`).analyze()).violations).toEqual([])
   })
 }
+
+test('#465 tabs: an island around server-rendered panels; click, arrow keys, Home and End select, panels follow', async ({ page }) => {
+  await page.goto('/components/tabs')
+  const list = page.getByRole('tablist', { name: 'Install' })
+  const panel = (name: string) => page.getByRole('tabpanel', { name })
+  // Before any script: the server already hid the other panels, so nothing jumps.
+  const html = await (await page.request.get('/components/tabs')).text()
+  expect(html).toMatch(/id="gallery-install-panel-1"[^>]*hidden/)
+  await expect(list.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+  await expect(panel('npm')).toBeVisible()
+  await list.getByRole('tab', { name: 'pnpm' }).click()
+  await expect(list.getByRole('tab', { name: 'pnpm' })).toHaveAttribute('aria-selected', 'true')
+  await expect(panel('pnpm')).toBeVisible()
+  await expect(page.locator('#gallery-install-panel-0')).toBeHidden()
+  await page.keyboard.press('ArrowRight')
+  await expect(list.getByRole('tab', { name: 'yarn' })).toBeFocused()
+  await expect(panel('yarn')).toBeVisible()
+  await page.keyboard.press('Home')
+  await expect(panel('npm')).toBeVisible()
+  await expect(page.locator('#gallery-install-panel-2')).toBeHidden()
+})
 
 test('#467 components: @clarusjs/ui styles the parts in the site\'s tokens; interactions on a few pages', async ({ page }) => {
   await page.goto('/components/dialog')

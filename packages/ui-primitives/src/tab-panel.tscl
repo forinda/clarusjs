@@ -1,0 +1,19 @@
+{{--
+  Tab panel (#465): one panel of a <tabs> group, server HTML with its ARIA, so nothing ships and nothing jumps.
+  [group] is the tabs' id, [index] its place; it's hidden unless it's the [selected] one (default 0, the first tab).
+  <tab-panel group="install" [index]="1">…</tab-panel>
+--}}
+@input group: string
+@input index: number
+@input selected: number = 0
+
+<div
+  role="tabpanel"
+  [id]="group + '-panel-' + index"
+  [aria-labelledby]="group + '-tab-' + index"
+  tabindex="0"
+  [hidden]="index !== selected"
+  data-part="panel"
+>
+  <slot />
+</div>
