@@ -7,7 +7,7 @@ export function render(__cl_props = {}, __cl_slots, __cl_opts) {
   const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""
   const __cl_attrs = __cl_passed(__cl_props, [])
   const __cl_cx = __cl_opts?.cx
-  const theme = __cl_cx && "theme" in __cl_cx ? __cl_cx.theme : ({ tone: 'light' })
-  const group = __cl_cx && "group" in __cl_cx ? __cl_cx.group : (() => { throw new Error("[clarusjs] <context> reads context \"group\", which no component around it provides") })()
+  const theme = __cl_cx && Object.hasOwn(__cl_cx, "theme") ? __cl_cx.theme : ({ tone: 'light' })
+  const group = __cl_cx && Object.hasOwn(__cl_cx, "group") ? __cl_cx.group : (() => { throw new Error("[clarusjs] <context> reads context \"group\", which no component around it provides") })()
   return __cl_join(["<section", __cl_attrHtml("id", (group.id)), __cl_attrHtml("data-tone", (theme.tone)), __cl_passedHtml(__cl_attrs, ["id","data-tone"]), __cl_attrHtml("style", (__cl_attrs.style)), __cl_attrHtml("class", ["cl-c-context-datkwm", (__cl_class)].join("")), ">\n  ", __cl_render_badge({ label: "new" }, undefined, { cx: __cl_cx }), "\n  ", __cl_slot(__cl_slots?.["default"], undefined, () => "", __cl_cx), "\n</section>"])
 }

@@ -81,3 +81,9 @@ test('provide is reserved: a script that declares or imports its own is a locate
   expect(compileError("<script>\n  function provide(k, v) {}\n  provide('k', 1)\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
   expect(compileError("<script>\n  import { provide } from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
 })
+
+test('context lookups ignore names every object has (toString), and provide keys must be names @context can read', async () => {
+  const reads = "@context toString: string = 'fallback'\n<i>{{ toString }}</i>\n"
+  expect(await render(`${imports}@import reads from './reads.tscl'\n<tabs value="a"><reads /></tabs>`, { './w.tscl': w, './slow.tscl': slow, './reads.tscl': server(reads, 'reads.tscl') })).toMatch(/>fallback<\/i>/)
+  expect(compileError("<script>\n  provide('my-key', 1)\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide.*name/)
+})

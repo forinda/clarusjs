@@ -372,3 +372,9 @@ test('#465 context: @context names are typed in the template; provide() type-che
   const tabs = "@input value: string\n<script>\n  provide('tabs', { value })\n</script>\n<div><slot /></div>\n"
   expect(check({ 'src/components/tabs.tscl': tabs })).toEqual([])
 })
+
+test('#465 review: a script\'s own provide is an error in check too, as in the build', () => {
+  const own = "<script>\n  function provide(k, v) {}\n  provide('k', 1)\n</script>\n<p />\n"
+  // The generator throws the build's located error; the check CLI reports it at its place.
+  expect(() => check({ 'src/components/own.tscl': own })).toThrow(/^src\/components\/own\.tscl:2:3 provide is reserved/)
+})

@@ -1,8 +1,9 @@
 {{--
   Tabs (#465): a tab list over panels, Radix-shaped. The root is a small island; <tab-list>, <tab> and <tab-panel>
   have no script, ship nothing, and read the selection from context, so the server writes every ARIA attribute and
-  hidden. Arrow keys, Home and End move between tabs and select them. Bind the selected value with [(value)];
-  (change) comes first with the new value, and $info.cancel() keeps the current tab.
+  hidden. Arrow keys, Home and End move between tabs and select them. [(value)] and (change) (cancellable with
+  $info.cancel()) are for a parent island, once an island can pass content to another one: write the tabs in a page
+  or a component without a script for now.
 
   <tabs id="install" label="Install" value="npm">
     <tab-list>

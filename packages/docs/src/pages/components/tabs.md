@@ -17,7 +17,7 @@ description: "Tabs over panels, Radix-shaped: the parts read the selection from 
 @import uiTab from '@clarusjs/ui-primitives/tab.tscl'
 @import uiTabPanel from '@clarusjs/ui-primitives/tab-panel.tscl'
 
-<uiTabs id="install" label="Install" [(value)]="pm">
+<uiTabs id="install" label="Install" value="npm">
   <uiTabList>
     <uiTab value="npm">npm</uiTab>
     <uiTab value="pnpm"><icon name="lucide:package" /> pnpm</uiTab>
@@ -29,10 +29,9 @@ description: "Tabs over panels, Radix-shaped: the parts read the selection from 
 
 - **Each part says only its own value.** `tab-list`, `tab` and `tab-panel` read the rest from the `tabs` around them ([context](/guide/context)), so they ship no JavaScript and the server writes their ARIA and `hidden`.
 - **`id`** names the group: its tabs and panels get ids from it. **`label`** labels the tab list.
-- **`value`** is the selected tab's value, or bind it with **`[(value)]`**. A tab can hold any content, an icon included.
+- **`value`** is the tab selected first. A tab can hold any content, an icon included.
 - **Keyboard:** ← → move between tabs and select them; Home and End jump.
-- **`(change)`** comes first with the new value; `$info.cancel()` keeps the current tab.
 - **Styling:** `data-part` `tabs`, `list`, `tab` and `panel`; the selected tab has `aria-selected="true"`.
-- **Write the tabs in a page or a component without a script.** Inside another island they're a render error for now ([slots in an island](/guide/slots#slots-in-an-island)).
+- **Write the tabs in a page or a component without a script.** Inside another island they're a render error for now ([slots in an island](/guide/slots#slots-in-an-island)). That's also why `[(value)]` and `(change)`, which the part supports, can't be used yet: only an island can bind them, and an island can't pass content to the tabs. They work once islands can.
 
 From [`@clarusjs/ui-primitives`](/guide/ui-primitives#parts), styled by `@clarusjs/ui`: `@import '@clarusjs/ui/ui.css'` once, and change the look with its `--ui-` tokens (`--ui-accent`, `--ui-radius`, `--ui-font`…). Without it, the part is unstyled and works the same.
