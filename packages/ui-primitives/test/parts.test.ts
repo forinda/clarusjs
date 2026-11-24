@@ -149,3 +149,10 @@ test('radio group: native radios in a fieldset, named and checked from context; 
   expect(statefulOf('radio-group')).toBe(true)
   expect(statefulOf('radio')).toBe(false)
 })
+
+test('tooltip: popover="hint" anchored to its trigger, which describes itself by it; the trigger is a small island', async () => {
+  expect(await render('tooltip', { id: 't' }, { default: 'Copy the link' })).toBe('<div id="t" popover="hint" role="tooltip" data-part="tooltip" data-side="top" style="position-anchor: --t; position-area: top; position-try-fallbacks: flip-block, flip-inline">Copy the link</div>')
+  expect(await render('tooltip-trigger', { target: 't' }, { default: 'Copy' })).toBe('<button type="button" interestfor="t" aria-describedby="t" style="anchor-name: --t" data-part="trigger">Copy</button>')
+  expect(statefulOf('tooltip')).toBe(false)
+  expect(statefulOf('tooltip-trigger')).toBe(true)
+})

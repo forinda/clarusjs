@@ -94,6 +94,18 @@
   font: 14px/1.5 var(--ui-font);
 }
 
+/* Tooltip: small, inverted, a little gap from its trigger. */
+:where([data-part='tooltip']) {
+  margin: 6px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: calc(var(--ui-radius) - 2px);
+  background: var(--ui-fg);
+  color: var(--ui-bg);
+  font: 13px/1.4 var(--ui-font);
+  max-width: 240px;
+}
+
 /* Accordion. */
 :where([data-part='accordion-item']) {
   border-bottom: 1px solid var(--ui-border);

@@ -2538,7 +2538,7 @@ test('#465 parts: dialog and popover open with no JavaScript of their own, the a
 })
 
 // #467: the Components section, a page per part, styled by @clarusjs/ui; axe on every one.
-for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox', 'tabs', 'radio']) {
+for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox', 'tabs', 'radio', 'tooltip']) {
   test(`#467 components/${part}: the demo works and has no axe violations`, async ({ page }) => {
     await page.goto(`/components/${part}`)
     const gallery = page.locator(`[data-gallery="${part}"]`)
@@ -2600,6 +2600,22 @@ test('#465 radio group: native radios bound two ways from an island; arrow keys 
   await expect(group.getByRole('radio', { name: 'Medium' })).toBeChecked()
   await expect(page.locator('.gallery-out')).toHaveText('Size: m')
   await expect(group.locator('[data-part="radio"][data-checked]')).toHaveCount(1)
+})
+
+test('#465 tooltip: shown on hover and on focus, described by its trigger, closed by Escape', async ({ page }) => {
+  await page.goto('/components/tooltip')
+  const trigger = page.getByRole('button', { name: 'Copy link' })
+  const tip = page.getByRole('tooltip')
+  await expect(trigger).toHaveAccessibleDescription('Copies the page\'s address')
+  await expect(page.locator('[data-gallery="tooltip"]').locator('xpath=ancestor::cl-island').first()).toHaveAttribute('data-cl-ready', '')
+  await trigger.hover()
+  await expect(tip).toBeVisible()
+  await page.mouse.move(0, 0)
+  await expect(tip).toBeHidden()
+  await trigger.focus()
+  await expect(tip).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(tip).toBeHidden()
 })
 
 test('#467 components: @clarusjs/ui styles the parts in the site\'s tokens; interactions on a few pages', async ({ page }) => {

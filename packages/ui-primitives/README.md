@@ -40,6 +40,7 @@ Headless `.tscl` components on the platform's own elements, no styles. Import th
 |---|---|
 | `dialog`, `dialog-trigger`, `dialog-close` | `<dialog>` and command invokers (`commandfor`): no JavaScript |
 | `popover`, `popover-trigger` | the `popover` attribute and CSS anchor positioning: no JavaScript |
+| `tooltip`, `tooltip-trigger` | `popover="hint"` with anchor positioning; `interestfor` where the browser has it, else the trigger (an island) shows it on hover and focus |
 | `accordion-item` | `<details name>`: no JavaScript |
 | `switch`, `checkbox` | a native checkbox in its label, `[(checked)]` |
 | `tabs`, `tab-list`, `tab`, `tab-panel` | Radix-shaped; the parts read the selection from context, so the server writes their ARIA and `hidden`; the root is an island (`rovingFocus`) |

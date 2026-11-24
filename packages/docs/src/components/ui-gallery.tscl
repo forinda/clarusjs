@@ -12,7 +12,9 @@
 @import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
 @import uiRadioGroup from '@clarusjs/ui-primitives/radio-group.tscl'
 @import uiRadio from '@clarusjs/ui-primitives/radio.tscl'
-@input part: 'dialog' | 'popover' | 'accordion' | 'switch' | 'field' | 'select' | 'combobox' | 'radio'
+@import uiTooltip from '@clarusjs/ui-primitives/tooltip.tscl'
+@import uiTooltipTrigger from '@clarusjs/ui-primitives/tooltip-trigger.tscl'
+@input part: 'dialog' | 'popover' | 'accordion' | 'switch' | 'field' | 'select' | 'combobox' | 'radio' | 'tooltip'
 
 <script>
   let on = state(true)
@@ -73,6 +75,9 @@
   } @else if (part === 'select') {
     <uiSelect id="gallery-size" label="Size" [options]="sizes" [(value)]="size" />
     <p class="gallery-out">Size: {{ size }}</p>
+  } @else if (part === 'tooltip') {
+    <uiTooltipTrigger target="gallery-tip">Copy link</uiTooltipTrigger>
+    <uiTooltip id="gallery-tip">Copies the page's address</uiTooltip>
   } @else if (part === 'radio') {
     <uiRadioGroup name="gallery-size" label="Size" [(value)]="size">
       <uiRadio value="s" label="Small" />
