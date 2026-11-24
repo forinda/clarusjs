@@ -199,114 +199,115 @@
   }
 </script>
 
-<div class="tb-toolbar" role="toolbar" aria-label="Preview">
-  <div class="seg">
-    <button type="button" [aria-pressed]="String(mode === 'light')" (click)="mode = 'light'">Light</button>
-    <button type="button" [aria-pressed]="String(mode === 'dark')" (click)="mode = 'dark'">Dark</button>
+<fragment>
+  <div class="tb-toolbar" role="toolbar" aria-label="Preview">
+    <div class="seg">
+      <button type="button" [aria-pressed]="String(mode === 'light')" (click)="mode = 'light'">Light</button>
+      <button type="button" [aria-pressed]="String(mode === 'dark')" (click)="mode = 'dark'">Dark</button>
+    </div>
+    <button type="button" class="customize" aria-haspopup="dialog" (click)="openPanel()">Customize</button>
+    <div class="seg">
+      <button type="button" aria-label="Desktop width" [aria-pressed]="String(!narrow)" (click)="narrow = false">
+        Desktop
+      </button>
+      <button type="button" aria-label="Phone width" [aria-pressed]="String(narrow)" (click)="narrow = true">
+        Phone
+      </button>
+    </div>
   </div>
-  <button type="button" class="customize" aria-haspopup="dialog" (click)="openPanel()">Customize</button>
-  <div class="seg">
-    <button type="button" aria-label="Desktop width" [aria-pressed]="String(!narrow)" (click)="narrow = false">
-      Desktop
-    </button>
-    <button type="button" aria-label="Phone width" [aria-pressed]="String(narrow)" (click)="narrow = true">
-      Phone
-    </button>
-  </div>
-</div>
 
-<dialog class="theme-builder" id="tb-panel" open aria-label="Theme controls" [use]="wire">
-  <h2 class="tb-title">Presets</h2>
-  <div class="presets" role="group" aria-label="Presets">
-    @for (p of PRESETS; track p.name) {
-      <button
-        type="button"
-        class="swatch"
-        [aria-label]="p.label + ' preset'"
-        [aria-pressed]="String(base === p.name)"
-        [style]="'--sw: ' + p.accent"
-        (click)="pick(p.name)"
-      ></button>
-    }
-  </div>
-  <details open>
-    <summary>Colours ({{ mode }})</summary>
-    @for (g of GROUPS; track g.title) {
-      <fieldset>
-        <legend>{{ g.title }}</legend>
-        @for (tok of g.tokens; track tok.key) {
-          <div class="colour">
-            <label [for]="'tb-' + tok.key">{{ tok.label }}</label>
-            <input
-              type="color"
-              [id]="'tb-' + tok.key"
-              [aria-describedby]="low(tok.key) ? 'tb-' + tok.key + '-warn' : null"
-              [value]="theme[mode][tok.key]"
-              (input)="set(tok.key, $event.target.value)"
-            />
-            <code>{{ theme[mode][tok.key] }}</code>
-            <p class="warn" [id]="'tb-' + tok.key + '-warn'" [hidden]="!low(tok.key)">
-              Low contrast ({{ ratio(tok.key) }}:1, needs 4.5)
-            </p>
-          </div>
+  <dialog class="theme-builder" id="tb-panel" open aria-label="Theme controls" [use]="wire">
+    <h2 class="tb-title">Presets</h2>
+    <div class="presets" role="group" aria-label="Presets">
+      @for (p of PRESETS; track p.name) {
+        <button
+          type="button"
+          class="swatch"
+          [aria-label]="p.label + ' preset'"
+          [aria-pressed]="String(base === p.name)"
+          [style]="'--sw: ' + p.accent"
+          (click)="pick(p.name)"
+        ></button>
+      }
+    </div>
+    <details open>
+      <summary>Colours ({{ mode }})</summary>
+      @for (g of GROUPS; track g.title) {
+        <fieldset>
+          <legend>{{ g.title }}</legend>
+          @for (tok of g.tokens; track tok.key) {
+            <div class="colour">
+              <label [for]="'tb-' + tok.key">{{ tok.label }}</label>
+              <input
+                type="color"
+                [id]="'tb-' + tok.key"
+                [aria-describedby]="low(tok.key) ? 'tb-' + tok.key + '-warn' : null"
+                [value]="theme[mode][tok.key]"
+                (input)="set(tok.key, $event.target.value)"
+              />
+              <code>{{ theme[mode][tok.key] }}</code>
+              <p class="warn" [id]="'tb-' + tok.key + '-warn'" [hidden]="!low(tok.key)">
+                Low contrast ({{ ratio(tok.key) }}:1, needs 4.5)
+              </p>
+            </div>
+          }
+        </fieldset>
+      }
+    </details>
+    <details>
+      <summary>Typography</summary>
+      <label for="tb-font">Body font</label>
+      <select id="tb-font" (change)="font('font', $event.target.value)">
+        @for (f of FONTS; track f.label) {
+          <option [value]="f.value" [selected]="theme.light.font === f.value">{{ f.label }}</option>
         }
-      </fieldset>
-    }
-  </details>
-  <details>
-    <summary>Typography</summary>
-    <label for="tb-font">Body font</label>
-    <select id="tb-font" (change)="font('font', $event.target.value)">
-      @for (f of FONTS; track f.label) {
-        <option [value]="f.value" [selected]="theme.light.font === f.value">{{ f.label }}</option>
-      }
-    </select>
-    <label for="tb-heading">Heading font</label>
-    <select id="tb-heading" (change)="font('font-heading', $event.target.value)">
-      @for (f of HEADINGS; track f.label) {
-        <option [value]="f.value" [selected]="theme.light['font-heading'] === f.value">{{ f.label }}</option>
-      }
-    </select>
-    <label for="tb-mono">Code font</label>
-    <select id="tb-mono" (change)="font('font-mono', $event.target.value)">
-      @for (f of MONOS; track f.label) {
-        <option [value]="f.value" [selected]="theme.light['font-mono'] === f.value">{{ f.label }}</option>
-      }
-    </select>
-    <label for="tb-size">Base size</label>
-    <select id="tb-size" (change)="set('font-size', $event.target.value)">
-      @for (s of SIZES; track s) {
-        <option [value]="s" [selected]="theme.light['font-size'] === s">{{ s }}</option>
-      }
-    </select>
-  </details>
-  <details>
-    <summary>Shape</summary>
-    <label for="tb-radius">Radius</label>
-    <input
-      type="range"
-      id="tb-radius"
-      min="0"
-      max="20"
-      [value]="parseInt(theme.light.radius)"
-      (input)="set('radius', $event.target.value + 'px')"
-    />
-    <label for="tb-shadow">Shadow</label>
-    <select id="tb-shadow" (change)="setShadow($event.target.value)">
-      <option value="none" [selected]="shadow === 'none'">None</option>
-      <option value="soft" [selected]="shadow === 'soft'">Soft</option>
-      <option value="strong" [selected]="shadow === 'strong'">Strong</option>
-    </select>
-  </details>
-  <div class="tb-actions">
-    <button type="button" class="primary" (click)="copy()">{{ copied ? 'Copied' : 'Copy CSS' }}</button>
-    <button type="button" (click)="shuffle()">Shuffle</button>
-    <button type="button" (click)="reset()">Reset</button>
-    <button type="button" (click)="share()">{{ shared ? 'Link copied' : 'Share link' }}</button>
-  </div>
-  <form method="dialog" class="tb-close"><button>Close</button></form>
-</dialog>
-
+      </select>
+      <label for="tb-heading">Heading font</label>
+      <select id="tb-heading" (change)="font('font-heading', $event.target.value)">
+        @for (f of HEADINGS; track f.label) {
+          <option [value]="f.value" [selected]="theme.light['font-heading'] === f.value">{{ f.label }}</option>
+        }
+      </select>
+      <label for="tb-mono">Code font</label>
+      <select id="tb-mono" (change)="font('font-mono', $event.target.value)">
+        @for (f of MONOS; track f.label) {
+          <option [value]="f.value" [selected]="theme.light['font-mono'] === f.value">{{ f.label }}</option>
+        }
+      </select>
+      <label for="tb-size">Base size</label>
+      <select id="tb-size" (change)="set('font-size', $event.target.value)">
+        @for (s of SIZES; track s) {
+          <option [value]="s" [selected]="theme.light['font-size'] === s">{{ s }}</option>
+        }
+      </select>
+    </details>
+    <details>
+      <summary>Shape</summary>
+      <label for="tb-radius">Radius</label>
+      <input
+        type="range"
+        id="tb-radius"
+        min="0"
+        max="20"
+        [value]="parseInt(theme.light.radius)"
+        (input)="set('radius', $event.target.value + 'px')"
+      />
+      <label for="tb-shadow">Shadow</label>
+      <select id="tb-shadow" (change)="setShadow($event.target.value)">
+        <option value="none" [selected]="shadow === 'none'">None</option>
+        <option value="soft" [selected]="shadow === 'soft'">Soft</option>
+        <option value="strong" [selected]="shadow === 'strong'">Strong</option>
+      </select>
+    </details>
+    <div class="tb-actions">
+      <button type="button" class="primary" (click)="copy()">{{ copied ? 'Copied' : 'Copy CSS' }}</button>
+      <button type="button" (click)="shuffle()">Shuffle</button>
+      <button type="button" (click)="reset()">Reset</button>
+      <button type="button" (click)="share()">{{ shared ? 'Link copied' : 'Share link' }}</button>
+    </div>
+    <form method="dialog" class="tb-close"><button>Close</button></form>
+  </dialog>
+</fragment>
 <style scoped>
   .warn {
     grid-column: 1 / -1;

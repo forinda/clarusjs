@@ -1,0 +1,1 @@
+6:1 one-root a component renders one root element, for what a parent passes it (attributes, class, events) to land on: wrap these in an element, or in <fragment> if no element is wanted

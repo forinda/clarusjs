@@ -337,7 +337,7 @@ test('#219: [(x)] needs @model x and a writable target; a child may assign its @
     ].join('\n'),
   })
   const result = check({ root, typescript })
-  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
+  expect(result.diagnostics.filter((d) => d.code !== 'one-root').map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
     'src/components/field.tscl:5 TS2540', // value.text: inside a @model is read-only too
     'src/components/form.tscl:7 TS2322', // [(label)]: label isn't a @model of field
     'src/components/form.tscl:8 TS2540', // fixed is a read-only input

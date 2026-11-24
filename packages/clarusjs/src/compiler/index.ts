@@ -67,14 +67,14 @@ export type CompileResult = { code: string; stateful: boolean; css: string; warn
  */
 export function compile(source: string, options: CompileOptions): CompileResult {
   const parsed = parse(source, options.file)
-  unwrapFragments(parsed, options.file, source)
+  const fragmentRoot = unwrapFragments(parsed, options.file, source)
   if (options.components) autoImport(parsed, options.components, options.file, source)
   if (options.layouts?.length && parsed.layout !== 'none') wrapInLayouts(parsed, options.layouts, options.file, source)
   const warnings: ClarusError[] = []
   // Every component's top-level elements carry its scope class, styled or not: a parent's scope then takes in a
   // child's top-level element and stops inside it.
   const id = options.scope ?? scopeId(options.file)
-  fallThrough(parsed)
+  if (!fragmentRoot) fallThrough(parsed) // a <fragment> root renders no element for them
   foldClass(parsed.nodes, new Set(parsed.imports.map((imp) => imp.name)))
   // Slot content is marked only when this component has scoped styles to reach it (#418): no class on every
   // paragraph of every Markdown page otherwise.
@@ -145,9 +145,10 @@ const ID_LISTS = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'aria-
 
 /**
  * `<fragment>` groups nodes without rendering an element: each one is replaced by its children, anywhere in the
- * template, before anything else sees it. It takes no attributes (there is no element to put them on).
+ * template, before anything else sees it. It takes no attributes (there is no element to put them on); true when it
+ * is the component's root, which then takes none from a parent either.
  */
-function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source: string): void {
+function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source: string): boolean {
   const reserved = parsed.imports.find((i) => i.name === 'fragment')
   if (reserved) throw new ClarusError('fragment is reserved: <fragment> groups elements without rendering one; import the component under another name', file, source, reserved.start)
   // Every list of child nodes, whatever holds it: elements, @if branches, @for (and its @empty), @await parts, fills.
@@ -170,7 +171,10 @@ function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source:
       if (n.attrs.length) throw new ClarusError('<fragment> renders no element: attributes and events can\'t land on it', file, source, n.start)
       return n.children
     })
+  const top = parsed.nodes.filter((n) => !(n.type === 'text' && !n.value.trim()))
+  const root = top.length === 1 && top[0]!.type === 'element' && top[0]!.tag === 'fragment'
   parsed.nodes = flat(parsed.nodes)
+  return root
 }
 
 /**

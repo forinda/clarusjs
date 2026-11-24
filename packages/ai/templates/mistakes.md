@@ -8,9 +8,11 @@ These fail to compile, with `file.tscl:line:col` and a message that says what to
 
 ```tscl right
 @input loggedIn: boolean = false
-@if (loggedIn) {
-  <p>Hi</p>
-}
+<header>
+  @if (loggedIn) {
+    <p>Hi</p>
+  }
+</header>
 ```
 
 An `@input` belongs to the parent: it is read-only. Copy it into state to change it.

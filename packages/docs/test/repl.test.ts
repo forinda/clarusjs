@@ -166,7 +166,7 @@ describe('starters', () => {
       const client = compile(s.source, { file: 'App.tscl', target: 'client' })
       expect(server.warnings, s.name).toEqual([])
       expect(client.stateful, s.name).toBe(true)
-      expect(lint(s.source, 'App.tscl'), s.name).toEqual([])
+      expect(lint(s.source, 'src/pages/App.tscl'), s.name).toEqual([]) // the playground's App is the page
     }
   })
 })

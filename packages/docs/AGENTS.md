@@ -31,13 +31,15 @@ islands of JavaScript only where a component has a `<script>`. Vite runs it (`vi
   }
 </script>
 
-<h2>{{ title }} <badge [label]="site.name" /></h2>
-<button type="button" (click)="add()">Clicked {{ n }} times ({{ double }})</button>
-@if (n > 3) {
-  <p>That's a lot.</p>
-} @else {
-  <p>Keep going.</p>
-}
+<section>
+  <h2>{{ title }} <badge [label]="site.name" /></h2>
+  <button type="button" (click)="add()">Clicked {{ n }} times ({{ double }})</button>
+  @if (n > 3) {
+    <p>That's a lot.</p>
+  } @else {
+    <p>Keep going.</p>
+  }
+</section>
 ```
 
 - `{{ expr }}` prints a value, escaped. `[attr]="expr"` binds an attribute or a component input;
@@ -47,6 +49,8 @@ islands of JavaScript only where a component has a `<script>`. Vite runs it (`vi
 - `@for (item of items; track item.id) { … } @empty { … }`: always `track` a unique key.
 - `<slot />` and `<slot name="x">` receive content; `@slot('x') { … }` fills a named one.
 - `{{-- … --}}` is a template comment.
+- A component renders one root element: what a parent passes (attributes, `class`, `(event)`) lands on it. To group
+  several without an element, wrap them in `<fragment>` (it renders only its children and takes no attributes).
 
 ### Islands and state
 

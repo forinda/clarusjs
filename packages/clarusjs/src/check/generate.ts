@@ -86,7 +86,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
     copy(t.clause, t.clauseStart)
     emit(` from ${JSON.stringify(t.from)}\n`)
   }
-  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M, Events as ${alias(imp.name)}_E } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
+  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M, Events as ${alias(imp.name)}_E, Attrs as ${alias(imp.name)}_A, DomEvents as ${alias(imp.name)}_D } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
   for (const d of parsed.dataImports) {
     emit('import ')
     copy(d.clause, d.clauseStart)
@@ -133,6 +133,12 @@ export function generateTs(source: string, file: string, options: { loader?: str
   const models = parsed.inputs.filter((i) => i.model).map((i) => JSON.stringify(i.name))
   emit(`export type Models = ${models.length ? models.join(' | ') : 'never'}\n`)
   // What it sends its parent (#442): each @event's value type; emit() in its script is typed by them.
+  // What a parent may put on its tag besides inputs: the root's attributes and the DOM events from it (#463, #508).
+  // A <fragment> root renders no element, so nothing: each attribute or DOM event on its tag is reported.
+  const top = parsed.nodes.filter((n) => !(n.type === 'text' && !n.value.trim()))
+  const fragmentRoot = top.length === 1 && top[0]!.type === 'element' && top[0]!.tag === 'fragment'
+  emit(`export type Attrs = ${fragmentRoot ? '{ __cl_fragment_root_takes_no_attributes?: never }' : '__cl_Passed'}\n`)
+  emit(`export type DomEvents = ${fragmentRoot ? 'never' : '__cl_Bubbling'}\n`)
   emit('export interface Events {\n')
   for (const e of parsed.events) {
     emit(`  ${JSON.stringify(e.name)}: `)
@@ -164,7 +170,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   emit('export type __cl_Ev<T, K> = K extends keyof T ? T[K] : K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : any\n')
   emit('export type __cl_Use<E> = ((el: E) => unknown) | readonly ((el: E) => unknown)[]\n')
   // What a parent may pass a component as attributes for its root (#463): the names passed() in runtime/attrs.ts keeps.
-  emit('export type __cl_Passed = { id?: string; role?: string; tabindex?: string | number; hidden?: boolean; lang?: string; dir?: string; style?: string; [k: `data-${string}`]: unknown; [k: `aria-${string}`]: unknown }\n')
+  emit('export type __cl_Passed = { class?: unknown; id?: string; role?: string; tabindex?: string | number; hidden?: boolean; lang?: string; dir?: string; style?: string; [k: `data-${string}`]: unknown; [k: `aria-${string}`]: unknown }\n')
   // A <script server> may await at the top level: the check function is async then, as render is.
   const awaits = !!parsed.serverScript && /\bawait\b/.test(parsed.serverScript.code)
   emit(`\nexport default ${awaits ? 'async ' : ''}function __cl_check(__cl_props: __cl_Readonly<Inputs>) {\n`)
@@ -327,7 +333,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
           // reported on the variable, which maps to the tag.
           emit('  { const ')
           point('__cl_p', node.start, node.tag.length + 1) // the tag: `<card`
-          emit(`: __cl_Readonly<${alias(node.tag)} & __cl_Passed> = { `) // a child reads its inputs only, so readonly values fit; #463: attributes too
+          emit(`: __cl_Readonly<${alias(node.tag)} & ${alias(node.tag)}_A> = { `) // a child reads its inputs only, so readonly values fit; #463: attributes too
           // A spread (#406) first: it must provide the required inputs the tag doesn't write (TypeScript doesn't check a
           // spread's extra keys).
           for (const a of node.attrs) {
@@ -338,7 +344,13 @@ export function generateTs(source: string, file: string, options: { loader?: str
           }
           for (const a of node.attrs) {
             // Static attributes (#463) are props too, for the child's root: id="x", data-test, aria-…
-            if (a.kind === 'static' && a.name !== 'class' && a.name !== 'attach') {
+            // class (written or with {{ }}) lands on the root too: only its presence is checked.
+            if (a.name === 'class' && (a.kind === 'static' || a.kind === 'interp')) {
+              copy(a.name, a.start)
+              emit(': undefined, ')
+              continue
+            }
+            if (a.kind === 'static' && a.name !== 'attach') {
               const quoted = !/^[A-Za-z_$][\w$]*$/.test(a.name)
               if (quoted) emit('"')
               copy(a.name, a.start)
@@ -375,7 +387,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
             const name = JSON.stringify(a.name)
             emit('  { const ')
             point('__cl_ev', a.start, a.name.length + 2) // the binding's name: `(change)`
-            emit(`: keyof ${alias(node.tag)}_E | __cl_Bubbling = ${name}; __cl_use(__cl_ev) }\n`)
+            emit(`: keyof ${alias(node.tag)}_E | ${alias(node.tag)}_D = ${name}; __cl_use(__cl_ev) }\n`)
             emit(`  ;(($event: __cl_Ev<${alias(node.tag)}_E, ${name}>, $info: { reason?: string; event?: Event; cancel(): void }) => { `)
             guarded()
             emit('{ ')

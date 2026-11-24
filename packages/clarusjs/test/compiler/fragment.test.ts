@@ -27,3 +27,8 @@ test('in an island, a fragment in an @if branch and @for rows switches and grows
   const src = "<script>\n  let on = state(true)\n  let items = state([1])\n</script>\n<button (click)=\"on = !on\">t</button><button (click)=\"items = [...items, items.length + 1]\">a</button>\n@if (on) { <fragment><i>x</i><i>y</i></fragment> } @else { <fragment><b>z</b></fragment> }\n@for (n of items; track n) { <fragment><dt>{{ n }}</dt><dd>v</dd></fragment> }\n"
   expect(compile(src, { file: 'i.tscl', target: 'client' }).code).toContain('export function attach')
 })
+
+test('a component whose root is a fragment takes no attributes, even with one element inside', async () => {
+  const mod = await importCode(server('<fragment><div>x</div></fragment>\n'), 'frag-root')
+  expect(mod.render({ id: 'a', 'data-x': '1' }).trim()).toBe('<div>x</div>')
+})

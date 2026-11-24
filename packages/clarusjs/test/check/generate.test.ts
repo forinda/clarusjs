@@ -418,3 +418,24 @@ test('#review: an event that does not bubble is reported (it would never arrive)
   expect(errors[0]).toMatch(/^src\/pages\/index\.tscl:6:6 Type '"focus"' is not assignable/)
   expect(errors[1]).toMatch(/^src\/pages\/index\.tscl:7:6 Type '"clik"' is not assignable/)
 })
+
+test('a component whose root is a <fragment> takes no attributes or DOM events: each one on its tag is reported', () => {
+  const pair = '@event pick: string\n<fragment><dt><slot /></dt><dd>x</dd></fragment>\n'
+  const page = `@import pair from '../components/pair.tscl'
+<script>
+  let x = state('')
+</script>
+<dl>
+  <pair id="a" (click)="x = 'c'" (pick)="x = $event">d</pair>
+  <pair class="b">e</pair>
+  <pair (pick)="x = $event">f</pair>
+</dl>
+<p>{{ x }}</p>
+`
+  const errors = check({ 'src/components/pair.tscl': pair, 'src/pages/index.tscl': page })
+  expect(errors).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:6:9 .*'id' does not exist in type .*__cl_fragment_root_takes_no_attributes/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:6:16 Type '"click"' is not assignable/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:7:9 .*'class' does not exist/),
+  ])
+})
