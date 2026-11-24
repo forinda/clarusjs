@@ -10,7 +10,11 @@ export { classValue, styleValue, passed } from './attrs.ts'
  * component has state, the state values it rendered with (`s`), so the browser starts from the same values.
  * @internal Compiled components call this; apps don't.
  */
-export function island(name: string, src: string, props: Record<string, unknown>, html: string, state?: Record<string, unknown>, attach?: string, paths?: Record<string, unknown>): string {
+export function island(name: string, src: string, props: Record<string, unknown>, html: string, state?: Record<string, unknown>, attach?: string, paths?: Record<string, unknown>): string
+export function island(name: string, src: string, props: Record<string, unknown>, html: string | Promise<string>, state?: Record<string, unknown>, attach?: string, paths?: Record<string, unknown>): string | Promise<string>
+export function island(name: string, src: string, props: Record<string, unknown>, html: string | Promise<string>, state?: Record<string, unknown>, attach?: string, paths?: Record<string, unknown>): string | Promise<string> {
+  // Slot content that awaits (#430) makes the island's HTML a promise: wrap it once it's there.
+  if (html instanceof Promise) return html.then((h) => island(name, src, props, h, state, attach, paths))
   const s = state === undefined ? '' : ` s="${escape(toBrowser(state))}"`
   const a = attach && attach !== 'load' ? ` a="${escape(attach)}"` : '' // when to attach: see runtime/loader.ts
   // A component bound two ways carries each binding's path for the forms engine (clarusjs/forms), given by its parent.

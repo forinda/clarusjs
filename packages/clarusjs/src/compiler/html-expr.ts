@@ -17,12 +17,14 @@ export const asWritten: Rewriter = { expr: (e) => e, without: () => asWritten }
  * islands, a level that calls a component or places a slot joins its parts with __cl_join (a string, or a promise
  * when an awaiting component is in it); inside an island, a component call is checked not to be a promise.
  */
-export type ServerCtx = { island: string | null }
+export type ServerCtx = { island: string | null; top?: boolean }
 
 /** Could this HTML be a promise: does it call a component or place a slot (whose content may await)? */
 const mayWait = (nodes: IRNode[]) => walk(nodes).some((n) => n.kind === 'component' || n.kind === 'slot' || (n.kind === 'await' && n.block < 0))
 
-export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: ServerCtx): string {
+export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, top?: ServerCtx): string {
+  // An island's own level (top) joins its parts when it places a slot: the content may await (#430, #465).
+  const ctx = top?.top ? { island: top.island } : top
   const parts = nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
     // The fill (called with what the slot passes, when it takes data: #455), or the fallback.
@@ -73,7 +75,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: Server
     const value = `__cl_escape(${wrapExpr(rw.expr(n.expr))})`
     return n.reactive ? `"<!--[${n.index}-->" + ${value} + "<!--]-->"` : value
   })
-  if (ctx && !ctx.island && mayWait(nodes)) return `__cl_join([${parts.join(', ')}])`
+  if (ctx && (!ctx.island || (top?.top && nodes.some((n) => n.kind === 'slot'))) && mayWait(nodes)) return `__cl_join([${parts.join(', ')}])`
   return parts.length ? parts.join(' + ') : '""'
 }
 

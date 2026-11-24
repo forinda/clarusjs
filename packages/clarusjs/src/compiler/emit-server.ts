@@ -6,7 +6,7 @@ import { indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = false, loader?: string): string {
   const all = walk(ir.nodes)
-  const html = htmlExpr(ir.nodes, asWritten, { island: ir.stateful ? ir.name : null })
+  const html = htmlExpr(ir.nodes, asWritten, { island: ir.stateful ? ir.name : null, top: true })
   const runtime = [
     'escape as __cl_escape',
     all.some((n) => n.kind === 'hole' && n.json) && 'json as __cl_json',
