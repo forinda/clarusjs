@@ -75,8 +75,41 @@ Attributes you write on a component's tag land on its root element: an `id` to l
 - **Which names:** `id`, `role`, `tabindex`, `hidden`, `lang`, `dir`, `style`, and any `data-*` or `aria-*`, written as is or bound (`[aria-controls]="panelId"`). Other names are inputs, and `clarusjs check` reports one the component doesn't declare. `class` is passed too, and [merges](/guide/styles) with the component's own.
 - **The component's own attribute wins.** Except `style`, which is added after a written `style`, and ARIA id lists (`aria-describedby`, `aria-labelledby`, `aria-controls`, `aria-owns`), which are joined: both ids are kept.
 - **A declared input is never an attribute:** a component with `@input id: string` gets `id` as its input.
-- **One root:** they land when the component has a single top-level element (or component, which passes them on), or one `@if` … `@else` whose branches each hold one element (outside islands): the branch that renders gets them. With several, there is no root to choose, and they are dropped.
+- **One root:** they land when the component has a single top-level element (or component, which passes them on), or one `@if` … `@else` whose branches each hold one element (outside islands): the branch that renders gets them. A component renders one root: `clarusjs check` warns about one with several top-level elements (the `one-root` rule; an error in a later release), since there is no root to choose.
 - **Server HTML only:** they ship no JavaScript. In an island they're in the first HTML; an island whose root has its own `[...]` spread, or is a component, takes none yet.
+
+### Several elements without a wrapper: `<fragment>` {since=0.16.0}
+
+`<fragment>` groups elements without rendering one: only its children reach the page. Use it anywhere: as a component's root, in an `@if` branch, a `@for` row, or a slot.
+
+```tscl
+{{-- components/term.tscl: a <dt> and its <dd>, for a <dl> --}}
+@input word: string
+<fragment>
+  <dt>{{ word }}</dt>
+  <dd><slot /></dd>
+</fragment>
+```
+
+A fragment takes no attributes, and a component whose root is one takes none from its parent either (no `class`, `id` or `(click)`): there is no element for them to land on, and `clarusjs check` reports each one.
+
+### A component that stands for an element: `@extends` {since=0.16.0}
+
+`@extends input` makes a component take every attribute an `<input>` takes (`name`, `placeholder`, `required`, `disabled`, `autocomplete`…), typed by `clarusjs check`, and puts them on its root. You declare only what the component adds.
+
+```tscl
+{{-- components/text-field.tscl --}}
+@extends input
+@input type: string = 'text'
+<input [type]="type" class="field" />
+
+{{-- a page --}}
+<text-field name="email" type="email" required placeholder="you@example.com" />
+```
+
+- **The root is that element:** one `<input>` here (or, in a stateless component, with no `<script>` and no `@model`, an `@if` … `@else` of one each). Anything else is a build error.
+- **Elements:** `button`, `input`, `textarea`, `select`, `option`, `a`, `img`, `form`, `label`, `details`, `dialog`, plus the attributes every element takes (`title`, `autofocus`, `popover`…).
+- **The rules above still hold:** the root's own attribute wins (`type` here), and a declared input is never an attribute.
 
 ## Importing data
 

@@ -22,6 +22,10 @@ function holds(inner: Element, el: Element): true | void {
 const updates = new WeakMap<Element, (props: Record<string, unknown>) => void>()
 // Each attached island's disposer: everything its attach() wired (effects, listeners) is released by it.
 const attached = new Map<Element, () => void>()
+// Each island root's attributes as the server last rendered them: a re-render's changes (the parent's passed
+// attributes) are applied to the kept root; ones its own state drives render the same and are left to it.
+const rendered = new WeakMap<Element, Map<string, string>>()
+const rootAttrs = (island: Element) => new Map([...(island.firstElementChild?.attributes ?? [])].filter((a) => !a.name.startsWith('data-cl-')).map((a) => [a.name, a.value]))
 
 let lastLoad: Load = (src) => import(/* @vite-ignore */ src)
 
@@ -105,6 +109,7 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
     return
   }
   try {
+    rendered.set(el, rootAttrs(el))
     attached.set(el, scope(() => {
       // An island with inputs returns how to update them: kept for a parent island that passes new props.
       const update = mod.attach(el, props, state)
@@ -192,6 +197,14 @@ function arrive(): void {
   // Its paths for the forms engine (data-cl-path-<model>) move with it: a row removed above shifts the indexes.
   for (const { name } of [...el.attributes]) if (name.startsWith('data-cl-path-')) el.removeAttribute(name)
   for (const { name, value } of [...next.attributes]) if (name.startsWith('data-cl-path-')) el.setAttribute(name, value)
+  const root = el.firstElementChild
+  const before = rendered.get(el)
+  const after = rootAttrs(next)
+  if (root && before) {
+    for (const [name, value] of after) if (before.get(name) !== value) root.setAttribute(name, value)
+    for (const name of before.keys()) if (!after.has(name)) root.removeAttribute(name)
+  }
+  rendered.set(el, after)
   update?.(parse(p) as Record<string, unknown>)
   return true
 }

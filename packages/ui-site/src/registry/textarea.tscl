@@ -1,19 +1,11 @@
-{{-- Textarea: a native <textarea>. id, aria-* and data-* you pass land on it. --}}
+{{-- Textarea: a native <textarea>. Every <textarea> attribute you pass (name, placeholder, required, disabled…),
+     and id, class, style, aria-* and data-*, land on it. value is its text. --}}
 @input rows: number = 3
-@input name: string = ''
 @input value: string = ''
-@input placeholder: string = ''
-@input required: boolean = false
-@input disabled: boolean = false
 
-<textarea
-  [rows]="rows"
-  [name]="name || null"
-  [placeholder]="placeholder || null"
-  [required]="required"
-  [disabled]="disabled"
-  data-part="textarea"
-  >{{ value }}</textarea>
+@extends textarea
+
+<textarea [rows]="rows" data-part="textarea">{{ value }}</textarea>
 
 <style scoped>
   @layer theme, base, components, utilities;

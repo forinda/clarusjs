@@ -2,7 +2,7 @@
 import { expect, test } from 'vitest'
 import { lint, type LintRuleDef } from '../../src/compiler/index.ts'
 
-const file = 'src/components/x.tscl'
+const file = 'src/pages/x.tscl' // a page: several top-level elements are fine (one-root has its own test)
 const rules = (source: string, config?: Parameters<typeof lint>[2]) => lint(source, file, config).map((m) => `${m.line}:${m.column} ${m.severity} ${m.rule}`)
 
 test('a clean component has nothing to say', () => {
@@ -110,4 +110,31 @@ test("a project's own rules run beside the built-in ones, with the same levels a
 test('a rule that throws is reported as its own finding, not a crash', () => {
   const broken: LintRuleDef = { name: 'broken', check() { throw new Error('oops') } }
   expect(lint('<p></p>\n', file, {}, [broken])).toEqual([expect.objectContaining({ rule: 'broken', severity: 'error', line: 1, column: 1, message: 'the rule failed: oops' })])
+})
+
+test('one-root: a component renders one root element (or a fragment, a slot, an @if chain of one each)', () => {
+  const component = 'src/components/x.tscl'
+  const one = (source: string, f = component) => lint(source, f).filter((m) => m.rule === 'one-root').map((m) => `${m.line}:${m.column} ${m.severity}`)
+  expect(one('<h1>a</h1>\n<p>b</p>\n')).toEqual(['2:1 warning'])
+  expect(one('text <b>x</b>\n')).toEqual(['1:1 warning'])
+  expect(one('@for (n of [1]; track n) { <i>{{ n }}</i> }\n')).toEqual(['1:1 warning'])
+  expect(one('<div><h1>a</h1><p>b</p></div>\n<style scoped>div {}</style>\n')).toEqual([])
+  expect(one('<fragment><h1>a</h1><p>b</p></fragment>\n')).toEqual([])
+  expect(one('<slot />\n')).toEqual([])
+  expect(one('@input a: boolean\n@if (a) { <a href="/">x</a> } @else { <span>x</span> }\n')).toEqual([])
+  expect(one('@input a: boolean\n@if (a) { <a href="/">x</a> }\n')).toEqual(['2:1 warning'])
+  // Pages, layouts and whole documents are exempt.
+  expect(one('<h1>a</h1>\n<p>b</p>\n', 'src/pages/index.tscl')).toEqual([])
+  expect(one('<header /><slot /><footer />\n', 'src/layouts/docs.tscl')).toEqual([])
+  expect(one('<html><body><slot /></body></html>\n')).toEqual([])
+  expect(lint('<h1>a</h1>\n<p>b</p>\n', component, { 'one-root': 'error' })[0]?.severity).toBe('error')
+})
+
+test('#review: one-root: a fragment in an @if branch is not one element', () => {
+  const one = (source: string) => lint(source, 'src/components/x.tscl').filter((m) => m.rule === 'one-root').length
+  expect(one('@input a: boolean\n@if (a) { <fragment><b>1</b><i>2</i></fragment> } @else { <p>3</p> }\n')).toBe(1)
+})
+
+test('#review: one-root: an HTML comment beside the root is not another root', () => {
+  expect(lint('<!-- note -->\n<p>x</p>\n<!-- end -->\n', 'src/components/x.tscl').filter((m) => m.rule === 'one-root')).toEqual([])
 })

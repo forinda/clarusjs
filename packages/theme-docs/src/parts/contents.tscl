@@ -7,26 +7,28 @@
 @input headings: Heading[] = []
 @input inline: boolean = false
 
-@if (headings.length && inline) {
-  <details class="toc-inline">
-    <summary>On this page</summary>
-    <ul>
-      @for (h of headings; track h.id) {
-        <li [class]="h.level === 3 ? 'sub' : false">
-          <a [href]="'#' + h.id">{{ h.text }}</a>
-        </li>
-      }
-    </ul>
-  </details>
-} @else if (headings.length) {
-  <aside class="toc" aria-label="On this page">
-    <p>On this page</p>
-    <ul>
-      @for (h of headings; track h.id) {
-        <li [class]="h.level === 3 ? 'sub' : false">
-          <a [href]="'#' + h.id">{{ h.text }}</a>
-        </li>
-      }
-    </ul>
-  </aside>
-}
+<fragment>
+  @if (headings.length && inline) {
+    <details class="toc-inline">
+      <summary>On this page</summary>
+      <ul>
+        @for (h of headings; track h.id) {
+          <li [class]="h.level === 3 ? 'sub' : false">
+            <a [href]="'#' + h.id">{{ h.text }}</a>
+          </li>
+        }
+      </ul>
+    </details>
+  } @else if (headings.length) {
+    <aside class="toc" aria-label="On this page">
+      <p>On this page</p>
+      <ul>
+        @for (h of headings; track h.id) {
+          <li [class]="h.level === 3 ? 'sub' : false">
+            <a [href]="'#' + h.id">{{ h.text }}</a>
+          </li>
+        }
+      </ul>
+    </aside>
+  }
+</fragment>

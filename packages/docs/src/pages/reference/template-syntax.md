@@ -14,6 +14,7 @@ description: "Every directive and binding in .tscl templates, on one page."
 | `@input name: Type = default` | a typed input | [Inputs](/guide/inputs) |
 | `@model name: Type = default` | an input the parent binds two ways (`[(name)]`) | [Forms](/guide/forms) |
 | `@event name: Type`, `emit('name', value)` | an event the component sends its parent, and sending it | [Events](/guide/events#from-a-child-island-to-its-parent) |
+| `@extends input` {since=0.16.0} | the component stands for that element: its attributes, typed, land on its root (a declared input takes its name instead; the root's own attribute wins) | [Components](/guide/components#a-component-that-stands-for-an-element-extends) |
 | `@layout none` | a page without its folder and config layouts | [Layouts](/guide/layouts#folder-layouts) |
 | `@import name from './x.tscl'` | use a component | [Components](/guide/components) |
 | `@import { a } from './x.ts'` | import data | [Components](/guide/components) |
@@ -24,6 +25,7 @@ description: "Every directive and binding in .tscl templates, on one page."
 | `@if (a) { } @else if (b) { } @else { }` | conditional branches | [Conditionals](/guide/conditionals) |
 | `@for (x of xs; track x.id) { } @empty { }` | repeat content | [Lists](/guide/lists) |
 | `@await (p) { } @then (v) { } @catch (e) { }` | show a promise's states: pending, its value, its error | [Fetching data](/guide/fetching#in-an-island-await) |
+| `<fragment> … </fragment>` {since=0.16.0} | group elements without rendering one; takes no attributes | [Components](/guide/components#several-elements-without-a-wrapper-fragment) |
 | `<slot />, <slot name="x">fallback</slot>` | where wrapped content goes | [Slots](/guide/slots) |
 | `<icon name="set:name" />` | an icon, inlined as SVG at build time (built in, no import) | [Icons](/guide/icons) |
 | `@slot('x') { }`, `@slot('x', { item }) { }` | fill a named slot; receive what the slot passes (`<slot [item]="…">`) | [Slots](/guide/slots) |

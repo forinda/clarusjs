@@ -88,7 +88,7 @@ test('every template in the docs site and the theme tokenizes, with no TypeScrip
     // A rule that never closed (a hole, a binding, a directive) would swallow the closing HTML as TypeScript.
     expect(list.at(-2)?.scopes ?? '', file).toMatch(/entity\.name\.tag|punctuation\.definition\.tag/)
   }
-})
+}, 30_000) // it tokenizes every template in the docs site and the theme: seconds on a slow runner
 
 test('component tags (<card>, <my-card>) are tags, not unrecognized HTML; HTML tags stay HTML', () => {
   const src = '<card [title]="x" class="a">hi</card>\n<my-card a="1" />\n<div id="d"><select></select></div>\n'

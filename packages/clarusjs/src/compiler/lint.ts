@@ -3,13 +3,13 @@
 // LintRuleDef: the built-in ones below, and a project's own (the plugin's `lintRules`).
 
 import { ClarusError } from './errors.ts'
-import { awaitLists, importNames, parse, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
+import { awaitLists, importNames, parse, rootNodes, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
 
 /**
  * The built-in rules' names.
  * @see https://clarusjs.com/guide/lint#rules
  */
-export type LintRule = 'unused-input' | 'unused-import' | 'img-alt' | 'label-field' | 'accessible-name'
+export type LintRule = 'unused-input' | 'unused-import' | 'img-alt' | 'label-field' | 'accessible-name' | 'one-root'
 /**
  * Each rule's level, built-in or a project's, keyed by rule name.
  * @see https://clarusjs.com/guide/lint#warnings-and-errors
@@ -112,6 +112,27 @@ function named(nodes: TemplateNode[], components: Set<string>): boolean {
  * @see https://clarusjs.com/guide/lint#rules
  */
 export const lintRules: LintRuleDef[] = [
+  {
+    // A component renders one root, so what a parent passes (attributes, class, events) has one place to land (Vue's
+    // rule): one element, a <fragment>, a <slot />, or an @if … @else whose branches are one element each. Pages,
+    // layouts and whole documents are exempt. ponytail: a warning for now; an error in the next minor. Layouts are known
+    // by their folder: a config layout kept elsewhere is warned about; pass lint the layout list when one needs it.
+    name: 'one-root',
+    check({ file, parsed, report }) {
+      if (/(^|[\\/])(pages|layouts)[\\/]/.test(file)) return
+      const top = rootNodes
+      const nodes = top(parsed.nodes)
+      if (nodes.some((n) => n.type === 'element' && n.tag === 'html')) return
+      const element = (list: TemplateNode[]) => list.length === 1 && list[0]!.type === 'element'
+      if (element(nodes)) return
+      // In a branch, a <fragment> is several elements, not one.
+      const one = (list: TemplateNode[]) => element(list) && (list[0] as { tag: string }).tag !== 'fragment'
+      const [first] = nodes
+      if (nodes.length === 1 && first!.type === 'if' && first!.branches.at(-1)!.cond === null && first!.branches.every((b) => one(top(b.children)))) return
+      const at = nodes.length > 1 && (first!.type === 'element') ? nodes[1]! : first
+      if (at) report(at.start, 'a component renders one root element, for what a parent passes it (attributes, class, events) to land on: wrap these in an element, or in <fragment> if no element is wanted')
+    },
+  },
   {
     name: 'unused-input',
     check({ parsed, reads, report }) {

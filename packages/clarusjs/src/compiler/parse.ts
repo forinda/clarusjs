@@ -82,6 +82,8 @@ export type ParsedFile = {
   /** `@layout none` (#456): the page renders without its folder and config layouts. `layoutStart`: where it is. */
   layout?: 'none'
   layoutStart?: number
+  /** `@extends button`: the native element this component stands for; it takes all of that element's attributes. */
+  extends?: { tag: string; start: number }
   nodes: TemplateNode[]
 }
 
@@ -96,6 +98,27 @@ const CSS_IMPORT_RE = /^@import\s+(['"])(.+?)\1\s*$/
 /** The local names an `@import type` clause brings in: `{ A, B as C }` → A, C; `D` → D. */
 const typeNames = (clause: string) =>
   clause.startsWith('{') ? clause.slice(1, -1).split(',').map((p) => p.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()!.trim()).filter(Boolean) : [clause.trim()]
+
+/**
+ * A template's top-level nodes that render: no whitespace or comments, no <cl-head>, <script> or <style>. What one-root, @extends,
+ * fragment roots and check all look at.
+ * @internal
+ */
+export function rootNodes(nodes: TemplateNode[]): TemplateNode[] {
+  // HTML comments render, but aren't a root: a text node of only comments and whitespace doesn't count.
+  return nodes.filter((n) => !(n.type === 'text' && !n.value.replace(/<!--[\s\S]*?-->/g, '').trim()) && !(n.type === 'element' && ['cl-head', 'script', 'style'].includes(n.tag)))
+}
+
+/**
+ * Whether a component's root is (or may be) a <fragment>: one at the top, or in a branch of a top-level @if. It
+ * renders no single element, so a parent's attributes and events have nowhere to land.
+ * @internal
+ */
+export function fragmentRoot(nodes: TemplateNode[]): boolean {
+  const top = rootNodes(nodes)
+  const frag = (list: TemplateNode[]) => list.length === 1 && list[0]!.type === 'element' && list[0]!.tag === 'fragment'
+  return frag(top) || (top.length === 1 && top[0]!.type === 'if' && top[0]!.branches.some((b) => frag(rootNodes(b.children))))
+}
 
 /**
  * Parse a `.tscl` file into its syntax tree, without compiling it: for tools (an editor, a linter, a docs
@@ -143,7 +166,11 @@ export function parse(source: string, file: string): ParsedFile {
       const typeStart = d![2] ? lineStart + line.lastIndexOf(d![2]!) : nameStart
       out.events.push({ name: d![1]!, type: d![2] ?? 'void', start: i, nameStart, typeStart })
     }
-    else if ((m = /^@layout(?:\s+(\S+))?\s*$/.exec(line))) {
+    else if ((m = /^@extends(?:\s+(\S+))?\s*$/.exec(line))) {
+      if (out.extends) fail('a component has one @extends', i)
+      if (!m[1]) fail('@extends takes an element name: @extends button', i)
+      out.extends = { tag: m[1]!, start: i }
+    } else if ((m = /^@layout(?:\s+(\S+))?\s*$/.exec(line))) {
       if (m[1] !== 'none') fail('@layout only takes none: @layout none renders the page without its folder and config layouts', i)
       out.layout = 'none'
       out.layoutStart = i

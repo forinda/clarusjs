@@ -44,7 +44,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
   out += inputsLine(ir)
   out += `  const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""\n`
   // What the parent passed as attributes (#463), for the root element.
-  if (html.includes('__cl_attrs')) out += `  const __cl_attrs = __cl_passed(__cl_props, ${JSON.stringify(ir.inputs.map((i) => i.name))})\n`
+  if (html.includes('__cl_attrs')) out += `  const __cl_attrs = __cl_passed(__cl_props, ${JSON.stringify(ir.inputs.map((i) => i.name))}${ir.extends ? `, ${JSON.stringify(ir.extends)}` : ''})\n`
   out += contextLines(ir, '__cl_opts?.cx')
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   if (ir.server) out += indentScript(ir.server.body)

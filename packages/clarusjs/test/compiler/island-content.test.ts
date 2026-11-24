@@ -23,6 +23,7 @@ const parts: Record<string, string> = {
   clickable: "<button class=\"clk\" type=\"button\"><slot /></button>\n",
   wrapper: "<div class=\"wrap\"><slot /></div>\n",
   onlyEmitter: "@import emitter from './emitter.tscl'\n<emitter />\n",
+  xbtn: "@extends button\n<script>\n  let c = state(0)\n</script>\n<button class=\"xb\" type=\"button\" [data-c]=\"c\" (click)=\"c++\">{{ c }}</button>\n",
   emitter: "@event click: string\n<script>\n  function go(event) { emit('click', 'from-child', { event }) }\n</script>\n<button class=\"em\" (click)=\"go($event)\">e</button>\n",
 }
 let n = 0
@@ -220,4 +221,35 @@ test('#review: a stateless wrapper that renders only an island: the bound wrappe
   await mount("<script>\n  let calls = state([])\n</script>\n<onlyEmitter (click)=\"calls = [...calls, typeof $event === 'string' ? $event : $event.type]\" /><p class=\"calls\">{{ calls.join(',') }}</p>\n")
   click('.em')
   expect($('.calls').textContent).toBe('click')
+})
+
+test('<fragment> in an island: an @if branch of several elements switches, @for rows of several grow', async () => {
+  await mount("<script>\n  let on = state(true)\n  let items = state([1])\n</script>\n<div class=\"box\"><button class=\"t\" (click)=\"on = !on\">t</button><button class=\"a\" (click)=\"items = [...items, items.length + 1]\">a</button>\n@if (on) { <fragment><i>x</i><i>y</i></fragment> } @else { <fragment><b>z</b></fragment> }\n<dl>@for (n of items; track n) { <fragment><dt>{{ n }}</dt><dd>v{{ n }}</dd></fragment> }</dl></div>\n")
+  expect($('.box').querySelectorAll('i').length).toBe(2)
+  click('.t')
+  expect($('.box').querySelectorAll('i').length).toBe(0)
+  expect($('.box').querySelectorAll('b').length).toBe(1)
+  click('.t')
+  expect($('.box').querySelectorAll('i').length).toBe(2)
+  click('.a')
+  click('.a')
+  expect([...$('dl').children].map((e) => e.textContent).join(',')).toBe('1,v1,2,v2,3,v3')
+  expect($('.box').querySelector('fragment')).toBeNull()
+})
+
+test('#review: an @extends island kept in place takes the new passed attributes; its own state-driven ones stay', async () => {
+  await mount("<script>\n  let locked = state(false)\n</script>\n<div><button class=\"lock\" (click)=\"locked = !locked\">l</button><xbtn [disabled]=\"locked\" [title]=\"locked ? 'off' : 'on'\" /></div>\n")
+  click('.xb')
+  expect($('.xb').getAttribute('data-c')).toBe('1')
+  expect($('.xb').hasAttribute('disabled')).toBe(false)
+  click('.lock')
+  await tick()
+  expect($('.xb').hasAttribute('disabled')).toBe(true)
+  expect($('.xb').getAttribute('title')).toBe('off')
+  expect($('.xb').getAttribute('data-c')).toBe('1') // state kept, its attribute too
+  expect($('.xb').textContent).toBe('1')
+  click('.lock')
+  await tick()
+  expect($('.xb').hasAttribute('disabled')).toBe(false)
+  expect($('.xb').getAttribute('title')).toBe('on')
 })

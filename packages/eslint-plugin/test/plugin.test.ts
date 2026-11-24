@@ -50,10 +50,11 @@ test('the template rules of clarusjs check, through clarusjs/template', () => {
   const messages = run('<img src="/a.png" />\n<p>\n  <button></button>\n</p>\n', {})
   expect(messages.map((m) => `${m.line}:${m.column} ${m.ruleId} ${m.severity} ${m.message}`)).toEqual([
     '1:1 clarusjs/template 1 <img> without alt: describe the image, or use alt="" when it is decoration (img-alt)',
+    '2:1 clarusjs/template 1 a component renders one root element, for what a parent passes it (attributes, class, events) to land on: wrap these in an element, or in <fragment> if no element is wanted (one-root)',
     '3:3 clarusjs/template 1 <button> has no accessible name: give it text, aria-label or title (accessible-name)',
   ])
   // Levels as the rule's option; an ignore comment works as in check.
-  expect(run('<img src="/a.png" />\n<button></button>\n', { 'clarusjs/template': ['error', { 'img-alt': 'off' }] }).map((m) => m.message)).toEqual([
+  expect(run('<img src="/a.png" />\n<button></button>\n', { 'clarusjs/template': ['error', { 'img-alt': 'off', 'one-root': 'off' }] }).map((m) => m.message)).toEqual([
     '<button> has no accessible name: give it text, aria-label or title (accessible-name)',
   ])
   expect(run('{{-- clarusjs-ignore --}}\n<img src="/a.png" />\n', {})).toEqual([])

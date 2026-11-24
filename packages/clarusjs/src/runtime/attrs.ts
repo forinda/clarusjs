@@ -131,9 +131,10 @@ const PASSED = /^(id|role|tabindex|hidden|lang|dir|style|(data|aria)-[\w:.-]+)$/
  * as an input. They land on its root element (a spread, so the root's own attributes win; style merges).
  * @internal Compiled components call this.
  */
-export function passed(props: Record<string, unknown>, inputs: readonly string[]): Record<string, unknown> {
+export function passed(props: Record<string, unknown>, inputs: readonly string[], element: readonly string[] = []): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   // Never clarusjs's own markers (data-cl-e, data-cl-u, data-cl-path…): passed data must not spoof the runtime's wiring.
-  for (const k in props) if (PASSED.test(k) && !/^data-cl-/i.test(k) && !inputs.includes(k)) out[k] = props[k]
+  // element: an @extends component's element attributes (button's disabled, form…), passed through as well.
+  for (const k in props) if ((PASSED.test(k) || element.includes(k.toLowerCase())) && !/^data-cl-/i.test(k) && !inputs.includes(k)) out[k] = props[k]
   return out
 }

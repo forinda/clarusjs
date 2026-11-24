@@ -4,7 +4,8 @@ import { ClarusError } from './errors.ts'
 import { emitServer } from './emit-server.ts'
 import { lower, SPREAD_REFUSED } from './ir.ts'
 import { autoImport, type ComponentNames } from './components.ts'
-import { awaitLists, parse, type Attr, type TemplateNode } from './parse.ts'
+import { ELEMENT_ATTRS } from './element-attrs.ts'
+import { awaitLists, fragmentRoot, parse, rootNodes, type Attr, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
@@ -67,13 +68,15 @@ export type CompileResult = { code: string; stateful: boolean; css: string; warn
  */
 export function compile(source: string, options: CompileOptions): CompileResult {
   const parsed = parse(source, options.file)
+  checkExtends(parsed, options.file, source)
+  const fragmentRoot = unwrapFragments(parsed, options.file, source)
   if (options.components) autoImport(parsed, options.components, options.file, source)
   if (options.layouts?.length && parsed.layout !== 'none') wrapInLayouts(parsed, options.layouts, options.file, source)
   const warnings: ClarusError[] = []
   // Every component's top-level elements carry its scope class, styled or not: a parent's scope then takes in a
   // child's top-level element and stops inside it.
   const id = options.scope ?? scopeId(options.file)
-  fallThrough(parsed)
+  if (!fragmentRoot) fallThrough(parsed) // a <fragment> root renders no element for them
   foldClass(parsed.nodes, new Set(parsed.imports.map((imp) => imp.name)))
   // Slot content is marked only when this component has scoped styles to reach it (#418): no class on every
   // paragraph of every Markdown page otherwise.
@@ -143,13 +146,69 @@ function markSlotContent(nodes: TemplateNode[], cls: string, components: Set<str
 const ID_LISTS = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'aria-owns']
 
 /**
+ * `@extends tag`: a known element, and the component's root is that element (one, or a stateless @if … @else of one
+ * each: an island re-renders blocks in the browser, without the passed attributes).
+ */
+function checkExtends(parsed: ReturnType<typeof parse>, file: string, source: string): void {
+  const ext = parsed.extends
+  if (!ext) return
+  const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
+  if (!ELEMENT_ATTRS[ext.tag]) fail(`@extends ${ext.tag}: clarusjs knows the attributes of ${Object.keys(ELEMENT_ATTRS).join(', ')}`, ext.start)
+  const top = rootNodes
+  const nodes = top(parsed.nodes)
+  const is = (list: TemplateNode[]) => list.length === 1 && list[0]!.type === 'element' && list[0]!.tag === ext.tag
+  // Its own [...] spread takes the place of the passed attributes (see fallOnto): they would be dropped.
+  const spread = (el: TemplateNode) => el.type === 'element' && el.attrs.some((a) => a.kind === 'prop' && a.name === '...')
+  for (const r of [nodes, ...(nodes[0]?.type === 'if' ? nodes[0].branches.map((b) => top(b.children)) : [])]) if (is(r) && spread(r[0]!)) fail(`@extends ${ext.tag}: its root has its own [...] spread, which takes the place of the attributes passed to it; pass what it spreads as inputs instead`, r[0]!.start)
+  if (is(nodes)) return
+  const first = nodes[0]
+  const wrong = `@extends ${ext.tag}: the root must be a <${ext.tag}>, where the attributes land`
+  if (nodes.length !== 1 || first!.type !== 'if') return fail(wrong, (nodes[0] ?? { start: ext.start }).start)
+  if (parsed.script || parsed.inputs.some((i) => i.model)) fail(`@extends ${ext.tag}: an island's root must be one <${ext.tag}> (it re-renders an @if in the browser, without the passed attributes)`, first.start)
+  if (first.branches.at(-1)!.cond !== null || !first.branches.every((b) => is(top(b.children)))) fail(wrong, first.start)
+}
+
+/**
+ * `<fragment>` groups nodes without rendering an element: each one is replaced by its children, anywhere in the
+ * template, before anything else sees it. It takes no attributes (there is no element to put them on); true when it
+ * is the component's root, which then takes none from a parent either.
+ */
+function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source: string): boolean {
+  const reserved = parsed.imports.find((i) => i.name === 'fragment')
+  if (reserved) throw new ClarusError('fragment is reserved: <fragment> groups elements without rendering one; import the component under another name', file, source, reserved.start)
+  // Every list of child nodes, whatever holds it: elements, @if branches, @for (and its @empty), @await parts, fills.
+  const isNode = (x: unknown) => !!x && typeof x === 'object' && 'type' in x
+  const holders = (n: TemplateNode): { children: TemplateNode[] }[] => {
+    const out: { children: TemplateNode[] }[] = []
+    for (const v of Object.values(n)) {
+      const items = Array.isArray(v) ? v : [v]
+      for (const x of items) if (x && typeof x === 'object' && !isNode(x) && Array.isArray(x.children)) out.push(x)
+    }
+    return out
+  }
+  const flat = (nodes: TemplateNode[]): TemplateNode[] =>
+    nodes.flatMap((n) => {
+      if ('children' in n) n.children = flat(n.children)
+      const r = n as unknown as Record<string, unknown>
+      for (const key of ['pending', 'empty']) if (Array.isArray(r[key])) r[key] = flat(r[key] as TemplateNode[])
+      for (const h of holders(n)) h.children = flat(h.children)
+      if (n.type !== 'element' || n.tag !== 'fragment') return [n]
+      if (n.attrs.length) throw new ClarusError('<fragment> renders no element: attributes and events can\'t land on it', file, source, n.start)
+      return n.children
+    })
+  const root = fragmentRoot(parsed.nodes)
+  parsed.nodes = flat(parsed.nodes)
+  return root
+}
+
+/**
  * Attributes a parent passes to this component land on its root element (#463): a spread of __cl_attrs (the passed
  * attribute-like props, see passed() in runtime/attrs.ts) onto the one top-level element, which can be a component too.
  * The root's own attributes win (the spread's rule), except style (the fold merges it) and ARIA id lists (joined here).
  * ponytail: nothing falls through with several top-level elements, or text or blocks beside one; Vue warns there.
  */
 function fallThrough(parsed: ReturnType<typeof parse>): void {
-  const meaningfulOf = (nodes: typeof parsed.nodes) => nodes.filter((n) => !(n.type === 'text' && !n.value.trim()) && !(n.type === 'element' && UNMARKED.has(n.tag)))
+  const meaningfulOf = (nodes: typeof parsed.nodes) => nodes.filter((n) => !(n.type === 'text' && !n.value.replace(/<!--[\s\S]*?-->/g, '').trim()) && !(n.type === 'element' && UNMARKED.has(n.tag)))
   const meaningful = meaningfulOf(parsed.nodes)
   if (meaningful.length !== 1) return
   const top = meaningful[0]!

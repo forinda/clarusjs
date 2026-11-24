@@ -1,22 +1,10 @@
-{{-- Input: a native <input>. id, aria-* (aria-invalid, aria-describedby) and data-* you pass land on it. --}}
+{{-- Input: a native <input>. Every <input> attribute you pass (name, value, placeholder, required, disabled…),
+     and id, class, style, aria-* and data-*, land on it. --}}
 @input type: string = 'text'
-@input name: string = ''
-@input value: string = ''
-@input placeholder: string = ''
-@input autocomplete: string = ''
-@input required: boolean = false
-@input disabled: boolean = false
 
-<input
-  [type]="type"
-  [name]="name || null"
-  [value]="value || null"
-  [placeholder]="placeholder || null"
-  [autocomplete]="autocomplete || null"
-  [required]="required"
-  [disabled]="disabled"
-  data-part="text-input"
-/>
+@extends input
+
+<input [type]="type" data-part="text-input" />
 
 <style scoped>
   @layer theme, base, components, utilities;

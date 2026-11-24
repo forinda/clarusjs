@@ -8,5 +8,5 @@ export function render(__cl_props = {}, __cl_slots, __cl_opts) {
   const __cl_cx = __cl_opts?.cx
   let total = (0)
   let locked = (false)
-  return __cl_island("events", "/src/components/events.tscl?import", { ...(__cl_opts?.class && { __cl_class: __cl_opts.class }) }, "<div" + __cl_passedHtml(__cl_attrs, []) + __cl_attrHtml("style", (__cl_attrs.style)) + __cl_attrHtml("class", ["cl-c-events-x78cy", (__cl_class)].join("")) + ">\n  " + __cl_regionHtml(0, () => __cl_sync(__cl_render_step$counter({ value: total }, undefined, { cx: __cl_cx }), "step-counter", "events")) + "\n  <p>" + "<!--[0-->" + __cl_escape(total) + "<!--]-->" + "</p>\n</div>", { total, locked }, __cl_opts?.attach, __cl_opts?.paths)
+  return __cl_island("events", "/src/components/events.tscl?import", { ...(__cl_opts?.class && { __cl_class: __cl_opts.class }) }, "<div" + __cl_passedHtml(__cl_attrs, ["style","class"]) + __cl_attrHtml("style", (__cl_attrs.style)) + __cl_attrHtml("class", ["cl-c-events-x78cy", (__cl_class)].join("")) + ">\n  " + __cl_regionHtml(0, () => __cl_sync(__cl_render_step$counter({ value: total }, undefined, { cx: __cl_cx }), "step-counter", "events")) + "\n  <p>" + "<!--[0-->" + __cl_escape(total) + "<!--]-->" + "</p>\n</div>", { total, locked }, __cl_opts?.attach, __cl_opts?.paths)
 }
