@@ -1,6 +1,7 @@
 // Island loader: finds <cl-island> elements, loads each one's chunk when its attach mode says so, calls attach(),
 // and replays what the visitor did before that. Browser only.
 
+import { owner } from './dom.ts'
 import { parse } from './serialize.ts'
 import { scope } from './signals.ts'
 
@@ -29,7 +30,7 @@ function record(el: Element): { events: Recorded[]; stop(): void } {
   const events: Recorded[] = []
   const listener = (e: Event) => {
     const target = e.target as Element | null
-    if (!target || target.closest?.('cl-island') !== el) return
+    if (!target || owner(target) !== el) return
     if (HOLD.has(e.type)) e.preventDefault()
     events.push({ type: e.type, target, key: (e as KeyboardEvent).key })
   }
@@ -161,14 +162,16 @@ function arrive(): void {
 // its DOM and state are kept. False when it can't take them (not attached yet, or another component).
 ;(globalThis as { __clUpdate?: (el: Element, next: Element) => boolean }).__clUpdate = (el, next) => {
   const update = updates.get(el)
-  // The same component: the same name and the same source (two panel.tscl files share a name).
-  if (!update || el.getAttribute('c') !== next.getAttribute('c') || el.getAttribute('src') !== next.getAttribute('src')) return false
+  // The same component: the same name and the same source (two panel.tscl files share a name). An attached island
+  // without inputs has nothing to update (#465: re-rendered because the content it holds changed, which its parent
+  // wires in place).
+  if (!attached.has(el) || el.getAttribute('c') !== next.getAttribute('c') || el.getAttribute('src') !== next.getAttribute('src')) return false
   const p = next.getAttribute('p') ?? '{}'
   el.setAttribute('p', p)
   // Its paths for the forms engine (data-cl-path-<model>) move with it: a row removed above shifts the indexes.
   for (const { name } of [...el.attributes]) if (name.startsWith('data-cl-path-')) el.removeAttribute(name)
   for (const { name, value } of [...next.attributes]) if (name.startsWith('data-cl-path-')) el.setAttribute(name, value)
-  update(parse(p) as Record<string, unknown>)
+  update?.(parse(p) as Record<string, unknown>)
   return true
 }
 

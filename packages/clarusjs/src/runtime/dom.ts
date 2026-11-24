@@ -51,6 +51,9 @@ export function owner(node: Node): Element | null {
   return null
 }
 
+/** The island a context's root stands for: itself when it is one, else the island it is in (null: none). */
+const islandOf = (root: Element) => (root.localName === 'cl-island' ? root : owner(root))
+
 /**
  * Find every marker in `ctx`, skipping nested islands:
  * holes `<!--[N-->`, @if blocks `<!--[bN:K-->`, @for lists `<!--[fN-->` with rows `<!--[r-->` and `<!--[e-->`,
@@ -64,14 +67,12 @@ function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[]; regions:
   const regions: Range[] = []
   type Open = { kind: 'hole' | 'block' | 'for' | 'row' | 'empty' | 'region'; index: number; k: number; start: Comment; rows: Range[]; empty: Range | null }
   const open: Open[] = []
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, {
-    acceptNode: (n) =>
-      n.nodeType === 8 ? NodeFilter.FILTER_ACCEPT
-      : n !== root && (n as Element).localName === 'cl-island' ? NodeFilter.FILTER_REJECT
-      : NodeFilter.FILTER_SKIP,
-  })
+  // Every comment under the island, nested islands included: owner() keeps this island's (#465). ponytail: an island
+  // walks what its nested islands own too; skip their subtrees outside slot ranges if deep nesting shows up.
+  const island = islandOf(root)
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT)
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    if (!inside(ctx, n)) continue
+    if (!inside(ctx, n) || owner(n) !== island) continue
     const c = n as Comment
     const data = c.data
     let m: RegExpExecArray | null
@@ -362,7 +363,7 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void
       // An event that doesn't bubble (mouseenter, focus) is its target's alone, not its ancestors'.
       for (let el = e.target as Element | null; el && el !== root.parentElement; el = e.bubbles ? el.parentElement : null) {
         const i = el.getAttribute?.('data-cl-e')
-        if (i === null || i === undefined || el.closest('cl-island') !== root) continue
+        if (i === null || i === undefined || owner(el) !== root) continue
         for (const h of [...(own.get(Number(i)) ?? [])]) if (inside(h.ctx, el)) h.fn(e)
         if (e.cancelBubble) break
       }
@@ -393,8 +394,8 @@ export function use(ctx: Ctx, index: number, get: () => unknown): void {
 /** The element matching `selector` in `ctx`: this island's (not a nested island's), and in a row, that row's. */
 export function marked(ctx: Ctx, selector: string): Element | undefined {
   const root = rootOf(ctx)
-  const island = root.closest('cl-island')
-  return [...root.querySelectorAll(selector)].find((e) => e.closest('cl-island') === island && inside(ctx, e))
+  const island = islandOf(root)
+  return [...root.querySelectorAll(selector)].find((e) => owner(e) === island && inside(ctx, e))
 }
 
 /**
@@ -490,7 +491,7 @@ function fromChild(ctx: Ctx, index: number, type: string, name: string, take: (e
     // Only from inside this region: 4 = the target follows the start marker, 2 = it precedes the end marker.
     if (detail.name !== name || !(r.start.compareDocumentPosition(from) & 4) || !(r.end.compareDocumentPosition(from) & 2)) return
     // Only the child island this region binds: an island nested in it, which nobody bound, keeps its own.
-    if ((from as Element).parentElement?.closest('cl-island') !== rootOf(ctx)) return
+    if (owner(from) !== rootOf(ctx)) return
     event.stopPropagation()
     take(event, detail)
   }
