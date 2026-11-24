@@ -1,6 +1,6 @@
 {{-- A form from field components: one state object, written back copy-on-write; reset needs no cloning. --}}
 @import textField from './text-field.tscl'
-@import combobox from './combobox.tscl'
+@import combobox from '@clarusjs/ui-primitives/combobox.tscl'
 
 <script>
   // The choices, as data: the radios, checkboxes and options below are loops over them.

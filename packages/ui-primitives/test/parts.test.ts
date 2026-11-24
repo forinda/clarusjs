@@ -13,10 +13,11 @@ const part = (name: string) => readFileSync(resolve(import.meta.dirname, '../src
 const unscoped = (html: string) => html.replace(/ class="cl-c-[\w-]+"/g, '').replace(/ cl-c-[\w-]+(?=[" ])/g, '')
   .replace(/<\/?cl-island[^>]*>/g, '').replace(/<!--[^>]*-->/g, '').replace(/ data-cl-[\w-]+="[^"]*"/g, '')
   .replace(/>\s+/g, '>').replace(/\s+</g, '<')
-const runtime = pathToFileURL(resolve(import.meta.dirname, '../node_modules/clarusjs/src/runtime/server.ts')).href
+const clarus = (path: string) => pathToFileURL(resolve(import.meta.dirname, '../node_modules/clarusjs/src', path)).href
+const runtime = clarus('runtime/server.ts')
 async function render(name: string, props: Record<string, unknown>, slots?: Record<string, string>): Promise<string> {
   const { code, stateful } = compile(part(name), { file: `${name}.tscl`, target: 'server', clientUrl: `/${name}.js`, collapseWhitespace: true })
-  const mod = await import(`data:text/javascript,${encodeURIComponent(code.replaceAll("'clarusjs/runtime/server'", `'${runtime}'`))}`)
+  const mod = await import(`data:text/javascript,${encodeURIComponent(code.replaceAll("'clarusjs/runtime/server'", `'${runtime}'`).replaceAll("'clarusjs/fetch'", `'${clarus('fetch/index.ts')}'`))}`)
   void stateful
   return unscoped(await mod.render(props, slots))
 }
@@ -67,11 +68,13 @@ test('field: label, control, description and error wired by id; the error shows 
 
 test('every part type-checks and lints clean (clarusjs check --strict, as a project of them)', async () => {
   const { check } = await import(pathToFileURL(resolve(import.meta.dirname, '../node_modules/clarusjs/src/cli/check.ts')).href)
-  const { cpSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } = await import('node:fs')
+  const { cpSync, mkdirSync, mkdtempSync, readdirSync, symlinkSync, writeFileSync } = await import('node:fs')
   const { tmpdir } = await import('node:os')
   const root = mkdtempSync(resolve(tmpdir(), 'ui-parts-'))
   mkdirSync(resolve(root, 'src/components'), { recursive: true })
   writeFileSync(resolve(root, 'package.json'), '{}')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '../node_modules/clarusjs'), resolve(root, 'node_modules/clarusjs'), 'junction') // the combobox imports clarusjs/fetch
   for (const f of readdirSync(resolve(import.meta.dirname, '../src')).filter((f: string) => f.endsWith('.tscl'))) {
     cpSync(resolve(import.meta.dirname, '../src', f), resolve(root, 'src/components', f))
   }
@@ -79,3 +82,21 @@ test('every part type-checks and lints clean (clarusjs check --strict, as a proj
   const result = check({ root, typescript, strict: true })
   expect(result.diagnostics).toEqual([])
 }, 60_000)
+
+test('select: a native <select> (customizable with appearance: base-select where supported), labelled, [(value)]', async () => {
+  const options = [{ value: 's', label: 'Small' }, { value: 'm', label: 'Medium', disabled: true }]
+  const html = await render('select', { id: 'size', label: 'Size', options, value: 's', placeholder: 'Pick a size' })
+  expect(html).toContain('<label for="size" data-part="label">Size</label>')
+  expect(html).toMatch(/<select id="size"[^>]*data-part="control"/)
+  expect(html).toContain('<option disabled value="">Pick a size</option>')
+  expect(html).toContain('<option data-part="option" value="s" selected>Small</option>')
+  expect(html).toContain('<option disabled data-part="option" value="m">Medium</option>')
+  expect(statefulOf('select')).toBe(true)
+  expect(compile(part('select'), { file: 'select.tscl', target: 'client' }).css).toContain('base-select')
+})
+
+test('combobox: headless, data-part on each element and data-highlighted on the active option', async () => {
+  const html = await render('combobox', { id: 'c', label: 'Fruit', options: [{ value: 'a', label: 'Apple' }] })
+  for (const p of ['combobox', 'label', 'control', 'input', 'listbox', 'option', 'status']) expect(html).toContain(`data-part="${p}"`)
+  expect(html).toContain('role="combobox"')
+})

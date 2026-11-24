@@ -1,0 +1,47 @@
+{{--
+  Select (#466): a native <select>, so it works with the keyboard, on phones and in forms as is. Where the browser
+  supports it, it's the customizable select (appearance: base-select): style its button, ::picker(select) and options
+  with CSS; elsewhere, the usual native one. Bind it two ways: <select-field id="size" label="Size" [options]="sizes"
+  [(value)]="form.size" />. It sends (change) with the new value.
+--}}
+@type Option = { value: string; label: string; disabled?: boolean }
+@input id: string
+@input label: string
+@input options: Option[]
+@input name: string = ''
+@input disabled: boolean = false
+@input placeholder: string = ''
+@model value: string = ''
+@event change: string
+
+<script>
+  function changed(event) {
+    emit('change', event.target.value, { reason: 'select', event })
+  }
+</script>
+
+<div data-part="select">
+  <label [for]="id" data-part="label">{{ label }}</label>
+  <select
+    [id]="id"
+    [name]="name || false"
+    [disabled]="disabled"
+    [(value)]="value"
+    (change)="changed($event)"
+    data-part="control"
+  >
+    @if (placeholder) {
+      <option value="" disabled>{{ placeholder }}</option>
+    }
+    @for (o of options; track o.value) {
+      <option [value]="o.value" [disabled]="o.disabled ?? false" data-part="option">{{ o.label }}</option>
+    }
+  </select>
+</div>
+
+<style scoped>
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+</style>

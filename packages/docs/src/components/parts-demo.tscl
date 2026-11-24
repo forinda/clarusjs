@@ -8,10 +8,17 @@
 @import uiAccordionItem from '@clarusjs/ui-primitives/accordion-item.tscl'
 @import uiSwitch from '@clarusjs/ui-primitives/switch.tscl'
 @import uiField from '@clarusjs/ui-primitives/field.tscl'
+@import uiSelect from '@clarusjs/ui-primitives/select.tscl'
 
 <script>
   let wifi = state(true)
   let email = state('')
+  let size = state('m')
+  const sizes = [
+    { value: 's', label: 'Small' },
+    { value: 'm', label: 'Medium' },
+    { value: 'l', label: 'Large', disabled: true },
+  ]
 </script>
 
 <div class="parts-demo">
@@ -44,6 +51,8 @@
     </uiAccordionItem>
   </div>
   <uiSwitch label="Wi-Fi" [(checked)]="wifi" />
+  <uiSelect id="parts-size" label="Size" [options]="sizes" [(value)]="size" />
+  <p class="parts-size">Size: {{ size }}</p>
   <p class="parts-wifi">Wi-Fi is {{ wifi ? 'on' : 'off' }}.</p>
   <uiField
     id="parts-email"

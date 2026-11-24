@@ -1664,7 +1664,7 @@ test('#259 h(): the playground builds HTML in load() with h(), and the page show
 test('#241 forms: a checkbox group and the languages combobox bind arrays, starting from the server\'s selection', async ({ page }) => {
   // Before JavaScript: the server already rendered the choices (the checkbox checked, the language's chip).
   const html = (await (await page.request.get('/guide/forms')).text()).replace(/<!--.*?-->/g, '')
-  expect(html).toMatch(/<span class="chip[^"]*">English\s*<button/)
+  expect(html).toMatch(/<span[^>]*data-part="chip"[^>]*>English\s*<button/)
   await page.goto('/guide/forms')
   const form = page.locator('form.signup').first()
   await expect(page.locator('cl-island[c="signup-form"]').first()).toHaveAttribute('data-cl-ready', '')
@@ -2532,4 +2532,7 @@ test('#465 parts: dialog and popover open with no JavaScript of their own, the a
   await expect(email).toHaveAttribute('aria-invalid', 'true')
   await email.fill('ada@example.com')
   await expect(demo.getByRole('alert')).toHaveCount(0)
+  await demo.getByLabel('Size').selectOption('s') // the select part, two-way
+  await expect(demo.locator('.parts-size')).toHaveText('Size: s')
+  await expect(demo.getByRole('option', { name: 'Large' })).toBeDisabled()
 })

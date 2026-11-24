@@ -96,6 +96,8 @@ Headless components in the same package, as `.tscl` files: they render the platf
 | `accordion-item.tscl` | `<details>`; the same `group` makes items exclusive | none |
 | `switch.tscl`, `checkbox.tscl` | a native checkbox in its label (`role="switch"` for the switch), `[(checked)]` | a small island |
 | `field.tscl` | label, input, description and error wired by id; the error shows once left, or with `[show]` | a small island |
+| `select.tscl` | a native `<select>`, the customizable one (`appearance: base-select`) where the browser has it; `[(value)]`, `(change)` | a small island |
+| `combobox.tscl` | an input that filters a list as you type: one pick or several, options from the server, `(change)` that a parent can cancel ([Forms](/guide/forms#a-combobox)) | an island |
 
 - **Style them from their attributes:** `data-part` names each element; state is in the platform's own (`dialog[open]`, `:popover-open`, `details[open]`, `:checked`) and in Base UI's `data-` names where it isn't (`data-checked`, `data-disabled`, `data-side`, `data-align`; on a field, `data-touched`, `data-dirty`, `data-filled`, `data-invalid`).
 - **Attributes you add land on their root** (`id`, `aria-*`, `data-*`: see [Attributes on a component](/guide/components#attributes-on-a-component)), and a `class` merges.
