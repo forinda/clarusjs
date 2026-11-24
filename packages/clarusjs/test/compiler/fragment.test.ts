@@ -32,3 +32,8 @@ test('a component whose root is a fragment takes no attributes, even with one el
   const mod = await importCode(server('<fragment><div>x</div></fragment>\n'), 'frag-root')
   expect(mod.render({ id: 'a', 'data-x': '1' }).trim()).toBe('<div>x</div>')
 })
+
+test('#review: <cl-head> beside a fragment root: still a fragment root (nothing falls through)', async () => {
+  const mod = await importCode(server('<cl-head><title>t</title></cl-head>\n<fragment><div>x</div></fragment>\n'), 'frag-head')
+  expect(mod.render({ id: 'a' })).not.toContain('id="a"')
+})

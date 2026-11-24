@@ -455,3 +455,20 @@ test('@extends button: the tag takes every button attribute, typed; others are r
     expect.stringMatching(/^src\/pages\/index\.tscl:5:7 Type 'string' is not assignable to type 'number'/),
   ])
 })
+
+test('#review: check agrees with compile on fragment roots: beside <cl-head>, in an @if branch; class is reported too', () => {
+  const head = '<cl-head><title>t</title></cl-head>\n<fragment><b>1</b><i>2</i></fragment>\n'
+  const branch = '@input a: boolean = true\n@if (a) { <fragment><b>1</b><i>2</i></fragment> } @else { <p>3</p> }\n'
+  const page = `@import head from '../components/head.tscl'
+@import branch from '../components/branch.tscl'
+<head id="x" />
+<branch id="y" />
+<head class="c" />
+`
+  const errors = check({ 'src/components/head.tscl': head, 'src/components/branch.tscl': branch, 'src/pages/index.tscl': page })
+  expect(errors).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:3:7 .*'id' does not exist/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:4:9 .*'id' does not exist/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:5:7 .*'class' does not exist/),
+  ])
+})

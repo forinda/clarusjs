@@ -5,7 +5,7 @@ import { emitServer } from './emit-server.ts'
 import { lower, SPREAD_REFUSED } from './ir.ts'
 import { autoImport, type ComponentNames } from './components.ts'
 import { ELEMENT_ATTRS } from './element-attrs.ts'
-import { awaitLists, parse, type Attr, type TemplateNode } from './parse.ts'
+import { awaitLists, fragmentRoot, parse, rootNodes, type Attr, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
@@ -154,9 +154,12 @@ function checkExtends(parsed: ReturnType<typeof parse>, file: string, source: st
   if (!ext) return
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   if (!ELEMENT_ATTRS[ext.tag]) fail(`@extends ${ext.tag}: clarusjs knows the attributes of ${Object.keys(ELEMENT_ATTRS).join(', ')}`, ext.start)
-  const top = (nodes: TemplateNode[]) => nodes.filter((n) => !(n.type === 'text' && !n.value.trim()) && !(n.type === 'element' && ['cl-head', 'script', 'style'].includes(n.tag)))
+  const top = rootNodes
   const nodes = top(parsed.nodes)
   const is = (list: TemplateNode[]) => list.length === 1 && list[0]!.type === 'element' && list[0]!.tag === ext.tag
+  // Its own [...] spread takes the place of the passed attributes (see fallOnto): they would be dropped.
+  const spread = (el: TemplateNode) => el.type === 'element' && el.attrs.some((a) => a.kind === 'prop' && a.name === '...')
+  for (const r of [nodes, ...(nodes[0]?.type === 'if' ? nodes[0].branches.map((b) => top(b.children)) : [])]) if (is(r) && spread(r[0]!)) fail(`@extends ${ext.tag}: its root has its own [...] spread, which takes the place of the attributes passed to it; pass what it spreads as inputs instead`, r[0]!.start)
   if (is(nodes)) return
   const first = nodes[0]
   const wrong = `@extends ${ext.tag}: the root must be a <${ext.tag}>, where the attributes land`
@@ -193,8 +196,7 @@ function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source:
       if (n.attrs.length) throw new ClarusError('<fragment> renders no element: attributes and events can\'t land on it', file, source, n.start)
       return n.children
     })
-  const top = parsed.nodes.filter((n) => !(n.type === 'text' && !n.value.trim()))
-  const root = top.length === 1 && top[0]!.type === 'element' && top[0]!.tag === 'fragment'
+  const root = fragmentRoot(parsed.nodes)
   parsed.nodes = flat(parsed.nodes)
   return root
 }

@@ -1,6 +1,7 @@
 // .tscl → virtual TypeScript for type checking (it never runs). Template expressions are copied verbatim inside
 // TypeScript that has the same meaning (@if → if, @for → for…of, a component → an object typed as its Inputs), and
 // every copied span is recorded so tsc's errors can be mapped back to the template. Pure: string in, string out.
+import { fragmentRoot } from '../compiler/parse.ts'
 import { ELEMENT_ATTRS, extendedAttrs } from '../compiler/element-attrs.ts'
 import { autoImport, type ComponentNames } from '../compiler/components.ts'
 import { parseExpressionAt } from 'acorn'
@@ -136,13 +137,12 @@ export function generateTs(source: string, file: string, options: { loader?: str
   // What it sends its parent (#442): each @event's value type; emit() in its script is typed by them.
   // What a parent may put on its tag besides inputs: the root's attributes and the DOM events from it (#463, #508).
   // A <fragment> root renders no element, so nothing: each attribute or DOM event on its tag is reported.
-  const top = parsed.nodes.filter((n) => !(n.type === 'text' && !n.value.trim()))
-  const fragmentRoot = top.length === 1 && top[0]!.type === 'element' && top[0]!.tag === 'fragment'
+  const fragment = fragmentRoot(parsed.nodes)
   // @extends tag: that element's attributes too, typed (a declared input of the same name wins).
   const ext = parsed.extends && ELEMENT_ATTRS[parsed.extends.tag] ? extendedAttrs(parsed.extends.tag) : null
   const own = ext ? ` & Omit<{ ${Object.entries(ext).map(([k, t]) => `${JSON.stringify(k)}?: ${t}`).join('; ')} }, keyof Inputs>` : ''
-  emit(`export type Attrs = ${fragmentRoot ? '{ __cl_fragment_root_takes_no_attributes?: never }' : `__cl_Passed${own}`}\n`)
-  emit(`export type DomEvents = ${fragmentRoot ? 'never' : '__cl_Bubbling'}\n`)
+  emit(`export type Attrs = ${fragment ? '{ __cl_fragment_root_takes_no_attributes?: never }' : `__cl_Passed${own}`}\n`)
+  emit(`export type DomEvents = ${fragment ? 'never' : '__cl_Bubbling'}\n`)
   emit('export interface Events {\n')
   for (const e of parsed.events) {
     emit(`  ${JSON.stringify(e.name)}: `)

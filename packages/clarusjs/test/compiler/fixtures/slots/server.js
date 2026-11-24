@@ -7,5 +7,5 @@ export function render(__cl_props = {}, __cl_slots, __cl_opts) {
   const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""
   const __cl_attrs = __cl_passed(__cl_props, ["heading"])
   const __cl_cx = __cl_opts?.cx
-  return __cl_join(["<article", __cl_attrHtml("class", ["card cl-c-slots-1bssht4", (__cl_class)].join("")), __cl_passedHtml(__cl_attrs, []), __cl_attrHtml("style", (__cl_attrs.style)), ">\n  <header>", __cl_slot(__cl_slots?.["title"], undefined, () => "", __cl_cx), "</header>\n  <h3>", __cl_escape(heading), "</h3>\n  ", __cl_slot(__cl_slots?.["default"], undefined, () => "", __cl_cx), "\n</article>"])
+  return __cl_join(["<article", __cl_attrHtml("class", ["card cl-c-slots-1bssht4", (__cl_class)].join("")), __cl_passedHtml(__cl_attrs, ["class","style"]), __cl_attrHtml("style", (__cl_attrs.style)), ">\n  <header>", __cl_slot(__cl_slots?.["title"], undefined, () => "", __cl_cx), "</header>\n  <h3>", __cl_escape(heading), "</h3>\n  ", __cl_slot(__cl_slots?.["default"], undefined, () => "", __cl_cx), "\n</article>"])
 }

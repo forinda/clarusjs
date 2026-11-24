@@ -129,3 +129,8 @@ test('one-root: a component renders one root element (or a fragment, a slot, an 
   expect(one('<html><body><slot /></body></html>\n')).toEqual([])
   expect(lint('<h1>a</h1>\n<p>b</p>\n', component, { 'one-root': 'error' })[0]?.severity).toBe('error')
 })
+
+test('#review: one-root: a fragment in an @if branch is not one element', () => {
+  const one = (source: string) => lint(source, 'src/components/x.tscl').filter((m) => m.rule === 'one-root').length
+  expect(one('@input a: boolean\n@if (a) { <fragment><b>1</b><i>2</i></fragment> } @else { <p>3</p> }\n')).toBe(1)
+})

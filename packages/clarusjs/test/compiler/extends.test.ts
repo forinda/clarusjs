@@ -46,3 +46,15 @@ test('an island with one <button> root takes the attributes too', async () => {
   expect(html).toContain(' disabled')
   expect(html).toContain('name="n"')
 })
+
+test('#review: an attribute the root writes itself is written once, its own', async () => {
+  const html = await render('@extends button\n<button type="button" disabled>b</button>\n', { type: 'submit', disabled: false, title: 't' })
+  expect(html.match(/ type=/g)).toHaveLength(1)
+  expect(html).toContain('type="button"')
+  expect(html.match(/ disabled/g)).toHaveLength(1)
+  expect(html).toContain('title="t"')
+})
+
+test('#review: a root with its own [...] spread is an error with @extends (the passed attributes would be dropped)', () => {
+  expect(error('@extends a\n@input rest: Record<string, string> = {}\n<a [...]="rest">x</a>\n')).toMatch(/btn\.tscl:3:1 .*\[\.\.\.\]/)
+})

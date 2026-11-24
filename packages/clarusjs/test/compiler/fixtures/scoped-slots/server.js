@@ -7,5 +7,5 @@ export function render(__cl_props = {}, __cl_slots, __cl_opts) {
   const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""
   const __cl_attrs = __cl_passed(__cl_props, ["rows"])
   const __cl_cx = __cl_opts?.cx
-  return __cl_join(["<ul", __cl_passedHtml(__cl_attrs, []), __cl_attrHtml("style", (__cl_attrs.style)), __cl_attrHtml("class", ["cl-c-scoped-slots-vuixhd", (__cl_class)].join("")), ">\n  ", ((__cl_l) => __cl_l.length ? __cl_join(__cl_l.map((r, $index) => __cl_join(["\n    <li>", __cl_slot(__cl_slots?.["row"], { item: r, index: $index }, () => __cl_escape(r.name), __cl_cx), "</li>\n  "]))) : (__cl_join(["\n    <li>", __cl_slot(__cl_slots?.["empty"], undefined, () => "Nothing here.", __cl_cx), "</li>\n  "])))([...(rows ?? [])]), "\n</ul>"])
+  return __cl_join(["<ul", __cl_passedHtml(__cl_attrs, ["style","class"]), __cl_attrHtml("style", (__cl_attrs.style)), __cl_attrHtml("class", ["cl-c-scoped-slots-vuixhd", (__cl_class)].join("")), ">\n  ", ((__cl_l) => __cl_l.length ? __cl_join(__cl_l.map((r, $index) => __cl_join(["\n    <li>", __cl_slot(__cl_slots?.["row"], { item: r, index: $index }, () => __cl_escape(r.name), __cl_cx), "</li>\n  "]))) : (__cl_join(["\n    <li>", __cl_slot(__cl_slots?.["empty"], undefined, () => "Nothing here.", __cl_cx), "</li>\n  "])))([...(rows ?? [])]), "\n</ul>"])
 }

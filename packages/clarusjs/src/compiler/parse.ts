@@ -100,6 +100,26 @@ const typeNames = (clause: string) =>
   clause.startsWith('{') ? clause.slice(1, -1).split(',').map((p) => p.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()!.trim()).filter(Boolean) : [clause.trim()]
 
 /**
+ * A template's top-level nodes that render: no whitespace, no <cl-head>, <script> or <style>. What one-root, @extends,
+ * fragment roots and check all look at.
+ * @internal
+ */
+export function rootNodes(nodes: TemplateNode[]): TemplateNode[] {
+  return nodes.filter((n) => !(n.type === 'text' && !n.value.trim()) && !(n.type === 'element' && ['cl-head', 'script', 'style'].includes(n.tag)))
+}
+
+/**
+ * Whether a component's root is (or may be) a <fragment>: one at the top, or in a branch of a top-level @if. It
+ * renders no single element, so a parent's attributes and events have nowhere to land.
+ * @internal
+ */
+export function fragmentRoot(nodes: TemplateNode[]): boolean {
+  const top = rootNodes(nodes)
+  const frag = (list: TemplateNode[]) => list.length === 1 && list[0]!.type === 'element' && list[0]!.tag === 'fragment'
+  return frag(top) || (top.length === 1 && top[0]!.type === 'if' && top[0]!.branches.some((b) => frag(rootNodes(b.children))))
+}
+
+/**
  * Parse a `.tscl` file into its syntax tree, without compiling it: for tools (an editor, a linter, a docs
  * generator). Throws a located `ClarusError` for a syntax error.
  * @example

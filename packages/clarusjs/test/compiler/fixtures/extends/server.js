@@ -7,5 +7,5 @@ export function render(__cl_props = {}, __cl_slots, __cl_opts) {
   const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""
   const __cl_attrs = __cl_passed(__cl_props, ["variant"], ["title","accesskey","autofocus","inert","popover","spellcheck","translate","draggable","contenteditable","enterkeyhint","inputmode","autocapitalize","disabled","form","name","formaction","formenctype","formmethod","formnovalidate","formtarget","type","value","popovertarget","popovertargetaction","command","commandfor"])
   const __cl_cx = __cl_opts?.cx
-  return __cl_join(["<button type=\"button\"", __cl_attrHtml("class", ["btn cl-c-extends-s8b4fg", (__cl_class)].join("")), __cl_attrHtml("data-variant", (variant)), __cl_passedHtml(__cl_attrs, ["data-variant"]), __cl_attrHtml("style", (__cl_attrs.style)), ">", __cl_slot(__cl_slots?.["default"], undefined, () => "", __cl_cx), "</button>"])
+  return __cl_join(["<button type=\"button\"", __cl_attrHtml("class", ["btn cl-c-extends-s8b4fg", (__cl_class)].join("")), __cl_attrHtml("data-variant", (variant)), __cl_passedHtml(__cl_attrs, ["type","class","data-variant","style"]), __cl_attrHtml("style", (__cl_attrs.style)), ">", __cl_slot(__cl_slots?.["default"], undefined, () => "", __cl_cx), "</button>"])
 }
