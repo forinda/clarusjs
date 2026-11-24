@@ -1,5 +1,6 @@
-{{-- Button: a native <button>, or a link (<a>) with the same look when href is set. class, style, id, aria-*,
-     data-* and (click) you pass land on it. --}}
+{{-- Button: a native <button>, or a link (<a>) with the same look when href is set. class, style, id, aria-* and
+     data-* you pass land on it. (click) on <uiButton> doesn't reach the <button> yet: put the handler on an element
+     around it, or use type="submit" in a form with (submit). --}}
 @input variant: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link' = 'default'
 @input size: 'sm' | 'md' | 'lg' = 'md'
 @input type: 'button' | 'submit' | 'reset' = 'button'

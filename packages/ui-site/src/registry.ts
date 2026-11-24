@@ -404,4 +404,15 @@ export const registry: Entry[] = [
     since: '0.2.0',
     sections: ['focus', 'toggle', 'motion'],
   },
+  {
+    name: 'toast',
+    title: 'Toast',
+    description: 'Short messages any island can send, announced politely, gone after a few seconds.',
+    files: ['toast.css'],
+    parts: ['toast-region.tscl'],
+    uses: [],
+    island: true,
+    since: '0.2.0',
+    sections: ['focus', 'toast', 'motion'],
+  },
 ]

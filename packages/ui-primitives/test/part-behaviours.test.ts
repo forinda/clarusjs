@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { compile } from 'clarusjs/compiler'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 
 afterEach(() => { document.body.innerHTML = '' })
 const href = (path: string) => pathToFileURL(path).href
@@ -106,4 +106,59 @@ test('toggle group: arrow keys move focus between items (one tab stop), Home and
   expect(document.activeElement).toBe(byText('italic'))
   key(byText('italic'), 'End')
   expect(document.activeElement).toBe(byText('underline'))
+})
+
+const regionHtml = '<cl-island c="toast-region"><section aria-label="Notifications" data-part="toast-region" data-cl-u="0"><ol aria-live="polite" data-part="toast-list"></ol></section></cl-island>'
+const shown = () => [...document.querySelectorAll('[data-part="toast"] [data-part="toast-message"]')].map((m) => m.textContent)
+
+test('toast: a message sent before the region attaches is shown once it does; focus never moves', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = '<button id="here">x</button>' + regionHtml
+  ;(document.getElementById('here') as HTMLElement).focus()
+  toast('Saved early')
+  attach(document.querySelector('cl-island')!, {})
+  expect(shown()).toEqual(['Saved early'])
+  toast('Saved again')
+  expect(shown()).toEqual(['Saved early', 'Saved again'])
+  expect(document.activeElement?.id).toBe('here')
+})
+
+test('toast: dismissed after its duration, paused while hovered or focused', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  vi.useFakeTimers()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = regionHtml
+  attach(document.querySelector('cl-island')!, {})
+  toast('Bye', { duration: 1000 })
+  const item = document.querySelector('[data-part="toast"]') as HTMLElement
+  item.dispatchEvent(new Event('pointerenter'))
+  vi.advanceTimersByTime(3000)
+  expect(shown()).toEqual(['Bye'])
+  item.dispatchEvent(new Event('pointerleave'))
+  vi.advanceTimersByTime(1100)
+  expect(shown()).toEqual([])
+  vi.useRealTimers()
+})
+
+test('toast: Escape dismisses the focused toast; an action runs, then dismisses', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = regionHtml
+  attach(document.querySelector('cl-island')!, {})
+  let undone = 0
+  toast('Deleted', { action: { label: 'Undo', onClick: () => undone++ } })
+  toast('Other')
+  const [first] = [...document.querySelectorAll('[data-part="toast"]')] as HTMLElement[]
+  byText('Undo').click()
+  expect(undone).toBe(1)
+  expect(shown()).toEqual(['Other'])
+  const other = document.querySelector('[data-part="toast"]') as HTMLElement
+  other.focus()
+  key(other, 'Escape')
+  expect(shown()).toEqual([])
+  void first
 })

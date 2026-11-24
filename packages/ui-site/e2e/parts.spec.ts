@@ -163,3 +163,18 @@ test('toggle: pressing flips aria-pressed; a single group keeps one pressed; arr
   await page.keyboard.press('ArrowRight')
   await expect(align.getByRole('button', { name: 'Right' })).toBeFocused()
 })
+
+test('toast: a message appears in the polite region without taking focus; its action runs', async ({ page }) => {
+  await page.goto('/components/toast')
+  await page.locator('cl-island[c="toast-demo"][data-cl-ready]').waitFor({ state: 'attached' })
+  const save = page.locator('.demo').getByRole('button', { name: 'Save' })
+  await save.click()
+  const region = page.getByRole('region', { name: 'Notifications' })
+  await expect(region.locator('[data-part="toast-message"]')).toHaveText(['Saved'])
+  await expect(region.locator('[aria-live="polite"]')).toHaveCount(1)
+  await expect(save).toBeFocused()
+  await page.locator('.demo').getByRole('button', { name: 'Delete project' }).click()
+  await expect(page.locator('.demo .out')).toHaveText('1')
+  await region.getByRole('button', { name: 'Undo' }).click()
+  await expect(page.locator('.demo .out')).toHaveText('0')
+})

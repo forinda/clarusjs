@@ -6,7 +6,7 @@ import { expect, test } from 'vitest'
 
 const KB = 1024
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-const modules = ['roving-focus', 'typeahead', 'dismiss', 'transition', 'focus-return', 'position']
+const modules = ['roving-focus', 'typeahead', 'dismiss', 'transition', 'focus-return', 'position', 'toast']
 
 /** A module as a browser bundle gets it: minified, gzipped. */
 async function size(entry: string): Promise<number> {

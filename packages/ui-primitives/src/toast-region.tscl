@@ -1,0 +1,87 @@
+{{--
+  Toast region: where toast('…') messages appear. Put it once in your layout. A polite live region: screen readers
+  announce new messages without moving focus. Each message stays its duration (paused while hovered or focused);
+  Escape dismisses the focused one; an action runs and dismisses.
+
+  <toast-region />   …   import { toast } from '@clarusjs/ui-primitives'; toast('Saved')
+--}}
+<script>
+  import { dismissToast, subscribeToasts, toasts } from '@clarusjs/ui-primitives'
+  function wire(el) {
+    const list = el.querySelector('[data-part="toast-list"]')
+    const timers = new Map()
+    const start = (t, item) => {
+      clearTimeout(timers.get(t.id))
+      timers.set(t.id, setTimeout(() => dismissToast(t.id), t.duration))
+      item.dataset.timing = ''
+    }
+    const pause = (id, item) => {
+      clearTimeout(timers.get(id))
+      delete item.dataset.timing
+    }
+    let stop = () => {}
+    const render = () => {
+      // A region taken out of the page (a fragment swap, a re-render) stops listening.
+      if (!el.isConnected) return stop()
+      const now = toasts()
+      for (const item of [...list.children]) {
+        if (!now.some((t) => String(t.id) === item.dataset.id)) {
+          clearTimeout(timers.get(Number(item.dataset.id)))
+          item.remove()
+        }
+      }
+      for (const t of now) {
+        if (list.querySelector(`[data-id="${t.id}"]`)) continue
+        const item = document.createElement('li')
+        item.dataset.part = 'toast'
+        item.dataset.id = String(t.id)
+        item.tabIndex = 0
+        const message = document.createElement('p')
+        message.dataset.part = 'toast-message'
+        message.textContent = t.message
+        item.append(message)
+        const act = t.action
+        if (act) {
+          const action = document.createElement('button')
+          action.type = 'button'
+          action.dataset.part = 'toast-action'
+          action.textContent = act.label
+          action.addEventListener('click', () => {
+            act.onClick()
+            dismissToast(t.id)
+          })
+          item.append(action)
+        }
+        const close = document.createElement('button')
+        close.type = 'button'
+        close.dataset.part = 'toast-close'
+        close.setAttribute('aria-label', 'Dismiss')
+        close.textContent = '×'
+        close.addEventListener('click', () => dismissToast(t.id))
+        item.append(close)
+        const hold = () => pause(t.id, item)
+        const resume = () => {
+          if (!item.matches(':hover') && !item.contains(document.activeElement)) start(t, item)
+        }
+        item.addEventListener('pointerenter', hold)
+        item.addEventListener('focusin', hold)
+        item.addEventListener('pointerleave', () => start(t, item))
+        item.addEventListener('focusout', () => setTimeout(resume))
+        item.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') dismissToast(t.id)
+        })
+        list.append(item)
+        start(t, item)
+      }
+    }
+    stop = subscribeToasts(render)
+    return () => {
+      stop()
+      for (const id of timers.values()) clearTimeout(id)
+    }
+  }
+</script>
+
+<section aria-label="Notifications" data-part="toast-region" [use]="wire">
+  <ol aria-live="polite" data-part="toast-list"></ol>
+</section>
