@@ -12,7 +12,7 @@ export type IRNode =
   // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
   // can re-render it (-1 otherwise).
   // models: [(name)]="path" bindings: each write from the child runs `set` (a statement using __cl_v).
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; params?: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[]; class?: string }
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; listens?: { name: string; handler: string }[]; children: IRNode[]; fills: { name: string; params?: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[]; class?: string }
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
   // props: what the slot passes to the content filling it (#455): <slot name="row" [item]="r" />.
   | { kind: 'slot'; name: string; props: { name: string; expr: string }[]; fallback: IRNode[] }
@@ -44,6 +44,8 @@ export type ComponentIR = {
   stateful: boolean
   nodes: IRNode[]
   events: IREvent[]
+  /** The component sends events to its parent (@event, #442): its script gets emit(). */
+  sends: boolean
   /** Things that compile but likely aren't meant (located, not thrown). */
   warnings: ClarusError[]
 }
@@ -64,6 +66,8 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
+  // A component sends its events from its script (#442).
+  if (parsed.events.length && !parsed.script) fail('@event needs a <script> that sends it with emit(\'name\', value)', parsed.events[0]!.start)
   const warnings: ClarusError[] = []
   const ss = parsed.serverScript
   // ponytail: not in an island yet: its names would be gone when the island re-renders in the browser. Lift it when
@@ -257,6 +261,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       let attach: string | undefined
       let cls: string | undefined
       const paths: { name: string; expr: string }[] = []
+      const listens: { name: string; handler: string }[] = []
       for (const a of node.attrs) {
         if (/^(class|style)\./.test(a.name)) fail(`a component takes a static class="…" only: [${a.name}] is for elements`, a.start)
         // [...]="props" (#406): every key a prop, first, so props written on the tag win.
@@ -282,16 +287,22 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
           paths.push({ name: a.name, expr: modelPath(a.expr, modelNames) })
           models.push({ name: a.name, set })
         }
+        else if (a.kind === 'event') {
+          // (change)="…": the child's @event change (#442), handled in this island with $event (the value) and $info.
+          if (!stateful) fail('event bindings need a <script> with state; this component is static', a.start)
+          checkHandler(a.expr, file, source, a.start)
+          listens.push({ name: a.name, handler: a.expr })
+        }
         else if (a.kind === 'static' && a.name === 'attach') {
           // When the island's code loads in the browser (see runtime/loader.ts).
           if (typeof a.value !== 'string' || !ATTACH_MODES.includes(a.value)) fail(`attach must be one of ${ATTACH_MODES.join(', ')}`, a.start)
           attach = a.value as string
-        } else fail(`component <${node.tag}> only takes [prop] and [(prop)] bindings and attach="…"`, a.start)
+        } else fail(`component <${node.tag}> only takes [prop], [(prop)] and (event) bindings and attach="…"`, a.start)
       }
       // Content is rendered here, in this component's scope, and handed to the child for its slots.
       const hasContent = node.children.some((c) => c.type !== 'text' || c.value.trim())
       const readsState = props.some((p) => referencesNames(p.expr, scriptScope) || referencesNames(p.expr, loopNames))
-      const region = stateful && (hasContent || readsState || models.length > 0) ? regionCount++ : -1
+      const region = stateful && (hasContent || readsState || models.length > 0 || listens.length > 0) ? regionCount++ : -1
       const parentScope = scopeKey
       if (region >= 0) scopeKey = `c${region}`
       const lowerList = (list: TemplateNode[]) => {
@@ -319,7 +330,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
       if (children.length && fills.some((f) => f.name === 'default')) fail('the default slot is filled twice: by @slot(\'default\') and by content outside any @slot', node.start)
       scopeKey = parentScope
-      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(paths.length ? { paths } : {}), ...(cls ? { class: cls } : {}) })
+      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), ...(listens.length ? { listens } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(paths.length ? { paths } : {}), ...(cls ? { class: cls } : {}) })
       return
     }
     if (node.tag === 'slot') {
@@ -518,6 +529,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     stateful,
     nodes,
     events,
+    sends: parsed.events.length > 0,
     warnings,
   }
 }

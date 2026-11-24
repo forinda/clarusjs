@@ -1,0 +1,9 @@
+@input value: number = 0
+@event change: number
+<script>
+  let n = state(value)
+  function step(by, event) {
+    if (emit('change', n + by, { reason: by > 0 ? 'increment' : 'decrement', event })) n = n + by
+  }
+</script>
+<button (click)="step(1, $event)">{{ n }}</button>

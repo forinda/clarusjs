@@ -49,6 +49,11 @@ export type DataImport = { clause: string; from: string; start: number; clauseSt
  * @see https://clarusjs.com/reference/compiler#parse
  */
 export type ImportDecl = { name: string; from: string; start: number }
+/**
+ * An `@event` declaration (#442): the event's name and the type of the value it sends, with their offsets.
+ * @see https://clarusjs.com/guide/events#from-a-child-island-to-its-parent
+ */
+export type EventDecl = { name: string; type: string; start: number; nameStart: number; typeStart: number }
 // @type Name = … and @interface Name { … }: types for the file's @input props. Local: other files see them only
 // through the component's props; types to share go in a .ts file. Erased from compiled output, used by type checking.
 // `type`: what follows the name (and its type parameters): the aliased type, or the interface's `extends … { … }`.
@@ -59,6 +64,8 @@ export type TypeDecl = { kind: 'type' | 'interface'; name: string; params?: stri
  */
 export type ParsedFile = {
   inputs: InputDecl[]
+  /** `@event change: string` (#442): what the component sends its parent, and its value's type ('void' when none). */
+  events: EventDecl[]
   imports: ImportDecl[]
   typeImports: TypeImport[]
   types: TypeDecl[]
@@ -100,7 +107,7 @@ const typeNames = (clause: string) =>
  * @see https://clarusjs.com/reference/compiler#parse
  */
 export function parse(source: string, file: string): ParsedFile {
-  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], types: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
+  const out: ParsedFile = { inputs: [], events: [], imports: [], typeImports: [], types: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
   let i = 0
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
@@ -126,6 +133,13 @@ export function parse(source: string, file: string): ParsedFile {
     else if ((m = CSS_IMPORT_RE.exec(line))) {
       if (!/\.css(\?|$)/.test(m[2]!)) fail(`@import without a name only takes a stylesheet (.css): "${m[2]}"`, i)
       out.cssImports.push({ from: m[2]!, start: i })
+    }
+    else if (/^@event(\s|$)/.test(line)) {
+      const d = /^@event\s+([A-Za-z_$][\w$-]*)\s*(?::\s*(\S[\s\S]*?))?\s*$/.exec(line)
+      if (!d) fail('@event takes a name and the type of its value: @event change: string (or @event close for none)', i)
+      const nameStart = lineStart + line.indexOf(d![1]!, 6)
+      const typeStart = d![2] ? lineStart + line.lastIndexOf(d![2]!) : nameStart
+      out.events.push({ name: d![1]!, type: d![2] ?? 'void', start: i, nameStart, typeStart })
     }
     else if ((m = /^@layout(?:\s+(\S+))?\s*$/.exec(line))) {
       if (m[1] !== 'none') fail('@layout only takes none: @layout none renders the page without its folder and config layouts', i)

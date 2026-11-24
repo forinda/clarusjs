@@ -86,7 +86,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
     copy(t.clause, t.clauseStart)
     emit(` from ${JSON.stringify(t.from)}\n`)
   }
-  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
+  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M, Events as ${alias(imp.name)}_E } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
   for (const d of parsed.dataImports) {
     emit('import ')
     copy(d.clause, d.clauseStart)
@@ -130,6 +130,16 @@ export function generateTs(source: string, file: string, options: { loader?: str
   // The inputs a parent may bind two ways ([(name)]): this component's @model ones.
   const models = parsed.inputs.filter((i) => i.model).map((i) => JSON.stringify(i.name))
   emit(`export type Models = ${models.length ? models.join(' | ') : 'never'}\n`)
+  // What it sends its parent (#442): each @event's value type; emit() in its script is typed by them.
+  emit('export interface Events {\n')
+  for (const e of parsed.events) {
+    emit(`  ${JSON.stringify(e.name)}: `)
+    if (e.type === 'void') emit('void')
+    else copy(e.type, e.typeStart)
+    emit('\n')
+  }
+  emit('}\n')
+  if (parsed.events.length) emit('declare const emit: <K extends keyof Events>(name: K, ...args: Events[K] extends void ? [value?: undefined, info?: { reason?: string; event?: Event }] : [value: Events[K], info?: { reason?: string; event?: Event }]) => boolean\n')
   let loaderSpan: [number, number] | undefined
   if (options.loader) {
     // Params and defaults fill the rest, so load() may return any subset of the inputs, each with the right type.
@@ -143,6 +153,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
   }
   // Inputs are read-only, all the way down: they belong to the parent (copy one into state() to change it here).
   emit('export type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
+  // A child's event value (#442), any for a name it doesn't declare (that's reported once, on the binding).
+  emit('export type __cl_Ev<T, K> = K extends keyof T ? T[K] : any\n')
   // A <script server> may await at the top level: the check function is async then, as render is.
   const awaits = !!parsed.serverScript && /\bawait\b/.test(parsed.serverScript.code)
   emit(`\nexport default ${awaits ? 'async ' : ''}function __cl_check(__cl_props: __cl_Readonly<Inputs>) {\n`)
@@ -322,6 +334,19 @@ export function generateTs(source: string, file: string, options: { loader?: str
             guarded()
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit(` = (undefined as unknown as Exclude<${alias(node.tag)}[${JSON.stringify(a.name)}], undefined>) });\n`)
+          }
+          for (const a of node.attrs) {
+            if (a.kind !== 'event') continue
+            // (name) needs @event name in the child (#442); $event is its value, $info the rest.
+            const name = JSON.stringify(a.name)
+            emit('  { const ')
+            point('__cl_ev', a.start, a.name.length + 2) // the binding's name: `(change)`
+            emit(`: keyof ${alias(node.tag)}_E = ${name}; __cl_use(__cl_ev) }\n`)
+            emit(`  ;(($event: __cl_Ev<${alias(node.tag)}_E, ${name}>, $info: { reason?: string; event?: Event; cancel(): void }) => { `)
+            guarded()
+            emit('{ ')
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit(' } __cl_use($info) });\n')
           }
           node.children.forEach(visit)
           return

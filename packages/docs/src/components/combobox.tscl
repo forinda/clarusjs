@@ -9,6 +9,10 @@
   last key, and the newest search wins. <combobox [id]="'city'" [label]="'City'" [src]="'/api/cities'" [(value)]="city" />
 
   Keyboard: ↑ ↓ move, Home / End jump, Enter picks, Esc closes, Backspace in an empty search removes the last pick.
+
+  Each pick or removal sends (change) first, with the option and whether it's now selected; $info.reason is 'select',
+  'deselect' or 'remove', and $info.cancel() keeps it from happening:
+  <combobox … (change)="if (tooMany && $event.selected) $info.cancel()" />
   Give each one its own id: its listbox and options are named after it.
 --}}
 @type Option = { value: string; label: string }
@@ -29,6 +33,7 @@
 @input src: string = ''
 @model value: string = ''
 @model values: string[] = []
+@event change: { value: string; label: string; selected: boolean }
 
 <script>
   import { json, resource } from 'clarusjs/fetch'
@@ -67,7 +72,16 @@
       shown.findIndex((o) => chosen.includes(o.value)),
     )
   }
-  function pick(option) {
+  function pick(option, event) {
+    const selected = !(multiple && chosen.includes(option.value))
+    if (
+      !emit(
+        'change',
+        { value: option.value, label: option.label, selected },
+        { reason: selected ? 'select' : 'deselect', event },
+      )
+    )
+      return
     if (src) known = { ...known, [option.value]: option.label }
     if (multiple) {
       values = chosen.includes(option.value) ? chosen.filter((v) => v !== option.value) : [...chosen, option.value]
@@ -78,7 +92,8 @@
     query = ''
     term = ''
   }
-  function remove(v) {
+  function remove(v, event) {
+    if (!emit('change', { value: v, label: labelOf(v), selected: false }, { reason: 'remove', event })) return
     values = chosen.filter((x) => x !== v)
   }
   function type(text) {
@@ -99,13 +114,13 @@
       active = event.key === 'Home' ? 0 : last
     } else if (event.key === 'Enter' && open && shown[active]) {
       event.preventDefault()
-      pick(shown[active])
+      pick(shown[active], event)
     } else if (event.key === 'Escape' && open) {
       event.preventDefault()
       open = false
       query = '' // back to what's chosen
     } else if (event.key === 'Backspace' && multiple && !query && chosen.length) {
-      remove(chosen[chosen.length - 1])
+      remove(chosen[chosen.length - 1], event)
     }
   }
   // Closes when focus leaves the whole combobox (a click outside, Tab away).
@@ -124,7 +139,7 @@
       @for (v of chosen; track v) {
         <span class="chip"
           >{{ labelOf(v) }}
-          <button type="button" [aria-label]="'Remove ' + labelOf(v)" (click)="remove(v)">×</button></span
+          <button type="button" [aria-label]="'Remove ' + labelOf(v)" (click)="remove(v, $event)">×</button></span
         >
       }
     }
@@ -157,7 +172,7 @@
         role="option"
         [aria-selected]="chosen.includes(option.value) ? 'true' : 'false'"
         [class.active]="$index === active"
-        (click)="pick(option)"
+        (click)="pick(option, $event)"
       >
         {{ option.label }}
       </li>

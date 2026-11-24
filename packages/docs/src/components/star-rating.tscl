@@ -1,5 +1,6 @@
-{{-- A child island that tells its parent something happened: a bubbling custom event, "rate", from its button. --}}
+{{-- A child island that tells its parent something happened: its @event rate, sent with emit() from its buttons. --}}
 @input max: number = 5
+@event rate: number
 
 <script>
   let hovered = state(0)
@@ -14,7 +15,7 @@
       [class]="n <= hovered ? 'star on' : 'star'"
       (mouseenter)="hovered = n"
       (mouseleave)="hovered = 0"
-      (click)="$event.target.dispatchEvent(new CustomEvent('rate', { bubbles: true, detail: n }))"
+      (click)="emit('rate', n, { reason: 'click', event: $event })"
     >
       ★
     </button>

@@ -26,11 +26,30 @@
   function reset() {
     form = initial
   }
+  // What the fields tell the form (their events): the last thing that happened, for the line under the summary.
+  let activity = state('')
+  function langChange(change, info) {
+    if (change.selected && form.langs.length >= 3) {
+      info.cancel() // the combobox doesn't add it
+      activity = 'Up to 3 languages: ' + change.label + ' was not added.'
+    } else activity = (change.selected ? 'Added ' : 'Removed ') + change.label + ' (' + info.reason + ').'
+  }
 </script>
 
 <form class="signup" (submit)="$event.preventDefault()">
-  <textField [label]="'Name'" [placeholder]="'Ada Lovelace'" [(value)]="form.name" />
-  <textField [label]="'Email'" [type]="'email'" [placeholder]="'ada@example.com'" [(value)]="form.email" />
+  <textField
+    [label]="'Name'"
+    [placeholder]="'Ada Lovelace'"
+    [(value)]="form.name"
+    (blur)="activity = 'Left the name field.'"
+  />
+  <textField
+    [label]="'Email'"
+    [type]="'email'"
+    [placeholder]="'ada@example.com'"
+    [(value)]="form.email"
+    (blur)="activity = 'Left the email field.'"
+  />
   <fieldset class="plan">
     <legend>Plan</legend>
     @for (p of plans; track p.id) {
@@ -51,6 +70,7 @@
     [multiple]="true"
     [placeholder]="'Search languages…'"
     [(values)]="form.langs"
+    (change)="langChange($event, $info)"
   />
   <p class="signup-lists">
     Topics: {{ form.topics.join(', ') || 'none' }} · Languages: {{ form.langs.join(', ') || 'none' }}
@@ -59,6 +79,7 @@
     {{ form.name || 'Someone' }} ({{ form.email || 'no email' }}) on {{ form.plan
     }}{{ form.updates ? ', with updates' : '' }}.{{ changed ? ' Changed.' : '' }}
   </p>
+  <p class="signup-activity" aria-live="polite">{{ activity }}</p>
   <button type="button" class="signup-reset" (click)="reset()" [disabled]="!changed">Reset</button>
 </form>
 

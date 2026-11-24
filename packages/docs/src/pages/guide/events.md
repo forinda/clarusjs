@@ -2,7 +2,7 @@
 title: "Events"
 group: "Interactivity"
 order: 6
-description: "Handle DOM events in islands with (event), use $event, talk to a parent island with custom events, and listen to the window or document."
+description: "Handle DOM events in islands with (event), use $event, send events from a component to its parent with @event and emit(), and listen to the window or document."
 ---
 
 # Events
@@ -33,20 +33,35 @@ Events that happen before an island's code has loaded are not lost. A click, key
 
 ## From a child island to its parent
 
-Inputs go down; events go up. A child island dispatches a bubbling `CustomEvent`, and the parent handles it on an element around the child:
+Inputs go down; events go up. A component declares what it sends with `@event`, and sends it from its script with `emit()`. The parent handles it on the component's tag, like an element's event:
 
 ```tscl
-{{-- star-rating.tscl: an island (it has a script), so it can handle events --}}
+{{-- star-rating.tscl --}}
+@event rate: number
 <script>
-  let picked = state(0)
+  let stars = state(0)
+  function pick(n, event) {
+    if (emit('rate', n, { reason: 'click', event })) stars = n
+  }
 </script>
-<button (click)="picked = 4; $event.target.dispatchEvent(new CustomEvent('rate', { bubbles: true, detail: 4 }))">★</button>
+@for (n of [1, 2, 3, 4, 5]; track n) {
+  <button (click)="pick(n, $event)">{{ n <= stars ? '★' : '☆' }}</button>
+}
 
-{{-- the parent --}}
-<div (rate)="rating = $event.detail"><starRating /></div>
+{{-- the parent island --}}
+<starRating (rate)="rating = $event" />
 ```
 
-For a value the child edits, like a form field, bind it two ways with `@model` instead (see [Forms](./forms.md)).
+- **`$event` is the value** the child sent (typed by its `@event`), and **`$info`** has the rest: `reason` (why it happened, as the child names it), `event` (the DOM event behind it, if any) and `cancel()`.
+- **`$info.cancel()` vetoes it:** the child's `emit()` returns `false`, so the child can skip the change. The parent says no without taking the value over (no two-way binding needed).
+- **`@event close`**, without a type, sends no value: `emit('close')`.
+- An event goes to the parent island and stops there. It isn't a DOM event the page sees: a child's `(change)` is never confused with an `<input>`'s inside it.
+- `clarusjs check` checks both sides: the value `emit()` gets, and what the parent does with `$event`. A misspelled `(chnage)` is an error.
+- The parent must be an island (its handler runs in the browser), and the child too (it emits from its script).
+
+The [forms demo](/guide/forms) uses both: the text fields send `(blur)`, and the languages combobox sends `(change)`, which the form cancels past three languages.
+
+For a value the child edits, like a form field, bind it two ways with `@model` instead (see [Forms](./forms.md)). Use both together when the parent needs the value and to hear what happened.
 
 ## The window and the document
 

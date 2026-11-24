@@ -306,3 +306,33 @@ test('#455 review: any function parameter in a fill (a default, a rest) and any 
   expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', ...args) {<b>{{ args.length }}</b>}") })).toEqual([])
   expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', { item } = {}) {<b>{{ item }}</b>}") })).toEqual([])
 })
+
+test('#442 events: emit() is typed by @event, and a parent handler gets $event as the value and $info', () => {
+  const stepper = `@event change: number
+@event close
+<script>
+  let n = state(0)
+  function up(event) { if (emit('change', n + 1, { reason: 'increment', event })) n = n + 1 }
+  function bad() { emit('change', 'one') }
+  function shut() { emit('close') }
+  function nope() { emit('opne', 1) }
+</script>
+<button (click)="up($event); bad(); shut(); nope()">{{ n }}</button>
+`
+  expect(check({ 'src/components/stepper.tscl': stepper })).toEqual([
+    "src/components/stepper.tscl:6:35 Argument of type 'string' is not assignable to parameter of type 'number'.",
+    expect.stringMatching(/^src\/components\/stepper\.tscl:8:26 Argument of type '"opne"' is not assignable/),
+  ])
+  const fine = stepper.replace("  function bad() { emit('change', 'one') }\n", '').replace("  function nope() { emit('opne', 1) }\n", '').replace(' bad();', '').replace(' nope()', '')
+  const page = `@import stepper from '../components/stepper.tscl'
+<script>
+  let total = state(0)
+</script>
+<stepper (change)="total = $event.toUpperCase(); if ($info.reason === 'x') $info.cancel()" (close)="total = 0" (chnage)="total = 1" />
+<p>{{ total }}</p>
+`
+  expect(check({ 'src/components/stepper.tscl': fine, 'src/pages/index.tscl': page })).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:5:35 Property 'toUpperCase' does not exist on type 'number'/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:5:112 Type '"chnage"' is not assignable to type 'keyof Events'/),
+  ])
+})

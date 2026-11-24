@@ -1,11 +1,13 @@
 {{-- A form field: its label is read-only, its value is a @model the form binds two ways ([(value)]). Its error shows
-     under it once you've left it (or once the form says so with [show], after a submit), then follows what you type. --}}
+     under it once you've left it (or once the form says so with [show], after a submit), then follows what you type.
+     It tells the form when you leave it: (blur). --}}
 @input label: string
 @input type: string = 'text'
 @input placeholder: string = ''
 @input error: string = ''
 @input show: boolean = false
 @model value: string = ''
+@event blur
 
 <script>
   let left = state(false)
@@ -19,7 +21,7 @@
       [(value)]="value"
       [placeholder]="placeholder || false"
       [aria-invalid]="error && (left || show) ? 'true' : false"
-      (blur)="left = true"
+      (blur)="left = true; emit('blur', undefined, { event: $event })"
       autocomplete="off"
   /></label>
   @if (error && (left || show)) {

@@ -71,6 +71,29 @@
           ]
         },
         {
+          "comment": "@event name: type (#442): what a component sends its parent; the type is optional",
+          "name": "meta.directive.event.tscl",
+          "begin": "^\\s*(@)(event)\\s+([A-Za-z_$][\\w$-]*)\\s*(:)?",
+          "end": "$",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.keyword.tscl" },
+            "2": { "name": "storage.type.tscl" },
+            "3": { "name": "variable.parameter.tscl" },
+            "4": { "name": "punctuation.separator.key-value.tscl" }
+          },
+          "contentName": "meta.type.annotation.tscl",
+          "patterns": [{ "include": "source.ts#type" }]
+        },
+        {
+          "comment": "@layout none (#456): the page renders without its folder and config layouts",
+          "match": "^\\s*(@)(layout)\\s+(none)\\s*$",
+          "captures": {
+            "1": { "name": "punctuation.definition.keyword.tscl" },
+            "2": { "name": "storage.type.tscl" },
+            "3": { "name": "constant.language.tscl" }
+          }
+        },
+        {
           "comment": "@input name: type = default and @model name: type = default (type and default may span lines) \u2014 ends at its line; a type or default that opens a bracket continues until it closes (nested rules)",
           "name": "meta.directive.input.tscl",
           "begin": "^\\s*(@)(input|model)\\s+([A-Za-z_$][\\w$]*)\\s*(:)",

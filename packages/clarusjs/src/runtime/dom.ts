@@ -422,22 +422,46 @@ export function modelInput<T>(root: Element, name: string, initial: T): Signal<T
   }
 }
 
-/** [(name)]="…" on a child island in region `index`: the child's writes to its @model name arrive here. @internal */
-export function model(ctx: Ctx, index: number, name: string, set: (value: unknown) => void): void {
+/**
+ * emit() in a component that declares @event (#442): a cancelable cl:event from the island to its parent's listener.
+ * False when the parent cancelled it ($info.cancel()).
+ * @internal Compiled components call this; apps don't.
+ */
+export function emit(root: Element, name: string, value: unknown, info: { reason?: string; event?: Event } = {}): boolean {
+  return root.dispatchEvent(new CustomEvent('cl:event', { detail: { name, value, ...info }, bubbles: true, cancelable: true }))
+}
+
+/** (name)="…" on a child island in region `index` (#442): its emit('name', …) arrives here, and goes no further. @internal */
+export function listen(ctx: Ctx, index: number, name: string, handler: (value: unknown, info: { reason?: string; event?: Event; cancel(): void }) => void): void {
+  fromChild(ctx, index, 'cl:event', name, (event, detail) => {
+    const { value, reason, event: cause } = detail as { value: unknown; reason?: string; event?: Event }
+    handler(value, { reason, event: cause, cancel: () => event.preventDefault() })
+  })
+}
+
+/** Listen for `type` from the child island bound in region `index` only (not one nested in it), named `name`. */
+function fromChild(ctx: Ctx, index: number, type: string, name: string, take: (event: Event, detail: unknown) => void): void {
   const r = scan(ctx).regions[index]
   if (!r) return
   const host = r.start.parentNode!
   const listen = (event: Event) => {
-    const detail = (event as CustomEvent<{ name: string; value: unknown }>).detail
+    const detail = (event as CustomEvent<{ name: string }>).detail
     const from = event.target as Node
     // Only from inside this region: 4 = the target follows the start marker, 2 = it precedes the end marker.
     if (detail.name !== name || !(r.start.compareDocumentPosition(from) & 4) || !(r.end.compareDocumentPosition(from) & 2)) return
-    // Only the child island this region binds: an island nested in it, which nobody bound, keeps its own value.
+    // Only the child island this region binds: an island nested in it, which nobody bound, keeps its own.
     if ((from as Element).parentElement?.closest('cl-island') !== rootOf(ctx)) return
-    event.preventDefault()
     event.stopPropagation()
-    set(detail.value)
+    take(event, detail)
   }
-  host.addEventListener('cl:model', listen)
-  onDispose(() => host.removeEventListener('cl:model', listen))
+  host.addEventListener(type, listen)
+  onDispose(() => host.removeEventListener(type, listen))
+}
+
+/** [(name)]="…" on a child island in region `index`: the child's writes to its @model name arrive here. @internal */
+export function model(ctx: Ctx, index: number, name: string, set: (value: unknown) => void): void {
+  fromChild(ctx, index, 'cl:model', name, (event, detail) => {
+    event.preventDefault() // taken: the child's value follows the parent's state
+    set((detail as { value: unknown }).value)
+  })
 }

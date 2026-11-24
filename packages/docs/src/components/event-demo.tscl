@@ -11,7 +11,7 @@
 </script>
 
 <div class="event-demo">
-  <div (rate)="rating = $event.detail; add('rate: ' + $event.detail)"><starRating /></div>
+  <starRating (rate)="rating = $event; add('rate: ' + $event + ' (' + $info.reason + ')')" />
   <form (submit)="$event.preventDefault(); add('submit: ' + (note || '(empty)'))">
     <input
       aria-label="Note"

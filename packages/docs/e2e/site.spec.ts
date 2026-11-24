@@ -902,7 +902,7 @@ test('events: a custom event from a child island, mouseenter, keys, focus and bl
   await note.fill('kept')
   await note.press('Enter')
   await note.blur()
-  await expect(demo.locator('.event-log li')).toHaveText(['blur', 'submit: kept', 'focus', 'rate: 3'])
+  await expect(demo.locator('.event-log li')).toHaveText(['blur', 'submit: kept', 'focus', 'rate: 3 (click)'])
   expect(documents).toEqual(['/guide/events']) // submit was handled, not a page load
 })
 
@@ -2430,4 +2430,27 @@ test('#458 automatic imports: components used by name render on the server, and 
   expect(slots).toMatch(/<ul class="item-list[^"]*"/)
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c*="tour-keys"]')).toHaveCount(1)
+})
+
+test('#442 component events: the form hears its fields\' (blur) and the combobox\'s (change), and cancels a fourth language', async ({ page }) => {
+  await page.goto('/guide/forms')
+  const form = page.locator('cl-island[c="signup-form"]')
+  await expect(form).toHaveAttribute('data-cl-ready', '')
+  for (const island of await form.locator('cl-island').all()) await expect(island).toHaveAttribute('data-cl-ready', '')
+  const activity = form.locator('.signup-activity')
+  await form.getByLabel('Name').focus()
+  await form.getByLabel('Email').focus() // leaves Name
+  await expect(activity).toHaveText('Left the name field.')
+  const langs = form.getByRole('combobox', { name: 'Languages' })
+  await langs.click()
+  await form.getByRole('option', { name: 'Kiswahili' }).click()
+  await expect(activity).toHaveText('Added Kiswahili (select).')
+  await form.getByRole('option', { name: 'Français' }).click()
+  await expect(form.locator('.signup-lists')).toContainText('Languages: en, sw, fr')
+  await form.getByRole('option', { name: 'Yorùbá' }).click() // a fourth: the form cancels it
+  await expect(activity).toHaveText('Up to 3 languages: Yorùbá was not added.')
+  await expect(form.locator('.signup-lists')).toContainText('Languages: en, sw, fr')
+  await expect(form.getByRole('option', { name: 'Yorùbá' })).toHaveAttribute('aria-selected', 'false')
+  await form.getByRole('button', { name: 'Remove Kiswahili' }).click()
+  await expect(activity).toHaveText('Removed Kiswahili (remove).')
 })

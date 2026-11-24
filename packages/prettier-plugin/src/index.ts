@@ -98,6 +98,9 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
     ...[...parsed.imports, ...parsed.cssImports, ...parsed.typeImports, ...parsed.dataImports].map((d) => ({ start: d.start, end: lineEnd(d.start) })),
     ...parsed.inputs.map((d) => ({ start: d.start, end: lineEnd(d.defaultStart !== undefined ? d.defaultStart + d.default!.length : d.typeStart + d.type.length) })),
     ...parsed.types.map((d) => ({ start: d.start, end: lineEnd(d.typeStart + d.type.length) })),
+    // @event (#442) and @layout (#456); a compiler without them has neither field.
+    ...(parsed.events ?? []).map((d) => ({ start: d.start, end: lineEnd(d.start) })),
+    ...(parsed.layoutStart !== undefined ? [{ start: parsed.layoutStart, end: lineEnd(parsed.layoutStart) }] : []),
   ].sort((a, b) => a.start - b.start)
   const head: string[] = []
   let bodyStart = 0

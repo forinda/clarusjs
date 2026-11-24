@@ -377,6 +377,12 @@ from the restored state. Values go through `runtime/serialize.ts` (JSON plus Dat
 again in the browser. **Island props and state are public**: they are in the page. Reading server-only globals
 (`process`, `Deno`, `Bun`, `require`) in an island's script is a build error.
 
+**Child to parent.** Two DOM events, both from the child island's `<cl-island>`, bubbling and cancelable: `cl:model`
+(a `@model` write, `{ name, value }`) and `cl:event` (`emit()` of an `@event`, #442: `{ name, value, reason, event }`).
+The parent island listens on the child's region (`model()` / `listen()` in `runtime/dom.ts`), takes only the child its
+region binds (not an island nested in it), and stops it there. Cancelling a `cl:event` (`$info.cancel()`) makes the
+child's `emit()` return false. No markup is added for either: the region's markers are enough.
+
 ## 7. Data flow
 
 ### 7.1 Routes and modes

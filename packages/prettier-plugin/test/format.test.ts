@@ -252,3 +252,10 @@ test('#430: @await, @then and @catch are laid out like @if / @else, their header
 `)
   expect(await format(out, { parser: 'tscl', plugins: [plugin] })).toBe(out)
 })
+
+test('#442 @event and #456 @layout are directives: kept as written, also with an object type', async () => {
+  const src = "@layout none\n@model values: string[] = []\n@event change: { value: string; selected: boolean }\n@event close\n<script>\n  let n = state(0)\n</script>\n<p>{{ n }}</p>\n"
+  const out = await fmt(src)
+  expect(out.startsWith('@layout none\n@model values: string[] = []\n@event change: { value: string; selected: boolean }\n@event close\n\n<script>')).toBe(true)
+  expect(await fmt(out)).toBe(out)
+})

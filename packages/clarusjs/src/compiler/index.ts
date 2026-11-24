@@ -13,7 +13,7 @@ import { foldClass } from './class-style.ts'
 export { checkIcons, type IconResolver } from './icon.ts'
 import type { IconResolver } from './icon.ts'
 export { lint, lintRules, type LintRule, type LintLevel, type LintConfig, type LintMessage, type LintRuleDef, type LintContext, type LintElement } from './lint.ts'
-export type { ParsedFile, InputDecl, ImportDecl, TemplateNode, Attr } from './parse.ts'
+export type { ParsedFile, InputDecl, EventDecl, ImportDecl, TemplateNode, Attr } from './parse.ts'
 
 /**
  * `renderImports`: import child components' render functions with `?render`, for a render module that runs in the
