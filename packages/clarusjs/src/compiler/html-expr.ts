@@ -89,7 +89,8 @@ export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rew
   ]
   const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
   // Render options: when to attach, and (for the forms engine) the path this component is bound to.
-  const opts = ['cx: __cl_cx', ...(n.region >= 0 && slots.length ? ['inIsland: true'] : []), ...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.class ? [`class: ${JSON.stringify(n.class)}`] : []), ...(n.paths ? [`paths: { ${n.paths.map((p) => `${JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }`] : [])]
+  // Content from an island, or passed on from one through components without a script, is marked for the island check.
+  const opts = ['cx: __cl_cx', ...(slots.length ? [n.region >= 0 ? 'inIsland: true' : 'inIsland: __cl_opts?.inIsland'] : []), ...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.class ? [`class: ${JSON.stringify(n.class)}`] : []), ...(n.paths ? [`paths: { ${n.paths.map((p) => `${JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }`] : [])]
   if (opts.length) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { ${opts.join(', ')} })`
   return slotsArg ? `${renderName(n.name)}({ ${props} }, ${slotsArg})` : `${renderName(n.name)}({ ${props} })`
 }

@@ -74,3 +74,18 @@ test('content that awaits (#430) renders inside an island: the island waits for 
   expect(html).toMatch(/<b[^>]*>late<\/b>/)
   expect(html).toMatch(/^<cl-island c="tabs"/)
 })
+
+test('content from an island passed on through a component without a script still counts as from inside an island', async () => {
+  const { mkdirSync, writeFileSync } = await import('node:fs')
+  const modules: Record<string, string> = {
+    'tabs': server(tabs, 'tabs.tscl'),
+    'w': server("@import tabs from './tabs.tscl'\n<div><tabs><slot /></tabs></div>\n", 'w.tscl'),
+    'outer': server("@import w from './w.tscl'\n<script>\n  let on = state(true)\n</script>\n<w><p>{{ on }}</p></w>\n", 'outer.tscl'),
+  }
+  const dir = `${import.meta.dirname}/../.tmp/`
+  const prefix = `islvia-${process.pid}-`
+  mkdirSync(dir, { recursive: true })
+  for (const [name, code] of Object.entries(modules)) writeFileSync(`${dir}${prefix}${name}.mjs`, code.replace(/from '\.\/(\w+)\.tscl'/g, (_, f) => `from './${prefix}${f}.mjs'`))
+  const { render } = await import(/* @vite-ignore */ `${dir}${prefix}outer.mjs`)
+  await expect(Promise.resolve().then(() => render({}))).rejects.toThrow(/<tabs> can't take content from inside another island yet/)
+})

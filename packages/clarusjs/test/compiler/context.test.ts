@@ -76,3 +76,8 @@ test('outside any provider: the default, or a render error naming the component 
   expect(await render(`${imports}<optional />`, { './w.tscl': w, './slow.tscl': slow })).toMatch(/>none<\/i>/)
   await expect(render(`${imports}<panel value="a" />`, { './w.tscl': w, './slow.tscl': slow })).rejects.toThrow('[clarusjs] <panel> reads context "tabs", which no component around it provides')
 })
+
+test('provide is reserved: a script that declares or imports its own is a located build error', () => {
+  expect(compileError("<script>\n  function provide(k, v) {}\n  provide('k', 1)\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
+  expect(compileError("<script>\n  import { provide } from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
+})

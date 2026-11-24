@@ -20,3 +20,15 @@ test('a child the island re-renders in the browser reads the context the island 
   ;(document.querySelector('button') as HTMLElement).click()
   expect(document.querySelector('.out')!.textContent).toBe('b/b')
 })
+
+test('a child that only reads context (no props) is re-rendered when the provided value changes', async () => {
+  const plain = '@context pick: { on: string }\n<p class="plain">{{ pick.on }}</p>\n'
+  const src = "@import plain from './plain.tscl'\n<script>\n  let on = state('a')\n  provide('pick', { on })\n</script>\n<button (click)=\"on = 'b'\">x</button>\n<plain />\n"
+  const plainServer = compile(plain, { file: 'plain.tscl', target: 'server', clientUrl: '/plain.js' }).code
+  const s = await importCode(compile(src, { file: 'j.tscl', target: 'server', clientUrl: '/j.js' }).code, 'cxj-s', { './plain.tscl': plainServer })
+  const c = await importCode(compile(src, { file: 'j.tscl', target: 'client' }).code, 'cxj-c', { './plain.tscl?render': plainServer })
+  document.body.innerHTML = s.render({})
+  await attachAll(document, async () => c)
+  ;(document.querySelector('button') as HTMLElement).click()
+  expect(document.querySelector('.plain')!.textContent).toBe('b')
+})

@@ -88,6 +88,8 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   const modelNames = new Set(parsed.inputs.filter((i) => i.model).map((i) => i.name))
   const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
   const signals: Signals = parsed.script ? analyzeScript(split.body, file, source, parsed.script.start) : new Map()
+  // provide is the compiler's (#465): a script's own, or an imported one, would clash with it.
+  if (parsed.script) for (const imp of split.imports) if (/(?:[{,]\s*|\bas\s+|^import\s+)provide\b/.test(imp.text)) fail('provide is reserved for context: rename this import (import { provide as other } …)', parsed.script.start + imp.start)
   const provides = parsed.script ? providesIn(split.body, file, source, parsed.script.start) : false
   // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.
   // text()'s effect tracks the real dependencies, so over-marking only costs a pair of comment markers.
@@ -324,7 +326,8 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       // Content is rendered here, in this component's scope, and handed to the child for its slots.
       const hasContent = node.children.some((c) => c.type !== 'text' || c.value.trim())
       const readsState = props.some((p) => referencesNames(p.expr, scriptScope) || referencesNames(p.expr, loopNames))
-      const region = stateful && (hasContent || readsState || models.length > 0 || listens.length > 0) ? regionCount++ : -1
+      // An island that provides (#465): any child may read the context, so each re-renders when what it reads changes.
+      const region = stateful && (hasContent || readsState || models.length > 0 || listens.length > 0 || provides) ? regionCount++ : -1
       const parentScope = scopeKey
       if (region >= 0) scopeKey = `c${region}`
       const lowerList = (list: TemplateNode[]) => {

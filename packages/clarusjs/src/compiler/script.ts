@@ -373,6 +373,8 @@ export function rewriteClientExpr(expr: string, signals: Signals): string {
 export function providesIn(code: string, file: string, source: string, offset: number): boolean {
   let found = false
   const hook: Hook = (node) => {
+    const declared = (node.type === 'FunctionDeclaration' || node.type === 'VariableDeclarator' || node.type === 'ClassDeclaration') && node.id?.type === 'Identifier' && node.id.name === 'provide'
+    if (declared) throw new ClarusError('provide is reserved for context: give this function another name', file, source, offset + node.start)
     if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'provide') {
       found = true
       const key = (node.arguments as N[])[0]
