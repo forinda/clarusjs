@@ -33,6 +33,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     all.some((n) => n.kind === 'component' && !!n.listens?.length) && 'listen as __cl_listen',
     all.some((n) => n.kind === 'use') && 'use as __cl_useOn',
     ir.sends && 'emit as __cl_emit',
+    ir.sends && 'declare as __cl_declare',
     ir.provides && 'provideOn as __cl_provideOn',
     kinds.has('model') && 'modelInput as __cl_modelInput',
     ir.inputs.some((i) => kinds.has('input') || i.model) && 'batch as __cl_batch',
@@ -61,6 +62,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
   for (const line of ir.scriptImports) out += `${line}\n`
   out += `\nexport function attach(__cl_root, __cl_props = {}, __cl_state) {\n`
   out += `  const __cl_class = __cl_props.__cl_class ? " " + __cl_props.__cl_class : ""\n`
+  if (ir.sends) out += `  __cl_declare(__cl_root, ${JSON.stringify(ir.sendNames)})\n`
   // emit('name', value, { reason, event }) (#442): false when the parent cancelled it.
   if (ir.sends) out += `  const emit = (name, value, info) => __cl_emit(__cl_root, name, value, info)\n`
   // The context children it re-renders get (#465). ponytail: the island's own provides only; its incoming context
@@ -135,7 +137,10 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
       // (name)="…": the child island's emit('name', …) (#442).
       for (const l of n.listens ?? []) {
         const body = rewriteClient(l.handler, signals).trim()
-        lines.push(`__cl_listen(${ctx}, ${n.region}, ${JSON.stringify(l.name)}, ($event, $info) => { ${body}${body.includes('//') ? '\n  ' : ' '}})`)
+        // The bound component's island name (its file's, as the server writes it in c): its contract decides.
+        const from = ir.imports.find((i) => i.name === n.name)?.from ?? ''
+        const bound = (from.split(/[\\/]/).pop() ?? '').replace(/\.tscl$/, '').replace(/[^\w-]/g, '')
+        lines.push(`__cl_listen(${ctx}, ${n.region}, ${JSON.stringify(l.name)}, ($event, $info) => { ${body}${body.includes('//') ? '\n  ' : ' '}}, ${JSON.stringify(bound)})`)
       }
     }
     if (n.kind === 'if' && n.block >= 0) {

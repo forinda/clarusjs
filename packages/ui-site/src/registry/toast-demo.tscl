@@ -1,4 +1,5 @@
 @import './toast.css'
+@import uiButton from './button.tscl'
 
 <script>
   import { toast } from '@clarusjs/ui-primitives'
@@ -11,8 +12,8 @@
 </script>
 
 <div class="demo">
-  <button type="button" (click)="save()">Save</button>
-  <button type="button" (click)="remove()">Delete project</button>
+  <uiButton (click)="save()">Save</uiButton>
+  <uiButton variant="outline" (click)="remove()">Delete project</uiButton>
   <p>
     Deleted: <span class="out">{{ removed }}</span>
   </p>

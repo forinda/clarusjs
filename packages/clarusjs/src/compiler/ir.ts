@@ -48,6 +48,8 @@ export type ComponentIR = {
   events: IREvent[]
   /** The component sends events to its parent (@event, #442): its script gets emit(). */
   sends: boolean
+  /** Their names: the parent's (name) listens for these as component events, not DOM events. */
+  sendNames: string[]
   /** @context declarations (#465): values read from the components around this one. */
   contexts: InputDecl[]
   /** The script calls provide() (#465): this component adds to the context its children render with. */
@@ -564,6 +566,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     nodes,
     events,
     sends: parsed.events.length > 0,
+    sendNames: parsed.events.map((e) => e.name),
     contexts: parsed.contexts,
     provides,
     warnings,
