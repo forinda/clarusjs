@@ -6,7 +6,7 @@ import { parse } from './serialize.ts'
 import { latest, takeOver } from './navigate.ts'
 
 type Entry = { p: string; r: string }
-type Page = { render(props: object): string }
+type Page = { render(props: object, slots?: undefined, opts?: { route: { path: string; params: Record<string, string> } }): string }
 
 /** The route a path belongs to, with its decoded params. Same grammar as the server: whole [param] segments. */
 export function matchRoute(table: Entry[], pathname: string): { r: string; params: Record<string, string> } | null {
@@ -51,7 +51,7 @@ export async function show(
   if (!(await isCurrent())) return false
   // The head stays (its stylesheets are every client page's, linked by the shell); the title gets the site's
   // titleTemplate, from the shell (always set: '%s' without one).
-  await swapIn(page.render(props), (title) => document.getElementById('cl-routes')!.dataset.title!.replace('%s', () => title))
+  await swapIn(page.render(props, undefined, { route: { path: url.pathname, params: found.params } }), (title) => document.getElementById('cl-routes')!.dataset.title!.replace('%s', () => title))
   return true
 }
 

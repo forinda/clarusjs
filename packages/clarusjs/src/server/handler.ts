@@ -11,7 +11,7 @@ const safeJson = (json: string) => json.replace(/</g, '\\u003c')
 
 // The fetch handler: Request → Response. Same function for dev, per-request SSR and (later) build-time prerender.
 
-type PageModule = { render(props?: object): string | Promise<string> }
+type PageModule = { render(props?: object, slots?: undefined, opts?: { route: { path: string; params: Record<string, string> } }): string | Promise<string> }
 
 /** Each render's component loader data (#97), read by loaded() (runtime/server.ts) across awaits (#430). */
 const loadedStore = new AsyncLocalStorage<Map<string, object>>()
@@ -70,6 +70,21 @@ export type Cookies = {
  * @see https://clarusjs.com/reference/server#loadcontext
  */
 export type LoadContext = { params: Params; request: Request; cookies: Cookies; locals: Locals }
+
+/**
+ * What a folder's `+guard.ts` gets (#457): the page's load() context plus the URL. Return a `Response` (such as
+ * `redirect()`) to answer instead of the page, or nothing to go on; it may set `locals` for what runs after it.
+ *
+ * ```ts
+ * // src/pages/admin/+guard.ts
+ * export function guard({ locals, url }: GuardContext) {
+ *   if (!locals.user) return redirect('/sign-in?next=' + encodeURIComponent(url.pathname))
+ * }
+ * ```
+ * @see https://clarusjs.com/guide/auth
+ */
+export type GuardContext = LoadContext & { url: URL }
+type GuardModule = { guard?(context: GuardContext): Response | void | undefined | Promise<Response | void | undefined> }
 
 /**
  * `handle()` in src/server.ts: runs once per request before any page loads, to resolve the session into `locals`.
@@ -141,6 +156,11 @@ export function redirect(to: string, status: 301 | 302 | 303 | 307 | 308 = 302):
 }
 
 /** @internal clarusjs's own build and server code call this; apps don't. */
+export function isPageFile(file: string): boolean {
+  return !/\/\+[^/]*$/.test(file) // +layout.tscl (#456) and other + files are never routes
+}
+
+/** @internal clarusjs's own build and server code call this; apps don't. */
 export function routeFromFile(file: string): string {
   const path = file.replace(/^.*?\/src\/pages/, '').replace(/\.[^./]+$/, '').replace(/\/index$/, '')
   return path || '/'
@@ -152,6 +172,8 @@ export function createHandler(
   options: {
     loaderUrl?: string
     data?: Record<string, () => Promise<DataModule>>
+    /** Folder guards (#457): each src/pages folder's +guard.ts → its module. */
+    guards?: Record<string, () => Promise<GuardModule>>
     modes?: ModeTable
     /** Client routes (as their files name them) → URL of the page's browser render module. */
     client?: Record<string, string>
@@ -184,10 +206,12 @@ export function createHandler(
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; readsCookies(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
   const routes: Route[] = Object.entries(pages)
+    .filter(([file]) => isPageFile(file))
     .map(([file, load]) => ({ path: routeFromFile(file), file: file.replace(/^\//, ''), load, ...compile(routeFromFile(file)) }))
     .sort((a, b) => a.keys.length - b.keys.length || b.path.split('/').length - a.path.split('/').length)
   // Endpoints (src/pages/api/items.ts → /api/items), matched after pages; most fixed segments first, as for pages.
   const endpointRoutes = Object.entries(options.endpoints ?? {})
+    .filter(([file]) => isPageFile(file)) // +guard.ts is a guard, not an endpoint
     .map(([file, load]) => ({ path: routeFromFile(file), file: file.replace(/^\//, ''), load, ...compile(routeFromFile(file)) }))
     .sort((a, b) => a.keys.length - b.keys.length || b.path.split('/').length - a.path.split('/').length)
   const matchEndpoint = (pathname: string) => {
@@ -200,6 +224,27 @@ export function createHandler(
     return undefined
   }
   const data = options.data ?? {}
+  const guards = options.guards ?? {}
+  /**
+   * The +guard.ts of each folder above a route's file (#457), outer first: the first Response is the answer. A route
+   * built once (not 'server') can't read cookies or headers in its guards, as in load(). Throws naming the guard.
+   */
+  async function guarded(file: string, once: boolean, context: LoadContext): Promise<Response | undefined> {
+    const folders = file.replace(/^\/?src\/pages\//, '').split('/').slice(0, -1)
+    for (let i = 0; i <= folders.length; i++) {
+      const key = `/src/pages/${[...folders.slice(0, i), '+guard.ts'].join('/')}`
+      if (!guards[key]) continue
+      try {
+        const mod = await guards[key]!()
+        const route = routeFromFile(`/${file.replace(/^\//, '')}`)
+        const answer = await mod.guard?.({ ...context, url: new URL(context.request.url), ...(once ? builtOnce(route, context.request) : {}) })
+        if (answer instanceof Response) return answer
+      } catch (err) {
+        throw new Error(`${key.slice(1)}: guard() failed: ${(err as Error)?.message ?? err}`, { cause: err })
+      }
+    }
+    return undefined
+  }
   const modes = options.modes ?? {}
   const loaderUrl = options.loaderUrl ?? '/cl-loader.js'
 
@@ -325,6 +370,14 @@ export function createHandler(
       const trimmed = path.length > 1 ? path.replace(/\/+$/, '') : path
       const found = !match(trimmed) && matchEndpoint(trimmed)
       if (found) {
+        // Its folders' guards first (#457), per request like the endpoint.
+        try {
+          const stop = await guarded(found.route.file, false, { request, params: found.params, cookies, locals })
+          if (stop) return stop
+        } catch (err) {
+          if (options.dev) throw err
+          return failure((err as Error).message)
+        }
         const response = await callEndpoint(found.route.file, await found.route.load(), { request, params: found.params, cookies, locals }, options)
         if (response) return response
       }
@@ -409,6 +462,13 @@ export function createHandler(
         return new Response(head ? null : page, { headers: { 'content-type': 'text/html; charset=utf-8' } })
       }
       // The 500 page is told its status, whether a failure shows it or it is visited (or prerendered) at /500.
+      // The folders' guards (#457), before load(): for a client route, when its data is asked for.
+      try {
+        const stop = await guarded(found.route.file, modeFor(found.route.path, modes) !== 'server', { params: found.params, locals, request, cookies })
+        if (stop) return stop
+      } catch (err) {
+        return fail((err as Error).message, err)
+      }
       let props: object = found.route.path === '/500' ? { status: 500, ...found.params } : found.params
       const dataFile = found.route.file.replace(/\.[^./]+$/, '.load.ts')
       const mod = data[`/${dataFile}`] ? await data[`/${dataFile}`]!() : undefined
@@ -462,7 +522,8 @@ export function createHandler(
         const module = await found.route.load()
         // Awaited: a page or a component in it may await in its <script server> (#430). Component loaders' data is
         // this render's, even while it waits (see loaded() in runtime/server.ts).
-        html = await loadedStore.run(componentData, () => module.render(props))
+        // The route goes to the page's folder and config layouts (#456): their path and params.
+        html = await loadedStore.run(componentData, () => module.render(props, undefined, { route: { path: pathname, params: found.params } }))
       } catch (err) {
         return fail(`${found.route.file}: render failed: ${(err as Error)?.message ?? err}`, err)
       }

@@ -1,0 +1,8 @@
+{{-- Components used by name (#458): no @import. <text-field> is the short name of components/forms/text-field.tscl,
+     <forms-text-field> its full name; <like-button> is an island; <my-widget> isn't a component, so it stays HTML. --}}
+<form>
+  <text-field [label]="'Name'"><input name="name" /></text-field>
+  <forms-text-field [label]="'Email'"><input name="email" /></forms-text-field>
+  <like-button />
+  <my-widget></my-widget>
+</form>

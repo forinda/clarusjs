@@ -26,7 +26,37 @@ Import a component by name, then use it as a tag. Pass inputs with `[name]="expr
 <greeting [name]="'world'" />
 ```
 
-One tag is built in and needs no import: `<icon name="lucide:search" />` renders an inline SVG when the site builds, from any Iconify set you install, with no JavaScript. See [Icons](/guide/icons).
+Or name the file in kebab-case and use it [without importing it](#automatic-imports). One tag is built in and needs no import: `<icon name="lucide:search" />` renders an inline SVG when the site builds, from any Iconify set you install, with no JavaScript. See [Icons](/guide/icons).
+
+## Automatic imports
+
+Components in `src/components/` and `src/layouts/` can be used by name, without `@import`. The name comes from the file's path, so name files in kebab-case:
+
+| File | Tags |
+|---|---|
+| `src/components/user-card.tscl` | `<user-card>` |
+| `src/components/forms/text-field.tscl` | `<forms-text-field>`, and `<text-field>` |
+| `src/layouts/site-shell.tscl` | `<site-shell>` |
+
+```tscl
+<user-card [user]="user" />
+<text-field [label]="'Email'" />
+```
+
+- **The full name** is the folders and the file joined with hyphens: always there. **The short name** is the file alone, when no other component has it. When two do (`forms/date-field` and `admin/date-field`), `<date-field>` is an error naming both: write the full name.
+- **Only names with a hyphen**, as for custom elements, so a component never takes an HTML element's name. `src/components/card.tscl` is `<card>` to nobody: import it, or move it into a folder.
+- **Only what a template uses is imported**, exactly as if you had written the `@import`: nothing else is shipped.
+- **An explicit `@import` still works**, with any name (`<userCard>`), and wins for its own name.
+- **A web component** (`<my-widget>` registered in the browser) is left alone when no file has its name. When one does, the component wins.
+- A file whose name isn't kebab-case (`TextArea.tscl`) isn't named: the build warns about it.
+
+`clarusjs check` and the editor know the same names: they check the inputs, complete the tags and go to the file. To change the folders, or turn this off:
+
+```ts
+clarusjs({ components: { dirs: ['src/components', 'src/layouts', 'src/ui'], auto: true } })
+```
+
+This site's [Slots demo](/guide/slots#slots-that-pass-data) uses `<item-list>` this way; most of its pages still import components by name, which works the same.
 
 ## Importing data
 

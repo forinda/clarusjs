@@ -17,12 +17,18 @@ export function checkModes(table: ModeTable): void {
   }
 }
 
+/** A route pattern: '/about' is that route; '/docs/*' is /docs and every route under it ('/*': all). */
+export function routeMatches(route: string, pattern: string): boolean {
+  const folder = pattern.endsWith('/*') ? pattern.slice(0, -2) : undefined
+  return folder !== undefined ? route === (folder || '/') || route.startsWith(`${folder}/`) : route === pattern
+}
+
 /** The mode of a route (as its file names it, e.g. '/account/[id]'): the most specific matching pattern wins. */
 export function modeFor(route: string, table: ModeTable): Mode {
   let best: { length: number; mode: Mode } | undefined
   for (const [pattern, mode] of Object.entries(table)) {
     const folder = pattern.endsWith('/*') ? pattern.slice(0, -2) : undefined
-    const hit = folder !== undefined ? route === (folder || '/') || route.startsWith(`${folder}/`) : route === pattern
+    const hit = routeMatches(route, pattern)
     // An exact pattern beats a folder of the same length.
     const length = folder !== undefined ? folder.length : pattern.length + 0.5
     if (hit && (!best || length > best.length)) best = { length, mode: mode as Mode }

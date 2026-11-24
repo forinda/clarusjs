@@ -2,12 +2,12 @@
 title: "Layouts"
 group: "Templates"
 order: 8
-description: "A layout is a component that renders the whole document around a page: its head, its header and footer, and a slot for the page. Inputs, named slots, head tags, styles, nesting and Markdown pages."
+description: "A layout is a component that renders the whole document around a page: its head, its header and footer, and a slot for the page. Inputs, named slots, head tags, styles, nesting, folder layouts, layouts in the config and Markdown pages."
 ---
 
 # Layouts
 
-<p class="lead">A layout is an ordinary component that renders the whole document (<code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, <code>&lt;body&gt;</code>) with a <code>&lt;slot /&gt;</code> where the page goes. A page wraps its content in it. There's no special file or folder: a page uses the layout it imports.</p>
+<p class="lead">A layout is an ordinary component that renders the whole document (<code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, <code>&lt;body&gt;</code>) with a <code>&lt;slot /&gt;</code> where the page goes. A page wraps its content in the layout it imports; a folder's <code>+layout.tscl</code>, or the config, can wrap every page under it instead.</p>
 
 ## A layout and a page
 
@@ -133,7 +133,64 @@ A section's layout can wrap the site's: it adds what the section shares (a sideb
 </site>
 ```
 
-There's no nesting by folder: a page under `src/pages/docs/` uses the docs layout because it imports it. That keeps each page's layout visible in the page itself.
+A page under `src/pages/docs/` uses the docs layout because it imports it, which keeps its layout visible in the page itself. To wrap a whole folder without each page importing it, use a folder layout.
+
+## Folder layouts
+
+A `+layout.tscl` in a folder of `src/pages` wraps every page in that folder and below it. A deeper folder's layout goes inside the outer one's.
+
+```text
+src/pages/
+├── +layout.tscl          wraps every page
+├── index.tscl
+└── admin/
+    ├── +layout.tscl      wraps every /admin page, inside the one above
+    ├── users.tscl
+    └── sign-in.tscl      @layout none: neither of them
+```
+
+```tscl
+{{-- src/pages/admin/+layout.tscl --}}
+@input path: string = ''
+<div class="admin">
+  <aside>
+    <slot name="aside">
+      <a href="/admin/users" [aria-current]="path === '/admin/users' ? 'page' : false">Users</a>
+    </slot>
+  </aside>
+  <main><slot /></main>
+</div>
+
+{{-- src/pages/admin/users.tscl: only its content --}}
+@slot('aside') { <a href="/admin/users/new">Add a user</a> }
+<h1>Users</h1>
+```
+
+- **The page's content** goes to the layout's default slot. A page's top-level `@slot('name') { }` fills the nearest layout's named slots.
+- **A layout's inputs** are `path` (the URL's path) and `params` (the route's, `{ step: '2' }` on `/tour/[step]`). Declare the ones it uses. A title per page goes in the page's `<cl-head><title>`, or the layout makes it from `params`.
+- **`@layout none`** at the top of a page skips its folder and config layouts: a sign-in page under a protected folder.
+- **`+` files are never routes**, so `+layout.tscl` is never served as a page.
+- **Both kinds work together:** a page can still import a layout of its own, inside its folder layouts.
+
+This site's [client tour](/tour/1) is a folder layout: `src/pages/tour/+layout.tscl` renders the docs layout with each step's title, and the step pages only write their content. It works for [client routes](/guide/client-routes) too: the router renders the layout in the browser with the route's params.
+
+A page with a `<script>` of its own (an island page) can't have folder or config layouts yet: the compiler says so at the top of the page. Move its script into a component it uses, or add `@layout none`. A layout's own data (`+layout.load.ts`) and Markdown pages taking folder layouts are coming next.
+
+## Layouts in the config
+
+For a layout chosen by route rather than by folder, name it in the plugin's options. Patterns are written as for [rendering modes](/guide/rendering-modes): `'/admin'` is that route, `'/admin/*'` is it and every route under it, `'/*'` is every route.
+
+```ts
+// vite.config.ts
+clarusjs({
+  layouts: [
+    { layout: '/src/layouts/site.tscl', exclude: ['/embed/*'] }, // every route but the embeds
+    { layout: '/src/layouts/admin.tscl', include: ['/admin/*'], exclude: ['/admin/sign-in'] },
+  ],
+})
+```
+
+Config layouts go outermost, in the order written, then folder layouts from `src/pages` down, then a layout the page imports. `include` defaults to every route; `exclude` wins over it. They get the same `path` and `params`.
 
 ## Islands in a layout
 

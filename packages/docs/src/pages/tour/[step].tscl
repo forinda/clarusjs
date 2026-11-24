@@ -1,23 +1,15 @@
-@import docs from '~/layouts/docs.tscl'
-@import tourKeys from '~/components/tour-keys.tscl'
 @import { href } from 'clarusjs/navigation'
 @import type { Step } from '~/tour.ts'
 @input step: string
 @input current: Step
 @input total: number
+{{-- Wrapped in ./+layout.tscl, the folder's layout. --}}
 
-<docs
-  [title]="'Client tour, step ' + step"
-  [path]="'/guide/client-routes'"
-  [source]="'/tour/[step]'"
-  [description]="'A page rendered in the browser by the clarusjs router.'"
->
-  <p class="eyebrow-step">Step {{ step }} of {{ total }}</p>
-  <h1>{{ current.title }}</h1>
-  <p class="lead">{{ current.text }}</p>
-  <nav class="tour" aria-label="Tour">@if (current.n > 1) {<a class="prev" [href]="href('/tour/[step]', { step: String(current.n - 1) })">← Step {{ current.n - 1 }}</a>} @if (current.n < total) {<a class="next" [href]="href('/tour/[step]', { step: String(current.n + 1) })">Step {{ current.n + 1 }} →</a>} @else {<a class="next" href="/guide/client-routes">Back to the guide</a>}</nav>
-  <tourKeys
-    [prev]="current.n > 1 ? href('/tour/[step]', { step: String(current.n - 1) }) : ''"
-    [next]="current.n < total ? href('/tour/[step]', { step: String(current.n + 1) }) : ''"
-  />
-</docs>
+<p class="eyebrow-step">Step {{ step }} of {{ total }}</p>
+<h1>{{ current.title }}</h1>
+<p class="lead">{{ current.text }}</p>
+<nav class="tour" aria-label="Tour">@if (current.n > 1) {<a class="prev" [href]="href('/tour/[step]', { step: String(current.n - 1) })">← Step {{ current.n - 1 }}</a>} @if (current.n < total) {<a class="next" [href]="href('/tour/[step]', { step: String(current.n + 1) })">Step {{ current.n + 1 }} →</a>} @else {<a class="next" href="/guide/client-routes">Back to the guide</a>}</nav>
+<tour-keys
+  [prev]="current.n > 1 ? href('/tour/[step]', { step: String(current.n - 1) }) : ''"
+  [next]="current.n < total ? href('/tour/[step]', { step: String(current.n + 1) }) : ''"
+/>
