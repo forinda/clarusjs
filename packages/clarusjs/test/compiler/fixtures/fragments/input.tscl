@@ -1,0 +1,15 @@
+<script>
+  let open = state(false)
+  const items = state(["a", "b"])
+</script>
+<fragment>
+  <button (click)="open = !open">More</button>
+  @if (open) {
+    <fragment><p>One</p><p>Two</p></fragment>
+  }
+  <dl>
+    @for (item of items; track item) {
+      <fragment><dt>{{ item }}</dt><dd>{{ item.toUpperCase() }}</dd></fragment>
+    }
+  </dl>
+</fragment>

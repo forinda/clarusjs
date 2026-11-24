@@ -67,6 +67,7 @@ export type CompileResult = { code: string; stateful: boolean; css: string; warn
  */
 export function compile(source: string, options: CompileOptions): CompileResult {
   const parsed = parse(source, options.file)
+  unwrapFragments(parsed, options.file, source)
   if (options.components) autoImport(parsed, options.components, options.file, source)
   if (options.layouts?.length && parsed.layout !== 'none') wrapInLayouts(parsed, options.layouts, options.file, source)
   const warnings: ClarusError[] = []
@@ -141,6 +142,36 @@ function markSlotContent(nodes: TemplateNode[], cls: string, components: Set<str
 
 // ARIA attributes that hold a list of ids (#463): a passed one joins the root's own instead of losing to it.
 const ID_LISTS = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'aria-owns']
+
+/**
+ * `<fragment>` groups nodes without rendering an element: each one is replaced by its children, anywhere in the
+ * template, before anything else sees it. It takes no attributes (there is no element to put them on).
+ */
+function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source: string): void {
+  const reserved = parsed.imports.find((i) => i.name === 'fragment')
+  if (reserved) throw new ClarusError('fragment is reserved: <fragment> groups elements without rendering one; import the component under another name', file, source, reserved.start)
+  // Every list of child nodes, whatever holds it: elements, @if branches, @for (and its @empty), @await parts, fills.
+  const isNode = (x: unknown) => !!x && typeof x === 'object' && 'type' in x
+  const holders = (n: TemplateNode): { children: TemplateNode[] }[] => {
+    const out: { children: TemplateNode[] }[] = []
+    for (const v of Object.values(n)) {
+      const items = Array.isArray(v) ? v : [v]
+      for (const x of items) if (x && typeof x === 'object' && !isNode(x) && Array.isArray(x.children)) out.push(x)
+    }
+    return out
+  }
+  const flat = (nodes: TemplateNode[]): TemplateNode[] =>
+    nodes.flatMap((n) => {
+      if ('children' in n) n.children = flat(n.children)
+      const r = n as unknown as Record<string, unknown>
+      for (const key of ['pending', 'empty']) if (Array.isArray(r[key])) r[key] = flat(r[key] as TemplateNode[])
+      for (const h of holders(n)) h.children = flat(h.children)
+      if (n.type !== 'element' || n.tag !== 'fragment') return [n]
+      if (n.attrs.length) throw new ClarusError('<fragment> renders no element: attributes and events can\'t land on it', file, source, n.start)
+      return n.children
+    })
+  parsed.nodes = flat(parsed.nodes)
+}
 
 /**
  * Attributes a parent passes to this component land on its root element (#463): a spread of __cl_attrs (the passed
