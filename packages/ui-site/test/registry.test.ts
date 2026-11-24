@@ -306,3 +306,28 @@ test('pagination: one page shows just the current; a hundred pages around 50 sta
   expect(many).toEqual(['Previous', '1', '…', '49', '50', '51', '…', '100', 'Next'])
   expect(pageLabels(await render('pagination.tscl', { page: 2, pages: 100, href: '?p={page}' }))).toEqual(['Previous', '1', '2', '3', '…', '100', 'Next'])
 })
+
+test('collapsible: a <details> with its trigger in <summary>; [open]', async () => {
+  expect(await render('collapsible.tscl', {}, { trigger: 'More', default: 'Body' })).toBe('<details data-part="collapsible"><summary data-part="collapsible-trigger">More</summary><div data-part="collapsible-content">Body</div></details>')
+  expect(await render('collapsible.tscl', { open: true }, { trigger: 'x', default: 'y' })).toMatch(/^<details open /)
+})
+
+test('empty: an icon, a title, a description and an action; unfilled ones hidden', async () => {
+  const html = await render('empty.tscl', {}, { icon: '<svg></svg>', title: 'No projects', default: 'Create one to start.', action: '<button>New</button>' })
+  expect(html).toBe('<div data-part="empty"><div aria-hidden="true" data-part="empty-icon"><svg></svg></div><p data-part="empty-title">No projects</p><div data-part="empty-description">Create one to start.</div><div data-part="empty-action"><button>New</button></div></div>')
+  expect(source('empty.tscl')).toMatch(/:where\(\[data-part='empty-icon'\]:empty\)/)
+})
+
+test('button group: role="group" named by label, joining what it holds', async () => {
+  expect(await render('button-group.tscl', { label: 'Text alignment' }, { default: '<button>L</button>' })).toBe('<div role="group" aria-label="Text alignment" data-part="button-group"><button>L</button></div>')
+})
+
+test('input group: start and end addons around the field', async () => {
+  expect(await render('input-group.tscl', {}, { start: 'https://', default: '<input id="u">', end: '.com' }))
+    .toBe('<div data-part="input-group"><span data-part="input-group-start">https://</span><input id="u"><span data-part="input-group-end">.com</span></div>')
+})
+
+test('aspect ratio: a box that keeps [ratio], 16/9 by default', async () => {
+  expect(await render('aspect-ratio.tscl', {}, { default: '<img alt="">' })).toBe('<div data-part="aspect-ratio" style="aspect-ratio: 16/9"><img alt=""></div>')
+  expect(await render('aspect-ratio.tscl', { ratio: '1/1' }, { default: '' })).toContain('aspect-ratio: 1/1')
+})

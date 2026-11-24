@@ -1,0 +1,26 @@
+{{-- Button group: buttons that belong together, joined into one row. label names the group. --}}
+@input label: string
+
+<div role="group" [aria-label]="label" data-part="button-group"><slot /></div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: inline-flex;
+    }
+    :where(:scope > *:not(:first-child)) {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      margin-left: -1px;
+    }
+    :where(:scope > *:not(:last-child)) {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    :where(:scope > *:focus-visible) {
+      position: relative;
+      z-index: 1;
+    }
+  }
+</style>
