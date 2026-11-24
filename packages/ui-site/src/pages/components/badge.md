@@ -13,13 +13,13 @@ description: "A short label, in four variants."
 
 ## Usage
 
-<<< ../../demos/badge-demo.tscl
+<<< ../../registry/badge-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `badge.tscl`.
+Copy it into your components folder (next to the others) as `badge.tscl`.
 
-<<< ../../registry/badge/badge.tscl
+<<< ../../registry/badge.tscl
 
 ## Needs
 

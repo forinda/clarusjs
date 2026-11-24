@@ -15,13 +15,13 @@ description: "A native select with its label, bound two ways."
 
 The parts come from `@clarusjs/ui-primitives`; the look is `select.css`, imported once.
 
-<<< ../../demos/select-demo.tscl
+<<< ../../registry/select-demo.tscl
 
 ## Source
 
 Copy it next to your components as `select.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
 
-<<< ../../registry/select/select.css
+<<< ../../registry/select.css
 
 ## Needs
 

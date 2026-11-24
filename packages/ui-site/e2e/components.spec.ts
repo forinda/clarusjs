@@ -11,7 +11,7 @@ for (const entry of registry) {
     await expect(page.locator('h1')).toHaveText(entry.title)
     const blocks = page.locator('h2#source ~ .code-block pre')
     for (const [i, f] of entry.files.entries()) {
-      const file = readFileSync(resolve(import.meta.dirname, '../src/registry', entry.name, f), 'utf8').trimEnd()
+      const file = readFileSync(resolve(import.meta.dirname, '../src/registry', f), 'utf8').trimEnd()
       expect((await blocks.nth(i).innerText()).trimEnd()).toBe(file)
     }
   })

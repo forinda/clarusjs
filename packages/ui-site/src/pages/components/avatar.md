@@ -13,13 +13,13 @@ description: "A round picture of someone, or their initials."
 
 ## Usage
 
-<<< ../../demos/avatar-demo.tscl
+<<< ../../registry/avatar-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `avatar.tscl`.
+Copy it into your components folder (next to the others) as `avatar.tscl`.
 
-<<< ../../registry/avatar/avatar.tscl
+<<< ../../registry/avatar.tscl
 
 ## Needs
 

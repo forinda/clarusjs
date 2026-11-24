@@ -13,13 +13,13 @@ description: "A native table that scrolls sideways on small screens."
 
 ## Usage
 
-<<< ../../demos/table-demo.tscl
+<<< ../../registry/table-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `table.tscl`.
+Copy it into your components folder (next to the others) as `table.tscl`.
 
-<<< ../../registry/table/table.tscl
+<<< ../../registry/table.tscl
 
 ## Needs
 

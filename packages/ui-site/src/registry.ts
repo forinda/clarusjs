@@ -1,17 +1,20 @@
-// Every component people can copy: one entry per folder in src/registry/. The pages' "needs" lists and the home
+// Every component people can copy. src/registry/ is laid out like the components folder they copy into: each
+// entry's files, flat, and next to them its usage example (<name>-demo.tscl), which imports them as ./<file>. The pages' "needs" lists and the home
 // page's list come from here (and, later, the registry JSON a CLI would read).
 export type Entry = {
-  /** Folder, file and page name: 'button'. */
+  /** Page name, and the usage example's: 'button' (button-demo.tscl). */
   name: string
   title: string
   /** One line, shown in lists and as the page's lead. */
   description: string
-  /** Files under src/registry/<name>/; the first is the component. */
+  /** Files in src/registry/ to copy; the first is the component. */
   files: string[]
   /** @clarusjs/ui-primitives parts it renders ('switch.tscl', …); [] if none. */
   parts: string[]
   /** Other entries it imports as ./<name>.tscl. */
   uses: string[]
+  /** Other entries its usage example imports (not needed by the component itself). */
+  example?: string[]
   /** false: ships no JavaScript. */
   island: boolean
   /** The @clarusjs/ui-primitives version it needs, when parts is not empty. */
@@ -38,6 +41,7 @@ export const registry: Entry[] = [
     files: ['input.tscl'],
     parts: [],
     uses: [],
+    example: ['label'],
     island: false,
   },
   {
@@ -47,6 +51,7 @@ export const registry: Entry[] = [
     files: ['textarea.tscl'],
     parts: [],
     uses: [],
+    example: ['label'],
     island: false,
   },
   {
@@ -65,6 +70,7 @@ export const registry: Entry[] = [
     files: ['card.tscl'],
     parts: [],
     uses: [],
+    example: ['button'],
     island: false,
   },
   {
@@ -181,6 +187,7 @@ export const registry: Entry[] = [
     files: ['field.tscl'],
     parts: ['field.tscl'],
     uses: [],
+    example: ['button'],
     island: true,
     since: '0.1.0',
     sections: ['focus', 'field-select', 'motion'],

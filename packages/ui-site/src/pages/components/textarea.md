@@ -13,13 +13,13 @@ description: "A native multi-line text field that grows with resize."
 
 ## Usage
 
-<<< ../../demos/textarea-demo.tscl
+<<< ../../registry/textarea-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `textarea.tscl`.
+Copy it into your components folder (next to the others) as `textarea.tscl`.
 
-<<< ../../registry/textarea/textarea.tscl
+<<< ../../registry/textarea.tscl
 
 ## Needs
 

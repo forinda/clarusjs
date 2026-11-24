@@ -1,11 +1,14 @@
-{{-- What a component needs besides its own file(s): the theme, the ui-primitives parts it renders, other components. --}}
+{{-- What a component needs besides its own file(s): the theme, the ui-primitives parts it renders, other components
+     (its own, and its usage example's). --}}
 @import { registry } from '~/registry.ts'
 @input name: string
 
 <script server>
   const entry = registry.find((e) => e.name === name)
   if (!entry) throw new Error(`needs: no registry entry "${name}"`)
-  const uses = entry.uses.map((u) => registry.find((e) => e.name === u)).filter((e) => !!e)
+  const byName = (names) => names.map((u) => registry.find((e) => e.name === u)).filter((e) => !!e)
+  const uses = byName(entry.uses)
+  const example = byName(entry.example ?? [])
 </script>
 
 <ul class="needs">

@@ -15,13 +15,13 @@ description: "A modal dialog on native <dialog>: focus kept in it, Escape and a 
 
 The parts come from `@clarusjs/ui-primitives`; the look is `dialog.css`, imported once.
 
-<<< ../../demos/dialog-demo.tscl
+<<< ../../registry/dialog-demo.tscl
 
 ## Source
 
 Copy it next to your components as `dialog.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
 
-<<< ../../registry/dialog/dialog.css
+<<< ../../registry/dialog.css
 
 ## Needs
 

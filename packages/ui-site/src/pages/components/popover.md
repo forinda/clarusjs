@@ -15,13 +15,13 @@ description: "A panel anchored to its trigger, on the popover attribute."
 
 The parts come from `@clarusjs/ui-primitives`; the look is `popover.css`, imported once.
 
-<<< ../../demos/popover-demo.tscl
+<<< ../../registry/popover-demo.tscl
 
 ## Source
 
 Copy it next to your components as `popover.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
 
-<<< ../../registry/popover/popover.css
+<<< ../../registry/popover.css
 
 ## Needs
 

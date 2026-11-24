@@ -13,13 +13,13 @@ description: "A pulsing placeholder while content loads."
 
 ## Usage
 
-<<< ../../demos/skeleton-demo.tscl
+<<< ../../registry/skeleton-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `skeleton.tscl`.
+Copy it into your components folder (next to the others) as `skeleton.tscl`.
 
-<<< ../../registry/skeleton/skeleton.tscl
+<<< ../../registry/skeleton.tscl
 
 ## Needs
 

@@ -15,13 +15,13 @@ description: "A text field that filters a list of options as you type."
 
 The parts come from `@clarusjs/ui-primitives`; the look is `combobox.css`, imported once.
 
-<<< ../../demos/combobox-demo.tscl
+<<< ../../registry/combobox-demo.tscl
 
 ## Source
 
 Copy it next to your components as `combobox.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
 
-<<< ../../registry/combobox/combobox.css
+<<< ../../registry/combobox.css
 
 ## Needs
 

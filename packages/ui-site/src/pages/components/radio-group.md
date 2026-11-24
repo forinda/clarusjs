@@ -13,13 +13,13 @@ description: "Native radios in a fieldset: one choice from a few."
 
 ## Usage
 
-<<< ../../demos/radio-group-demo.tscl
+<<< ../../registry/radio-group-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `radio-group.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+Copy it into your components folder (next to the others) as `radio-group.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
 
-<<< ../../registry/radio-group/radio-group.tscl
+<<< ../../registry/radio-group.tscl
 
 ## Needs
 

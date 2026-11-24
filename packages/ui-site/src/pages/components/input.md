@@ -13,13 +13,13 @@ description: "A native text field, styled, with an invalid state from aria-inval
 
 ## Usage
 
-<<< ../../demos/input-demo.tscl
+<<< ../../registry/input-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `input.tscl`.
+Copy it into your components folder (next to the others) as `input.tscl`.
 
-<<< ../../registry/input/input.tscl
+<<< ../../registry/input.tscl
 
 ## Needs
 

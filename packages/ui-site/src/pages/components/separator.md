@@ -13,13 +13,13 @@ description: "A line between content, horizontal or vertical."
 
 ## Usage
 
-<<< ../../demos/separator-demo.tscl
+<<< ../../registry/separator-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `separator.tscl`.
+Copy it into your components folder (next to the others) as `separator.tscl`.
 
-<<< ../../registry/separator/separator.tscl
+<<< ../../registry/separator.tscl
 
 ## Needs
 

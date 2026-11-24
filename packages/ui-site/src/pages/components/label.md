@@ -13,13 +13,13 @@ description: "A native label for a field."
 
 ## Usage
 
-<<< ../../demos/label-demo.tscl
+<<< ../../registry/label-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `label.tscl`.
+Copy it into your components folder (next to the others) as `label.tscl`.
 
-<<< ../../registry/label/label.tscl
+<<< ../../registry/label.tscl
 
 ## Needs
 

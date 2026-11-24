@@ -13,13 +13,13 @@ description: "A key to press, as in Ctrl K."
 
 ## Usage
 
-<<< ../../demos/kbd-demo.tscl
+<<< ../../registry/kbd-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `kbd.tscl`.
+Copy it into your components folder (next to the others) as `kbd.tscl`.
 
-<<< ../../registry/kbd/kbd.tscl
+<<< ../../registry/kbd.tscl
 
 ## Needs
 

@@ -13,13 +13,13 @@ description: "A native button in six variants and three sizes."
 
 ## Usage
 
-<<< ../../demos/button-demo.tscl
+<<< ../../registry/button-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `button.tscl`.
+Copy it into your components folder (next to the others) as `button.tscl`.
 
-<<< ../../registry/button/button.tscl
+<<< ../../registry/button.tscl
 
 ## Needs
 

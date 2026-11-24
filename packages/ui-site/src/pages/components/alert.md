@@ -13,13 +13,13 @@ description: "A message box with a title, plain or destructive."
 
 ## Usage
 
-<<< ../../demos/alert-demo.tscl
+<<< ../../registry/alert-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `alert.tscl`.
+Copy it into your components folder (next to the others) as `alert.tscl`.
 
-<<< ../../registry/alert/alert.tscl
+<<< ../../registry/alert.tscl
 
 ## Needs
 

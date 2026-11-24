@@ -13,13 +13,13 @@ description: "An on/off switch on a native checkbox."
 
 ## Usage
 
-<<< ../../demos/switch-demo.tscl
+<<< ../../registry/switch-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `switch.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+Copy it into your components folder (next to the others) as `switch.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
 
-<<< ../../registry/switch/switch.tscl
+<<< ../../registry/switch.tscl
 
 ## Needs
 

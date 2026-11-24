@@ -13,13 +13,13 @@ description: "A label, an input, a description and an error, wired together."
 
 ## Usage
 
-<<< ../../demos/field-demo.tscl
+<<< ../../registry/field-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `field.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+Copy it into your components folder (next to the others) as `field.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
 
-<<< ../../registry/field/field.tscl
+<<< ../../registry/field.tscl
 
 ## Needs
 

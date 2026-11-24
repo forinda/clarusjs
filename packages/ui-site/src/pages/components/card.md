@@ -13,13 +13,13 @@ description: "A box with a header, a body and a footer."
 
 ## Usage
 
-<<< ../../demos/card-demo.tscl
+<<< ../../registry/card-demo.tscl
 
 ## Source
 
-Copy it into your components folder as `card.tscl`.
+Copy it into your components folder (next to the others) as `card.tscl`.
 
-<<< ../../registry/card/card.tscl
+<<< ../../registry/card.tscl
 
 ## Needs
 
