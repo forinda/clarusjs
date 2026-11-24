@@ -118,7 +118,7 @@ test('table: a <table> in a scrolling region that is focusable and named; captio
 
 test('a styled part\'s <style global> equals ui.css\'s sections for it, in order', () => {
   const styled = registry.filter((e) => e.sections?.length)
-  expect(styled.map((e) => e.name)).toEqual(expect.arrayContaining(['accordion', 'checkbox', 'switch', 'radio-group', 'field', 'dialog', 'popover', 'tooltip', 'menu', 'tabs', 'select', 'combobox']))
+  expect(styled.map((e) => e.name)).toEqual(expect.arrayContaining(['accordion', 'checkbox', 'switch', 'radio-group', 'field', 'dialog', 'popover', 'tooltip', 'menu', 'tabs', 'select', 'combobox', 'sheet']))
   for (const e of styled) expect(globalStyle(source(e.files[0]!), e.files[0]), e.name).toBe(e.sections!.map(uiSection).join(' '))
 })
 
@@ -252,4 +252,104 @@ test('#review: every layered block declares Tailwind\'s layer order first', () =
     const blocks = f.endsWith('.css') ? [s.replace(/^\/\*[\s\S]*?\*\/\s*/, '')] : [...s.matchAll(/<style (?:scoped|global)>([\s\S]*?)<\/style>/g)].map((m) => m[1]!.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, ''))
     for (const b of blocks) expect(b.trim(), f).toMatch(/^@layer theme, base, components, utilities;\s*@layer components \{/)
   }
+})
+
+test('progress: a native <progress> with value and max, named by label; no value is indeterminate', async () => {
+  expect(await render('progress.tscl', { value: 40, label: 'Upload' })).toBe('<progress max="100" aria-label="Upload" data-part="progress" value="40"></progress>')
+  expect(await render('progress.tscl', { label: 'Loading' })).toBe('<progress max="100" aria-label="Loading" data-part="progress"></progress>')
+})
+
+test('meter: a native <meter> with value, min, max, low, high, optimum', async () => {
+  const html = await render('meter.tscl', { value: 0.7, low: 0.3, high: 0.8, optimum: 1, label: 'Storage' })
+  expect(html).toMatch(/^<meter /)
+  for (const a of ['value="0.7"', 'min="0"', 'max="1"', 'low="0.3"', 'high="0.8"', 'optimum="1"', 'aria-label="Storage"', 'data-part="meter"']) expect(html).toContain(a)
+})
+
+test('spinner: role="status" with a hidden label; the mark is aria-hidden; no spin under reduced motion', async () => {
+  expect(await render('spinner.tscl')).toBe('<span role="status" data-part="spinner"><span aria-hidden="true" data-part="spinner-mark"></span><span data-part="spinner-label">Loading</span></span>')
+  expect(await render('spinner.tscl', { label: 'Saving' })).toContain('>Saving</span>')
+  expect(source('spinner.tscl')).toContain('prefers-reduced-motion')
+})
+
+test('slider: <input type="range"> with value, min, max, step, name, disabled', async () => {
+  const html = await render('slider.tscl', { value: 30, step: 5, name: 'volume', 'aria-label': 'Volume' })
+  expect(html).toMatch(/^<input type="range" /)
+  for (const a of ['value="30"', 'min="0"', 'max="100"', 'step="5"', 'name="volume"', 'data-part="slider"', 'aria-label="Volume"']) expect(html).toContain(a)
+  expect(await render('slider.tscl', { disabled: true })).toContain(' disabled')
+})
+
+test('breadcrumb: a labelled nav with an ordered list; the last item is the current page, not a link', async () => {
+  const html = await render('breadcrumb.tscl', { items: [{ label: 'Home', href: '/' }, { label: 'Docs', href: '/docs' }, { label: 'Button' }] })
+  expect(html).toMatch(/^<nav aria-label="Breadcrumb" data-part="breadcrumb"><ol/)
+  expect(html).toContain('<a href="/">Home</a>')
+  expect(html).toContain('<a href="/docs">Docs</a>')
+  expect(html).toMatch(/<span aria-current="page"[^>]*>Button<\/span>/)
+})
+
+const pageLabels = (html: string) => [...html.matchAll(/<(?:a|span)[^>]*data-part="pagination-(?:link|current|ellipsis|prev|next)"[^>]*>([^<]*)</g)].map((m) => m[1]!.trim())
+
+test('pagination: links from an href pattern; previous/next absent at the ends; the current page marked', async () => {
+  const first = await render('pagination.tscl', { page: 1, pages: 5, href: '/blog?page={page}' })
+  expect(first).toMatch(/^<nav aria-label="Pagination" data-part="pagination">/)
+  expect(pageLabels(first)).toEqual(['1', '2', '3', '4', '5', 'Next'])
+  expect(first).toMatch(/<span aria-current="page"[^>]*>1</)
+  expect(first).toContain('href="/blog?page=2"')
+  expect(first).toMatch(/<a [^>]*rel="next"/)
+  const last = await render('pagination.tscl', { page: 5, pages: 5, href: '/p/{page}' })
+  expect(pageLabels(last)).toEqual(['Previous', '1', '2', '3', '4', '5'])
+  expect(last).toMatch(/<a [^>]*rel="prev"[^>]*href="\/p\/4"|<a [^>]*href="\/p\/4"[^>]*rel="prev"/)
+})
+
+test('pagination: one page shows just the current; a hundred pages around 50 stay short with ellipses', async () => {
+  expect(pageLabels(await render('pagination.tscl', { page: 1, pages: 1, href: '?p={page}' }))).toEqual(['1'])
+  const many = pageLabels(await render('pagination.tscl', { page: 50, pages: 100, href: '?p={page}' }))
+  expect(many).toEqual(['Previous', '1', '…', '49', '50', '51', '…', '100', 'Next'])
+  expect(pageLabels(await render('pagination.tscl', { page: 2, pages: 100, href: '?p={page}' }))).toEqual(['Previous', '1', '2', '3', '…', '100', 'Next'])
+})
+
+test('collapsible: a <details> with its trigger in <summary>; [open]', async () => {
+  expect(await render('collapsible.tscl', {}, { trigger: 'More', default: 'Body' })).toBe('<details data-part="collapsible"><summary data-part="collapsible-trigger">More</summary><div data-part="collapsible-content">Body</div></details>')
+  expect(await render('collapsible.tscl', { open: true }, { trigger: 'x', default: 'y' })).toMatch(/^<details open /)
+})
+
+test('empty: an icon, a title, a description and an action; unfilled ones hidden', async () => {
+  const html = await render('empty.tscl', {}, { icon: '<svg></svg>', title: 'No projects', default: 'Create one to start.', action: '<button>New</button>' })
+  expect(html).toBe('<div data-part="empty"><div aria-hidden="true" data-part="empty-icon"><svg></svg></div><p data-part="empty-title">No projects</p><div data-part="empty-description">Create one to start.</div><div data-part="empty-action"><button>New</button></div></div>')
+  expect(source('empty.tscl')).toMatch(/:where\(\[data-part='empty-icon'\]:empty\)/)
+})
+
+test('button group: role="group" named by label, joining what it holds', async () => {
+  expect(await render('button-group.tscl', { label: 'Text alignment' }, { default: '<button>L</button>' })).toBe('<div role="group" aria-label="Text alignment" data-part="button-group"><button>L</button></div>')
+})
+
+test('input group: start and end addons around the field', async () => {
+  expect(await render('input-group.tscl', {}, { start: 'https://', default: '<input id="u">', end: '.com' }))
+    .toBe('<div data-part="input-group"><span data-part="input-group-start">https://</span><input id="u"><span data-part="input-group-end">.com</span></div>')
+})
+
+test('aspect ratio: a box that keeps [ratio], 16/9 by default', async () => {
+  expect(await render('aspect-ratio.tscl', {}, { default: '<img alt="">' })).toBe('<div data-part="aspect-ratio" style="aspect-ratio: 16/9"><img alt=""></div>')
+  expect(await render('aspect-ratio.tscl', { ratio: '1/1' }, { default: '' })).toContain('aspect-ratio: 1/1')
+})
+
+test('alert dialog: the Dialog part as role="alertdialog" that a click outside never closes, described by its message', () => {
+  const src = source('alert-dialog.tscl')
+  expect(src).toContain('role="alertdialog"')
+  expect(src).toContain('[dismissible]="false"')
+  expect(src).toMatch(/\[aria-describedby\]="id \+ '-description'"/)
+})
+
+test('#review: breadcrumb marks only the last item current; a middle item without href is plain text', async () => {
+  const html = await render('breadcrumb.tscl', { items: [{ label: 'Home', href: '/' }, { label: 'Section' }, { label: 'Page' }] })
+  expect(html.match(/aria-current="page"/g)).toHaveLength(1)
+  expect(html).toMatch(/aria-current="page"[^>]*>Page</)
+  expect(source('breadcrumb.tscl')).toContain("content: '/' / ''")
+})
+
+test('#review: pagination never puts an ellipsis for a single page', async () => {
+  expect(pageLabels(await render('pagination.tscl', { page: 4, pages: 9, href: '?p={page}' }))).toEqual(['Previous', '1', '2', '3', '4', '5', '…', '9', 'Next'])
+})
+
+test('#review: the spinner positions its hidden label inside itself', () => {
+  expect(source('spinner.tscl')).toMatch(/:where\(:scope\) \{[^}]*position: relative/)
 })

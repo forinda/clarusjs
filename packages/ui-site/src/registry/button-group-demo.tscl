@@ -1,0 +1,23 @@
+@import uiButtonGroup from './button-group.tscl'
+@import uiButton from './button.tscl'
+
+<div class="demo">
+  <uiButtonGroup label="Text alignment">
+    <uiButton variant="outline">Left</uiButton>
+    <uiButton variant="outline">Center</uiButton>
+    <uiButton variant="outline">Right</uiButton>
+  </uiButtonGroup>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    justify-items: start;
+    padding: 24px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

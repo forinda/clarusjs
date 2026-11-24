@@ -1,0 +1,44 @@
+{{-- Input group: a field with text or icons before (start) and after (end) it, as one box. --}}
+
+<div data-part="input-group">
+  <span data-part="input-group-start"><slot name="start" /></span><slot /><span data-part="input-group-end"
+    ><slot name="end"
+  /></span>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid var(--ui-input);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where(:scope:focus-within) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 1px;
+    }
+    :where(:scope > input) {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      outline: none;
+    }
+    :where([data-part='input-group-start']),
+    :where([data-part='input-group-end']) {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      color: var(--ui-muted);
+    }
+    :where([data-part='input-group-start']:empty),
+    :where([data-part='input-group-end']:empty) {
+      display: none;
+    }
+  }
+</style>

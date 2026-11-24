@@ -1,0 +1,28 @@
+{{-- Alert dialog: a Dialog that asks before something can't be undone. A click outside never closes it; Escape
+     and Cancel do (as cancel). Put the cancel and the action in the actions slot, each a dialog-close. --}}
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@input id: string
+
+<uiDialog [id]="id" role="alertdialog" [dismissible]="false" [aria-describedby]="id + '-description'">
+  @slot('title') {
+    <slot name="title" />
+  }
+  <div [id]="id + '-description'" data-part="alert-dialog-description"><slot /></div>
+  <div data-part="alert-dialog-actions"><slot name="actions" /></div>
+</uiDialog>
+
+<style global>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where([data-part='alert-dialog-description']) {
+      color: var(--ui-muted);
+    }
+    :where([data-part='alert-dialog-actions']) {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 16px;
+    }
+  }
+</style>

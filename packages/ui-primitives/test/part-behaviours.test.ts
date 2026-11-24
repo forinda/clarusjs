@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { compile } from 'clarusjs/compiler'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 
 afterEach(() => { document.body.innerHTML = '' })
 const href = (path: string) => pathToFileURL(path).href
@@ -69,4 +69,197 @@ test('#465 review: a radio group moved into another form follows that form\'s re
   b.reset()
   await new Promise((r) => setTimeout(r, 10))
   expect([m!.checked, s!.checked]).toEqual([false, true])
+})
+
+const groupHtml = (type: string, pressed: string[]) => '<cl-island c="toggle-group"><div role="group" aria-label="Format" data-part="toggle-group" data-type="' + type + '" data-cl-u="0">'
+  + ['bold', 'italic', 'underline'].map((v, i) => `<button type="button" aria-pressed="${pressed.includes(v)}" data-state="${pressed.includes(v) ? 'on' : 'off'}" tabindex="${i === 0 ? 0 : -1}" data-value="${v}" data-part="toggle-item">${v}</button>`).join('')
+  + '</div></cl-island>'
+const pressedItems = () => [...document.querySelectorAll('[data-part="toggle-item"]')].filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => (b as HTMLElement).dataset.value)
+
+test('toggle group single: pressing one releases the others; pressing the pressed one keeps it', async () => {
+  const { attach } = await client('toggle-group')
+  document.body.innerHTML = groupHtml('single', ['bold'])
+  attach(document.querySelector('cl-island')!, { label: 'Format', type: 'single', value: 'bold', values: [] })
+  byText('italic').click()
+  expect(pressedItems()).toEqual(['italic'])
+  byText('italic').click()
+  expect(pressedItems()).toEqual(['italic'])
+})
+
+test('toggle group multiple: each item toggles on its own', async () => {
+  const { attach } = await client('toggle-group')
+  document.body.innerHTML = groupHtml('multiple', [])
+  attach(document.querySelector('cl-island')!, { label: 'Format', type: 'multiple', value: '', values: [] })
+  byText('bold').click()
+  byText('underline').click()
+  expect(pressedItems()).toEqual(['bold', 'underline'])
+  byText('bold').click()
+  expect(pressedItems()).toEqual(['underline'])
+})
+
+test('toggle group: arrow keys move focus between items (one tab stop), Home and End too', async () => {
+  const { attach } = await client('toggle-group')
+  document.body.innerHTML = groupHtml('single', ['bold'])
+  attach(document.querySelector('cl-island')!, { label: 'Format', type: 'single', value: 'bold', values: [] })
+  byText('bold').focus()
+  key(byText('bold'), 'ArrowRight')
+  expect(document.activeElement).toBe(byText('italic'))
+  key(byText('italic'), 'End')
+  expect(document.activeElement).toBe(byText('underline'))
+})
+
+const regionHtml = '<cl-island c="toast-region"><section aria-label="Notifications" data-part="toast-region" data-cl-u="0"><ol aria-live="polite" data-part="toast-list"></ol></section></cl-island>'
+const shown = () => [...document.querySelectorAll('[data-part="toast"] [data-part="toast-message"]')].map((m) => m.textContent)
+
+test('toast: a message sent before the region attaches is shown once it does; focus never moves', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = '<button id="here">x</button>' + regionHtml
+  ;(document.getElementById('here') as HTMLElement).focus()
+  toast('Saved early')
+  attach(document.querySelector('cl-island')!, {})
+  expect(shown()).toEqual(['Saved early'])
+  toast('Saved again')
+  expect(shown()).toEqual(['Saved early', 'Saved again'])
+  expect(document.activeElement?.id).toBe('here')
+})
+
+test('toast: dismissed after its duration, paused while hovered or focused', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  vi.useFakeTimers()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = regionHtml
+  attach(document.querySelector('cl-island')!, {})
+  toast('Bye', { duration: 1000 })
+  const item = document.querySelector('[data-part="toast"]') as HTMLElement
+  item.dispatchEvent(new Event('pointerenter'))
+  vi.advanceTimersByTime(3000)
+  expect(shown()).toEqual(['Bye'])
+  item.dispatchEvent(new Event('pointerleave'))
+  vi.advanceTimersByTime(1100)
+  expect(shown()).toEqual([])
+  vi.useRealTimers()
+})
+
+test('toast: Escape dismisses the focused toast; an action runs, then dismisses', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = regionHtml
+  attach(document.querySelector('cl-island')!, {})
+  let undone = 0
+  toast('Deleted', { action: { label: 'Undo', onClick: () => undone++ } })
+  toast('Other')
+  const [first] = [...document.querySelectorAll('[data-part="toast"]')] as HTMLElement[]
+  byText('Undo').click()
+  expect(undone).toBe(1)
+  expect(shown()).toEqual(['Other'])
+  const other = document.querySelector('[data-part="toast"]') as HTMLElement
+  other.focus()
+  key(other, 'Escape')
+  expect(shown()).toEqual([])
+  void first
+})
+
+const navHtml = '<cl-island c="sidebar-trigger"><button type="button" aria-controls="nav" popovertarget="nav" data-part="sidebar-trigger" data-cl-u="0" data-cl-e="0">Menu</button></cl-island><nav id="nav" aria-label="Sidebar" popover="auto" data-part="sidebar" data-state="open"></nav>'
+const wide = (yes: boolean) => vi.spyOn(window, 'matchMedia').mockImplementation((q) => ({ matches: yes && q.includes('min-width'), media: q } as MediaQueryList))
+
+test('sidebar: on a wide screen the trigger collapses and reopens it, remembered', async () => {
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-sidebar')
+  wide(true)
+  const { attach } = await client('sidebar-trigger')
+  document.body.innerHTML = navHtml
+  attach(document.querySelector('cl-island')!, { target: 'nav' })
+  byText('Menu').click()
+  expect(document.documentElement.dataset.sidebar).toBe('collapsed')
+  expect(localStorage.getItem('ui-sidebar')).toBe('collapsed')
+  expect(document.getElementById('nav')!.dataset.state).toBe('collapsed')
+  byText('Menu').click()
+  expect(document.documentElement.dataset.sidebar).toBe('open')
+  expect(localStorage.getItem('ui-sidebar')).toBe('open')
+  vi.restoreAllMocks()
+})
+
+test('sidebar: on a phone the trigger leaves the click to the browser (its popovertarget opens the panel)', async () => {
+  wide(false)
+  const { attach } = await client('sidebar-trigger')
+  document.body.innerHTML = navHtml
+  const nav = document.getElementById('nav') as HTMLElement
+  nav.matches = ((sel: string) => sel === ':popover-open' ? false : HTMLElement.prototype.matches.call(nav, sel)) as typeof nav.matches
+  attach(document.querySelector('cl-island')!, { target: 'nav' })
+  const event = new MouseEvent('click', { bubbles: true, cancelable: true })
+  byText('Menu').dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(false)
+  vi.restoreAllMocks()
+})
+
+test('sidebar: the head script applies a remembered collapse before paint', async () => {
+  const { SIDEBAR_SCRIPT } = await import('../src/sidebar.js')
+  document.documentElement.removeAttribute('data-sidebar')
+  localStorage.setItem('ui-sidebar', 'collapsed')
+  new Function(SIDEBAR_SCRIPT)()
+  expect(document.documentElement.dataset.sidebar).toBe('collapsed')
+  localStorage.setItem('ui-sidebar', '<x>')
+  document.documentElement.removeAttribute('data-sidebar')
+  new Function(SIDEBAR_SCRIPT)()
+  expect(document.documentElement.dataset.sidebar).toBeUndefined()
+})
+
+test('#review: on a wide screen the trigger cancels the popover toggle and keeps aria-expanded in step', async () => {
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-sidebar')
+  wide(true)
+  const { attach } = await client('sidebar-trigger')
+  document.body.innerHTML = navHtml.replace('data-cl-e="0"', 'aria-expanded="true" data-cl-e="0"')
+  attach(document.querySelector('cl-island')!, { target: 'nav' })
+  const event = new MouseEvent('click', { bubbles: true, cancelable: true })
+  byText('Menu').dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(true)
+  expect(byText('Menu').getAttribute('aria-expanded')).toBe('false')
+  vi.restoreAllMocks()
+})
+
+test('#review: toasts with an action stay until dismissed; Infinity never times out; focus moves on dismiss', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  vi.useFakeTimers()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = '<button id="origin">o</button>' + regionHtml
+  attach(document.querySelector('cl-island')!, {})
+  toast('Deleted', { action: { label: 'Undo', onClick: () => {} } })
+  toast('Pinned', { duration: Infinity })
+  toast('Plain')
+  vi.advanceTimersByTime(60_000)
+  expect(shown()).toEqual(['Deleted', 'Pinned'])
+  const [first] = [...document.querySelectorAll('[data-part="toast"]')] as HTMLElement[]
+  ;(document.getElementById('origin') as HTMLElement).focus()
+  first!.focus()
+  first!.dispatchEvent(new FocusEvent('focusin', { bubbles: true, relatedTarget: document.getElementById('origin') }))
+  key(first!, 'Escape')
+  expect(shown()).toEqual(['Pinned'])
+  expect((document.activeElement as HTMLElement).dataset.part).toBe('toast') // moved to the next toast
+  const second = document.activeElement as HTMLElement
+  key(second, 'Escape')
+  expect(document.activeElement?.id).toBe('origin') // none left: back where it came from
+  vi.useRealTimers()
+})
+
+test('#review: leaving with the pointer while the toast has focus keeps it', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  vi.useFakeTimers()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = regionHtml
+  attach(document.querySelector('cl-island')!, {})
+  toast('Hold', { duration: 1000 })
+  const item = document.querySelector('[data-part="toast"]') as HTMLElement
+  item.focus()
+  item.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+  item.dispatchEvent(new Event('pointerleave'))
+  vi.advanceTimersByTime(5000)
+  expect(shown()).toEqual(['Hold'])
+  vi.useRealTimers()
 })

@@ -1,0 +1,44 @@
+{{-- Spinner: a turning mark that says "Loading" (or label) to screen readers. Still under reduced motion. --}}
+@input label: string = 'Loading'
+
+<span role="status" data-part="spinner">
+  <span aria-hidden="true" data-part="spinner-mark"></span><span data-part="spinner-label">{{ label }}</span>
+</span>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      display: inline-flex;
+    }
+    :where([data-part='spinner-mark']) {
+      width: 1.25em;
+      height: 1.25em;
+      border: 2px solid var(--ui-muted-bg);
+      border-top-color: var(--ui-accent);
+      border-radius: 50%;
+      animation: ui-spin 0.8s linear infinite;
+    }
+    :where([data-part='spinner-label']) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    @keyframes ui-spin {
+      to {
+        transform: rotate(1turn);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :where([data-part='spinner-mark']) {
+        animation: none;
+        border-top-color: var(--ui-muted-bg);
+        border-right-color: var(--ui-accent);
+      }
+    }
+  }
+</style>

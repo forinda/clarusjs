@@ -15,7 +15,7 @@ export const disabled = (/** @type {Element} */ el) => el.hasAttribute('disabled
 /**
  * One Tab stop for the group `el`: its current item has tabindex 0, the others -1; arrow keys (by orientation, flipped
  * in right-to-left text), Home and End move focus between the enabled items. The current item is the one focused last,
- * else one marked aria-selected, aria-checked, aria-current or data-highlighted, else the first enabled one.
+ * else one marked aria-selected, aria-checked, aria-pressed, aria-current or data-highlighted, else the first enabled one.
  * @param {HTMLElement} el
  * @param {RovingFocusOptions} [options]
  * @returns {() => void} Stops it.
@@ -29,7 +29,7 @@ export function rovingFocus(el, options = {}) {
   const enabled = () => all().filter((item) => !disabled(item))
   /** @param {HTMLElement | undefined} current */
   const settle = (current) => { for (const item of all()) item.tabIndex = item === current ? 0 : -1 }
-  const marked = all().find((item) => !disabled(item) && ['aria-selected', 'aria-checked', 'aria-current', 'data-highlighted'].some((a) => item.hasAttribute(a) && item.getAttribute(a) !== 'false'))
+  const marked = all().find((item) => !disabled(item) && ['aria-selected', 'aria-checked', 'aria-pressed', 'aria-current', 'data-highlighted'].some((a) => item.hasAttribute(a) && item.getAttribute(a) !== 'false'))
   settle(marked ?? enabled()[0])
 
   /** @param {KeyboardEvent} event */

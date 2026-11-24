@@ -142,7 +142,6 @@
     border-radius: calc(var(--ui-radius) * 1.5);
     background: var(--ui-card);
     color: var(--ui-card-fg);
-    color: var(--ui-fg);
     box-shadow: var(--ui-shadow);
     font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
   }
@@ -152,6 +151,53 @@
   :where([data-part='title']) {
     margin: 0 0 8px;
     font-size: calc(var(--ui-font-size) + 4px);
+  }
+  /* end part */
+
+  /* part: sheet */
+  /* Sheet: a dialog against one side of the screen (data-side), sliding in; still under reduced motion. */
+  :where([data-part='dialog'][data-side]) {
+    box-sizing: border-box;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    overflow: auto;
+  }
+  :where([data-part='dialog'][data-side='left']),
+  :where([data-part='dialog'][data-side='right']) {
+    width: min(24rem, 100%);
+    height: 100dvh;
+  }
+  :where([data-part='dialog'][data-side='top']),
+  :where([data-part='dialog'][data-side='bottom']) {
+    width: auto;
+    max-height: 80dvh;
+  }
+  :where([data-part='dialog'][data-side='left']) {
+    inset: 0 auto 0 0;
+    animation: ui-sheet-left 0.2s ease-out;
+  }
+  :where([data-part='dialog'][data-side='right']) {
+    inset: 0 0 0 auto;
+    animation: ui-sheet-right 0.2s ease-out;
+  }
+  :where([data-part='dialog'][data-side='top']) {
+    inset: 0 0 auto 0;
+    animation: ui-sheet-top 0.2s ease-out;
+  }
+  :where([data-part='dialog'][data-side='bottom']) {
+    inset: auto 0 0 0;
+    animation: ui-sheet-bottom 0.2s ease-out;
+  }
+  @keyframes ui-sheet-left { from { transform: translateX(-100%); } }
+  @keyframes ui-sheet-right { from { transform: translateX(100%); } }
+  @keyframes ui-sheet-top { from { transform: translateY(-100%); } }
+  @keyframes ui-sheet-bottom { from { transform: translateY(100%); } }
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part='dialog'][data-side]) {
+      animation: none;
+    }
   }
   /* end part */
 
@@ -269,6 +315,56 @@
   :where([data-part='tabs']) > :where([data-part='panel']) {
     padding: 12px 2px;
     color: var(--ui-fg);
+  }
+  /* end part */
+
+  /* part: toggle */
+  /* Toggle and toggle group: pressed is tinted (and aria-pressed says so); a group joins its items into one row. */
+  :where([data-part='toggle']),
+  :where([data-part='toggle-item']) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--ui-input);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font: 500 var(--ui-font-size) var(--ui-font);
+    cursor: pointer;
+  }
+  :where([data-part='toggle']):hover,
+  :where([data-part='toggle-item']):hover {
+    background: var(--ui-accent-soft);
+  }
+  :where([data-part='toggle'])[aria-pressed='true'],
+  :where([data-part='toggle-item'])[aria-pressed='true'] {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent-soft-fg);
+    border-color: var(--ui-accent);
+  }
+  :where([data-part='toggle-item']):disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  :where([data-part='toggle-group']) {
+    display: inline-flex;
+  }
+  :where([data-part='toggle-group']) > :where([data-part='toggle-item']):not(:first-child) {
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  :where([data-part='toggle-group']) > :where([data-part='toggle-item']):not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  :where([data-part='toggle-group']) > :where([data-part='toggle-item']):focus-visible {
+    position: relative;
+    z-index: 1;
   }
   /* end part */
 
@@ -478,6 +574,116 @@
   }
   :where([data-part='status']):empty {
     display: none;
+  }
+  /* end part */
+
+  /* part: sidebar */
+  /* Sidebar: inline beside the page on wide screens (hidden when collapsed: its data-state, or data-sidebar on <html>
+     from the remembered choice); on phones a popover panel from the left. */
+  :where([data-part='sidebar']) {
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 12px;
+    border: 0;
+    background: var(--ui-sidebar);
+    color: var(--ui-sidebar-fg);
+    font: var(--ui-font-size) var(--ui-font);
+    overflow: auto;
+  }
+  :where([data-part='sidebar']) a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: var(--ui-radius);
+    color: inherit;
+    text-decoration: none;
+  }
+  :where([data-part='sidebar']) a:hover,
+  :where([data-part='sidebar']) a[aria-current='page'] {
+    background: var(--ui-sidebar-accent);
+    color: var(--ui-sidebar-accent-fg);
+  }
+  :where([data-part='sidebar-trigger']) {
+    padding: 6px 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font: inherit;
+    cursor: pointer;
+  }
+  @media (min-width: 768px) {
+    :where([data-part='sidebar']) {
+      display: flex;
+      position: static;
+      inset: auto;
+      width: 240px;
+      height: auto;
+      border-right: 1px solid var(--ui-sidebar-border);
+    }
+    :where([data-part='sidebar'][data-state='collapsed']),
+    :where(:root[data-sidebar='collapsed'] [data-part='sidebar']) {
+      display: none;
+    }
+    :where(:root[data-sidebar='open'] [data-part='sidebar']) {
+      display: flex;
+    }
+  }
+  @media (max-width: 767px) {
+    :where([data-part='sidebar']):popover-open {
+      display: flex;
+      inset: 0 auto 0 0;
+      width: min(18rem, 85vw);
+      height: 100dvh;
+      border-right: 1px solid var(--ui-sidebar-border);
+      box-shadow: var(--ui-shadow);
+    }
+  }
+  /* end part */
+
+  /* part: toast */
+  /* Toast: messages stacked at the bottom-right corner, above the page; each a card with its action and a close. */
+  :where([data-part='toast-region']) {
+    position: fixed;
+    inset: auto 16px 16px auto;
+    z-index: 50;
+    width: min(22rem, calc(100vw - 32px));
+  }
+  :where([data-part='toast-list']) {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  :where([data-part='toast']) {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    box-shadow: var(--ui-shadow);
+    font: var(--ui-font-size)/1.4 var(--ui-font);
+  }
+  :where([data-part='toast-message']) {
+    flex: 1;
+    margin: 0;
+  }
+  :where([data-part='toast-action']),
+  :where([data-part='toast-close']) {
+    padding: 4px 8px;
+    border: 1px solid var(--ui-border);
+    border-radius: calc(var(--ui-radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  :where([data-part='toast-close']) {
+    border-color: transparent;
   }
   /* end part */
 

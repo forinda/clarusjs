@@ -1,0 +1,48 @@
+{{--
+  Toggle group: toggles that belong together, one Tab stop, arrow keys between them (rovingFocus). type="single"
+  keeps exactly one pressed once chosen (bind [(value)]); type="multiple" lets each toggle on its own (bind
+  [(values)]). <toggle-item>s have no script and read the group from context, so the server writes aria-pressed.
+
+  <toggle-group label="Alignment" [(value)]="align">
+    <toggle-item value="left">Left</toggle-item>
+    <toggle-item value="center">Center</toggle-item>
+  </toggle-group>
+--}}
+@input label: string
+@input type: 'single' | 'multiple' = 'single'
+@model value: string = ''
+@model values: string[] = []
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  import { rovingFocus } from '@clarusjs/ui-primitives'
+  provide('toggleGroup', { type, value, values })
+  const isOn = (v) => (type === 'multiple' ? values.includes(v) : value === v)
+  function wire(el) {
+    const own = (node) => node.closest('[data-part="toggle-group"]') === el
+    const click = (event) => {
+      const item = event.target.closest('[data-part="toggle-item"]')
+      if (!item || !own(item) || item.disabled) return
+      const v = item.dataset.value
+      if (type === 'multiple') values = values.includes(v) ? values.filter((x) => x !== v) : [...values, v]
+      else if (value !== v) value = v
+    }
+    el.addEventListener('click', click)
+    const stopKeys = rovingFocus(el, { items: '[data-part="toggle-item"]' })
+    const stopSync = effect(() => {
+      for (const item of el.querySelectorAll('[data-part="toggle-item"]')) {
+        if (!own(item)) continue
+        const on = isOn(item.dataset.value)
+        item.setAttribute('aria-pressed', String(on))
+        item.dataset.state = on ? 'on' : 'off'
+      }
+    })
+    return () => {
+      el.removeEventListener('click', click)
+      stopKeys()
+      stopSync()
+    }
+  }
+</script>
+
+<div role="group" [aria-label]="label" data-part="toggle-group" [data-type]="type" [use]="wire"><slot /></div>

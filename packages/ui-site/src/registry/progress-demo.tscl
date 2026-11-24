@@ -1,0 +1,18 @@
+@import uiProgress from './progress.tscl'
+
+<div class="demo">
+  <uiProgress [value]="40" label="Upload" />
+  <uiProgress label="Loading" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    padding: 24px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

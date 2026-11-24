@@ -1,0 +1,31 @@
+@import './toggle.css'
+@import uiToggle from '@clarusjs/ui-primitives/toggle.tscl'
+@import uiToggleGroup from '@clarusjs/ui-primitives/toggle-group.tscl'
+@import uiToggleItem from '@clarusjs/ui-primitives/toggle-item.tscl'
+
+<div class="demo">
+  <uiToggle aria-label="Bold"><b>B</b></uiToggle>
+  <uiToggleGroup label="Alignment" value="left">
+    <uiToggleItem value="left">Left</uiToggleItem>
+    <uiToggleItem value="center">Center</uiToggleItem>
+    <uiToggleItem value="right">Right</uiToggleItem>
+  </uiToggleGroup>
+  <uiToggleGroup label="Format" type="multiple">
+    <uiToggleItem value="bold">Bold</uiToggleItem>
+    <uiToggleItem value="italic">Italic</uiToggleItem>
+    <uiToggleItem value="underline">Underline</uiToggleItem>
+  </uiToggleGroup>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    justify-items: start;
+    padding: 24px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

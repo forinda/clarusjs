@@ -1,0 +1,26 @@
+{{-- Collapsible: a native <details>: the trigger slot shows, the rest opens and closes. No JavaScript. --}}
+@input open: boolean = false
+
+<details [open]="open" data-part="collapsible">
+  <summary data-part="collapsible-trigger"><slot name="trigger" /></summary>
+  <div data-part="collapsible-content"><slot /></div>
+</details>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where([data-part='collapsible-trigger']) {
+      cursor: pointer;
+      font: 600 var(--ui-font-size) var(--ui-font);
+      color: var(--ui-fg);
+    }
+    :where([data-part='collapsible-trigger']:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+    :where([data-part='collapsible-content']) {
+      padding: 8px 0 0;
+      color: var(--ui-fg);
+    }
+  }
+</style>

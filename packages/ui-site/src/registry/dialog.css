@@ -34,7 +34,6 @@
     border-radius: calc(var(--ui-radius) * 1.5);
     background: var(--ui-card);
     color: var(--ui-card-fg);
-    color: var(--ui-fg);
     box-shadow: var(--ui-shadow);
     font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
   }

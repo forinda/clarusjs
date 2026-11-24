@@ -1,0 +1,35 @@
+{{-- Slider: a native range input, styled. Name it with aria-label or a Label (id + control). --}}
+@input value: number = 50
+@input min: number = 0
+@input max: number = 100
+@input step: number = 1
+@input name: string = ''
+@input disabled: boolean = false
+
+<input
+  type="range"
+  [value]="value"
+  [min]="min"
+  [max]="max"
+  [step]="step"
+  [name]="name || null"
+  [disabled]="disabled"
+  data-part="slider"
+/>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      width: 100%;
+      accent-color: var(--ui-accent);
+    }
+    :where(:scope:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+    :where(:scope:disabled) {
+      opacity: 0.5;
+    }
+  }
+</style>

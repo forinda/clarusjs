@@ -1,0 +1,65 @@
+/*
+  Toast: the same rules as @clarusjs/ui's ui.css for toast-region.tscl from @clarusjs/ui-primitives (and the
+  messages toast() adds). Copy it next to your components, @import it once.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: 2px;
+  }
+
+  /* Toast: messages stacked at the bottom-right corner, above the page; each a card with its action and a close. */
+  :where([data-part='toast-region']) {
+    position: fixed;
+    inset: auto 16px 16px auto;
+    z-index: 50;
+    width: min(22rem, calc(100vw - 32px));
+  }
+  :where([data-part='toast-list']) {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  :where([data-part='toast']) {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    box-shadow: var(--ui-shadow);
+    font: var(--ui-font-size)/1.4 var(--ui-font);
+  }
+  :where([data-part='toast-message']) {
+    flex: 1;
+    margin: 0;
+  }
+  :where([data-part='toast-action']),
+  :where([data-part='toast-close']) {
+    padding: 4px 8px;
+    border: 1px solid var(--ui-border);
+    border-radius: calc(var(--ui-radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  :where([data-part='toast-close']) {
+    border-color: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      transition: none !important;
+    }
+  }
+}
