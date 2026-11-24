@@ -116,3 +116,36 @@ test('combobox: filters as you type, and Enter picks', async ({ page }) => {
   await input.press('Enter')
   await expect(page.locator('.demo .out')).toHaveText('banana')
 })
+
+test('sheet: slides in from its side; Escape closes it and focus returns', async ({ page }) => {
+  await page.goto('/components/sheet')
+  const trigger = page.locator('.demo [data-part="trigger"]').first()
+  await trigger.click()
+  const sheet = page.locator('.demo dialog[data-side="right"]')
+  await expect(sheet).toBeVisible()
+  await sheet.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished))) // measured after the slide
+  const box = await sheet.boundingBox()
+  expect(Math.round(box!.x + box!.width)).toBe(page.viewportSize()!.width) // flush with the right edge
+  await page.keyboard.press('Escape')
+  await expect(sheet).toBeHidden()
+  await expect(trigger).toBeFocused()
+})
+
+test('alert dialog: a click outside does not close it; Escape and Cancel do (as cancel); the action does too', async ({ page }) => {
+  await page.goto('/components/alert-dialog')
+  const trigger = page.locator('.demo [data-part="trigger"]').first()
+  const dialog = page.getByRole('alertdialog')
+  await trigger.click()
+  await expect(dialog).toBeVisible()
+  await page.mouse.click(5, 5)
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(trigger).toBeFocused()
+  await trigger.click()
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog).toBeHidden()
+  await trigger.click()
+  await dialog.getByRole('button', { name: 'Delete' }).click()
+  await expect(dialog).toBeHidden()
+})

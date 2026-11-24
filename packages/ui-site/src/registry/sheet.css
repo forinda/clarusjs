@@ -1,0 +1,98 @@
+/*
+  Sheet: the same rules as @clarusjs/ui's ui.css for dialog.tscl, dialog-trigger.tscl, dialog-close.tscl from
+  @clarusjs/ui-primitives, with data-side on the dialog. Copy it next to your components, @import it once.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: 2px;
+  }
+
+  /* Buttons: triggers and closes. */
+  :where([data-part='trigger'], [data-part='close']) {
+    font: 600 var(--ui-font-size) var(--ui-font);
+    padding: 8px 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    cursor: pointer;
+  }
+  :where([data-part='trigger'], [data-part='close']):hover {
+    border-color: var(--ui-accent);
+  }
+
+  /* Dialog: centred by the browser; the backdrop dims the page. */
+  :where([data-part='dialog']) {
+    max-width: min(32rem, calc(100vw - 32px));
+    padding: 20px 24px;
+    border: 1px solid var(--ui-border);
+    border-radius: calc(var(--ui-radius) * 1.5);
+    background: var(--ui-card);
+    color: var(--ui-card-fg);
+    box-shadow: var(--ui-shadow);
+    font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
+  }
+  :where([data-part='dialog'])::backdrop {
+    background: rgb(0 0 0 / 0.45);
+  }
+  :where([data-part='title']) {
+    margin: 0 0 8px;
+    font-size: calc(var(--ui-font-size) + 4px);
+  }
+
+  /* Sheet: a dialog against one side of the screen (data-side), sliding in; still under reduced motion. */
+  :where([data-part='dialog'][data-side]) {
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    overflow: auto;
+  }
+  :where([data-part='dialog'][data-side='left']),
+  :where([data-part='dialog'][data-side='right']) {
+    width: min(24rem, 100vw);
+    height: 100dvh;
+  }
+  :where([data-part='dialog'][data-side='top']),
+  :where([data-part='dialog'][data-side='bottom']) {
+    width: 100vw;
+    max-height: 80dvh;
+  }
+  :where([data-part='dialog'][data-side='left']) {
+    inset: 0 auto 0 0;
+    animation: ui-sheet-left 0.2s ease-out;
+  }
+  :where([data-part='dialog'][data-side='right']) {
+    inset: 0 0 0 auto;
+    animation: ui-sheet-right 0.2s ease-out;
+  }
+  :where([data-part='dialog'][data-side='top']) {
+    inset: 0 0 auto 0;
+    animation: ui-sheet-top 0.2s ease-out;
+  }
+  :where([data-part='dialog'][data-side='bottom']) {
+    inset: auto 0 0 0;
+    animation: ui-sheet-bottom 0.2s ease-out;
+  }
+  @keyframes ui-sheet-left { from { transform: translateX(-100%); } }
+  @keyframes ui-sheet-right { from { transform: translateX(100%); } }
+  @keyframes ui-sheet-top { from { transform: translateY(-100%); } }
+  @keyframes ui-sheet-bottom { from { transform: translateY(100%); } }
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part='dialog'][data-side]) {
+      animation: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      transition: none !important;
+    }
+  }
+}

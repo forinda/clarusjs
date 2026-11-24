@@ -118,7 +118,7 @@ test('table: a <table> in a scrolling region that is focusable and named; captio
 
 test('a styled part\'s <style global> equals ui.css\'s sections for it, in order', () => {
   const styled = registry.filter((e) => e.sections?.length)
-  expect(styled.map((e) => e.name)).toEqual(expect.arrayContaining(['accordion', 'checkbox', 'switch', 'radio-group', 'field', 'dialog', 'popover', 'tooltip', 'menu', 'tabs', 'select', 'combobox']))
+  expect(styled.map((e) => e.name)).toEqual(expect.arrayContaining(['accordion', 'checkbox', 'switch', 'radio-group', 'field', 'dialog', 'popover', 'tooltip', 'menu', 'tabs', 'select', 'combobox', 'sheet']))
   for (const e of styled) expect(globalStyle(source(e.files[0]!), e.files[0]), e.name).toBe(e.sections!.map(uiSection).join(' '))
 })
 
@@ -330,4 +330,11 @@ test('input group: start and end addons around the field', async () => {
 test('aspect ratio: a box that keeps [ratio], 16/9 by default', async () => {
   expect(await render('aspect-ratio.tscl', {}, { default: '<img alt="">' })).toBe('<div data-part="aspect-ratio" style="aspect-ratio: 16/9"><img alt=""></div>')
   expect(await render('aspect-ratio.tscl', { ratio: '1/1' }, { default: '' })).toContain('aspect-ratio: 1/1')
+})
+
+test('alert dialog: the Dialog part as role="alertdialog" that a click outside never closes, described by its message', () => {
+  const src = source('alert-dialog.tscl')
+  expect(src).toContain('role="alertdialog"')
+  expect(src).toContain('[dismissible]="false"')
+  expect(src).toMatch(/\[aria-describedby\]="id \+ '-description'"/)
 })

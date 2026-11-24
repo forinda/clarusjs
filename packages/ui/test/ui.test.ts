@@ -37,7 +37,7 @@ test('nothing but CSS: no JavaScript in the package', () => {
 test('after the tokens, every rule sits in exactly one named part section (/* part: name */ … /* end part */)', () => {
   const body = css.slice(css.indexOf('/* part: ')).replace(/\}\s*$/, '') // inside @layer components { … }
   const names = [...body.matchAll(/\/\* part: ([\w-]+) \*\//g)].map((m) => m[1]!)
-  expect(names).toEqual(['focus', 'buttons', 'dialog', 'popover', 'tooltip', 'menu', 'accordion', 'tabs', 'switch-checkbox', 'radio-group', 'field-select', 'combobox', 'motion'])
+  expect(names).toEqual(['focus', 'buttons', 'dialog', 'sheet', 'popover', 'tooltip', 'menu', 'accordion', 'tabs', 'switch-checkbox', 'radio-group', 'field-select', 'combobox', 'motion'])
   expect(body.match(/\/\* end part \*\//g)?.length).toBe(names.length)
   // Nothing outside a section but comments and whitespace.
   const outside = body.replace(/\/\* part: [\w-]+ \*\/[\s\S]*?\/\* end part \*\//g, '').replace(/\/\*[\s\S]*?\*\//g, '').trim()
@@ -132,4 +132,10 @@ test('theme builder: all rules after the tokens sit in one @layer components; th
 
 test('#review: ui.css declares Tailwind\'s layer order before anything, so components rank above base wherever it loads', () => {
   expect(css.replace(/^\/\*[\s\S]*?\*\/\s*/, '').startsWith('@layer theme, base, components, utilities;')).toBe(true)
+})
+
+test('#review: the dialog takes its text colour from --ui-card-fg (once)', () => {
+  const dialog = /:where\(\[data-part='dialog'\]\) \{([^}]*)\}/.exec(css)![1]!
+  expect([...dialog.matchAll(/(?<![-\w])color:/g)]).toHaveLength(1)
+  expect(dialog).toContain('color: var(--ui-card-fg)')
 })
