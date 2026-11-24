@@ -82,6 +82,8 @@ test('provide is reserved: a script that declares or imports its own is a locate
   expect(compileError("<script>\n  import { provide } from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
   expect(compileError("<script>\n  import { other as provide } from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
   expect(compileError("<script>\n  import * as provide from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
+  expect(compileError("<script>\n  import /* di */ provide from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
+  expect(compileError("<script>\n  import { a, /* b */ provide } from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
 })
 
 test('#465 review: an import that renames provide is fine; provide is called, never passed around', () => {

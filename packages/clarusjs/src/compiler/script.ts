@@ -375,7 +375,7 @@ export function rewriteClientExpr(expr: string, signals: Signals): string {
  */
 export function providesIn(split: { imports: { text: string; start: number }[]; body: string }, file: string, source: string, offset: number): boolean {
   for (const imp of split.imports) {
-    if (/(?:^import\s+|\*\s*as\s+|[{,]\s*(?:[\w$]+\s+as\s+)?)provide\b(?!\s+as\b)/.test(imp.text)) throw new ClarusError('provide is reserved for context: rename this import (import { provide as other } …)', file, source, offset + imp.start)
+    if ((parseScript(imp.text).body[0] as N).specifiers.some((x: N) => x.local.name === 'provide')) throw new ClarusError('provide is reserved for context: rename this import (import { provide as other } …)', file, source, offset + imp.start)
   }
   const code = split.body
   let found = false

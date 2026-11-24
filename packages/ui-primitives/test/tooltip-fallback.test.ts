@@ -43,6 +43,7 @@ test('the trigger shows its tooltip on focus and hover, and hides it on blur and
 test('#465 review: focus keeps the tooltip open when the pointer passes over the trigger and leaves', async () => {
   const source = readFileSync(resolve(import.meta.dirname, '../src/tooltip-trigger.tscl'), 'utf8')
   const code = compile(source, { file: 'tooltip-trigger.tscl', target: 'client' }).code.replaceAll("'clarusjs/runtime'", `'${clarus('runtime/index.ts')}'`)
+  mkdirSync(resolve(import.meta.dirname, '.tmp'), { recursive: true })
   const dir = mkdtempSync(resolve(import.meta.dirname, '.tmp/tip-'))
   writeFileSync(resolve(dir, 'trigger.mjs'), code)
   const { attach } = await import(pathToFileURL(resolve(dir, 'trigger.mjs')).href)

@@ -33,14 +33,15 @@
         input.closest('[data-part="radio"]')?.toggleAttribute('data-checked', input.checked)
       }
     }
-    // A form reset checks the radios it started with, without a change event: value says which one is checked.
-    const reset = () => setTimeout(() => sync(value))
+    // A form reset checks the radios it started with, without a change event: value says which one is checked. Heard
+    // on the document, so it follows the group into another form (a fragment swap can keep it in a new one).
+    const reset = (event) => event.target === el.form && setTimeout(() => sync(value))
     el.addEventListener('change', change)
-    el.form?.addEventListener('reset', reset)
+    document.addEventListener('reset', reset)
     const stop = effect(() => sync(value))
     return () => {
       el.removeEventListener('change', change)
-      el.form?.removeEventListener('reset', reset)
+      document.removeEventListener('reset', reset)
       stop()
     }
   }

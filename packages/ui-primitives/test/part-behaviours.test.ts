@@ -55,3 +55,18 @@ test('radio group: after its form resets, the checked radio and data-checked fol
   expect([m!.checked, s!.checked]).toEqual([false, true])
   expect([...document.querySelectorAll('label')].map((l) => l.hasAttribute('data-checked'))).toEqual([false, true])
 })
+
+test('#465 review: a radio group moved into another form follows that form\'s reset', async () => {
+  const { attach } = await client('radio-group')
+  document.body.innerHTML = '<form id="a"><cl-island c="radio-group"><fieldset data-part="radio-group" data-cl-u="0"><legend><!--[0-->Size<!--]--></legend>'
+    + '<label data-part="radio" data-checked><input type="radio" name="size" value="m" checked></label>'
+    + '<label data-part="radio"><input type="radio" name="size" value="s"></label></fieldset></cl-island></form><form id="b"></form>'
+  attach(document.querySelector('cl-island')!, { name: 'size', label: 'Size', value: 'm' })
+  const b = document.getElementById('b') as HTMLFormElement
+  b.append(document.querySelector('cl-island')!) // a fragment swap kept it (data-cl-persist) in a new form
+  const [m, s] = [...document.querySelectorAll('input')] as HTMLInputElement[]
+  s!.click()
+  b.reset()
+  await new Promise((r) => setTimeout(r, 10))
+  expect([m!.checked, s!.checked]).toEqual([false, true])
+})
