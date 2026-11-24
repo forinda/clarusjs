@@ -48,3 +48,8 @@ test('a root that is itself a component passes them on', async () => {
   const { render: r } = await importCode(outer, 'ft3', { './inner.tscl': inner })
   expect(await r({ 'data-k': 'v', user: 'ada' })).toBe('<span>{"data-k":"v"}</span>')
 })
+
+test('review: clarusjs\'s own markers can\'t be passed (data-cl-*, cl-*): they would spoof the runtime\'s wiring', async () => {
+  const { render: r } = await importCode(serve('<main>page</main>\n', 'page.tscl'), 'ft4')
+  expect(await r({ 'data-cl-e': '0', 'data-cl-u': '1', 'data-cl-path': 'x', 'data-ok': '1' })).toBe('<main data-ok="1">page</main>')
+})

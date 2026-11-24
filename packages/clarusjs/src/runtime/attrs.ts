@@ -133,6 +133,7 @@ const PASSED = /^(id|role|tabindex|hidden|lang|dir|style|(data|aria)-[\w:.-]+)$/
  */
 export function passed(props: Record<string, unknown>, inputs: readonly string[]): Record<string, unknown> {
   const out: Record<string, unknown> = {}
-  for (const k in props) if (PASSED.test(k) && !inputs.includes(k)) out[k] = props[k]
+  // Never clarusjs's own markers (data-cl-e, data-cl-u, data-cl-path…): passed data must not spoof the runtime's wiring.
+  for (const k in props) if (PASSED.test(k) && !/^data-cl-/i.test(k) && !inputs.includes(k)) out[k] = props[k]
   return out
 }
