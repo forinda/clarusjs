@@ -363,3 +363,12 @@ test('#464 [use]: a function of the element (typed by its tag), or a list of the
     expect.stringMatching(/^src\/components\/c\.tscl:8:11 Argument of type 'number' is not assignable/),
   ])
 })
+
+test('#465 context: @context names are typed in the template; provide() type-checks in a script', () => {
+  const panel = "@context tabs: { value: string }\n@context theme: { tone: string } = { tone: 'light' }\n<p>{{ tabs.value }} {{ theme.tone }} {{ tabs.nope }}</p>\n"
+  expect(check({ 'src/components/panel.tscl': panel })).toEqual([
+    expect.stringMatching(/^src\/components\/panel\.tscl:3:46 Property 'nope' does not exist/),
+  ])
+  const tabs = "@input value: string\n<script>\n  provide('tabs', { value })\n</script>\n<div><slot /></div>\n"
+  expect(check({ 'src/components/tabs.tscl': tabs })).toEqual([])
+})

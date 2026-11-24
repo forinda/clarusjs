@@ -145,3 +145,8 @@ test('#442 @event: completed as a binding with its value type, and hovered', asy
   const shown = at(`${IMP}<stepper (cha§nge)="x" />\n`, hover)?.contents as { value: string }
   expect(shown.value).toContain('@event change: number')
 })
+
+test('#465 @context is offered as a directive', async () => {
+  const { at } = await setup()
+  expect(labels(at('<p>\n@c§', completions))).toContain('@context')
+})

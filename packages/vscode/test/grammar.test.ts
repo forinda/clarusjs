@@ -142,3 +142,10 @@ test('#442 @event (with a TypeScript type, or none) and #456 @layout none are di
   expect(scopesOf(src, 'none')).toContain('constant.language.tscl')
   expect(scopesOf(src, 'p')).toContain('entity.name.tag')
 })
+
+test('#465 @context is a directive with a TypeScript type', () => {
+  const src = "@context tone: string\n<p></p>\n"
+  expect(scopesOf(src, 'context')).toContain('storage.type.tscl')
+  expect(scopesOf(src, 'tone')).toContain('variable.parameter.tscl')
+  expect(scopesOf(src, 'string', 'tone')).toContain('support.type.primitive')
+})

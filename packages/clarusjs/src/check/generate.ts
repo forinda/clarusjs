@@ -139,6 +139,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
     emit('\n')
   }
   emit('}\n')
+  // provide(key, value) (#465), unless the script has its own provide.
+  if (parsed.script && /\bprovide\s*\(/.test(parsed.script.code) && !/\b(function|const|let|var)\s+provide\b/.test(parsed.script.code)) emit('declare function provide(key: string, value: unknown): void\n')
   if (parsed.events.length) emit('declare const emit: <K extends keyof Events>(name: K, ...args: Events[K] extends void ? [value?: undefined, info?: { reason?: string; event?: Event }] : [value: Events[K], info?: { reason?: string; event?: Event }]) => boolean\n')
   let loaderSpan: [number, number] | undefined
   if (options.loader) {
@@ -177,6 +179,18 @@ export function generateTs(source: string, file: string, options: { loader?: str
     // An input the template doesn't read isn't an unused variable of this generated code.
     emit(`  __cl_use([${list.map((x) => x.name).join(', ')}])\n`)
   }
+  // @context (#465): typed like an input, read from the components around this one.
+  for (const c of parsed.contexts) {
+    emit('  const ')
+    copy(c.name, c.nameStart)
+    emit(': ')
+    copy(c.type, c.typeStart)
+    emit(' = ')
+    if (c.default !== undefined && c.defaultStart !== undefined) copy(c.default, c.defaultStart)
+    else emit('null!')
+    emit('\n')
+  }
+  if (parsed.contexts.length) emit(`  __cl_use([${parsed.contexts.map((c) => c.name).join(', ')}])\n`)
   // A script in verbatim pieces: its imports (already at the top) are blanked, and untyped parameters annotated.
   const copyScript = (from: { code: string; start: number }, split: { imports: { text: string; start: number }[]; body: string }) => {
     const body = split.body

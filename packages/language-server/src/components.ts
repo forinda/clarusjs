@@ -12,7 +12,7 @@ import type { Import, Project } from './project.ts'
 
 // ponytail: events a component sends, found by their literal name in its script; a name built at runtime isn't listed.
 const EVENT = /new\s+CustomEvent\(\s*(['"])([^'"]+)\1/g
-const DIRECTIVES = ['@if', '@else', '@for', '@empty', '@await', '@then', '@catch', '@slot', '@import', '@input', '@model', '@type', '@interface']
+const DIRECTIVES = ['@if', '@else', '@for', '@empty', '@await', '@then', '@catch', '@slot', '@import', '@input', '@model', '@context', '@type', '@interface']
 const Kind = { Property: 10, Event: 23, Keyword: 14, File: 17, Class: 7, Module: 9, Value: 12 } as const
 
 type Info = { inputs: { name: string; type: string; optional: boolean; model: boolean; default?: string }[]; events: string[]; eventTypes: Record<string, string> }
