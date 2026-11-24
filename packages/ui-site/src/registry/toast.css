@@ -27,6 +27,7 @@
     list-style: none;
   }
   :where([data-part='toast']) {
+    position: relative;
     display: flex;
     gap: 8px;
     align-items: center;
@@ -54,6 +55,45 @@
   }
   :where([data-part='toast-close']) {
     border-color: transparent;
+  }
+  :where([data-part='toast'])[data-type='success'] {
+    border-left: 4px solid var(--ui-success);
+  }
+  :where([data-part='toast'])[data-type='success'] :where([data-part='toast-icon']) {
+    color: var(--ui-success);
+  }
+  :where([data-part='toast'])[data-type='error'] {
+    border-left: 4px solid var(--ui-danger);
+  }
+  :where([data-part='toast'])[data-type='error'] :where([data-part='toast-icon']) {
+    color: var(--ui-danger);
+  }
+  :where([data-part='toast'])[data-type='warning'] {
+    border-left: 4px solid var(--ui-warning);
+  }
+  :where([data-part='toast'])[data-type='warning'] :where([data-part='toast-icon']) {
+    color: var(--ui-warning);
+  }
+  :where([data-part='toast'])[data-type='info'] {
+    border-left: 4px solid var(--ui-accent);
+  }
+  :where([data-part='toast'])[data-type='info'] :where([data-part='toast-icon']) {
+    color: var(--ui-accent);
+  }
+  :where([data-part='toast-icon']) {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+  :where([data-part='toast-icon']):empty {
+    display: none;
+  }
+  :where([data-part='toast-kind']) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   @media (prefers-reduced-motion: reduce) {

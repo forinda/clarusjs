@@ -263,3 +263,52 @@ test('#review: leaving with the pointer while the toast has focus keeps it', asy
   expect(shown()).toEqual(['Hold'])
   vi.useRealTimers()
 })
+
+const regionWith = (templates: string) => '<cl-island c="toast-region"><section aria-label="Notifications" data-part="toast-region" data-cl-u="0">' + templates + '<ol aria-live="polite" data-part="toast-list"></ol></section></cl-island>'
+async function region(templates = '') {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = regionWith(templates)
+  attach(document.querySelector('cl-island')!, {})
+  return toast
+}
+const item = () => document.querySelector('[data-part="toast"]') as HTMLElement
+
+test('toast types: data-type, a default icon per kind (hidden), the kind said in words', async () => {
+  const toast = await region()
+  toast('Upload failed', { type: 'error' })
+  expect(item().dataset.type).toBe('error')
+  expect(item().querySelector('[data-part="toast-icon"] svg')).not.toBeNull()
+  expect(item().querySelector('[data-part="toast-icon"]')!.getAttribute('aria-hidden')).toBe('true')
+  expect(item().querySelector('[data-part="toast-kind"]')!.textContent).toBe('Error:')
+  expect(item().querySelector('[data-part="toast-message"]')!.textContent).toBe('Upload failed')
+})
+
+test('toast templates: the general template replaces the default markup; parts are filled; no action, no action button', async () => {
+  const toast = await region('<template data-type="toast"><div class="mine"><p data-part="toast-message"></p><button data-part="toast-action"></button><button data-part="toast-close" aria-label="Close">x</button></div></template>')
+  toast('Saved')
+  expect(item().querySelector('.mine')).not.toBeNull()
+  expect(item().querySelector('[data-part="toast-message"]')!.textContent).toBe('Saved')
+  expect(item().querySelector('[data-part="toast-action"]')).toBeNull()
+  ;(item().querySelector('[data-part="toast-close"]') as HTMLElement).click()
+  expect(document.querySelector('[data-part="toast"]')).toBeNull()
+})
+
+test("toast templates: a kind's template wins for that kind only; its own icon stays", async () => {
+  const toast = await region('<template data-type="toast"><div class="general"><p data-part="toast-message"></p></div></template><template data-type="error"><div class="err"><span data-part="toast-icon">!</span><p data-part="toast-message"></p></div></template>')
+  toast('Bad', { type: 'error' })
+  toast('Fine', { type: 'success' })
+  const [bad, fine] = [...document.querySelectorAll('[data-part="toast"]')] as HTMLElement[]
+  expect(bad!.querySelector('.err')).not.toBeNull()
+  expect(bad!.querySelector('[data-part="toast-icon"]')!.textContent).toBe('!')
+  expect(fine!.querySelector('.general')).not.toBeNull()
+})
+
+test('toast: the message is text, never markup; icon: false leaves the icon out', async () => {
+  const toast = await region()
+  toast('<img src=x onerror=alert(1)>', { type: 'info', icon: false })
+  expect(item().querySelector('img')).toBeNull()
+  expect(item().querySelector('[data-part="toast-message"]')!.textContent).toBe('<img src=x onerror=alert(1)>')
+  expect(item().querySelector('[data-part="toast-icon"] svg')).toBeNull()
+})

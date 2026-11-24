@@ -1,5 +1,8 @@
 {{--
-  Toast region: where toast('…') messages appear. Put it once in your layout. A polite live region: screen readers
+  Toast region: where toast('…') messages appear. Put it once in your layout. Its look is yours: write the markup of
+  a toast in @slot('toast'), and a kind's own in @slot('success' | 'error' | 'info' | 'warning'); the region copies it
+  for each toast and fills the parts it finds: data-part="toast-message" (the text), "toast-action" (removed when the
+  toast has none), "toast-close", "toast-icon" (a default icon when it's empty). Static markup: it's copied, not run. A polite live region: screen readers
   announce new messages without moving focus. Each message stays its duration (paused while hovered or focused);
   Escape dismisses the focused one; an action runs and dismisses.
 
@@ -7,7 +10,46 @@
 --}}
 <script>
   import { dismissToast, subscribeToasts, toasts } from '@clarusjs/ui-primitives'
+  const KINDS = { success: 'Success:', error: 'Error:', info: 'Info:', warning: 'Warning:' }
+  const PATHS = { success: 'M5 12l5 5 9-10', error: 'M6 6l12 12M18 6L6 18', info: 'M12 8h.01M11 12h1v5h1', warning: 'M12 4l9 16H3zM12 10v4M12 17h.01' }
+  function svg(type) {
+    const ns = 'http://www.w3.org/2000/svg'
+    const root = document.createElementNS(ns, 'svg')
+    root.setAttribute('viewBox', '0 0 24 24')
+    root.setAttribute('width', '18')
+    root.setAttribute('height', '18')
+    root.setAttribute('fill', 'none')
+    root.setAttribute('stroke', 'currentColor')
+    root.setAttribute('stroke-width', '2')
+    const path = document.createElementNS(ns, 'path')
+    path.setAttribute('d', PATHS[type])
+    root.append(path)
+    return root
+  }
   function wire(el) {
+    // A toast's markup: its kind's template, else the general one, else the default (icon, message, action, close).
+    const template = (type) => {
+      const own = type && el.querySelector(`template[data-type="${type}"]`)
+      if (own instanceof HTMLTemplateElement && own.content.childElementCount) return own
+      const general = el.querySelector('template[data-type="toast"]')
+      return general instanceof HTMLTemplateElement && general.content.childElementCount ? general : null
+    }
+    const piece = (t) => {
+      const chosen = template(t.type)
+      if (chosen) return [chosen.content.cloneNode(true)]
+      const make = (tag, part, text = '') => {
+        const node = document.createElement(tag)
+        node.dataset.part = part
+        if (text) node.textContent = text
+        return node
+      }
+      const action = make('button', 'toast-action')
+      const close = make('button', 'toast-close', '×')
+      action.setAttribute('type', 'button')
+      close.setAttribute('type', 'button')
+      close.setAttribute('aria-label', 'Dismiss')
+      return [make('span', 'toast-icon'), make('p', 'toast-message'), action, close]
+    }
     const list = el.querySelector('[data-part="toast-list"]')
     const timers = new Map()
     let origin // where focus was before it came into the list, to go back to
@@ -47,30 +89,30 @@
         const item = document.createElement('li')
         item.dataset.part = 'toast'
         item.dataset.id = String(t.id)
+        if (t.type) item.dataset.type = t.type
         item.tabIndex = 0
-        const message = document.createElement('p')
-        message.dataset.part = 'toast-message'
-        message.textContent = t.message
-        item.append(message)
+        const kind = document.createElement('span')
+        kind.dataset.part = 'toast-kind'
+        kind.textContent = t.type ? KINDS[t.type] : ''
+        item.append(kind, ...piece(t))
+        const icon = item.querySelector('[data-part="toast-icon"]')
+        if (icon) {
+          icon.setAttribute('aria-hidden', 'true')
+          if (t.icon === false) icon.replaceChildren()
+          else if (!icon.childNodes.length && t.type) icon.append(svg(t.type))
+        }
+        const message = item.querySelector('[data-part="toast-message"]')
+        if (message) message.textContent = t.message
+        const action = item.querySelector('[data-part="toast-action"]')
         const act = t.action
-        if (act) {
-          const action = document.createElement('button')
-          action.type = 'button'
-          action.dataset.part = 'toast-action'
+        if (action && act) {
           action.textContent = act.label
           action.addEventListener('click', () => {
             act.onClick()
             leave(t.id, item)
           })
-          item.append(action)
-        }
-        const close = document.createElement('button')
-        close.type = 'button'
-        close.dataset.part = 'toast-close'
-        close.setAttribute('aria-label', 'Dismiss')
-        close.textContent = '×'
-        close.addEventListener('click', () => leave(t.id, item))
-        item.append(close)
+        } else action?.remove()
+        item.querySelector('[data-part="toast-close"]')?.addEventListener('click', () => leave(t.id, item))
         const hold = () => pause(t.id, item)
         const resume = () => {
           if (!item.matches(':hover') && !item.contains(document.activeElement)) start(t, item)
@@ -98,5 +140,10 @@
 </script>
 
 <section aria-label="Notifications" data-part="toast-region" [use]="wire">
+  <template data-type="toast"><slot name="toast" /></template>
+  <template data-type="success"><slot name="success" /></template>
+  <template data-type="error"><slot name="error" /></template>
+  <template data-type="info"><slot name="info" /></template>
+  <template data-type="warning"><slot name="warning" /></template>
   <ol aria-live="polite" data-part="toast-list"></ol>
 </section>
