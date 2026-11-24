@@ -1,0 +1,8 @@
+# ui.clarusjs.com (packages/ui-site), built with clarusjs. A Netlify site of its own, with base directory
+# packages/ui-site; the docs site's netlify.toml is at the repository root.
+[build]
+  command = "pnpm install --frozen-lockfile && pnpm --filter @clarusjs/ui-site build"
+  publish = "dist/client"
+
+[build.environment]
+  NODE_VERSION = "24"

@@ -24,6 +24,7 @@ pnpm dev            # serves examples/counter
 pnpm docs:dev       # the docs site (packages/docs), built with clarusjs
 pnpm docs:test      # builds the docs site and runs its Playwright tests (Chromium)
 pnpm docs:check     # clarusjs check on the docs site: type errors at file.tscl:line:col
+pnpm ui:dev         # ui.clarusjs.com (packages/ui-site); ui:build, ui:test, ui:check as for the docs
 pnpm changeset      # describe a change to a published package (commit the generated file)
 ```
 
@@ -44,6 +45,7 @@ Releases are automated from `main` (see RELEASE.md): never run `npm publish` or 
 | `packages/ui-primitives/` | `@clarusjs/ui-primitives`, published: accessible behaviours (roving focus, typeahead, dismiss, transitions, focus return, positioning) as `(el, options) → dispose` functions for `[use]`, shipped as JS with JSDoc types. No dependencies; a size budget per behaviour |
 | `packages/ui/` | `@clarusjs/ui`, published: one stylesheet (`ui.css`) styling `ui-primitives`' parts by their `data-part` and state attributes, with `--ui-` tokens (light and dark), all in `:where()`. CSS only |
 | `packages/theme-docs/` | `@clarusjs/theme-docs`, published: the docs layout as a theme (`layout.tscl`, `theme.css` tokens, theme toggle, copy, callout), shipped as source. Configured by a `config` prop, extended by slots |
+| `packages/ui-site/` | ui.clarusjs.com, built with clarusjs; private. Styled components people copy (`src/registry/`), each on a page with a demo and its source, themed by `src/theme.css` (`@clarusjs/ui`'s tokens). Deployed as its own Netlify site (`netlify.toml` here) |
 | `packages/docs/` | the docs site, built with clarusjs; private. Its Playwright tests (`e2e/`) run against the built site and are the end-to-end proof of each framework feature |
 | `examples/counter/` | the POC app (private workspace package, depends on `clarusjs: workspace:*`) |
 | `.changeset/` | pending changesets and config |

@@ -1,0 +1,43 @@
+/*
+  clarusjs ui: the tokens every component styles itself with (light, and dark from the OS setting or
+  data-theme="dark" on <html>). Copy this file once, link it on every page, and change the values to change the look.
+  The same tokens as @clarusjs/ui.
+*/
+
+:root {
+  --ui-font: system-ui, sans-serif;
+  --ui-radius: 8px;
+  --ui-bg: #ffffff;
+  --ui-fg: #17202a;
+  --ui-muted: #5b6670;
+  --ui-border: #c9d1d9;
+  --ui-accent: #0b6e70;
+  --ui-accent-fg: #ffffff;
+  --ui-accent-soft: #e3f2f2;
+  --ui-danger: #b42318;
+  --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ui-bg: #121a1b;
+    --ui-fg: #e6eded;
+    --ui-muted: #9aa8a9;
+    --ui-border: #2c3a3b;
+    --ui-accent: #4cc9cb;
+    --ui-accent-fg: #0b1415;
+    --ui-accent-soft: #173233;
+    --ui-danger: #ff8a80;
+    --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+  }
+}
+:root[data-theme='dark'] {
+  --ui-bg: #121a1b;
+  --ui-fg: #e6eded;
+  --ui-muted: #9aa8a9;
+  --ui-border: #2c3a3b;
+  --ui-accent: #4cc9cb;
+  --ui-accent-fg: #0b1415;
+  --ui-accent-soft: #173233;
+  --ui-danger: #ff8a80;
+  --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+}

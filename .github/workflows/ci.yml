@@ -67,6 +67,26 @@ jobs:
           name: playwright-report
           path: packages/docs/test-results
 
+  ui-site:
+    name: UI site (build + browser tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm ui:check
+      - run: pnpm --filter @clarusjs/ui-site exec playwright install --with-deps chromium
+      - run: pnpm --filter @clarusjs/ui-site test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-site-playwright-report
+          path: packages/ui-site/test-results
+
   size:
     # The gzip size of every browser script the docs site ships, compared with the PR's base branch, as a comment.
     # The hard budgets are tests (packages/clarusjs/test); this shows growth before a budget fails.
