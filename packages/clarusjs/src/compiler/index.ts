@@ -149,10 +149,24 @@ const ID_LISTS = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'aria-
  * ponytail: nothing falls through with several top-level elements, or text or blocks beside one; Vue warns there.
  */
 function fallThrough(parsed: ReturnType<typeof parse>): void {
-  const meaningful = parsed.nodes.filter((n) => !(n.type === 'text' && !n.value.trim()) && !(n.type === 'element' && UNMARKED.has(n.tag)))
-  const root = meaningful[0]
+  const meaningfulOf = (nodes: typeof parsed.nodes) => nodes.filter((n) => !(n.type === 'text' && !n.value.trim()) && !(n.type === 'element' && UNMARKED.has(n.tag)))
+  const meaningful = meaningfulOf(parsed.nodes)
+  if (meaningful.length !== 1) return
+  const top = meaningful[0]!
+  // @if … @else, one element per branch: each is the root (not in an island: its browser render lacks them).
+  if (top.type === 'if') {
+    const roots = top.branches.map((b) => meaningfulOf(b.children))
+    if (parsed.script || parsed.inputs.some((i) => i.model) || top.branches.at(-1)!.cond !== null || roots.some((r) => r.length !== 1 || r[0]!.type !== 'element')) return
+    for (const [r] of roots) fallOnto(parsed, r as El)
+    return
+  }
+  if (top.type === 'element') fallOnto(parsed, top)
+}
+
+type El = Extract<ReturnType<typeof parse>['nodes'][number], { type: 'element' }>
+function fallOnto(parsed: ReturnType<typeof parse>, root: El): void {
   // Not onto elements that load something (iframe, embed…): a spread could set what they load.
-  if (meaningful.length !== 1 || root?.type !== 'element' || SPREAD_REFUSED.has(root.tag.toLowerCase())) return
+  if (SPREAD_REFUSED.has(root.tag.toLowerCase())) return
   // ponytail: a root with its own [...] takes none (in an island its spread is wired in the browser, which doesn't have
   // the passed attributes); merge them into it when a part needs both.
   if (root.attrs.some((a) => a.kind === 'prop' && a.name === '...')) return

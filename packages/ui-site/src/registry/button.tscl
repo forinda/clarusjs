@@ -1,0 +1,86 @@
+{{-- Button: a native <button>, or a link (<a>) with the same look when href is set. class, style, id, aria-*,
+     data-* and (click) you pass land on it. --}}
+@input variant: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link' = 'default'
+@input size: 'sm' | 'md' | 'lg' = 'md'
+@input type: 'button' | 'submit' | 'reset' = 'button'
+@input disabled: boolean = false
+@input href: string = ''
+
+@if (href) {
+  <a [href]="href" data-part="button" [data-variant]="variant" [data-size]="size"><slot /></a>
+} @else {
+  <button [type]="type" data-part="button" [data-variant]="variant" [data-size]="size" [disabled]="disabled">
+    <slot />
+  </button>
+}
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 36px;
+      padding: 0 14px;
+      border: 1px solid transparent;
+      border-radius: var(--ui-radius);
+      background: var(--ui-accent);
+      color: var(--ui-accent-fg);
+      font: 600 var(--ui-font-size)/1 var(--ui-font);
+      cursor: pointer;
+    }
+    :where(:scope:hover) {
+      filter: brightness(1.08);
+    }
+    :where(:scope:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+    :where(:scope:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    :where(:scope[data-variant='secondary']) {
+      background: var(--ui-secondary);
+      color: var(--ui-secondary-fg);
+    }
+    :where(:scope[data-variant='outline']) {
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      border-color: var(--ui-border);
+    }
+    :where(:scope[data-variant='ghost']) {
+      background: transparent;
+      color: var(--ui-fg);
+    }
+    :where(:scope[data-variant='ghost']:hover),
+    :where(:scope[data-variant='outline']:hover) {
+      background: var(--ui-accent-soft);
+      filter: none;
+    }
+    :where(:scope[data-variant='destructive']) {
+      background: var(--ui-danger);
+      color: var(--ui-danger-fg);
+    }
+    :where(:scope[data-variant='link']) {
+      background: transparent;
+      color: var(--ui-accent);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      padding: 0;
+      min-height: 0;
+    }
+    :where(:scope[data-size='sm']) {
+      min-height: 30px;
+      padding: 0 10px;
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where(:scope[data-size='lg']) {
+      min-height: 44px;
+      padding: 0 20px;
+      font-size: calc(var(--ui-font-size) + 2px);
+    }
+  }
+</style>

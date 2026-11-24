@@ -1,0 +1,47 @@
+/*
+  Tooltip: the same rules as @clarusjs/ui's ui.css for tooltip.tscl, tooltip-trigger.tscl from @clarusjs/ui-primitives.
+  Copy it next to your components, @import it once, and change it to change the look.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: 2px;
+  }
+
+  /* Buttons: triggers and closes. */
+  :where([data-part='trigger'], [data-part='close']) {
+    font: 600 var(--ui-font-size) var(--ui-font);
+    padding: 8px 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    cursor: pointer;
+  }
+  :where([data-part='trigger'], [data-part='close']):hover {
+    border-color: var(--ui-accent);
+  }
+
+  /* Tooltip: small, inverted, a little gap from its trigger. */
+  :where([data-part='tooltip']) {
+    margin: 6px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: calc(var(--ui-radius) - 2px);
+    background: var(--ui-fg);
+    color: var(--ui-bg);
+    font: calc(var(--ui-font-size) - 1px)/1.4 var(--ui-font);
+    max-width: 240px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      transition: none !important;
+    }
+  }
+}

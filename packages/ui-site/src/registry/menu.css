@@ -1,0 +1,70 @@
+/*
+  Menu: the same rules as @clarusjs/ui's ui.css for menu.tscl, menu-trigger.tscl, menu-list.tscl, menu-item.tscl from @clarusjs/ui-primitives.
+  Copy it next to your components, @import it once, and change it to change the look.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: 2px;
+  }
+
+  /* Buttons: triggers and closes. */
+  :where([data-part='trigger'], [data-part='close']) {
+    font: 600 var(--ui-font-size) var(--ui-font);
+    padding: 8px 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    cursor: pointer;
+  }
+  :where([data-part='trigger'], [data-part='close']):hover {
+    border-color: var(--ui-accent);
+  }
+
+  /* Menu: the list below its trigger, items as full-width rows; the focused one is tinted. */
+  :where([data-part='menu']) {
+    display: inline-block;
+  }
+  :where([data-part='menu-list']) {
+    margin: 4px 0;
+    padding: 4px;
+    min-width: 160px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    color: var(--ui-fg);
+    box-shadow: var(--ui-shadow);
+  }
+  :where([data-part='menu-item']) {
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: calc(var(--ui-radius) - 2px);
+    background: none;
+    color: inherit;
+    font: var(--ui-font-size) var(--ui-font);
+    text-align: start;
+    cursor: pointer;
+  }
+  :where([data-part='menu-item']):is(:hover, :focus-visible) {
+    background: var(--ui-accent-soft);
+  }
+  :where([data-part='menu-item'])[aria-disabled='true'] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      transition: none !important;
+    }
+  }
+}

@@ -1,0 +1,20 @@
+@import uiKbd from './kbd.tscl'
+
+<div class="demo">
+  <p>Search with <uiKbd>Ctrl</uiKbd> <uiKbd>K</uiKbd>.</p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    padding: 24px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  p {
+    margin: 0;
+  }
+</style>

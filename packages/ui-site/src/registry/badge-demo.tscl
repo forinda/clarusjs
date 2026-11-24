@@ -1,0 +1,23 @@
+@import uiBadge from './badge.tscl'
+
+<div class="demo">
+  <uiBadge>New</uiBadge>
+  <uiBadge variant="secondary">Beta</uiBadge>
+  <uiBadge variant="outline">Draft</uiBadge>
+  <uiBadge variant="destructive">Failed</uiBadge>
+  <uiBadge variant="success">Paid</uiBadge>
+  <uiBadge variant="warning">Due soon</uiBadge>
+</div>
+
+<style scoped>
+  :scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 24px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

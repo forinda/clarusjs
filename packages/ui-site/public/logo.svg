@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="title">
+  <title id="title">clarusjs</title>
+  <!-- TSCL: a clear cut stone, flat along a T. An S-shaped bolt strikes down through the T's bar; C and L run down its stem. -->
+  <style>
+    :root { --deep: #0b6e70; --glass: rgba(11, 110, 112, 0.12); --bolt: #f2b705; --knock: #fbfcfc; }
+    @media (prefers-color-scheme: dark) {
+      :root { --deep: #36b9bb; --glass: rgba(54, 185, 187, 0.16); --bolt: #ffd23f; --knock: #0c1213; }
+    }
+  </style>
+  <path d="M 25 30 H 103 L 114 44 L 64 116 L 14 44 Z" fill="var(--glass)" stroke="var(--deep)" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M 26 30 H 102" stroke="var(--deep)" stroke-width="9" stroke-linecap="round"/>
+  <path d="M 64 30 V 108" stroke="var(--deep)" stroke-width="9" stroke-linecap="round" stroke-opacity="0.4"/>
+  <path d="M 74 6 H 93 L 66 48 H 84 L 46 76 L 60 56 H 44 Z" fill="var(--bolt)" stroke="var(--deep)" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- C and L drawn as strokes, so the mark needs no font: a knockout halo first, then the letter. -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 68.5 79 A 5.5 5.5 0 1 0 68.5 87 M 60.5 92 V 102.5 H 67.5" stroke="var(--knock)" stroke-width="7"/>
+    <path d="M 68.5 79 A 5.5 5.5 0 1 0 68.5 87 M 60.5 92 V 102.5 H 67.5" stroke="var(--deep)" stroke-width="3"/>
+  </g>
+</svg>

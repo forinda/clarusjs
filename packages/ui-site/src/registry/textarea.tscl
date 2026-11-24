@@ -1,0 +1,47 @@
+{{-- Textarea: a native <textarea>. id, aria-* and data-* you pass land on it. --}}
+@input rows: number = 3
+@input name: string = ''
+@input value: string = ''
+@input placeholder: string = ''
+@input required: boolean = false
+@input disabled: boolean = false
+
+<textarea
+  [rows]="rows"
+  [name]="name || null"
+  [placeholder]="placeholder || null"
+  [required]="required"
+  [disabled]="disabled"
+  data-part="textarea"
+  >{{ value }}</textarea>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--ui-input);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: var(--ui-font-size)/1.5 var(--ui-font);
+      resize: vertical;
+    }
+    :where(:scope)::placeholder {
+      color: var(--ui-muted);
+    }
+    :where(:scope:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 1px;
+    }
+    :where(:scope[aria-invalid='true']) {
+      border-color: var(--ui-danger);
+    }
+    :where(:scope:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+</style>

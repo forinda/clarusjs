@@ -1,0 +1,28 @@
+{
+  "name": "@clarusjs/ui-site",
+  "private": true,
+  "type": "module",
+  "description": "ui.clarusjs.com: styled clarusjs components to copy, built with clarusjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "check": "node --experimental-strip-types ../clarusjs/src/cli/index.ts check --strict",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@clarusjs/theme-docs": "workspace:*",
+    "@clarusjs/ui-primitives": "workspace:*",
+    "clarusjs": "workspace:*"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@clarusjs/content": "workspace:*",
+    "@playwright/test": "1.65.1",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}

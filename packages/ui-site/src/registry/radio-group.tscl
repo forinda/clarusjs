@@ -1,0 +1,66 @@
+{{-- Radio group: native radios in a fieldset, one per option, bound two ways with [(value)]. For a cancellable
+     (change), use radio-group.tscl and radio.tscl from @clarusjs/ui-primitives directly: the styles apply the same. --}}
+@import uiRadioGroup from '@clarusjs/ui-primitives/radio-group.tscl'
+@import uiRadio from '@clarusjs/ui-primitives/radio.tscl'
+@input name: string
+@input label: string
+@input options: { value: string; label: string; disabled?: boolean }[]
+@model value: string = ''
+
+<uiRadioGroup [name]="name" [label]="label" [(value)]="value">
+  @for (o of options; track o.value) {
+    <uiRadio [value]="o.value" [label]="o.label" [disabled]="!!o.disabled" />
+  }
+</uiRadioGroup>
+
+<style global>
+  /* The same rules as @clarusjs/ui's ui.css, for this part: change them here to change its look. */
+  @layer theme, base, components, utilities;
+  @layer components {
+    /* Focus is always visible, on every part and what's inside it. */
+    :where([data-part]):focus-visible,
+    :where([data-part]) :focus-visible {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+
+    /* Radio group: a fieldset with its legend; radios like checkboxes, round. */
+    :where([data-part='radio-group']) {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font: var(--ui-font-size) var(--ui-font);
+      color: var(--ui-fg);
+    }
+    :where([data-part='radio-group']) > :where([data-part='legend']) {
+      padding: 0;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    :where([data-part='radio']) {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    :where([data-part='radio']) input {
+      accent-color: var(--ui-accent);
+      width: 18px;
+      height: 18px;
+      margin: 0;
+    }
+    :where([data-part='radio'])[data-disabled] {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :where([data-part]),
+      :where([data-part]) * {
+        transition: none !important;
+      }
+    }
+  }
+</style>

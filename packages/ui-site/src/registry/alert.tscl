@@ -1,0 +1,45 @@
+{{-- Alert: a message box with a title. [live]="true" makes it role="alert", for a message that appears after the page loads.
+     parts takes attributes (class, style, data-*) for its title and description. --}}
+@input variant: 'default' | 'destructive' | 'success' | 'warning' = 'default'
+@input live: boolean = false
+@input parts: { title?: Record<string, string | boolean>; description?: Record<string, string | boolean> } = {}
+
+<div [role]="live ? 'alert' : null" data-part="alert" [data-variant]="variant">
+  <p [...]="parts.title ?? {}" data-part="alert-title"><slot name="title" /></p>
+  <div [...]="parts.description ?? {}" data-part="alert-description"><slot /></div>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: 4px;
+      padding: 12px 16px;
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: var(--ui-font-size)/1.5 var(--ui-font);
+    }
+    :where(:scope[data-variant='destructive']) {
+      border-color: var(--ui-danger);
+      color: var(--ui-danger);
+    }
+    :where(:scope[data-variant='success']) {
+      border-color: var(--ui-success);
+      color: var(--ui-success);
+    }
+    :where(:scope[data-variant='warning']) {
+      border-color: var(--ui-warning);
+      color: var(--ui-warning);
+    }
+    :where([data-part='alert-title']) {
+      margin: 0;
+      font-weight: 600;
+    }
+    :where([data-part='alert-title']:empty) {
+      display: none;
+    }
+  }
+</style>

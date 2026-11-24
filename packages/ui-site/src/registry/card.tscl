@@ -1,0 +1,43 @@
+{{-- Card: an <article> with a header, a body and a footer; a header or footer you don't fill is hidden. parts takes
+     attributes (class, style, data-*) for each piece: header, body, footer. --}}
+@input parts: { header?: Record<string, string | boolean>; body?: Record<string, string | boolean>; footer?: Record<string, string | boolean> } = {}
+
+<article data-part="card">
+  <header [...]="parts.header ?? {}" data-part="card-header"><slot name="header" /></header>
+  <div [...]="parts.body ?? {}" data-part="card-body"><slot /></div>
+  <footer [...]="parts.footer ?? {}" data-part="card-footer"><slot name="footer" /></footer>
+</article>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: 16px;
+      padding: 20px;
+      border: 1px solid var(--ui-border);
+      border-radius: calc(var(--ui-radius) * 1.5);
+      background: var(--ui-card);
+      color: var(--ui-card-fg);
+      font-family: var(--ui-font);
+    }
+    :where([data-part='card-header'] :is(h1), :where(h2), :where(h3), :where(h4)) {
+      margin: 0;
+      font-size: calc(var(--ui-font-size) + 4px);
+    }
+    :where([data-part='card-header'] p) {
+      margin: 4px 0 0;
+      color: var(--ui-muted);
+      font-size: var(--ui-font-size);
+    }
+    :where([data-part='card-footer']) {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    :where([data-part='card-header']:empty),
+    :where([data-part='card-footer']:empty) {
+      display: none;
+    }
+  }
+</style>

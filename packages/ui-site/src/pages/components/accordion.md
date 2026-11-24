@@ -1,0 +1,32 @@
+---
+title: "Accordion"
+group: "Components"
+order: 13
+description: "Questions that open one at a time, on native details."
+---
+
+# Accordion
+
+<p class="lead">Questions that open one at a time, on native details.</p>
+
+<accordionDemo />
+
+## Usage
+
+<<< ../../registry/accordion-demo.tscl
+
+## Source
+
+Copy it into your components folder (next to the others) as `accordion.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+
+<<< ../../registry/accordion.tscl
+
+## Styling
+
+- **On the root:** `class`, `style`, `id`, `aria-*` and `data-*` written on the tag land on its root element; `class` and `style` merge with its own.
+- **Selectors:** `data-part` names `trigger`, `close`, `accordion-item`, `panel`.
+- **Your rules win:** every rule here has zero specificity (`:where()`) and sits in `@layer components`, so your own CSS and Tailwind utilities override it.
+
+## Needs
+
+<needs name="accordion" />

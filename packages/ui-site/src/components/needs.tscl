@@ -1,0 +1,27 @@
+{{-- What a component needs besides its own file(s): the theme, the ui-primitives parts it renders, other components
+     (its own, and its usage example's). --}}
+@import { registry } from '~/registry.ts'
+@input name: string
+
+<script server>
+  const entry = registry.find((e) => e.name === name)
+  if (!entry) throw new Error(`needs: no registry entry "${name}"`)
+  const byName = (names) => names.map((u) => registry.find((e) => e.name === u)).filter((e) => !!e)
+  const uses = byName(entry.uses)
+  const example = byName(entry.example ?? [])
+</script>
+
+<ul class="needs">
+  <li><a href="/">theme.css</a>, once per project</li>
+  @if (entry.parts.length) {
+    <li>
+      <code>@clarusjs/ui-primitives</code> {{ entry.since ? '≥ ' + entry.since : '' }}: {{ entry.parts.join(', ') }}
+    </li>
+  }
+  @for (u of uses; track u.name) {
+    <li>
+      <a [href]="'/components/' + u.name">{{ u.title }}</a
+      >, copied next to it
+    </li>
+  }
+</ul>

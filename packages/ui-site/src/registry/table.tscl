@@ -1,0 +1,65 @@
+{{-- Table: a native <table> in a region that scrolls sideways on small screens; keyboard users can scroll it too.
+     Give it a caption or a label: that names the region for screen readers. Attributes on the tag land on the
+     scrolling region; parts.table takes them for the <table>. --}}
+@input caption: string = ''
+@input label: string = ''
+@input parts: { table?: Record<string, string | boolean> } = {}
+
+<div
+  [role]="label || caption ? 'region' : null"
+  [aria-label]="label || caption || null"
+  tabindex="0"
+  data-part="table-scroll"
+>
+  <table [...]="parts.table ?? {}" data-part="table">
+    @if (caption) {
+      <caption>
+        {{
+          caption
+        }}
+      </caption>
+    }
+    <slot />
+  </table>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-card);
+    }
+    :where(:scope:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+    :where(table) {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--ui-fg);
+      font: var(--ui-font-size)/1.5 var(--ui-font);
+    }
+    :where(caption) {
+      padding: 8px 12px;
+      color: var(--ui-muted);
+      text-align: start;
+    }
+    :where(th),
+    :where(td) {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--ui-border);
+      text-align: start;
+      white-space: nowrap;
+    }
+    :where(th) {
+      font-weight: 600;
+    }
+    :where(tr:last-child > td) {
+      border-bottom: 0;
+    }
+  }
+</style>

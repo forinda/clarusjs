@@ -16,6 +16,10 @@
     "docs:build": "pnpm --filter @clarusjs/docs build",
     "docs:test": "pnpm --filter @clarusjs/docs test:e2e",
     "docs:check": "pnpm --filter @clarusjs/docs check",
+    "ui:dev": "pnpm --filter @clarusjs/ui-site dev",
+    "ui:build": "pnpm --filter @clarusjs/ui-site build",
+    "ui:test": "pnpm --filter @clarusjs/ui-site test:e2e",
+    "ui:check": "pnpm --filter @clarusjs/ui-site check",
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "changeset:version": "changeset version && pnpm install --no-frozen-lockfile",
@@ -25,8 +29,8 @@
     "release:enter:beta": "changeset pre enter beta",
     "release:enter:rc": "changeset pre enter rc",
     "release:exit:pre": "changeset pre exit",
-    "format:tscl": "prettier --write \"packages/{docs,theme-docs}/src/**/*.tscl\"",
-    "format:tscl:check": "prettier --check \"packages/{docs,theme-docs}/src/**/*.tscl\"",
+    "format:tscl": "prettier --write \"packages/{docs,theme-docs,ui-site}/src/**/*.tscl\"",
+    "format:tscl:check": "prettier --check \"packages/{docs,theme-docs,ui-site}/src/**/*.tscl\"",
     "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {

@@ -1,0 +1,46 @@
+{{-- Test-only page (not in the nav or the sitemap): overrides passed to components win over their own styles. --}}
+@import uiButton from '~/registry/button.tscl'
+@import uiCard from '~/registry/card.tscl'
+@import uiSwitch from '~/registry/switch.tscl'
+@import partSwitch from '@clarusjs/ui-primitives/switch.tscl'
+
+<cl-head>
+  <title>Overrides test</title>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+  <style>
+    @layer theme, base, components, utilities;
+    @layer utilities {
+      .rounded-full {
+        border-radius: 9999px;
+      }
+    }
+  </style>
+</cl-head>
+
+<main class="overrides">
+  <h1>Overrides</h1>
+  <uiButton variant="outline" class="brand">Brand</uiButton>
+  <uiButton class="rounded-full">Round</uiButton>
+  <uiCard class="flat">
+    @slot('header') {
+      <h2>Card</h2>
+    }
+    Body
+  </uiCard>
+  <uiSwitch label="Styled" />
+  <partSwitch label="Big" class="big" style="margin: 7px" data-x="1" />
+</main>
+
+<style scoped>
+  .brand {
+    background: rgb(1, 2, 3);
+  }
+</style>
+
+<style global>
+  /* Inside a component: a page's scoped rules stop at its root, so this is global CSS (or use parts). */
+  .flat [data-part='card-header'] {
+    color: rgb(4, 5, 6);
+  }
+</style>

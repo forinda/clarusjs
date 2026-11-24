@@ -1,0 +1,25 @@
+{{-- The layout: the docs theme with this site's navigation (src/nav.ts) and the tokens components use (src/theme.css). --}}
+@import docsTheme from '@clarusjs/theme-docs/layout.tscl'
+@import { theme } from '~/nav.ts'
+@import type { Heading } from '@clarusjs/theme-docs/nav.ts'
+@import '~/theme.css'
+@import themeReset from '~/components/theme-reset.tscl'
+@input title: string
+@input path: string = '/'
+@input source: string = ''
+@input url: string = ''
+@input description: string = 'Styled clarusjs components to copy into your project.'
+@input headings: Heading[] = []
+@input app: boolean = false
+
+<docsTheme
+  [config]="theme"
+  [title]="title"
+  [path]="path"
+  [source]="source"
+  [url]="url"
+  [description]="description"
+  [headings]="headings"
+  [app]="app"
+  ><themeReset /><slot
+/></docsTheme>

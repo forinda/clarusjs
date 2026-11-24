@@ -1,0 +1,41 @@
+{{-- Badge: a short label in a <span>, in six variants. --}}
+@input variant: 'default' | 'secondary' | 'outline' | 'destructive' | 'success' | 'warning' = 'default'
+
+<span data-part="badge" [data-variant]="variant"><slot /></span>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: var(--ui-accent);
+      color: var(--ui-accent-fg);
+      font: 600 calc(var(--ui-font-size) - 2px)/1.4 var(--ui-font);
+    }
+    :where(:scope[data-variant='secondary']) {
+      background: var(--ui-secondary);
+      color: var(--ui-secondary-fg);
+    }
+    :where(:scope[data-variant='outline']) {
+      background: transparent;
+      color: var(--ui-fg);
+      border-color: var(--ui-border);
+    }
+    :where(:scope[data-variant='destructive']) {
+      background: var(--ui-danger);
+      color: var(--ui-danger-fg);
+    }
+    :where(:scope[data-variant='success']) {
+      background: var(--ui-success);
+      color: var(--ui-success-fg);
+    }
+    :where(:scope[data-variant='warning']) {
+      background: var(--ui-warning);
+      color: var(--ui-warning-fg);
+    }
+  }
+</style>

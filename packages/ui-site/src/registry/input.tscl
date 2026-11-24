@@ -1,0 +1,50 @@
+{{-- Input: a native <input>. id, aria-* (aria-invalid, aria-describedby) and data-* you pass land on it. --}}
+@input type: string = 'text'
+@input name: string = ''
+@input value: string = ''
+@input placeholder: string = ''
+@input autocomplete: string = ''
+@input required: boolean = false
+@input disabled: boolean = false
+
+<input
+  [type]="type"
+  [name]="name || null"
+  [value]="value || null"
+  [placeholder]="placeholder || null"
+  [autocomplete]="autocomplete || null"
+  [required]="required"
+  [disabled]="disabled"
+  data-part="text-input"
+/>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--ui-input);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where(:scope)::placeholder {
+      color: var(--ui-muted);
+    }
+    :where(:scope:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 1px;
+    }
+    :where(:scope[aria-invalid='true']) {
+      border-color: var(--ui-danger);
+    }
+    :where(:scope:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+</style>

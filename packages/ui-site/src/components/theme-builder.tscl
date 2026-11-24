@@ -1,0 +1,440 @@
+{{-- The theme builder: presets, every colour token, fonts and shape, edited per mode, set live on the preview
+     ([data-ui-preview]) as inline custom properties. Copy CSS hands out theme.css. --}}
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  import { presets } from '~/theme/presets.ts'
+  import { MODELESS, PAIRS, contrast, darkFrom, decode, encode, fromOklch, restore, toCss } from '~/theme/model.ts'
+  import { SCOPE, SOURCE_KEY, STORAGE_KEY, loadFonts } from '~/theme/apply.ts'
+  import { FONTS, HEADINGS, MONOS, SHADOWS, SIZES } from '~/theme/options.ts'
+
+  const PRESETS = ['teal', 'indigo', 'rose', 'amber', 'green', 'neutral'].map((name) => ({
+    name,
+    label: name[0].toUpperCase() + name.slice(1),
+    accent: presets[name].light.accent,
+  }))
+  const t = (key, label) => ({ key, label })
+  const GROUPS = [
+    {
+      title: 'Brand',
+      tokens: [
+        t('accent', 'Accent'),
+        t('accent-fg', 'Accent text'),
+        t('secondary', 'Secondary'),
+        t('secondary-fg', 'Secondary text'),
+      ],
+    },
+    {
+      title: 'Surfaces',
+      tokens: [
+        t('bg', 'Background'),
+        t('fg', 'Text'),
+        t('card', 'Card'),
+        t('card-fg', 'Card text'),
+        t('popover', 'Popover'),
+        t('popover-fg', 'Popover text'),
+        t('muted-bg', 'Muted surface'),
+        t('muted', 'Muted text'),
+        t('accent-soft', 'Hover tint'),
+        t('accent-soft-fg', 'Hover tint text'),
+        t('border', 'Border'),
+        t('input', 'Input border'),
+        t('ring', 'Focus ring'),
+      ],
+    },
+    {
+      title: 'Status',
+      tokens: [
+        t('danger', 'Danger'),
+        t('danger-fg', 'Danger text'),
+        t('success', 'Success'),
+        t('success-fg', 'Success text'),
+        t('warning', 'Warning'),
+        t('warning-fg', 'Warning text'),
+      ],
+    },
+    {
+      title: 'Sidebar',
+      tokens: [
+        t('sidebar', 'Sidebar'),
+        t('sidebar-fg', 'Sidebar text'),
+        t('sidebar-accent', 'Sidebar accent'),
+        t('sidebar-accent-fg', 'Sidebar accent text'),
+        t('sidebar-border', 'Sidebar border'),
+      ],
+    },
+  ]
+  const clone = (theme) => ({ light: { ...theme.light }, dark: { ...theme.dark } })
+
+  let base = state('teal')
+  let theme = state(clone(presets.teal))
+  let mode = state('light')
+  let narrow = state(false)
+  let edited = state([])
+  let shadow = state('soft')
+  let copied = state(false)
+  let shared = state(false)
+  // Saved only after an edit here: opening /theme or a shared link never overwrites a saved theme.
+  let dirty = state(false)
+  const BG = Object.fromEntries(PAIRS)
+  const ratio = (key) => (BG[key] ? Math.floor(contrast(theme[mode][key], theme[mode][BG[key]]) * 10) / 10 : 21)
+  const low = (key) => ratio(key) < 4.5
+
+  function pick(name) {
+    dirty = true
+    base = name
+    theme = clone(presets[name])
+    edited = []
+    shadow = 'soft'
+  }
+  function set(key, value) {
+    dirty = true
+    if (MODELESS.includes(key)) {
+      theme = { light: { ...theme.light, [key]: value }, dark: theme.dark }
+    } else if (mode === 'dark') {
+      theme = { light: theme.light, dark: { ...theme.dark, [key]: value } }
+      if (!edited.includes(key)) edited = [...edited, key]
+    } else {
+      const light = { ...theme.light, [key]: value }
+      theme = { light, dark: edited.includes(key) ? theme.dark : { ...theme.dark, [key]: darkFrom(light)[key] } }
+    }
+  }
+  function font(key, value) {
+    set(key, value)
+    loadFonts(value)
+  }
+
+  function setShadow(name) {
+    dirty = true
+    shadow = name
+    theme = { light: { ...theme.light, shadow: SHADOWS[name][0] }, dark: { ...theme.dark, shadow: SHADOWS[name][1] } }
+  }
+  function shuffle() {
+    dirty = true
+    const h = Math.random() * Math.PI * 2
+    const tint = (set, accent, fg, soft) => ({
+      ...set,
+      accent,
+      'accent-fg': fg,
+      ring: accent,
+      'accent-soft': soft,
+      secondary: soft,
+      'muted-bg': soft,
+      'sidebar-accent': soft,
+    })
+    theme = {
+      light: tint(theme.light, fromOklch([0.5, 0.15, h]), '#ffffff', fromOklch([0.96, 0.03, h])),
+      dark: tint(theme.dark, fromOklch([0.78, 0.13, h]), theme.dark.bg, fromOklch([0.27, 0.05, h])),
+    }
+  }
+  function openPanel() {
+    const panel = document.getElementById('tb-panel')
+    if (panel instanceof HTMLDialogElement) {
+      panel.close()
+      panel.showModal()
+    }
+  }
+  function reset() {
+    pick(base)
+  }
+  async function share() {
+    try {
+      await navigator.clipboard.writeText(`${location.origin}/theme?t=${encodeURIComponent(encode(theme, base))}`)
+      shared = true
+      setTimeout(() => (shared = false), 1500)
+    } catch {}
+  }
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(toCss(theme))
+      copied = true
+      setTimeout(() => (copied = false), 1500)
+    } catch {}
+  }
+  const load = () => {
+    let text = new URLSearchParams(location.search).get('t')
+    if (text === null) {
+      try {
+        text = localStorage.getItem(SOURCE_KEY)
+      } catch {}
+    }
+    const found = text ? decode(text) : null
+    if (found) {
+      base = found.base
+      theme = found.theme
+      const back = restore(found.theme, found.base)
+      shadow = back.shadow
+      edited = back.edited
+      loadFonts(Object.values(found.theme.light).join(' '))
+    }
+  }
+  const wire = (el) => {
+    load()
+    // The panel is a <dialog>: inline (open, non-modal) on wide screens; on a phone a drawer opened with showModal().
+    const reopen = () => el.setAttribute('open', '')
+    el.addEventListener('close', reopen)
+    // Start in the mode the site shows.
+    const root = document.documentElement.dataset.theme
+    if (root === 'dark' || (root !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) mode = 'dark'
+    const stop = effect(() => {
+      const preview = document.querySelector('[data-ui-preview]')
+      if (!(preview instanceof HTMLElement)) return
+      const values = { ...theme.light, ...(mode === 'dark' ? theme.dark : {}) }
+      for (const [key, value] of Object.entries(values)) preview.style.setProperty(`--ui-${key}`, String(value))
+      preview.style.maxWidth = narrow ? '390px' : ''
+    })
+    const save = effect(() => {
+      if (!dirty) return
+      try {
+        localStorage.setItem(STORAGE_KEY, toCss(theme, SCOPE))
+        localStorage.setItem(SOURCE_KEY, encode(theme, base))
+      } catch {}
+    })
+    el.setAttribute('data-ready', '')
+    return () => {
+      stop()
+      save()
+      el.removeEventListener('close', reopen)
+    }
+  }
+</script>
+
+<div class="tb-toolbar" role="toolbar" aria-label="Preview">
+  <div class="seg">
+    <button type="button" [aria-pressed]="String(mode === 'light')" (click)="mode = 'light'">Light</button>
+    <button type="button" [aria-pressed]="String(mode === 'dark')" (click)="mode = 'dark'">Dark</button>
+  </div>
+  <button type="button" class="customize" aria-haspopup="dialog" (click)="openPanel()">Customize</button>
+  <div class="seg">
+    <button type="button" aria-label="Desktop width" [aria-pressed]="String(!narrow)" (click)="narrow = false">
+      Desktop
+    </button>
+    <button type="button" aria-label="Phone width" [aria-pressed]="String(narrow)" (click)="narrow = true">
+      Phone
+    </button>
+  </div>
+</div>
+
+<dialog class="theme-builder" id="tb-panel" open aria-label="Theme controls" [use]="wire">
+  <h2 class="tb-title">Presets</h2>
+  <div class="presets" role="group" aria-label="Presets">
+    @for (p of PRESETS; track p.name) {
+      <button
+        type="button"
+        class="swatch"
+        [aria-label]="p.label + ' preset'"
+        [aria-pressed]="String(base === p.name)"
+        [style]="'--sw: ' + p.accent"
+        (click)="pick(p.name)"
+      ></button>
+    }
+  </div>
+  <details open>
+    <summary>Colours ({{ mode }})</summary>
+    @for (g of GROUPS; track g.title) {
+      <fieldset>
+        <legend>{{ g.title }}</legend>
+        @for (tok of g.tokens; track tok.key) {
+          <div class="colour">
+            <label [for]="'tb-' + tok.key">{{ tok.label }}</label>
+            <input
+              type="color"
+              [id]="'tb-' + tok.key"
+              [aria-describedby]="low(tok.key) ? 'tb-' + tok.key + '-warn' : null"
+              [value]="theme[mode][tok.key]"
+              (input)="set(tok.key, $event.target.value)"
+            />
+            <code>{{ theme[mode][tok.key] }}</code>
+            <p class="warn" [id]="'tb-' + tok.key + '-warn'" [hidden]="!low(tok.key)">
+              Low contrast ({{ ratio(tok.key) }}:1, needs 4.5)
+            </p>
+          </div>
+        }
+      </fieldset>
+    }
+  </details>
+  <details>
+    <summary>Typography</summary>
+    <label for="tb-font">Body font</label>
+    <select id="tb-font" (change)="font('font', $event.target.value)">
+      @for (f of FONTS; track f.label) {
+        <option [value]="f.value" [selected]="theme.light.font === f.value">{{ f.label }}</option>
+      }
+    </select>
+    <label for="tb-heading">Heading font</label>
+    <select id="tb-heading" (change)="font('font-heading', $event.target.value)">
+      @for (f of HEADINGS; track f.label) {
+        <option [value]="f.value" [selected]="theme.light['font-heading'] === f.value">{{ f.label }}</option>
+      }
+    </select>
+    <label for="tb-mono">Code font</label>
+    <select id="tb-mono" (change)="font('font-mono', $event.target.value)">
+      @for (f of MONOS; track f.label) {
+        <option [value]="f.value" [selected]="theme.light['font-mono'] === f.value">{{ f.label }}</option>
+      }
+    </select>
+    <label for="tb-size">Base size</label>
+    <select id="tb-size" (change)="set('font-size', $event.target.value)">
+      @for (s of SIZES; track s) {
+        <option [value]="s" [selected]="theme.light['font-size'] === s">{{ s }}</option>
+      }
+    </select>
+  </details>
+  <details>
+    <summary>Shape</summary>
+    <label for="tb-radius">Radius</label>
+    <input
+      type="range"
+      id="tb-radius"
+      min="0"
+      max="20"
+      [value]="parseInt(theme.light.radius)"
+      (input)="set('radius', $event.target.value + 'px')"
+    />
+    <label for="tb-shadow">Shadow</label>
+    <select id="tb-shadow" (change)="setShadow($event.target.value)">
+      <option value="none" [selected]="shadow === 'none'">None</option>
+      <option value="soft" [selected]="shadow === 'soft'">Soft</option>
+      <option value="strong" [selected]="shadow === 'strong'">Strong</option>
+    </select>
+  </details>
+  <div class="tb-actions">
+    <button type="button" class="primary" (click)="copy()">{{ copied ? 'Copied' : 'Copy CSS' }}</button>
+    <button type="button" (click)="shuffle()">Shuffle</button>
+    <button type="button" (click)="reset()">Reset</button>
+    <button type="button" (click)="share()">{{ shared ? 'Link copied' : 'Share link' }}</button>
+  </div>
+  <form method="dialog" class="tb-close"><button>Close</button></form>
+</dialog>
+
+<style scoped>
+  .warn {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--ui-danger, #b42318);
+    font-size: 12px;
+  }
+  .warn[hidden] {
+    display: none;
+  }
+  :scope.theme-builder {
+    position: static;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    display: grid;
+    gap: 12px;
+    align-content: start;
+  }
+  .tb-title {
+    margin: 0;
+    font-size: 15px;
+  }
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .swatch {
+    width: 28px;
+    height: 28px;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    background: var(--sw);
+    cursor: pointer;
+  }
+  .swatch[aria-pressed='true'] {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+  details {
+    display: grid;
+    gap: 6px;
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  fieldset {
+    display: grid;
+    gap: 6px;
+    margin: 8px 0 0;
+    padding: 8px;
+    border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+    border-radius: 8px;
+  }
+  .colour {
+    display: grid;
+    grid-template-columns: 1fr auto 5.5em;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+  }
+  .colour input {
+    width: 36px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  details > label {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+  .tb-actions,
+  .seg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  :scope.tb-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: flex-end;
+  }
+  button:not(.swatch) {
+    padding: 6px 12px;
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  button[aria-pressed='true'],
+  .primary {
+    background: color-mix(in srgb, currentColor 14%, transparent);
+    font-weight: 600;
+  }
+  .customize,
+  .tb-close {
+    display: none;
+  }
+  @media (max-width: 959px) {
+    .customize,
+    .tb-close {
+      display: block;
+    }
+    :scope.theme-builder:not(:modal) {
+      display: none;
+    }
+    :scope.theme-builder:modal {
+      position: fixed;
+      inset: 0 0 0 auto;
+      width: min(360px, 100vw);
+      height: 100dvh;
+      max-height: none;
+      overflow: auto;
+      padding: 16px;
+      background: Canvas;
+      color: CanvasText;
+      border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+    }
+  }
+</style>

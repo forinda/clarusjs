@@ -1,0 +1,28 @@
+{{-- Separator: a line between content. [decorative]="true" hides it from assistive technology. --}}
+@input orientation: 'horizontal' | 'vertical' = 'horizontal'
+@input decorative: boolean = false
+
+<div
+  [role]="decorative ? 'none' : 'separator'"
+  [aria-orientation]="decorative ? null : orientation"
+  data-part="separator"
+  [data-orientation]="orientation"
+></div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      flex-shrink: 0;
+      background: var(--ui-border);
+    }
+    :where(:scope[data-orientation='horizontal']) {
+      height: 1px;
+      width: 100%;
+    }
+    :where(:scope[data-orientation='vertical']) {
+      width: 1px;
+      align-self: stretch;
+    }
+  }
+</style>
