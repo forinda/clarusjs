@@ -23,3 +23,14 @@ export function unlayer(collapsed: string): string {
   const m = /^@layer components \{ ([\s\S]*) \}$/.exec(collapsed)
   return m ? m[1]!.trim() : collapsed
 }
+
+/** ui.css's token rules: :root, the dark ones for the OS setting and for the theme toggle. */
+export function tokenRules(css: string): string {
+  const rules = [
+    /:root \{[^}]*\}/,
+    /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme='light'\]\) \{[^}]*\}\s*\}/,
+    /:root\[data-theme='dark'\] \{[^}]*\}/,
+  ].map((re) => css.match(re)?.[0])
+  if (rules.some((r) => !r)) throw new Error('ui.css lost one of its token rules')
+  return collapse(rules.join('\n'))
+}
