@@ -1890,6 +1890,9 @@ for (const [label, viewport, colorScheme] of [['phone, light', { width: 390, hei
     const failures: string[] = []
     for (const path of paths) {
       await page.goto(path)
+      // No transitions: the reduced-motion rule makes every change a 0.01ms one, so a button leaving [disabled] when
+      // its data arrives keeps its disabled colours for a frame, and axe measuring that frame fails contrast.
+      await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important }' })
       const { violations } = await (await axe(page)).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']).analyze()
       for (const v of violations) failures.push(`${path} ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)
     }
