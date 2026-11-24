@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, relative, resolve, sep } from 'node:path'
-import type { ParsedFile } from 'clarusjs/compiler'
+import { componentIndex, type ComponentNames, type ParsedFile } from 'clarusjs/compiler'
 import { projectAliases, resolveAlias, type Alias } from '../../clarusjs/src/vite/aliases.ts' // the build's own rules, bundled
 import { blankFences, blankOut, scan } from './blank.ts'
 import type { Compiler } from './compiler.ts'
@@ -105,8 +105,24 @@ export class Project {
     this.parsed.delete(path)
   }
 
+  /** Explicit @imports, then the components a template can use by name (#458) that the file doesn't import itself. */
   importsOf(path: string): Import[] {
-    return this.imports.get(path) ?? []
+    const own = this.imports.get(path) ?? []
+    if (!path.endsWith('.tscl')) return own
+    const named = new Set(own.map((i) => i.name))
+    const auto = Object.entries(this.componentNames())
+      .filter((e): e is [string, string] => typeof e[1] === 'string' && !named.has(e[0]))
+      .map(([name, specifier]): Import => ({ name, nameStart: -1, specifier, target: resolve(this.root, specifier.slice(1)), start: -1, end: -1 }))
+    return [...own, ...auto]
+  }
+
+  /**
+   * The automatic component names (#458), as the build names them: kebab-case files under src/components and
+   * src/layouts. ponytail: the default folders; a project's `components.dirs` needs its Vite config loaded.
+   */
+  componentNames(): ComponentNames {
+    const files = [...this.texts.keys()].filter((p) => p.endsWith('.tscl')).map((p) => relative(this.root, p).split(sep).join('/'))
+    return componentIndex(files, ['src/components', 'src/layouts']).names
   }
 
   /** A component's interface (its last good parse), read from disk when it isn't indexed (a package's). */

@@ -1,0 +1,18 @@
+{{-- A page only signed-in visitors see: ./+guard.ts protects the whole folder (the Auth guide's demo signs you in). --}}
+@import docs from '~/layouts/docs.tscl'
+@input name: string
+
+<docs
+  [title]="'Members'"
+  [path]="'/guide/auth'"
+  [source]="'/members'"
+  [description]="'A page only signed-in visitors see, protected by its folder guard.'"
+>
+  <cl-head><meta name="robots" content="noindex" /></cl-head>
+  <h1>Members</h1>
+  <p class="lead">Hello, {{ name }}. You're signed in, so the folder's guard let you through.</p>
+  <p>
+    Every page under <code>src/pages/members/</code> is protected by one file, <code>+guard.ts</code>. Back to the
+    <a href="/guide/auth#guarding-a-folder">Auth guide</a>.
+  </p>
+</docs>

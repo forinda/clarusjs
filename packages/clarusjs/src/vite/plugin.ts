@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
+import { COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
 import type { LintConfig, LintRuleDef } from '../compiler/lint.ts'
 import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, routeToFile } from './build.ts'
 export { packageOf } from './build.ts'
@@ -144,7 +145,7 @@ function writeStyles(root: string, files: Files): boolean {
   const outDir = resolve(root, '.clarusjs')
   for (const file of files.components(root)) {
     try {
-      let out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file), icon: iconsFor(file), layouts: files.layouts(file, root) }).css
+      let out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file), icon: iconsFor(file), layouts: files.layouts(file, root), components: files.names(root) }).css
       out = out.replace(/^(?:[ \t]*@(?:reference|import)\b[^;{]*;[ \t]*\n?)+/, (statements) => {
         for (const statement of statements.split(';').map((x) => x.trim()).filter(Boolean)) {
           head.add(statement.replace(/(["'])(\.{1,2}\/[^"']*)\1/, (_, q: string, spec: string) => {
@@ -185,6 +186,12 @@ export type ClarusOptions = {
    * `@layout none` gets none.
    */
   layouts?: { layout: string; include?: string[]; exclude?: string[] }[]
+  /**
+   * Automatic component imports (#458): a kebab-case file under these folders is used by its name, without @import
+   * (`src/components/forms/text-field.tscl` → `<forms-text-field>`, or `<text-field>` when no other has that name).
+   * Defaults: `{ dirs: ['src/components', 'src/layouts'], auto: true }`.
+   */
+  components?: { dirs?: string[]; auto?: boolean }
   /** Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. */
   adapter?: 'netlify'
   /** Fragment navigation: each static and server page also answers at <path>/index.frag.html. */
@@ -262,6 +269,8 @@ type Files = {
   pages(root: string): string[]
   /** A page's folder and config layouts (#456), for compile(); undefined for other files. */
   layouts(file: string, root: string): string[] | undefined
+  /** The automatic component names (#458), for compile(); undefined when off. */
+  names(root: string): ComponentNames | undefined
   read(file: string, root: string): string
   /** Every component of the app: those under src/, and every .tscl their @imports reach, in packages too. */
   components(root: string): string[]
@@ -338,6 +347,12 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     find: (dir) => findClarusFiles(dir, extensions).filter((f) => f.endsWith('.tscl') || f.includes(`${sep}src${sep}pages${sep}`)),
     pages: (root) => files.find(resolve(root, 'src/pages')).filter((f) => isPageFile(f.split(sep).join('/'))),
     layouts: (file, root) => layoutsFor(root, file, options.layouts ?? []),
+    // ponytail: the folders are listed on every compile (cheap next to compiling); cache per build if it shows up.
+    names: (root) => {
+      if (options.components?.auto === false) return undefined
+      const found = findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => relative(root, f).split(sep).join('/'))
+      return componentIndex(found, options.components?.dirs ?? COMPONENT_DIRS).names
+    },
     components: (appRoot) => reachableComponents(appRoot, [...files.find(resolve(appRoot, 'src')), ...extra(appRoot).filter((f) => existsSync(f))], (file) => files.read(file, appRoot), extensions, aliases),
     read: (file, appRoot) => {
       const code = readFileSync(file, 'utf8')
@@ -383,7 +398,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   return {
     name: 'clarusjs',
     // For clarusjs check (src/cli/project.ts): the page sources it should type-check too.
-    api: { sources, lint: options.lint, lintRules: options.lintRules },
+    api: { sources, lint: options.lint, lintRules: options.lintRules, components: options.components },
     config(userConfig, env) {
       extra = (appRoot) => pluginsOf(userConfig.plugins).flatMap((p) => (p.api as { clarusComponents?: (root: string) => string[] } | undefined)?.clarusComponents?.(appRoot) ?? [])
       // The plugin's own component and stylesheet discovery resolves the same aliases Vite does.
@@ -424,7 +439,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const input: Record<string, string> = { [LOADER_ENTRY]: here('../runtime/loader') }
       const components = files.components(appRoot)
       for (const file of components) {
-        if (compile(files.read(file, appRoot), { file, target: 'client', icon: iconsFor(file), layouts: files.layouts(file, appRoot) }).stateful) input[entryName(appRoot, file)] = file
+        if (compile(files.read(file, appRoot), { file, target: 'client', icon: iconsFor(file), layouts: files.layouts(file, appRoot), components: files.names(appRoot) }).stateful) input[entryName(appRoot, file)] = file
       }
       // Client routes: the router, and each page's render function for the browser.
       const client = clientPages(appRoot, modes, files)
@@ -472,6 +487,13 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       root = config.root
       command = config.command
       base = config.base
+      // Component files the automatic imports can't name (#458), said once.
+      if (options.components?.auto !== false) {
+        const found = findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => relative(root, f).split(sep).join('/'))
+        for (const file of componentIndex(found, options.components?.dirs ?? COMPONENT_DIRS).skipped) {
+          config.logger.warn(`clarusjs: ${file} isn't imported automatically: its name isn't kebab-case (rename it, or @import it)`)
+        }
+      }
     },
     // Order matters: the server build needs the client's hashed URLs, and prerendering needs the server build.
     async buildApp(builder) {
@@ -694,7 +716,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  componentLoaders: ${JSON.stringify(componentLoaders)},\n` +
         `  componentData: import.meta.glob(['/src/**/*.load.ts', '!/src/pages/**']),\n` +
         // Endpoints: the other .ts files under src/pages, exporting GET, POST, … (see the server reference).
-        `  endpoints: import.meta.glob(['/src/pages/**/*.ts', '!/src/pages/**/*.load.ts', '!/src/pages/**/*.d.ts']),\n` +
+        `  guards: import.meta.glob('/src/pages/**/+guard.ts'),\n` +
+        `  endpoints: import.meta.glob(['/src/pages/**/*.ts', '!/src/pages/**/*.load.ts', '!/src/pages/**/*.d.ts', '!/src/pages/**/+*']),\n` +
         `  modes: ${JSON.stringify(modes)},\n` +
         `  routerUrl: ${JSON.stringify(routerUrl)},\n` +
         `  client: ${JSON.stringify(client)},\n` +
@@ -738,7 +761,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         const clientUrl = urls
           ? urls.get(entryName(root, file)) ?? urls.get(relative(root, file).split(sep).join('/')) ?? urls.get(real(file))
           : command === 'build' ? `${CHUNK_TOKEN}[${entryName(root, file)}]__` : clientUrlFor(root, file)
-        if (urls && !clientUrl && compile(code, { file, target: 'client', icon: iconsFor(file), layouts: files.layouts(file, root) }).stateful) {
+        if (urls && !clientUrl && compile(code, { file, target: 'client', icon: iconsFor(file), layouts: files.layouts(file, root), components: files.names(root) }).stateful) {
           this.error(`${file}: stateful component is not under src/, so it has no client chunk`)
         }
         // Imports that aren't relative or root paths must resolve (an alias, a package): otherwise a located error at
@@ -763,7 +786,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const hot = command === 'serve' && target === 'client' ? '/cl-hot.js' : undefined
           // A page's folder and config layouts (#456): its template is wrapped in them.
           const layouts = files.layouts(file, root)
-          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader, hot, icon: iconsFor(file), layouts })
+          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader, hot, icon: iconsFor(file), layouts, components: files.names(root) })
           // Every component compiles for the server once: warnings from there, so each is said once.
           if (consumer === 'server' && !renderQuery) for (const w of out.warnings) this.warn(w.message)
           return { code: out.code, map: null, moduleType: 'js' }

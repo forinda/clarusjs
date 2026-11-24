@@ -1,6 +1,7 @@
 // .tscl → virtual TypeScript for type checking (it never runs). Template expressions are copied verbatim inside
 // TypeScript that has the same meaning (@if → if, @for → for…of, a component → an object typed as its Inputs), and
 // every copied span is recorded so tsc's errors can be mapped back to the template. Pure: string in, string out.
+import { autoImport, type ComponentNames } from '../compiler/components.ts'
 import { parseExpressionAt } from 'acorn'
 import { routeFromFile } from '../server/handler.ts'
 import { ClarusError } from '../compiler/errors.ts'
@@ -42,8 +43,10 @@ function patternNames(params: string): string[] {
   return names
 }
 
-export function generateTs(source: string, file: string, options: { loader?: string; componentSuffix?: string } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
+export function generateTs(source: string, file: string, options: { loader?: string; componentSuffix?: string; components?: ComponentNames } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
   const parsed = parse(source, file)
+  // Components used by name (#458), imported as the build imports them.
+  if (options.components) autoImport(parsed, options.components, file, source)
   const mappings: Mapping[] = []
   let code = ''
   const emit = (text: string) => { code += text }
