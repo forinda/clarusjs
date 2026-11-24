@@ -4,7 +4,7 @@
 // page it doesn't own. A form's values are any state: a component's or a store's.
 // @see https://clarusjs.com/guide/form-validation
 import { effect, onDispose, state, untrack, type Ctx, type Signal } from '../runtime/index.ts'
-import { marked } from '../runtime/dom.ts'
+import { marked, openSlots, owner } from '../runtime/dom.ts'
 import { browser } from '../runtime/env.ts'
 import type { Form, FormError, FormOptions, StandardSchema } from './types.ts'
 
@@ -28,13 +28,20 @@ const dotted = (path: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
  */
 function pathOf(field: Element, root: Element): string {
   const parts: string[] = []
+  // Inside an island's slot range (#465), the elements up to and including that island are its own, not the path's:
+  // the field belongs to the island that wrote it.
+  let through = 0
   for (let el: Element | null = field; el && el !== root.parentElement; el = el.parentElement) {
     const here: Element = el
+    if (through && here.localName === 'cl-island') { through--; through += openSlots(here); continue }
+    if (through) { through += openSlots(here); continue }
+    through += openSlots(here)
     let part = here.getAttribute('data-cl-path')
     if (part?.startsWith('@')) {
       const [model, ...rest] = part.slice(1).split('.')
-      const island: Element | null | undefined = here.parentElement?.closest(`[data-cl-path-${model}]`)
-      if (!island) return ''
+      // @x is the field's own component's @model x: the island that owns it (#465: not one holding it in a slot).
+      const island = owner(here)
+      if (!island?.hasAttribute(`data-cl-path-${model}`)) return ''
       part = [island.getAttribute(`data-cl-path-${model}`), ...rest].filter(Boolean).join('.')
       el = island
     }

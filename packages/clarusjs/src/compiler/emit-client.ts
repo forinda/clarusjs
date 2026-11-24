@@ -33,6 +33,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     all.some((n) => n.kind === 'component' && !!n.listens?.length) && 'listen as __cl_listen',
     all.some((n) => n.kind === 'use') && 'use as __cl_useOn',
     ir.sends && 'emit as __cl_emit',
+    ir.provides && 'provideOn as __cl_provideOn',
     kinds.has('model') && 'modelInput as __cl_modelInput',
     ir.inputs.some((i) => kinds.has('input') || i.model) && 'batch as __cl_batch',
     // Branch and row HTML is rendered in the browser with the same helpers as on the server.
@@ -65,6 +66,8 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
   // The context children it re-renders get (#465). ponytail: the island's own provides only; its incoming context
   // isn't serialized, so it can't pass on what was provided above it.
   out += contextLines(ir, 'undefined')
+  // What it provides, for content another island re-renders inside it (#465).
+  if (ir.provides) out += `  __cl_provideOn(__cl_root, __cl_cx)\n`
   // Inputs: read-only signals (writes are compile errors), set from props now and by the returned update.
   const inputs = ir.inputs.filter((i) => ir.signals.get(i.name) === 'input' || ir.signals.get(i.name) === 'model')
   const value = (i: (typeof inputs)[number], from: string) =>
@@ -125,7 +128,8 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
   for (const n of nodes) {
     if (n.kind === 'component' && n.region >= 0) {
       const content = [...n.children, ...n.fills.flatMap((f) => f.nodes)]
-      lines.push(`__cl_region(${ctx}, ${n.region}, () => ${componentCall(n, rw)}, ${fn('', wiring(ir, content, `c${n.region}`, ctx, signals, depth))})`)
+      // (__cl_cx): the context the runtime finds for the region, with what islands holding it provide (#465).
+      lines.push(`__cl_region(${ctx}, ${n.region}, (__cl_cx) => ${componentCall(n, rw)}, ${fn('', wiring(ir, content, `c${n.region}`, ctx, signals, depth))}, __cl_cx)`)
       // [(x)]: the child island's writes to its @model x come back here and update this island's state.
       for (const m of n.models ?? []) lines.push(`__cl_model(${ctx}, ${n.region}, ${JSON.stringify(m.name)}, (__cl_v) => { ${rewriteClient(m.set, signals).trim()} })`)
       // (name)="…": the child island's emit('name', …) (#442).

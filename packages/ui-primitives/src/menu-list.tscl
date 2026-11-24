@@ -1,0 +1,13 @@
+{{-- Menu list (#465): the popover holding the <menu-item>s, below its trigger (flipping when there's no room). --}}
+@context menu: { id: string }
+
+<div
+  [id]="menu.id + '-list'"
+  popover="auto"
+  role="menu"
+  [aria-labelledby]="menu.id + '-trigger'"
+  [style]="'position-anchor: --' + menu.id + '; position-area: bottom span-right; position-try-fallbacks: flip-block, flip-inline'"
+  data-part="menu-list"
+>
+  <slot />
+</div>

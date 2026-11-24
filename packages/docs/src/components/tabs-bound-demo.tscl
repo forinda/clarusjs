@@ -1,0 +1,47 @@
+{{--
+  The Tabs page's second demo (#465): tabs inside an island. The page binds the selected tab two ways, cancels the
+  change while "Locked" is on, and has its own button and count inside a panel: content an island passes to the
+  tabs island, each wiring its own.
+--}}
+@import uiTabs from '@clarusjs/ui-primitives/tabs.tscl'
+@import uiTabList from '@clarusjs/ui-primitives/tab-list.tscl'
+@import uiTab from '@clarusjs/ui-primitives/tab.tscl'
+@import uiTabPanel from '@clarusjs/ui-primitives/tab-panel.tscl'
+
+<script>
+  let pm = state('npm')
+  let locked = state(false)
+  let count = state(0)
+</script>
+
+<div class="tabs-bound-demo">
+  <label class="bound-lock"><input type="checkbox" [(checked)]="locked" /> Locked</label>
+  <uiTabs id="bound-install" label="Package manager" [(value)]="pm" (change)="if (locked) $info.cancel()">
+    <uiTabList>
+      <uiTab value="npm">npm</uiTab>
+      <uiTab value="pnpm">pnpm</uiTab>
+      <uiTab value="yarn">yarn</uiTab>
+    </uiTabList>
+    <uiTabPanel value="npm">
+      <button type="button" class="bound-inc" (click)="count++">+1</button>
+      <span class="bound-count">{{ count }}</span>
+    </uiTabPanel>
+    <uiTabPanel value="pnpm"><code>pnpm add clarusjs</code></uiTabPanel>
+    <uiTabPanel value="yarn"><code>yarn add clarusjs</code></uiTabPanel>
+  </uiTabs>
+  <p class="bound-out">Selected: {{ pm }}</p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 20px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+  p {
+    margin: 0;
+  }
+</style>
