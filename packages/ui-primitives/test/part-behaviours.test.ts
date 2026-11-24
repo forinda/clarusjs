@@ -288,7 +288,7 @@ test('toast types: data-type, a default icon per kind (hidden), the kind said in
 test('toast templates: the general template replaces the default markup; parts are filled; no action, no action button', async () => {
   const toast = await region('<template data-type="toast"><div class="mine"><p data-part="toast-message"></p><button data-part="toast-action"></button><button data-part="toast-close" aria-label="Close">x</button></div></template>')
   toast('Saved')
-  expect(item().querySelector('.mine')).not.toBeNull()
+  expect(item().classList.contains('mine')).toBe(true) // the template's root is the toast
   expect(item().querySelector('[data-part="toast-message"]')!.textContent).toBe('Saved')
   expect(item().querySelector('[data-part="toast-action"]')).toBeNull()
   ;(item().querySelector('[data-part="toast-close"]') as HTMLElement).click()
@@ -300,9 +300,9 @@ test("toast templates: a kind's template wins for that kind only; its own icon s
   toast('Bad', { type: 'error' })
   toast('Fine', { type: 'success' })
   const [bad, fine] = [...document.querySelectorAll('[data-part="toast"]')] as HTMLElement[]
-  expect(bad!.querySelector('.err')).not.toBeNull()
+  expect(bad!.classList.contains('err')).toBe(true)
   expect(bad!.querySelector('[data-part="toast-icon"]')!.textContent).toBe('!')
-  expect(fine!.querySelector('.general')).not.toBeNull()
+  expect(fine!.classList.contains('general')).toBe(true)
 })
 
 test('toast: the message is text, never markup; icon: false leaves the icon out', async () => {
@@ -311,4 +311,14 @@ test('toast: the message is text, never markup; icon: false leaves the icon out'
   expect(item().querySelector('img')).toBeNull()
   expect(item().querySelector('[data-part="toast-message"]')!.textContent).toBe('<img src=x onerror=alert(1)>')
   expect(item().querySelector('[data-part="toast-icon"] svg')).toBeNull()
+})
+
+test('toast templates: one root element, which becomes the toast; a template with several roots is ignored', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const toast = await region('<template data-type="toast"><p data-part="toast-message"></p><span>extra</span></template>')
+  toast('Hi')
+  expect(item().localName).toBe('div') // the default markup
+  expect(item().querySelector('[data-part="toast-message"]')!.textContent).toBe('Hi')
+  expect(warn).toHaveBeenCalled()
+  warn.mockRestore()
 })

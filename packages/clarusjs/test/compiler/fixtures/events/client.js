@@ -10,5 +10,5 @@ export function attach(__cl_root, __cl_props = {}, __cl_state) {
   const __cl_h = __cl_holes(__cl_root)
   __cl_text(__cl_h[0], () => total.get())
   __cl_region(__cl_root, 0, (__cl_cx) => __cl_render_step$counter({ value: total.get() }, undefined, { cx: __cl_cx }), () => {}, __cl_cx)
-  __cl_listen(__cl_root, 0, "change", ($event, $info) => { total.set($event); if (locked.get()) $info.cancel() })
+  __cl_listen(__cl_root, 0, "change", ($event, $info) => { total.set($event); if (locked.get()) $info.cancel() }, "step-counter")
 }

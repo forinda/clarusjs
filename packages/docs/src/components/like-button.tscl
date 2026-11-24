@@ -1,0 +1,15 @@
+{{-- The Events guide's example: a component with no script and no @event; a parent's (click) still reaches it. --}}
+
+<button type="button" class="like"><slot /></button>
+
+<style scoped>
+  :scope {
+    padding: 6px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+</style>

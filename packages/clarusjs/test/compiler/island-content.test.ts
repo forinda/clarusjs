@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // #465: an island passes content, with its own markers, to another island. Each wires only its own: the content
 // sits in the inner island's slot range, and owner() gives it to the outer island.
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import { compile } from '../../src/compiler/index.ts'
 import { attachAll } from '../../src/runtime/loader.ts'
 import { importCode } from '../helpers.ts'
@@ -20,6 +20,10 @@ const parts: Record<string, string> = {
   protoProv: "@input v: string = 'x'\n<script>\n  provide('__proto__', { v })\n</script>\n<div class=\"prov\"><slot /></div>\n",
   protoShell: "@context __proto__: { v: string }\n@input n: number = 0\n<p class=\"shell\">{{ __proto__.v }}:{{ n }}</p>\n",
   cnt: "<script>\n  let c = state(0)\n</script>\n<button class=\"cnt\" (click)=\"c++\">{{ c }}</button>\n",
+  clickable: "<button class=\"clk\" type=\"button\"><slot /></button>\n",
+  wrapper: "<div class=\"wrap\"><slot /></div>\n",
+  onlyEmitter: "@import emitter from './emitter.tscl'\n<emitter />\n",
+  emitter: "@event click: string\n<script>\n  function go(event) { emit('click', 'from-child', { event }) }\n</script>\n<button class=\"em\" (click)=\"go($event)\">e</button>\n",
 }
 let n = 0
 type Loader = (modules: Record<string, unknown>) => (src: string) => Promise<any>
@@ -29,7 +33,7 @@ async function mount(outer: string, opts: object = {}, loader: Loader = (modules
   const imports = names.map((x) => `@import ${x} from './${x}.tscl'`).join('\n') + '\n'
   const source = imports + outer
   const deps = Object.fromEntries(names.map((x) => [`./${x}.tscl`, serverOf(x)]))
-  const renderDeps = Object.fromEntries(names.map((x) => [`./${x}.tscl?render`, serverOf(x)]))
+  const renderDeps = { ...deps, ...Object.fromEntries(names.map((x) => [`./${x}.tscl?render`, serverOf(x)])) } // plain ones too: a component may render another
   const s = await importCode(compile(source, { file: 'page.tscl', target: 'server', clientUrl: '/page.js' }).code, `ic-s-${n}`, deps)
   const modules: Record<string, unknown> = { '/page.js': await importCode(compile(source, { file: 'page.tscl', target: 'client' }).code, `ic-c-${n}`, renderDeps) }
   for (const x of names) modules[`/${x}.js`] = await importCode(compile(parts[x]!, { file: `${x}.tscl`, target: 'client' }).code, `ic-${x}-${n}`, {})
@@ -167,4 +171,53 @@ test('#465 review: a provider that failed to load doesn\'t disable the island wh
   expect(page.hasAttribute('data-cl-ready')).toBe(true)
   click('.inc')
   expect($('.shell').textContent).toContain('q:1')
+})
+
+test('#fallthrough: (click) on a component without @event click listens on what it renders; $event is the DOM event', async () => {
+  await mount("<script>\n  let got = state('')\n</script>\n<clickable (click)=\"got = $event.type\"><b>x</b></clickable><p class=\"got\">{{ got }}</p>\n")
+  click('.clk')
+  expect($('.got').textContent).toBe('click')
+})
+
+test('#fallthrough: a child island that declares @event click: the handler gets the emitted value, once', async () => {
+  await mount("<script>\n  let calls = state([])\n</script>\n<emitter (click)=\"calls = [...calls, String($event)]\" /><p class=\"calls\">{{ calls.join(',') }}</p>\n")
+  click('.em')
+  expect($('.calls').textContent).toBe('from-child')
+})
+
+test('#fallthrough: a child in an @if that comes back keeps exactly one listener', async () => {
+  await mount("<script>\n  let n = state(0)\n  let show = state(true)\n</script>\n<button class=\"tog\" (click)=\"show = !show\">t</button>\n@if (show) { <clickable (click)=\"n++\">c</clickable> }\n<p class=\"n\">{{ n }}</p>\n")
+  click('.tog')
+  click('.tog')
+  await attachAll(document)
+  click('.clk')
+  expect($('.n').textContent).toBe('1')
+})
+
+test('#review: a click before the child island attaches is not taken as a DOM click; the replay sends it once', async () => {
+  let release = () => {}
+  const held = new Promise<void>((r) => { release = r })
+  const mounting = mount("<script>\n  let calls = state([])\n</script>\n<emitter (click)=\"calls = [...calls, String($event)]\" /><p class=\"calls\">{{ calls.join(',') }}</p>\n", {}, (modules) => async (src) => {
+    if (src === '/emitter.js') await held
+    return modules[src]
+  })
+  await vi.waitFor(() => { if (!document.querySelector('cl-island[c="page"][data-cl-ready]')) throw new Error('not yet') }, { timeout: 4000 })
+  click('.em') // the page is ready, the emitter isn't: its module is still loading
+  expect($('.calls').textContent).toBe('')
+  release()
+  await mounting
+  for (let i = 0; i < 5; i++) await tick()
+  expect($('.calls').textContent).toBe('from-child')
+})
+
+test('#review: (click) bound on a wrapper that declares nothing is its DOM click, once; an island in its content keeps its own events', async () => {
+  await mount("<script>\n  let calls = state([])\n</script>\n<wrapper (click)=\"calls = [...calls, typeof $event === 'string' ? $event : $event.type]\"><emitter /></wrapper><p class=\"calls\">{{ calls.join(',') }}</p>\n")
+  click('.em')
+  expect($('.calls').textContent).toBe('click')
+})
+
+test('#review: a stateless wrapper that renders only an island: the bound wrapper declares nothing, so the DOM click', async () => {
+  await mount("<script>\n  let calls = state([])\n</script>\n<onlyEmitter (click)=\"calls = [...calls, typeof $event === 'string' ? $event : $event.type]\" /><p class=\"calls\">{{ calls.join(',') }}</p>\n")
+  click('.em')
+  expect($('.calls').textContent).toBe('click')
 })

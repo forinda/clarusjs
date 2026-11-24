@@ -333,7 +333,7 @@ test('#442 events: emit() is typed by @event, and a parent handler gets $event a
 `
   expect(check({ 'src/components/stepper.tscl': fine, 'src/pages/index.tscl': page })).toEqual([
     expect.stringMatching(/^src\/pages\/index\.tscl:5:35 Property 'toUpperCase' does not exist on type 'number'/),
-    expect.stringMatching(/^src\/pages\/index\.tscl:5:112 Type '"chnage"' is not assignable to type 'keyof Events'/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:5:112 Type '"chnage"' is not assignable to type /),
   ])
 })
 
@@ -382,4 +382,39 @@ test('#465 review: a script\'s own provide is an error in check too, as in the b
 test('#465 review: provide passed around (not called) is the build\'s located error in check too', () => {
   const bare = "<script>\n  const register = provide\n  register('tabs', 1)\n</script>\n<p />\n"
   expect(() => check({ 'src/components/bare.tscl': bare })).toThrow(/^src\/components\/bare\.tscl:2:20 provide is called with/)
+})
+
+test('#fallthrough: (name) a component doesn\'t declare is the DOM event on what it renders; $event is that event', () => {
+  const button = '<button type="button"><slot /></button>\n'
+  const page = `@import btn from '../components/btn.tscl'
+<script>
+  let x = state(0)
+</script>
+<btn (click)="x = $event.clientX">a</btn>
+<btn (keydown)="x = $event.key.length">b</btn>
+<btn (click)="x = $event.nope">c</btn>
+<btn (clik)="x = 1">d</btn>
+<p>{{ x }}</p>
+`
+  expect(check({ 'src/components/btn.tscl': button, 'src/pages/index.tscl': page })).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:7:26 Property 'nope' does not exist on type '(Pointer|Mouse)Event'/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:8:6 Type '"clik"' is not assignable to type /),
+  ])
+})
+
+test('#review: an event that does not bubble is reported (it would never arrive); a typo is reported once', () => {
+  const button = '<button type="button"><slot /></button>\n'
+  const page = `@import btn from '../components/btn.tscl'
+<script>
+  let x = state(0)
+  function f(v) { x = v }
+</script>
+<btn (focus)="x = 1">a</btn>
+<btn (clik)="f($event.x)">b</btn>
+<p>{{ x }}</p>
+`
+  const errors = check({ 'src/components/btn.tscl': button, 'src/pages/index.tscl': page })
+  expect(errors).toHaveLength(2)
+  expect(errors[0]).toMatch(/^src\/pages\/index\.tscl:6:6 Type '"focus"' is not assignable/)
+  expect(errors[1]).toMatch(/^src\/pages\/index\.tscl:7:6 Type '"clik"' is not assignable/)
 })

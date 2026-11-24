@@ -2665,3 +2665,12 @@ test('#467 components: @clarusjs/ui styles the parts in the site\'s tokens; inte
   await page.getByRole('option', { name: 'Banana' }).click()
   await expect(page.locator('.gallery-out')).toHaveText('Fruit: banana')
 })
+
+test('events fallthrough: (click) on a component without that @event listens on what it renders', async ({ page }) => {
+  await page.goto('/guide/events#events-on-what-a-component-renders')
+  const demo = page.locator('cl-island[c="fallthrough-demo"]')
+  await expect(demo).toHaveAttribute('data-cl-ready', '')
+  await demo.getByRole('button', { name: 'Like' }).click()
+  await demo.getByRole('button', { name: 'Like' }).click()
+  await expect(demo.locator('.likes')).toHaveText('2 likes')
+})

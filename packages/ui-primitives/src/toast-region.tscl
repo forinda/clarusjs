@@ -1,6 +1,6 @@
 {{--
   Toast region: where toast('…') messages appear. Put it once in your layout. Its look is yours: write the markup of
-  a toast in @slot('toast'), and a kind's own in @slot('success' | 'error' | 'info' | 'warning'); the region copies it
+  a toast in @slot('toast') (one root element: it becomes the toast), and a kind's own in @slot('success' | 'error' | 'info' | 'warning'); the region copies it
   for each toast and fills the parts it finds: data-part="toast-message" (the text), "toast-action" (removed when the
   toast has none), "toast-close", "toast-icon" (a default icon when it's empty). Static markup: it's copied, not run. A polite live region: screen readers
   announce new messages without moving focus. Each message stays its duration (paused while hovered or focused);
@@ -28,15 +28,24 @@
   }
   function wire(el) {
     // A toast's markup: its kind's template, else the general one, else the default (icon, message, action, close).
+    // A template has one root element, which becomes the toast; one with none or several is ignored.
+    const usable = (tpl) => {
+      if (!(tpl instanceof HTMLTemplateElement) || !tpl.content.childNodes.length) return false
+      const loose = [...tpl.content.childNodes].some((n) => n.nodeType === 3 && n.textContent?.trim())
+      if (tpl.content.childElementCount === 1 && !loose) return true
+      console.warn(`[ui-primitives] <toast-region>: the ${tpl.dataset.type} template needs one root element; using the default`)
+      return false
+    }
     const template = (type) => {
       const own = type && el.querySelector(`template[data-type="${type}"]`)
-      if (own instanceof HTMLTemplateElement && own.content.childElementCount) return own
+      if (own && usable(own)) return own
       const general = el.querySelector('template[data-type="toast"]')
-      return general instanceof HTMLTemplateElement && general.content.childElementCount ? general : null
+      return general && usable(general) ? general : null
     }
     const piece = (t) => {
       const chosen = template(t.type)
-      if (chosen) return [chosen.content.cloneNode(true)]
+      const root = chosen?.content.firstElementChild?.cloneNode(true)
+      if (root instanceof HTMLElement) return root
       const make = (tag, part, text = '') => {
         const node = document.createElement(tag)
         node.dataset.part = part
@@ -48,7 +57,9 @@
       action.setAttribute('type', 'button')
       close.setAttribute('type', 'button')
       close.setAttribute('aria-label', 'Dismiss')
-      return [make('span', 'toast-icon'), make('p', 'toast-message'), action, close]
+      const box = document.createElement('div')
+      box.append(make('span', 'toast-icon'), make('p', 'toast-message'), action, close)
+      return box
     }
     const list = el.querySelector('[data-part="toast-list"]')
     const timers = new Map()
@@ -86,7 +97,7 @@
       }
       for (const t of now) {
         if (list.querySelector(`[data-id="${t.id}"]`)) continue
-        const item = document.createElement('li')
+        const item = piece(t)
         item.dataset.part = 'toast'
         item.dataset.id = String(t.id)
         if (t.type) item.dataset.type = t.type
@@ -94,7 +105,7 @@
         const kind = document.createElement('span')
         kind.dataset.part = 'toast-kind'
         kind.textContent = t.type ? KINDS[t.type] : ''
-        item.append(kind, ...piece(t))
+        item.prepend(kind)
         const icon = item.querySelector('[data-part="toast-icon"]')
         if (icon) {
           icon.setAttribute('aria-hidden', 'true')
@@ -145,5 +156,5 @@
   <template data-type="error"><slot name="error" /></template>
   <template data-type="info"><slot name="info" /></template>
   <template data-type="warning"><slot name="warning" /></template>
-  <ol aria-live="polite" data-part="toast-list"></ol>
+  <div aria-live="polite" data-part="toast-list"></div>
 </section>
