@@ -1,0 +1,21 @@
+{{--
+  Tooltip (#465): a hint popover (popover="hint": it doesn't close other popovers), placed next to its
+  <tooltip-trigger> by CSS anchor positioning, flipping when there's no room. The trigger shows it on hover and focus.
+  Short text only; nothing in it can be clicked.
+
+  <tooltip-trigger target="copy-tip">Copy</tooltip-trigger>
+  <tooltip id="copy-tip">Copy the link</tooltip>
+--}}
+@input id: string
+@input side: 'top' | 'bottom' | 'left' | 'right' = 'top'
+
+<div
+  [id]="id"
+  popover="hint"
+  role="tooltip"
+  data-part="tooltip"
+  [data-side]="side"
+  [style]="'position-anchor: --' + id + '; position-area: ' + side + '; position-try-fallbacks: flip-block, flip-inline'"
+>
+  <slot />
+</div>

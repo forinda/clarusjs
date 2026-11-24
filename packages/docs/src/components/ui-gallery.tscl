@@ -12,7 +12,13 @@
 @import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
 @import uiRadioGroup from '@clarusjs/ui-primitives/radio-group.tscl'
 @import uiRadio from '@clarusjs/ui-primitives/radio.tscl'
-@input part: 'dialog' | 'popover' | 'accordion' | 'switch' | 'field' | 'select' | 'combobox' | 'radio'
+@import uiTooltip from '@clarusjs/ui-primitives/tooltip.tscl'
+@import uiTooltipTrigger from '@clarusjs/ui-primitives/tooltip-trigger.tscl'
+@import uiMenu from '@clarusjs/ui-primitives/menu.tscl'
+@import uiMenuTrigger from '@clarusjs/ui-primitives/menu-trigger.tscl'
+@import uiMenuList from '@clarusjs/ui-primitives/menu-list.tscl'
+@import uiMenuItem from '@clarusjs/ui-primitives/menu-item.tscl'
+@input part: 'dialog' | 'popover' | 'accordion' | 'switch' | 'field' | 'select' | 'combobox' | 'radio' | 'tooltip' | 'menu'
 
 <script>
   let on = state(true)
@@ -20,6 +26,7 @@
   let name = state('')
   let size = state('m')
   let fruit = state('')
+  let picked = state('nothing yet')
   const sizes = [
     { value: 's', label: 'Small' },
     { value: 'm', label: 'Medium' },
@@ -73,6 +80,20 @@
   } @else if (part === 'select') {
     <uiSelect id="gallery-size" label="Size" [options]="sizes" [(value)]="size" />
     <p class="gallery-out">Size: {{ size }}</p>
+  } @else if (part === 'menu') {
+    <uiMenu id="gallery-menu" (select)="picked = $event">
+      <uiMenuTrigger>Actions</uiMenuTrigger>
+      <uiMenuList>
+        <uiMenuItem value="copy">Copy</uiMenuItem>
+        <uiMenuItem value="rename">Rename</uiMenuItem>
+        <uiMenuItem value="archive" [disabled]="true">Archive</uiMenuItem>
+        <uiMenuItem value="delete">Delete</uiMenuItem>
+      </uiMenuList>
+    </uiMenu>
+    <p class="gallery-out">Picked: {{ picked }}</p>
+  } @else if (part === 'tooltip') {
+    <uiTooltipTrigger target="gallery-tip">Copy link</uiTooltipTrigger>
+    <uiTooltip id="gallery-tip">Copies the page's address</uiTooltip>
   } @else if (part === 'radio') {
     <uiRadioGroup name="gallery-size" label="Size" [(value)]="size">
       <uiRadio value="s" label="Small" />

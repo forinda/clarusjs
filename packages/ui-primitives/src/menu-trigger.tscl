@@ -1,0 +1,15 @@
+{{-- Menu trigger (#465): opens its <menu>'s list (popovertarget) and anchors it. No JavaScript of its own. --}}
+@context menu: { id: string }
+
+<button
+  type="button"
+  [id]="menu.id + '-trigger'"
+  [popovertarget]="menu.id + '-list'"
+  aria-haspopup="menu"
+  [aria-controls]="menu.id + '-list'"
+  aria-expanded="false"
+  [style]="'anchor-name: --' + menu.id"
+  data-part="trigger"
+>
+  <slot />
+</button>
