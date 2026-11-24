@@ -2334,3 +2334,11 @@ test('#457 folder guards: /members sends signed-out visitors to sign in, and let
   await expect(page.getByText('Hello, Ada.')).toBeVisible() // load() ran after the guard, reading locals.user
   expect((await page.request.get('/members/+guard')).status()).toBe(404) // a guard is never an endpoint or a page
 })
+
+test('#458 automatic imports: components used by name render on the server, and an island attaches', async ({ page }) => {
+  // <item-list> in the Slots demo and <tour-keys> on the tour pages have no @import.
+  const slots = await (await page.request.get('/guide/slots')).text()
+  expect(slots).toMatch(/<ul class="item-list[^"]*"/)
+  await page.goto('/tour/1')
+  await expect(page.locator('cl-island[c*="tour-keys"]')).toHaveCount(1)
+})

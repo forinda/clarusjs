@@ -3,10 +3,12 @@ import { emitClient } from './emit-client.ts'
 import { ClarusError } from './errors.ts'
 import { emitServer } from './emit-server.ts'
 import { lower } from './ir.ts'
+import { autoImport, type ComponentNames } from './components.ts'
 import { awaitLists, parse, type Attr, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
+export { componentIndex, COMPONENT_DIRS, type ComponentNames } from './components.ts'
 import { foldClass } from './class-style.ts'
 export { checkIcons, type IconResolver } from './icon.ts'
 import type { IconResolver } from './icon.ts'
@@ -29,6 +31,11 @@ export type CompileOptions = {
    * finds. The page's template is wrapped in them (each gets the route's `path` and `params`); `@layout none` skips them.
    */
   layouts?: string[]
+  /**
+   * Automatic imports (#458): tag names → component paths, from `componentIndex()`. A tag the template uses that's
+   * here and not imported by the file is imported; other hyphenated tags stay HTML.
+   */
+  components?: ComponentNames
   file: string
   target: 'server' | 'client'
   clientUrl?: string
@@ -60,6 +67,7 @@ export type CompileResult = { code: string; stateful: boolean; css: string; warn
  */
 export function compile(source: string, options: CompileOptions): CompileResult {
   const parsed = parse(source, options.file)
+  if (options.components) autoImport(parsed, options.components, options.file, source)
   if (options.layouts?.length && parsed.layout !== 'none') wrapInLayouts(parsed, options.layouts, options.file, source)
   const warnings: ClarusError[] = []
   // Every component's top-level elements carry its scope class, styled or not: a parent's scope then takes in a
