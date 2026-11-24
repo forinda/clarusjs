@@ -9,7 +9,8 @@
 <div class="slots-demo" id="slots-demo">
   <section aria-labelledby="slots-demo-plain">
     <h3 id="slots-demo-plain">Unfilled: the list's own rows</h3>
-    <item-list [items]="steps" />
+    {{-- id and aria-label land on its <ul> (attributes pass through to a component's root). --}}
+    <item-list [items]="steps" id="slots-demo-steps" aria-label="Learn steps" />
   </section>
   <section aria-labelledby="slots-demo-row">
     <h3 id="slots-demo-row">Filled: the page renders each row</h3>

@@ -1,0 +1,83 @@
+{{-- The UI primitives guide's parts demo: a dialog, a popover and an accordion with no JavaScript of their own, and a
+     switch and a field (small islands) bound to this one's state. --}}
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+@import uiDialogClose from '@clarusjs/ui-primitives/dialog-close.tscl'
+@import uiPopover from '@clarusjs/ui-primitives/popover.tscl'
+@import uiPopoverTrigger from '@clarusjs/ui-primitives/popover-trigger.tscl'
+@import uiAccordionItem from '@clarusjs/ui-primitives/accordion-item.tscl'
+@import uiSwitch from '@clarusjs/ui-primitives/switch.tscl'
+@import uiField from '@clarusjs/ui-primitives/field.tscl'
+@import uiSelect from '@clarusjs/ui-primitives/select.tscl'
+
+<script>
+  let wifi = state(true)
+  let email = state('')
+  let size = state('m')
+  const sizes = [
+    { value: 's', label: 'Small' },
+    { value: 'm', label: 'Medium' },
+    { value: 'l', label: 'Large', disabled: true },
+  ]
+</script>
+
+<div class="parts-demo">
+  <div class="row">
+    <uiDialogTrigger target="parts-dialog">Delete file…</uiDialogTrigger>
+    <uiDialog id="parts-dialog">
+      @slot('title') {
+        Delete this file?
+      }
+      <p>It can't be undone.</p>
+      <uiDialogClose target="parts-dialog">Cancel</uiDialogClose>
+    </uiDialog>
+    <uiPopoverTrigger target="parts-popover">Share</uiPopoverTrigger>
+    <uiPopover id="parts-popover" side="bottom" align="start">
+      <p>Copy the link, or send it by email.</p>
+    </uiPopover>
+  </div>
+  <div class="accordion">
+    <uiAccordionItem group="parts-faq" [open]="true">
+      @slot('trigger') {
+        Does this need JavaScript?
+      }
+      No: it's a details element.
+    </uiAccordionItem>
+    <uiAccordionItem group="parts-faq">
+      @slot('trigger') {
+        Can two be open?
+      }
+      Not in the same group: opening one closes the other.
+    </uiAccordionItem>
+  </div>
+  <uiSwitch label="Wi-Fi" [(checked)]="wifi" />
+  <uiSelect id="parts-size" label="Size" [options]="sizes" [(value)]="size" />
+  <p class="parts-size">Size: {{ size }}</p>
+  <p class="parts-wifi">Wi-Fi is {{ wifi ? 'on' : 'off' }}.</p>
+  <uiField
+    id="parts-email"
+    label="Email"
+    type="email"
+    description="We never share it."
+    [error]="email.includes('@') ? '' : 'Enter an email address.'"
+    [(value)]="email"
+  />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+  p {
+    margin: 0;
+  }
+</style>

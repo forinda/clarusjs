@@ -3,7 +3,7 @@ import type { ComponentIR, IRNode } from './ir.ts'
 import { FOR_IMPLICIT } from './parse.ts'
 import { attrValueExpr, componentCall, htmlExpr, tagArg, walk, whichExpr, type Rewriter, rowNames, rowParams, rowDerived } from './html-expr.ts'
 import { formName, rewriteClient, rewriteClientExpr, wrapExpr, type Signals } from './script.ts'
-import { indentScript, inputsLine, renderName } from './shared.ts'
+import { contextLines, indentScript, inputsLine, renderName } from './shared.ts'
 
 /** `hot`: in dev, the module that swaps a changed island in place (#53); its updates are accepted. */
 export function emitClient(ir: ComponentIR, hot?: string): string {
@@ -30,12 +30,16 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     all.some((n) => n.kind === 'for' && n.block >= 0 && rowNames(n, ir.events).some((x) => x !== '$count')) && 'derived as __cl_derived',
     hasRegions && 'region as __cl_region',
     all.some((n) => n.kind === 'component' && !!n.models?.length) && 'model as __cl_model',
+    all.some((n) => n.kind === 'component' && !!n.listens?.length) && 'listen as __cl_listen',
+    all.some((n) => n.kind === 'use') && 'use as __cl_useOn',
+    ir.sends && 'emit as __cl_emit',
     kinds.has('model') && 'modelInput as __cl_modelInput',
     ir.inputs.some((i) => kinds.has('input') || i.model) && 'batch as __cl_batch',
     // Branch and row HTML is rendered in the browser with the same helpers as on the server.
     rendersHtml && 'escape as __cl_escape',
     rendersHtml && all.some((n) => n.kind === 'attr' && n.name !== '...') && 'attrHtml as __cl_attrHtml',
-    rendersHtml && all.some((n) => n.kind === 'attr' && n.name === '...') && 'spreadHtml as __cl_spreadHtml',
+    // The root's spread of passed attributes (#463) is rendered by the server only: no spreadHtml for it here.
+    rendersHtml && all.some((n) => n.kind === 'attr' && n.name === '...' && !('expr' in n.value && n.value.expr === '__cl_attrs')) && 'spreadHtml as __cl_spreadHtml',
     rendersHtml && hasBlocks && 'blockHtml as __cl_blockHtml',
     rendersHtml && hasFors && 'forHtml as __cl_forHtml',
     hasRegions && 'regionHtml as __cl_regionHtml',
@@ -56,6 +60,11 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
   for (const line of ir.scriptImports) out += `${line}\n`
   out += `\nexport function attach(__cl_root, __cl_props = {}, __cl_state) {\n`
   out += `  const __cl_class = __cl_props.__cl_class ? " " + __cl_props.__cl_class : ""\n`
+  // emit('name', value, { reason, event }) (#442): false when the parent cancelled it.
+  if (ir.sends) out += `  const emit = (name, value, info) => __cl_emit(__cl_root, name, value, info)\n`
+  // The context children it re-renders get (#465). ponytail: the island's own provides only; its incoming context
+  // isn't serialized, so it can't pass on what was provided above it.
+  out += contextLines(ir, 'undefined')
   // Inputs: read-only signals (writes are compile errors), set from props now and by the returned update.
   const inputs = ir.inputs.filter((i) => ir.signals.get(i.name) === 'input' || ir.signals.get(i.name) === 'model')
   const value = (i: (typeof inputs)[number], from: string) =>
@@ -104,6 +113,7 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
     if (a.kind === 'attr' && a.reactive && a.name === '...') lines.push(`__cl_spread(${ctx}, ${a.index}, () => ${attrValueExpr(a.value, rw.expr)}, ${JSON.stringify(a.skip ?? [])}, ${JSON.stringify(a.tag)})`)
     else if (a.kind === 'attr' && a.reactive) lines.push(`__cl_attr(${ctx}, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, rw.expr)}${tagArg(a)})`)
     if (a.kind === 'connect') lines.push(`__cl_connect(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)
+    if (a.kind === 'use') lines.push(`__cl_useOn(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)
   }
   for (const e of ir.events.filter((ev) => ev.scope === scope)) {
     const body = rewriteClient(e.handler, signals).trim()
@@ -118,6 +128,11 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
       lines.push(`__cl_region(${ctx}, ${n.region}, () => ${componentCall(n, rw)}, ${fn('', wiring(ir, content, `c${n.region}`, ctx, signals, depth))})`)
       // [(x)]: the child island's writes to its @model x come back here and update this island's state.
       for (const m of n.models ?? []) lines.push(`__cl_model(${ctx}, ${n.region}, ${JSON.stringify(m.name)}, (__cl_v) => { ${rewriteClient(m.set, signals).trim()} })`)
+      // (name)="…": the child island's emit('name', …) (#442).
+      for (const l of n.listens ?? []) {
+        const body = rewriteClient(l.handler, signals).trim()
+        lines.push(`__cl_listen(${ctx}, ${n.region}, ${JSON.stringify(l.name)}, ($event, $info) => { ${body}${body.includes('//') ? '\n  ' : ' '}})`)
+      }
     }
     if (n.kind === 'if' && n.block >= 0) {
       const branches = n.branches.map((b, i) =>

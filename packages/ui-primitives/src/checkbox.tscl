@@ -1,0 +1,13 @@
+{{--
+  Checkbox (#465): a native checkbox inside its label. Bind it two ways: <checkbox label="I agree" [(checked)]="agreed" />.
+  data-checked and data-disabled on the label are for styling.
+--}}
+@input label: string
+@input name: string = ''
+@input disabled: boolean = false
+@model checked: boolean = false
+
+<label data-part="checkbox" [data-checked]="checked ? '' : false" [data-disabled]="disabled ? '' : false">
+  <input type="checkbox" [name]="name || false" [disabled]="disabled" [(checked)]="checked" />
+  <span data-part="label">{{ label }}</span>
+</label>

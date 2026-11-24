@@ -1,7 +1,7 @@
 ---
 title: Markdown pages
 group: "Templates"
-order: 11
+order: 12
 description: Write pages in Markdown with @clarusjs/content - frontmatter, a layout, components inside Markdown, and heading anchors.
 head:
   - [meta, { name: keywords, content: "clarusjs, markdown, static site" }]

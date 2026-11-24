@@ -171,7 +171,7 @@ Server output (readable, roughly what you'll see in `dist/`):
 import { escape as __cl_escape, island as __cl_island } from 'clarusjs/runtime/server'
 
 export function render(__cl_props = {}, __cl_slots, __cl_opts) {
-  if (__cl_slots !== undefined) throw new Error("[clarusjs] <counter> does not accept children yet")
+  for (const __cl_k in __cl_slots) if (![].includes(__cl_k)) throw new Error(/* "<counter> has no <slot />…" */)
   const { start = 0 } = __cl_props
   let count = (start)
   const double = (() => count * 2)()
@@ -223,6 +223,23 @@ server output is `export async function render(…)`, which returns a `Promise<s
   server handler, so a render paused at an `await` never sees another request's data.
   `runtime/server` itself stays free of Node APIs (it also runs in the docs playground).
 
+### 4.5 Context: from a component to its content (#465)
+
+A component's script calls `provide('tabs', { id, value })`; a component rendered inside it, in its template or
+in content passed to it at any depth, declares `@context tabs: { id: string; value: string }` and reads it.
+
+- **Passed, not ambient.** Every render gets its context as the render option `cx`, and passes its own to each
+  component it calls. Nothing is global, so it works the same in async renders, in the browser and on any runtime.
+- **Content is a function.** Content for a slot compiles to `(data, cx) => html`; the component that receives it
+  calls it at its `<slot />` with its own context. So content sees the context of where it is placed, not of the page
+  that wrote it, and content passed on through a wrapper still reaches the provider. Hand-built string slots still
+  work, without context.
+- **Read when a child renders.** `provide(key, value)` compiles to a getter, so a child rendered later (an island's
+  browser re-render) reads the current value. Values are passed like props, not subscribed to.
+- **Islands.** An island can provide; it can't read context yet (a build error), since its browser attach has no
+  incoming context. A component without a script inside an island's block or region that reads context provided
+  above the island fails when the island re-renders it in the browser. No marker changes: §5 is unchanged.
+
 ## 5. The HTML contract
 
 What the server writes, and what the client reads. This is the hardest thing
@@ -250,6 +267,13 @@ to change later, so it's fixed now.
 | `<!--[cn-->…<!--]-->` | a child component inside an island whose props or slot content read state; the browser re-renders it, or, when it is a nested island, passes it the new props in place (its inputs are read-only signals; its state is kept) |
 | `<!--[fn-->…<!--]-->` | `@for` list `n` inside an island; each row is wrapped in `<!--[r-->…<!--]-->`, `@empty` content in `<!--[e-->…<!--]-->`. Markers inside a row repeat per row and are looked up within that row |
 
+An island's slot content (#465) adds no marker. A `<slot />` in an island sits outside its `@if`, `@for` and
+`@await` blocks and outside the content it gives child components, so the browser never re-renders it: the content
+is server HTML in the parent's scope, between the island's own markers. It carries no markers of its own (it comes
+from a page or a component without `<script>`; content from inside another island is a render error for now, since
+its markers would land in this island), and islands in it are `<cl-island>`s, skipped by this island's lookups. An
+island's slot passes no data and has no fallback content.
+
 Every component marks its top-level elements with the class `cl-c-<scope id>`
 (the id from its file path; the `cl-c-` class prefix is reserved), merged with
 their own `class`. A `<style scoped>` block is wrapped in
@@ -260,7 +284,10 @@ inside those (Vue's rule: a parent can style a child's outer element, not its
 inside). Every component is marked, styled or not, so a scope always stops at a
 child component. A static `class="…"` on a component tag is appended to the
 component's top-level elements (render option `class`; an island carries it to
-the browser in its props as `__cl_class`, for the blocks it re-renders). A plain
+the browser in its props as `__cl_class`, for the blocks it re-renders). Other
+attribute-like props a component doesn't declare (`id`, `role`, `tabindex`, `hidden`, `lang`, `dir`, `style`,
+`data-*`, `aria-*`; #463) are rendered on its single root element by the server (`passed()`, `passedHtml()`): the
+root's own attributes win, `style` and ARIA id lists merge, and no browser code is involved. A plain
 `<style>` and `<style global>` are global, plain CSS
 (a plain one warns, for one minor version, since it used to be scoped). All
 component styles are bundled into one stylesheet that every page links.
@@ -284,7 +311,9 @@ of the elements around it, outermost first, with each `@x` replaced that way. In
 the attribute is kept up to date like any reactive attribute, so every two-way
 field in a row has one small effect for it, forms or not. An element bound `[engine]="f"` has
 `data-cl-form="<index>"`; the engine sets its own attributes at runtime
-(`novalidate`, `aria-invalid`, `aria-describedby`, `hidden` on steps).
+(`novalidate`, `aria-invalid`, `aria-describedby`, `hidden` on steps). An element with `[use]="fn"` (#464) has
+`data-cl-u="<index>"`: the island calls `fn(element)` when it attaches, and what that returns when the element's
+branch, row or island goes. Behaviours like `@clarusjs/ui-primitives`' get their elements this way.
 
 `<cl-head>…</cl-head>`, anywhere in a server-rendered page, holds tags for the
 page's `<head>`. The server moves them there before anything else sees the page
@@ -376,6 +405,12 @@ from the restored state. Values go through `runtime/serialize.ts` (JSON plus Dat
 -0, BigInt; functions, class instances and cycles are rejected with their path). Other locals in `<script>` still run
 again in the browser. **Island props and state are public**: they are in the page. Reading server-only globals
 (`process`, `Deno`, `Bun`, `require`) in an island's script is a build error.
+
+**Child to parent.** Two DOM events, both from the child island's `<cl-island>`, bubbling and cancelable: `cl:model`
+(a `@model` write, `{ name, value }`) and `cl:event` (`emit()` of an `@event`, #442: `{ name, value, reason, event }`).
+The parent island listens on the child's region (`model()` / `listen()` in `runtime/dom.ts`), takes only the child its
+region binds (not an island nested in it), and stops it there. Cancelling a `cl:event` (`$info.cancel()`) makes the
+child's `emit()` return false. No markup is added for either: the region's markers are enough.
 
 ## 7. Data flow
 

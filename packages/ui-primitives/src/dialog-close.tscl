@@ -1,0 +1,4 @@
+{{-- Closes the dialog whose id is `target` (command="close"): no JavaScript. --}}
+@input target: string
+
+<button type="button" [commandfor]="target" command="close" data-part="close"><slot /></button>

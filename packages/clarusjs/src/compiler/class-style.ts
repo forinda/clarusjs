@@ -26,7 +26,8 @@ function part(a: Attr): string {
 function foldStyle(node: Extract<TemplateNode, { type: 'element' }>): void {
   const props = node.attrs.filter((a) => a.kind === 'prop' && a.name.startsWith('style.'))
   const sources = node.attrs.filter((a) => isSource(a, 'style'))
-  const spread = spreadOf(node)
+  // The attributes passed to a component (#463): their style is merged by fallThrough (index.ts), not here.
+  const spread = spreadOf(node) === '__cl_attrs' ? undefined : spreadOf(node)
   if (!spread && !props.length && !(sources.length > 1 && sources.some((a) => a.kind === 'prop'))) return
   const exprs = [...(spread ? [`((${spread}) || {}).style`] : []), ...sources.map(part), ...props.map((p) => `{ ${JSON.stringify(p.name.slice(6))}: (${(p as { expr: string }).expr}) }`)]
   const start = (sources[0] ?? props[0] ?? node.attrs.find((a) => a.name === '...'))!.start
@@ -43,7 +44,8 @@ export function foldClass(nodes: TemplateNode[], components: Set<string>): void 
         // A lone bound [class] stays as it is (attrValue takes an object or an array): readable output.
         const mixed = sources.length > 1 && sources.some((a) => a.kind === 'prop')
         // A spread's class comes first (#405), merged like the others.
-        const spread = spreadOf(node)
+        // The attributes passed to a component (#463) never hold a class (it comes as __cl_class): no fold for them.
+        const spread = spreadOf(node) === '__cl_attrs' ? undefined : spreadOf(node)
         if (toggles.length || mixed || spread) {
           const exprs = [...(spread ? [`((${spread}) || {}).class`] : []), ...sources.map(part), ...toggles.map((t) => `{ ${JSON.stringify(t.name.slice(6))}: (${(t as { expr: string }).expr}) }`)]
           const start = (sources[0] ?? toggles[0] ?? node.attrs.find((a) => a.name === '...'))!.start

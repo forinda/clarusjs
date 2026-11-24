@@ -49,6 +49,11 @@ export type DataImport = { clause: string; from: string; start: number; clauseSt
  * @see https://clarusjs.com/reference/compiler#parse
  */
 export type ImportDecl = { name: string; from: string; start: number }
+/**
+ * An `@event` declaration (#442): the event's name and the type of the value it sends, with their offsets.
+ * @see https://clarusjs.com/guide/events#from-a-child-island-to-its-parent
+ */
+export type EventDecl = { name: string; type: string; start: number; nameStart: number; typeStart: number }
 // @type Name = … and @interface Name { … }: types for the file's @input props. Local: other files see them only
 // through the component's props; types to share go in a .ts file. Erased from compiled output, used by type checking.
 // `type`: what follows the name (and its type parameters): the aliased type, or the interface's `extends … { … }`.
@@ -59,6 +64,10 @@ export type TypeDecl = { kind: 'type' | 'interface'; name: string; params?: stri
  */
 export type ParsedFile = {
   inputs: InputDecl[]
+  /** `@event change: string` (#442): what the component sends its parent, and its value's type ('void' when none). */
+  events: EventDecl[]
+  /** `@context tabs: Type` (#465): values a component around this one provides; same shape as an @input. */
+  contexts: InputDecl[]
   imports: ImportDecl[]
   typeImports: TypeImport[]
   types: TypeDecl[]
@@ -100,7 +109,7 @@ const typeNames = (clause: string) =>
  * @see https://clarusjs.com/reference/compiler#parse
  */
 export function parse(source: string, file: string): ParsedFile {
-  const out: ParsedFile = { inputs: [], imports: [], typeImports: [], types: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
+  const out: ParsedFile = { inputs: [], events: [], contexts: [], imports: [], typeImports: [], types: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
   let i = 0
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
@@ -110,8 +119,8 @@ export function parse(source: string, file: string): ParsedFile {
     const lineStart = i + (source.slice(i, end).length - source.slice(i, end).trimStart().length)
     const line = source.slice(i, end).trim()
     let m: RegExpExecArray | RegExpMatchArray | null
-    if (/^@(input|model)\s/.test(line)) {
-      return inputDecl(lineStart, line.startsWith('@model'))
+    if (/^@(input|model|context)\s/.test(line)) {
+      return inputDecl(lineStart, line.startsWith('@model'), line.startsWith('@context'))
     } else if (/^@(type|interface)\s/.test(line)) {
       return typeDecl(lineStart)
     } else if ((m = IMPORT_TYPE_RE.exec(line))) {
@@ -126,6 +135,13 @@ export function parse(source: string, file: string): ParsedFile {
     else if ((m = CSS_IMPORT_RE.exec(line))) {
       if (!/\.css(\?|$)/.test(m[2]!)) fail(`@import without a name only takes a stylesheet (.css): "${m[2]}"`, i)
       out.cssImports.push({ from: m[2]!, start: i })
+    }
+    else if (/^@event(\s|$)/.test(line)) {
+      const d = /^@event\s+([A-Za-z_$][\w$-]*)\s*(?::\s*(\S[\s\S]*?))?\s*$/.exec(line)
+      if (!d) fail('@event takes a name and the type of its value: @event change: string (or @event close for none)', i)
+      const nameStart = lineStart + line.indexOf(d![1]!, 6)
+      const typeStart = d![2] ? lineStart + line.lastIndexOf(d![2]!) : nameStart
+      out.events.push({ name: d![1]!, type: d![2] ?? 'void', start: i, nameStart, typeStart })
     }
     else if ((m = /^@layout(?:\s+(\S+))?\s*$/.exec(line))) {
       if (m[1] !== 'none') fail('@layout only takes none: @layout none renders the page without its folder and config layouts', i)
@@ -157,8 +173,8 @@ export function parse(source: string, file: string): ParsedFile {
    * @input name: type = default. The type runs to the first '=' outside brackets that isn't part of '=>'; type and
    * default continue onto the next lines while a bracket is open (an object type, a function, a default object).
    */
-  function inputDecl(lineStart: number, model: boolean): void {
-    const directive = model ? '@model' : '@input'
+  function inputDecl(lineStart: number, model: boolean, context = false): void {
+    const directive = context ? '@context' : model ? '@model' : '@input'
     const malformed = () => fail(`unknown or malformed directive "${directive}"`, i)
     let pos = lineStart + directive.length
     while (source[pos] === ' ' || source[pos] === '\t') pos++
@@ -194,7 +210,7 @@ export function parse(source: string, file: string): ParsedFile {
       if (!value) malformed()
       fallback = { default: value, defaultStart: at }
     }
-    out.inputs.push({ name, type, start: i, nameStart, typeStart, ...fallback, ...(model ? { model: true as const } : {}) })
+    ;(context ? out.contexts : out.inputs).push({ name, type, start: i, nameStart, typeStart, ...fallback, ...(model ? { model: true as const } : {}) })
     i = end
   }
 

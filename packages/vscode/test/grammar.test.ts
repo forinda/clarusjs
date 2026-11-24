@@ -131,3 +131,21 @@ test('#455: @slot(\'row\', { item }): the keyword, the slot name, and the names 
   expect(scopesOf(src, 'slot')).toContain('keyword.control.flow.tscl')
   expect(scopesOf(src, 'item')).toContain('meta.embedded.expression.tscl')
 })
+
+test('#442 @event (with a TypeScript type, or none) and #456 @layout none are directives', () => {
+  const src = "@layout none\n@event change: { value: string }\n@event close\n<p></p>\n"
+  expect(scopesOf(src, 'event')).toContain('storage.type.tscl')
+  expect(scopesOf(src, 'change')).toContain('variable.parameter.tscl')
+  expect(scopesOf(src, 'string', 'value')).toContain('support.type.primitive')
+  expect(scopesOf(src, 'close')).toContain('variable.parameter.tscl')
+  expect(scopesOf(src, 'layout')).toContain('storage.type.tscl')
+  expect(scopesOf(src, 'none')).toContain('constant.language.tscl')
+  expect(scopesOf(src, 'p')).toContain('entity.name.tag')
+})
+
+test('#465 @context is a directive with a TypeScript type', () => {
+  const src = "@context tone: string\n<p></p>\n"
+  expect(scopesOf(src, 'context')).toContain('storage.type.tscl')
+  expect(scopesOf(src, 'tone')).toContain('variable.parameter.tscl')
+  expect(scopesOf(src, 'string', 'tone')).toContain('support.type.primitive')
+})

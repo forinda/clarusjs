@@ -96,8 +96,12 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
   const lineEnd = (at: number) => { const n = source.indexOf('\n', at); return n === -1 ? source.length : n }
   const directives: { start: number; end: number }[] = [
     ...[...parsed.imports, ...parsed.cssImports, ...parsed.typeImports, ...parsed.dataImports].map((d) => ({ start: d.start, end: lineEnd(d.start) })),
-    ...parsed.inputs.map((d) => ({ start: d.start, end: lineEnd(d.defaultStart !== undefined ? d.defaultStart + d.default!.length : d.typeStart + d.type.length) })),
+    // @context (#465) is shaped like an @input; a compiler without it has no field.
+    ...[...parsed.inputs, ...(parsed.contexts ?? [])].map((d) => ({ start: d.start, end: lineEnd(d.defaultStart !== undefined ? d.defaultStart + d.default!.length : d.typeStart + d.type.length) })),
     ...parsed.types.map((d) => ({ start: d.start, end: lineEnd(d.typeStart + d.type.length) })),
+    // @event (#442) and @layout (#456); a compiler without them has neither field.
+    ...(parsed.events ?? []).map((d) => ({ start: d.start, end: lineEnd(d.start) })),
+    ...(parsed.layoutStart !== undefined ? [{ start: parsed.layoutStart, end: lineEnd(parsed.layoutStart) }] : []),
   ].sort((a, b) => a.start - b.start)
   const head: string[] = []
   let bodyStart = 0

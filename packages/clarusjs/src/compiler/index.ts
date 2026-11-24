@@ -2,7 +2,7 @@
 import { emitClient } from './emit-client.ts'
 import { ClarusError } from './errors.ts'
 import { emitServer } from './emit-server.ts'
-import { lower } from './ir.ts'
+import { lower, SPREAD_REFUSED } from './ir.ts'
 import { autoImport, type ComponentNames } from './components.ts'
 import { awaitLists, parse, type Attr, type TemplateNode } from './parse.ts'
 
@@ -13,7 +13,7 @@ import { foldClass } from './class-style.ts'
 export { checkIcons, type IconResolver } from './icon.ts'
 import type { IconResolver } from './icon.ts'
 export { lint, lintRules, type LintRule, type LintLevel, type LintConfig, type LintMessage, type LintRuleDef, type LintContext, type LintElement } from './lint.ts'
-export type { ParsedFile, InputDecl, ImportDecl, TemplateNode, Attr } from './parse.ts'
+export type { ParsedFile, InputDecl, EventDecl, ImportDecl, TemplateNode, Attr } from './parse.ts'
 
 /**
  * `renderImports`: import child components' render functions with `?render`, for a render module that runs in the
@@ -73,6 +73,7 @@ export function compile(source: string, options: CompileOptions): CompileResult 
   // Every component's top-level elements carry its scope class, styled or not: a parent's scope then takes in a
   // child's top-level element and stops inside it.
   const id = options.scope ?? scopeId(options.file)
+  fallThrough(parsed)
   foldClass(parsed.nodes, new Set(parsed.imports.map((imp) => imp.name)))
   // Slot content is marked only when this component has scoped styles to reach it (#418): no class on every
   // paragraph of every Markdown page otherwise.
@@ -136,6 +137,44 @@ function markSlotContent(nodes: TemplateNode[], cls: string, components: Set<str
       else if (own.kind === 'prop') node.attrs[at] = { kind: 'interp', name: 'class', parts: [{ expr: own.expr.startsWith('__cl_classValue(') ? own.expr : `__cl_classValue((${own.expr}))`, start: own.start }, ` ${cls}`], start: own.start }
     }
   }
+}
+
+// ARIA attributes that hold a list of ids (#463): a passed one joins the root's own instead of losing to it.
+const ID_LISTS = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'aria-owns']
+
+/**
+ * Attributes a parent passes to this component land on its root element (#463): a spread of __cl_attrs (the passed
+ * attribute-like props, see passed() in runtime/attrs.ts) onto the one top-level element, which can be a component too.
+ * The root's own attributes win (the spread's rule), except style (the fold merges it) and ARIA id lists (joined here).
+ * ponytail: nothing falls through with several top-level elements, or text or blocks beside one; Vue warns there.
+ */
+function fallThrough(parsed: ReturnType<typeof parse>): void {
+  const meaningful = parsed.nodes.filter((n) => !(n.type === 'text' && !n.value.trim()) && !(n.type === 'element' && UNMARKED.has(n.tag)))
+  const root = meaningful[0]
+  // Not onto elements that load something (iframe, embed…): a spread could set what they load.
+  if (meaningful.length !== 1 || root?.type !== 'element' || SPREAD_REFUSED.has(root.tag.toLowerCase())) return
+  // ponytail: a root with its own [...] takes none (in an island its spread is wired in the browser, which doesn't have
+  // the passed attributes); merge them into it when a part needs both.
+  if (root.attrs.some((a) => a.kind === 'prop' && a.name === '...')) return
+  // ponytail: an island whose root is a component re-renders it in the browser, which doesn't have the passed attributes.
+  const island = !!parsed.script || parsed.inputs.some((i) => i.model)
+  if (island && parsed.imports.some((i) => i.name === root.tag)) return
+  root.attrs.push({ kind: 'prop', name: '...', expr: '__cl_attrs', start: root.start })
+  for (const [i, a] of root.attrs.entries()) {
+    if (a.kind !== 'static' || typeof a.value !== 'string' || !ID_LISTS.includes(a.name.toLowerCase())) continue
+    const more = `__cl_attrs[${JSON.stringify(a.name)}] == null ? "" : " " + __cl_attrs[${JSON.stringify(a.name)}]`
+    root.attrs[i] = { kind: 'interp', name: a.name, parts: [a.value, { expr: more, start: a.start }], start: a.start }
+  }
+  // style, on an element (a component root gets it in the spread, as a prop): after a static one of the root's own; the
+  // root's own [style] wins; else the passed one, since an element's spread skips style.
+  if (parsed.imports.some((i) => i.name === root.tag)) return
+  // Not with bound styles ([style], [style.x]): those are wired in an island's browser code, without the passed ones.
+  if (root.attrs.some((a) => (a.name === 'style' || a.name.startsWith('style.')) && a.kind !== 'event' && a.kind !== 'static')) return
+  const style = root.attrs.findIndex((a) => a.name === 'style' && a.kind !== 'event')
+  const ownStyle = root.attrs[style]
+  if (ownStyle?.kind === 'static' && typeof ownStyle.value === 'string') {
+    root.attrs[style] = { kind: 'interp', name: 'style', parts: [ownStyle.value, { expr: '__cl_attrs.style == null ? "" : "; " + __cl_attrs.style', start: ownStyle.start }], start: ownStyle.start }
+  } else if (!ownStyle) root.attrs.push({ kind: 'prop', name: 'style', expr: '__cl_attrs.style', start: root.start })
 }
 
 function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>, slots = false): void {

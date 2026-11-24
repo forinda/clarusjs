@@ -12,10 +12,10 @@ import type { Import, Project } from './project.ts'
 
 // ponytail: events a component sends, found by their literal name in its script; a name built at runtime isn't listed.
 const EVENT = /new\s+CustomEvent\(\s*(['"])([^'"]+)\1/g
-const DIRECTIVES = ['@if', '@else', '@for', '@empty', '@await', '@then', '@catch', '@slot', '@import', '@input', '@model', '@type', '@interface']
+const DIRECTIVES = ['@if', '@else', '@for', '@empty', '@await', '@then', '@catch', '@slot', '@import', '@input', '@model', '@context', '@type', '@interface']
 const Kind = { Property: 10, Event: 23, Keyword: 14, File: 17, Class: 7, Module: 9, Value: 12 } as const
 
-type Info = { inputs: { name: string; type: string; optional: boolean; model: boolean; default?: string }[]; events: string[] }
+type Info = { inputs: { name: string; type: string; optional: boolean; model: boolean; default?: string }[]; events: string[]; eventTypes: Record<string, string> }
 
 /** What the component an import names takes: its inputs and models (whole types) and the events its script sends. */
 function interfaceOf(project: Project, imp: Import): Info | undefined {
@@ -24,7 +24,9 @@ function interfaceOf(project: Project, imp: Import): Info | undefined {
   const script = parsed.script?.code ?? ''
   return {
     inputs: parsed.inputs.map((i) => ({ name: i.name, type: i.type, optional: i.default !== undefined, model: !!i.model, ...(i.default !== undefined ? { default: i.default } : {}) })),
-    events: [...new Set([...script.matchAll(EVENT)].map((m) => m[2]!))],
+    // Declared with @event (#442), with their value types; else the names its script dispatches (older components).
+    events: [...new Set([...(parsed.events ?? []).map((e) => e.name), ...[...script.matchAll(EVENT)].map((m) => m[2]!)])],
+    eventTypes: Object.fromEntries((parsed.events ?? []).map((e) => [e.name, e.type])),
   }
 }
 
@@ -47,7 +49,7 @@ export function completions(project: Project, path: string, text: string, offset
     const item = (label: string, kind: CompletionItem['kind'], detail: string): CompletionItem => ({ label, kind, detail, insertTextFormat: 2, textEdit: { range: range(ctx.start), newText: `${label}="$1"` } })
     return list([
       ...info.inputs.flatMap((i) => [item(`[${i.name}]`, Kind.Property, `${i.name}${i.optional ? '?' : ''}: ${i.type}`), ...(i.model ? [item(`[(${i.name})]`, Kind.Property, `${i.name}: ${i.type} (two-way)`)] : [])]),
-      ...info.events.map((e) => item(`(${e})`, Kind.Event, `Event from ${ctx.tag}; its data is $event.detail`)),
+      ...info.events.map((e) => item(`(${e})`, Kind.Event, e in info.eventTypes ? `Event from ${ctx.tag}: $event is ${info.eventTypes[e]}, $info its reason and cancel()` : `Event from ${ctx.tag}; its data is $event.detail`)),
     ].filter((c) => c.label.startsWith(ctx.prefix)))
   }
   // <icon name="…">: the installed sets, then the icons of the chosen set (a component imported as icon wins).
@@ -149,6 +151,7 @@ function propAt(project: Project, path: string, text: string, offset: number): H
   const event = /^\(([\w$.:-]+)\)$/.exec(whole)?.[1]
   if (event) {
     if (!info.events.includes(event)) return undefined
+    if (event in info.eventTypes) return result('```ts\n@event ' + event + ': ' + info.eventTypes[event] + '\n```\n\n' + `Event from \`<${ctx.tag}>\`: \`$event\` is its value, \`$info\` has \`reason\`, \`event\` and \`cancel()\``)
     return result(`Event \`${event}\` from \`<${ctx.tag}>\`: its data is \`$event.detail\``)
   }
   const name = /^\[\(([\w$-]+)\)\]$|^\[([\w$-]+)\]$|^([\w$-]+)$/.exec(whole)?.slice(1).find(Boolean)

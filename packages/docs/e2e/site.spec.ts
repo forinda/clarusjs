@@ -902,7 +902,7 @@ test('events: a custom event from a child island, mouseenter, keys, focus and bl
   await note.fill('kept')
   await note.press('Enter')
   await note.blur()
-  await expect(demo.locator('.event-log li')).toHaveText(['blur', 'submit: kept', 'focus', 'rate: 3'])
+  await expect(demo.locator('.event-log li')).toHaveText(['blur', 'submit: kept', 'focus', 'rate: 3 (click)'])
   expect(documents).toEqual(['/guide/events']) // submit was handled, not a page load
 })
 
@@ -1664,7 +1664,7 @@ test('#259 h(): the playground builds HTML in load() with h(), and the page show
 test('#241 forms: a checkbox group and the languages combobox bind arrays, starting from the server\'s selection', async ({ page }) => {
   // Before JavaScript: the server already rendered the choices (the checkbox checked, the language's chip).
   const html = (await (await page.request.get('/guide/forms')).text()).replace(/<!--.*?-->/g, '')
-  expect(html).toMatch(/<span class="chip[^"]*">English\s*<button/)
+  expect(html).toMatch(/<span[^>]*data-part="chip"[^>]*>English\s*<button/)
   await page.goto('/guide/forms')
   const form = page.locator('form.signup').first()
   await expect(page.locator('cl-island[c="signup-form"]').first()).toHaveAttribute('data-cl-ready', '')
@@ -1815,7 +1815,7 @@ test('#370: the phone drawer as designed: Menu, a Learn / Guide switch, groups, 
   await expect(drawer.locator('.sidebar-switch a')).toHaveText(['Learn', 'Guide'])
   await expect(drawer.locator('.sidebar-switch a[aria-current="true"]')).toHaveText('Guide')
   await expect(drawer.locator('[data-search-open]')).toBeHidden() // the header's search button is there
-  await expect(drawer.locator('.sidebar-links a')).toHaveText(['Reference', 'Releases', 'GitHub', 'npm'])
+  await expect(drawer.locator('.sidebar-links a')).toHaveText(['Components', 'Reference', 'Releases', 'GitHub', 'npm'])
   await expect(drawer.locator('.sidebar-links')).toBeInViewport()
   // Nothing wider than the drawer.
   expect(await drawer.evaluate((d) => d.scrollWidth <= d.clientWidth)).toBe(true)
@@ -2430,4 +2430,138 @@ test('#458 automatic imports: components used by name render on the server, and 
   expect(slots).toMatch(/<ul class="item-list[^"]*"/)
   await page.goto('/tour/1')
   await expect(page.locator('cl-island[c*="tour-keys"]')).toHaveCount(1)
+})
+
+test('#442 component events: the form hears its fields\' (blur) and the combobox\'s (change), and cancels a fourth language', async ({ page }) => {
+  await page.goto('/guide/forms')
+  const form = page.locator('cl-island[c="signup-form"]')
+  await expect(form).toHaveAttribute('data-cl-ready', '')
+  for (const island of await form.locator('cl-island').all()) await expect(island).toHaveAttribute('data-cl-ready', '')
+  const activity = form.locator('.signup-activity')
+  await form.getByLabel('Name').focus()
+  await form.getByLabel('Email').focus() // leaves Name
+  await expect(activity).toHaveText('Left the name field.')
+  const langs = form.getByRole('combobox', { name: 'Languages' })
+  await langs.click()
+  await form.getByRole('option', { name: 'Kiswahili' }).click()
+  await expect(activity).toHaveText('Added Kiswahili (select).')
+  await form.getByRole('option', { name: 'Français' }).click()
+  await expect(form.locator('.signup-lists')).toContainText('Languages: en, sw, fr')
+  await form.getByRole('option', { name: 'Yorùbá' }).click() // a fourth: the form cancels it
+  await expect(activity).toHaveText('Up to 3 languages: Yorùbá was not added.')
+  await expect(form.locator('.signup-lists')).toContainText('Languages: en, sw, fr')
+  await expect(form.getByRole('option', { name: 'Yorùbá' })).toHaveAttribute('aria-selected', 'false')
+  await form.getByRole('button', { name: 'Remove Kiswahili' }).click()
+  await expect(activity).toHaveText('Removed Kiswahili (remove).')
+})
+
+test('#463 attributes on a component land on its root element', async ({ page }) => {
+  const html = await (await page.request.get('/guide/slots')).text()
+  expect(html).toMatch(/<ul[^>]*\bid="slots-demo-steps"[^>]*>/)
+  await page.goto('/guide/slots#slots-that-pass-data')
+  const list = page.getByRole('list', { name: 'Learn steps' }) // aria-label, from the tag
+  await expect(list).toHaveAttribute('id', 'slots-demo-steps')
+  await expect(list.getByRole('listitem')).toHaveCount(3)
+})
+
+test('#464 ui-primitives: roving focus, typeahead, and a popover that positions, dismisses and returns focus', async ({ page }) => {
+  await page.goto('/guide/ui-primitives')
+  const demo = page.locator('.primitives-demo')
+  await expect(demo.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+  const toolbar = demo.getByRole('toolbar', { name: 'Formatting' })
+  await expect(toolbar.getByRole('button', { name: /Bold/ })).toHaveAttribute('tabindex', '0')
+  await expect(toolbar.getByRole('button', { name: /Italic/ })).toHaveAttribute('tabindex', '-1') // one tab stop
+  await toolbar.getByRole('button', { name: /Bold/ }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(toolbar.getByRole('button', { name: /Italic/ })).toBeFocused()
+  await page.keyboard.press('ArrowRight') // Underline is disabled: skipped
+  await expect(toolbar.getByRole('button', { name: 'Clear' })).toBeFocused()
+  const list = demo.getByRole('listbox', { name: 'Fruit' })
+  await list.getByRole('option', { name: 'Apple' }).focus()
+  await page.keyboard.press('b')
+  await expect(list.getByRole('option', { name: 'Banana' })).toBeFocused()
+  await page.keyboard.press('b')
+  await expect(list.getByRole('option', { name: 'Blueberry' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(demo.locator('.primitives-picked')).toHaveText('Picked: Blueberry')
+  const details = demo.getByRole('button', { name: 'Details' })
+  await details.click()
+  const popup = demo.getByRole('dialog', { name: 'Details' })
+  await expect(popup).toHaveAttribute('data-open', '')
+  await expect(popup).toHaveAttribute('data-side', /^(bottom|top)$/)
+  await popup.getByRole('button', { name: 'Done' }).focus()
+  await page.keyboard.press('Escape')
+  await expect(popup).toHaveCount(0)
+  await expect(demo.locator('.primitives-closed')).toHaveText('Closed by escape-key.')
+  await expect(details).toBeFocused() // focus came back
+  await details.click()
+  await page.locator('h1').click() // outside
+  await expect(demo.getByRole('dialog')).toHaveCount(0)
+  await expect(demo.locator('.primitives-closed')).toHaveText('Closed by outside-press.')
+})
+
+test('#465 parts: dialog and popover open with no JavaScript of their own, the accordion is exclusive, switch and field are wired', async ({ page }) => {
+  await page.goto('/guide/ui-primitives#parts')
+  const demo = page.locator('.parts-demo')
+  await expect(demo.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+  await demo.getByRole('button', { name: 'Delete file…' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Delete this file?' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused() // modal: focus moved in
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await demo.getByRole('button', { name: 'Share' }).click()
+  const popover = demo.locator('#parts-popover')
+  await expect(popover).toBeVisible()
+  await page.locator('h1').click() // light dismiss
+  await expect(popover).toBeHidden()
+  const [first, second] = [demo.locator('details').first(), demo.locator('details').nth(1)]
+  await expect(first).toHaveAttribute('open', '')
+  await second.locator('summary').click()
+  await expect(second).toHaveAttribute('open', '')
+  await expect(first).not.toHaveAttribute('open', '') // exclusive
+  const wifi = demo.getByRole('switch', { name: 'Wi-Fi' })
+  await wifi.click()
+  await expect(demo.locator('.parts-wifi')).toHaveText('Wi-Fi is off.')
+  await expect(demo.locator('[data-part="switch"]')).not.toHaveAttribute('data-checked', '')
+  const email = demo.getByLabel('Email')
+  await expect(email).toHaveAttribute('aria-describedby', 'parts-email-description')
+  await email.fill('ada')
+  await email.blur()
+  await expect(demo.getByRole('alert')).toHaveText('Enter an email address.')
+  await expect(email).toHaveAttribute('aria-invalid', 'true')
+  await email.fill('ada@example.com')
+  await expect(demo.getByRole('alert')).toHaveCount(0)
+  await demo.getByLabel('Size').selectOption('s') // the select part, two-way
+  await expect(demo.locator('.parts-size')).toHaveText('Size: s')
+  await expect(demo.getByRole('option', { name: 'Large' })).toBeDisabled()
+})
+
+// #467: the Components section, a page per part, styled by @clarusjs/ui; axe on every one.
+for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox']) {
+  test(`#467 components/${part}: the demo works and has no axe violations`, async ({ page }) => {
+    await page.goto(`/components/${part}`)
+    const gallery = page.locator(`[data-gallery="${part}"]`)
+    await expect(gallery.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+    expect((await (await axe(page)).include(`[data-gallery="${part}"]`).analyze()).violations).toEqual([])
+  })
+}
+
+test('#467 components: @clarusjs/ui styles the parts in the site\'s tokens; interactions on a few pages', async ({ page }) => {
+  await page.goto('/components/dialog')
+  const trigger = page.getByRole('button', { name: 'Delete file…' })
+  expect(await trigger.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('8px') // ui.css's --ui-radius
+  await trigger.click()
+  const dialog = page.getByRole('dialog', { name: 'Delete this file?' })
+  await expect(dialog).toBeVisible()
+  expect((await (await axe(page)).include('dialog[open]').analyze()).violations).toEqual([]) // open, too
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await page.goto('/components/switch')
+  await page.getByRole('switch', { name: 'Notifications' }).click()
+  await expect(page.locator('.gallery-out')).toHaveText('Notifications off, terms not agreed.')
+  await page.goto('/components/combobox')
+  await page.getByRole('combobox', { name: 'Fruit' }).click()
+  await page.getByRole('option', { name: 'Banana' }).click()
+  await expect(page.locator('.gallery-out')).toHaveText('Fruit: banana')
 })

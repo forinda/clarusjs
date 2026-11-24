@@ -37,6 +37,17 @@ export function spreadHtml(obj: unknown, skip: readonly string[], tag?: string, 
   return set.map(([name, v]) => (v === null ? '' : v === true ? ` ${name}` : ` ${name}="${escape(v)}"`)).join('')
 }
 
+/**
+ * The attributes a parent passed to a component (#463), on its root: each through attrHtml, except the names the root
+ * writes itself (`skip`) and style (merged on its own). No spread checks needed: passed() keeps only attribute-like names.
+ * @internal
+ */
+export function passedHtml(attrs: Record<string, unknown>, skip: readonly string[]): string {
+  let out = ''
+  for (const k in attrs) if (k !== 'style' && !skip.includes(k.toLowerCase())) out += attrHtml(k, attrs[k])
+  return out
+}
+
 /** ` name="value"`, ` name` (true) or '' (false/null/undefined), escaped and URL-checked. @internal */
 export function attrHtml(name: string, value: unknown, tag?: string): string {
   const v = attrValue(name, value, tag)

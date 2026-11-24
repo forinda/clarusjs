@@ -1,7 +1,7 @@
 ---
 title: Icons
 group: "Templates"
-order: 12
+order: 13
 description: 'Built-in icons in clarusjs templates: <icon name="set:name" /> renders an inline SVG at build time from any Iconify set you install, with no JavaScript.'
 badge: "New"
 ---

@@ -86,7 +86,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
     copy(t.clause, t.clauseStart)
     emit(` from ${JSON.stringify(t.from)}\n`)
   }
-  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
+  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M, Events as ${alias(imp.name)}_E } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
   for (const d of parsed.dataImports) {
     emit('import ')
     copy(d.clause, d.clauseStart)
@@ -130,6 +130,18 @@ export function generateTs(source: string, file: string, options: { loader?: str
   // The inputs a parent may bind two ways ([(name)]): this component's @model ones.
   const models = parsed.inputs.filter((i) => i.model).map((i) => JSON.stringify(i.name))
   emit(`export type Models = ${models.length ? models.join(' | ') : 'never'}\n`)
+  // What it sends its parent (#442): each @event's value type; emit() in its script is typed by them.
+  emit('export interface Events {\n')
+  for (const e of parsed.events) {
+    emit(`  ${JSON.stringify(e.name)}: `)
+    if (e.type === 'void') emit('void')
+    else copy(e.type, e.typeStart)
+    emit('\n')
+  }
+  emit('}\n')
+  // provide(key, value) (#465), unless the script has its own provide.
+  if (parsed.script && /\bprovide\s*\(/.test(parsed.script.code) && !/\b(function|const|let|var)\s+provide\b/.test(parsed.script.code)) emit('declare function provide(key: string, value: unknown): void\n')
+  if (parsed.events.length) emit('declare const emit: <K extends keyof Events>(name: K, ...args: Events[K] extends void ? [value?: undefined, info?: { reason?: string; event?: Event }] : [value: Events[K], info?: { reason?: string; event?: Event }]) => boolean\n')
   let loaderSpan: [number, number] | undefined
   if (options.loader) {
     // Params and defaults fill the rest, so load() may return any subset of the inputs, each with the right type.
@@ -143,6 +155,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
   }
   // Inputs are read-only, all the way down: they belong to the parent (copy one into state() to change it here).
   emit('export type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
+  // A child's event value (#442), any for a name it doesn't declare (that's reported once, on the binding).
+  emit('export type __cl_Ev<T, K> = K extends keyof T ? T[K] : any\n')
+  emit('export type __cl_Use<E> = ((el: E) => unknown) | readonly ((el: E) => unknown)[]\n')
+  // What a parent may pass a component as attributes for its root (#463): the names passed() in runtime/attrs.ts keeps.
+  emit('export type __cl_Passed = { id?: string; role?: string; tabindex?: string | number; hidden?: boolean; lang?: string; dir?: string; style?: string; [k: `data-${string}`]: unknown; [k: `aria-${string}`]: unknown }\n')
   // A <script server> may await at the top level: the check function is async then, as render is.
   const awaits = !!parsed.serverScript && /\bawait\b/.test(parsed.serverScript.code)
   emit(`\nexport default ${awaits ? 'async ' : ''}function __cl_check(__cl_props: __cl_Readonly<Inputs>) {\n`)
@@ -162,6 +179,18 @@ export function generateTs(source: string, file: string, options: { loader?: str
     // An input the template doesn't read isn't an unused variable of this generated code.
     emit(`  __cl_use([${list.map((x) => x.name).join(', ')}])\n`)
   }
+  // @context (#465): typed like an input, read from the components around this one.
+  for (const c of parsed.contexts) {
+    emit('  const ')
+    copy(c.name, c.nameStart)
+    emit(': ')
+    copy(c.type, c.typeStart)
+    emit(' = ')
+    if (c.default !== undefined && c.defaultStart !== undefined) copy(c.default, c.defaultStart)
+    else emit('null!')
+    emit('\n')
+  }
+  if (parsed.contexts.length) emit(`  __cl_use([${parsed.contexts.map((c) => c.name).join(', ')}])\n`)
   // A script in verbatim pieces: its imports (already at the top) are blanked, and untyped parameters annotated.
   const copyScript = (from: { code: string; start: number }, split: { imports: { text: string; start: number }[]; body: string }) => {
     const body = split.body
@@ -293,7 +322,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
           // reported on the variable, which maps to the tag.
           emit('  { const ')
           point('__cl_p', node.start, node.tag.length + 1) // the tag: `<card`
-          emit(`: __cl_Readonly<${alias(node.tag)}> = { `) // a child reads its inputs only, so readonly values fit
+          emit(`: __cl_Readonly<${alias(node.tag)} & __cl_Passed> = { `) // a child reads its inputs only, so readonly values fit; #463: attributes too
           // A spread (#406) first: it must provide the required inputs the tag doesn't write (TypeScript doesn't check a
           // spread's extra keys).
           for (const a of node.attrs) {
@@ -303,8 +332,20 @@ export function generateTs(source: string, file: string, options: { loader?: str
             emit('), ')
           }
           for (const a of node.attrs) {
+            // Static attributes (#463) are props too, for the child's root: id="x", data-test, aria-…
+            if (a.kind === 'static' && a.name !== 'class' && a.name !== 'attach') {
+              const quoted = !/^[A-Za-z_$][\w$]*$/.test(a.name)
+              if (quoted) emit('"')
+              copy(a.name, a.start)
+              if (quoted) emit('"')
+              emit(`: ${a.value === true ? 'true' : JSON.stringify(a.value)}, `)
+              continue
+            }
             if ((a.kind !== 'prop' && a.kind !== 'model') || a.name === '...') continue
+            const quoted = !/^[A-Za-z_$][\w$]*$/.test(a.name) // [aria-controls]
+            if (quoted) emit('"')
             copy(a.name, a.start + (a.kind === 'model' ? 2 : 1))
+            if (quoted) emit('"')
             emit(': (')
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit('), ')
@@ -323,6 +364,19 @@ export function generateTs(source: string, file: string, options: { loader?: str
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit(` = (undefined as unknown as Exclude<${alias(node.tag)}[${JSON.stringify(a.name)}], undefined>) });\n`)
           }
+          for (const a of node.attrs) {
+            if (a.kind !== 'event') continue
+            // (name) needs @event name in the child (#442); $event is its value, $info the rest.
+            const name = JSON.stringify(a.name)
+            emit('  { const ')
+            point('__cl_ev', a.start, a.name.length + 2) // the binding's name: `(change)`
+            emit(`: keyof ${alias(node.tag)}_E = ${name}; __cl_use(__cl_ev) }\n`)
+            emit(`  ;(($event: __cl_Ev<${alias(node.tag)}_E, ${name}>, $info: { reason?: string; event?: Event; cancel(): void }) => { `)
+            guarded()
+            emit('{ ')
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit(' } __cl_use($info) });\n')
+          }
           node.children.forEach(visit)
           return
         }
@@ -337,6 +391,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
           }
           else if (a.kind === 'prop' && node.tag === 'slot') {
             use(a.expr, attrValueStart(a)) // data the slot passes to its fill (#455): any value, whatever its name
+          } else if (a.kind === 'prop' && a.name === 'use') {
+            // [use]="behaviour" (#464): a function of this element (or a list of them), run in the browser.
+            emit(`  ;((__cl_u: __cl_Use<__cl_El<${JSON.stringify(node.tag.toLowerCase())}>>) => __cl_use(__cl_u))((`)
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit('));\n')
           } else if (a.kind === 'prop' && a.name === 'engine') {
             // [engine]="f": a form from clarusjs/forms.
             emit(`  ;((__cl_f: import('clarusjs/forms').Form<any>) => __cl_use(__cl_f))((`)

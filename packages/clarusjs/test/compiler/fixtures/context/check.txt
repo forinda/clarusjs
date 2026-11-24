@@ -1,0 +1,1 @@
+1:1 TS2307 Cannot find module './badge.tscl.ts' or its corresponding type declarations. (in generated code)

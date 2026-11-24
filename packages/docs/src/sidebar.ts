@@ -34,6 +34,14 @@ export const sidebar: Section[] = [
     groups: [{ title: 'Playground', icon: 'terminal', items: [{ title: 'Playground', href: '/repl' }] }],
   },
   {
+    key: 'components',
+    switch: false,
+    title: 'Components',
+    href: '/components/dialog',
+    // @clarusjs/ui-primitives' parts, styled by @clarusjs/ui (#467): a page each, with a live demo.
+    groups: [{ title: 'Components', icon: 'box', items: [] }],
+  },
+  {
     key: 'reference',
     switch: false,
     title: 'Reference',

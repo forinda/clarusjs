@@ -3,7 +3,7 @@ import { parseExpressionAt } from 'acorn'
 import { iconElement, type IconResolver } from './icon.ts'
 import { ClarusError } from './errors.ts'
 import { FOR_IMPLICIT, importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
-import { analyzeScript, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, serverScriptParts, splitImports, type Signals } from './script.ts'
+import { analyzeScript, providesIn, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, serverScriptParts, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
   | { kind: 'static'; html: string }
@@ -12,7 +12,7 @@ export type IRNode =
   // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
   // can re-render it (-1 otherwise).
   // models: [(name)]="path" bindings: each write from the child runs `set` (a statement using __cl_v).
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; params?: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[]; class?: string }
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; listens?: { name: string; handler: string }[]; children: IRNode[]; fills: { name: string; params?: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[]; class?: string }
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
   // props: what the slot passes to the content filling it (#455): <slot name="row" [item]="r" />.
   | { kind: 'slot'; name: string; props: { name: string; expr: string }[]; fallback: IRNode[] }
@@ -21,6 +21,8 @@ export type IRNode =
   | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string }
   // [engine]="f": an element connected to a form from clarusjs/forms (marked data-cl-form="index").
   | { kind: 'connect'; expr: string; index: number }
+  // [use]="behaviour" (#464): an element handed to a function in the browser (marked data-cl-u="index").
+  | { kind: 'use'; expr: string; index: number }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
   | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
   // @await (#430): `block` shares @if's markers (<!--[bN:K-->, K = 0 pending, 1 then, 2 catch); -1 outside islands.
@@ -44,13 +46,19 @@ export type ComponentIR = {
   stateful: boolean
   nodes: IRNode[]
   events: IREvent[]
+  /** The component sends events to its parent (@event, #442): its script gets emit(). */
+  sends: boolean
+  /** @context declarations (#465): values read from the components around this one. */
+  contexts: InputDecl[]
+  /** The script calls provide() (#465): this component adds to the context its children render with. */
+  provides: boolean
   /** Things that compile but likely aren't meant (located, not thrown). */
   warnings: ClarusError[]
 }
 
 const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
 // Elements a spread could make load something (their URL attributes are static only): no [...] on them.
-const SPREAD_REFUSED = new Set(['iframe', 'frame', 'embed', 'object', 'base', 'link', 'script', 'meta'])
+export const SPREAD_REFUSED = new Set(['iframe', 'frame', 'embed', 'object', 'base', 'link', 'script', 'meta'])
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
 /**
@@ -64,6 +72,12 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
+  // A component sends its events from its script (#442).
+  if (parsed.events.length && !parsed.script) fail('@event needs a <script> that sends it with emit(\'name\', value)', parsed.events[0]!.start)
+  // Context (#465): an island has no incoming context in the browser, so it can't read any yet.
+  // ponytail: lift by serializing the island's incoming context into its props.
+  if (parsed.contexts.length && stateful) fail('@context is only for components without <script> or @model for now: an island has no context in the browser. Read it in a component without a script, or pass it in as a prop', parsed.contexts[0]!.start)
+  for (const c of parsed.contexts) if (parsed.inputs.some((i) => i.name === c.name)) fail(`"${c.name}" is already an @input`, c.nameStart)
   const warnings: ClarusError[] = []
   const ss = parsed.serverScript
   // ponytail: not in an island yet: its names would be gone when the island re-renders in the browser. Lift it when
@@ -74,6 +88,9 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   const modelNames = new Set(parsed.inputs.filter((i) => i.model).map((i) => i.name))
   const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
   const signals: Signals = parsed.script ? analyzeScript(split.body, file, source, parsed.script.start) : new Map()
+  // provide is the compiler's (#465): a script's own, or an imported one, would clash with it.
+  if (parsed.script) for (const imp of split.imports) if (/(?:[{,]\s*|\bas\s+|^import\s+)provide\b/.test(imp.text)) fail('provide is reserved for context: rename this import (import { provide as other } …)', parsed.script.start + imp.start)
+  const provides = parsed.script ? providesIn(split.body, file, source, parsed.script.start) : false
   // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.
   // text()'s effect tracks the real dependencies, so over-marking only costs a pair of comment markers.
   const scriptScope = parsed.script ? new Set([...signals.keys(), ...scriptNames(parsed.script.code)]) : new Set<string>()
@@ -135,6 +152,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   let eventElementCount = 0
   let attrElementCount = 0
   let formCount = 0
+  let useCount = 0
   let selectModel: string | undefined // inside a <select [(value)]>: its bound value, for its options' `selected`
   // Under an [engine] element: the object its fields bind (one per form, so a path can't silently miss).
   let engineScope: { root: string | null } | null = null
@@ -257,8 +275,10 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       let attach: string | undefined
       let cls: string | undefined
       const paths: { name: string; expr: string }[] = []
+      const listens: { name: string; handler: string }[] = []
       for (const a of node.attrs) {
         if (/^(class|style)\./.test(a.name)) fail(`a component takes a static class="…" only: [${a.name}] is for elements`, a.start)
+        if (a.kind === 'prop' && a.name === 'use') fail('[use] is for elements: put it on an element inside the component', a.start)
         // [...]="props" (#406): every key a prop, first, so props written on the tag win.
         if (a.kind === 'prop' && a.name === '...') {
           if (props.some((p) => p.name === '...')) fail('one [...] per element', a.start)
@@ -282,16 +302,32 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
           paths.push({ name: a.name, expr: modelPath(a.expr, modelNames) })
           models.push({ name: a.name, set })
         }
+        else if (a.kind === 'event') {
+          // (change)="…": the child's @event change (#442), handled in this island with $event (the value) and $info.
+          if (!stateful) fail('event bindings need a <script> with state; this component is static', a.start)
+          checkHandler(a.expr, file, source, a.start)
+          listens.push({ name: a.name, handler: a.expr })
+        }
+        else if (a.kind === 'interp') {
+          // name="a {{ b }}": the text, as a string prop.
+          for (const p of a.parts) if (typeof p !== 'string') checkExpr(p.expr, file, source, p.start)
+          props.push({ name: a.name, expr: `[${a.parts.map((p) => (typeof p === 'string' ? JSON.stringify(p) : `(${p.expr})`)).join(', ')}].join('')` })
+        }
+        else if (a.kind === 'static' && a.name !== 'attach') {
+          // An attribute for the child's root element (#463): passed as a prop; the child keeps attribute-like ones.
+          props.push({ name: a.name, expr: JSON.stringify(a.value) })
+        }
         else if (a.kind === 'static' && a.name === 'attach') {
           // When the island's code loads in the browser (see runtime/loader.ts).
           if (typeof a.value !== 'string' || !ATTACH_MODES.includes(a.value)) fail(`attach must be one of ${ATTACH_MODES.join(', ')}`, a.start)
           attach = a.value as string
-        } else fail(`component <${node.tag}> only takes [prop] and [(prop)] bindings and attach="…"`, a.start)
+        } else fail(`component <${node.tag}> only takes [prop], [(prop)] and (event) bindings and attach="…"`, a.start)
       }
       // Content is rendered here, in this component's scope, and handed to the child for its slots.
       const hasContent = node.children.some((c) => c.type !== 'text' || c.value.trim())
       const readsState = props.some((p) => referencesNames(p.expr, scriptScope) || referencesNames(p.expr, loopNames))
-      const region = stateful && (hasContent || readsState || models.length > 0) ? regionCount++ : -1
+      // An island that provides (#465): any child may read the context, so each re-renders when what it reads changes.
+      const region = stateful && (hasContent || readsState || models.length > 0 || listens.length > 0 || provides) ? regionCount++ : -1
       const parentScope = scopeKey
       if (region >= 0) scopeKey = `c${region}`
       const lowerList = (list: TemplateNode[]) => {
@@ -319,11 +355,12 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
       if (children.length && fills.some((f) => f.name === 'default')) fail('the default slot is filled twice: by @slot(\'default\') and by content outside any @slot', node.start)
       scopeKey = parentScope
-      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(paths.length ? { paths } : {}), ...(cls ? { class: cls } : {}) })
+      out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), ...(listens.length ? { listens } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(paths.length ? { paths } : {}), ...(cls ? { class: cls } : {}) })
       return
     }
     if (node.tag === 'slot') {
-      if (stateful) fail('<slot /> is only supported in components without <script>', node.start)
+      // In an island (#465) the content is server HTML the browser never re-renders: so not where the browser re-renders.
+      if (stateful && scopeKey !== undefined) fail('in an island, <slot /> goes outside @if, @for and @await blocks and component content: the browser re-renders those, and slot content only exists on the server', node.start)
       let name = 'default'
       const props: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
@@ -338,6 +375,9 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       out = fallback
       node.children.forEach((child) => visit(child, rawText))
       out = parent
+      // ponytail: island slots are plain holes for server HTML. Data and fallbacks would need the slot in the browser.
+      if (stateful && props.length) fail('in an island, a slot passes no data: render the component outside the island to use [name]="…" on <slot>', node.start)
+      if (stateful && fallback.length) fail('in an island, a slot has no fallback content', node.start)
       out.push({ kind: 'slot', name, props, fallback })
       return
     }
@@ -452,9 +492,16 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         // Written attributes win over the spread's (class and style merge, in the fold): their names, lowercase.
         const skip = [...new Set(attrs.filter((x) => x !== a && x.kind !== 'event').map((x) => x.name.toLowerCase()))]
         const at = new ClarusError('', file, source, a.start)
-        const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, where: `${file}:${at.line}:${at.column}` }
+        const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, ...(a.expr === '__cl_attrs' ? {} : { where: `${file}:${at.line}:${at.column}` }) }
         if (reactive) dynamic.push(node_)
         out.push(node_)
+      } else if (a.kind === 'prop' && a.name === 'use') {
+        // [use]="behaviour" (#464): the browser calls it with this element; what it returns, when the element goes.
+        if (!stateful) fail('[use] needs a <script> (an island): behaviours run in the browser', a.start)
+        checkExpr(a.expr, file, source, a.start)
+        const index = useCount++
+        emitStatic(` data-cl-u="${index}"`)
+        out.push({ kind: 'use', expr: a.expr, index })
       } else if (a.kind === 'prop' && a.name === 'engine') {
         // [engine]="f": this element's form (and its fields) belong to the forms engine f (clarusjs/forms).
         if (!stateful) fail('[engine] needs a <script> (an island): the forms engine runs in the browser', a.start)
@@ -518,6 +565,9 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     stateful,
     nodes,
     events,
+    sends: parsed.events.length > 0,
+    contexts: parsed.contexts,
+    provides,
     warnings,
   }
 }

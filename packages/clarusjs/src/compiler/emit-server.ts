@@ -2,17 +2,18 @@
 import type { ComponentIR } from './ir.ts'
 import { asWritten, htmlExpr, walk } from './html-expr.ts'
 import { rewriteServer } from './script.ts'
-import { indentScript, inputsLine, renderName } from './shared.ts'
+import { contextLines, indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = false, loader?: string): string {
   const all = walk(ir.nodes)
-  const html = htmlExpr(ir.nodes, asWritten, { island: ir.stateful ? ir.name : null })
+  const html = htmlExpr(ir.nodes, asWritten, { island: ir.stateful ? ir.name : null, top: true })
   const runtime = [
     'escape as __cl_escape',
     all.some((n) => n.kind === 'hole' && n.json) && 'json as __cl_json',
     ir.stateful && 'island as __cl_island',
     all.some((n) => n.kind === 'attr' && n.name !== '...') && 'attr as __cl_attrHtml',
-    all.some((n) => n.kind === 'attr' && n.name === '...') && 'spreadHtml as __cl_spreadHtml',
+    html.includes('__cl_spreadHtml(') && 'spreadHtml as __cl_spreadHtml',
+    html.includes('__cl_passedHtml(') && 'passedHtml as __cl_passedHtml',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_classValue(')) && 'classValue as __cl_classValue',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_styleValue(')) && 'styleValue as __cl_styleValue',
     all.some((n) => (n.kind === 'if' || n.kind === 'await') && n.block >= 0) && 'blockHtml as __cl_blockHtml',
@@ -23,6 +24,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     loader && 'loaded as __cl_loaded',
     html.includes('__cl_join(') && 'join as __cl_join',
     html.includes('__cl_sync(') && 'sync as __cl_sync',
+    html.includes('__cl_attrs') && 'passed as __cl_passed',
   ].filter(Boolean).join(', ')
   let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
   for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}${renderImports ? '?render' : ''}'\n`
@@ -35,15 +37,17 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
 
   // A <script server> that awaits makes render async (#430): its parents join what it returns.
   out += `\nexport ${ir.server?.awaits ? 'async ' : ''}function render(__cl_props = {}, __cl_slots, __cl_opts) {\n`
-  if (ir.stateful) out += `  if (__cl_slots !== undefined) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> does not accept children yet`)})\n`
-  else {
-    out += unknownSlotCheck(ir)
-    out += `  if (__cl_opts?.attach) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> has no <script>, so attach="`)} + __cl_opts.attach + '" does nothing')\n`
-  }
+  out += unknownSlotCheck(ir)
+  // ponytail: content from a parent island would carry that island's markers into this one. Lift with scoped lookups.
+  if (ir.stateful && walk(ir.nodes).some((n) => n.kind === 'slot')) out += `  if (__cl_slots !== undefined && __cl_opts?.inIsland) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> can't take content from inside another island yet: pass it from a page or a component without <script>`)})\n`
+  if (!ir.stateful) out += `  if (__cl_opts?.attach) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> has no <script>, so attach="`)} + __cl_opts.attach + '" does nothing')\n`
   // A component loader (#97): the data it loaded for this render fills the inputs; the parent's props win.
   if (loader) out += `  __cl_props = { ...__cl_loaded(${JSON.stringify(loader)}), ...__cl_props }\n`
   out += inputsLine(ir)
   out += `  const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""\n`
+  // What the parent passed as attributes (#463), for the root element.
+  if (html.includes('__cl_attrs')) out += `  const __cl_attrs = __cl_passed(__cl_props, ${JSON.stringify(ir.inputs.map((i) => i.name))})\n`
+  out += contextLines(ir, '__cl_opts?.cx')
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   if (ir.server) out += indentScript(ir.server.body)
   out += ir.stateful

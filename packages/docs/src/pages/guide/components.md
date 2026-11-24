@@ -58,6 +58,26 @@ clarusjs({ components: { dirs: ['src/components', 'src/layouts', 'src/ui'], auto
 
 This site's [Slots demo](/guide/slots#slots-that-pass-data) uses `<item-list>` this way; most of its pages still import components by name, which works the same.
 
+## Attributes on a component
+
+Attributes you write on a component's tag land on its root element: an `id` to link to it, `aria-*` to label it, `data-*` for tests or styling hooks.
+
+```tscl
+{{-- components/item-list.tscl: its root is a <ul> --}}
+@input items: string[]
+<ul>@for (item of items; track item) { <li>{{ item }}</li> }</ul>
+
+{{-- a page --}}
+<item-list [items]="steps" id="steps" aria-label="Steps" data-test="steps" />
+{{-- <ul id="steps" aria-label="Steps" data-test="steps">… --}}
+```
+
+- **Which names:** `id`, `role`, `tabindex`, `hidden`, `lang`, `dir`, `style`, and any `data-*` or `aria-*`, written as is or bound (`[aria-controls]="panelId"`). Other names are inputs, and `clarusjs check` reports one the component doesn't declare. `class` is passed too, and [merges](/guide/styles) with the component's own.
+- **The component's own attribute wins.** Except `style`, which is added after a written `style`, and ARIA id lists (`aria-describedby`, `aria-labelledby`, `aria-controls`, `aria-owns`), which are joined: both ids are kept.
+- **A declared input is never an attribute:** a component with `@input id: string` gets `id` as its input.
+- **One root:** they land when the component has a single top-level element (or component, which passes them on). With several, there is no root to choose, and they are dropped.
+- **Server HTML only:** they ship no JavaScript. In an island they're in the first HTML; an island whose root has its own `[...]` spread, or is a component, takes none yet.
+
 ## Importing data
 
 Import values a template needs with `@import { … } from '…'`, or `@import data from './data.json'`. In a server-rendered component without a script the import only runs on the server, so it can even read files at build time. In an interactive component, or a page on a client route (rendered in the browser), it is sent to the browser with the component's code: there, read files in `load()` and return only public data.

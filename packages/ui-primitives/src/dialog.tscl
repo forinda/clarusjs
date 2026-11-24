@@ -1,0 +1,19 @@
+{{--
+  Dialog (#465): a native <dialog>, so focus stays in it and the page behind is inert while it's open, Escape closes it,
+  and (dismissible, the default) so does a click outside (closedby="any"). Opened by a <dialog-trigger> and closed by a
+  <dialog-close> with the browser's command invokers: no JavaScript. Style it with dialog[open] and ::backdrop.
+
+  <dialog-trigger target="confirm">Delete…</dialog-trigger>
+  <dialog id="confirm">
+    @slot('title') { Delete this file? }
+    <p>It can't be undone.</p>
+    <dialog-close target="confirm">Cancel</dialog-close>
+  </dialog>
+--}}
+@input id: string
+@input dismissible: boolean = true
+
+<dialog [id]="id" [aria-labelledby]="id + '-title'" [closedby]="dismissible ? 'any' : 'closerequest'" data-part="dialog">
+  <h2 [id]="id + '-title'" data-part="title"><slot name="title" /></h2>
+  <slot />
+</dialog>

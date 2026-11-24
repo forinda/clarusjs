@@ -1,6 +1,10 @@
 {{--
-  A combobox: pick one option, or several with [multiple]="true", from a list you can search by typing.
-  Copy this file into your project. Bind the pick with [(value)] (a string), or the picks with [(values)] (a list).
+  Combobox (#466): pick one option, or several with [multiple]="true", from a list you can search by typing.
+  @import combobox from '@clarusjs/ui-primitives/combobox.tscl', or copy this file into your project. Bind the pick
+  with [(value)] (a string), or the picks with [(values)] (a list).
+
+  Headless: data-part names each element (combobox, label, control, chip, input, listbox, option, status), and the
+  option the keys are on has data-highlighted. Only what it needs to work is styled (the list below the input).
 
   <combobox [id]="'country'" [label]="'Country'" [options]="countries" [(value)]="form.country" />
   <combobox [id]="'topics'" [label]="'Topics'" [options]="topics" [multiple]="true" [(values)]="form.topics" />
@@ -9,6 +13,10 @@
   last key, and the newest search wins. <combobox [id]="'city'" [label]="'City'" [src]="'/api/cities'" [(value)]="city" />
 
   Keyboard: ↑ ↓ move, Home / End jump, Enter picks, Esc closes, Backspace in an empty search removes the last pick.
+
+  Each pick or removal sends (change) first, with the option and whether it's now selected; $info.reason is 'select',
+  'deselect' or 'remove', and $info.cancel() keeps it from happening:
+  <combobox … (change)="if (tooMany && $event.selected) $info.cancel()" />
   Give each one its own id: its listbox and options are named after it.
 --}}
 @type Option = { value: string; label: string }
@@ -29,6 +37,7 @@
 @input src: string = ''
 @model value: string = ''
 @model values: string[] = []
+@event change: { value: string; label: string; selected: boolean }
 
 <script>
   import { json, resource } from 'clarusjs/fetch'
@@ -67,7 +76,16 @@
       shown.findIndex((o) => chosen.includes(o.value)),
     )
   }
-  function pick(option) {
+  function pick(option, event) {
+    const selected = !(multiple && chosen.includes(option.value))
+    if (
+      !emit(
+        'change',
+        { value: option.value, label: option.label, selected },
+        { reason: selected ? 'select' : 'deselect', event },
+      )
+    )
+      return
     if (src) known = { ...known, [option.value]: option.label }
     if (multiple) {
       values = chosen.includes(option.value) ? chosen.filter((v) => v !== option.value) : [...chosen, option.value]
@@ -78,7 +96,8 @@
     query = ''
     term = ''
   }
-  function remove(v) {
+  function remove(v, event) {
+    if (!emit('change', { value: v, label: labelOf(v), selected: false }, { reason: 'remove', event })) return
     values = chosen.filter((x) => x !== v)
   }
   function type(text) {
@@ -99,13 +118,13 @@
       active = event.key === 'Home' ? 0 : last
     } else if (event.key === 'Enter' && open && shown[active]) {
       event.preventDefault()
-      pick(shown[active])
+      pick(shown[active], event)
     } else if (event.key === 'Escape' && open) {
       event.preventDefault()
       open = false
       query = '' // back to what's chosen
     } else if (event.key === 'Backspace' && multiple && !query && chosen.length) {
-      remove(chosen[chosen.length - 1])
+      remove(chosen[chosen.length - 1], event)
     }
   }
   // Closes when focus leaves the whole combobox (a click outside, Tab away).
@@ -117,14 +136,14 @@
   }
 </script>
 
-<div class="combobox" (focusout)="leave($event)">
-  <label [for]="id + '-input'">{{ label }}</label>
-  <div class="control">
+<div data-part="combobox" (focusout)="leave($event)">
+  <label [for]="id + '-input'" data-part="label">{{ label }}</label>
+  <div data-part="control">
     @if (multiple) {
       @for (v of chosen; track v) {
-        <span class="chip"
+        <span data-part="chip"
           >{{ labelOf(v) }}
-          <button type="button" [aria-label]="'Remove ' + labelOf(v)" (click)="remove(v)">×</button></span
+          <button type="button" [aria-label]="'Remove ' + labelOf(v)" (click)="remove(v, $event)">×</button></span
         >
       }
     }
@@ -132,6 +151,7 @@
       [id]="id + '-input'"
       role="combobox"
       autocomplete="off"
+      data-part="input"
       aria-autocomplete="list"
       [aria-expanded]="open ? 'true' : 'false'"
       [aria-controls]="id + '-list'"
@@ -150,85 +170,30 @@
     [aria-multiselectable]="multiple ? 'true' : false"
     [hidden]="!open"
     (mousedown)="$event.preventDefault()"
+    data-part="listbox"
   >
     @for (option of shown; track option.value) {
       <li
         [id]="id + '-' + option.value"
         role="option"
         [aria-selected]="chosen.includes(option.value) ? 'true' : 'false'"
-        [class.active]="$index === active"
-        (click)="pick(option)"
+        [data-highlighted]="$index === active ? '' : false"
+        data-part="option"
+        (click)="pick(option, $event)"
       >
         {{ option.label }}
       </li>
     }
   </ul>
-  <p class="empty" role="status">{{ status }}</p>
+  <p role="status" data-part="status">{{ status }}</p>
 </div>
 
 <style scoped>
+  /* What it needs to work: the list opens below the input, over what follows. The rest is yours to style. */
   :scope {
     position: relative;
-    display: grid;
-    gap: 6px;
-    max-width: 360px;
   }
-  label {
-    font: 600 13px var(--sans);
-    color: var(--muted);
-  }
-  .control {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-    min-height: 32px;
-    padding: 2px 6px;
-    border: 1px solid var(--rule);
-    border-radius: 6px;
-    background: var(--bg);
-  }
-  .control:focus-within {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-  }
-  input {
-    flex: 1;
-    min-width: 6ch;
-    min-height: 26px;
-    border: 0;
-    padding: 0 4px;
-    background: none;
-    color: var(--fg);
-    font: 14px var(--sans);
-    outline: none;
-  }
-  input::placeholder {
-    color: var(--muted);
-  }
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    padding: 0 2px 0 8px;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    color: var(--fg);
-    font-size: 13px;
-  }
-  .chip button {
-    min-width: 24px;
-    min-height: 24px;
-    border: 0;
-    border-radius: 999px;
-    background: none;
-    color: var(--muted);
-    cursor: pointer;
-  }
-  .chip button:hover {
-    color: var(--accent);
-  }
-  ul {
+  [data-part='listbox'] {
     position: absolute;
     top: 100%;
     left: 0;
@@ -236,33 +201,8 @@
     z-index: 10;
     max-height: 240px;
     overflow-y: auto;
-    margin: 4px 0 0;
-    padding: 4px;
-    list-style: none;
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-    background: var(--bg);
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
-  }
-  li {
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 14px;
-    cursor: pointer;
-  }
-  li.active {
-    background: var(--accent-soft);
-  }
-  li[aria-selected='true']::after {
-    content: ' ✓';
-    color: var(--accent);
-  }
-  .empty {
     margin: 0;
-    color: var(--muted);
-    font-size: 13px;
-  }
-  .empty:empty {
-    display: none;
+    padding: 0;
+    list-style: none;
   }
 </style>

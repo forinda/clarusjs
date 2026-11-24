@@ -1,0 +1,39 @@
+{{--
+  Popover (#465): the popover attribute (the top layer, light dismiss: Escape or a click outside closes it), placed by
+  its <popover-trigger> with CSS anchor positioning, flipping when there's no room. No JavaScript. Style it with
+  :popover-open; data-side and data-align say where it was asked to go. position-area spans toward the end of the
+  other axis for align="start", and toward its start for "end".
+
+  <popover-trigger target="share">Share</popover-trigger>
+  <popover id="share" side="bottom" align="start">…</popover>
+--}}
+@input id: string
+@input side: 'top' | 'bottom' | 'left' | 'right' = 'bottom'
+@input align: 'start' | 'center' | 'end' = 'center'
+
+<div
+  [id]="id"
+  popover="auto"
+  data-part="popover"
+  [data-side]="side"
+  [data-align]="align"
+  [style]="
+    'position-anchor: --' +
+    id +
+    '; position-area: ' +
+    side +
+    (align === 'center'
+      ? ''
+      : ' ' +
+        (side === 'top' || side === 'bottom'
+          ? align === 'start'
+            ? 'span-right'
+            : 'span-left'
+          : align === 'start'
+            ? 'span-bottom'
+            : 'span-top')) +
+    '; position-try-fallbacks: flip-block, flip-inline'
+  "
+>
+  <slot />
+</div>

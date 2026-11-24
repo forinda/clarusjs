@@ -1,0 +1,9 @@
+{{-- Context (#465): reads what a component around it provides; passes it on to what it renders and the content it places. --}}
+@import badge from './badge.tscl'
+@context theme: { tone: string } = { tone: 'light' }
+@context group: { id: string }
+
+<section [id]="group.id" [data-tone]="theme.tone">
+  <badge label="new" />
+  <slot />
+</section>

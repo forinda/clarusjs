@@ -1,0 +1,93 @@
+{{-- The Components section's demos (#467): one part of @clarusjs/ui-primitives per page, styled by @clarusjs/ui. --}}
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+@import uiDialogClose from '@clarusjs/ui-primitives/dialog-close.tscl'
+@import uiPopover from '@clarusjs/ui-primitives/popover.tscl'
+@import uiPopoverTrigger from '@clarusjs/ui-primitives/popover-trigger.tscl'
+@import uiAccordionItem from '@clarusjs/ui-primitives/accordion-item.tscl'
+@import uiSwitch from '@clarusjs/ui-primitives/switch.tscl'
+@import uiCheckbox from '@clarusjs/ui-primitives/checkbox.tscl'
+@import uiField from '@clarusjs/ui-primitives/field.tscl'
+@import uiSelect from '@clarusjs/ui-primitives/select.tscl'
+@import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
+@input part: 'dialog' | 'popover' | 'accordion' | 'switch' | 'field' | 'select' | 'combobox'
+
+<script>
+  let on = state(true)
+  let agreed = state(false)
+  let name = state('')
+  let size = state('m')
+  let fruit = state('')
+  const sizes = [
+    { value: 's', label: 'Small' },
+    { value: 'm', label: 'Medium' },
+    { value: 'l', label: 'Large' },
+  ]
+  const fruits = [
+    { value: 'apple', label: 'Apple' },
+    { value: 'banana', label: 'Banana' },
+    { value: 'cherry', label: 'Cherry' },
+  ]
+</script>
+
+<div class="ui-gallery" [data-gallery]="part">
+  @if (part === 'dialog') {
+    <uiDialogTrigger target="gallery-dialog">Delete file…</uiDialogTrigger>
+    <uiDialog id="gallery-dialog">
+      @slot('title') {
+        Delete this file?
+      }
+      <p>It can't be undone.</p>
+      <uiDialogClose target="gallery-dialog">Cancel</uiDialogClose>
+    </uiDialog>
+  } @else if (part === 'popover') {
+    <uiPopoverTrigger target="gallery-popover">Share</uiPopoverTrigger>
+    <uiPopover id="gallery-popover" side="bottom" align="start">Copy the link, or send it by email.</uiPopover>
+  } @else if (part === 'accordion') {
+    <uiAccordionItem group="gallery-faq" [open]="true">
+      @slot('trigger') {
+        Is it free?
+      }
+      Yes, MIT licensed.
+    </uiAccordionItem>
+    <uiAccordionItem group="gallery-faq">
+      @slot('trigger') {
+        Does it need JavaScript?
+      }
+      No: it's a details element.
+    </uiAccordionItem>
+  } @else if (part === 'switch') {
+    <uiSwitch label="Notifications" [(checked)]="on" />
+    <uiCheckbox label="I agree to the terms" [(checked)]="agreed" />
+    <p class="gallery-out">Notifications {{ on ? 'on' : 'off' }}, terms {{ agreed ? 'agreed' : 'not agreed' }}.</p>
+  } @else if (part === 'field') {
+    <uiField
+      id="gallery-name"
+      label="Name"
+      description="As it should appear on the invoice."
+      [error]="name.trim() ? '' : 'Enter your name.'"
+      [(value)]="name"
+    />
+  } @else if (part === 'select') {
+    <uiSelect id="gallery-size" label="Size" [options]="sizes" [(value)]="size" />
+    <p class="gallery-out">Size: {{ size }}</p>
+  } @else {
+    <uiCombobox [id]="'gallery-fruit'" [label]="'Fruit'" [options]="fruits" [(value)]="fruit" />
+    <p class="gallery-out">Fruit: {{ fruit || 'none' }}</p>
+  }
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    justify-items: start;
+    margin: 16px 0;
+    padding: 20px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+  p {
+    margin: 0;
+  }
+</style>

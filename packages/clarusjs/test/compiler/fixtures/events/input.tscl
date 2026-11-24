@@ -1,0 +1,10 @@
+{{-- Component events (#442): the child declares @event change and sends it with emit(); this island handles it with
+     $event (the value) and $info (reason, event, cancel). --}}
+<script>
+  let total = state(0)
+  let locked = state(false)
+</script>
+<div>
+  <step-counter [value]="total" (change)="total = $event; if (locked) $info.cancel()" />
+  <p>{{ total }}</p>
+</div>

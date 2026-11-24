@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `@event name: type` and `@layout none` highlighted as directives; a component's `@event`s completed and hovered as `(name)` bindings.
 - Components used by name (`<text-field>`, no `@import`): completed, hovered and followed to their file.
 - `@slot('row', { item })`: the names a fill receives are highlighted as TypeScript.
 

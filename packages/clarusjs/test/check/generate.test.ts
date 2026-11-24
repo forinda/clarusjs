@@ -306,3 +306,69 @@ test('#455 review: any function parameter in a fill (a default, a rest) and any 
   expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', ...args) {<b>{{ args.length }}</b>}") })).toEqual([])
   expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', { item } = {}) {<b>{{ item }}</b>}") })).toEqual([])
 })
+
+test('#442 events: emit() is typed by @event, and a parent handler gets $event as the value and $info', () => {
+  const stepper = `@event change: number
+@event close
+<script>
+  let n = state(0)
+  function up(event) { if (emit('change', n + 1, { reason: 'increment', event })) n = n + 1 }
+  function bad() { emit('change', 'one') }
+  function shut() { emit('close') }
+  function nope() { emit('opne', 1) }
+</script>
+<button (click)="up($event); bad(); shut(); nope()">{{ n }}</button>
+`
+  expect(check({ 'src/components/stepper.tscl': stepper })).toEqual([
+    "src/components/stepper.tscl:6:35 Argument of type 'string' is not assignable to parameter of type 'number'.",
+    expect.stringMatching(/^src\/components\/stepper\.tscl:8:26 Argument of type '"opne"' is not assignable/),
+  ])
+  const fine = stepper.replace("  function bad() { emit('change', 'one') }\n", '').replace("  function nope() { emit('opne', 1) }\n", '').replace(' bad();', '').replace(' nope()', '')
+  const page = `@import stepper from '../components/stepper.tscl'
+<script>
+  let total = state(0)
+</script>
+<stepper (change)="total = $event.toUpperCase(); if ($info.reason === 'x') $info.cancel()" (close)="total = 0" (chnage)="total = 1" />
+<p>{{ total }}</p>
+`
+  expect(check({ 'src/components/stepper.tscl': fine, 'src/pages/index.tscl': page })).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:5:35 Property 'toUpperCase' does not exist on type 'number'/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:5:112 Type '"chnage"' is not assignable to type 'keyof Events'/),
+  ])
+})
+
+test('#463 attributes on a component: attribute-like names pass (static or bound); other unknown names are still errors', () => {
+  const button = '@input label: string\n<button>{{ label }}</button>\n'
+  const page = `@import btn from '../components/btn.tscl'
+<btn [label]="'Save'" id="save" data-test="x" aria-label="Save it" [aria-controls]="'panel'" role="button" hidden tabindex="0" />
+<btn [label]="'Bad'" foo="1" />
+`
+  expect(check({ 'src/components/btn.tscl': button, 'src/pages/index.tscl': page })).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:3:22 .*'foo' does not exist/),
+  ])
+})
+
+test('#464 [use]: a function of the element (typed by its tag), or a list of them; anything else is an error', () => {
+  const c = `<script>
+  const focus = (el) => el.focus()
+  const grow = (el) => { el.rows = 4; return () => {} }
+</script>
+<button [use]="focus">a</button>
+<textarea [use]="[focus, grow]"></textarea>
+<p [use]="(el) => el.rows">p</p>
+<i [use]="42"></i>
+`
+  expect(check({ 'src/components/c.tscl': c })).toEqual([
+    "src/components/c.tscl:7:22 Property 'rows' does not exist on type 'HTMLParagraphElement'.",
+    expect.stringMatching(/^src\/components\/c\.tscl:8:11 Argument of type 'number' is not assignable/),
+  ])
+})
+
+test('#465 context: @context names are typed in the template; provide() type-checks in a script', () => {
+  const panel = "@context tabs: { value: string }\n@context theme: { tone: string } = { tone: 'light' }\n<p>{{ tabs.value }} {{ theme.tone }} {{ tabs.nope }}</p>\n"
+  expect(check({ 'src/components/panel.tscl': panel })).toEqual([
+    expect.stringMatching(/^src\/components\/panel\.tscl:3:46 Property 'nope' does not exist/),
+  ])
+  const tabs = "@input value: string\n<script>\n  provide('tabs', { value })\n</script>\n<div><slot /></div>\n"
+  expect(check({ 'src/components/tabs.tscl': tabs })).toEqual([])
+})

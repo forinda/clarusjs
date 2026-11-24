@@ -15,3 +15,5 @@ packages/theme-docs/src/vite.d.ts
 packages/theme-docs/src/search.d.ts
 packages/theme-docs/src/nav.d.ts
 *.vsix
+# Generated from the JSDoc in packages/ui-primitives/src/*.js (pnpm types; typecheck and prepack run it)
+packages/ui-primitives/src/*.d.ts

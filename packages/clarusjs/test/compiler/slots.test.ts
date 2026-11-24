@@ -42,12 +42,12 @@ test('slots nest', async () => {
   expect(html).toBe('<main><div class="card">inner</div></main>')
 })
 
-test('giving content to a stateful component fails when rendering, naming it', async () => {
-  await expect(renderPage(`@import counter from './counter.tscl'\n<counter [start]="1">x</counter>`)).rejects.toThrow(/<counter> does not accept children yet/)
+test('giving content to an island without a <slot /> fails when rendering, naming it', async () => {
+  await expect(renderPage(`@import counter from './counter.tscl'\n<counter [start]="1">x</counter>`)).rejects.toThrow(/<counter> has no <slot \/>/)
 })
 
-test('<slot /> in a stateful component is a located build error', () => {
-  expect(compileError('<script>let n = state(0)</script>\n<p><slot /></p>').message).toMatch(/^x\.tscl:2:4 .*only supported in components without <script>/)
+test('<slot /> in an island\'s block is a located build error (island-slots.test.ts has the rest)', () => {
+  expect(compileError('<script>let n = state(0)</script>\n@if (n) { <slot /> }').message).toMatch(/^x\.tscl:2:11 .*outside @if, @for and @await/)
 })
 
 // --- named slots (#12) ---

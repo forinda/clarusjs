@@ -1,3 +1,4 @@
+@import '@clarusjs/ui/ui.css';
 /* clarusjs.com: what only this site has (hero, demos, playground, tour). The theme is @clarusjs/theme-docs. */
 .hero { text-align: center; padding: 24px 0 8px; }
 .hero h1 { font-size: clamp(36px, 7vw, 52px); margin: 12px 0 4px; }
@@ -180,3 +181,15 @@
 
 /* Home: its page is wider (the layout's <main>); the bento grid's own styles are in index.tscl, scoped to it. */
 .content.home { max-width: 1120px; }
+
+/* @clarusjs/ui (#467) styles the parts (the combobox, the UI primitives demos) in this site's colours and fonts: its
+   tokens follow the site's, light and dark. On body, so they win over the package's :root values. */
+body {
+  --ui-font: var(--sans);
+  --ui-bg: var(--bg);
+  --ui-fg: var(--fg);
+  --ui-muted: var(--muted);
+  --ui-border: var(--rule);
+  --ui-accent: var(--accent);
+  --ui-accent-soft: var(--accent-soft);
+}

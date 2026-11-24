@@ -54,7 +54,7 @@ When the field writes `value`, the write goes to the form, which updates its sta
 
 ## A combobox
 
-A text field that filters a list as you type, for one pick or several. This site's is one `.tscl` file you can copy: [`combobox.tscl`](https://github.com/forinda/clarusjs/blob/main/packages/docs/src/components/combobox.tscl), also in the [playground](/repl) as *Combobox*. Bind one pick with `[(value)]`, or several with `[multiple]="true"` and `[(values)]`:
+A text field that filters a list as you type, for one pick or several. It's a part of [`@clarusjs/ui-primitives`](/guide/ui-primitives#parts) (`@import combobox from '@clarusjs/ui-primitives/combobox.tscl'`), headless, and one `.tscl` file you can copy instead: [`combobox.tscl`](https://github.com/forinda/clarusjs/blob/main/packages/ui-primitives/src/combobox.tscl), also in the [playground](/repl) as *Combobox*. Bind one pick with `[(value)]`, or several with `[multiple]="true"` and `[(values)]`:
 
 ```tscl
 <combobox [id]="'country'" [label]="'Country'" [options]="countries" [(value)]="form.country" />

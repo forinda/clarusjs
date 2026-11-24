@@ -132,3 +132,21 @@ test('#458 automatic components: completed, hovered and followed by name, withou
   const [link] = at(`<forms-text-fi§eld />\n`, definition) ?? []
   expect(link?.targetUri).toContain('src/components/forms/text-field.tscl')
 })
+
+test('#442 @event: completed as a binding with its value type, and hovered', async () => {
+  const { root, project, at } = await setup()
+  const file = resolve(root, 'src/components/stepper.tscl')
+  const text = '@event change: number\n<script>\n  let n = state(0)\n</script>\n<button (click)="emit(\'change\', n)">{{ n }}</button>\n'
+  writeFileSync(file, text)
+  project.update(file, text)
+  const IMP = "@import stepper from '../components/stepper.tscl'\n"
+  const items = at(`${IMP}<stepper §`, completions).items
+  expect(items.find((i) => i.label === '(change)')?.detail).toContain('$event is number')
+  const shown = at(`${IMP}<stepper (cha§nge)="x" />\n`, hover)?.contents as { value: string }
+  expect(shown.value).toContain('@event change: number')
+})
+
+test('#465 @context is offered as a directive', async () => {
+  const { at } = await setup()
+  expect(labels(at('<p>\n@c§', completions))).toContain('@context')
+})

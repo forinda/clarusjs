@@ -10,6 +10,7 @@ export const theme: ThemeConfig = {
   siteUrl: 'https://clarusjs.com',
   sections,
   menuLinks: [
+    { label: 'Components', href: '/components/dialog' },
     { label: 'Reference', href: '/reference/template-syntax' },
     { label: 'Releases', href: '/releases' },
   ],

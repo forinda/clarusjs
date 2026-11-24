@@ -1,0 +1,53 @@
+{{--
+  Field (#465): a label, a native input, a description and an error, wired by id (for, aria-describedby,
+  aria-invalid). The error shows once the field has been left, or when [show] says so (after a submit). Base UI's
+  field state as data- attributes on the wrapper: data-touched, data-dirty, data-invalid, data-filled. It tells its
+  parent when it's left: (blur).
+
+  <field id="email" label="Email" type="email" [error]="errors.email" [(value)]="form.email" />
+--}}
+@input id: string
+@input label: string
+@input description: string = ''
+@input error: string = ''
+@input show: boolean = false
+@input type: string = 'text'
+@input name: string = ''
+@input placeholder: string = ''
+@input required: boolean = false
+@model value: string = ''
+@event blur
+
+<script>
+  let touched = state(false)
+  const initial = value
+  const invalid = derived(() => !!error && (touched || show))
+</script>
+
+<div
+  data-part="field"
+  [data-touched]="touched ? '' : false"
+  [data-dirty]="value !== initial ? '' : false"
+  [data-filled]="value ? '' : false"
+  [data-invalid]="invalid ? '' : false"
+>
+  <label [for]="id" data-part="label">{{ label }}</label>
+  <input
+    [id]="id"
+    [type]="type"
+    [name]="name || false"
+    [placeholder]="placeholder || false"
+    [required]="required"
+    [(value)]="value"
+    [aria-invalid]="invalid ? 'true' : false"
+    [aria-describedby]="[description ? id + '-description' : '', invalid ? id + '-error' : ''].filter(Boolean).join(' ') || false"
+    (blur)="touched = true; emit('blur')"
+    data-part="control"
+  />
+  @if (description) {
+    <p [id]="id + '-description'" data-part="description">{{ description }}</p>
+  }
+  @if (invalid) {
+    <p [id]="id + '-error'" data-part="error" role="alert">{{ error }}</p>
+  }
+</div>

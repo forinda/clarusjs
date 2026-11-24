@@ -1,5 +1,5 @@
 {{-- The Forms guide's combobox demo: one pick, several picks, and a pick searched on the server, bound into one state object. --}}
-@import combobox from './combobox.tscl'
+@import combobox from '@clarusjs/ui-primitives/combobox.tscl'
 
 <script>
   const countries = [

@@ -1,0 +1,287 @@
+/*
+  @clarusjs/ui (#467): thin, accessible styles for @clarusjs/ui-primitives' parts, over their data-part names and
+  state attributes. Every selector is in :where(), so it weighs nothing: your own CSS always wins. Change the look with
+  the --ui- tokens (on :root, or on any element around the parts).
+*/
+
+:root {
+  --ui-font: system-ui, sans-serif;
+  --ui-radius: 8px;
+  --ui-bg: #ffffff;
+  --ui-fg: #17202a;
+  --ui-muted: #5b6670;
+  --ui-border: #c9d1d9;
+  --ui-accent: #0b6e70;
+  --ui-accent-fg: #ffffff;
+  --ui-accent-soft: #e3f2f2;
+  --ui-danger: #b42318;
+  --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ui-bg: #121a1b;
+    --ui-fg: #e6eded;
+    --ui-muted: #9aa8a9;
+    --ui-border: #2c3a3b;
+    --ui-accent: #4cc9cb;
+    --ui-accent-fg: #0b1415;
+    --ui-accent-soft: #173233;
+    --ui-danger: #ff8a80;
+    --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+  }
+}
+:root[data-theme='dark'] {
+  --ui-bg: #121a1b;
+  --ui-fg: #e6eded;
+  --ui-muted: #9aa8a9;
+  --ui-border: #2c3a3b;
+  --ui-accent: #4cc9cb;
+  --ui-accent-fg: #0b1415;
+  --ui-accent-soft: #173233;
+  --ui-danger: #ff8a80;
+  --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+/* Focus is always visible, on every part and what's inside it. */
+:where([data-part]):focus-visible,
+:where([data-part]) :focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+/* Buttons: triggers and closes. */
+:where([data-part='trigger'], [data-part='close']) {
+  font: 600 14px var(--ui-font);
+  padding: 8px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  cursor: pointer;
+}
+:where([data-part='trigger'], [data-part='close']):hover {
+  border-color: var(--ui-accent);
+}
+
+/* Dialog: centred by the browser; the backdrop dims the page. */
+:where([data-part='dialog']) {
+  max-width: min(32rem, calc(100vw - 32px));
+  padding: 20px 24px;
+  border: 1px solid var(--ui-border);
+  border-radius: calc(var(--ui-radius) * 1.5);
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  box-shadow: var(--ui-shadow);
+  font: 15px/1.5 var(--ui-font);
+}
+:where([data-part='dialog'])::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+:where([data-part='title']) {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+/* Popover: a little gap from its trigger, wherever it's placed. */
+:where([data-part='popover']) {
+  margin: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  box-shadow: var(--ui-shadow);
+  font: 14px/1.5 var(--ui-font);
+}
+
+/* Accordion. */
+:where([data-part='accordion-item']) {
+  border-bottom: 1px solid var(--ui-border);
+  font: 15px/1.5 var(--ui-font);
+  color: var(--ui-fg);
+}
+:where([data-part='accordion-item']) > :where([data-part='trigger']) {
+  display: list-item;
+  padding: 10px 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+:where([data-part='panel']) {
+  padding: 0 2px 12px;
+  color: var(--ui-muted);
+}
+
+/* Switch and checkbox: the native input, tinted; the label next to it. */
+:where([data-part='switch'], [data-part='checkbox']) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 14px var(--ui-font);
+  color: var(--ui-fg);
+  cursor: pointer;
+}
+:where([data-part='switch'], [data-part='checkbox']) input {
+  accent-color: var(--ui-accent);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+:where([data-part='switch']) input {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--ui-border);
+  position: relative;
+  transition: background 150ms;
+}
+:where([data-part='switch']) input::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--ui-bg);
+  transition: transform 150ms;
+}
+:where([data-part='switch']) input:checked {
+  background: var(--ui-accent);
+}
+:where([data-part='switch']) input:checked::after {
+  transform: translateX(16px);
+}
+:where([data-part='switch'], [data-part='checkbox'])[data-disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Field and select: label, control, description, error. */
+:where([data-part='field'], [data-part='select']) {
+  display: grid;
+  gap: 4px;
+  max-width: 360px;
+  font: 14px var(--ui-font);
+  color: var(--ui-fg);
+}
+:where([data-part='label']) {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ui-fg);
+}
+:where([data-part='control']) {
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  color: var(--ui-fg);
+  font: 14px var(--ui-font);
+}
+:where([data-part='control'])[aria-invalid='true'] {
+  border: 1px solid var(--ui-danger);
+}
+:where([data-part='description']) {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+:where([data-part='error']) {
+  margin: 0;
+  color: var(--ui-danger);
+  font-size: 13px;
+}
+:where([data-part='option']) {
+  padding: 6px 10px;
+  border-radius: calc(var(--ui-radius) - 2px);
+}
+:where([data-part='select']) ::picker(select) {
+  padding: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  box-shadow: var(--ui-shadow);
+}
+
+/* Combobox: chips in the control, a list below. */
+:where([data-part='combobox']) {
+  display: grid;
+  gap: 4px;
+  max-width: 360px;
+  font: 14px var(--ui-font);
+  color: var(--ui-fg);
+}
+:where([data-part='combobox']) > :where([data-part='control']) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+}
+:where([data-part='combobox']) > :where([data-part='control']):focus-within {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}
+:where([data-part='input']) {
+  flex: 1;
+  min-width: 6ch;
+  min-height: 26px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--ui-fg);
+  font: inherit;
+  outline: none;
+}
+:where([data-part='chip']) {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px 0 8px;
+  border-radius: 999px;
+  background: var(--ui-accent-soft);
+  font-size: 13px;
+}
+:where([data-part='chip']) button {
+  min-width: 24px;
+  min-height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ui-muted);
+  cursor: pointer;
+}
+:where([data-part='listbox']) {
+  margin-top: 4px;
+  padding: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-bg);
+  box-shadow: var(--ui-shadow);
+}
+:where([data-part='listbox']) > :where([data-part='option']) {
+  cursor: pointer;
+}
+:where([data-part='option'])[data-highlighted] {
+  background: var(--ui-accent-soft);
+}
+:where([data-part='option'])[aria-selected='true'] {
+  font-weight: 600;
+}
+:where([data-part='status']) {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+:where([data-part='status']):empty {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where([data-part]),
+  :where([data-part]) * {
+    transition: none !important;
+  }
+}

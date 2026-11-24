@@ -1,0 +1,4 @@
+{{-- Opens the dialog whose id is `target`, as a modal (command="show-modal"): no JavaScript. --}}
+@input target: string
+
+<button type="button" [commandfor]="target" command="show-modal" aria-haspopup="dialog" data-part="trigger"><slot /></button>
