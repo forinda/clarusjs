@@ -1,0 +1,26 @@
+@import uiButton from '../registry/button/button.tscl'
+
+<div class="demo">
+  <uiButton>Save</uiButton>
+  <uiButton variant="secondary">Secondary</uiButton>
+  <uiButton variant="outline">Outline</uiButton>
+  <uiButton variant="ghost">Ghost</uiButton>
+  <uiButton variant="destructive">Delete</uiButton>
+  <uiButton variant="link">Link</uiButton>
+  <uiButton size="sm">Small</uiButton>
+  <uiButton size="lg">Large</uiButton>
+  <uiButton disabled>Disabled</uiButton>
+</div>
+
+<style scoped>
+  :scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding: 24px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+  }
+</style>

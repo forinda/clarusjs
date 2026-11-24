@@ -21,10 +21,10 @@ export default defineConfig({
         titleTemplate: '%s · clarusjs ui',
         tags: [['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }]],
       },
-      // Pages are Markdown in the site's layout; demos (src/demos) are used by tag.
+      // Pages are Markdown in the site's layout; demos (src/demos) and the site's own parts (src/components) by tag.
       sources: [markdown({
         layout: '/src/layouts/site.tscl',
-        components: '/src/demos',
+        components: ['/src/demos', '/src/components'],
         container: { tag: 'callout', from: '@clarusjs/theme-docs/callout.tscl' },
         copy: { tag: 'copy', from: '@clarusjs/theme-docs/copy.tscl' },
       })],

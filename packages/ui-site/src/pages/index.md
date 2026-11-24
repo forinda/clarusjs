@@ -17,8 +17,10 @@ Every component styles itself with the `--ui-` tokens. Save this as `theme.css` 
 
 ## 2. Copy a component
 
-Pick one in the sidebar. Its page shows it working, how to use it, and its file to copy. Components with behaviour (a dialog, tabs) build on `@clarusjs/ui-primitives`:
+Pick one below or in the sidebar. Its page shows it working, how to use it, and its file to copy. Components with behaviour (a dialog, tabs) build on `@clarusjs/ui-primitives`:
 
 ```sh
 pnpm add @clarusjs/ui-primitives
 ```
+
+<componentList />

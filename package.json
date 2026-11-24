@@ -29,8 +29,8 @@
     "release:enter:beta": "changeset pre enter beta",
     "release:enter:rc": "changeset pre enter rc",
     "release:exit:pre": "changeset pre exit",
-    "format:tscl": "prettier --write \"packages/{docs,theme-docs}/src/**/*.tscl\"",
-    "format:tscl:check": "prettier --check \"packages/{docs,theme-docs}/src/**/*.tscl\"",
+    "format:tscl": "prettier --write \"packages/{docs,theme-docs,ui-site}/src/**/*.tscl\"",
+    "format:tscl:check": "prettier --check \"packages/{docs,theme-docs,ui-site}/src/**/*.tscl\"",
     "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
