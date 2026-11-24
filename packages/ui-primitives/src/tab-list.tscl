@@ -1,0 +1,4 @@
+{{-- Tab list (#465): the row of <tab>s inside <tabs>, labelled by the tabs' label. --}}
+@context tabs: { label: string }
+
+<div role="tablist" [aria-label]="tabs.label" data-part="list"><slot /></div>

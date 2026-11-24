@@ -1,54 +1,59 @@
 {{--
-  Tabs (#465): a tab list (an island) around panels the page writes as <tab-panel>s, which the server renders with
-  their ARIA and hidden. Arrow keys, Home and End move between tabs and select them. Bind the selected index with
-  [(value)]; (change) comes first with the new index, and $info.cancel() keeps the tab.
+  Tabs (#465): a tab list over panels, Radix-shaped. The root is a small island; <tab-list>, <tab> and <tab-panel>
+  have no script, ship nothing, and read the selection from context, so the server writes every ARIA attribute and
+  hidden. Arrow keys, Home and End move between tabs and select them. Bind the selected value with [(value)];
+  (change) comes first with the new value, and $info.cancel() keeps the current tab.
 
-  <tabs id="install" label="Install" [tabs]="['npm', 'pnpm']" [(value)]="tab">
-    <tab-panel group="install" [index]="0">npm i clarusjs</tab-panel>
-    <tab-panel group="install" [index]="1">pnpm add clarusjs</tab-panel>
+  <tabs id="install" label="Install" value="npm">
+    <tab-list>
+      <tab value="npm">npm</tab>
+      <tab value="pnpm">pnpm</tab>
+    </tab-list>
+    <tab-panel value="npm">npm i clarusjs</tab-panel>
+    <tab-panel value="pnpm">pnpm add clarusjs</tab-panel>
   </tabs>
 
-  Starting on another tab: give each panel the same [selected] too, so the server hides the right ones.
+  Give each one its own id: its tabs and panels are named after it.
 --}}
 @input id: string
 @input label: string
-@input tabs: string[]
-@model value: number = 0
-@event change: number
+@model value: string
+@event change: string
 
 <script>
   import { effect } from 'clarusjs/runtime'
   import { rovingFocus } from '@clarusjs/ui-primitives'
-  function pick(index, event) {
-    if (index !== value && emit('change', index, { reason: 'select', event })) value = index
-  }
-  // The panels are the page's, rendered on the server: this keeps their hidden in step with value (and [(value)]).
-  const panels = () =>
-    effect(() => {
-      for (let i = 0; i < tabs.length; i++) {
-        const panel = document.getElementById(id + '-panel-' + i)
-        if (panel) panel.hidden = i !== value
+  provide('tabs', { id, label, value })
+  // The tabs and panels are the page's server HTML (no markers of their own): wired here, by data-value and id.
+  // Only this group's: a tabs group nested in a panel has its own.
+  function wire(el) {
+    const own = (node) => node.closest('[data-part="tabs"]') === el
+    const click = (event) => {
+      const tab = event.target.closest('[role="tab"]')
+      if (!tab || !own(tab)) return
+      const next = tab.dataset.value
+      if (next !== value && emit('change', next, { reason: 'select', event })) value = next
+    }
+    el.addEventListener('click', click)
+    const list = [...el.querySelectorAll('[role="tablist"]')].find(own)
+    const stopKeys = list ? rovingFocus(list, { onMove: (tab) => tab.click() }) : () => {}
+    const stopSync = effect(() => {
+      const selected = value
+      for (const tab of el.querySelectorAll('[role="tab"]')) {
+        if (!own(tab)) continue
+        tab.setAttribute('aria-selected', String(tab.dataset.value === selected))
+        tab.tabIndex = tab.dataset.value === selected ? 0 : -1
+      }
+      for (const panel of el.querySelectorAll('[role="tabpanel"]')) {
+        if (own(panel)) panel.hidden = panel.id !== id + '-panel-' + selected
       }
     })
-  const keys = (el) => rovingFocus(el, { onMove: (tab) => tab.click() })
+    return () => {
+      el.removeEventListener('click', click)
+      stopKeys()
+      stopSync()
+    }
+  }
 </script>
 
-<div data-part="tabs" [use]="panels">
-  <div role="tablist" [aria-label]="label" data-part="list" [use]="keys">
-    @for (t of tabs; track $index) {
-      <button
-        type="button"
-        role="tab"
-        [id]="id + '-tab-' + $index"
-        [aria-controls]="id + '-panel-' + $index"
-        [aria-selected]="$index === value ? 'true' : 'false'"
-        [tabindex]="$index === value ? 0 : -1"
-        (click)="pick($index, $event)"
-        data-part="tab"
-      >
-        {{ t }}
-      </button>
-    }
-  </div>
-  <slot />
-</div>
+<div data-part="tabs" [use]="wire"><slot /></div>

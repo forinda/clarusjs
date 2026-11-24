@@ -1,12 +1,19 @@
-{{-- The Tabs page's demo (#465): a component without a script, so it can hand the tabs island its panels. --}}
+{{-- The Tabs page's demo (#465): a component without a script, so it can hand the tabs island its content. --}}
 @import uiTabs from '@clarusjs/ui-primitives/tabs.tscl'
+@import uiTabList from '@clarusjs/ui-primitives/tab-list.tscl'
+@import uiTab from '@clarusjs/ui-primitives/tab.tscl'
 @import uiTabPanel from '@clarusjs/ui-primitives/tab-panel.tscl'
 
 <div class="tabs-demo">
-  <uiTabs id="gallery-install" label="Install" [tabs]="['npm', 'pnpm', 'yarn']" data-gallery="tabs">
-    <uiTabPanel group="gallery-install" [index]="0"><code>npm i clarusjs</code></uiTabPanel>
-    <uiTabPanel group="gallery-install" [index]="1"><code>pnpm add clarusjs</code></uiTabPanel>
-    <uiTabPanel group="gallery-install" [index]="2"><code>yarn add clarusjs</code></uiTabPanel>
+  <uiTabs id="gallery-install" label="Install" value="npm" data-gallery="tabs">
+    <uiTabList>
+      <uiTab value="npm">npm</uiTab>
+      <uiTab value="pnpm">pnpm</uiTab>
+      <uiTab value="yarn">yarn</uiTab>
+    </uiTabList>
+    <uiTabPanel value="npm"><code>npm i clarusjs</code></uiTabPanel>
+    <uiTabPanel value="pnpm"><code>pnpm add clarusjs</code></uiTabPanel>
+    <uiTabPanel value="yarn"><code>yarn add clarusjs</code></uiTabPanel>
   </uiTabs>
 </div>
 

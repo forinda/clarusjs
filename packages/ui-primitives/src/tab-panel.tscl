@@ -1,18 +1,16 @@
 {{--
-  Tab panel (#465): one panel of a <tabs> group, server HTML with its ARIA, so nothing ships and nothing jumps.
-  [group] is the tabs' id, [index] its place; it's hidden unless it's the [selected] one (default 0, the first tab).
-  <tab-panel group="install" [index]="1">…</tab-panel>
+  Tab panel (#465): what one <tab> shows, inside <tabs>; [value] matches its tab. The server renders it hidden unless
+  it's the selected one, so nothing jumps when the page loads.
 --}}
-@input group: string
-@input index: number
-@input selected: number = 0
+@context tabs: { id: string; value: string }
+@input value: string
 
 <div
   role="tabpanel"
-  [id]="group + '-panel-' + index"
-  [aria-labelledby]="group + '-tab-' + index"
+  [id]="tabs.id + '-panel-' + value"
+  [aria-labelledby]="tabs.id + '-tab-' + value"
   tabindex="0"
-  [hidden]="index !== selected"
+  [hidden]="value !== tabs.value"
   data-part="panel"
 >
   <slot />
