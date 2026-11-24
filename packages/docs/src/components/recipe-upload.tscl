@@ -26,10 +26,10 @@
     {{
       send.pending
         ? 'Uploading ' + chosen + '…'
-        : send.result
-          ? 'Uploaded ' + send.result.name + ' (' + send.result.size + ' bytes).'
-          : send.error
-            ? why(send.error)
+        : send.error
+          ? why(send.error)
+          : send.result
+            ? 'Uploaded ' + send.result.name + ' (' + send.result.size + ' bytes).'
             : ''
     }}
   </p>

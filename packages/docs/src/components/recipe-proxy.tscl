@@ -1,0 +1,37 @@
+{{-- Fetching recipes: an API that needs a key, through a server route. The island asks /api/demo-weather; that route
+     calls the keyed API with the key, which stays on the server. --}}
+
+<script>
+  import { json, resource } from 'clarusjs/fetch'
+  let city = state('Nairobi')
+  const weather = resource(({ signal }) => json('/api/demo-weather?city=' + encodeURIComponent(city), { signal }))
+</script>
+
+<div id="recipe-proxy">
+  <label
+    >City
+    <select [value]="city" (change)="city = $event.target.value">
+      <option>Nairobi</option>
+      <option>Oslo</option>
+      <option>Lima</option>
+    </select></label
+  >
+  <p role="status">
+    {{
+      weather.error
+        ? 'The weather service is down.'
+        : weather.value && !weather.loading
+          ? weather.value.temp + ' °C, ' + weather.value.summary.toLowerCase() + '.'
+          : 'Loading…'
+    }}
+  </p>
+</div>
+
+<style scoped>
+  :scope {
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+</style>

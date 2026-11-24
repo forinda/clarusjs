@@ -27,7 +27,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: Server
     if (n.kind === 'static') return JSON.stringify(n.html)
     // The fill (called with what the slot passes, when it takes data: #455), or the fallback.
     if (n.kind === 'slot') {
-      const data = n.props.length ? `{ ${n.props.map((p) => `${p.name}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }` : 'undefined'
+      const data = n.props.length ? `{ ${n.props.map((p) => `${p.name === '__proto__' ? '["__proto__"]' : p.name}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }` : 'undefined'
       return `__cl_slot(__cl_slots?.[${JSON.stringify(n.name)}], ${data}, () => ${n.fallback.length ? htmlExpr(n.fallback, rw, ctx) : '""'})`
     }
     if (n.kind === 'connect') return '""' // its marker is static; the browser connects it

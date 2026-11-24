@@ -1,11 +1,6 @@
 // The Fetching guide's demo API (an endpoint: a .ts file under src/pages exporting GET): ?keys=a,b answers { a: …, b: … }. A request
 // with &fail=<id> fails once per id (503), so the activity feed's retry shows.
-const DATA: Record<string, unknown> = {
-  visits: 12400,
-  signups: 318,
-  revenue: 9200,
-  user: { id: 7, name: 'Ada', role: 'Admin' },
-}
+import { DEMO_STATS as DATA } from '../../demo-stats.ts'
 const ACTIVITY = ['Opened the dashboard', 'Invited a teammate', 'Exported a report']
 const failed = new Set<string>()
 

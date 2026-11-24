@@ -10,9 +10,14 @@
     refreshed = refreshed + 1
   }
   const expired = (e) => e?.status === 401
-  async function api(path, options = {}) {
+  const why = (e) => e?.status ?? e?.message // the answer's status, or what went wrong on the way
+  async function api(path, options) {
     if (!token) await refresh()
-    const call = () => request(path, { ...options, headers: { authorization: 'Bearer ' + token } })
+    const call = () => {
+      const headers = new Headers(options?.headers) // any form the caller used: an object, pairs, Headers
+      headers.set('authorization', 'Bearer ' + token)
+      return request(path, { signal: options?.signal, headers })
+    }
     try {
       return await call()
     } catch (e) {
@@ -29,7 +34,9 @@
     <button type="button" [disabled]="ask.pending" (click)="ask.run()">Ask for the secret</button>
   </p>
   <p role="status">
-    @if (ask.result) {
+    @if (ask.error) {
+      Couldn't get the secret ({{ why(ask.error) }}).
+    } @else if (ask.result) {
       <span class="secret">{{ ask.result.secret }}</span> Tokens fetched:
       <strong class="refreshed">{{ refreshed }}</strong
       >.

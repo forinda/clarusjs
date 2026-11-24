@@ -217,7 +217,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
         // A fill that receives the slot's data (#455) names it as a parameter: in scope inside, typed any.
         // ponytail: any, not the child's slot types; type it from the child's <slot [x]> when a component exports them.
         if (node.params !== undefined) {
-          emit(`  { const ${node.params}: any = {}; __cl_use([${patternNames(node.params).join(', ')}])\n`)
+          // As an array pattern: any parameter list is one ({ item }, props = {}, ...args), as the fill's (params) => ….
+          emit(`  { const [${node.params}]: any = []; __cl_use([${patternNames(node.params).join(', ')}])\n`)
           node.children.forEach(visit)
           emit('  }\n')
         } else node.children.forEach(visit)
@@ -331,13 +332,13 @@ export function generateTs(source: string, file: string, options: { loader?: str
             const radio = node.tag === 'input' && a.name === 'value' && type?.kind === 'static' && String(type.value).toLowerCase() === 'radio' && own?.kind === 'static'
             writable(a, radio ? JSON.stringify(own.value === true ? '' : own.value) : undefined)
           }
-          else if (a.kind === 'prop' && a.name === 'engine') {
+          else if (a.kind === 'prop' && node.tag === 'slot') {
+            use(a.expr, attrValueStart(a)) // data the slot passes to its fill (#455): any value, whatever its name
+          } else if (a.kind === 'prop' && a.name === 'engine') {
             // [engine]="f": a form from clarusjs/forms.
             emit(`  ;((__cl_f: import('clarusjs/forms').Form<any>) => __cl_use(__cl_f))((`)
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit('));\n')
-          } else if (a.kind === 'prop' && node.tag === 'slot') {
-            use(a.expr, attrValueStart(a)) // data the slot passes to its fill (#455): any value
           } else if (a.kind === 'prop') {
             emit(`  __cl_attr<${JSON.stringify(node.tag.toLowerCase())}, ${JSON.stringify(ENUMERATED.has(a.name.toLowerCase()) ? '' : PROPERTY[a.name.toLowerCase()] ?? a.name.toLowerCase())}>((`)
             copy(a.expr, at(a.expr, attrValueStart(a)))

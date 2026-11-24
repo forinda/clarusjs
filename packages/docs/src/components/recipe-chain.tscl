@@ -28,7 +28,8 @@
   <p role="status">
     @if (user.error || work.error) {
       Couldn't reach JSONPlaceholder.
-    } @else if (user.value && work.value) {
+    } @else if (user.value && work.value && !user.loading && !work.loading) {
+      {{-- Both settled: work.value may still be the previous user's while theirs loads. --}}
       <strong>{{ user.value.name }}</strong> wrote {{ work.value[0].length }} posts and has
       {{ work.value[1].filter((t) => !t.completed).length }} todos left.
     } @else {
