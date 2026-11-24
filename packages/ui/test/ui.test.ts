@@ -82,3 +82,43 @@ test('theme builder: new tokens default to today\'s values', () => {
   expect(light['font-heading']).toBe('var(--ui-font)')
   expect(light['font-mono']).toBe('ui-monospace, monospace')
 })
+
+const rulesPart = css.slice(css.indexOf('/* part: '))
+const blockOf = (selector: string) => {
+  const i = rulesPart.indexOf(selector + ' {')
+  if (i < 0) throw new Error(`no rule ${selector}`)
+  return rulesPart.slice(i, rulesPart.indexOf('}', i))
+}
+
+test('theme builder: focus outlines use --ui-ring', () => {
+  const outlines = [...rulesPart.matchAll(/outline:\s*([^;]+);/g)].map((m) => m[1]!).filter((v) => v !== 'none' && v !== '0')
+  expect(outlines.length).toBeGreaterThan(0)
+  for (const o of outlines) expect(o).toContain('var(--ui-ring)')
+})
+
+test('theme builder: floating surfaces use --ui-popover', () => {
+  for (const sel of [":where([data-part='popover'])", ":where([data-part='menu-list'])", ":where([data-part='listbox'])", ":where([data-part='select']) ::picker(select)"]) {
+    const b = blockOf(sel)
+    expect(b, sel).toMatch(/background:\s*var\(--ui-popover\)/)
+    expect(b, sel).toMatch(/color:\s*var\(--ui-popover-fg\)/)
+  }
+})
+
+test('theme builder: controls border with --ui-input', () => {
+  // The combobox's control takes its border from this rule too (its own rule only lays out chips).
+  expect(blockOf(":where([data-part='control'])")).toMatch(/border:[^;]*var\(--ui-input\)/)
+})
+
+test('theme builder: text sizes scale from --ui-font-size', () => {
+  const sizes = [...rulesPart.matchAll(/font-size:\s*([^;]+);/g)].map((m) => m[1]!)
+  const fonts = [...rulesPart.matchAll(/(?<![-\w])font:\s*([^;]+);/g)].map((m) => m[1]!)
+  expect(sizes.length + fonts.length).toBeGreaterThan(0)
+  for (const v of sizes) expect(v).toMatch(/var\(--ui-font-size\)|^inherit$/)
+  for (const v of fonts) expect(v).toMatch(/var\(--ui-font-size\)|^inherit$/)
+})
+
+test('theme builder: no literal colours outside the token rules', () => {
+  // The dialog's backdrop is a black scrim in both modes, on purpose: not a theme colour.
+  const noShadow = rulesPart.replace(/\/\*[\s\S]*?\*\//g, '').replace(/::backdrop \{[^}]*\}/, '')
+  expect(noShadow).not.toMatch(/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\boklch\(|\bhsla?\(/)
+})

@@ -12,7 +12,7 @@
   /* Focus is always visible, on every part and what's inside it. */
   :where([data-part]):focus-visible,
   :where([data-part]) :focus-visible {
-    outline: 2px solid var(--ui-accent);
+    outline: 2px solid var(--ui-ring);
     outline-offset: 2px;
   }
 
@@ -21,7 +21,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font: 14px var(--ui-font);
+    font: var(--ui-font-size) var(--ui-font);
     color: var(--ui-fg);
     cursor: pointer;
   }

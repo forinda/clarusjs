@@ -6,7 +6,7 @@
 /* Focus is always visible, on every part and what's inside it. */
 :where([data-part]):focus-visible,
 :where([data-part]) :focus-visible {
-  outline: 2px solid var(--ui-accent);
+  outline: 2px solid var(--ui-ring);
   outline-offset: 2px;
 }
 
@@ -15,22 +15,22 @@
   display: grid;
   gap: 4px;
   max-width: 360px;
-  font: 14px var(--ui-font);
+  font: var(--ui-font-size) var(--ui-font);
   color: var(--ui-fg);
 }
 :where([data-part='label']) {
   font-weight: 600;
-  font-size: 13px;
+  font-size: calc(var(--ui-font-size) - 1px);
   color: var(--ui-fg);
 }
 :where([data-part='control']) {
   min-height: 34px;
   padding: 4px 10px;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--ui-input);
   border-radius: var(--ui-radius);
   background: var(--ui-bg);
   color: var(--ui-fg);
-  font: 14px var(--ui-font);
+  font: var(--ui-font-size) var(--ui-font);
 }
 :where([data-part='control'])[aria-invalid='true'] {
   border: 1px solid var(--ui-danger);
@@ -38,12 +38,12 @@
 :where([data-part='description']) {
   margin: 0;
   color: var(--ui-muted);
-  font-size: 13px;
+  font-size: calc(var(--ui-font-size) - 1px);
 }
 :where([data-part='error']) {
   margin: 0;
   color: var(--ui-danger);
-  font-size: 13px;
+  font-size: calc(var(--ui-font-size) - 1px);
 }
 :where([data-part='option']) {
   padding: 6px 10px;
@@ -53,7 +53,8 @@
   padding: 4px;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
-  background: var(--ui-bg);
+  background: var(--ui-popover);
+  color: var(--ui-popover-fg);
   box-shadow: var(--ui-shadow);
 }
 

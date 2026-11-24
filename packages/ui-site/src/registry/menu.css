@@ -6,13 +6,13 @@
 /* Focus is always visible, on every part and what's inside it. */
 :where([data-part]):focus-visible,
 :where([data-part]) :focus-visible {
-  outline: 2px solid var(--ui-accent);
+  outline: 2px solid var(--ui-ring);
   outline-offset: 2px;
 }
 
 /* Buttons: triggers and closes. */
 :where([data-part='trigger'], [data-part='close']) {
-  font: 600 14px var(--ui-font);
+  font: 600 var(--ui-font-size) var(--ui-font);
   padding: 8px 14px;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
@@ -34,7 +34,8 @@
   min-width: 160px;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
-  background: var(--ui-bg);
+  background: var(--ui-popover);
+  color: var(--ui-popover-fg);
   color: var(--ui-fg);
   box-shadow: var(--ui-shadow);
 }
@@ -46,7 +47,7 @@
   border-radius: calc(var(--ui-radius) - 2px);
   background: none;
   color: inherit;
-  font: 14px var(--ui-font);
+  font: var(--ui-font-size) var(--ui-font);
   text-align: start;
   cursor: pointer;
 }

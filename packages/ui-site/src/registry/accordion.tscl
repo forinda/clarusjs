@@ -15,13 +15,13 @@
   /* Focus is always visible, on every part and what's inside it. */
   :where([data-part]):focus-visible,
   :where([data-part]) :focus-visible {
-    outline: 2px solid var(--ui-accent);
+    outline: 2px solid var(--ui-ring);
     outline-offset: 2px;
   }
 
   /* Buttons: triggers and closes. */
   :where([data-part='trigger'], [data-part='close']) {
-    font: 600 14px var(--ui-font);
+    font: 600 var(--ui-font-size) var(--ui-font);
     padding: 8px 14px;
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
@@ -36,7 +36,7 @@
   /* Accordion. */
   :where([data-part='accordion-item']) {
     border-bottom: 1px solid var(--ui-border);
-    font: 15px/1.5 var(--ui-font);
+    font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
     color: var(--ui-fg);
   }
   :where([data-part='accordion-item']) > :where([data-part='trigger']) {

@@ -6,13 +6,13 @@
 /* Focus is always visible, on every part and what's inside it. */
 :where([data-part]):focus-visible,
 :where([data-part]) :focus-visible {
-  outline: 2px solid var(--ui-accent);
+  outline: 2px solid var(--ui-ring);
   outline-offset: 2px;
 }
 
 /* Buttons: triggers and closes. */
 :where([data-part='trigger'], [data-part='close']) {
-  font: 600 14px var(--ui-font);
+  font: 600 var(--ui-font-size) var(--ui-font);
   padding: 8px 14px;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
@@ -30,17 +30,18 @@
   padding: 20px 24px;
   border: 1px solid var(--ui-border);
   border-radius: calc(var(--ui-radius) * 1.5);
-  background: var(--ui-bg);
+  background: var(--ui-card);
+  color: var(--ui-card-fg);
   color: var(--ui-fg);
   box-shadow: var(--ui-shadow);
-  font: 15px/1.5 var(--ui-font);
+  font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
 }
 :where([data-part='dialog'])::backdrop {
   background: rgb(0 0 0 / 0.45);
 }
 :where([data-part='title']) {
   margin: 0 0 8px;
-  font-size: 18px;
+  font-size: calc(var(--ui-font-size) + 4px);
 }
 
 @media (prefers-reduced-motion: reduce) {
