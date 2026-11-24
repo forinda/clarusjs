@@ -11,7 +11,7 @@ description: "Complete fetching patterns to copy: search as you type, load more,
 
 ## Search as you type
 
-Wait until typing pauses, then search. Each search is cached by its words, so going back to one costs nothing, and a newer search cancels the one in flight.
+Wait until typing pauses, then search. A newer search aborts the request still in flight, so a slow answer to an older search never replaces the newer one.
 
 ```tscl
 <script>
@@ -24,10 +24,7 @@ Wait until typing pauses, then search. Each search is cached by its words, so go
     clearTimeout(timer)
     timer = setTimeout(() => (term = text.trim()), 250)
   }
-  const results = resource(
-    ({ signal }) => (term ? json('/api/cities?q=' + encodeURIComponent(term), { signal }) : false),
-    { key: () => (term ? ['cities', term] : false) },
-  )
+  const results = resource(({ signal }) => (term ? json('/api/cities?q=' + encodeURIComponent(term), { signal }) : false))
 </script>
 
 <input type="search" [value]="query" (input)="type($event.target.value)" />
@@ -36,29 +33,33 @@ Wait until typing pauses, then search. Each search is cached by its words, so go
 
 <recipeSearch />
 
-A fetcher returning `false` means "not ready": nothing is asked while the field is empty. For a field that picks from the results, see the [combobox](/guide/forms#a-combobox).
+A fetcher returning `false` means "not ready": nothing is asked while the field is empty. A `key` would cache each search by its words, but a keyed request is shared by every resource showing it, so a newer search doesn't abort it: keep the key off where cancelling matters. For a field that picks from the results, see the [combobox](/guide/forms#a-combobox).
 
 ## Load more
 
-Keep the rows in state and add each page's to them. The resource runs again when `page` changes; `onSuccess` appends.
+Keep the rows in state and add each page's to them. The resource runs again when `page` changes; `onSuccess` appends and remembers the last page that arrived, so a failed page is tried again, never skipped.
 
 ```tscl
 <script>
   import { json, resource } from 'clarusjs/fetch'
   let page = state(1)
+  let loaded = state(0)
   let rows = state([])
   let pages = state(1)
   const batch = resource(({ signal }) => json('/api/records?page=' + page + '&size=5', { signal }), {
     onSuccess: (data) => {
       rows = [...rows, ...data.rows]
       pages = data.pages
+      loaded = page
     },
   })
 </script>
 
 <ul>@for (row of rows; track row.id) { <li>{{ row.name }}</li> }</ul>
-@if (page < pages) {
-  <button [disabled]="batch.loading" (click)="page = page + 1">{{ batch.loading ? 'Loading…' : 'Load more' }}</button>
+@if (batch.error) {
+  <p role="alert">Couldn't load page {{ page }}.</p> <button (click)="batch.refetch()">Try again</button>
+} @else if (loaded < pages) {
+  <button [disabled]="batch.loading" (click)="page = loaded + 1">{{ batch.loading ? 'Loading…' : 'Load more' }}</button>
 }
 ```
 
@@ -137,7 +138,11 @@ async function refresh() {
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   if (!token) await refresh()
-  const call = () => request<T>(path, { ...options, headers: { ...options.headers, authorization: 'Bearer ' + token } })
+  const call = () => {
+    const headers = new Headers(options.headers) // an object, pairs or Headers: all kept
+    headers.set('authorization', 'Bearer ' + token)
+    return request<T>(path, { ...options, headers })
+  }
   try {
     return await call()
   } catch (e) {
@@ -240,6 +245,10 @@ Render the data on the server, so the page shows it before any JavaScript runs, 
 
 The server HTML has the numbers; the browser fetches again quietly (no loading state) and every 30 seconds after.
 
+<recipeServerFirst />
+
+Here the number is in the page as built; once the island attaches, it asks the demo API again and says so.
+
 ## External APIs
 
 - **An API that allows the browser** (it sends CORS headers, and needs no secret), like JSONPlaceholder above: fetch it straight from the island.
@@ -260,6 +269,10 @@ export const GET: RequestHandler = async ({ request }) => {
 }
 ```
 
+<recipeProxy />
+
+The demo's route calls a stand-in API on this site that refuses requests without the key, and answers with more than the page shows (an account id). The island only ever sees `temp` and `summary`.
+
 - **Rate limits.** Public APIs answer `429` (or GitHub's `403` with `x-ratelimit-remaining: 0`) when asked too often. Read them as errors and say when to try again:
 
 ```ts
@@ -273,5 +286,7 @@ const repo = resource(async ({ signal }) => {
   return res.json()
 })
 ```
+
+<recipeRateLimit />
 
 This one uses `fetch` itself because it needs the answer's headers on a failure. `request()` throws on a non-2xx answer with `status` and the body (`data`), which is enough everywhere else.

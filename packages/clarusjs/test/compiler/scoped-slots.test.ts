@@ -47,3 +47,10 @@ test('errors at their place: a fill with data inside an island (not yet), a patt
   expect(error(`@import list from './list.tscl'\n<script>\n  let n = state(0)\n</script>\n<div><list>@slot('row', { item }) {{{ item.name }}}</list></div>\n`)).toMatch(/page\.tscl:5:12 .*receives data.*island/)
   expect(error(`@import list from './list.tscl'\n<list>@slot('row', 1 + 2) { }</list>\n`)).toMatch(/page\.tscl:2:20 a fill names what its slot passes like a function parameter/)
 })
+
+test('review: a slot passing [__proto__] gives the fill an own property, not a prototype', async () => {
+  const child = compile('<p><slot name="x" [__proto__]="42" /></p>\n', { file: 'child.tscl', target: 'server', scope: 'c' }).code
+  const page = compile("@import child from './child.tscl'\n<child>@slot('x', props) {{{ Object.hasOwn(props, '__proto__') ? props['__proto__'] : 'lost' }}}</child>\n", { file: 'page.tscl', target: 'server', scope: 'p' }).code
+  const { render } = await importCode(page, 'proto', { './child.tscl': child })
+  expect(unscoped(await render({}))).toBe('<p>42</p>')
+})

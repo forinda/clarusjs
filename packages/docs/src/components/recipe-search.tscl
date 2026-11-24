@@ -1,5 +1,5 @@
-{{-- Fetching recipes: search as you type. The search waits 250 ms after the last key; each search is cached by its
-     words, and a newer one cancels the one in flight. --}}
+{{-- Fetching recipes: search as you type. The search waits 250 ms after the last key, and a newer one aborts the
+     request in flight (the resource aborts its last run's signal). --}}
 
 <script>
   import { json, resource } from 'clarusjs/fetch'
@@ -11,9 +11,8 @@
     clearTimeout(timer)
     timer = setTimeout(() => (term = text.trim()), 250)
   }
-  const results = resource(
-    ({ signal }) => (term ? json('/api/demo-cities?q=' + encodeURIComponent(term), { signal }) : false),
-    { key: () => (term ? ['recipe-cities', term] : false) },
+  const results = resource(({ signal }) =>
+    term ? json('/api/demo-cities?q=' + encodeURIComponent(term), { signal }) : false,
   )
 </script>
 

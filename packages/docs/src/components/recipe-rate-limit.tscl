@@ -1,0 +1,40 @@
+{{-- Fetching recipes: a public API's rate limit (GitHub's REST API, from the browser). A 403 or 429 answer becomes an
+     error saying when to try again. --}}
+
+<script>
+  import { resource } from 'clarusjs/fetch'
+  const repo = resource(async ({ signal }) => {
+    const res = await fetch('https://api.github.com/repos/forinda/clarusjs', { signal })
+    if (res.status === 403 || res.status === 429) {
+      const reset = Number(res.headers.get('x-ratelimit-reset')) * 1000
+      throw new Error(
+        'Rate limited until ' + new Date(reset).toLocaleTimeString('en-GB', { timeZone: 'UTC' }) + ' UTC.',
+      )
+    }
+    if (!res.ok) throw new Error('GitHub answered ' + res.status + '.')
+    return res.json()
+  })
+  const why = (e) => e?.message ?? 'GitHub is unreachable.'
+</script>
+
+<div id="recipe-rate-limit">
+  <p role="status">
+    {{
+      repo.error
+        ? why(repo.error)
+        : repo.value && !repo.loading
+          ? repo.value.full_name + ' has ' + repo.value.stargazers_count + ' stars.'
+          : 'Asking GitHub…'
+    }}
+  </p>
+  <button type="button" [disabled]="repo.loading" (click)="repo.refetch()">Ask again</button>
+</div>
+
+<style scoped>
+  :scope {
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+</style>
