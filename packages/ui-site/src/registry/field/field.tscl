@@ -1,0 +1,91 @@
+{{-- Field: a label, a native input, a description and an error, wired by id, bound two ways with [(value)]. The
+     error shows once the field has been left, or with [show] (after a submit). For (blur), use field.tscl from
+     @clarusjs/ui-primitives directly: the styles apply the same. --}}
+@import uiField from '@clarusjs/ui-primitives/field.tscl'
+@input id: string
+@input label: string
+@input description: string = ''
+@input error: string = ''
+@input show: boolean = false
+@input type: string = 'text'
+@input name: string = ''
+@input placeholder: string = ''
+@input required: boolean = false
+@model value: string = ''
+
+<uiField
+  [id]="id"
+  [label]="label"
+  [description]="description"
+  [error]="error"
+  [show]="show"
+  [type]="type"
+  [name]="name"
+  [placeholder]="placeholder"
+  [required]="required"
+  [(value)]="value"
+/>
+
+<style global>
+  /* The same rules as @clarusjs/ui's ui.css, for this part: change them here to change its look. */
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+  }
+
+  /* Field and select: label, control, description, error. */
+  :where([data-part='field'], [data-part='select']) {
+    display: grid;
+    gap: 4px;
+    max-width: 360px;
+    font: 14px var(--ui-font);
+    color: var(--ui-fg);
+  }
+  :where([data-part='label']) {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ui-fg);
+  }
+  :where([data-part='control']) {
+    min-height: 34px;
+    padding: 4px 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font: 14px var(--ui-font);
+  }
+  :where([data-part='control'])[aria-invalid='true'] {
+    border: 1px solid var(--ui-danger);
+  }
+  :where([data-part='description']) {
+    margin: 0;
+    color: var(--ui-muted);
+    font-size: 13px;
+  }
+  :where([data-part='error']) {
+    margin: 0;
+    color: var(--ui-danger);
+    font-size: 13px;
+  }
+  :where([data-part='option']) {
+    padding: 6px 10px;
+    border-radius: calc(var(--ui-radius) - 2px);
+  }
+  :where([data-part='select']) ::picker(select) {
+    padding: 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    box-shadow: var(--ui-shadow);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      transition: none !important;
+    }
+  }
+</style>

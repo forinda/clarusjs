@@ -4,6 +4,7 @@ import { compile } from 'clarusjs/compiler'
 import { expect, test } from 'vitest'
 import { registry } from '../src/registry.ts'
 import { registryDir, render, source } from './render.ts'
+import { globalStyle, uiSection } from './css.ts'
 
 const page = (name: string) => resolve(import.meta.dirname, '../src/pages/components', `${name}.md`)
 const files = registry.flatMap((e) => e.files.map((f) => ({ entry: e, file: `${e.name}/${f}` })))
@@ -112,4 +113,10 @@ test('table: a <table> in a scrolling region that is focusable and named; captio
   expect(await render('table/table.tscl', { caption: 'Invoices' }, { default: '<tr><td>1</td></tr>' }))
     .toBe('<div role="region" aria-label="Invoices" tabindex="0" data-part="table-scroll"><table data-part="table"><caption>Invoices</caption><tr><td>1</td></tr></table></div>')
   expect(await render('table/table.tscl', { label: 'Orders' }, { default: '' })).toBe('<div role="region" aria-label="Orders" tabindex="0" data-part="table-scroll"><table data-part="table"></table></div>')
+})
+
+test('a styled part\'s <style global> equals ui.css\'s sections for it, in order', () => {
+  const styled = registry.filter((e) => e.sections?.length)
+  expect(styled.map((e) => e.name)).toEqual(expect.arrayContaining(['accordion', 'checkbox', 'switch', 'radio-group', 'field']))
+  for (const e of styled) expect(globalStyle(source(`${e.name}/${e.files[0]}`)), e.name).toBe(e.sections!.map(uiSection).join(' '))
 })

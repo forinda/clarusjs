@@ -42,13 +42,16 @@
   --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
 }
 
+/* part: focus */
 /* Focus is always visible, on every part and what's inside it. */
 :where([data-part]):focus-visible,
 :where([data-part]) :focus-visible {
   outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
+/* end part */
 
+/* part: buttons */
 /* Buttons: triggers and closes. */
 :where([data-part='trigger'], [data-part='close']) {
   font: 600 14px var(--ui-font);
@@ -62,7 +65,9 @@
 :where([data-part='trigger'], [data-part='close']):hover {
   border-color: var(--ui-accent);
 }
+/* end part */
 
+/* part: dialog */
 /* Dialog: centred by the browser; the backdrop dims the page. */
 :where([data-part='dialog']) {
   max-width: min(32rem, calc(100vw - 32px));
@@ -81,7 +86,9 @@
   margin: 0 0 8px;
   font-size: 18px;
 }
+/* end part */
 
+/* part: popover */
 /* Popover: a little gap from its trigger, wherever it's placed. */
 :where([data-part='popover']) {
   margin: 6px;
@@ -93,7 +100,9 @@
   box-shadow: var(--ui-shadow);
   font: 14px/1.5 var(--ui-font);
 }
+/* end part */
 
+/* part: tooltip */
 /* Tooltip: small, inverted, a little gap from its trigger. */
 :where([data-part='tooltip']) {
   margin: 6px;
@@ -105,7 +114,9 @@
   font: 13px/1.4 var(--ui-font);
   max-width: 240px;
 }
+/* end part */
 
+/* part: menu */
 /* Menu: the list below its trigger, items as full-width rows; the focused one is tinted. */
 :where([data-part='menu']) {
   display: inline-block;
@@ -139,7 +150,9 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+/* end part */
 
+/* part: accordion */
 /* Accordion. */
 :where([data-part='accordion-item']) {
   border-bottom: 1px solid var(--ui-border);
@@ -157,7 +170,9 @@
   padding: 0 2px 12px;
   color: var(--ui-muted);
 }
+/* end part */
 
+/* part: tabs */
 /* Tabs: a row of tabs over the panels; the selected one is underlined (not colour alone). */
 :where([data-part='tabs']) {
   font: 15px/1.5 var(--ui-font);
@@ -186,7 +201,9 @@
   padding: 12px 2px;
   color: var(--ui-fg);
 }
+/* end part */
 
+/* part: switch-checkbox */
 /* Switch and checkbox: the native input, tinted; the label next to it. */
 :where([data-part='switch'], [data-part='checkbox']) {
   display: inline-flex;
@@ -232,7 +249,9 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+/* end part */
 
+/* part: radio-group */
 /* Radio group: a fieldset with its legend; radios like checkboxes, round. */
 :where([data-part='radio-group']) {
   display: grid;
@@ -264,7 +283,9 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+/* end part */
 
+/* part: field-select */
 /* Field and select: label, control, description, error. */
 :where([data-part='field'], [data-part='select']) {
   display: grid;
@@ -311,7 +332,9 @@
   background: var(--ui-bg);
   box-shadow: var(--ui-shadow);
 }
+/* end part */
 
+/* part: combobox */
 /* Combobox: chips in the control, a list below. */
 :where([data-part='combobox']) {
   display: grid;
@@ -385,10 +408,13 @@
 :where([data-part='status']):empty {
   display: none;
 }
+/* end part */
 
+/* part: motion */
 @media (prefers-reduced-motion: reduce) {
   :where([data-part]),
   :where([data-part]) * {
     transition: none !important;
   }
 }
+/* end part */

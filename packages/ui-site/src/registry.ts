@@ -16,6 +16,8 @@ export type Entry = {
   island: boolean
   /** The @clarusjs/ui-primitives version it needs, when parts is not empty. */
   since?: string
+  /** For a styled part: the sections of @clarusjs/ui's ui.css its <style global> copies, in order. */
+  sections?: string[]
 }
 
 export const registry: Entry[] = [
@@ -126,5 +128,60 @@ export const registry: Entry[] = [
     parts: [],
     uses: [],
     island: false,
+  },
+  {
+    name: 'accordion',
+    title: 'Accordion',
+    description: 'Questions that open one at a time, on native details.',
+    files: ['accordion.tscl'],
+    parts: ['accordion-item.tscl'],
+    uses: [],
+    island: false,
+    since: '0.1.0',
+    sections: ['focus', 'buttons', 'accordion', 'motion'],
+  },
+  {
+    name: 'checkbox',
+    title: 'Checkbox',
+    description: 'A native checkbox with its label.',
+    files: ['checkbox.tscl'],
+    parts: ['checkbox.tscl'],
+    uses: [],
+    island: true,
+    since: '0.1.0',
+    sections: ['focus', 'switch-checkbox', 'motion'],
+  },
+  {
+    name: 'switch',
+    title: 'Switch',
+    description: 'An on/off switch on a native checkbox.',
+    files: ['switch.tscl'],
+    parts: ['switch.tscl'],
+    uses: [],
+    island: true,
+    since: '0.1.0',
+    sections: ['focus', 'switch-checkbox', 'motion'],
+  },
+  {
+    name: 'radio-group',
+    title: 'Radio group',
+    description: 'Native radios in a fieldset: one choice from a few.',
+    files: ['radio-group.tscl'],
+    parts: ['radio-group.tscl', 'radio.tscl'],
+    uses: [],
+    island: true,
+    since: '0.1.0',
+    sections: ['focus', 'radio-group', 'motion'],
+  },
+  {
+    name: 'field',
+    title: 'Field',
+    description: 'A label, an input, a description and an error, wired together.',
+    files: ['field.tscl'],
+    parts: ['field.tscl'],
+    uses: [],
+    island: true,
+    since: '0.1.0',
+    sections: ['focus', 'field-select', 'motion'],
   },
 ]

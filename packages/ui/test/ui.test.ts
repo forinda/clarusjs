@@ -33,3 +33,13 @@ test('accessible defaults: a visible focus ring, reduced motion respected, no co
 test('nothing but CSS: no JavaScript in the package', () => {
   expect(readdirSync(resolve(import.meta.dirname, '../src'))).toEqual(['ui.css'])
 })
+
+test('after the tokens, every rule sits in exactly one named part section (/* part: name */ … /* end part */)', () => {
+  const body = css.slice(css.indexOf('/* part: '))
+  const names = [...body.matchAll(/\/\* part: ([\w-]+) \*\//g)].map((m) => m[1]!)
+  expect(names).toEqual(['focus', 'buttons', 'dialog', 'popover', 'tooltip', 'menu', 'accordion', 'tabs', 'switch-checkbox', 'radio-group', 'field-select', 'combobox', 'motion'])
+  expect(body.match(/\/\* end part \*\//g)?.length).toBe(names.length)
+  // Nothing outside a section but comments and whitespace.
+  const outside = body.replace(/\/\* part: [\w-]+ \*\/[\s\S]*?\/\* end part \*\//g, '').replace(/\/\*[\s\S]*?\*\//g, '').trim()
+  expect(outside).toBe('')
+})
