@@ -1,0 +1,36 @@
+@import './sidebar.css'
+@import uiSidebar from '@clarusjs/ui-primitives/sidebar.tscl'
+@import uiSidebarTrigger from '@clarusjs/ui-primitives/sidebar-trigger.tscl'
+
+<div class="demo">
+  <uiSidebar id="demo-nav" label="Project">
+    <a href="#demo-overview" aria-current="page">Overview</a>
+    <a href="#demo-issues">Issues</a>
+    <a href="#demo-settings">Settings</a>
+  </uiSidebar>
+  <div class="main">
+    <uiSidebarTrigger target="demo-nav">Menu</uiSidebarTrigger>
+    <p id="demo-overview">The page beside the sidebar.</p>
+  </div>
+</div>
+
+<style scoped>
+  :scope {
+    display: flex;
+    min-height: 220px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    overflow: hidden;
+  }
+  .main {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+    padding: 16px;
+  }
+  p {
+    margin: 0;
+  }
+</style>

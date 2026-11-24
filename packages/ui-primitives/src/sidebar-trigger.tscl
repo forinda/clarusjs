@@ -1,0 +1,14 @@
+{{-- Sidebar trigger: collapses the sidebar on a wide screen (min-width 768px), opens it as a popover on a phone. --}}
+@input target: string
+
+<script>
+  import { toggleSidebar } from '@clarusjs/ui-primitives'
+  function toggle() {
+    const nav = document.getElementById(target)
+    if (!(nav instanceof HTMLElement)) return
+    if (matchMedia('(min-width: 768px)').matches) toggleSidebar(nav)
+    else nav.togglePopover()
+  }
+</script>
+
+<button type="button" [aria-controls]="target" data-part="sidebar-trigger" (click)="toggle()"><slot /></button>

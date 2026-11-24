@@ -212,3 +212,15 @@ test('#review: a toggle group with nothing pressed, or multiple, keeps its items
   expect(await renderPage(page(''), ['toggle-group', 'toggle-item'])).toContain('tabindex="0"')
   expect(await renderPage(page('type="multiple"'), ['toggle-group', 'toggle-item'])).toContain('tabindex="0"')
 })
+
+test('sidebar: a labelled <nav> that is a popover on phones; data-state from [collapsed]; no script of its own', async () => {
+  expect(await render('sidebar', { id: 'app-nav' }, { default: '<a href="/">Home</a>' }))
+    .toBe('<nav id="app-nav" aria-label="Sidebar" popover="auto" data-part="sidebar" data-state="open"><a href="/">Home</a></nav>')
+  expect(await render('sidebar', { id: 'app-nav', label: 'Main', collapsed: true }, { default: '' })).toContain('aria-label="Main" popover="auto" data-part="sidebar" data-state="collapsed"')
+  expect(statefulOf('sidebar')).toBe(false)
+})
+
+test('sidebar trigger: a button naming the sidebar it controls; a small island', async () => {
+  expect(await render('sidebar-trigger', { target: 'app-nav' }, { default: 'Menu' })).toBe('<button type="button" aria-controls="app-nav" data-part="sidebar-trigger">Menu</button>')
+  expect(statefulOf('sidebar-trigger')).toBe(true)
+})

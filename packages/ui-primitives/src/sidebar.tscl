@@ -1,0 +1,13 @@
+{{--
+  Sidebar: the app's navigation beside the page. On a wide screen it sits inline and <sidebar-trigger> collapses it
+  (remembered; put SIDEBAR_SCRIPT from @clarusjs/ui-primitives in your <head> so a collapse applies before paint).
+  On a phone it's a popover the trigger opens: a click outside and Escape close it. No script of its own.
+
+  <sidebar id="app-nav" label="Main">…links…</sidebar>
+  <sidebar-trigger target="app-nav">Menu</sidebar-trigger>
+--}}
+@input id: string
+@input label: string = 'Sidebar'
+@input collapsed: boolean = false
+
+<nav [id]="id" [aria-label]="label" popover="auto" data-part="sidebar" [data-state]="collapsed ? 'collapsed' : 'open'"><slot /></nav>

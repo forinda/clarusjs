@@ -162,3 +162,48 @@ test('toast: Escape dismisses the focused toast; an action runs, then dismisses'
   expect(shown()).toEqual([])
   void first
 })
+
+const navHtml = '<cl-island c="sidebar-trigger"><button type="button" aria-controls="nav" data-part="sidebar-trigger" data-cl-e="0">Menu</button></cl-island><nav id="nav" aria-label="Sidebar" popover="auto" data-part="sidebar" data-state="open"></nav>'
+const wide = (yes: boolean) => vi.spyOn(window, 'matchMedia').mockImplementation((q) => ({ matches: yes && q.includes('min-width'), media: q } as MediaQueryList))
+
+test('sidebar: on a wide screen the trigger collapses and reopens it, remembered', async () => {
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-sidebar')
+  wide(true)
+  const { attach } = await client('sidebar-trigger')
+  document.body.innerHTML = navHtml
+  attach(document.querySelector('cl-island')!, { target: 'nav' })
+  byText('Menu').click()
+  expect(document.documentElement.dataset.sidebar).toBe('collapsed')
+  expect(localStorage.getItem('ui-sidebar')).toBe('collapsed')
+  expect(document.getElementById('nav')!.dataset.state).toBe('collapsed')
+  byText('Menu').click()
+  expect(document.documentElement.dataset.sidebar).toBe('open')
+  expect(localStorage.getItem('ui-sidebar')).toBe('open')
+  vi.restoreAllMocks()
+})
+
+test('sidebar: on a phone the trigger opens it as a popover instead', async () => {
+  wide(false)
+  const { attach } = await client('sidebar-trigger')
+  document.body.innerHTML = navHtml
+  const nav = document.getElementById('nav') as HTMLElement
+  let toggled = 0
+  nav.togglePopover = () => { toggled++; return true }
+  attach(document.querySelector('cl-island')!, { target: 'nav' })
+  byText('Menu').click()
+  expect(toggled).toBe(1)
+  vi.restoreAllMocks()
+})
+
+test('sidebar: the head script applies a remembered collapse before paint', async () => {
+  const { SIDEBAR_SCRIPT } = await import('../src/sidebar.js')
+  document.documentElement.removeAttribute('data-sidebar')
+  localStorage.setItem('ui-sidebar', 'collapsed')
+  new Function(SIDEBAR_SCRIPT)()
+  expect(document.documentElement.dataset.sidebar).toBe('collapsed')
+  localStorage.setItem('ui-sidebar', '<x>')
+  document.documentElement.removeAttribute('data-sidebar')
+  new Function(SIDEBAR_SCRIPT)()
+  expect(document.documentElement.dataset.sidebar).toBeUndefined()
+})

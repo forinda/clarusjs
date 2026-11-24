@@ -415,4 +415,15 @@ export const registry: Entry[] = [
     since: '0.2.0',
     sections: ['focus', 'toast', 'motion'],
   },
+  {
+    name: 'sidebar',
+    title: 'Sidebar',
+    description: 'App navigation beside the page that collapses, and opens as a panel on phones.',
+    files: ['sidebar.css'],
+    parts: ['sidebar.tscl', 'sidebar-trigger.tscl'],
+    uses: [],
+    island: true,
+    since: '0.2.0',
+    sections: ['focus', 'sidebar', 'motion'],
+  },
 ]

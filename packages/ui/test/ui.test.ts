@@ -37,7 +37,7 @@ test('nothing but CSS: no JavaScript in the package', () => {
 test('after the tokens, every rule sits in exactly one named part section (/* part: name */ … /* end part */)', () => {
   const body = css.slice(css.indexOf('/* part: ')).replace(/\}\s*$/, '') // inside @layer components { … }
   const names = [...body.matchAll(/\/\* part: ([\w-]+) \*\//g)].map((m) => m[1]!)
-  expect(names).toEqual(['focus', 'buttons', 'dialog', 'sheet', 'popover', 'tooltip', 'menu', 'accordion', 'tabs', 'toggle', 'switch-checkbox', 'radio-group', 'field-select', 'combobox', 'toast', 'motion'])
+  expect(names).toEqual(['focus', 'buttons', 'dialog', 'sheet', 'popover', 'tooltip', 'menu', 'accordion', 'tabs', 'toggle', 'switch-checkbox', 'radio-group', 'field-select', 'combobox', 'sidebar', 'toast', 'motion'])
   expect(body.match(/\/\* end part \*\//g)?.length).toBe(names.length)
   // Nothing outside a section but comments and whitespace.
   const outside = body.replace(/\/\* part: [\w-]+ \*\/[\s\S]*?\/\* end part \*\//g, '').replace(/\/\*[\s\S]*?\*\//g, '').trim()

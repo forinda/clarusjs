@@ -576,6 +576,70 @@
   }
   /* end part */
 
+  /* part: sidebar */
+  /* Sidebar: inline beside the page on wide screens (hidden when collapsed: its data-state, or data-sidebar on <html>
+     from the remembered choice); on phones a popover panel from the left. */
+  :where([data-part='sidebar']) {
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 12px;
+    border: 0;
+    background: var(--ui-sidebar);
+    color: var(--ui-sidebar-fg);
+    font: var(--ui-font-size) var(--ui-font);
+    overflow: auto;
+  }
+  :where([data-part='sidebar']) a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: var(--ui-radius);
+    color: inherit;
+    text-decoration: none;
+  }
+  :where([data-part='sidebar']) a:hover,
+  :where([data-part='sidebar']) a[aria-current='page'] {
+    background: var(--ui-sidebar-accent);
+    color: var(--ui-sidebar-accent-fg);
+  }
+  :where([data-part='sidebar-trigger']) {
+    padding: 6px 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font: inherit;
+    cursor: pointer;
+  }
+  @media (min-width: 768px) {
+    :where([data-part='sidebar']) {
+      display: flex;
+      position: static;
+      inset: auto;
+      width: 240px;
+      height: auto;
+      border-right: 1px solid var(--ui-sidebar-border);
+    }
+    :where([data-part='sidebar'][data-state='collapsed']),
+    :where(:root[data-sidebar='collapsed'] [data-part='sidebar']) {
+      display: none;
+    }
+    :where(:root[data-sidebar='open'] [data-part='sidebar']) {
+      display: flex;
+    }
+  }
+  @media (max-width: 767px) {
+    :where([data-part='sidebar']):popover-open {
+      display: flex;
+      inset: 0 auto 0 0;
+      width: min(18rem, 85vw);
+      height: 100dvh;
+      border-right: 1px solid var(--ui-sidebar-border);
+      box-shadow: var(--ui-shadow);
+    }
+  }
+  /* end part */
+
   /* part: toast */
   /* Toast: messages stacked at the bottom-right corner, above the page; each a card with its action and a close. */
   :where([data-part='toast-region']) {
