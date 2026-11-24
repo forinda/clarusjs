@@ -221,6 +221,10 @@ test('sidebar: a labelled <nav> that is a popover on phones; data-state from [co
 })
 
 test('sidebar trigger: a button naming the sidebar it controls; a small island', async () => {
-  expect(await render('sidebar-trigger', { target: 'app-nav' }, { default: 'Menu' })).toBe('<button type="button" aria-controls="app-nav" data-part="sidebar-trigger">Menu</button>')
+  expect(await render('sidebar-trigger', { target: 'app-nav' }, { default: 'Menu' })).toContain('aria-controls="app-nav"')
   expect(statefulOf('sidebar-trigger')).toBe(true)
+})
+
+test('#review: the sidebar trigger is a popover invoker with aria-expanded', async () => {
+  expect(await render('sidebar-trigger', { target: 'app-nav' }, { default: 'Menu' })).toBe('<button type="button" aria-controls="app-nav" popovertarget="app-nav" aria-expanded="true" data-part="sidebar-trigger">Menu</button>')
 })

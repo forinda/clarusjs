@@ -157,6 +157,7 @@
   /* part: sheet */
   /* Sheet: a dialog against one side of the screen (data-side), sliding in; still under reduced motion. */
   :where([data-part='dialog'][data-side]) {
+    box-sizing: border-box;
     max-width: none;
     max-height: none;
     margin: 0;
@@ -165,12 +166,12 @@
   }
   :where([data-part='dialog'][data-side='left']),
   :where([data-part='dialog'][data-side='right']) {
-    width: min(24rem, 100vw);
+    width: min(24rem, 100%);
     height: 100dvh;
   }
   :where([data-part='dialog'][data-side='top']),
   :where([data-part='dialog'][data-side='bottom']) {
-    width: 100vw;
+    width: auto;
     max-height: 80dvh;
   }
   :where([data-part='dialog'][data-side='left']) {

@@ -1,14 +1,54 @@
-{{-- Sidebar trigger: collapses the sidebar on a wide screen (min-width 768px), opens it as a popover on a phone. --}}
+{{--
+  Sidebar trigger: collapses the sidebar on a wide screen (min-width 768px); on a phone it is the sidebar's popover
+  invoker (popovertarget), so the browser opens it next to the button in the Tab order. aria-expanded follows both.
+--}}
 @input target: string
 
 <script>
   import { toggleSidebar } from '@clarusjs/ui-primitives'
-  function toggle() {
+  const WIDE = '(min-width: 768px)'
+  let self // the button, from wire (events are delegated to the island, so currentTarget isn't it)
+  function toggle(event) {
+    const nav = document.getElementById(target)
+    if (!(nav instanceof HTMLElement) || !matchMedia(WIDE).matches) return // a phone: the popover toggles itself
+    event.preventDefault()
+    const next = toggleSidebar(nav)
+    self?.setAttribute('aria-expanded', String(next === 'open'))
+  }
+  function wire(button) {
+    self = button
     const nav = document.getElementById(target)
     if (!(nav instanceof HTMLElement)) return
-    if (matchMedia('(min-width: 768px)').matches) toggleSidebar(nav)
-    else nav.togglePopover()
+    const media = matchMedia(WIDE)
+    const sync = () => {
+      const open = media.matches
+        ? (document.documentElement.dataset.sidebar ?? nav.dataset.state) !== 'collapsed'
+        : nav.matches(':popover-open')
+      button.setAttribute('aria-expanded', String(open))
+    }
+    // Widened while open as a phone panel: close it, so it doesn't float over the page.
+    const resized = () => {
+      if (media.matches && nav.matches(':popover-open')) nav.hidePopover()
+      sync()
+    }
+    nav.addEventListener('toggle', sync)
+    media.addEventListener?.('change', resized)
+    sync()
+    return () => {
+      nav.removeEventListener('toggle', sync)
+      media.removeEventListener?.('change', resized)
+    }
   }
 </script>
 
-<button type="button" [aria-controls]="target" data-part="sidebar-trigger" (click)="toggle()"><slot /></button>
+<button
+  type="button"
+  [aria-controls]="target"
+  [popovertarget]="target"
+  aria-expanded="true"
+  data-part="sidebar-trigger"
+  [use]="wire"
+  (click)="toggle($event)"
+>
+  <slot />
+</button>

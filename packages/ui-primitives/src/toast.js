@@ -11,21 +11,22 @@
  * @property {number} id
  * @property {string} message
  * @property {ToastAction} [action]
- * @property {number} duration Milliseconds shown (paused while hovered or focused).
+ * @property {number} duration Milliseconds shown (paused while hovered or focused); Infinity: until dismissed.
  */
 /** @type {{ items: Toast[], listeners: Set<() => void>, next: number }} */
 const store = /** @type {any} */ (globalThis).__clToasts ??= { items: [], listeners: new Set(), next: 1 }
 const notify = () => { for (const listener of store.listeners) listener() }
 
 /**
- * Show a message for `duration` ms (5000 by default), with at most one action. Polite: it never takes focus.
+ * Show a message for `duration` ms (5000 by default; a toast with an action stays until dismissed, so there's time
+ * to reach it), with at most one action. Polite: it never takes focus.
  * @param {string} message
  * @param {{ action?: ToastAction, duration?: number }} [options]
  * @returns {number} its id, for dismissToast()
  */
 export function toast(message, options = {}) {
   const id = store.next++
-  store.items = [...store.items, { id, message, action: options.action, duration: options.duration ?? 5000 }]
+  store.items = [...store.items, { id, message, action: options.action, duration: options.duration ?? (options.action ? Infinity : 5000) }]
   notify()
   return id
 }

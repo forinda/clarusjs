@@ -5,10 +5,12 @@
   <ol data-part="breadcrumb-list">
     @for (item of items; track $index) {
       <li data-part="breadcrumb-item">
-        @if ($last || !item.href) {
+        @if ($last) {
           <span aria-current="page" data-part="breadcrumb-page">{{ item.label }}</span>
-        } @else {
+        } @else if (item.href) {
           <a [href]="item.href">{{ item.label }}</a>
+        } @else {
+          <span>{{ item.label }}</span>
         }
       </li>
     }
@@ -29,7 +31,7 @@
       font: var(--ui-font-size) var(--ui-font);
     }
     :where([data-part='breadcrumb-item']:not(:last-child))::after {
-      content: '/';
+      content: '/' / '';
       margin-left: 6px;
       color: var(--ui-muted);
     }

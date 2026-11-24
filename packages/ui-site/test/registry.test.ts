@@ -338,3 +338,18 @@ test('alert dialog: the Dialog part as role="alertdialog" that a click outside n
   expect(src).toContain('[dismissible]="false"')
   expect(src).toMatch(/\[aria-describedby\]="id \+ '-description'"/)
 })
+
+test('#review: breadcrumb marks only the last item current; a middle item without href is plain text', async () => {
+  const html = await render('breadcrumb.tscl', { items: [{ label: 'Home', href: '/' }, { label: 'Section' }, { label: 'Page' }] })
+  expect(html.match(/aria-current="page"/g)).toHaveLength(1)
+  expect(html).toMatch(/aria-current="page"[^>]*>Page</)
+  expect(source('breadcrumb.tscl')).toContain("content: '/' / ''")
+})
+
+test('#review: pagination never puts an ellipsis for a single page', async () => {
+  expect(pageLabels(await render('pagination.tscl', { page: 4, pages: 9, href: '?p={page}' }))).toEqual(['Previous', '1', '2', '3', '4', '5', '…', '9', 'Next'])
+})
+
+test('#review: the spinner positions its hidden label inside itself', () => {
+  expect(source('spinner.tscl')).toMatch(/:where\(:scope\) \{[^}]*position: relative/)
+})

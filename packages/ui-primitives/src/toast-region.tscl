@@ -10,10 +10,19 @@
   function wire(el) {
     const list = el.querySelector('[data-part="toast-list"]')
     const timers = new Map()
+    let origin // where focus was before it came into the list, to go back to
     const start = (t, item) => {
       clearTimeout(timers.get(t.id))
+      if (!Number.isFinite(t.duration)) return
       timers.set(t.id, setTimeout(() => dismissToast(t.id), t.duration))
       item.dataset.timing = ''
+    }
+    // Dismissing the focused toast moves focus to the next one, or back where it came from.
+    const leave = (id, item) => {
+      const next = item.nextElementSibling ?? item.previousElementSibling
+      const focused = item.contains(document.activeElement)
+      dismissToast(id)
+      if (focused) (next instanceof HTMLElement && next.isConnected ? next : origin)?.focus()
     }
     const pause = (id, item) => {
       clearTimeout(timers.get(id))
@@ -22,7 +31,10 @@
     let stop = () => {}
     const render = () => {
       // A region taken out of the page (a fragment swap, a re-render) stops listening.
-      if (!el.isConnected) return stop()
+      if (!el.isConnected) {
+        for (const id of timers.values()) clearTimeout(id)
+        return stop()
+      }
       const now = toasts()
       for (const item of [...list.children]) {
         if (!now.some((t) => String(t.id) === item.dataset.id)) {
@@ -48,7 +60,7 @@
           action.textContent = act.label
           action.addEventListener('click', () => {
             act.onClick()
-            dismissToast(t.id)
+            leave(t.id, item)
           })
           item.append(action)
         }
@@ -57,18 +69,21 @@
         close.dataset.part = 'toast-close'
         close.setAttribute('aria-label', 'Dismiss')
         close.textContent = '×'
-        close.addEventListener('click', () => dismissToast(t.id))
+        close.addEventListener('click', () => leave(t.id, item))
         item.append(close)
         const hold = () => pause(t.id, item)
         const resume = () => {
           if (!item.matches(':hover') && !item.contains(document.activeElement)) start(t, item)
         }
         item.addEventListener('pointerenter', hold)
-        item.addEventListener('focusin', hold)
-        item.addEventListener('pointerleave', () => start(t, item))
+        item.addEventListener('focusin', (event) => {
+          if (!(event.relatedTarget instanceof Node && list.contains(event.relatedTarget))) origin = event.relatedTarget instanceof HTMLElement ? event.relatedTarget : origin
+          hold()
+        })
+        item.addEventListener('pointerleave', resume)
         item.addEventListener('focusout', () => setTimeout(resume))
         item.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape') dismissToast(t.id)
+          if (event.key === 'Escape') leave(t.id, item)
         })
         list.append(item)
         start(t, item)

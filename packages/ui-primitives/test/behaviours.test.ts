@@ -149,3 +149,12 @@ test('position: below its anchor by default, flipped above when there is no room
   expect(floating.dataset.side).toBe('top')
   expect(floating.style.top).toBe('296px')
 })
+
+test('#review: rovingFocus keeps the tab stop on a pressed item (aria-pressed) when it attaches', async () => {
+  const { rovingFocus } = await import('../src/roving-focus.js')
+  document.body.innerHTML = '<div id="g"><button aria-pressed="false">a</button><button aria-pressed="true">b</button></div>'
+  const stop = rovingFocus(document.getElementById('g')!, { items: 'button' })
+  const [a, b] = [...document.querySelectorAll('button')]
+  expect([a!.tabIndex, b!.tabIndex]).toEqual([-1, 0])
+  stop()
+})

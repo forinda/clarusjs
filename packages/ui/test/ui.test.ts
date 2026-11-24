@@ -139,3 +139,9 @@ test('#review: the dialog takes its text colour from --ui-card-fg (once)', () =>
   expect([...dialog.matchAll(/(?<![-\w])color:/g)]).toHaveLength(1)
   expect(dialog).toContain('color: var(--ui-card-fg)')
 })
+
+test('#review: sheets size with border-box and inset, not 100vw', () => {
+  const sheet = css.slice(css.indexOf('/* part: sheet */'), css.indexOf('/* end part */', css.indexOf('/* part: sheet */')))
+  expect(sheet).toContain('box-sizing: border-box')
+  expect(sheet).not.toContain('100vw;')
+})

@@ -9,6 +9,7 @@
   @layer theme, base, components, utilities;
   @layer components {
     :where(:scope) {
+      position: relative;
       display: inline-flex;
     }
     :where([data-part='spinner-mark']) {

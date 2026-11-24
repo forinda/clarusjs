@@ -163,7 +163,7 @@ test('toast: Escape dismisses the focused toast; an action runs, then dismisses'
   void first
 })
 
-const navHtml = '<cl-island c="sidebar-trigger"><button type="button" aria-controls="nav" data-part="sidebar-trigger" data-cl-e="0">Menu</button></cl-island><nav id="nav" aria-label="Sidebar" popover="auto" data-part="sidebar" data-state="open"></nav>'
+const navHtml = '<cl-island c="sidebar-trigger"><button type="button" aria-controls="nav" popovertarget="nav" data-part="sidebar-trigger" data-cl-u="0" data-cl-e="0">Menu</button></cl-island><nav id="nav" aria-label="Sidebar" popover="auto" data-part="sidebar" data-state="open"></nav>'
 const wide = (yes: boolean) => vi.spyOn(window, 'matchMedia').mockImplementation((q) => ({ matches: yes && q.includes('min-width'), media: q } as MediaQueryList))
 
 test('sidebar: on a wide screen the trigger collapses and reopens it, remembered', async () => {
@@ -183,16 +183,16 @@ test('sidebar: on a wide screen the trigger collapses and reopens it, remembered
   vi.restoreAllMocks()
 })
 
-test('sidebar: on a phone the trigger opens it as a popover instead', async () => {
+test('sidebar: on a phone the trigger leaves the click to the browser (its popovertarget opens the panel)', async () => {
   wide(false)
   const { attach } = await client('sidebar-trigger')
   document.body.innerHTML = navHtml
   const nav = document.getElementById('nav') as HTMLElement
-  let toggled = 0
-  nav.togglePopover = () => { toggled++; return true }
+  nav.matches = ((sel: string) => sel === ':popover-open' ? false : HTMLElement.prototype.matches.call(nav, sel)) as typeof nav.matches
   attach(document.querySelector('cl-island')!, { target: 'nav' })
-  byText('Menu').click()
-  expect(toggled).toBe(1)
+  const event = new MouseEvent('click', { bubbles: true, cancelable: true })
+  byText('Menu').dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(false)
   vi.restoreAllMocks()
 })
 
@@ -206,4 +206,60 @@ test('sidebar: the head script applies a remembered collapse before paint', asyn
   document.documentElement.removeAttribute('data-sidebar')
   new Function(SIDEBAR_SCRIPT)()
   expect(document.documentElement.dataset.sidebar).toBeUndefined()
+})
+
+test('#review: on a wide screen the trigger cancels the popover toggle and keeps aria-expanded in step', async () => {
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-sidebar')
+  wide(true)
+  const { attach } = await client('sidebar-trigger')
+  document.body.innerHTML = navHtml.replace('data-cl-e="0"', 'aria-expanded="true" data-cl-e="0"')
+  attach(document.querySelector('cl-island')!, { target: 'nav' })
+  const event = new MouseEvent('click', { bubbles: true, cancelable: true })
+  byText('Menu').dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(true)
+  expect(byText('Menu').getAttribute('aria-expanded')).toBe('false')
+  vi.restoreAllMocks()
+})
+
+test('#review: toasts with an action stay until dismissed; Infinity never times out; focus moves on dismiss', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  vi.useFakeTimers()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = '<button id="origin">o</button>' + regionHtml
+  attach(document.querySelector('cl-island')!, {})
+  toast('Deleted', { action: { label: 'Undo', onClick: () => {} } })
+  toast('Pinned', { duration: Infinity })
+  toast('Plain')
+  vi.advanceTimersByTime(60_000)
+  expect(shown()).toEqual(['Deleted', 'Pinned'])
+  const [first] = [...document.querySelectorAll('[data-part="toast"]')] as HTMLElement[]
+  ;(document.getElementById('origin') as HTMLElement).focus()
+  first!.focus()
+  first!.dispatchEvent(new FocusEvent('focusin', { bubbles: true, relatedTarget: document.getElementById('origin') }))
+  key(first!, 'Escape')
+  expect(shown()).toEqual(['Pinned'])
+  expect((document.activeElement as HTMLElement).dataset.part).toBe('toast') // moved to the next toast
+  const second = document.activeElement as HTMLElement
+  key(second, 'Escape')
+  expect(document.activeElement?.id).toBe('origin') // none left: back where it came from
+  vi.useRealTimers()
+})
+
+test('#review: leaving with the pointer while the toast has focus keeps it', async () => {
+  const { toast, clearToasts } = await import('../src/toast.js')
+  clearToasts()
+  vi.useFakeTimers()
+  const { attach } = await client('toast-region')
+  document.body.innerHTML = regionHtml
+  attach(document.querySelector('cl-island')!, {})
+  toast('Hold', { duration: 1000 })
+  const item = document.querySelector('[data-part="toast"]') as HTMLElement
+  item.focus()
+  item.dispatchEvent(new FocusEvent('focusin', { bubbles: true }))
+  item.dispatchEvent(new Event('pointerleave'))
+  vi.advanceTimersByTime(5000)
+  expect(shown()).toEqual(['Hold'])
+  vi.useRealTimers()
 })

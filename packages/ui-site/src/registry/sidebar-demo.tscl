@@ -1,3 +1,5 @@
+{{-- Put SIDEBAR_SCRIPT from @clarusjs/ui-primitives in your page's <head> (e.g. head.tags in vite.config.ts), so a
+     collapsed sidebar stays collapsed on load without a jump. --}}
 @import './sidebar.css'
 @import uiSidebar from '@clarusjs/ui-primitives/sidebar.tscl'
 @import uiSidebarTrigger from '@clarusjs/ui-primitives/sidebar-trigger.tscl'
