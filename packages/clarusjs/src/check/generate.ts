@@ -158,7 +158,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
   // Inputs are read-only, all the way down: they belong to the parent (copy one into state() to change it here).
   emit('export type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
   // A child's event value (#442), any for a name it doesn't declare (that's reported once, on the binding).
-  emit('export type __cl_Ev<T, K> = K extends keyof T ? T[K] : any\n')
+  // A component's (name): its @event's value, else the DOM event from what it renders (Vue's fallthrough).
+  emit('export type __cl_Ev<T, K> = K extends keyof T ? T[K] : K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : never\n')
   emit('export type __cl_Use<E> = ((el: E) => unknown) | readonly ((el: E) => unknown)[]\n')
   // What a parent may pass a component as attributes for its root (#463): the names passed() in runtime/attrs.ts keeps.
   emit('export type __cl_Passed = { id?: string; role?: string; tabindex?: string | number; hidden?: boolean; lang?: string; dir?: string; style?: string; [k: `data-${string}`]: unknown; [k: `aria-${string}`]: unknown }\n')
@@ -368,11 +369,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
           }
           for (const a of node.attrs) {
             if (a.kind !== 'event') continue
-            // (name) needs @event name in the child (#442); $event is its value, $info the rest.
+            // (name) is the child's @event (#442; $event its value, $info the rest) or a DOM event on what it renders.
             const name = JSON.stringify(a.name)
             emit('  { const ')
             point('__cl_ev', a.start, a.name.length + 2) // the binding's name: `(change)`
-            emit(`: keyof ${alias(node.tag)}_E = ${name}; __cl_use(__cl_ev) }\n`)
+            emit(`: keyof ${alias(node.tag)}_E | keyof HTMLElementEventMap = ${name}; __cl_use(__cl_ev) }\n`)
             emit(`  ;(($event: __cl_Ev<${alias(node.tag)}_E, ${name}>, $info: { reason?: string; event?: Event; cancel(): void }) => { `)
             guarded()
             emit('{ ')
