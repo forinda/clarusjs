@@ -11,6 +11,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'pnpm build && pnpm preview --port 4321 --strictPort',
+    env: { NO_ANALYTICS: '1' }, // no Tag Manager in the tested build (src/head.ts)
     url: 'http://localhost:4321',
     // Never test a stale build: a server already on the port is an error, not something to reuse.
     reuseExistingServer: false,
