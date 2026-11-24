@@ -1,0 +1,10 @@
+{{-- An island with slots (#465): each slot's content is wrapped in <!--[s-->…<!--]s-->, the outer island's to wire. --}}
+<script>
+  let open = state(false)
+</script>
+
+<section>
+  <button (click)="open = !open">{{ open ? 'Less' : 'More' }}</button>
+  <header><slot name="head" /></header>
+  <div [hidden]="!open"><slot /></div>
+</section>
