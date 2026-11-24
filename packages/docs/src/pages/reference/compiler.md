@@ -68,6 +68,7 @@ A `ParsedFile`:
 
 - **`inputs`**: each `@input` and `@model`, as an `InputDecl` with its name, type text, default and offsets;
 - **`imports`**: each component `@import` (`ImportDecl`);
+- **`extends`**: `@extends tag`, as `{ tag, start }`, when the file has one;
 - **`events`**: each `@event`, as an `EventDecl` with its name, value type (`'void'` when none) and offsets;
 - **the script, styles and template nodes**: `TemplateNode`s, whose elements carry `Attr`s.
 

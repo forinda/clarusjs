@@ -24,6 +24,7 @@ src/components/card.tscl:4:3 warning img-alt: <img> without alt: describe the im
 | `img-alt` | an `<img>` without `alt` (use `alt=""` for decoration) |
 | `label-field` | a `<label>` with no field inside it and no `for="…"` |
 | `accessible-name` | a `<button>` or link with no text, `aria-label`, `aria-labelledby` or `title` |
+| `one-root` | a component (not a page, layout or whole document) without one root element: wrap its top level in an element, or in [`<fragment>`](/guide/components#several-elements-without-a-wrapper-fragment) |
 
 A component or `<slot>` inside a label, button or link counts as content: lint can't see what it renders, so it gives it the benefit of the doubt. A `@for` without `track` and a two-way binding on an element it doesn't fit are reported by the compiler itself.
 
