@@ -1,6 +1,7 @@
 // #226: the compiler's exact output, as fixture folders. Each folder under test/compiler/fixtures/ holds input.tscl
 // and what it compiles to: server.js, client.js, and check.txt (clarusjs check's diagnostics, `line:col code message`).
-// The input is compiled as src/components/<folder>.tscl. To accept a change in output, run
+// The input is compiled as src/components/<folder>.tscl; a `components/` folder beside it holds other components it
+// uses by name (#458), as src/components/<path>.tscl. To accept a change in output, run
 //   UPDATE=1 pnpm --filter clarusjs exec vitest run test/compiler/fixtures.test.ts
 // and review the diff of the expected files in the PR.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -9,6 +10,7 @@ import { resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { check } from '../../src/cli/check.ts'
 import { compile } from '../../src/compiler/index.ts'
+import { COMPONENT_DIRS, componentIndex } from '../../src/compiler/components.ts'
 import { resolveIcon } from '../../src/icons.ts'
 
 const dir = resolve(import.meta.dirname, 'fixtures')
@@ -40,9 +42,21 @@ function matches(path: string, actual: string): void {
 function diagnostics(name: string, source: string): string {
   const root = mkdtempSync(resolve(tmpdir(), 'clarusjs-fixture-'))
   mkdirSync(resolve(root, 'src/components'), { recursive: true })
+  for (const [path, text] of Object.entries(others(name))) {
+    mkdirSync(resolve(root, path, '..'), { recursive: true })
+    writeFileSync(resolve(root, path), text)
+  }
   iconSet(root)
   writeFileSync(resolve(root, `src/components/${name}.tscl`), source)
   return check({ root, typescript }).diagnostics.map((d) => `${d.line}:${d.column} ${d.code} ${d.message}\n`).join('')
+}
+
+/** The fixture's other components (#458), by their path in the project. */
+function others(name: string): Record<string, string> {
+  const folder = resolve(dir, name, 'components')
+  if (!existsSync(folder)) return {}
+  const files = (readdirSync(folder, { recursive: true }) as string[]).filter((f) => f.endsWith('.tscl'))
+  return Object.fromEntries(files.map((f) => [`src/components/${f.split('\\').join('/')}`, readFileSync(resolve(folder, f), 'utf8')]))
 }
 
 const cases = readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)
@@ -54,7 +68,8 @@ test('there are fixtures', () => {
 test.each(cases)('%s', (name) => {
   const source = readFileSync(resolve(dir, name, 'input.tscl'), 'utf8')
   const file = `src/components/${name}.tscl`
-  matches(resolve(dir, name, 'server.js'), compile(source, { file, target: 'server', clientUrl: `/${file}?import`, icon }).code)
-  matches(resolve(dir, name, 'client.js'), compile(source, { file, target: 'client', icon }).code)
+  const components = componentIndex(Object.keys(others(name)), COMPONENT_DIRS).names
+  matches(resolve(dir, name, 'server.js'), compile(source, { file, target: 'server', clientUrl: `/${file}?import`, icon, components }).code)
+  matches(resolve(dir, name, 'client.js'), compile(source, { file, target: 'client', icon, components }).code)
   matches(resolve(dir, name, 'check.txt'), diagnostics(name, source))
 }, 60_000)

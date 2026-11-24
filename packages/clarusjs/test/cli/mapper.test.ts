@@ -148,3 +148,14 @@ test('tsc 7.1 with the mapper reports template type errors at their .tscl place,
   writeFileSync(resolve(dir, 'src/broken.tscl'), '<p>ok</p>\n@if (true {\n')
   expect(tsc()).toEqual(['src/broken.tscl(2,5) clarus1'])
 }, 60_000) // three tsc runs; slow while every package's tests run
+
+test('#458 transform: a component used by name is imported relative to the file, as the build imports it', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'cl-map-auto-'))
+  writeFileSync(resolve(root, 'package.json'), '{}')
+  mkdirSync(resolve(root, 'src/components/forms'), { recursive: true })
+  mkdirSync(resolve(root, 'src/pages/admin'), { recursive: true })
+  writeFileSync(resolve(root, 'src/components/forms/text-field.tscl'), '@input label: string\n<b>{{ label }}</b>\n')
+  const out = transform({ fileName: resolve(root, 'src/pages/admin/users.tscl'), content: `<text-field [label]="'x'" />\n` })
+  expect(out.diagnostics).toEqual([])
+  expect(out.text).toContain('from "../../components/forms/text-field.tscl"')
+})

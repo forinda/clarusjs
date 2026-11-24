@@ -1,5 +1,6 @@
 // `clarusjs check`: type-check every .tscl file in a project (and the .ts it uses) with the project's TypeScript,
 // reporting each error at file.tscl:line:col.
+import { COMPONENT_DIRS, componentIndex } from '../compiler/components.ts'
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -70,8 +71,10 @@ function typescriptDir(root: string, override?: string): string {
 export type CheckSource = { extension: string; toTscl(code: string, file: string, context: { route: string; root: string; addDependency(file: string): void }): string }
 
 /** `lint`: the plugin's rule levels; `lintRules`: the project's own rules; `strict`: warnings fail too. */
-export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown; lint?: LintConfig; lintRules?: LintRuleDef[]; strict?: boolean }): CheckResult {
+export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown; lint?: LintConfig; lintRules?: LintRuleDef[]; strict?: boolean; components?: { dirs?: string[]; auto?: boolean } }): CheckResult {
   const root = resolve(options.root)
+  // Automatic component imports (#458), named as the plugin names them.
+  const names = options.components?.auto === false ? undefined : componentIndex(findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => posix(relative(root, f))), options.components?.dirs ?? COMPONENT_DIRS).names
   const virtualRoot = resolve(root, VIRTUAL)
   rmSync(virtualRoot, { recursive: true, force: true })
   const diagnostics: Diagnostic[] = []
@@ -112,7 +115,7 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     }
     try {
       const loader = loaderOf(path)
-      const { code, mappings, loaderSpan } = generateTs(source, file, loader ? { loader } : {})
+      const { code, mappings, loaderSpan } = generateTs(source, file, { ...(loader ? { loader } : {}), components: names })
       const vpath = resolve(virtualRoot, `${file}.ts`)
       mkdirSync(dirname(vpath), { recursive: true })
       writeFileSync(vpath, code)

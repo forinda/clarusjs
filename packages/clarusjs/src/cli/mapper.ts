@@ -3,8 +3,30 @@
 // trusted VS Code workspace) and speaks JSON-RPC 2.0 to it over stdio, Content-Length framed. Each .tscl file becomes
 // the same TypeScript `clarusjs check` generates, with a span map, so errors, hover and completion land in the
 // template; template syntax errors come back as the mapper's own diagnostics.
+import { existsSync } from 'node:fs'
+import { dirname, relative, resolve, sep } from 'node:path'
 import { generateTolerant } from '../check/generate.ts'
+import { COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
+import { findClarusFiles } from '../vite/build.ts'
 import { loaderOf } from './check.ts'
+
+/**
+ * The components a file can use by name (#458), each as a path relative to it (TypeScript resolves those; the build's
+ * root paths it doesn't). The project: the nearest folder above with a package.json. ponytail: the default folders,
+ * listed on each transform; read the Vite config's `components.dirs`, and cache, if it shows.
+ */
+function namesFor(fileName: string): ComponentNames | undefined {
+  let root = dirname(fileName)
+  while (!existsSync(resolve(root, 'package.json'))) {
+    if (dirname(root) === root) return undefined
+    root = dirname(root)
+  }
+  const files = findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => relative(root, f).split(sep).join('/'))
+  const rel = (path: string) => { const r = relative(dirname(fileName), resolve(root, path.slice(1))).split(sep).join('/'); return r.startsWith('.') ? r : `./${r}` }
+  const names: ComponentNames = {}
+  for (const [name, path] of Object.entries(componentIndex(files, COMPONENT_DIRS).names)) names[name] = Array.isArray(path) ? path.map(rel) : rel(path)
+  return names
+}
 
 /**
  * [virtual start, virtual length, original start, original length, kind, features?]: kind 0 = verbatim, 1 = atom (a
@@ -19,7 +41,7 @@ export function transform(params: { fileName: string; content: string }): { text
   const { fileName, content } = params
   const loader = loaderOf(fileName)
   // Tolerant: while someone types, the template often doesn't parse; the rest of it still gets TypeScript.
-  const { result, errors } = generateTolerant(content, fileName, { componentSuffix: '', ...(loader ? { loader } : {}) })
+  const { result, errors } = generateTolerant(content, fileName, { componentSuffix: '', components: namesFor(fileName), ...(loader ? { loader } : {}) })
   // The first error only: later ones may come from the repairs, not from the template.
   const diagnostics = errors.slice(0, 1).map((e) => ({ messageText: e.message, start: e.offset, length: Math.min(1, content.length - e.offset), code: 1 }))
   // Still broken: a module still, so imports of this file resolve (to nothing typed) while its template is fixed.

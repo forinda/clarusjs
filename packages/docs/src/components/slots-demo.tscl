@@ -1,5 +1,5 @@
-{{-- The Slots guide's scoped slots demo: the same list, filled three ways. Rendered on the server; no JavaScript. --}}
-@import itemList from './item-list.tscl'
+{{-- The Slots guide's scoped slots demo: the same list, filled three ways. Rendered on the server; no JavaScript.
+     <item-list> is components/item-list.tscl, used by its name (no @import). --}}
 @input steps: { id: string; label: string }[] = [
   { id: 'first-page', label: 'Make a page' },
   { id: 'first-island', label: 'Add an island' },
@@ -9,23 +9,23 @@
 <div class="slots-demo" id="slots-demo">
   <section aria-labelledby="slots-demo-plain">
     <h3 id="slots-demo-plain">Unfilled: the list's own rows</h3>
-    <itemList [items]="steps" />
+    <item-list [items]="steps" />
   </section>
   <section aria-labelledby="slots-demo-row">
     <h3 id="slots-demo-row">Filled: the page renders each row</h3>
-    <itemList [items]="steps">
+    <item-list [items]="steps">
       @slot('row', { item, index }) {
         <strong>{{ index + 1 }}.</strong> {{ item.label }} <code>{{ item.id }}</code>
       }
-    </itemList>
+    </item-list>
   </section>
   <section aria-labelledby="slots-demo-empty">
     <h3 id="slots-demo-empty">Empty, with the page's message</h3>
-    <itemList [items]="[]">
+    <item-list [items]="[]">
       @slot('empty') {
         No steps yet. <a href="/learn/first-page">Start the Learn path</a>.
       }
-    </itemList>
+    </item-list>
   </section>
 </div>
 
