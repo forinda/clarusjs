@@ -523,9 +523,11 @@ export function listen(ctx: Ctx, index: number, name: string, handler: (value: u
   const dom = (event: Event) => {
     const from = event.target as Node
     if (!(r.start.compareDocumentPosition(from) & 4) || !(r.end.compareDocumentPosition(from) & 2)) return
-    let child = r.start.nextSibling
-    while (child && child.nodeType !== 1) child = child.nextSibling
-    if (child && declared.get(child as Element)?.includes(name)) return
+    // Through every island between the target and here: one not attached yet replays the event once it is (its
+    // emit() decides then); one that declares this name sends it as its own event.
+    for (let n: Node | null = from; n && n !== host; n = n.parentNode) {
+      if ((n as Element).localName === 'cl-island' && (!(n as Element).hasAttribute('data-cl-ready') || declared.get(n as Element)?.includes(name))) return
+    }
     handler(event, { event, cancel: () => event.preventDefault() })
   }
   host.addEventListener(name, dom)

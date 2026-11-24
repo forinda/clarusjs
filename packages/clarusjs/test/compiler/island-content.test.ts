@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // #465: an island passes content, with its own markers, to another island. Each wires only its own: the content
 // sits in the inner island's slot range, and owner() gives it to the outer island.
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import { compile } from '../../src/compiler/index.ts'
 import { attachAll } from '../../src/runtime/loader.ts'
 import { importCode } from '../helpers.ts'
@@ -21,6 +21,7 @@ const parts: Record<string, string> = {
   protoShell: "@context __proto__: { v: string }\n@input n: number = 0\n<p class=\"shell\">{{ __proto__.v }}:{{ n }}</p>\n",
   cnt: "<script>\n  let c = state(0)\n</script>\n<button class=\"cnt\" (click)=\"c++\">{{ c }}</button>\n",
   clickable: "<button class=\"clk\" type=\"button\"><slot /></button>\n",
+  wrapper: "<div class=\"wrap\"><slot /></div>\n",
   emitter: "@event click: string\n<script>\n  function go(event) { emit('click', 'from-child', { event }) }\n</script>\n<button class=\"em\" (click)=\"go($event)\">e</button>\n",
 }
 let n = 0
@@ -190,4 +191,26 @@ test('#fallthrough: a child in an @if that comes back keeps exactly one listener
   await attachAll(document)
   click('.clk')
   expect($('.n').textContent).toBe('1')
+})
+
+test('#review: a click before the child island attaches is not taken as a DOM click; the replay sends it once', async () => {
+  let release = () => {}
+  const held = new Promise<void>((r) => { release = r })
+  const mounting = mount("<script>\n  let calls = state([])\n</script>\n<emitter (click)=\"calls = [...calls, String($event)]\" /><p class=\"calls\">{{ calls.join(',') }}</p>\n", {}, (modules) => async (src) => {
+    if (src === '/emitter.js') await held
+    return modules[src]
+  })
+  await vi.waitFor(() => { if (!document.querySelector('cl-island[c="page"][data-cl-ready]')) throw new Error('not yet') }, { timeout: 4000 })
+  click('.em') // the page is ready, the emitter isn't: its module is still loading
+  expect($('.calls').textContent).toBe('')
+  release()
+  await mounting
+  for (let i = 0; i < 5; i++) await tick()
+  expect($('.calls').textContent).toBe('from-child')
+})
+
+test('#review: a static wrapper around an island that declares the event: once, with the value', async () => {
+  await mount("<script>\n  let calls = state([])\n</script>\n<wrapper (click)=\"calls = [...calls, String($event)]\"><emitter /></wrapper><p class=\"calls\">{{ calls.join(',') }}</p>\n")
+  click('.em')
+  expect($('.calls').textContent).toBe('from-child')
 })

@@ -401,3 +401,20 @@ test('#fallthrough: (name) a component doesn\'t declare is the DOM event on what
     expect.stringMatching(/^src\/pages\/index\.tscl:8:6 Type '"clik"' is not assignable to type /),
   ])
 })
+
+test('#review: an event that does not bubble is reported (it would never arrive); a typo is reported once', () => {
+  const button = '<button type="button"><slot /></button>\n'
+  const page = `@import btn from '../components/btn.tscl'
+<script>
+  let x = state(0)
+  function f(v) { x = v }
+</script>
+<btn (focus)="x = 1">a</btn>
+<btn (clik)="f($event.x)">b</btn>
+<p>{{ x }}</p>
+`
+  const errors = check({ 'src/components/btn.tscl': button, 'src/pages/index.tscl': page })
+  expect(errors).toHaveLength(2)
+  expect(errors[0]).toMatch(/^src\/pages\/index\.tscl:6:6 Type '"focus"' is not assignable/)
+  expect(errors[1]).toMatch(/^src\/pages\/index\.tscl:7:6 Type '"clik"' is not assignable/)
+})

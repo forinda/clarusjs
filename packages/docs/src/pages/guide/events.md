@@ -75,7 +75,7 @@ A `(name)` the component doesn't declare with `@event` is the DOM event on what 
 
 <fallthroughDemo />
 
-- **Any DOM event:** `(click)`, `(keydown)`, `(focusin)`, `(input)`… It's heard as it bubbles up from what the component renders, so a click on anything inside counts.
+- **Any DOM event that bubbles:** `(click)`, `(keydown)`, `(input)`… It's heard as it bubbles up from what the component renders, so a click on anything inside counts, content you pass it included. Events that don't bubble never arrive, so `clarusjs check` reports them: use `(focusin)` and `(focusout)` for focus and blur, `(mouseover)` and `(mouseout)` for entering and leaving.
 - **A declared `@event` wins:** a component that declares `@event click` sends its own `click` (with its value); the DOM click on it doesn't also reach you.
 - **Checked:** `clarusjs check` types `$event` as that DOM event and reports a name that is neither an `@event` nor a DOM event (`(clik)`).
 - The parent must be an island; the component itself needs no script.
