@@ -1,0 +1,22 @@
+{{-- Fetching recipes: server data first. Shows what the server rendered (`stats`), then the island fetches it again
+     quietly (no loading state, since `initial` is there) and shows where the number came from. --}}
+@input stats: { visits: number }
+
+<script>
+  import { json, resource } from 'clarusjs/fetch'
+  const live = resource(({ signal }) => json('/api/demo-stats?keys=visits', { signal }), { initial: stats })
+</script>
+
+<p id="recipe-server-first" role="status">
+  <strong>{{ (live.value ?? stats).visits.toLocaleString('en') }}</strong> visits,
+  {{ live.value === stats ? 'as the server rendered it' : 'fetched again in the browser' }}.
+</p>
+
+<style scoped>
+  :scope {
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+</style>

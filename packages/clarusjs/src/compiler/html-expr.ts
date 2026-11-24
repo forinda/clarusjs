@@ -25,7 +25,11 @@ const mayWait = (nodes: IRNode[]) => walk(nodes).some((n) => n.kind === 'compone
 export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: ServerCtx): string {
   const parts = nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
-    if (n.kind === 'slot') return `(__cl_slots?.[${JSON.stringify(n.name)}] ?? ${n.fallback.length ? `(${htmlExpr(n.fallback, rw, ctx)})` : '""'})`
+    // The fill (called with what the slot passes, when it takes data: #455), or the fallback.
+    if (n.kind === 'slot') {
+      const data = n.props.length ? `{ ${n.props.map((p) => `${p.name === '__proto__' ? '["__proto__"]' : p.name}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }` : 'undefined'
+      return `__cl_slot(__cl_slots?.[${JSON.stringify(n.name)}], ${data}, () => ${n.fallback.length ? htmlExpr(n.fallback, rw, ctx) : '""'})`
+    }
     if (n.kind === 'connect') return '""' // its marker is static; the browser connects it
     if (n.kind === 'attr' && n.name === '...') return `__cl_spreadHtml(${attrValueExpr(n.value, rw.expr)}, ${JSON.stringify(n.skip ?? [])}, ${JSON.stringify(n.tag)}${rw === asWritten && n.where ? `, ${JSON.stringify(n.where)}` : ''})` // the place, for warnings: server code only
     if (n.kind === 'attr') return `__cl_attrHtml(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, rw.expr)}${tagArg(n)})`
@@ -76,7 +80,8 @@ export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rew
   const props = n.props.map((p) => (p.name === '...' ? `...${wrapExpr(rw.expr(p.expr))}` : `${p.name}: ${wrapExpr(rw.expr(p.expr))}`)).join(', ') // a spread first (#406)
   const slots = [
     ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw, ctx)}`] : []),
-    ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${htmlExpr(f.nodes, rw, ctx)}`),
+    // A fill that receives data is a function of it; its names are its own, not signals (#455).
+    ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${f.params !== undefined ? `(${f.params}) => ${htmlExpr(f.nodes, rw, ctx)}` : htmlExpr(f.nodes, rw, ctx)}`),
   ]
   const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
   // Render options: when to attach, and (for the forms engine) the path this component is bound to.

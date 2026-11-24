@@ -1,0 +1,53 @@
+{{-- Fetching recipes: search as you type. The search waits 250 ms after the last key, and a newer one aborts the
+     request in flight (the resource aborts its last run's signal). --}}
+
+<script>
+  import { json, resource } from 'clarusjs/fetch'
+  let query = state('')
+  let term = state('')
+  let timer
+  function type(text) {
+    query = text
+    clearTimeout(timer)
+    timer = setTimeout(() => (term = text.trim()), 250)
+  }
+  const results = resource(({ signal }) =>
+    term ? json('/api/demo-cities?q=' + encodeURIComponent(term), { signal }) : false,
+  )
+</script>
+
+<div id="recipe-search">
+  <label
+    >Search cities <input type="search" placeholder="e.g. na" [value]="query" (input)="type($event.target.value)"
+  /></label>
+  <p class="muted" role="status">
+    {{ results.loading ? 'Searching…' : term && results.value && !results.value.length ? 'No city matches.' : '' }}
+  </p>
+  @if (term && results.value) {
+    <ul>
+      @for (city of results.value; track city.value) {
+        <li>{{ city.label }}</li>
+      }
+    </ul>
+  }
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+</style>

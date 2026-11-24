@@ -7,7 +7,7 @@ description: "resource(), action(), batch(), request(), json(), text() and confi
 
 # clarusjs/fetch
 
-<p class="lead">Data an island fetches itself, in the browser. For the how-to with a live dashboard, see <a href="/guide/fetching">Fetching data</a>.</p>
+<p class="lead">Data an island fetches itself, in the browser. For the how-to with a live dashboard, see <a href="/guide/fetching">Fetching data</a>; for whole patterns, <a href="/guide/fetching-recipes">Fetching recipes</a>.</p>
 
 ```ts
 import { resource, action, batch, request, json, text, configure } from 'clarusjs/fetch'

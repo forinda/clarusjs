@@ -1,0 +1,10 @@
+{{-- Fetching recipes: server data first. The <script server> loads the numbers (here at build, from the same data the
+     demo API serves) and the island gets them as `initial`. --}}
+@import recipeStatsPanel from './recipe-stats-panel.tscl'
+
+<script server>
+  import { DEMO_STATS } from '~/demo-stats.ts'
+  const stats = { visits: Number(DEMO_STATS.visits) }
+</script>
+
+<recipeStatsPanel [stats]="stats" />

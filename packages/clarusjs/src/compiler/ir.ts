@@ -12,9 +12,10 @@ export type IRNode =
   // region: inside an island, a component whose props read state or that wraps content gets markers so the browser
   // can re-render it (-1 otherwise).
   // models: [(name)]="path" bindings: each write from the child runs `set` (a statement using __cl_v).
-  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[]; class?: string }
+  | { kind: 'component'; name: string; props: { name: string; expr: string }[]; models?: { name: string; set: string }[]; children: IRNode[]; fills: { name: string; params?: string; nodes: IRNode[] }[]; region: number; attach?: string; paths?: { name: string; expr: string }[]; class?: string }
   // Where a stateless component renders content it is given ('default' or a name); fallback shows when none is given.
-  | { kind: 'slot'; name: string; fallback: IRNode[] }
+  // props: what the slot passes to the content filling it (#455): <slot name="row" [item]="r" />.
+  | { kind: 'slot'; name: string; props: { name: string; expr: string }[]; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
   // name '...': a spread (#405); skip: the names written on the element (lowercase), where: its place, for warnings.
   | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string }
@@ -301,15 +302,22 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         out = parent
         return nodes_
       }
-      const fills: { name: string; nodes: IRNode[] }[] = []
+      const fills: { name: string; params?: string; nodes: IRNode[] }[] = []
       for (const child of node.children) {
         if (child.type !== 'fill') continue
         if (fills.some((f) => f.name === child.name)) fail(`slot "${child.name}" is filled twice`, child.start)
-        fills.push({ name: child.name, nodes: lowerList(child.children) })
+        if (child.params !== undefined) {
+          // ponytail: not in islands yet: the fill's handlers and bindings would need the slot's data in the browser.
+          // Lift it when a region can re-run a fill function there.
+          if (stateful) fail(`@slot('${child.name}', …) receives data from the slot, which isn't supported inside an island yet: render this component outside the island, or pass the data as props`, child.start)
+          slotParamsCheck(child.params, file, source, child.paramsStart!)
+        }
+        fills.push({ name: child.name, ...(child.params !== undefined ? { params: child.params } : {}), nodes: lowerList(child.children) })
       }
       const rest = node.children.filter((c) => c.type !== 'fill')
       // Whitespace around @slot blocks is not content for the default slot.
       const children = rest.every((c) => c.type === 'text' && !c.value.trim()) ? [] : lowerList(rest)
+      if (children.length && fills.some((f) => f.name === 'default')) fail('the default slot is filled twice: by @slot(\'default\') and by content outside any @slot', node.start)
       scopeKey = parentScope
       out.push({ kind: 'component', name: node.tag, props, ...(models.length ? { models } : {}), children, fills, region, ...(attach ? { attach } : {}), ...(paths.length ? { paths } : {}), ...(cls ? { class: cls } : {}) })
       return
@@ -317,9 +325,12 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     if (node.tag === 'slot') {
       if (stateful) fail('<slot /> is only supported in components without <script>', node.start)
       let name = 'default'
+      const props: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
         if (a.kind === 'static' && a.name === 'name' && typeof a.value === 'string' && a.value) name = a.value
-        else fail('<slot> only takes name="…"', a.start)
+        // What the slot passes to its content (#455): [item]="r".
+        else if (a.kind === 'prop' && /^[A-Za-z_$][\w$]*$/.test(a.name)) { checkExpr(a.expr, file, source, a.start + a.name.length + 4); props.push({ name: a.name, expr: a.expr }) }
+        else fail('<slot> only takes name="…", and the data it passes to its fill as [name]="expression"', a.start)
       }
       // Fallback content belongs to this component: its holes read this component's inputs.
       const fallback: IRNode[] = []
@@ -327,7 +338,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       out = fallback
       node.children.forEach((child) => visit(child, rawText))
       out = parent
-      out.push({ kind: 'slot', name, fallback })
+      out.push({ kind: 'slot', name, props, fallback })
       return
     }
     const outerSelect = selectModel // restored after this element: a <select>'s binding reaches its options only
@@ -508,6 +519,18 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     nodes,
     events,
     warnings,
+  }
+}
+
+/** What a fill receives, as a function parameter ({ item }, props): checked to be one, located. */
+function slotParamsCheck(params: string, file: string, source: string, at: number): void {
+  const bad = () => { throw new ClarusError('a fill names what its slot passes like a function parameter: @slot(\'row\', { item }) or @slot(\'row\', props)', file, source, at) }
+  try {
+    const node = parseExpressionAt(`(${params}) => 0`, 0, { ecmaVersion: 'latest' }) as unknown as { type: string; params?: unknown[]; end: number }
+    if (node.type !== 'ArrowFunctionExpression' || node.params?.length !== 1 || node.end !== params.length + 7) bad()
+  } catch (err) {
+    if (err instanceof ClarusError) throw err
+    bad()
   }
 }
 

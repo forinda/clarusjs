@@ -1,6 +1,7 @@
 // .tscl → virtual TypeScript for type checking (it never runs). Template expressions are copied verbatim inside
 // TypeScript that has the same meaning (@if → if, @for → for…of, a component → an object typed as its Inputs), and
 // every copied span is recorded so tsc's errors can be mapped back to the template. Pure: string in, string out.
+import { parseExpressionAt } from 'acorn'
 import { routeFromFile } from '../server/handler.ts'
 import { ClarusError } from '../compiler/errors.ts'
 import { FOR_IMPLICIT, parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
@@ -23,6 +24,24 @@ const PROPERTY: Record<string, string> = { readonly: 'readOnly', novalidate: 'no
  * the page's inputs. `componentSuffix`: added to component imports ('.ts' for `clarusjs check`'s generated files; ''
  * for the content mapper, where TypeScript resolves the .tscl file itself). `loaderSpan` is where that check sits in the generated code, so its errors can say so.
  */
+/** The names a parameter pattern binds ({ item, index: i, extra = 1, ...rest }, [a, b], props). */
+function patternNames(params: string): string[] {
+  type P = { type: string; name?: string; properties?: P[]; elements?: (P | null)[]; value?: P; left?: P; argument?: P }
+  const names: string[] = []
+  const walk = (p: P | null | undefined): void => {
+    if (!p) return
+    if (p.type === 'Identifier') names.push(p.name!)
+    else if (p.type === 'ObjectPattern') for (const prop of p.properties!) walk(prop.type === 'RestElement' ? prop.argument : prop.value)
+    else if (p.type === 'ArrayPattern') p.elements!.forEach(walk)
+    else if (p.type === 'AssignmentPattern') walk(p.left)
+    else if (p.type === 'RestElement') walk(p.argument)
+  }
+  try {
+    walk((parseExpressionAt(`(${params}) => 0`, 0, { ecmaVersion: 'latest' }) as unknown as { params: P[] }).params[0])
+  } catch {} // the compiler reports a pattern that isn't one
+  return names
+}
+
 export function generateTs(source: string, file: string, options: { loader?: string; componentSuffix?: string } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
   const parsed = parse(source, file)
   const mappings: Mapping[] = []
@@ -195,7 +214,14 @@ export function generateTs(source: string, file: string, options: { loader?: str
       case 'expr':
         return use(node.expr, node.start + 2)
       case 'fill':
-        node.children.forEach(visit)
+        // A fill that receives the slot's data (#455) names it as a parameter: in scope inside, typed any.
+        // ponytail: any, not the child's slot types; type it from the child's <slot [x]> when a component exports them.
+        if (node.params !== undefined) {
+          // As an array pattern: any parameter list is one ({ item }, props = {}, ...args), as the fill's (params) => ….
+          emit(`  { const [${node.params}]: any = []; __cl_use([${patternNames(node.params).join(', ')}])\n`)
+          node.children.forEach(visit)
+          emit('  }\n')
+        } else node.children.forEach(visit)
         return
       case 'if':
         node.branches.forEach((b, i) => {
@@ -306,7 +332,9 @@ export function generateTs(source: string, file: string, options: { loader?: str
             const radio = node.tag === 'input' && a.name === 'value' && type?.kind === 'static' && String(type.value).toLowerCase() === 'radio' && own?.kind === 'static'
             writable(a, radio ? JSON.stringify(own.value === true ? '' : own.value) : undefined)
           }
-          else if (a.kind === 'prop' && a.name === 'engine') {
+          else if (a.kind === 'prop' && node.tag === 'slot') {
+            use(a.expr, attrValueStart(a)) // data the slot passes to its fill (#455): any value, whatever its name
+          } else if (a.kind === 'prop' && a.name === 'engine') {
             // [engine]="f": a form from clarusjs/forms.
             emit(`  ;((__cl_f: import('clarusjs/forms').Form<any>) => __cl_use(__cl_f))((`)
             copy(a.expr, at(a.expr, attrValueStart(a)))
