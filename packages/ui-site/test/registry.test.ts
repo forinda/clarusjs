@@ -277,3 +277,32 @@ test('slider: <input type="range"> with value, min, max, step, name, disabled', 
   for (const a of ['value="30"', 'min="0"', 'max="100"', 'step="5"', 'name="volume"', 'data-part="slider"', 'aria-label="Volume"']) expect(html).toContain(a)
   expect(await render('slider.tscl', { disabled: true })).toContain(' disabled')
 })
+
+test('breadcrumb: a labelled nav with an ordered list; the last item is the current page, not a link', async () => {
+  const html = await render('breadcrumb.tscl', { items: [{ label: 'Home', href: '/' }, { label: 'Docs', href: '/docs' }, { label: 'Button' }] })
+  expect(html).toMatch(/^<nav aria-label="Breadcrumb" data-part="breadcrumb"><ol/)
+  expect(html).toContain('<a href="/">Home</a>')
+  expect(html).toContain('<a href="/docs">Docs</a>')
+  expect(html).toMatch(/<span aria-current="page"[^>]*>Button<\/span>/)
+})
+
+const pageLabels = (html: string) => [...html.matchAll(/<(?:a|span)[^>]*data-part="pagination-(?:link|current|ellipsis|prev|next)"[^>]*>([^<]*)</g)].map((m) => m[1]!.trim())
+
+test('pagination: links from an href pattern; previous/next absent at the ends; the current page marked', async () => {
+  const first = await render('pagination.tscl', { page: 1, pages: 5, href: '/blog?page={page}' })
+  expect(first).toMatch(/^<nav aria-label="Pagination" data-part="pagination">/)
+  expect(pageLabels(first)).toEqual(['1', '2', '3', '4', '5', 'Next'])
+  expect(first).toMatch(/<span aria-current="page"[^>]*>1</)
+  expect(first).toContain('href="/blog?page=2"')
+  expect(first).toMatch(/<a [^>]*rel="next"/)
+  const last = await render('pagination.tscl', { page: 5, pages: 5, href: '/p/{page}' })
+  expect(pageLabels(last)).toEqual(['Previous', '1', '2', '3', '4', '5'])
+  expect(last).toMatch(/<a [^>]*rel="prev"[^>]*href="\/p\/4"|<a [^>]*href="\/p\/4"[^>]*rel="prev"/)
+})
+
+test('pagination: one page shows just the current; a hundred pages around 50 stay short with ellipses', async () => {
+  expect(pageLabels(await render('pagination.tscl', { page: 1, pages: 1, href: '?p={page}' }))).toEqual(['1'])
+  const many = pageLabels(await render('pagination.tscl', { page: 50, pages: 100, href: '?p={page}' }))
+  expect(many).toEqual(['Previous', '1', '…', '49', '50', '51', '…', '100', 'Next'])
+  expect(pageLabels(await render('pagination.tscl', { page: 2, pages: 100, href: '?p={page}' }))).toEqual(['Previous', '1', '2', '3', '…', '100', 'Next'])
+})

@@ -1,0 +1,46 @@
+{{-- Breadcrumb: where this page sits. items: { label, href? }[]; the last is the current page. --}}
+@input items: { label: string; href?: string }[]
+
+<nav aria-label="Breadcrumb" data-part="breadcrumb">
+  <ol data-part="breadcrumb-list">
+    @for (item of items; track $index) {
+      <li data-part="breadcrumb-item">
+        @if ($last || !item.href) {
+          <span aria-current="page" data-part="breadcrumb-page">{{ item.label }}</span>
+        } @else {
+          <a [href]="item.href">{{ item.label }}</a>
+        }
+      </li>
+    }
+  </ol>
+</nav>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where([data-part='breadcrumb-list']) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--ui-muted);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where([data-part='breadcrumb-item']:not(:last-child))::after {
+      content: '/';
+      margin-left: 6px;
+      color: var(--ui-muted);
+    }
+    :where([data-part='breadcrumb-item'] a) {
+      color: inherit;
+    }
+    :where([data-part='breadcrumb-item'] a:hover) {
+      color: var(--ui-fg);
+    }
+    :where([data-part='breadcrumb-page']) {
+      color: var(--ui-fg);
+    }
+  }
+</style>

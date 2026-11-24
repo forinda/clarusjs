@@ -306,4 +306,22 @@ export const registry: Entry[] = [
     example: ['label'],
     island: false,
   },
+  {
+    name: 'breadcrumb',
+    title: 'Breadcrumb',
+    description: 'Where a page sits in the site, as links back up.',
+    files: ['breadcrumb.tscl'],
+    parts: [],
+    uses: [],
+    island: false,
+  },
+  {
+    name: 'pagination',
+    title: 'Pagination',
+    description: 'Links to the pages of a long list, shortened with ellipses.',
+    files: ['pagination.tscl'],
+    parts: [],
+    uses: [],
+    island: false,
+  },
 ]

@@ -1,0 +1,18 @@
+@import uiPagination from './pagination.tscl'
+
+<div class="demo">
+  <uiPagination [page]="1" [pages]="5" href="/components/pagination?page={page}" />
+  <uiPagination [page]="50" [pages]="100" href="/components/pagination?page={page}" label="Archive pages" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    padding: 24px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
