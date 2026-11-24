@@ -2316,7 +2316,8 @@ test('#454 recipes: an expired token is refreshed once, and the request still an
   page.on('response', (r) => { if (r.request().method() === 'GET' && new URL(r.url()).pathname === '/api/demo-auth') answers.push(r.status()) })
   await box.getByRole('button', { name: 'Ask for the secret' }).click()
   await expect(box.locator('.refreshed')).toHaveText('2')
-  expect(answers).toEqual([401, 200]) // expired, then exactly one retry with the new token
+  // Expired, then exactly one retry with the new token. The retry may still be in flight when the count shows 2.
+  await expect.poll(() => answers).toEqual([401, 200])
   await expect(box.locator('.secret')).toHaveText('The cake is in the fridge.')
 })
 
