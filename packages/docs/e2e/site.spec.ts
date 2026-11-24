@@ -2538,7 +2538,7 @@ test('#465 parts: dialog and popover open with no JavaScript of their own, the a
 })
 
 // #467: the Components section, a page per part, styled by @clarusjs/ui; axe on every one.
-for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox', 'tabs']) {
+for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox', 'tabs', 'radio', 'tooltip', 'menu']) {
   test(`#467 components/${part}: the demo works and has no axe violations`, async ({ page }) => {
     await page.goto(`/components/${part}`)
     const gallery = page.locator(`[data-gallery="${part}"]`)
@@ -2586,6 +2586,61 @@ test('#465 tabs bound two ways in an island: [(value)], a cancelling (change), a
   await expect(list.getByRole('tab', { name: 'npm', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect(demo.locator('.bound-out')).toHaveText('Selected: npm')
   expect((await (await axe(page)).include('.tabs-bound-demo').analyze()).violations).toEqual([])
+})
+
+test('#465 radio group: native radios bound two ways from an island; arrow keys select; the server checked one', async ({ page }) => {
+  const html = await (await page.request.get('/components/radio')).text()
+  expect(html).toMatch(/value="m" checked/)
+  await page.goto('/components/radio')
+  const group = page.getByRole('group', { name: 'Size' })
+  await expect(page.locator('[data-gallery="radio"]').locator('xpath=ancestor::cl-island').first()).toHaveAttribute('data-cl-ready', '')
+  await group.getByRole('radio', { name: 'Small' }).check()
+  await expect(page.locator('.gallery-out')).toHaveText('Size: s')
+  await page.keyboard.press('ArrowDown')
+  await expect(group.getByRole('radio', { name: 'Medium' })).toBeChecked()
+  await expect(page.locator('.gallery-out')).toHaveText('Size: m')
+  await expect(group.locator('[data-part="radio"][data-checked]')).toHaveCount(1)
+})
+
+test('#465 tooltip: shown on hover and on focus, described by its trigger, closed by Escape', async ({ page }) => {
+  await page.goto('/components/tooltip')
+  const trigger = page.getByRole('button', { name: 'Copy link' })
+  const tip = page.getByRole('tooltip')
+  await expect(trigger).toHaveAccessibleDescription('Copies the page\'s address')
+  await expect(page.locator('[data-gallery="tooltip"]').locator('xpath=ancestor::cl-island').first()).toHaveAttribute('data-cl-ready', '')
+  await trigger.hover()
+  await expect(tip).toBeVisible()
+  await page.mouse.move(0, 0)
+  await expect(tip).toBeHidden()
+  await trigger.focus()
+  await expect(tip).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(tip).toBeHidden()
+})
+
+test('#465 menu: the trigger opens the list and focus moves in; arrows, typeahead and Enter pick; Escape closes', async ({ page }) => {
+  await page.goto('/components/menu')
+  await expect(page.locator('[data-gallery="menu"]').locator('xpath=ancestor::cl-island').first()).toHaveAttribute('data-cl-ready', '')
+  const trigger = page.getByRole('button', { name: 'Actions' })
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await trigger.click()
+  const menu = page.getByRole('menu', { name: 'Actions' })
+  await expect(menu).toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(menu.getByRole('menuitem', { name: 'Copy' })).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(menu.getByRole('menuitem', { name: 'Rename' })).toBeFocused()
+  await page.keyboard.press('ArrowDown') // Archive is disabled: skipped
+  await expect(menu.getByRole('menuitem', { name: 'Delete' })).toBeFocused()
+  await page.keyboard.press('r')
+  await expect(menu.getByRole('menuitem', { name: 'Rename' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.gallery-out')).toHaveText('Picked: rename')
+  await expect(menu).toBeHidden()
+  await trigger.click()
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
 })
 
 test('#467 components: @clarusjs/ui styles the parts in the site\'s tokens; interactions on a few pages', async ({ page }) => {
