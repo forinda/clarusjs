@@ -1,7 +1,7 @@
 ---
 title: "Styles"
 group: "Templates"
-order: 9
+order: 10
 description: "Give components their own CSS with <style scoped>, scoped with native @scope, write global CSS, and import stylesheets that go through Vite."
 ---
 

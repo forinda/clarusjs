@@ -223,6 +223,23 @@ server output is `export async function render(…)`, which returns a `Promise<s
   server handler, so a render paused at an `await` never sees another request's data.
   `runtime/server` itself stays free of Node APIs (it also runs in the docs playground).
 
+### 4.5 Context: from a component to its content (#465)
+
+A component's script calls `provide('tabs', { id, value })`; a component rendered inside it, in its template or
+in content passed to it at any depth, declares `@context tabs: { id: string; value: string }` and reads it.
+
+- **Passed, not ambient.** Every render gets its context as the render option `cx`, and passes its own to each
+  component it calls. Nothing is global, so it works the same in async renders, in the browser and on any runtime.
+- **Content is a function.** Content for a slot compiles to `(data, cx) => html`; the component that receives it
+  calls it at its `<slot />` with its own context. So content sees the context of where it is placed, not of the page
+  that wrote it, and content passed on through a wrapper still reaches the provider. Hand-built string slots still
+  work, without context.
+- **Read when a child renders.** `provide(key, value)` compiles to a getter, so a child rendered later (an island's
+  browser re-render) reads the current value. Values are passed like props, not subscribed to.
+- **Islands.** An island can provide; it can't read context yet (a build error), since its browser attach has no
+  incoming context. A component without a script inside an island's block or region that reads context provided
+  above the island fails when the island re-renders it in the browser. No marker changes: §5 is unchanged.
+
 ## 5. The HTML contract
 
 What the server writes, and what the client reads. This is the hardest thing

@@ -1,7 +1,7 @@
 ---
 title: "Layouts"
 group: "Templates"
-order: 8
+order: 9
 description: "A layout is a component that renders the whole document around a page: its head, its header and footer, and a slot for the page. Inputs, named slots, head tags, styles, nesting, folder layouts, layouts in the config and Markdown pages."
 ---
 
