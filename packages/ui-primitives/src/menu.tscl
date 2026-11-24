@@ -26,11 +26,15 @@
     const list = [...el.querySelectorAll('[role="menu"]')].find(own)
     const trigger = [...el.querySelectorAll('[aria-haspopup="menu"]')].find(own)
     if (!list) return
-    const items = '[role="menuitem"]:not([aria-disabled="true"])'
+    // Its own items (each names its menu), not those of a menu nested in its list.
+    const items = `[role="menuitem"][data-menu="${CSS.escape(id)}"]:not([aria-disabled="true"])`
+    // Keys typed in a nested menu are that menu's: typeahead here doesn't move focus for them.
+    let nested = false
+    const mark = (event) => (nested = !own(event.target))
     const toggle = (event) => {
       const open = event.newState === 'open'
       trigger?.setAttribute('aria-expanded', String(open))
-      if (open) [...list.querySelectorAll(items)].find(own)?.focus()
+      if (open) list.querySelector(items)?.focus()
     }
     const click = (event) => {
       const item = event.target.closest('[role="menuitem"]')
@@ -39,11 +43,13 @@
     }
     list.addEventListener('toggle', toggle)
     list.addEventListener('click', click)
+    list.addEventListener('keydown', mark) // before typeahead's own listener
     const stopKeys = rovingFocus(list, { items, orientation: 'vertical' })
-    const stopType = typeahead(list, { items })
+    const stopType = typeahead(list, { items, onMatch: (item) => nested || item.focus() })
     return () => {
       list.removeEventListener('toggle', toggle)
       list.removeEventListener('click', click)
+      list.removeEventListener('keydown', mark)
       stopKeys()
       stopType()
     }

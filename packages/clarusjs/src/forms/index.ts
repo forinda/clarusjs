@@ -44,6 +44,7 @@ function pathOf(field: Element, root: Element): string {
       if (!island?.hasAttribute(`data-cl-path-${model}`)) return ''
       part = [island.getAttribute(`data-cl-path-${model}`), ...rest].filter(Boolean).join('.')
       el = island
+      through = openSlots(island)
     }
     if (part) parts.unshift(part)
   }

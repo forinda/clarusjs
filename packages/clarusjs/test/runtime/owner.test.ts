@@ -2,7 +2,7 @@
 // #465: which island owns a node. Its nearest <cl-island>, except that each slot range (<!--[s-->…<!--]s-->) it sits
 // inside moves ownership one island outward: content an island passes to another stays the outer island's.
 import { afterEach, expect, test } from 'vitest'
-import { owner } from '../../src/runtime/dom.ts'
+import { holes, owner } from '../../src/runtime/dom.ts'
 
 afterEach(() => { document.body.innerHTML = '' })
 const $ = (s: string) => document.querySelector(s)!
@@ -42,4 +42,10 @@ test('scanning an island with a 2000-row list stays linear (#465 review)', async
   const t = performance.now()
   holes(island('a'))
   expect(performance.now() - t).toBeLessThan(300)
+})
+
+test('#465 review: an island\'s holes skip those of an island in its slot content, even at the same index', () => {
+  document.body.innerHTML = '<cl-island id="a"><cl-island id="b"><!--[0-->b<!--]--><!--[s--><cl-island id="c"><!--[0-->c<!--]--></cl-island><!--]s--></cl-island></cl-island>'
+  const b = document.getElementById('b')!
+  expect((holes(b)[0]!.start.nextSibling as Text).data).toBe('b')
 })

@@ -375,18 +375,22 @@ export function rewriteClientExpr(expr: string, signals: Signals): string {
  */
 export function providesIn(split: { imports: { text: string; start: number }[]; body: string }, file: string, source: string, offset: number): boolean {
   for (const imp of split.imports) {
-    if (/(?:[{,]\s*|\bas\s+|^import\s+)provide\b/.test(imp.text)) throw new ClarusError('provide is reserved for context: rename this import (import { provide as other } …)', file, source, offset + imp.start)
+    if (/(?:^import\s+|\*\s*as\s+|[{,]\s*(?:[\w$]+\s+as\s+)?)provide\b(?!\s+as\b)/.test(imp.text)) throw new ClarusError('provide is reserved for context: rename this import (import { provide as other } …)', file, source, offset + imp.start)
   }
   const code = split.body
   let found = false
-  const hook: Hook = (node) => {
+  const usage = "provide is called with a string key and a value: provide('tabs', { value })"
+  const hook: Hook = (node, parent, key) => {
+    if (node.type === 'Identifier' && node.name === 'provide' && !(parent?.type === 'CallExpression' && key === 'callee') && (!isBinding(parent, key) || parent?.shorthand)) {
+      throw new ClarusError(usage, file, source, offset + node.start)
+    }
     const declared = (node.type === 'FunctionDeclaration' || node.type === 'VariableDeclarator' || node.type === 'ClassDeclaration') && node.id?.type === 'Identifier' && node.id.name === 'provide'
     if (declared) throw new ClarusError('provide is reserved for context: give this function another name', file, source, offset + node.start)
     if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'provide') {
       found = true
       const key = (node.arguments as N[])[0]
       if (!key || key.type !== 'Literal' || typeof key.value !== 'string' || node.arguments.length !== 2) {
-        throw new ClarusError("provide takes a string key and a value: provide('tabs', { value })", file, source, offset + node.start)
+        throw new ClarusError(usage, file, source, offset + node.start)
       }
       // @context reads it by name, so the key must be one.
       if (!/^[A-Za-z_$][\w$]*$/.test(key.value)) throw new ClarusError(`provide's key "${key.value}" isn't a name @context can read: use letters, digits, _ or $, like 'tabs'`, file, source, offset + node.start)

@@ -24,7 +24,8 @@
       if (t?.matches(':popover-open')) t.hidePopover()
     }
     const enter = () => later(open, 300)
-    const leave = () => later(close, 100)
+    // Focus keeps it open: leaving with the pointer closes it only when the trigger isn't focused.
+    const leave = () => document.activeElement === el || later(close, 100)
     const key = (event) => {
       if (event.key === 'Escape') close()
     }

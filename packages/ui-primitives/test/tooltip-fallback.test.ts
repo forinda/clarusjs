@@ -39,3 +39,30 @@ test('the trigger shows its tooltip on focus and hover, and hides it on blur and
   expect(open).toBe(false)
   vi.useRealTimers()
 })
+
+test('#465 review: focus keeps the tooltip open when the pointer passes over the trigger and leaves', async () => {
+  const source = readFileSync(resolve(import.meta.dirname, '../src/tooltip-trigger.tscl'), 'utf8')
+  const code = compile(source, { file: 'tooltip-trigger.tscl', target: 'client' }).code.replaceAll("'clarusjs/runtime'", `'${clarus('runtime/index.ts')}'`)
+  const dir = mkdtempSync(resolve(import.meta.dirname, '.tmp/tip-'))
+  writeFileSync(resolve(dir, 'trigger.mjs'), code)
+  const { attach } = await import(pathToFileURL(resolve(dir, 'trigger.mjs')).href)
+  document.body.innerHTML = '<cl-island c="tooltip-trigger"><button type="button" data-cl-u="0">Copy</button></cl-island><div id="tip" popover="hint" role="tooltip"></div>'
+  const tip = document.getElementById('tip')! as HTMLElement & { showPopover(): void; hidePopover(): void }
+  let open = false
+  tip.showPopover = vi.fn(() => { open = true })
+  tip.hidePopover = vi.fn(() => { open = false })
+  tip.matches = ((s: string) => (s === ':popover-open' ? open : false)) as typeof tip.matches
+  const button = document.querySelector('button')!
+  attach(document.querySelector('cl-island'), { target: 'tip' })
+  vi.useFakeTimers()
+  button.focus()
+  expect(open).toBe(true)
+  button.dispatchEvent(new PointerEvent('pointerenter'))
+  button.dispatchEvent(new PointerEvent('pointerleave'))
+  vi.advanceTimersByTime(500)
+  expect(open).toBe(true)
+  button.blur()
+  expect(open).toBe(false)
+  vi.useRealTimers()
+})
+

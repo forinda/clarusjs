@@ -95,7 +95,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   if (options.loader) emit(`import { load as __cl_load } from ${JSON.stringify(options.loader)}\n`)
   const script = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : null
   // provide's rules (#465), located like the build's.
-  if (parsed.script && script) providesIn(script, file, source, parsed.script.start)
+  const provides = !!parsed.script && !!script && providesIn(script, file, source, parsed.script.start)
   if (parsed.script && script) {
     for (const imp of script.imports) {
       copy(imp.text, parsed.script.start + imp.start)
@@ -142,7 +142,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   }
   emit('}\n')
   // provide(key, value) (#465). It's reserved: a script's own provide clashes with it, as in the build.
-  if (parsed.script && /\bprovide\b/.test(parsed.script.code)) emit('declare function provide(key: string, value: unknown): void\n')
+  if (provides) emit('declare function provide(key: string, value: unknown): void\n')
   if (parsed.events.length) emit('declare const emit: <K extends keyof Events>(name: K, ...args: Events[K] extends void ? [value?: undefined, info?: { reason?: string; event?: Event }] : [value: Events[K], info?: { reason?: string; event?: Event }]) => boolean\n')
   let loaderSpan: [number, number] | undefined
   if (options.loader) {

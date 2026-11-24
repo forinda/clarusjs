@@ -50,13 +50,13 @@ const provided = new WeakMap<Element, object>()
 export function provideOn(root: Element, cx: object): void { provided.set(root, cx) }
 /**
  * The context a region renders with: its island's own, plus what each island holding the region (it sits in their
- * slot ranges, between them and `root`) provides, outermost first. Spreading reads the getters now, so the region
- * follows the values it read.
+ * slot ranges, between them and `root`) provides, inner ones first. Spreading (Object.assign drops a __proto__ key)
+ * reads the getters now, so the region follows the values it read.
  */
 function contextAt(node: Node, root: Element, own?: object): object | undefined {
-  const holders: Element[] = []
-  for (let n = node.parentNode; n && n !== root; n = n.parentNode) if ((n as Element).localName === 'cl-island') holders.unshift(n as Element)
-  return holders.length ? Object.assign({ ...own }, ...holders.map((h) => ({ ...provided.get(h) }))) : own
+  let cx: object | undefined
+  for (let n = node.parentNode; n && n !== root; n = n.parentNode) if ((n as Element).localName === 'cl-island') cx = { ...provided.get(n as Element), ...cx }
+  return cx ? { ...own, ...cx } : own
 }
 
 /** Slot ranges still open at `n`, among the siblings before it (#465). @internal */
@@ -112,11 +112,11 @@ function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[]; regions:
     }
   }
   // One pass (#465): `level` counts the islands entered below this one, minus the slot ranges entered (each moves its
-  // content one island out), so the island's own comments are at 0 (the same answer as owner(), in linear time).
+  // content one island out), so the island's own comments are at 0 and nothing below 0 is (as owner() says, linearly).
   const visit = (parent: Node, level: number) => {
     let ranges = 0
     for (let n = parent.firstChild; n; n = n.nextSibling) {
-      if (n.nodeType === 1) visit(n, level + ((n as Element).localName === 'cl-island' ? 1 : 0))
+      if (n.nodeType === 1) level < 0 || visit(n, level + ((n as Element).localName === 'cl-island' ? 1 : 0))
       else if (n.nodeType !== 8) continue
       else if ((n as Comment).data === '[s') { ranges++; level-- }
       else if ((n as Comment).data === ']s') { if (ranges) { ranges--; level++ } }

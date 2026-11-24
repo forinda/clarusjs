@@ -33,10 +33,14 @@
         input.closest('[data-part="radio"]')?.toggleAttribute('data-checked', input.checked)
       }
     }
+    // A form reset checks the radios it started with, without a change event: value says which one is checked.
+    const reset = () => setTimeout(() => sync(value))
     el.addEventListener('change', change)
+    el.form?.addEventListener('reset', reset)
     const stop = effect(() => sync(value))
     return () => {
       el.removeEventListener('change', change)
+      el.form?.removeEventListener('reset', reset)
       stop()
     }
   }

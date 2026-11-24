@@ -378,3 +378,8 @@ test('#465 review: a script\'s own provide is an error in check too, as in the b
   // The generator throws the build's located error; the check CLI reports it at its place.
   expect(() => check({ 'src/components/own.tscl': own })).toThrow(/^src\/components\/own\.tscl:2:3 provide is reserved/)
 })
+
+test('#465 review: provide passed around (not called) is the build\'s located error in check too', () => {
+  const bare = "<script>\n  const register = provide\n  register('tabs', 1)\n</script>\n<p />\n"
+  expect(() => check({ 'src/components/bare.tscl': bare })).toThrow(/^src\/components\/bare\.tscl:2:20 provide is called with/)
+})

@@ -15,10 +15,9 @@ const loading = new WeakSet<Element>()
 const pending = new WeakMap<Element, Promise<void>>()
 
 /** Does `inner` hold content of `el` in one of its slot ranges? */
-function holds(inner: Element, el: Element): boolean {
+function holds(inner: Element, el: Element): true | void {
   const walker = document.createTreeWalker(inner, 128) // comments
-  for (let n; (n = walker.nextNode()); ) if ((n as Comment).data === '[s' && n.nextSibling && owner(n.nextSibling) === el) return true
-  return false
+  for (let n; (n = walker.nextNode()); ) if ((n as Comment).data === '[s' && owner(n.nextSibling!) === el) return true
 }
 const updates = new WeakMap<Element, (props: Record<string, unknown>) => void>()
 // Each attached island's disposer: everything its attach() wired (effects, listeners) is released by it.
@@ -91,16 +90,20 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
     props = parse(el.getAttribute('p') ?? '{}') as Record<string, unknown>
     const s = el.getAttribute('s')
     state = s === null ? undefined : (parse(s) as Record<string, unknown>)
+    // Islands in it holding its content attach first (#465): content it re-renders there reads what they provide. One
+    // failing to load fails this one too (both retry). ponytail: later ones (idle, visible, interaction) aren't waited for.
+    for (const inner of el.querySelectorAll('cl-island')) {
+      if (!pending.has(inner) || !holds(inner, el)) continue
+      await pending.get(inner)
+      if (!pending.has(inner)) throw 0
+    }
   } catch (err) {
     recorded.stop()
     loading.delete(el) // network or parse failure: the next attachAll() retries
+    pending.delete(el)
     console.error(`[clarusjs] island "${el.getAttribute('c')}" failed to load`, err)
     return
   }
-  // Islands inside it that hold its content attach first (#465): content it re-renders there reads what they provide.
-  // Others aren't waited for. ponytail: one that attaches later (idle, visible, interaction) isn't waited for either,
-  // so content re-rendered inside it before then lacks its context.
-  await Promise.all([...el.querySelectorAll('cl-island')].filter((inner) => holds(inner, el)).map((inner) => pending.get(inner)))
   try {
     attached.set(el, scope(() => {
       // An island with inputs returns how to update them: kept for a parent island that passes new props.

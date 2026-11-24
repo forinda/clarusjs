@@ -80,6 +80,20 @@ test('outside any provider: the default, or a render error naming the component 
 test('provide is reserved: a script that declares or imports its own is a located build error', () => {
   expect(compileError("<script>\n  function provide(k, v) {}\n  provide('k', 1)\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
   expect(compileError("<script>\n  import { provide } from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
+  expect(compileError("<script>\n  import { other as provide } from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
+  expect(compileError("<script>\n  import * as provide from 'di'\n</script>\n<p />")).toMatch(/^x\.tscl:2:3 .*provide is reserved/)
+})
+
+test('#465 review: an import that renames provide is fine; provide is called, never passed around', () => {
+  expect(() => compile("<script>\n  import { provide as register } from 'di'\n  register('x')\n</script>\n<p />", { file: 'x.tscl', target: 'server', clientUrl: '/c.js' })).not.toThrow()
+  expect(compileError("<script>\n  const register = provide\n  register('tabs', 1)\n</script>\n<p />")).toMatch(/^x\.tscl:2:20 .*provide is called with/)
+  expect(compileError("<script>\n  const api = { provide }\n</script>\n<p />")).toMatch(/^x\.tscl:2:17 .*provide is called with/)
+})
+
+test('#465 review: @context named like a global (Object) still reads what is provided', async () => {
+  const objectProvider = "<script>\n  provide('Object', { v: 'given' })\n</script>\n<div><slot /></div>\n"
+  const reads = "@context Object: { v: string }\n<i>{{ Object.v }}</i>\n"
+  expect(await render(`${imports}@import op from './op.tscl'\n@import reads from './reads.tscl'\n<op><reads /></op>`, { './w.tscl': w, './slow.tscl': slow, './op.tscl': server(objectProvider, 'op.tscl'), './reads.tscl': server(reads, 'reads.tscl') })).toMatch(/>given<\/i>/)
 })
 
 test('context lookups ignore names every object has (toString), and provide keys must be names @context can read', async () => {

@@ -17,10 +17,13 @@ const parts: Record<string, string> = {
   prov: "@input v: string = 'x'\n<script>\n  provide('pv', { v })\n</script>\n<div class=\"prov\"><slot /></div>\n",
   reader: "@context pv: { v: string }\n<b class=\"reader\">{{ pv.v }}</b>\n",
   shell: "@context pv: { v: string }\n@input n: number = 0\n<p class=\"shell\">{{ pv.v }}:{{ n }} <slot /></p>\n",
+  protoProv: "@input v: string = 'x'\n<script>\n  provide('__proto__', { v })\n</script>\n<div class=\"prov\"><slot /></div>\n",
+  protoShell: "@context __proto__: { v: string }\n@input n: number = 0\n<p class=\"shell\">{{ __proto__.v }}:{{ n }}</p>\n",
   cnt: "<script>\n  let c = state(0)\n</script>\n<button class=\"cnt\" (click)=\"c++\">{{ c }}</button>\n",
 }
 let n = 0
-async function mount(outer: string, opts: object = {}) {
+type Loader = (modules: Record<string, unknown>) => (src: string) => Promise<any>
+async function mount(outer: string, opts: object = {}, loader: Loader = (modules) => async (src) => modules[src]) {
   const names = Object.keys(parts)
   const serverOf = (name: string) => compile(parts[name]!, { file: `${name}.tscl`, target: 'server', clientUrl: `/${name}.js` }).code
   const imports = names.map((x) => `@import ${x} from './${x}.tscl'`).join('\n') + '\n'
@@ -32,7 +35,8 @@ async function mount(outer: string, opts: object = {}) {
   for (const x of names) modules[`/${x}.js`] = await importCode(compile(parts[x]!, { file: `${x}.tscl`, target: 'client' }).code, `ic-${x}-${n}`, {})
   n++
   document.body.innerHTML = await s.render({}, undefined, opts)
-  await attachAll(document, async (src) => modules[src] as any)
+  await attachAll(document, loader(modules))
+  return modules
 }
 
 test('the outer island\'s holes and handlers work inside the inner island; the inner island\'s own still do', async () => {
@@ -142,4 +146,25 @@ test('an outer island doesn\'t wait for a nested island that holds none of its c
   void attachAll(document, (src) => (src === '/o.js' ? Promise.resolve(o) : new Promise(() => {}))) // cnt never loads
   for (let i = 0; i < 10; i++) await tick()
   expect(document.querySelector('cl-island[c="o"]')!.hasAttribute('data-cl-ready')).toBe(true)
+})
+
+test('#465 review: a provided key named __proto__ reaches content the outer island re-renders', async () => {
+  await mount("<script>\n  let n = state(0)\n</script>\n<button class=\"inc\" (click)=\"n++\">+</button>\n<protoProv v=\"p\"><protoShell [n]=\"n\" /></protoProv>\n")
+  click('.inc')
+  expect($('.shell').textContent).toBe('p:1')
+})
+
+test('#465 review: a provider that failed to load doesn\'t disable the island whose content reads it; both attach on retry', async () => {
+  let fail = true
+  const modules = await mount("<script>\n  let n = state(0)\n</script>\n<button class=\"inc\" (click)=\"n++\">+</button>\n<prov v=\"q\"><shell [n]=\"n\" /></prov>\n", {}, (m) => async (src) => {
+    if (src === '/prov.js' && fail) throw new Error('offline')
+    return m[src]
+  })
+  const page = document.querySelector('cl-island[c="page"]')!
+  expect(page.hasAttribute('data-cl-error')).toBe(false)
+  fail = false
+  await attachAll(document, async (src) => modules[src] as any)
+  expect(page.hasAttribute('data-cl-ready')).toBe(true)
+  click('.inc')
+  expect($('.shell').textContent).toContain('q:1')
 })

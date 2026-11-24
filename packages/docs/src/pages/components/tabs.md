@@ -17,7 +17,7 @@ description: "Tabs over panels, Radix-shaped: the parts read the selection from 
 @import uiTab from '@clarusjs/ui-primitives/tab.tscl'
 @import uiTabPanel from '@clarusjs/ui-primitives/tab-panel.tscl'
 
-<uiTabs id="install" label="Install" [(value)]="pm">
+<uiTabs id="install" label="Install" value="npm">
   <uiTabList>
     <uiTab value="npm">npm</uiTab>
     <uiTab value="pnpm"><icon name="lucide:package" /> pnpm</uiTab>

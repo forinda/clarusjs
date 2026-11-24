@@ -43,7 +43,7 @@ export function contextLines(ir: ComponentIR, incoming: string): string {
     : `  const __cl_cx = ${incoming}\n`
   for (const c of ir.contexts) {
     const missing = `throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> reads context "${c.name}", which no component around it provides`)})`
-    out += `  const ${c.name} = __cl_cx && Object.hasOwn(__cl_cx, ${JSON.stringify(c.name)}) ? __cl_cx.${c.name} : ${c.default !== undefined ? `(${c.default})` : `(() => { ${missing} })()`}\n`
+    out += `  const ${c.name} = __cl_cx && {}.hasOwnProperty.call(__cl_cx, ${JSON.stringify(c.name)}) ? __cl_cx.${c.name} : ${c.default !== undefined ? `(${c.default})` : `(() => { ${missing} })()`}\n`
   }
   return out
 }
