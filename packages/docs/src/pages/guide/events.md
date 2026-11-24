@@ -61,6 +61,25 @@ Inputs go down; events go up. A component declares what it sends with `@event`, 
 
 The [forms demo](/guide/forms) uses both: the text fields send `(blur)`, and the languages combobox sends `(change)`, which the form cancels past three languages.
 
+## Events on what a component renders
+
+A `(name)` the component doesn't declare with `@event` is the DOM event on what it renders, as in Vue: `(click)` on a button component is a click on its `<button>`, and `$event` is the `MouseEvent`.
+
+```tscl
+{{-- components/like-button.tscl: no script, no @event --}}
+<button type="button" class="like"><slot /></button>
+
+{{-- the parent island --}}
+<likeButton (click)="likes++">Like</likeButton>
+```
+
+<fallthroughDemo />
+
+- **Any DOM event:** `(click)`, `(keydown)`, `(focusin)`, `(input)`… It's heard as it bubbles up from what the component renders, so a click on anything inside counts.
+- **A declared `@event` wins:** a component that declares `@event click` sends its own `click` (with its value); the DOM click on it doesn't also reach you.
+- **Checked:** `clarusjs check` types `$event` as that DOM event and reports a name that is neither an `@event` nor a DOM event (`(clik)`).
+- The parent must be an island; the component itself needs no script.
+
 For a value the child edits, like a form field, bind it two ways with `@model` instead (see [Forms](./forms.md)). Use both together when the parent needs the value and to hear what happened.
 
 ## The window and the document

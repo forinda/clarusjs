@@ -1,0 +1,20 @@
+{{-- The Events guide's demo: (click) on <likeButton>, which declares no @event, is the DOM click on its <button>. --}}
+@import likeButton from './like-button.tscl'
+
+<script>
+  let likes = state(0)
+</script>
+
+<div class="fallthrough-demo">
+  <likeButton (click)="likes++">Like</likeButton>
+  <span class="likes">{{ likes }} {{ likes === 1 ? 'like' : 'likes' }}</span>
+</div>
+
+<style scoped>
+  .fallthrough-demo {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 16px 0;
+  }
+</style>

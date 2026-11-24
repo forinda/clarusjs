@@ -411,6 +411,7 @@ export const registry: Entry[] = [
     files: ['toast.css'],
     parts: ['toast-region.tscl'],
     uses: [],
+    example: ['button'],
     island: true,
     since: '0.2.0',
     sections: ['focus', 'toast', 'motion'],
