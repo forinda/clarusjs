@@ -1,0 +1,5 @@
+{{-- A greeting: a name, a tone, and anything you put inside it. --}}
+@input name: string
+@input tone: 'plain' | 'loud' = 'plain'
+
+<p class="greeting" [data-tone]="tone">Hello, {{ name }}<slot /></p>
