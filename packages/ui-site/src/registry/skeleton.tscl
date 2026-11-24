@@ -9,21 +9,23 @@
 ></div>
 
 <style scoped>
-  :scope {
-    width: var(--ui-skeleton-w);
-    height: var(--ui-skeleton-h);
-    border-radius: var(--ui-radius);
-    background: var(--ui-muted-bg);
-    animation: ui-skeleton-pulse 1.5s ease-in-out infinite;
-  }
-  @keyframes ui-skeleton-pulse {
-    50% {
-      opacity: 0.5;
+  @layer components {
+    :where(:scope) {
+      width: var(--ui-skeleton-w);
+      height: var(--ui-skeleton-h);
+      border-radius: var(--ui-radius);
+      background: var(--ui-muted-bg);
+      animation: ui-skeleton-pulse 1.5s ease-in-out infinite;
     }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    :scope {
-      animation: none;
+    @keyframes ui-skeleton-pulse {
+      50% {
+        opacity: 0.5;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :where(:scope) {
+        animation: none;
+      }
     }
   }
 </style>

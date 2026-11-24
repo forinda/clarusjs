@@ -3,45 +3,47 @@
   Copy it next to your components, @import it once, and change it to change the look.
 */
 
-/* Focus is always visible, on every part and what's inside it. */
-:where([data-part]):focus-visible,
-:where([data-part]) :focus-visible {
-  outline: 2px solid var(--ui-ring);
-  outline-offset: 2px;
-}
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: 2px;
+  }
 
-/* Tabs: a row of tabs over the panels; the selected one is underlined (not colour alone). */
-:where([data-part='tabs']) {
-  font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
-  color: var(--ui-fg);
-}
-:where([data-part='tabs']) > :where([data-part='list']) {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--ui-border);
-}
-:where([data-part='tab']) {
-  font: 600 var(--ui-font-size) var(--ui-font);
-  padding: 8px 12px;
-  margin-bottom: -1px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--ui-muted);
-  cursor: pointer;
-}
-:where([data-part='tab'])[aria-selected='true'] {
-  border-bottom-color: var(--ui-accent);
-  color: var(--ui-fg);
-}
-:where([data-part='tabs']) > :where([data-part='panel']) {
-  padding: 12px 2px;
-  color: var(--ui-fg);
-}
+  /* Tabs: a row of tabs over the panels; the selected one is underlined (not colour alone). */
+  :where([data-part='tabs']) {
+    font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
+    color: var(--ui-fg);
+  }
+  :where([data-part='tabs']) > :where([data-part='list']) {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--ui-border);
+  }
+  :where([data-part='tab']) {
+    font: 600 var(--ui-font-size) var(--ui-font);
+    padding: 8px 12px;
+    margin-bottom: -1px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--ui-muted);
+    cursor: pointer;
+  }
+  :where([data-part='tab'])[aria-selected='true'] {
+    border-bottom-color: var(--ui-accent);
+    color: var(--ui-fg);
+  }
+  :where([data-part='tabs']) > :where([data-part='panel']) {
+    padding: 12px 2px;
+    color: var(--ui-fg);
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  :where([data-part]),
-  :where([data-part]) * {
-    transition: none !important;
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      transition: none !important;
+    }
   }
 }

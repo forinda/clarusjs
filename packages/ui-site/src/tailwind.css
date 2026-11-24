@@ -1,0 +1,43 @@
+/*
+  Using Tailwind CSS (v4) with clarusjs ui: import this after theme.css. Tailwind's colours, radius and fonts then
+  follow the --ui- tokens (shadcn's names: bg-primary, text-muted-foreground, border-input, rounded-lg…), so a theme
+  you build changes both. The components keep their rules in @layer components, so Tailwind's utilities win.
+*/
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: var(--ui-bg);
+  --color-foreground: var(--ui-fg);
+  --color-card: var(--ui-card);
+  --color-card-foreground: var(--ui-card-fg);
+  --color-popover: var(--ui-popover);
+  --color-popover-foreground: var(--ui-popover-fg);
+  --color-primary: var(--ui-accent);
+  --color-primary-foreground: var(--ui-accent-fg);
+  --color-secondary: var(--ui-secondary);
+  --color-secondary-foreground: var(--ui-secondary-fg);
+  --color-muted: var(--ui-muted-bg);
+  --color-muted-foreground: var(--ui-muted);
+  --color-accent: var(--ui-accent-soft);
+  --color-accent-foreground: var(--ui-accent-soft-fg);
+  --color-destructive: var(--ui-danger);
+  --color-destructive-foreground: var(--ui-danger-fg);
+  --color-border: var(--ui-border);
+  --color-input: var(--ui-input);
+  --color-ring: var(--ui-ring);
+  --color-sidebar: var(--ui-sidebar);
+  --color-sidebar-foreground: var(--ui-sidebar-fg);
+  --color-sidebar-accent: var(--ui-sidebar-accent);
+  --color-sidebar-accent-foreground: var(--ui-sidebar-accent-fg);
+  --color-sidebar-border: var(--ui-sidebar-border);
+  --color-success: var(--ui-success);
+  --color-success-foreground: var(--ui-success-fg);
+  --color-warning: var(--ui-warning);
+  --color-warning-foreground: var(--ui-warning-fg);
+  --radius-lg: var(--ui-radius);
+  --radius-md: calc(var(--ui-radius) - 2px);
+  --radius-sm: calc(var(--ui-radius) - 4px);
+  --font-sans: var(--ui-font);
+  --font-heading: var(--ui-font-heading);
+  --font-mono: var(--ui-font-mono);
+}

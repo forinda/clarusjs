@@ -23,6 +23,12 @@ Copy it next to your components as `tabs.css`. It's the same as `@clarusjs/ui`'s
 
 <<< ../../registry/tabs.css
 
+## Styling
+
+- **On the parts:** `class`, `style`, `id`, `aria-*` and `data-*` written on a part's tag (from `@clarusjs/ui-primitives`) land on its root element, merged with its own.
+- **Selectors:** `data-part` names `tabs`, `list`, `tab`, `panel`.
+- **Your rules win:** every rule here has zero specificity (`:where()`) and sits in `@layer components`, so your own CSS and Tailwind utilities override it.
+
 ## Needs
 
 <needs name="tabs" />

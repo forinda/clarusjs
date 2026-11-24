@@ -4,8 +4,10 @@
 <label [for]="control || null" data-part="form-label"><slot /></label>
 
 <style scoped>
-  :scope {
-    color: var(--ui-fg);
-    font: 500 var(--ui-font-size)/1.4 var(--ui-font);
+  @layer components {
+    :where(:scope) {
+      color: var(--ui-fg);
+      font: 500 var(--ui-font-size)/1.4 var(--ui-font);
+    }
   }
 </style>

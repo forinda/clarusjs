@@ -12,49 +12,51 @@
 
 <style global>
   /* The same rules as @clarusjs/ui's ui.css, for this part: change them here to change its look. */
-  /* Focus is always visible, on every part and what's inside it. */
-  :where([data-part]):focus-visible,
-  :where([data-part]) :focus-visible {
-    outline: 2px solid var(--ui-ring);
-    outline-offset: 2px;
-  }
+  @layer components {
+    /* Focus is always visible, on every part and what's inside it. */
+    :where([data-part]):focus-visible,
+    :where([data-part]) :focus-visible {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
 
-  /* Buttons: triggers and closes. */
-  :where([data-part='trigger'], [data-part='close']) {
-    font: 600 var(--ui-font-size) var(--ui-font);
-    padding: 8px 14px;
-    border: 1px solid var(--ui-border);
-    border-radius: var(--ui-radius);
-    background: var(--ui-bg);
-    color: var(--ui-fg);
-    cursor: pointer;
-  }
-  :where([data-part='trigger'], [data-part='close']):hover {
-    border-color: var(--ui-accent);
-  }
+    /* Buttons: triggers and closes. */
+    :where([data-part='trigger'], [data-part='close']) {
+      font: 600 var(--ui-font-size) var(--ui-font);
+      padding: 8px 14px;
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      cursor: pointer;
+    }
+    :where([data-part='trigger'], [data-part='close']):hover {
+      border-color: var(--ui-accent);
+    }
 
-  /* Accordion. */
-  :where([data-part='accordion-item']) {
-    border-bottom: 1px solid var(--ui-border);
-    font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
-    color: var(--ui-fg);
-  }
-  :where([data-part='accordion-item']) > :where([data-part='trigger']) {
-    display: list-item;
-    padding: 10px 2px;
-    border: 0;
-    background: none;
-    cursor: pointer;
-  }
-  :where([data-part='panel']) {
-    padding: 0 2px 12px;
-    color: var(--ui-muted);
-  }
+    /* Accordion. */
+    :where([data-part='accordion-item']) {
+      border-bottom: 1px solid var(--ui-border);
+      font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
+      color: var(--ui-fg);
+    }
+    :where([data-part='accordion-item']) > :where([data-part='trigger']) {
+      display: list-item;
+      padding: 10px 2px;
+      border: 0;
+      background: none;
+      cursor: pointer;
+    }
+    :where([data-part='panel']) {
+      padding: 0 2px 12px;
+      color: var(--ui-muted);
+    }
 
-  @media (prefers-reduced-motion: reduce) {
-    :where([data-part]),
-    :where([data-part]) * {
-      transition: none !important;
+    @media (prefers-reduced-motion: reduce) {
+      :where([data-part]),
+      :where([data-part]) * {
+        transition: none !important;
+      }
     }
   }
 </style>

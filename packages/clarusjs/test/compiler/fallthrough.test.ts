@@ -53,3 +53,14 @@ test('review: clarusjs\'s own markers can\'t be passed (data-cl-*, cl-*): they w
   const { render: r } = await importCode(serve('<main>page</main>\n', 'page.tscl'), 'ft4')
   expect(await r({ 'data-cl-e': '0', 'data-cl-u': '1', 'data-cl-path': 'x', 'data-ok': '1' })).toBe('<main data-ok="1">page</main>')
 })
+
+test('a top-level @if / @else with one element in each branch: the passed attributes land on the branch shown', async () => {
+  const child = "@input href: string = ''\n@if (href) {\n  <a [href]=\"href\" data-part=\"b\"><slot /></a>\n} @else {\n  <button type=\"button\" data-part=\"b\"><slot /></button>\n}\n"
+  const link = await render(child, "@import child from './child.tscl'\n<child href=\"/d\" aria-pressed=\"true\" data-x=\"1\" style=\"margin: 0\">x</child>\n")
+  expect(tag(link, 'a')).toBe('<a href="/d" data-part="b" aria-pressed="true" data-x="1" style="margin: 0">')
+  const button = await render(child, "@import child from './child.tscl'\n<child aria-pressed=\"true\">x</child>\n")
+  expect(tag(button, 'button')).toBe('<button type="button" data-part="b" aria-pressed="true">')
+  // Without an @else there may be no element at all: nothing falls through.
+  const maybe = await render("@input on: boolean = false\n@if (on) { <i>x</i> }\n", "@import child from './child.tscl'\n<child [on]=\"true\" data-x=\"1\" />\n")
+  expect(maybe).not.toContain('data-x')
+})

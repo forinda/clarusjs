@@ -1,35 +1,38 @@
 {{-- Avatar: a round picture of someone, or their initials when there's no picture. alt names them either way. --}}
+@input parts: { image?: Record<string, string | boolean>; fallback?: Record<string, string | boolean> } = {}
 @input src: string = ''
 @input alt: string
 @input fallback: string = ''
 
 <span data-part="avatar">
   @if (src) {
-    <img [src]="src" [alt]="alt" data-part="avatar-image" />
+    <img [...]="parts.image ?? {}" [src]="src" [alt]="alt" data-part="avatar-image" />
   } @else {
-    <span role="img" [aria-label]="alt" data-part="avatar-fallback">{{ fallback }}</span>
+    <span [...]="parts.fallback ?? {}" role="img" [aria-label]="alt" data-part="avatar-fallback">{{ fallback }}</span>
   }
 </span>
 
 <style scoped>
-  :scope {
-    display: inline-flex;
-    width: 40px;
-    height: 40px;
-    overflow: hidden;
-    border-radius: 50%;
-    background: var(--ui-accent-soft);
-    color: var(--ui-fg);
-    font: 600 var(--ui-font-size) var(--ui-font);
-  }
-  [data-part='avatar-image'] {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  [data-part='avatar-fallback'] {
-    display: grid;
-    place-items: center;
-    width: 100%;
+  @layer components {
+    :where(:scope) {
+      display: inline-flex;
+      width: 40px;
+      height: 40px;
+      overflow: hidden;
+      border-radius: 50%;
+      background: var(--ui-accent-soft);
+      color: var(--ui-fg);
+      font: 600 var(--ui-font-size) var(--ui-font);
+    }
+    :where([data-part='avatar-image']) {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    :where([data-part='avatar-fallback']) {
+      display: grid;
+      place-items: center;
+      width: 100%;
+    }
   }
 </style>

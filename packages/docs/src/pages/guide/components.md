@@ -75,7 +75,7 @@ Attributes you write on a component's tag land on its root element: an `id` to l
 - **Which names:** `id`, `role`, `tabindex`, `hidden`, `lang`, `dir`, `style`, and any `data-*` or `aria-*`, written as is or bound (`[aria-controls]="panelId"`). Other names are inputs, and `clarusjs check` reports one the component doesn't declare. `class` is passed too, and [merges](/guide/styles) with the component's own.
 - **The component's own attribute wins.** Except `style`, which is added after a written `style`, and ARIA id lists (`aria-describedby`, `aria-labelledby`, `aria-controls`, `aria-owns`), which are joined: both ids are kept.
 - **A declared input is never an attribute:** a component with `@input id: string` gets `id` as its input.
-- **One root:** they land when the component has a single top-level element (or component, which passes them on). With several, there is no root to choose, and they are dropped.
+- **One root:** they land when the component has a single top-level element (or component, which passes them on), or one `@if` … `@else` whose branches each hold one element (outside islands): the branch that renders gets them. With several, there is no root to choose, and they are dropped.
 - **Server HTML only:** they ship no JavaScript. In an island they're in the first HTML; an island whose root has its own `[...]` spread, or is a component, takes none yet.
 
 ## Importing data

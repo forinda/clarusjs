@@ -24,3 +24,10 @@ pnpm add @clarusjs/ui-primitives
 ```
 
 <componentList />
+
+## Using Tailwind CSS
+
+The components work as they are with Tailwind (v4). To use your theme in Tailwind's classes too (`bg-primary`, `text-muted-foreground`, `border-input`, `rounded-lg`), save this as `tailwind.css` and import it after `theme.css`. Classes you pass to a component, on its tag or in `parts`, override its own rules: those sit in `@layer components`, below Tailwind's utilities.
+
+<<< ../tailwind.css
+

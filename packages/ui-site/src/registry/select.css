@@ -3,64 +3,66 @@
   Copy it next to your components, @import it once, and change it to change the look.
 */
 
-/* Focus is always visible, on every part and what's inside it. */
-:where([data-part]):focus-visible,
-:where([data-part]) :focus-visible {
-  outline: 2px solid var(--ui-ring);
-  outline-offset: 2px;
-}
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: 2px;
+  }
 
-/* Field and select: label, control, description, error. */
-:where([data-part='field'], [data-part='select']) {
-  display: grid;
-  gap: 4px;
-  max-width: 360px;
-  font: var(--ui-font-size) var(--ui-font);
-  color: var(--ui-fg);
-}
-:where([data-part='label']) {
-  font-weight: 600;
-  font-size: calc(var(--ui-font-size) - 1px);
-  color: var(--ui-fg);
-}
-:where([data-part='control']) {
-  min-height: 34px;
-  padding: 4px 10px;
-  border: 1px solid var(--ui-input);
-  border-radius: var(--ui-radius);
-  background: var(--ui-bg);
-  color: var(--ui-fg);
-  font: var(--ui-font-size) var(--ui-font);
-}
-:where([data-part='control'])[aria-invalid='true'] {
-  border: 1px solid var(--ui-danger);
-}
-:where([data-part='description']) {
-  margin: 0;
-  color: var(--ui-muted);
-  font-size: calc(var(--ui-font-size) - 1px);
-}
-:where([data-part='error']) {
-  margin: 0;
-  color: var(--ui-danger);
-  font-size: calc(var(--ui-font-size) - 1px);
-}
-:where([data-part='option']) {
-  padding: 6px 10px;
-  border-radius: calc(var(--ui-radius) - 2px);
-}
-:where([data-part='select']) ::picker(select) {
-  padding: 4px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius);
-  background: var(--ui-popover);
-  color: var(--ui-popover-fg);
-  box-shadow: var(--ui-shadow);
-}
+  /* Field and select: label, control, description, error. */
+  :where([data-part='field'], [data-part='select']) {
+    display: grid;
+    gap: 4px;
+    max-width: 360px;
+    font: var(--ui-font-size) var(--ui-font);
+    color: var(--ui-fg);
+  }
+  :where([data-part='label']) {
+    font-weight: 600;
+    font-size: calc(var(--ui-font-size) - 1px);
+    color: var(--ui-fg);
+  }
+  :where([data-part='control']) {
+    min-height: 34px;
+    padding: 4px 10px;
+    border: 1px solid var(--ui-input);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font: var(--ui-font-size) var(--ui-font);
+  }
+  :where([data-part='control'])[aria-invalid='true'] {
+    border: 1px solid var(--ui-danger);
+  }
+  :where([data-part='description']) {
+    margin: 0;
+    color: var(--ui-muted);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  :where([data-part='error']) {
+    margin: 0;
+    color: var(--ui-danger);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  :where([data-part='option']) {
+    padding: 6px 10px;
+    border-radius: calc(var(--ui-radius) - 2px);
+  }
+  :where([data-part='select']) ::picker(select) {
+    padding: 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    box-shadow: var(--ui-shadow);
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  :where([data-part]),
-  :where([data-part]) * {
-    transition: none !important;
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      transition: none !important;
+    }
   }
 }

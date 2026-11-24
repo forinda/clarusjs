@@ -77,7 +77,7 @@ test('card: an <article>; header, body and footer in order, and an unfilled head
   expect(await render('card.tscl', {}, { header: '<h3>Plan</h3>', default: '<p>Body</p>', footer: '<p>Foot</p>' }))
     .toBe('<article data-part="card"><header data-part="card-header"><h3>Plan</h3></header><div data-part="card-body"><p>Body</p></div><footer data-part="card-footer"><p>Foot</p></footer></article>')
   expect(await render('card.tscl', {}, { default: 'x' })).toContain('<header data-part="card-header"></header>')
-  expect(source('card.tscl')).toMatch(/\[data-part='card-header'\]:empty,\s*\[data-part='card-footer'\]:empty\s*\{\s*display: none/)
+  expect(source('card.tscl')).toMatch(/:where\(\[data-part='card-header'\]:empty\),\s*:where\(\[data-part='card-footer'\]:empty\)\s*\{\s*display: none/)
 })
 
 test('badge: variants default, secondary, outline, destructive as data-variant on a <span>', async () => {
@@ -178,4 +178,70 @@ test('badge and alert: success and warning variants', async () => {
     for (const f of ['badge.tscl', 'alert.tscl']) expect(scoped(f), f).toMatch(new RegExp(`\\[data-variant='${variant}'\\][^}]*var\\(--ui-${variant}`))
   }
   expect(scoped('badge.tscl')).toMatch(/\[data-variant='success'\][^}]*color: var\(--ui-success-fg\)/)
+})
+
+const pageText = (name: string) => readFileSync(resolve(import.meta.dirname, '../src/pages/components', `${name}.md`), 'utf8')
+const styling = (name: string) => /## Styling\n([\s\S]*?)(\n## |$)/.exec(pageText(name))?.[1] ?? ''
+const tsclFiles = registry.flatMap((e) => e.files.filter((f) => f.endsWith('.tscl')).map((f) => ({ e, f })))
+
+test('#overrides: every selector in a component\'s <style scoped> has zero specificity', () => {
+  for (const { f } of tsclFiles) {
+    const css = scoped(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/@keyframes[^{]*\{(?:[^{}]*\{[^}]*\})*[^}]*\}/g, '')
+    for (const [, list] of css.matchAll(/(?:^|[;{}])\s*([^;{}@]+?)\s*\{/g)) {
+      for (const sel of list!.split(',').map((x) => x.trim())) expect(sel, `${f}: ${sel}`).toMatch(/^:where\(.*\)(::[\w-]+)?$/)
+    }
+  }
+})
+
+test('#overrides: class on the tag lands on the root, merged', async () => {
+  for (const [f, slots] of [['button.tscl', { default: 'x' }], ['card.tscl', { default: 'x' }], ['input.tscl', undefined], ['alert.tscl', { default: 'x' }], ['table.tscl', { default: '' }]] as const) {
+    const html = await render(f, {}, slots as Record<string, string> | undefined, { class: 'mine' })
+    expect(/^<[^>]*class="([^"]*)"/.exec(html)?.[1]?.split(' '), f).toContain('mine')
+  }
+})
+
+test('#overrides: parts spreads onto inner pieces, class and style merged', async () => {
+  const attrs = { class: 'h', style: 'color: red', 'data-x': '1' }
+  const cases = [['card.tscl', 'header', 'card-header', { default: 'x' }, {}], ['alert.tscl', 'title', 'alert-title', { default: 'x', title: 't' }, {}], ['table.tscl', 'table', 'table', { default: '' }, {}], ['avatar.tscl', 'fallback', 'avatar-fallback', undefined, { alt: 'A', fallback: 'A' }]] as const
+  for (const [f, part, dataPart, slots, props] of cases) {
+    const html = await render(f, { ...props, parts: { [part]: attrs } }, slots as Record<string, string> | undefined)
+    const el = new RegExp(`<[a-z]+ [^>]*data-part="${dataPart}"[^>]*>`).exec(html)?.[0] ?? ''
+    expect(el, f).toMatch(/class="[^"]*\bh\b/)
+    expect(el, f).toContain('color: red')
+    expect(el, f).toContain('data-x="1"')
+  }
+  expect(await render('card.tscl', { parts: { header: { onclick: 'x' } } }, { default: 'x' })).not.toContain('onclick')
+})
+
+test('#overrides: every <style scoped>, <style global> and copied .css puts its rules in @layer components', () => {
+  for (const e of registry) for (const f of e.files) {
+    const s = source(f)
+    const blocks = f.endsWith('.css') ? [s.replace(/^\/\*[\s\S]*?\*\/\s*/, '')] : [...s.matchAll(/<style (?:scoped|global)>([\s\S]*?)<\/style>/g)].map((m) => m[1]!)
+    for (const b of blocks) expect(b.trim(), f).toMatch(/^(\/\*[\s\S]*?\*\/\s*)?@layer components \{[\s\S]*\}$/)
+  }
+})
+
+test('every component page has a Styling section naming class, style, its parts keys and data-part names', () => {
+  for (const e of registry) {
+    const text = styling(e.name)
+    expect(text, e.name).toContain('`class`')
+    expect(text, e.name).toContain('`style`')
+    const src = e.files.map(source).join('\n')
+    for (const [, k] of src.matchAll(/parts\.(\w+)/g)) expect(text, `${e.name}: parts.${k}`).toContain(`\`${k}\``)
+    for (const [, p] of src.matchAll(/data-part(?:="|=')([\w-]+)/g)) expect(text, `${e.name}: ${p}`).toContain(`\`${p}\``)
+  }
+})
+
+test('every Styling section lists the component\'s state attributes', () => {
+  for (const { e, f } of tsclFiles) {
+    const markup = source(f).replace(/<style[\s\S]*$/, '')
+    for (const [, a] of markup.matchAll(/\[?(data-(?!part\b|cl-)[\w-]+)\]?=/g)) expect(styling(e.name), `${e.name}: ${a}`).toContain(`\`${a}\``)
+  }
+})
+
+test('button: with href it renders <a> with the same data attributes', async () => {
+  expect(await render('button.tscl', { href: '/docs', variant: 'outline' }, { default: 'Docs' })).toBe('<a href="/docs" data-part="button" data-variant="outline" data-size="md">Docs</a>')
+  expect(await render('button.tscl', {}, { default: 'Go' })).toMatch(/^<button type="button"/)
+  expect(await render('button.tscl', { href: 'javascript:alert(1)' }, { default: 'x' })).toContain('href="about:invalid#unsafe"')
+  expect(await render('button.tscl', { href: '/d' }, { default: 'x' }, { class: 'mine' })).toMatch(/^<a [^>]*class="[^"]*mine/)
 })

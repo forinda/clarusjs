@@ -35,7 +35,7 @@ test('nothing but CSS: no JavaScript in the package', () => {
 })
 
 test('after the tokens, every rule sits in exactly one named part section (/* part: name */ … /* end part */)', () => {
-  const body = css.slice(css.indexOf('/* part: '))
+  const body = css.slice(css.indexOf('/* part: ')).replace(/\}\s*$/, '') // inside @layer components { … }
   const names = [...body.matchAll(/\/\* part: ([\w-]+) \*\//g)].map((m) => m[1]!)
   expect(names).toEqual(['focus', 'buttons', 'dialog', 'popover', 'tooltip', 'menu', 'accordion', 'tabs', 'switch-checkbox', 'radio-group', 'field-select', 'combobox', 'motion'])
   expect(body.match(/\/\* end part \*\//g)?.length).toBe(names.length)
@@ -121,4 +121,11 @@ test('theme builder: no literal colours outside the token rules', () => {
   // The dialog's backdrop is a black scrim in both modes, on purpose: not a theme colour.
   const noShadow = rulesPart.replace(/\/\*[\s\S]*?\*\//g, '').replace(/::backdrop \{[^}]*\}/, '')
   expect(noShadow).not.toMatch(/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\boklch\(|\bhsla?\(/)
+})
+
+test('theme builder: all rules after the tokens sit in one @layer components; the tokens stay unlayered', () => {
+  const after = css.slice(css.indexOf("[data-theme='dark'] {"))
+  const rest = after.slice(after.indexOf('}') + 1).trim()
+  expect(rest).toMatch(/^@layer components \{[\s\S]*\}$/)
+  expect(css.slice(0, css.indexOf('@layer'))).not.toContain('/* part: ')
 })

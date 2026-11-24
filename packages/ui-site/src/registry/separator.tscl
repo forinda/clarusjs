@@ -10,16 +10,18 @@
 ></div>
 
 <style scoped>
-  :scope {
-    flex-shrink: 0;
-    background: var(--ui-border);
-  }
-  :scope[data-orientation='horizontal'] {
-    height: 1px;
-    width: 100%;
-  }
-  :scope[data-orientation='vertical'] {
-    width: 1px;
-    align-self: stretch;
+  @layer components {
+    :where(:scope) {
+      flex-shrink: 0;
+      background: var(--ui-border);
+    }
+    :where(:scope[data-orientation='horizontal']) {
+      height: 1px;
+      width: 100%;
+    }
+    :where(:scope[data-orientation='vertical']) {
+      width: 1px;
+      align-self: stretch;
+    }
   }
 </style>

@@ -105,384 +105,386 @@
   --ui-warning-fg: #0b1415;
 }
 
-/* part: focus */
-/* Focus is always visible, on every part and what's inside it. */
-:where([data-part]):focus-visible,
-:where([data-part]) :focus-visible {
-  outline: 2px solid var(--ui-ring);
-  outline-offset: 2px;
-}
-/* end part */
-
-/* part: buttons */
-/* Buttons: triggers and closes. */
-:where([data-part='trigger'], [data-part='close']) {
-  font: 600 var(--ui-font-size) var(--ui-font);
-  padding: 8px 14px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius);
-  background: var(--ui-bg);
-  color: var(--ui-fg);
-  cursor: pointer;
-}
-:where([data-part='trigger'], [data-part='close']):hover {
-  border-color: var(--ui-accent);
-}
-/* end part */
-
-/* part: dialog */
-/* Dialog: centred by the browser; the backdrop dims the page. */
-:where([data-part='dialog']) {
-  max-width: min(32rem, calc(100vw - 32px));
-  padding: 20px 24px;
-  border: 1px solid var(--ui-border);
-  border-radius: calc(var(--ui-radius) * 1.5);
-  background: var(--ui-card);
-  color: var(--ui-card-fg);
-  color: var(--ui-fg);
-  box-shadow: var(--ui-shadow);
-  font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
-}
-:where([data-part='dialog'])::backdrop {
-  background: rgb(0 0 0 / 0.45);
-}
-:where([data-part='title']) {
-  margin: 0 0 8px;
-  font-size: calc(var(--ui-font-size) + 4px);
-}
-/* end part */
-
-/* part: popover */
-/* Popover: a little gap from its trigger, wherever it's placed. */
-:where([data-part='popover']) {
-  margin: 6px;
-  padding: 12px 14px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius);
-  background: var(--ui-popover);
-  color: var(--ui-popover-fg);
-  color: var(--ui-fg);
-  box-shadow: var(--ui-shadow);
-  font: var(--ui-font-size)/1.5 var(--ui-font);
-}
-/* end part */
-
-/* part: tooltip */
-/* Tooltip: small, inverted, a little gap from its trigger. */
-:where([data-part='tooltip']) {
-  margin: 6px;
-  padding: 4px 8px;
-  border: 0;
-  border-radius: calc(var(--ui-radius) - 2px);
-  background: var(--ui-fg);
-  color: var(--ui-bg);
-  font: calc(var(--ui-font-size) - 1px)/1.4 var(--ui-font);
-  max-width: 240px;
-}
-/* end part */
-
-/* part: menu */
-/* Menu: the list below its trigger, items as full-width rows; the focused one is tinted. */
-:where([data-part='menu']) {
-  display: inline-block;
-}
-:where([data-part='menu-list']) {
-  margin: 4px 0;
-  padding: 4px;
-  min-width: 160px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius);
-  background: var(--ui-popover);
-  color: var(--ui-popover-fg);
-  color: var(--ui-fg);
-  box-shadow: var(--ui-shadow);
-}
-:where([data-part='menu-item']) {
-  display: block;
-  width: 100%;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: calc(var(--ui-radius) - 2px);
-  background: none;
-  color: inherit;
-  font: var(--ui-font-size) var(--ui-font);
-  text-align: start;
-  cursor: pointer;
-}
-:where([data-part='menu-item']):is(:hover, :focus-visible) {
-  background: var(--ui-accent-soft);
-}
-:where([data-part='menu-item'])[aria-disabled='true'] {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-/* end part */
-
-/* part: accordion */
-/* Accordion. */
-:where([data-part='accordion-item']) {
-  border-bottom: 1px solid var(--ui-border);
-  font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
-  color: var(--ui-fg);
-}
-:where([data-part='accordion-item']) > :where([data-part='trigger']) {
-  display: list-item;
-  padding: 10px 2px;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-:where([data-part='panel']) {
-  padding: 0 2px 12px;
-  color: var(--ui-muted);
-}
-/* end part */
-
-/* part: tabs */
-/* Tabs: a row of tabs over the panels; the selected one is underlined (not colour alone). */
-:where([data-part='tabs']) {
-  font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
-  color: var(--ui-fg);
-}
-:where([data-part='tabs']) > :where([data-part='list']) {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--ui-border);
-}
-:where([data-part='tab']) {
-  font: 600 var(--ui-font-size) var(--ui-font);
-  padding: 8px 12px;
-  margin-bottom: -1px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--ui-muted);
-  cursor: pointer;
-}
-:where([data-part='tab'])[aria-selected='true'] {
-  border-bottom-color: var(--ui-accent);
-  color: var(--ui-fg);
-}
-:where([data-part='tabs']) > :where([data-part='panel']) {
-  padding: 12px 2px;
-  color: var(--ui-fg);
-}
-/* end part */
-
-/* part: switch-checkbox */
-/* Switch and checkbox: the native input, tinted; the label next to it. */
-:where([data-part='switch'], [data-part='checkbox']) {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font: var(--ui-font-size) var(--ui-font);
-  color: var(--ui-fg);
-  cursor: pointer;
-}
-:where([data-part='switch'], [data-part='checkbox']) input {
-  accent-color: var(--ui-accent);
-  width: 18px;
-  height: 18px;
-  margin: 0;
-}
-:where([data-part='switch']) input {
-  appearance: none;
-  width: 36px;
-  height: 20px;
-  border-radius: 999px;
-  background: var(--ui-border);
-  position: relative;
-  transition: background 150ms;
-}
-:where([data-part='switch']) input::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  background: var(--ui-bg);
-  transition: transform 150ms;
-}
-:where([data-part='switch']) input:checked {
-  background: var(--ui-accent);
-}
-:where([data-part='switch']) input:checked::after {
-  transform: translateX(16px);
-}
-:where([data-part='switch'], [data-part='checkbox'])[data-disabled] {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-/* end part */
-
-/* part: radio-group */
-/* Radio group: a fieldset with its legend; radios like checkboxes, round. */
-:where([data-part='radio-group']) {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  font: var(--ui-font-size) var(--ui-font);
-  color: var(--ui-fg);
-}
-:where([data-part='radio-group']) > :where([data-part='legend']) {
-  padding: 0;
-  margin-bottom: 4px;
-  font-weight: 600;
-}
-:where([data-part='radio']) {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-:where([data-part='radio']) input {
-  accent-color: var(--ui-accent);
-  width: 18px;
-  height: 18px;
-  margin: 0;
-}
-:where([data-part='radio'])[data-disabled] {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-/* end part */
-
-/* part: field-select */
-/* Field and select: label, control, description, error. */
-:where([data-part='field'], [data-part='select']) {
-  display: grid;
-  gap: 4px;
-  max-width: 360px;
-  font: var(--ui-font-size) var(--ui-font);
-  color: var(--ui-fg);
-}
-:where([data-part='label']) {
-  font-weight: 600;
-  font-size: calc(var(--ui-font-size) - 1px);
-  color: var(--ui-fg);
-}
-:where([data-part='control']) {
-  min-height: 34px;
-  padding: 4px 10px;
-  border: 1px solid var(--ui-input);
-  border-radius: var(--ui-radius);
-  background: var(--ui-bg);
-  color: var(--ui-fg);
-  font: var(--ui-font-size) var(--ui-font);
-}
-:where([data-part='control'])[aria-invalid='true'] {
-  border: 1px solid var(--ui-danger);
-}
-:where([data-part='description']) {
-  margin: 0;
-  color: var(--ui-muted);
-  font-size: calc(var(--ui-font-size) - 1px);
-}
-:where([data-part='error']) {
-  margin: 0;
-  color: var(--ui-danger);
-  font-size: calc(var(--ui-font-size) - 1px);
-}
-:where([data-part='option']) {
-  padding: 6px 10px;
-  border-radius: calc(var(--ui-radius) - 2px);
-}
-:where([data-part='select']) ::picker(select) {
-  padding: 4px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius);
-  background: var(--ui-popover);
-  color: var(--ui-popover-fg);
-  box-shadow: var(--ui-shadow);
-}
-/* end part */
-
-/* part: combobox */
-/* Combobox: chips in the control, a list below. */
-:where([data-part='combobox']) {
-  display: grid;
-  gap: 4px;
-  max-width: 360px;
-  font: var(--ui-font-size) var(--ui-font);
-  color: var(--ui-fg);
-}
-:where([data-part='combobox']) > :where([data-part='control']) {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 6px;
-}
-:where([data-part='combobox']) > :where([data-part='control']):focus-within {
-  border-color: var(--ui-ring);
-  box-shadow: 0 0 0 3px var(--ui-accent-soft);
-}
-:where([data-part='input']) {
-  flex: 1;
-  min-width: 6ch;
-  min-height: 26px;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: var(--ui-fg);
-  font: inherit;
-  outline: none;
-}
-:where([data-part='chip']) {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 0 2px 0 8px;
-  border-radius: 999px;
-  background: var(--ui-accent-soft);
-  font-size: calc(var(--ui-font-size) - 1px);
-}
-:where([data-part='chip']) button {
-  min-width: 24px;
-  min-height: 24px;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--ui-muted);
-  cursor: pointer;
-}
-:where([data-part='listbox']) {
-  margin-top: 4px;
-  padding: 4px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius);
-  background: var(--ui-popover);
-  color: var(--ui-popover-fg);
-  box-shadow: var(--ui-shadow);
-}
-:where([data-part='listbox']) > :where([data-part='option']) {
-  cursor: pointer;
-}
-:where([data-part='option'])[data-highlighted] {
-  background: var(--ui-accent-soft);
-}
-:where([data-part='option'])[aria-selected='true'] {
-  font-weight: 600;
-}
-:where([data-part='status']) {
-  margin: 0;
-  color: var(--ui-muted);
-  font-size: calc(var(--ui-font-size) - 1px);
-}
-:where([data-part='status']):empty {
-  display: none;
-}
-/* end part */
-
-/* part: motion */
-@media (prefers-reduced-motion: reduce) {
-  :where([data-part]),
-  :where([data-part]) * {
-    transition: none !important;
+@layer components {
+  /* part: focus */
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: 2px;
   }
+  /* end part */
+
+  /* part: buttons */
+  /* Buttons: triggers and closes. */
+  :where([data-part='trigger'], [data-part='close']) {
+    font: 600 var(--ui-font-size) var(--ui-font);
+    padding: 8px 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    cursor: pointer;
+  }
+  :where([data-part='trigger'], [data-part='close']):hover {
+    border-color: var(--ui-accent);
+  }
+  /* end part */
+
+  /* part: dialog */
+  /* Dialog: centred by the browser; the backdrop dims the page. */
+  :where([data-part='dialog']) {
+    max-width: min(32rem, calc(100vw - 32px));
+    padding: 20px 24px;
+    border: 1px solid var(--ui-border);
+    border-radius: calc(var(--ui-radius) * 1.5);
+    background: var(--ui-card);
+    color: var(--ui-card-fg);
+    color: var(--ui-fg);
+    box-shadow: var(--ui-shadow);
+    font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
+  }
+  :where([data-part='dialog'])::backdrop {
+    background: rgb(0 0 0 / 0.45);
+  }
+  :where([data-part='title']) {
+    margin: 0 0 8px;
+    font-size: calc(var(--ui-font-size) + 4px);
+  }
+  /* end part */
+
+  /* part: popover */
+  /* Popover: a little gap from its trigger, wherever it's placed. */
+  :where([data-part='popover']) {
+    margin: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    color: var(--ui-fg);
+    box-shadow: var(--ui-shadow);
+    font: var(--ui-font-size)/1.5 var(--ui-font);
+  }
+  /* end part */
+
+  /* part: tooltip */
+  /* Tooltip: small, inverted, a little gap from its trigger. */
+  :where([data-part='tooltip']) {
+    margin: 6px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: calc(var(--ui-radius) - 2px);
+    background: var(--ui-fg);
+    color: var(--ui-bg);
+    font: calc(var(--ui-font-size) - 1px)/1.4 var(--ui-font);
+    max-width: 240px;
+  }
+  /* end part */
+
+  /* part: menu */
+  /* Menu: the list below its trigger, items as full-width rows; the focused one is tinted. */
+  :where([data-part='menu']) {
+    display: inline-block;
+  }
+  :where([data-part='menu-list']) {
+    margin: 4px 0;
+    padding: 4px;
+    min-width: 160px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    color: var(--ui-fg);
+    box-shadow: var(--ui-shadow);
+  }
+  :where([data-part='menu-item']) {
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: calc(var(--ui-radius) - 2px);
+    background: none;
+    color: inherit;
+    font: var(--ui-font-size) var(--ui-font);
+    text-align: start;
+    cursor: pointer;
+  }
+  :where([data-part='menu-item']):is(:hover, :focus-visible) {
+    background: var(--ui-accent-soft);
+  }
+  :where([data-part='menu-item'])[aria-disabled='true'] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  /* end part */
+
+  /* part: accordion */
+  /* Accordion. */
+  :where([data-part='accordion-item']) {
+    border-bottom: 1px solid var(--ui-border);
+    font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
+    color: var(--ui-fg);
+  }
+  :where([data-part='accordion-item']) > :where([data-part='trigger']) {
+    display: list-item;
+    padding: 10px 2px;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+  :where([data-part='panel']) {
+    padding: 0 2px 12px;
+    color: var(--ui-muted);
+  }
+  /* end part */
+
+  /* part: tabs */
+  /* Tabs: a row of tabs over the panels; the selected one is underlined (not colour alone). */
+  :where([data-part='tabs']) {
+    font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
+    color: var(--ui-fg);
+  }
+  :where([data-part='tabs']) > :where([data-part='list']) {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--ui-border);
+  }
+  :where([data-part='tab']) {
+    font: 600 var(--ui-font-size) var(--ui-font);
+    padding: 8px 12px;
+    margin-bottom: -1px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--ui-muted);
+    cursor: pointer;
+  }
+  :where([data-part='tab'])[aria-selected='true'] {
+    border-bottom-color: var(--ui-accent);
+    color: var(--ui-fg);
+  }
+  :where([data-part='tabs']) > :where([data-part='panel']) {
+    padding: 12px 2px;
+    color: var(--ui-fg);
+  }
+  /* end part */
+
+  /* part: switch-checkbox */
+  /* Switch and checkbox: the native input, tinted; the label next to it. */
+  :where([data-part='switch'], [data-part='checkbox']) {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: var(--ui-font-size) var(--ui-font);
+    color: var(--ui-fg);
+    cursor: pointer;
+  }
+  :where([data-part='switch'], [data-part='checkbox']) input {
+    accent-color: var(--ui-accent);
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+  :where([data-part='switch']) input {
+    appearance: none;
+    width: 36px;
+    height: 20px;
+    border-radius: 999px;
+    background: var(--ui-border);
+    position: relative;
+    transition: background 150ms;
+  }
+  :where([data-part='switch']) input::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--ui-bg);
+    transition: transform 150ms;
+  }
+  :where([data-part='switch']) input:checked {
+    background: var(--ui-accent);
+  }
+  :where([data-part='switch']) input:checked::after {
+    transform: translateX(16px);
+  }
+  :where([data-part='switch'], [data-part='checkbox'])[data-disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  /* end part */
+
+  /* part: radio-group */
+  /* Radio group: a fieldset with its legend; radios like checkboxes, round. */
+  :where([data-part='radio-group']) {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: var(--ui-font-size) var(--ui-font);
+    color: var(--ui-fg);
+  }
+  :where([data-part='radio-group']) > :where([data-part='legend']) {
+    padding: 0;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  :where([data-part='radio']) {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  :where([data-part='radio']) input {
+    accent-color: var(--ui-accent);
+    width: 18px;
+    height: 18px;
+    margin: 0;
+  }
+  :where([data-part='radio'])[data-disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  /* end part */
+
+  /* part: field-select */
+  /* Field and select: label, control, description, error. */
+  :where([data-part='field'], [data-part='select']) {
+    display: grid;
+    gap: 4px;
+    max-width: 360px;
+    font: var(--ui-font-size) var(--ui-font);
+    color: var(--ui-fg);
+  }
+  :where([data-part='label']) {
+    font-weight: 600;
+    font-size: calc(var(--ui-font-size) - 1px);
+    color: var(--ui-fg);
+  }
+  :where([data-part='control']) {
+    min-height: 34px;
+    padding: 4px 10px;
+    border: 1px solid var(--ui-input);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font: var(--ui-font-size) var(--ui-font);
+  }
+  :where([data-part='control'])[aria-invalid='true'] {
+    border: 1px solid var(--ui-danger);
+  }
+  :where([data-part='description']) {
+    margin: 0;
+    color: var(--ui-muted);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  :where([data-part='error']) {
+    margin: 0;
+    color: var(--ui-danger);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  :where([data-part='option']) {
+    padding: 6px 10px;
+    border-radius: calc(var(--ui-radius) - 2px);
+  }
+  :where([data-part='select']) ::picker(select) {
+    padding: 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    box-shadow: var(--ui-shadow);
+  }
+  /* end part */
+
+  /* part: combobox */
+  /* Combobox: chips in the control, a list below. */
+  :where([data-part='combobox']) {
+    display: grid;
+    gap: 4px;
+    max-width: 360px;
+    font: var(--ui-font-size) var(--ui-font);
+    color: var(--ui-fg);
+  }
+  :where([data-part='combobox']) > :where([data-part='control']) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+  }
+  :where([data-part='combobox']) > :where([data-part='control']):focus-within {
+    border-color: var(--ui-ring);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+  }
+  :where([data-part='input']) {
+    flex: 1;
+    min-width: 6ch;
+    min-height: 26px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--ui-fg);
+    font: inherit;
+    outline: none;
+  }
+  :where([data-part='chip']) {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 2px 0 8px;
+    border-radius: 999px;
+    background: var(--ui-accent-soft);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  :where([data-part='chip']) button {
+    min-width: 24px;
+    min-height: 24px;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: var(--ui-muted);
+    cursor: pointer;
+  }
+  :where([data-part='listbox']) {
+    margin-top: 4px;
+    padding: 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    box-shadow: var(--ui-shadow);
+  }
+  :where([data-part='listbox']) > :where([data-part='option']) {
+    cursor: pointer;
+  }
+  :where([data-part='option'])[data-highlighted] {
+    background: var(--ui-accent-soft);
+  }
+  :where([data-part='option'])[aria-selected='true'] {
+    font-weight: 600;
+  }
+  :where([data-part='status']) {
+    margin: 0;
+    color: var(--ui-muted);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  :where([data-part='status']):empty {
+    display: none;
+  }
+  /* end part */
+
+  /* part: motion */
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      transition: none !important;
+    }
+  }
+  /* end part */
 }
-/* end part */

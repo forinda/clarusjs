@@ -10,6 +10,7 @@
   <uiButton size="sm">Small</uiButton>
   <uiButton size="lg">Large</uiButton>
   <uiButton disabled>Disabled</uiButton>
+  <uiButton href="/components/card" variant="outline">A link: Card</uiButton>
 </div>
 
 <style scoped>

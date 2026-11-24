@@ -14,7 +14,12 @@ export function uiSection(name: string): string {
 
 /** A registry file's global rules, collapsed: a .css file whole, a .tscl file's <style global> block. */
 export function globalStyle(source: string, file = '.tscl'): string {
-  if (file.endsWith('.css')) return collapse(source)
-  const m = /<style global>([\s\S]*?)<\/style>/.exec(source)
-  return m ? collapse(m[1]!) : ''
+  const css = file.endsWith('.css') ? source : (/<style global>([\s\S]*?)<\/style>/.exec(source)?.[1] ?? '')
+  return unlayer(collapse(css))
+}
+
+/** The rules inside one wrapping @layer components { … }, collapsed (the text as is when there's none). */
+export function unlayer(collapsed: string): string {
+  const m = /^@layer components \{ ([\s\S]*) \}$/.exec(collapsed)
+  return m ? m[1]!.trim() : collapsed
 }

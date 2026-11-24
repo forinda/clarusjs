@@ -30,3 +30,19 @@ test('theme builder: names.ts lists the 34 tokens theme.css defines', async () =
   expect([...TOKEN_NAMES].sort()).toEqual([...root.matchAll(/--ui-([\w-]+):/g)].map((m) => m[1]).sort())
   expect(TOKEN_NAMES).toHaveLength(34)
 })
+
+test('theme builder: tailwind.css maps every colour token, the radius and the fonts into @theme inline', () => {
+  const tw = read('../src/tailwind.css')
+  expect(tw).toMatch(/@theme inline \{/)
+  const map: Record<string, string> = {
+    background: 'bg', foreground: 'fg', card: 'card', 'card-foreground': 'card-fg', popover: 'popover', 'popover-foreground': 'popover-fg',
+    primary: 'accent', 'primary-foreground': 'accent-fg', secondary: 'secondary', 'secondary-foreground': 'secondary-fg',
+    muted: 'muted-bg', 'muted-foreground': 'muted', accent: 'accent-soft', 'accent-foreground': 'accent-soft-fg',
+    destructive: 'danger', 'destructive-foreground': 'danger-fg', border: 'border', input: 'input', ring: 'ring',
+    sidebar: 'sidebar', 'sidebar-foreground': 'sidebar-fg', 'sidebar-accent': 'sidebar-accent', 'sidebar-accent-foreground': 'sidebar-accent-fg',
+    'sidebar-border': 'sidebar-border', success: 'success', 'success-foreground': 'success-fg', warning: 'warning', 'warning-foreground': 'warning-fg',
+  }
+  for (const [tw_, ui] of Object.entries(map)) expect(tw, tw_).toContain(`--color-${tw_}: var(--ui-${ui});`)
+  expect(tw).toContain('--radius-lg: var(--ui-radius);')
+  for (const [f, ui] of [['sans', 'font'], ['heading', 'font-heading'], ['mono', 'font-mono']]) expect(tw).toContain(`--font-${f}: var(--ui-${ui});`)
+})
