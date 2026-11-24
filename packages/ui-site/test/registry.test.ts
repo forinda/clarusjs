@@ -88,3 +88,28 @@ test('alert: role="alert" only with [live]="true"; variants default, destructive
   expect(await render('alert/alert.tscl', {}, { title: 'Heads up', default: 'Saved.' })).toBe('<div data-part="alert" data-variant="default"><p data-part="title">Heads up</p><div data-part="description">Saved.</div></div>')
   expect(await render('alert/alert.tscl', { live: true, variant: 'destructive' }, { default: 'Failed.' })).toMatch(/^<div role="alert" data-part="alert" data-variant="destructive">|^<div data-part="alert" data-variant="destructive" role="alert">/)
 })
+
+test('separator: role="separator" with aria-orientation; [decorative]="true" renders role="none"', async () => {
+  expect(await render('separator/separator.tscl')).toBe('<div role="separator" aria-orientation="horizontal" data-part="separator" data-orientation="horizontal"></div>')
+  expect(await render('separator/separator.tscl', { orientation: 'vertical' })).toContain('aria-orientation="vertical"')
+  expect(await render('separator/separator.tscl', { decorative: true })).toBe('<div role="none" data-part="separator" data-orientation="horizontal"></div>')
+})
+
+test('skeleton: aria-hidden="true", its width and height as --ui-skeleton-* custom properties', async () => {
+  expect(await render('skeleton/skeleton.tscl', { width: '120px', height: '16px' })).toBe('<div aria-hidden="true" data-part="skeleton" style="--ui-skeleton-w: 120px; --ui-skeleton-h: 16px"></div>')
+})
+
+test('avatar: an <img> with alt when src is given, else the initials from [fallback] in a role="img" <span> named by alt', async () => {
+  expect(await render('avatar/avatar.tscl', { src: '/ada.png', alt: 'Ada Lovelace' })).toBe('<span data-part="avatar"><img src="/ada.png" alt="Ada Lovelace" data-part="avatar-image"></span>')
+  expect(await render('avatar/avatar.tscl', { alt: 'Ada Lovelace', fallback: 'AL' })).toBe('<span data-part="avatar"><span role="img" aria-label="Ada Lovelace" data-part="avatar-fallback">AL</span></span>')
+})
+
+test('kbd: a <kbd>', async () => {
+  expect(await render('kbd/kbd.tscl', {}, { default: 'Ctrl' })).toBe('<kbd data-part="kbd">Ctrl</kbd>')
+})
+
+test('table: a <table> in a scrolling region that is focusable and named; caption renders <caption>', async () => {
+  expect(await render('table/table.tscl', { caption: 'Invoices' }, { default: '<tr><td>1</td></tr>' }))
+    .toBe('<div role="region" aria-label="Invoices" tabindex="0" data-part="table-scroll"><table data-part="table"><caption>Invoices</caption><tr><td>1</td></tr></table></div>')
+  expect(await render('table/table.tscl', { label: 'Orders' }, { default: '' })).toBe('<div role="region" aria-label="Orders" tabindex="0" data-part="table-scroll"><table data-part="table"></table></div>')
+})

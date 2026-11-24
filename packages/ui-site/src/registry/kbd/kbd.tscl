@@ -1,0 +1,20 @@
+{{-- Kbd: a key to press. --}}
+
+<kbd data-part="kbd"><slot /></kbd>
+
+<style scoped>
+  :scope {
+    display: inline-block;
+    min-width: 1.6em;
+    padding: 1px 6px;
+    border: 1px solid var(--ui-border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font:
+      12px/1.5 ui-monospace,
+      monospace;
+    text-align: center;
+  }
+</style>

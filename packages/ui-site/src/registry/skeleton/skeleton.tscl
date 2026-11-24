@@ -1,0 +1,29 @@
+{{-- Skeleton: a placeholder while content loads. Hidden from assistive technology: say "Loading" elsewhere. --}}
+@input width: string = '100%'
+@input height: string = '16px'
+
+<div
+  aria-hidden="true"
+  data-part="skeleton"
+  [style]="'--ui-skeleton-w: ' + width + '; --ui-skeleton-h: ' + height"
+></div>
+
+<style scoped>
+  :scope {
+    width: var(--ui-skeleton-w);
+    height: var(--ui-skeleton-h);
+    border-radius: var(--ui-radius);
+    background: var(--ui-accent-soft);
+    animation: ui-skeleton-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes ui-skeleton-pulse {
+    50% {
+      opacity: 0.5;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :scope {
+      animation: none;
+    }
+  }
+</style>
