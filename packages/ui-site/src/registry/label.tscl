@@ -4,6 +4,7 @@
 <label [for]="control || null" data-part="form-label"><slot /></label>
 
 <style scoped>
+  @layer theme, base, components, utilities;
   @layer components {
     :where(:scope) {
       color: var(--ui-fg);

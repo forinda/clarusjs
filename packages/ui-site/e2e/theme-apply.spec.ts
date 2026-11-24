@@ -17,11 +17,12 @@ test('saved theme: shows in demos from the first paint, not in the site chrome',
 })
 
 test('saved theme: Reset to default theme removes it', async ({ page }) => {
-  await page.addInitScript(([key, css]) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem(key, css); sessionStorage.setItem('seeded', '1') } }, [STORAGE_KEY, red] as const)
+  await page.addInitScript(([key, css]) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem(key, css); localStorage.setItem('ui-theme-source', 'teal~l!accent!%23ff0000'); sessionStorage.setItem('seeded', '1') } }, [STORAGE_KEY, red] as const)
   await page.goto('/components/button')
   await page.getByRole('button', { name: 'Reset to default theme' }).click()
   await expect(page.locator(demoButton).first()).not.toHaveCSS('background-color', 'rgb(255, 0, 0)')
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBeNull()
+  expect(await page.evaluate(() => localStorage.getItem('ui-theme-source'))).toBeNull()
   await expect(page.getByRole('button', { name: 'Reset to default theme' })).toBeHidden()
 })
 
@@ -32,4 +33,11 @@ test('saved theme: with storage blocked, pages render with no error', async ({ p
   await page.goto('/components/button')
   await expect(page.locator('h1')).toHaveText('Button')
   expect(errors).toEqual([])
+})
+
+test('#review: fonts from a saved theme load on component pages', async ({ page }) => {
+  const css = toCss({ light: { ...presets.teal.light, font: "'Inter', system-ui, sans-serif" }, dark: presets.teal.dark }, SCOPE)
+  await page.addInitScript(([key, c]) => localStorage.setItem(key, c), [STORAGE_KEY, css] as const)
+  await page.goto('/components/button')
+  await expect(page.locator('head link[href*="fonts.googleapis.com"][href*="Inter"]')).toHaveCount(1)
 })

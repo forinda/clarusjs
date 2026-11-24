@@ -1,7 +1,7 @@
 {{-- Shown only while a theme from /theme is saved: puts the demos back to the default look. --}}
 
 <script>
-  import { STORAGE_KEY } from '~/theme/apply.ts'
+  import { SOURCE_KEY, STORAGE_KEY } from '~/theme/apply.ts'
   let saved = state(false)
   const check = () => {
     try {
@@ -11,6 +11,7 @@
   function reset() {
     try {
       localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(SOURCE_KEY)
     } catch {}
     document.getElementById('ui-theme')?.remove()
     saved = false

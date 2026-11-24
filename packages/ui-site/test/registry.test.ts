@@ -217,7 +217,7 @@ test('#overrides: every <style scoped>, <style global> and copied .css puts its 
   for (const e of registry) for (const f of e.files) {
     const s = source(f)
     const blocks = f.endsWith('.css') ? [s.replace(/^\/\*[\s\S]*?\*\/\s*/, '')] : [...s.matchAll(/<style (?:scoped|global)>([\s\S]*?)<\/style>/g)].map((m) => m[1]!)
-    for (const b of blocks) expect(b.trim(), f).toMatch(/^(\/\*[\s\S]*?\*\/\s*)?@layer components \{[\s\S]*\}$/)
+    for (const b of blocks) expect(b.trim(), f).toMatch(/^(\/\*[\s\S]*?\*\/\s*)?(@layer theme, base, components, utilities;\s*)?@layer components \{[\s\S]*\}$/)
   }
 })
 
@@ -244,4 +244,12 @@ test('button: with href it renders <a> with the same data attributes', async () 
   expect(await render('button.tscl', {}, { default: 'Go' })).toMatch(/^<button type="button"/)
   expect(await render('button.tscl', { href: 'javascript:alert(1)' }, { default: 'x' })).toContain('href="about:invalid#unsafe"')
   expect(await render('button.tscl', { href: '/d' }, { default: 'x' }, { class: 'mine' })).toMatch(/^<a [^>]*class="[^"]*mine/)
+})
+
+test('#review: every layered block declares Tailwind\'s layer order first', () => {
+  for (const e of registry) for (const f of e.files) {
+    const s = source(f)
+    const blocks = f.endsWith('.css') ? [s.replace(/^\/\*[\s\S]*?\*\/\s*/, '')] : [...s.matchAll(/<style (?:scoped|global)>([\s\S]*?)<\/style>/g)].map((m) => m[1]!.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, ''))
+    for (const b of blocks) expect(b.trim(), f).toMatch(/^@layer theme, base, components, utilities;\s*@layer components \{/)
+  }
 })

@@ -2,6 +2,7 @@
 // only). Turned into theme.css text, a dark set from a light one, a WCAG contrast check, and a compact link.
 import { TOKEN_NAMES } from './names.ts'
 import { presets, type PresetName } from './presets.ts'
+import { FONTS, HEADINGS, MONOS, SHADOWS } from './options.ts'
 
 export type Mode = 'light' | 'dark'
 export type Theme = { light: Record<string, string>; dark: Record<string, string> }
@@ -94,6 +95,26 @@ export function encode(theme: Theme, name: string): string {
   return parts.join('~')
 }
 
+const PX = /^\d{1,2}px$/
+/** A value the builder could have produced: a #rrggbb colour, or one of its font, size, radius or shadow options. */
+function allowed(name: string, value: string, m: 'l' | 'd'): boolean {
+  if (name === 'font') return FONTS.some((f) => f.value === value)
+  if (name === 'font-heading') return HEADINGS.some((f) => f.value === value)
+  if (name === 'font-mono') return MONOS.some((f) => f.value === value)
+  if (name === 'font-size' || name === 'radius') return PX.test(value)
+  if (name === 'shadow') return Object.values(SHADOWS).some((pair) => pair[m === 'l' ? 0 : 1] === value)
+  return HEX.test(value)
+}
+
+/** After decoding: which shadow choice the theme holds, and which dark tokens were set by hand (kept on light edits). */
+export function restore(theme: Theme, base: string = 'teal'): { shadow: keyof typeof SHADOWS; edited: string[] } {
+  const preset = presets[(Object.hasOwn(presets, base) ? base : 'teal') as PresetName]
+  const shadow = (Object.keys(SHADOWS) as (keyof typeof SHADOWS)[]).find((k) => SHADOWS[k][0] === theme.light.shadow && SHADOWS[k][1] === theme.dark.shadow) ?? 'soft'
+  const generated = darkFrom(theme.light)
+  const edited = Object.keys(theme.dark).filter((k) => k !== 'shadow' && theme.dark[k] !== preset.dark[k] && theme.dark[k] !== generated[k])
+  return { shadow, edited }
+}
+
 export function decode(text: string): { base: PresetName; theme: Theme } | null {
   const [base, ...entries] = text.split('~')
   if (!base || !Object.hasOwn(presets, base)) return null
@@ -104,10 +125,8 @@ export function decode(text: string): { base: PresetName; theme: Theme } | null 
     if ((m !== 'l' && m !== 'd') || !name || raw === undefined || !(TOKEN_NAMES as readonly string[]).includes(name)) return null
     let value: string
     try { value = decodeURIComponent(raw) } catch { return null }
-    if (/[;}{<]/.test(value) || value.length > 200) return null
-    const colour = !MODELESS.includes(name) && name !== 'shadow'
-    if (colour && !HEX.test(value)) return null
     if (m === 'd' && MODELESS.includes(name)) return null
+    if (!allowed(name, value, m)) return null
     theme[m === 'l' ? 'light' : 'dark'][name] = value
   }
   return { base: base as PresetName, theme }

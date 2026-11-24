@@ -9,6 +9,7 @@
 ></div>
 
 <style scoped>
+  @layer theme, base, components, utilities;
   @layer components {
     :where(:scope) {
       width: var(--ui-skeleton-w);

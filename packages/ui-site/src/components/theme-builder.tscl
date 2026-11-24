@@ -4,8 +4,9 @@
 <script>
   import { effect } from 'clarusjs/runtime'
   import { presets } from '~/theme/presets.ts'
-  import { MODELESS, PAIRS, contrast, darkFrom, decode, encode, fromOklch, toCss } from '~/theme/model.ts'
-  import { SCOPE, STORAGE_KEY } from '~/theme/apply.ts'
+  import { MODELESS, PAIRS, contrast, darkFrom, decode, encode, fromOklch, restore, toCss } from '~/theme/model.ts'
+  import { SCOPE, SOURCE_KEY, STORAGE_KEY, loadFonts } from '~/theme/apply.ts'
+  import { FONTS, HEADINGS, MONOS, SHADOWS, SIZES } from '~/theme/options.ts'
 
   const PRESETS = ['teal', 'indigo', 'rose', 'amber', 'green', 'neutral'].map((name) => ({
     name,
@@ -63,24 +64,6 @@
       ],
     },
   ]
-  const FONTS = [
-    { label: 'System', value: 'system-ui, sans-serif' },
-    { label: 'Inter', value: "'Inter', system-ui, sans-serif", google: 'Inter' },
-    { label: 'Geist', value: "'Geist', system-ui, sans-serif", google: 'Geist' },
-    { label: 'Lora', value: "'Lora', Georgia, serif", google: 'Lora' },
-    { label: 'Georgia', value: 'Georgia, serif' },
-  ]
-  const HEADINGS = [{ label: 'Same as body', value: 'var(--ui-font)' }, ...FONTS]
-  const MONOS = [
-    { label: 'System mono', value: 'ui-monospace, monospace' },
-    { label: 'JetBrains Mono', value: "'JetBrains Mono', ui-monospace, monospace", google: 'JetBrains Mono' },
-  ]
-  const SIZES = ['13px', '14px', '15px', '16px', '18px']
-  const SHADOWS = {
-    none: ['none', 'none'],
-    soft: [presets.teal.light.shadow, presets.teal.dark.shadow],
-    strong: ['0 16px 40px rgb(0 0 0 / 0.28)', '0 16px 40px rgb(0 0 0 / 0.7)'],
-  }
   const clone = (theme) => ({ light: { ...theme.light }, dark: { ...theme.dark } })
 
   let base = state('teal')
@@ -93,9 +76,8 @@
   let shared = state(false)
   // Saved only after an edit here: opening /theme or a shared link never overwrites a saved theme.
   let dirty = state(false)
-  const SOURCE_KEY = 'ui-theme-source'
   const BG = Object.fromEntries(PAIRS)
-  const ratio = (key) => (BG[key] ? contrast(theme[mode][key], theme[mode][BG[key]]) : 21)
+  const ratio = (key) => (BG[key] ? Math.floor(contrast(theme[mode][key], theme[mode][BG[key]]) * 10) / 10 : 21)
   const low = (key) => ratio(key) < 4.5
 
   function pick(name) {
@@ -117,16 +99,11 @@
       theme = { light, dark: edited.includes(key) ? theme.dark : { ...theme.dark, [key]: darkFrom(light)[key] } }
     }
   }
-  function font(key, value, list) {
+  function font(key, value) {
     set(key, value)
-    const family = list.find((f) => f.value === value)?.google
-    if (!family || document.querySelector(`link[data-font="${family}"]`)) return
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.dataset.font = family
-    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@400;600;700&display=swap`
-    document.head.append(link)
+    loadFonts(value)
   }
+
   function setShadow(name) {
     dirty = true
     shadow = name
@@ -185,6 +162,10 @@
     if (found) {
       base = found.base
       theme = found.theme
+      const back = restore(found.theme, found.base)
+      shadow = back.shadow
+      edited = back.edited
+      loadFonts(Object.values(found.theme.light).join(' '))
     }
   }
   const wire = (el) => {
@@ -259,12 +240,13 @@
             <input
               type="color"
               [id]="'tb-' + tok.key"
+              [aria-describedby]="low(tok.key) ? 'tb-' + tok.key + '-warn' : null"
               [value]="theme[mode][tok.key]"
               (input)="set(tok.key, $event.target.value)"
             />
             <code>{{ theme[mode][tok.key] }}</code>
             <p class="warn" [id]="'tb-' + tok.key + '-warn'" [hidden]="!low(tok.key)">
-              Low contrast ({{ ratio(tok.key).toFixed(1) }}:1, needs 4.5)
+              Low contrast ({{ ratio(tok.key) }}:1, needs 4.5)
             </p>
           </div>
         }
@@ -274,19 +256,19 @@
   <details>
     <summary>Typography</summary>
     <label for="tb-font">Body font</label>
-    <select id="tb-font" (change)="font('font', $event.target.value, FONTS)">
+    <select id="tb-font" (change)="font('font', $event.target.value)">
       @for (f of FONTS; track f.label) {
         <option [value]="f.value" [selected]="theme.light.font === f.value">{{ f.label }}</option>
       }
     </select>
     <label for="tb-heading">Heading font</label>
-    <select id="tb-heading" (change)="font('font-heading', $event.target.value, HEADINGS)">
+    <select id="tb-heading" (change)="font('font-heading', $event.target.value)">
       @for (f of HEADINGS; track f.label) {
         <option [value]="f.value" [selected]="theme.light['font-heading'] === f.value">{{ f.label }}</option>
       }
     </select>
     <label for="tb-mono">Code font</label>
-    <select id="tb-mono" (change)="font('font-mono', $event.target.value, MONOS)">
+    <select id="tb-mono" (change)="font('font-mono', $event.target.value)">
       @for (f of MONOS; track f.label) {
         <option [value]="f.value" [selected]="theme.light['font-mono'] === f.value">{{ f.label }}</option>
       }

@@ -24,6 +24,7 @@
 </div>
 
 <style scoped>
+  @layer theme, base, components, utilities;
   @layer components {
     :where(:scope) {
       max-width: 100%;

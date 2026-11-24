@@ -15,6 +15,7 @@
 }
 
 <style scoped>
+  @layer theme, base, components, utilities;
   @layer components {
     :where(:scope) {
       display: inline-flex;

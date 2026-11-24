@@ -129,3 +129,7 @@ test('theme builder: all rules after the tokens sit in one @layer components; th
   expect(rest).toMatch(/^@layer components \{[\s\S]*\}$/)
   expect(css.slice(0, css.indexOf('@layer'))).not.toContain('/* part: ')
 })
+
+test('#review: ui.css declares Tailwind\'s layer order before anything, so components rank above base wherever it loads', () => {
+  expect(css.replace(/^\/\*[\s\S]*?\*\/\s*/, '').startsWith('@layer theme, base, components, utilities;')).toBe(true)
+})

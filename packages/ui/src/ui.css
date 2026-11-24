@@ -4,6 +4,8 @@
   the --ui- tokens (on :root, or on any element around the parts).
 */
 
+@layer theme, base, components, utilities; /* Tailwind's order, declared first: components always rank above base. */
+
 :root {
   --ui-font: system-ui, sans-serif;
   --ui-font-heading: var(--ui-font);

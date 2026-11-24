@@ -19,6 +19,7 @@
 />
 
 <style scoped>
+  @layer theme, base, components, utilities;
   @layer components {
     :where(:scope) {
       box-sizing: border-box;

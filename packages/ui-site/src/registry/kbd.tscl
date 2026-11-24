@@ -3,6 +3,7 @@
 <kbd data-part="kbd"><slot /></kbd>
 
 <style scoped>
+  @layer theme, base, components, utilities;
   @layer components {
     :where(:scope) {
       display: inline-block;

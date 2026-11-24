@@ -10,6 +10,7 @@
 ></div>
 
 <style scoped>
+  @layer theme, base, components, utilities;
   @layer components {
     :where(:scope) {
       flex-shrink: 0;

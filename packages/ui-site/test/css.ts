@@ -20,7 +20,7 @@ export function globalStyle(source: string, file = '.tscl'): string {
 
 /** The rules inside one wrapping @layer components { … }, collapsed (the text as is when there's none). */
 export function unlayer(collapsed: string): string {
-  const m = /^@layer components \{ ([\s\S]*) \}$/.exec(collapsed)
+  const m = /^(?:@layer theme, base, components, utilities; )?@layer components \{ ([\s\S]*) \}$/.exec(collapsed)
   return m ? m[1]!.trim() : collapsed
 }
 

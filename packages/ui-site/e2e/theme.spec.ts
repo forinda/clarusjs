@@ -168,3 +168,22 @@ test('theme builder: on a phone the controls open in a drawer; no sideways scrol
   expect(await axeViolations(page)).toEqual([])
   await page.context().close()
 })
+
+test('#review: a shared link with a font, a shadow and a dark override restores all three', async ({ page }) => {
+  await page.goto("/theme?t=teal~l!font!'Lora'%2C%20Georgia%2C%20serif~l!shadow!none~d!shadow!none~d!accent!%23abcdef")
+  await page.locator('.theme-builder[data-ready]').waitFor()
+  await expect(page.locator('head link[href*="fonts.googleapis.com"][href*="Lora"]')).toHaveCount(1)
+  await page.locator('summary', { hasText: 'Shape' }).click()
+  await expect(page.getByLabel('Shadow')).toHaveValue('none')
+  await page.getByLabel('Accent', { exact: true }).fill('#123456')
+  await page.getByRole('button', { name: 'Dark' }).click()
+  expect(await token(page, 'accent')).toBe('#abcdef')
+})
+
+test('#review: the contrast warning describes its colour input', async ({ page }) => {
+  await openBuilder(page)
+  const input = page.getByLabel('Accent text', { exact: true })
+  await expect(input).not.toHaveAttribute('aria-describedby')
+  await input.fill('#0b6e70')
+  await expect(input).toHaveAttribute('aria-describedby', 'tb-accent-fg-warn')
+})

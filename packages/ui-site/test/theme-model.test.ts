@@ -44,7 +44,7 @@ test('darkFrom turns a light background dark and a dark foreground light', () =>
 })
 
 test('encode/decode round-trip an edited preset, carrying only changed tokens', () => {
-  const t: Theme = { light: { ...presets.indigo.light, accent: '#123456', font: "'Inter', sans-serif" }, dark: { ...presets.indigo.dark, bg: '#000000' } }
+  const t: Theme = { light: { ...presets.indigo.light, accent: '#123456', font: "'Inter', system-ui, sans-serif" }, dark: { ...presets.indigo.dark, bg: '#000000' } }
   const text = encode(t, 'indigo')
   expect(text.length).toBeLessThan(200)
   expect(decode(text)).toEqual({ base: 'indigo', theme: t })
@@ -60,4 +60,16 @@ test('every preset passes AA on every PAIR in both modes', () => {
   for (const [name, t] of Object.entries(presets)) for (const mode of ['light', 'dark'] as const) {
     for (const [fg, bg] of PAIRS) expect(contrast(t[mode][fg]!, t[mode][bg]!), `${name} ${mode} ${fg}/${bg}`).toBeGreaterThanOrEqual(4.5)
   }
+})
+
+test('#review: decode only accepts the fonts, sizes, radii and shadows the builder offers', () => {
+  for (const bad of ['teal~l!font!Comic%20Sans', 'teal~l!font!a%2F*b', 'teal~l!font-size!14em', 'teal~l!radius!1px%20(', 'teal~l!shadow!0%200%20red', 'teal~d!shadow!x']) expect(decode(bad), bad).toBeNull()
+  expect(decode("teal~l!font!'Inter'%2C%20system-ui%2C%20sans-serif~l!font-size!16px~l!radius!12px~l!shadow!none~d!shadow!none")).not.toBeNull()
+})
+
+test('#review: restore() recovers the shadow choice and which dark tokens were set by hand', async () => {
+  const { restore } = await import('../src/theme/model.ts')
+  const t = { light: { ...presets.teal.light, shadow: 'none' }, dark: { ...presets.teal.dark, shadow: 'none', bg: '#000000' } }
+  expect(restore(t)).toEqual({ shadow: 'none', edited: ['bg'] })
+  expect(restore(presets.teal)).toEqual({ shadow: 'soft', edited: [] })
 })
