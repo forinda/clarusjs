@@ -27,3 +27,19 @@ pnpm add @clarusjs/ui-primitives
 | `position(floating, anchor, { side, align, offset, flip })` | places a popup by its anchor, in the window; `data-side` and CSS variables |
 
 Each is its own module (all six: about 2.3 KB gzip), with no dependencies. Guide: https://clarusjs.com/guide/ui-primitives
+
+## Parts
+
+Headless `.tscl` components on the platform's own elements, no styles. Import them under your own names:
+
+```tscl
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+```
+
+| Part | Built on |
+|---|---|
+| `dialog`, `dialog-trigger`, `dialog-close` | `<dialog>` and command invokers (`commandfor`): no JavaScript |
+| `popover`, `popover-trigger` | the `popover` attribute and CSS anchor positioning: no JavaScript |
+| `accordion-item` | `<details name>`: no JavaScript |
+| `switch`, `checkbox` | a native checkbox in its label, `[(checked)]` |
+| `field` | label, input, description and error wired by id; Base UI's `data-touched`, `data-dirty`, `data-invalid` |

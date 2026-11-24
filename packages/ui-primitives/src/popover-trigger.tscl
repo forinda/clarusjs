@@ -1,0 +1,4 @@
+{{-- Toggles the popover whose id is `target` (popovertarget), and is its anchor: no JavaScript. --}}
+@input target: string
+
+<button type="button" [popovertarget]="target" [style]="'anchor-name: --' + target" data-part="trigger"><slot /></button>

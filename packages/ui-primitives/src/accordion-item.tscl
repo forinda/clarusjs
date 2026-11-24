@@ -1,0 +1,16 @@
+{{--
+  Accordion item (#465): <details> and <summary>. Items with the same `group` are exclusive (the name attribute): one
+  open at a time. No JavaScript; find-in-page opens a closed one. Style it with details[open].
+
+  <accordion-item group="faq" [open]="true">
+    @slot('trigger') { Is it free? }
+    Yes.
+  </accordion-item>
+--}}
+@input group: string = ''
+@input open: boolean = false
+
+<details [name]="group || false" [open]="open" data-part="accordion-item">
+  <summary data-part="trigger"><slot name="trigger" /></summary>
+  <div data-part="panel"><slot /></div>
+</details>

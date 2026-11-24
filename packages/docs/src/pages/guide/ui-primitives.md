@@ -2,7 +2,7 @@
 title: "UI primitives"
 group: "Interactivity"
 order: 11
-description: "Accessible behaviours from @clarusjs/ui-primitives, handed elements with [use]: roving focus, typeahead, dismiss, enter and exit, focus return and positioning."
+description: "Accessible behaviours and headless parts from @clarusjs/ui-primitives: roving focus, typeahead, dismiss, transitions and positioning with [use]; dialog, popover, accordion, switch, checkbox and field."
 ---
 
 # UI primitives
@@ -70,4 +70,35 @@ Each is its own module, so an island ships only the ones it imports (all six are
 
 `position(floating, anchor, { side, align, offset, flip })` places `floating` next to `anchor` (fixed), inside the window, on scroll and resize too, and flips to the other side when there's no room. It sets `data-side` and `data-align`, and the CSS variables `--anchor-width`, `--anchor-height`, `--available-width`, `--available-height` and `--transform-origin`.
 
-These are the first part of a component library: headless parts built on them (and on the platform: `<dialog>`, the `popover` attribute) come next.
+## Parts
+
+Headless components in the same package, as `.tscl` files: they render the platform's own elements with their ARIA and state attributes, and no styles. Import them under a name of your own (`<dialog>` and `<switch>` are already HTML and SVG tags):
+
+```tscl
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+@import uiDialogClose from '@clarusjs/ui-primitives/dialog-close.tscl'
+
+<uiDialogTrigger target="confirm">Delete file…</uiDialogTrigger>
+<uiDialog id="confirm">
+  @slot('title') { Delete this file? }
+  <p>It can't be undone.</p>
+  <uiDialogClose target="confirm">Cancel</uiDialogClose>
+</uiDialog>
+```
+
+<partsDemo />
+
+| Part | Built on | JavaScript |
+|---|---|---|
+| `dialog.tscl`, `dialog-trigger.tscl`, `dialog-close.tscl` | `<dialog>` opened with the browser's command invokers (`commandfor`, `command="show-modal"`); focus kept in it, the page inert, Escape and (`dismissible`) a click outside close it | none |
+| `popover.tscl`, `popover-trigger.tscl` | the `popover` attribute and `popovertarget`, placed by CSS anchor positioning (`side`, `align`), flipping when there's no room | none |
+| `accordion-item.tscl` | `<details>`; the same `group` makes items exclusive | none |
+| `switch.tscl`, `checkbox.tscl` | a native checkbox in its label (`role="switch"` for the switch), `[(checked)]` | a small island |
+| `field.tscl` | label, input, description and error wired by id; the error shows once left, or with `[show]` | a small island |
+
+- **Style them from their attributes:** `data-part` names each element; state is in the platform's own (`dialog[open]`, `:popover-open`, `details[open]`, `:checked`) and in Base UI's `data-` names where it isn't (`data-checked`, `data-disabled`, `data-side`, `data-align`; on a field, `data-touched`, `data-dirty`, `data-filled`, `data-invalid`).
+- **Attributes you add land on their root** (`id`, `aria-*`, `data-*`: see [Attributes on a component](/guide/components#attributes-on-a-component)), and a `class` merges.
+- **Field sends `(blur)`** ([component events](/guide/events#from-a-child-island-to-its-parent)).
+
+Tabs, menus and tooltips, which need JavaScript around content you write, come next.

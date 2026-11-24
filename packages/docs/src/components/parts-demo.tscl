@@ -1,0 +1,98 @@
+{{-- The UI primitives guide's parts demo: a dialog, a popover and an accordion with no JavaScript of their own, and a
+     switch and a field (small islands) bound to this one's state. --}}
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+@import uiDialogClose from '@clarusjs/ui-primitives/dialog-close.tscl'
+@import uiPopover from '@clarusjs/ui-primitives/popover.tscl'
+@import uiPopoverTrigger from '@clarusjs/ui-primitives/popover-trigger.tscl'
+@import uiAccordionItem from '@clarusjs/ui-primitives/accordion-item.tscl'
+@import uiSwitch from '@clarusjs/ui-primitives/switch.tscl'
+@import uiField from '@clarusjs/ui-primitives/field.tscl'
+
+<script>
+  let wifi = state(true)
+  let email = state('')
+</script>
+
+<div class="parts-demo">
+  <div class="row">
+    <uiDialogTrigger target="parts-dialog">Delete file…</uiDialogTrigger>
+    <uiDialog id="parts-dialog">
+      @slot('title') {
+        Delete this file?
+      }
+      <p>It can't be undone.</p>
+      <uiDialogClose target="parts-dialog">Cancel</uiDialogClose>
+    </uiDialog>
+    <uiPopoverTrigger target="parts-popover">Share</uiPopoverTrigger>
+    <uiPopover id="parts-popover" side="bottom" align="start">
+      <p>Copy the link, or send it by email.</p>
+    </uiPopover>
+  </div>
+  <div class="accordion">
+    <uiAccordionItem group="parts-faq" [open]="true">
+      @slot('trigger') {
+        Does this need JavaScript?
+      }
+      No: it's a details element.
+    </uiAccordionItem>
+    <uiAccordionItem group="parts-faq">
+      @slot('trigger') {
+        Can two be open?
+      }
+      Not in the same group: opening one closes the other.
+    </uiAccordionItem>
+  </div>
+  <uiSwitch label="Wi-Fi" [(checked)]="wifi" />
+  <p class="parts-wifi">Wi-Fi is {{ wifi ? 'on' : 'off' }}.</p>
+  <uiField
+    id="parts-email"
+    label="Email"
+    type="email"
+    description="We never share it."
+    [error]="email.includes('@') ? '' : 'Enter an email address.'"
+    [(value)]="email"
+  />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+  [data-part='popover'] {
+    margin: 4px 0;
+    padding: 12px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  dialog[open] {
+    padding: 16px 20px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+  p {
+    margin: 0;
+  }
+</style>
+
+<style global>
+  /* Inside the field (its own island): the demo's look for its parts. */
+  .parts-demo [data-part='error'] {
+    margin: 4px 0 0;
+    color: var(--danger, #b42318);
+  }
+  .parts-demo [data-part='description'] {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+</style>

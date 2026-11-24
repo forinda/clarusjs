@@ -1,0 +1,14 @@
+{{--
+  Switch (#465): a native checkbox with role="switch" inside its label, so it submits with its form and works with the
+  keyboard as is. Bind it two ways: <switch label="Wi-Fi" [(checked)]="settings.wifi" />. data-checked and
+  data-disabled on the label are for styling.
+--}}
+@input label: string
+@input name: string = ''
+@input disabled: boolean = false
+@model checked: boolean = false
+
+<label data-part="switch" [data-checked]="checked ? '' : false" [data-disabled]="disabled ? '' : false">
+  <input type="checkbox" role="switch" [name]="name || false" [disabled]="disabled" [(checked)]="checked" />
+  <span data-part="label">{{ label }}</span>
+</label>

@@ -2499,3 +2499,37 @@ test('#464 ui-primitives: roving focus, typeahead, and a popover that positions,
   await expect(demo.getByRole('dialog')).toHaveCount(0)
   await expect(demo.locator('.primitives-closed')).toHaveText('Closed by outside-press.')
 })
+
+test('#465 parts: dialog and popover open with no JavaScript of their own, the accordion is exclusive, switch and field are wired', async ({ page }) => {
+  await page.goto('/guide/ui-primitives#parts')
+  const demo = page.locator('.parts-demo')
+  await expect(demo.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+  await demo.getByRole('button', { name: 'Delete file…' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Delete this file?' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused() // modal: focus moved in
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await demo.getByRole('button', { name: 'Share' }).click()
+  const popover = demo.locator('#parts-popover')
+  await expect(popover).toBeVisible()
+  await page.locator('h1').click() // light dismiss
+  await expect(popover).toBeHidden()
+  const [first, second] = [demo.locator('details').first(), demo.locator('details').nth(1)]
+  await expect(first).toHaveAttribute('open', '')
+  await second.locator('summary').click()
+  await expect(second).toHaveAttribute('open', '')
+  await expect(first).not.toHaveAttribute('open', '') // exclusive
+  const wifi = demo.getByRole('switch', { name: 'Wi-Fi' })
+  await wifi.click()
+  await expect(demo.locator('.parts-wifi')).toHaveText('Wi-Fi is off.')
+  await expect(demo.locator('[data-part="switch"]')).not.toHaveAttribute('data-checked', '')
+  const email = demo.getByLabel('Email')
+  await expect(email).toHaveAttribute('aria-describedby', 'parts-email-description')
+  await email.fill('ada')
+  await email.blur()
+  await expect(demo.getByRole('alert')).toHaveText('Enter an email address.')
+  await expect(email).toHaveAttribute('aria-invalid', 'true')
+  await email.fill('ada@example.com')
+  await expect(demo.getByRole('alert')).toHaveCount(0)
+})
