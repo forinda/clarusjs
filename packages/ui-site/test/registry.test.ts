@@ -117,6 +117,6 @@ test('table: a <table> in a scrolling region that is focusable and named; captio
 
 test('a styled part\'s <style global> equals ui.css\'s sections for it, in order', () => {
   const styled = registry.filter((e) => e.sections?.length)
-  expect(styled.map((e) => e.name)).toEqual(expect.arrayContaining(['accordion', 'checkbox', 'switch', 'radio-group', 'field', 'dialog', 'popover', 'tooltip', 'menu']))
+  expect(styled.map((e) => e.name)).toEqual(expect.arrayContaining(['accordion', 'checkbox', 'switch', 'radio-group', 'field', 'dialog', 'popover', 'tooltip', 'menu', 'tabs', 'select', 'combobox']))
   for (const e of styled) expect(globalStyle(source(`${e.name}/${e.files[0]}`), e.files[0]), e.name).toBe(e.sections!.map(uiSection).join(' '))
 })

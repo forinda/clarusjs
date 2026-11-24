@@ -86,3 +86,33 @@ test('menu: opens, arrow keys move, Escape closes and returns focus', async ({ p
   await expect(page.locator('.demo [data-part="menu-list"]')).toBeHidden()
   await expect(trigger).toBeFocused()
 })
+
+test('tabs: select by click and arrow keys; the panel follows', async ({ page }) => {
+  await page.goto('/components/tabs')
+  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
+  const tab = (name: string) => page.getByRole('tab', { name, exact: true })
+  await tab('pnpm').click()
+  await expect(tab('pnpm')).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tabpanel')).toContainText('pnpm add clarusjs')
+  await page.keyboard.press('ArrowRight')
+  await expect(tab('yarn')).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tabpanel')).toContainText('yarn add clarusjs')
+})
+
+test('select: changes its value', async ({ page }) => {
+  await page.goto('/components/select')
+  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
+  await page.locator('.demo select').selectOption('l')
+  await expect(page.locator('.demo .out')).toHaveText('l')
+})
+
+test('combobox: filters as you type, and Enter picks', async ({ page }) => {
+  await page.goto('/components/combobox')
+  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
+  const input = page.getByRole('combobox')
+  await input.fill('ban')
+  await expect(page.getByRole('option')).toHaveText(['Banana'])
+  await input.press('ArrowDown')
+  await input.press('Enter')
+  await expect(page.locator('.demo .out')).toHaveText('banana')
+})
