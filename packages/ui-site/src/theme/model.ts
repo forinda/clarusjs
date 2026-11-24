@@ -85,7 +85,8 @@ export function contrast(fg: string, bg: string): number {
 
 // A link carries the preset and only the tokens that differ from it: base~l!name!value~d!name!value (values
 // URI-encoded). Decoding accepts known names only, #rrggbb for colours, and no ; } or < anywhere.
-export function encode(theme: Theme, base: PresetName): string {
+export function encode(theme: Theme, name: string): string {
+  const base: PresetName = Object.hasOwn(presets, name) ? (name as PresetName) : 'teal'
   const parts: string[] = [base]
   for (const [mode, m] of [['light', 'l'], ['dark', 'd']] as const) {
     for (const [k, v] of Object.entries(theme[mode])) if (presets[base][mode][k] !== v) parts.push(`${m}!${k}!${encodeURIComponent(v)}`)

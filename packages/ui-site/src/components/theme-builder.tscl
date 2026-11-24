@@ -4,7 +4,8 @@
 <script>
   import { effect } from 'clarusjs/runtime'
   import { presets } from '~/theme/presets.ts'
-  import { MODELESS, darkFrom, fromOklch, toCss } from '~/theme/model.ts'
+  import { MODELESS, PAIRS, contrast, darkFrom, decode, encode, fromOklch, toCss } from '~/theme/model.ts'
+  import { SCOPE, STORAGE_KEY } from '~/theme/apply.ts'
 
   const PRESETS = ['teal', 'indigo', 'rose', 'amber', 'green', 'neutral'].map((name) => ({
     name,
@@ -89,14 +90,23 @@
   let edited = state([])
   let shadow = state('soft')
   let copied = state(false)
+  let shared = state(false)
+  // Saved only after an edit here: opening /theme or a shared link never overwrites a saved theme.
+  let dirty = state(false)
+  const SOURCE_KEY = 'ui-theme-source'
+  const BG = Object.fromEntries(PAIRS)
+  const ratio = (key) => (BG[key] ? contrast(theme[mode][key], theme[mode][BG[key]]) : 21)
+  const low = (key) => ratio(key) < 4.5
 
   function pick(name) {
+    dirty = true
     base = name
     theme = clone(presets[name])
     edited = []
     shadow = 'soft'
   }
   function set(key, value) {
+    dirty = true
     if (MODELESS.includes(key)) {
       theme = { light: { ...theme.light, [key]: value }, dark: theme.dark }
     } else if (mode === 'dark') {
@@ -118,10 +128,12 @@
     document.head.append(link)
   }
   function setShadow(name) {
+    dirty = true
     shadow = name
     theme = { light: { ...theme.light, shadow: SHADOWS[name][0] }, dark: { ...theme.dark, shadow: SHADOWS[name][1] } }
   }
   function shuffle() {
+    dirty = true
     const h = Math.random() * Math.PI * 2
     const tint = (set, accent, fg, soft) => ({
       ...set,
@@ -138,8 +150,22 @@
       dark: tint(theme.dark, fromOklch([0.78, 0.13, h]), theme.dark.bg, fromOklch([0.27, 0.05, h])),
     }
   }
+  function openPanel() {
+    const panel = document.getElementById('tb-panel')
+    if (panel instanceof HTMLDialogElement) {
+      panel.close()
+      panel.showModal()
+    }
+  }
   function reset() {
     pick(base)
+  }
+  async function share() {
+    try {
+      await navigator.clipboard.writeText(`${location.origin}/theme?t=${encodeURIComponent(encode(theme, base))}`)
+      shared = true
+      setTimeout(() => (shared = false), 1500)
+    } catch {}
   }
   async function copy() {
     try {
@@ -148,7 +174,24 @@
       setTimeout(() => (copied = false), 1500)
     } catch {}
   }
+  const load = () => {
+    let text = new URLSearchParams(location.search).get('t')
+    if (text === null) {
+      try {
+        text = localStorage.getItem(SOURCE_KEY)
+      } catch {}
+    }
+    const found = text ? decode(text) : null
+    if (found) {
+      base = found.base
+      theme = found.theme
+    }
+  }
   const wire = (el) => {
+    load()
+    // The panel is a <dialog>: inline (open, non-modal) on wide screens; on a phone a drawer opened with showModal().
+    const reopen = () => el.setAttribute('open', '')
+    el.addEventListener('close', reopen)
     // Start in the mode the site shows.
     const root = document.documentElement.dataset.theme
     if (root === 'dark' || (root !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) mode = 'dark'
@@ -159,8 +202,19 @@
       for (const [key, value] of Object.entries(values)) preview.style.setProperty(`--ui-${key}`, String(value))
       preview.style.maxWidth = narrow ? '390px' : ''
     })
+    const save = effect(() => {
+      if (!dirty) return
+      try {
+        localStorage.setItem(STORAGE_KEY, toCss(theme, SCOPE))
+        localStorage.setItem(SOURCE_KEY, encode(theme, base))
+      } catch {}
+    })
     el.setAttribute('data-ready', '')
-    return stop
+    return () => {
+      stop()
+      save()
+      el.removeEventListener('close', reopen)
+    }
   }
 </script>
 
@@ -169,6 +223,7 @@
     <button type="button" [aria-pressed]="String(mode === 'light')" (click)="mode = 'light'">Light</button>
     <button type="button" [aria-pressed]="String(mode === 'dark')" (click)="mode = 'dark'">Dark</button>
   </div>
+  <button type="button" class="customize" aria-haspopup="dialog" (click)="openPanel()">Customize</button>
   <div class="seg">
     <button type="button" aria-label="Desktop width" [aria-pressed]="String(!narrow)" (click)="narrow = false">
       Desktop
@@ -179,7 +234,7 @@
   </div>
 </div>
 
-<div class="theme-builder" [use]="wire">
+<dialog class="theme-builder" id="tb-panel" open aria-label="Theme controls" [use]="wire">
   <h2 class="tb-title">Presets</h2>
   <div class="presets" role="group" aria-label="Presets">
     @for (p of PRESETS; track p.name) {
@@ -208,6 +263,9 @@
               (input)="set(tok.key, $event.target.value)"
             />
             <code>{{ theme[mode][tok.key] }}</code>
+            <p class="warn" [id]="'tb-' + tok.key + '-warn'" [hidden]="!low(tok.key)">
+              Low contrast ({{ ratio(tok.key).toFixed(1) }}:1, needs 4.5)
+            </p>
           </div>
         }
       </fieldset>
@@ -262,11 +320,30 @@
     <button type="button" class="primary" (click)="copy()">{{ copied ? 'Copied' : 'Copy CSS' }}</button>
     <button type="button" (click)="shuffle()">Shuffle</button>
     <button type="button" (click)="reset()">Reset</button>
+    <button type="button" (click)="share()">{{ shared ? 'Link copied' : 'Share link' }}</button>
   </div>
-</div>
+  <form method="dialog" class="tb-close"><button>Close</button></form>
+</dialog>
 
 <style scoped>
-  .theme-builder {
+  .warn {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--ui-danger, #b42318);
+    font-size: 12px;
+  }
+  .warn[hidden] {
+    display: none;
+  }
+  :scope.theme-builder {
+    position: static;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
     display: grid;
     gap: 12px;
     align-content: start;
@@ -333,7 +410,7 @@
     flex-wrap: wrap;
     gap: 8px;
   }
-  .tb-toolbar {
+  :scope.tb-toolbar {
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
@@ -352,5 +429,30 @@
   .primary {
     background: color-mix(in srgb, currentColor 14%, transparent);
     font-weight: 600;
+  }
+  .customize,
+  .tb-close {
+    display: none;
+  }
+  @media (max-width: 959px) {
+    .customize,
+    .tb-close {
+      display: block;
+    }
+    :scope.theme-builder:not(:modal) {
+      display: none;
+    }
+    :scope.theme-builder:modal {
+      position: fixed;
+      inset: 0 0 0 auto;
+      width: min(360px, 100vw);
+      height: 100dvh;
+      max-height: none;
+      overflow: auto;
+      padding: 16px;
+      background: Canvas;
+      color: CanvasText;
+      border-left: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+    }
   }
 </style>

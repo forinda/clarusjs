@@ -13,7 +13,7 @@ test('/theme: renders the preview; its menu and dialog work', async ({ page }) =
   await preview.getByRole('button', { name: 'Invite people' }).click()
   await expect(page.getByRole('dialog', { name: 'Invite people' })).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(page.getByRole('dialog', { name: 'Invite people' })).toBeHidden()
 })
 
 for (const mode of modes) {
@@ -104,4 +104,67 @@ test('theme builder: the phone toggle narrows the preview to 390px', async ({ pa
   expect(await page.locator('[data-ui-preview]').evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(390)
   await page.getByRole('button', { name: 'Desktop width' }).click()
   expect(await page.locator('[data-ui-preview]').evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThan(390)
+})
+
+test('theme builder: an edit is saved and shows on component pages', async ({ page }) => {
+  await openBuilder(page)
+  await page.getByLabel('Accent', { exact: true }).fill('#123456')
+  await page.goto('/components/button')
+  await expect(page.locator('.demo [data-part="button"][data-variant="default"]').first()).toHaveCSS('background-color', 'rgb(18, 52, 86)')
+})
+
+test('theme builder: Share copies a /theme?t= link that opens the same theme without saving it', async ({ page, context, browser }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await openBuilder(page)
+  await page.getByRole('button', { name: 'Indigo preset' }).click()
+  await page.getByLabel('Accent', { exact: true }).fill('#123456')
+  await page.getByRole('button', { name: 'Share link' }).click()
+  const link = await page.evaluate(() => navigator.clipboard.readText())
+  expect(link).toMatch(/\/theme\?t=indigo/)
+  const fresh = await (await browser.newContext()).newPage()
+  await fresh.goto(new URL(link).pathname + new URL(link).search)
+  await fresh.locator('.theme-builder[data-ready]').waitFor()
+  expect(await token(fresh, 'accent')).toBe('#123456')
+  expect(await fresh.evaluate(() => localStorage.getItem('ui-theme'))).toBeNull()
+  await fresh.context().close()
+})
+
+test('theme builder: a malformed t= opens the default preset with no error', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await page.goto('/theme?t=%7Bbad')
+  await page.locator('.theme-builder[data-ready]').waitFor()
+  expect(await token(page, 'accent')).toBe('#0b6e70')
+  expect(errors).toEqual([])
+})
+
+test('theme builder: a failing pair shows a warning next to its control, in the mode being edited', async ({ page }) => {
+  await openBuilder(page)
+  const warning = page.locator('#tb-accent-fg-warn')
+  await expect(warning).toBeHidden()
+  await page.getByLabel('Accent text', { exact: true }).fill('#0b6e70')
+  await expect(warning).toBeVisible()
+  await expect(warning).toContainText('Low contrast')
+  await page.getByLabel('Accent text', { exact: true }).fill('#ffffff')
+  await expect(warning).toBeHidden()
+  await page.getByRole('button', { name: 'Dark' }).click()
+  await page.getByLabel('Accent text', { exact: true }).fill('#4cc9cb')
+  await expect(warning).toBeVisible()
+})
+
+test('theme builder: on a phone the controls open in a drawer; no sideways scroll', async ({ browser }) => {
+  const page = await (await browser.newContext({ viewport: { width: 390, height: 800 } })).newPage()
+  await page.goto('/theme')
+  await page.locator('.theme-builder[data-ready]').waitFor({ state: 'attached' })
+  await expect(page.getByLabel('Accent', { exact: true })).toBeHidden()
+  const open = page.getByRole('button', { name: 'Customize' })
+  await open.click()
+  await expect(page.getByLabel('Accent', { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByLabel('Accent', { exact: true })).toBeHidden()
+  await expect(open).toBeFocused()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await open.click()
+  expect(await axeViolations(page)).toEqual([])
+  await page.context().close()
 })
