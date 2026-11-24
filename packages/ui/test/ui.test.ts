@@ -145,3 +145,11 @@ test('#review: sheets size with border-box and inset, not 100vw', () => {
   expect(sheet).toContain('box-sizing: border-box')
   expect(sheet).not.toContain('100vw;')
 })
+
+test('toast kinds: success, error, info, warning tint the toast from their tokens; the kind word is read, not shown', () => {
+  const toast = css.slice(css.indexOf('/* part: toast */'), css.indexOf('/* end part */', css.indexOf('/* part: toast */')))
+  for (const [kind, token] of [['success', 'success'], ['error', 'danger'], ['warning', 'warning'], ['info', 'accent']]) {
+    expect(toast, kind).toMatch(new RegExp(`\\[data-type='${kind}'\\][^{]*\\{[^}]*var\\(--ui-${token}\\)`))
+  }
+  expect(toast).toMatch(/:where\(\[data-part='toast-kind'\]\) \{[^}]*clip-path: inset\(50%\)/)
+})

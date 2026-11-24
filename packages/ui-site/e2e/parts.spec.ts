@@ -206,3 +206,13 @@ test('sidebar: on a phone the trigger opens it as a panel; Escape closes it', as
   await expect(nav).toBeHidden()
   await page.context().close()
 })
+
+test('toast kinds: each kind is tinted, has its icon, and says its kind to screen readers', async ({ page }) => {
+  await page.goto('/components/toast')
+  await page.locator('cl-island[c="toast-demo"][data-cl-ready]').waitFor({ state: 'attached' })
+  await page.locator('.demo').getByRole('button', { name: 'Fail' }).click()
+  const item = page.locator('[data-part="toast"][data-type="error"]')
+  await expect(item).toContainText('Error:')
+  await expect(item).toContainText('Upload failed')
+  await expect(item.locator('[data-part="toast-icon"] svg')).toHaveCount(1)
+})

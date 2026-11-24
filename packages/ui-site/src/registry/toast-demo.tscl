@@ -1,10 +1,28 @@
+{{-- Toasts of each kind. Your own look: give the region templates (one root element each: it becomes the toast),
+     and it copies them for each toast.
+
+     <toastRegion>
+       @slot('toast') {
+         <div class="my-toast">
+           <span data-part="toast-icon"></span>
+           <p data-part="toast-message"></p>
+           <button type="button" data-part="toast-action"></button>
+           <button type="button" data-part="toast-close" aria-label="Dismiss">×</button>
+         </div>
+       }
+       @slot('error') { … the same parts, another look for errors … }
+     </toastRegion>
+--}}
 @import './toast.css'
 @import uiButton from './button.tscl'
 
 <script>
   import { toast } from '@clarusjs/ui-primitives'
   let removed = state(0)
-  const save = () => toast('Saved')
+  const save = () => toast('Saved', { type: 'success' })
+  const fail = () => toast('Upload failed', { type: 'error' })
+  const note = () => toast('A new version is ready', { type: 'info' })
+  const warn = () => toast('Storage almost full', { type: 'warning' })
   function remove() {
     removed++
     toast('Project deleted', { action: { label: 'Undo', onClick: () => removed-- } })
@@ -13,6 +31,9 @@
 
 <div class="demo">
   <uiButton (click)="save()">Save</uiButton>
+  <uiButton variant="outline" (click)="fail()">Fail</uiButton>
+  <uiButton variant="outline" (click)="note()">Info</uiButton>
+  <uiButton variant="outline" (click)="warn()">Warn</uiButton>
   <uiButton variant="outline" (click)="remove()">Delete project</uiButton>
   <p>
     Deleted: <span class="out">{{ removed }}</span>

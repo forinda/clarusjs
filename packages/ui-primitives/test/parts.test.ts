@@ -228,3 +228,10 @@ test('sidebar trigger: a button naming the sidebar it controls; a small island',
 test('#review: the sidebar trigger is a popover invoker with aria-expanded', async () => {
   expect(await render('sidebar-trigger', { target: 'app-nav' }, { default: 'Menu' })).toBe('<button type="button" aria-controls="app-nav" popovertarget="app-nav" aria-expanded="true" data-part="sidebar-trigger">Menu</button>')
 })
+
+test('toast region: each slot renders into a <template> the region clones per toast', async () => {
+  const html = await render('toast-region', {}, { toast: '<div class="mine">x</div>', error: '<div class="err">e</div>' })
+  expect(html).toContain('<template data-type="toast"><div class="mine">x</div></template>')
+  expect(html).toContain('<template data-type="error"><div class="err">e</div></template>')
+  expect(html).toContain('<template data-type="success"></template>')
+})
