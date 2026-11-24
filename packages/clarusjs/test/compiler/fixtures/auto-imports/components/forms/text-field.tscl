@@ -1,0 +1,2 @@
+@input label: string
+<label class="field">{{ label }} <slot /></label>

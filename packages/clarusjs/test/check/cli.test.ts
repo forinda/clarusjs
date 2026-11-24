@@ -420,3 +420,20 @@ test("a project's own lint rules run in check", () => {
     { file: 'src/pages/index.tscl', line: 1, column: 4, severity: 'warning', code: 'no-inline-style', message: 'inline style' },
   ])
 })
+
+test('#458 automatic imports: a component used by name is checked like an imported one', () => {
+  const root = project({
+    'src/components/forms/text-field.tscl': '@input label: string\n<b>{{ label }}</b>\n',
+    'src/components/a/date-field.tscl': '<i></i>\n',
+    'src/components/b/date-field.tscl': '<i></i>\n',
+    'src/pages/index.tscl': `<text-field [label]="'ok'" />\n<forms-text-field [label]="1" />\n<my-widget></my-widget>\n`,
+    'src/pages/other.tscl': '<p>\n  <date-field />\n</p>\n',
+  })
+  const result = check({ root, typescript })
+  expect(result.diagnostics).toEqual([
+    expect.objectContaining({ file: 'src/pages/index.tscl', line: 2, code: 'TS2322' }), // a number for a string input
+    expect.objectContaining({ file: 'src/pages/other.tscl', line: 2, column: 3, code: 'clarus', message: expect.stringMatching(/<date-field> could be/) }),
+  ])
+  // Off: the tags are plain HTML again.
+  expect(check({ root, typescript, components: { auto: false } }).diagnostics).toEqual([])
+})

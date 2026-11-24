@@ -119,3 +119,16 @@ test('binding forms of HTML attributes, as extra HTML data (textarea and select 
   for (const tag of ['textarea', 'select']) expect(names(tag)).toEqual(expect.arrayContaining(['[value]', '[(value)]']))
   expect(names('div')).not.toContain('[(value)]')
 })
+
+test('#458 automatic components: completed, hovered and followed by name, without @import', async () => {
+  const { root, project, at } = await setup()
+  mkdirSync(resolve(root, 'src/components/forms'), { recursive: true })
+  writeFileSync(resolve(root, 'src/components/forms/text-field.tscl'), '@input label: string\n<b>{{ label }}</b>\n')
+  project.update(resolve(root, 'src/components/forms/text-field.tscl'), '@input label: string\n<b>{{ label }}</b>\n')
+  expect(labels(at('<§', completions))).toEqual(expect.arrayContaining(['text-field', 'forms-text-field']))
+  expect(labels(at('<text-field §', completions))).toContain('[label]')
+  const shown = at(`<text-fi§eld [label]="'x'" />\n`, hover)?.contents as { value: string }
+  expect(shown.value).toContain('label: string')
+  const [link] = at(`<forms-text-fi§eld />\n`, definition) ?? []
+  expect(link?.targetUri).toContain('src/components/forms/text-field.tscl')
+})

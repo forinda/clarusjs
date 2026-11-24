@@ -314,7 +314,8 @@ test('the route manifest matches what the browser loads', async ({ page }) => {
   // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour), 404 and 500.
   const routes = Object.keys(manifest.routes)
   // /api/demo-stats and /api/demo-records are the Fetching guide's endpoints (server routes), not sidebar pages.
-  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500' || r.startsWith('/api/')
+  // /members is the Auth guide's guarded page (#457).
+  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500' || r.startsWith('/api/') || r === '/members'
   expect(routes.filter((r) => !generated(r)).sort()).toEqual(pages.map((p) => p.path).sort())
   for (const path of ['/', '/guide/state']) {
     const route = manifest.routes[path]
@@ -456,7 +457,7 @@ test('the generated Netlify function serves only the server routes', async () =>
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
   // The pages and endpoints, each with its fragment path (endpoints have none: a 404).
-  expect(fn).toContain('export const config = {"path":["/api/demo-auth","/api/demo-auth/","/api/demo-auth/index.frag.html","/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-clock","/api/demo-clock/","/api/demo-clock/index.frag.html","/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-likes","/api/demo-likes/","/api/demo-likes/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/api/demo-upload","/api/demo-upload/","/api/demo-upload/index.frag.html","/api/demo-vendor","/api/demo-vendor/","/api/demo-vendor/index.frag.html","/api/demo-weather","/api/demo-weather/","/api/demo-weather/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
+  expect(fn).toContain('export const config = {"path":["/api/demo-auth","/api/demo-auth/","/api/demo-auth/index.frag.html","/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-clock","/api/demo-clock/","/api/demo-clock/index.frag.html","/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-likes","/api/demo-likes/","/api/demo-likes/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/api/demo-upload","/api/demo-upload/","/api/demo-upload/index.frag.html","/api/demo-vendor","/api/demo-vendor/","/api/demo-vendor/index.frag.html","/api/demo-weather","/api/demo-weather/","/api/demo-weather/index.frag.html","/members","/members/","/members/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -2400,4 +2401,33 @@ test('#454 recipes: a rate-limited answer says when to try again (GitHub, answer
   limited = true
   await box.getByRole('button', { name: 'Ask again' }).click()
   await expect(box.getByRole('status')).toHaveText('Rate limited until 13:05:00 UTC.')
+})
+
+test('#456 folder layouts: the tour pages are wrapped in tour/+layout.tscl, on the server and by the client router', async ({ page }) => {
+  await page.goto('/tour/1')
+  await expect(page).toHaveTitle(/^Client tour, step 1/) // the layout's title, from the route's params
+  await expect(page.locator('.sidebar, nav[aria-label]').first()).toBeVisible() // the docs layout around the page
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await page.getByRole('link', { name: 'Step 2 →' }).click() // the router renders the next step in the browser
+  await expect(page).toHaveURL(/\/tour\/2$/)
+  await expect(page).toHaveTitle(/^Client tour, step 2/)
+  expect((await page.request.get('/tour/+layout')).status()).toBe(404) // + files are never routes
+})
+
+test('#457 folder guards: /members sends signed-out visitors to sign in, and lets signed-in ones through', async ({ page, context, baseURL }) => {
+  await page.goto('/members')
+  await expect(page).toHaveURL(/\/guide\/auth\?next=%2Fmembers#islands-and-endpoints$/) // the guard's redirect
+  await context.addCookies([{ name: 'demo-user', value: 'Ada', url: baseURL! }]) // what the demo's sign-in sets
+  await page.goto('/members')
+  await expect(page.getByRole('heading', { level: 1, name: 'Members' })).toBeVisible()
+  await expect(page.getByText('Hello, Ada.')).toBeVisible() // load() ran after the guard, reading locals.user
+  expect((await page.request.get('/members/+guard')).status()).toBe(404) // a guard is never an endpoint or a page
+})
+
+test('#458 automatic imports: components used by name render on the server, and an island attaches', async ({ page }) => {
+  // <item-list> in the Slots demo and <tour-keys> on the tour pages have no @import.
+  const slots = await (await page.request.get('/guide/slots')).text()
+  expect(slots).toMatch(/<ul class="item-list[^"]*"/)
+  await page.goto('/tour/1')
+  await expect(page.locator('cl-island[c*="tour-keys"]')).toHaveCount(1)
 })

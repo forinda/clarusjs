@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
+import { COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
 import type { LintConfig, LintRuleDef } from '../compiler/lint.ts'
 import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, routeToFile } from './build.ts'
 export { packageOf } from './build.ts'
@@ -20,8 +21,8 @@ import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
 import { projectAliases, resolveAlias, type Alias } from './aliases.ts'
 import { gitDates, sitemapFiles } from './sitemap.ts'
-import { checkModes, modeFor, type ModeTable } from '../server/modes.ts'
-import { rootLinks, routeFromFile } from '../server/handler.ts'
+import { checkModes, modeFor, routeMatches, type ModeTable } from '../server/modes.ts'
+import { isPageFile, rootLinks, routeFromFile } from '../server/handler.ts'
 import { basePath } from '../server/head.ts'
 import type { HeadTag, SiteOptions } from '../server/head.ts'
 import { acceptsEncoding, sendResponse, toRequest } from './node.ts'
@@ -96,7 +97,7 @@ function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<strin
     for (const sheet of css) if (!out.includes(sheet)) out.push(sheet)
   }
   const pages = new Map<string, { css: string[]; components: string[] }>()
-  for (const file of files.find(resolve(root, 'src/pages'))) {
+  for (const file of files.pages(root)) {
     const css: string[] = []
     const seen = new Set<string>()
     collect(file, css, seen)
@@ -104,6 +105,28 @@ function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<strin
     pages.set(routeFromFile(`/${relative(root, file).split(sep).join('/')}`), { css, components: [...seen] })
   }
   return pages
+}
+
+/**
+ * A page's layouts (#456), outermost first, as root paths: the config layouts whose patterns take its route, then each
+ * +layout.tscl from src/pages down to its folder. None for a file that isn't a page.
+ */
+function layoutsFor(root: string, file: string, config: { layout: string; include?: string[]; exclude?: string[] }[]): string[] | undefined {
+  const pages = resolve(root, 'src/pages')
+  const rel = relative(pages, file)
+  if (rel.startsWith('..') || isAbsolute(rel) || !isPageFile(file.split(sep).join('/'))) return undefined
+  const route = routeFromFile(`/src/pages/${rel.split(sep).join('/')}`)
+  const out = config
+    .filter((l) => (l.include ?? ['/*']).some((p) => routeMatches(route, p)) && !(l.exclude ?? []).some((p) => routeMatches(route, p)))
+    .map((l) => l.layout)
+  // ponytail: in dev, adding or removing a +layout.tscl reaches pages already compiled only on restart; watch the
+  // folders' + files and invalidate the pages under them if that bites.
+  const folders = dirname(rel) === '.' ? [] : dirname(rel).split(sep)
+  for (let i = 0; i <= folders.length; i++) {
+    const layout = resolve(pages, ...folders.slice(0, i), '+layout.tscl')
+    if (existsSync(layout)) out.push(`/${relative(root, layout).split(sep).join('/')}`)
+  }
+  return out
 }
 
 /** A component's loader (#97): a .load.ts next to a .tscl outside src/pages (there it's the page's data), or none. */
@@ -122,7 +145,7 @@ function writeStyles(root: string, files: Files): boolean {
   const outDir = resolve(root, '.clarusjs')
   for (const file of files.components(root)) {
     try {
-      let out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file), icon: iconsFor(file) }).css
+      let out = compile(files.read(file, root), { file, target: 'client', scope: scopeFor(root, file), icon: iconsFor(file), layouts: files.layouts(file, root), components: files.names(root) }).css
       out = out.replace(/^(?:[ \t]*@(?:reference|import)\b[^;{]*;[ \t]*\n?)+/, (statements) => {
         for (const statement of statements.split(';').map((x) => x.trim()).filter(Boolean)) {
           head.add(statement.replace(/(["'])(\.{1,2}\/[^"']*)\1/, (_, q: string, spec: string) => {
@@ -157,6 +180,18 @@ const entryName = (root: string, file: string) => relative(root, file).split(sep
 export type ClarusOptions = {
   /** When each route renders: { '/account/*': 'server' }. Routes default to 'static' (prerendered at build). */
   routes?: ModeTable
+  /**
+   * Layouts by route (#456), outermost first, around the folder layouts (`+layout.tscl`): `{ layout: '/src/layouts/site.tscl',
+   * include: ['/*'], exclude: ['/embed/*'] }` (patterns as in `routes`; include defaults to every route). A page with
+   * `@layout none` gets none.
+   */
+  layouts?: { layout: string; include?: string[]; exclude?: string[] }[]
+  /**
+   * Automatic component imports (#458): a kebab-case file under these folders is used by its name, without @import
+   * (`src/components/forms/text-field.tscl` → `<forms-text-field>`, or `<text-field>` when no other has that name).
+   * Defaults: `{ dirs: ['src/components', 'src/layouts'], auto: true }`.
+   */
+  components?: { dirs?: string[]; auto?: boolean }
   /** Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. */
   adapter?: 'netlify'
   /** Fragment navigation: each static and server page also answers at <path>/index.frag.html. */
@@ -230,6 +265,12 @@ export type SourceContext = { route: string; root: string; addDependency(file: s
 /** How the plugin finds and reads component files: .tscl, plus the extensions of its page sources. */
 type Files = {
   find(dir: string): string[]
+  /** The page files under src/pages: not the + files (layouts). */
+  pages(root: string): string[]
+  /** A page's folder and config layouts (#456), for compile(); undefined for other files. */
+  layouts(file: string, root: string): string[] | undefined
+  /** The automatic component names (#458), for compile(); undefined when off. */
+  names(root: string): ComponentNames | undefined
   read(file: string, root: string): string
   /** Every component of the app: those under src/, and every .tscl their @imports reach, in packages too. */
   components(root: string): string[]
@@ -239,7 +280,7 @@ type Files = {
 /** Client-mode pages: route (as the file names it) → absolute file. */
 function clientPages(appRoot: string, modes: ModeTable, files: Files): Map<string, string> {
   const pages = new Map<string, string>()
-  for (const file of files.find(resolve(appRoot, 'src/pages'))) {
+  for (const file of files.pages(appRoot)) {
     const route = routeFromFile(`/${relative(appRoot, file).split(sep).join('/')}`)
     if (modeFor(route, modes) === 'client') pages.set(route, file)
   }
@@ -304,6 +345,14 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   let extra: (appRoot: string) => string[] = () => []
   const files: Files = {
     find: (dir) => findClarusFiles(dir, extensions).filter((f) => f.endsWith('.tscl') || f.includes(`${sep}src${sep}pages${sep}`)),
+    pages: (root) => files.find(resolve(root, 'src/pages')).filter((f) => isPageFile(f.split(sep).join('/'))),
+    layouts: (file, root) => layoutsFor(root, file, options.layouts ?? []),
+    // ponytail: the folders are listed on every compile (cheap next to compiling); cache per build if it shows up.
+    names: (root) => {
+      if (options.components?.auto === false) return undefined
+      const found = findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => relative(root, f).split(sep).join('/'))
+      return componentIndex(found, options.components?.dirs ?? COMPONENT_DIRS).names
+    },
     components: (appRoot) => reachableComponents(appRoot, [...files.find(resolve(appRoot, 'src')), ...extra(appRoot).filter((f) => existsSync(f))], (file) => files.read(file, appRoot), extensions, aliases),
     read: (file, appRoot) => {
       const code = readFileSync(file, 'utf8')
@@ -349,7 +398,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   return {
     name: 'clarusjs',
     // For clarusjs check (src/cli/project.ts): the page sources it should type-check too.
-    api: { sources, lint: options.lint, lintRules: options.lintRules },
+    api: { sources, lint: options.lint, lintRules: options.lintRules, components: options.components },
     config(userConfig, env) {
       extra = (appRoot) => pluginsOf(userConfig.plugins).flatMap((p) => (p.api as { clarusComponents?: (root: string) => string[] } | undefined)?.clarusComponents?.(appRoot) ?? [])
       // The plugin's own component and stylesheet discovery resolves the same aliases Vite does.
@@ -390,7 +439,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       const input: Record<string, string> = { [LOADER_ENTRY]: here('../runtime/loader') }
       const components = files.components(appRoot)
       for (const file of components) {
-        if (compile(files.read(file, appRoot), { file, target: 'client', icon: iconsFor(file) }).stateful) input[entryName(appRoot, file)] = file
+        if (compile(files.read(file, appRoot), { file, target: 'client', icon: iconsFor(file), layouts: files.layouts(file, appRoot), components: files.names(appRoot) }).stateful) input[entryName(appRoot, file)] = file
       }
       // Client routes: the router, and each page's render function for the browser.
       const client = clientPages(appRoot, modes, files)
@@ -438,6 +487,13 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       root = config.root
       command = config.command
       base = config.base
+      // Component files the automatic imports can't name (#458), said once.
+      if (options.components?.auto !== false) {
+        const found = findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => relative(root, f).split(sep).join('/'))
+        for (const file of componentIndex(found, options.components?.dirs ?? COMPONENT_DIRS).skipped) {
+          config.logger.warn(`clarusjs: ${file} isn't imported automatically: its name isn't kebab-case (rename it, or @import it)`)
+        }
+      }
     },
     // Order matters: the server build needs the client's hashed URLs, and prerendering needs the server build.
     async buildApp(builder) {
@@ -449,7 +505,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (watching) client.config.build.watch = ssr.config.build.watch = null
       const once = async () => {
         // Before anything is built: an old path must not be a page.
-        checkRedirects(options.redirects ?? {}, files.find(resolve(builder.config.root, 'src/pages')).map((f) => routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`)))
+        checkRedirects(options.redirects ?? {}, files.pages(builder.config.root).map((f) => routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`)))
         await builder.build(client)
         await builder.build(ssr)
         const entry = resolve(builder.config.root, SERVER_OUT, 'index.mjs')
@@ -517,7 +573,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         })
         const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn' }
         // Each problem names the page's source file, and the line where the link is written literally.
-        const sourceOf = new Map(files.find(resolve(builder.config.root, 'src/pages')).map((f) => [routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`), f]))
+        const sourceOf = new Map(files.pages(builder.config.root).map((f) => [routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`), f]))
         // Literal segments escaped; only whole [param] segments match any one segment (as the handler's routes do).
         const pattern = (route: string) => new RegExp(`^${route.split('/').map((seg) => (/^\[[^\]]+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/')}$`)
         const fileOf = (page: string) => sourceOf.get(page) ?? [...sourceOf].find(([route]) => pattern(route).test(page))?.[1]
@@ -660,7 +716,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  componentLoaders: ${JSON.stringify(componentLoaders)},\n` +
         `  componentData: import.meta.glob(['/src/**/*.load.ts', '!/src/pages/**']),\n` +
         // Endpoints: the other .ts files under src/pages, exporting GET, POST, … (see the server reference).
-        `  endpoints: import.meta.glob(['/src/pages/**/*.ts', '!/src/pages/**/*.load.ts', '!/src/pages/**/*.d.ts']),\n` +
+        `  guards: import.meta.glob('/src/pages/**/+guard.ts'),\n` +
+        `  endpoints: import.meta.glob(['/src/pages/**/*.ts', '!/src/pages/**/*.load.ts', '!/src/pages/**/*.d.ts', '!/src/pages/**/+*']),\n` +
         `  modes: ${JSON.stringify(modes)},\n` +
         `  routerUrl: ${JSON.stringify(routerUrl)},\n` +
         `  client: ${JSON.stringify(client)},\n` +
@@ -704,7 +761,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         const clientUrl = urls
           ? urls.get(entryName(root, file)) ?? urls.get(relative(root, file).split(sep).join('/')) ?? urls.get(real(file))
           : command === 'build' ? `${CHUNK_TOKEN}[${entryName(root, file)}]__` : clientUrlFor(root, file)
-        if (urls && !clientUrl && compile(code, { file, target: 'client', icon: iconsFor(file) }).stateful) {
+        if (urls && !clientUrl && compile(code, { file, target: 'client', icon: iconsFor(file), layouts: files.layouts(file, root), components: files.names(root) }).stateful) {
           this.error(`${file}: stateful component is not under src/, so it has no client chunk`)
         }
         // Imports that aren't relative or root paths must resolve (an alias, a package): otherwise a located error at
@@ -727,7 +784,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const loader = componentLoaderOf(root, file) ? relative(root, file).split(sep).join('/') : undefined
           // Dev: an island's module swaps itself in place when its file changes (#53).
           const hot = command === 'serve' && target === 'client' ? '/cl-hot.js' : undefined
-          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader, hot, icon: iconsFor(file) })
+          // A page's folder and config layouts (#456): its template is wrapped in them.
+          const layouts = files.layouts(file, root)
+          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader, hot, icon: iconsFor(file), layouts, components: files.names(root) })
           // Every component compiles for the server once: warnings from there, so each is said once.
           if (consumer === 'server' && !renderQuery) for (const w of out.warnings) this.warn(w.message)
           return { code: out.code, map: null, moduleType: 'js' }

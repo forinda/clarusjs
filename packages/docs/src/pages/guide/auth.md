@@ -72,9 +72,29 @@ The pieces, each a few lines:
    }
    ```
 
-   To protect many routes at once, `handle()` can return that redirect itself.
+   To protect a whole folder at once, use a [guard](#guarding-a-folder).
 
 Cookies are secure by default: `HttpOnly` (scripts can't read them), `SameSite=Lax`, `Secure`, and `Path=/`. See [cookies](/reference/server#cookies) in the server reference.
+
+## Guarding a folder
+
+A `+guard.ts` in a folder of `src/pages` runs before every page and endpoint under it, and before their `load()`. Return a `Response`, such as `redirect()`, to answer instead; return nothing to go on.
+
+```ts
+// src/pages/members/+guard.ts ('/members/*': 'server' in vite.config.ts)
+import { redirect, type GuardContext } from 'clarusjs/server'
+
+export function guard({ locals, url }: GuardContext) {
+  if (!locals.user) return redirect('/sign-in?next=' + encodeURIComponent(url.pathname))
+}
+```
+
+- **Outer folders' guards run first:** `src/pages/+guard.ts`, then `members/+guard.ts`, and so on. The first `Response` is the answer.
+- **It gets what `load()` gets** (`params`, `locals`, `request`, `cookies`), plus `url`. It can set `locals` for the `load()` after it.
+- **A guard reads the visitor, so guard [server routes](/guide/rendering-modes).** A static route is built once for everyone: reading cookies there fails the build, as in `load()`. A client route's guard runs when its data is asked for.
+- **`+` files are never routes**, so `+guard.ts` is never an endpoint itself.
+
+This site's [/members](/members) page is guarded this way: sign in with the demo below, then open it. Signed out, it sends you back here.
 
 ## Islands and endpoints
 
