@@ -314,6 +314,8 @@ function clientHook(code: string, signals: Signals, entered: WeakSet<N> = new We
       const [first, ...rest] = node.arguments as N[]
       return `${forms}(${first!.name}${rest.map((a) => `, ${rec(a)}`).join('')})`
     }
+    const provided = provideCall(node, rec)
+    if (provided) return provided
     if (node.type === 'UpdateExpression' && isSignal(node.argument)) {
       const name = node.argument.name
       const op = node.operator[0]
@@ -367,10 +369,36 @@ export function rewriteClientExpr(expr: string, signals: Signals): string {
   return expr.slice(0, ast.start) + print(ast, expr, clientHook(expr, signals)) + expr.slice(ast.end)
 }
 
+/** provide(key, value) calls (#465): the key must be a string literal. True when the script provides anything. */
+export function providesIn(code: string, file: string, source: string, offset: number): boolean {
+  let found = false
+  const hook: Hook = (node) => {
+    if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'provide') {
+      found = true
+      const key = (node.arguments as N[])[0]
+      if (!key || key.type !== 'Literal' || typeof key.value !== 'string' || node.arguments.length !== 2) {
+        throw new ClarusError("provide takes a string key and a value: provide('tabs', { value })", file, source, offset + node.start)
+      }
+    }
+    return undefined
+  }
+  print(parseScript(code, file, source, offset), code, hook)
+  return found
+}
+
+/** provide(key, value) → provide(key, () => (value)): read when a child renders, so it sees current values. */
+function provideCall(node: N, rec: (n: N) => string): string | undefined {
+  if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier' || node.callee.name !== 'provide' || node.arguments.length !== 2) return undefined
+  const [key, value] = node.arguments as N[]
+  return `provide(${rec(key!)}, () => (${rec(value!)}))`
+}
+
 export function rewriteServer(code: string): string {
   const ast = parseScript(code)
   const hook: Hook = (node) => {
     if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier') return undefined
+    const provided = provideCall(node, (n) => print(n, code, hook))
+    if (provided) return provided
     const arg = node.arguments[0] as N | undefined
     const inner = arg ? print(arg, code, hook) : 'undefined'
     if (node.callee.name === 'state') return `(${inner})`

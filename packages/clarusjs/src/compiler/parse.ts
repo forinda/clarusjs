@@ -66,6 +66,8 @@ export type ParsedFile = {
   inputs: InputDecl[]
   /** `@event change: string` (#442): what the component sends its parent, and its value's type ('void' when none). */
   events: EventDecl[]
+  /** `@context tabs: Type` (#465): values a component around this one provides; same shape as an @input. */
+  contexts: InputDecl[]
   imports: ImportDecl[]
   typeImports: TypeImport[]
   types: TypeDecl[]
@@ -107,7 +109,7 @@ const typeNames = (clause: string) =>
  * @see https://clarusjs.com/reference/compiler#parse
  */
 export function parse(source: string, file: string): ParsedFile {
-  const out: ParsedFile = { inputs: [], events: [], imports: [], typeImports: [], types: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
+  const out: ParsedFile = { inputs: [], events: [], contexts: [], imports: [], typeImports: [], types: [], dataImports: [], styles: [], cssImports: [], nodes: [] }
   let i = 0
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   const atLineStart = (at: number) => /^[ \t]*$/.test(source.slice(source.lastIndexOf('\n', at - 1) + 1, at))
@@ -117,8 +119,8 @@ export function parse(source: string, file: string): ParsedFile {
     const lineStart = i + (source.slice(i, end).length - source.slice(i, end).trimStart().length)
     const line = source.slice(i, end).trim()
     let m: RegExpExecArray | RegExpMatchArray | null
-    if (/^@(input|model)\s/.test(line)) {
-      return inputDecl(lineStart, line.startsWith('@model'))
+    if (/^@(input|model|context)\s/.test(line)) {
+      return inputDecl(lineStart, line.startsWith('@model'), line.startsWith('@context'))
     } else if (/^@(type|interface)\s/.test(line)) {
       return typeDecl(lineStart)
     } else if ((m = IMPORT_TYPE_RE.exec(line))) {
@@ -171,8 +173,8 @@ export function parse(source: string, file: string): ParsedFile {
    * @input name: type = default. The type runs to the first '=' outside brackets that isn't part of '=>'; type and
    * default continue onto the next lines while a bracket is open (an object type, a function, a default object).
    */
-  function inputDecl(lineStart: number, model: boolean): void {
-    const directive = model ? '@model' : '@input'
+  function inputDecl(lineStart: number, model: boolean, context = false): void {
+    const directive = context ? '@context' : model ? '@model' : '@input'
     const malformed = () => fail(`unknown or malformed directive "${directive}"`, i)
     let pos = lineStart + directive.length
     while (source[pos] === ' ' || source[pos] === '\t') pos++
@@ -208,7 +210,7 @@ export function parse(source: string, file: string): ParsedFile {
       if (!value) malformed()
       fallback = { default: value, defaultStart: at }
     }
-    out.inputs.push({ name, type, start: i, nameStart, typeStart, ...fallback, ...(model ? { model: true as const } : {}) })
+    ;(context ? out.contexts : out.inputs).push({ name, type, start: i, nameStart, typeStart, ...fallback, ...(model ? { model: true as const } : {}) })
     i = end
   }
 

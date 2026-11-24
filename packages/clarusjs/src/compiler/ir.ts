@@ -3,7 +3,7 @@ import { parseExpressionAt } from 'acorn'
 import { iconElement, type IconResolver } from './icon.ts'
 import { ClarusError } from './errors.ts'
 import { FOR_IMPLICIT, importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
-import { analyzeScript, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, serverScriptParts, splitImports, type Signals } from './script.ts'
+import { analyzeScript, providesIn, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, serverScriptParts, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
   | { kind: 'static'; html: string }
@@ -48,6 +48,10 @@ export type ComponentIR = {
   events: IREvent[]
   /** The component sends events to its parent (@event, #442): its script gets emit(). */
   sends: boolean
+  /** @context declarations (#465): values read from the components around this one. */
+  contexts: InputDecl[]
+  /** The script calls provide() (#465): this component adds to the context its children render with. */
+  provides: boolean
   /** Things that compile but likely aren't meant (located, not thrown). */
   warnings: ClarusError[]
 }
@@ -70,6 +74,10 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
   // A component sends its events from its script (#442).
   if (parsed.events.length && !parsed.script) fail('@event needs a <script> that sends it with emit(\'name\', value)', parsed.events[0]!.start)
+  // Context (#465): an island has no incoming context in the browser, so it can't read any yet.
+  // ponytail: lift by serializing the island's incoming context into its props.
+  if (parsed.contexts.length && stateful) fail('@context is only for components without <script> or @model for now: an island has no context in the browser. Read it in a component without a script, or pass it in as a prop', parsed.contexts[0]!.start)
+  for (const c of parsed.contexts) if (parsed.inputs.some((i) => i.name === c.name)) fail(`"${c.name}" is already an @input`, c.nameStart)
   const warnings: ClarusError[] = []
   const ss = parsed.serverScript
   // ponytail: not in an island yet: its names would be gone when the island re-renders in the browser. Lift it when
@@ -80,6 +88,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   const modelNames = new Set(parsed.inputs.filter((i) => i.model).map((i) => i.name))
   const split = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : { imports: [], body: '' }
   const signals: Signals = parsed.script ? analyzeScript(split.body, file, source, parsed.script.start) : new Map()
+  const provides = parsed.script ? providesIn(split.body, file, source, parsed.script.start) : false
   // A hole is reactive if it reads anything the script declares: a signal directly, or a function/value that may read one.
   // text()'s effect tracks the real dependencies, so over-marking only costs a pair of comment markers.
   const scriptScope = parsed.script ? new Set([...signals.keys(), ...scriptNames(parsed.script.code)]) : new Set<string>()
@@ -554,6 +563,8 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     nodes,
     events,
     sends: parsed.events.length > 0,
+    contexts: parsed.contexts,
+    provides,
     warnings,
   }
 }
