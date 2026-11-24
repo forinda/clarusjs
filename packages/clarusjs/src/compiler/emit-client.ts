@@ -3,7 +3,7 @@ import type { ComponentIR, IRNode } from './ir.ts'
 import { FOR_IMPLICIT } from './parse.ts'
 import { attrValueExpr, componentCall, htmlExpr, tagArg, walk, whichExpr, type Rewriter, rowNames, rowParams, rowDerived } from './html-expr.ts'
 import { formName, rewriteClient, rewriteClientExpr, wrapExpr, type Signals } from './script.ts'
-import { indentScript, inputsLine, renderName } from './shared.ts'
+import { contextLines, indentScript, inputsLine, renderName } from './shared.ts'
 
 /** `hot`: in dev, the module that swaps a changed island in place (#53); its updates are accepted. */
 export function emitClient(ir: ComponentIR, hot?: string): string {
@@ -64,7 +64,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
   if (ir.sends) out += `  const emit = (name, value, info) => __cl_emit(__cl_root, name, value, info)\n`
   // The context children it re-renders get (#465). ponytail: the island's own provides only; its incoming context
   // isn't serialized, so it can't pass on what was provided above it.
-  if (all.some((n) => n.kind === 'component')) out += `  const __cl_cx = undefined\n`
+  out += contextLines(ir, 'undefined')
   // Inputs: read-only signals (writes are compile errors), set from props now and by the returned update.
   const inputs = ir.inputs.filter((i) => ir.signals.get(i.name) === 'input' || ir.signals.get(i.name) === 'model')
   const value = (i: (typeof inputs)[number], from: string) =>
