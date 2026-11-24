@@ -1,4 +1,5 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
+import { extendedAttrs } from './element-attrs.ts'
 import { parseExpressionAt } from 'acorn'
 import { iconElement, type IconResolver } from './icon.ts'
 import { ClarusError } from './errors.ts'
@@ -36,6 +37,8 @@ export type ComponentIR = {
   file: string
   name: string // basename without .tscl
   inputs: InputDecl[]
+  /** `@extends tag`: the attribute names passed through to the root besides the usual ones. */
+  extends?: string[]
   imports: ImportDecl[]
   script?: string // without its import statements, which are in scriptImports
   scriptImports: string[]
@@ -556,6 +559,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     file,
     name: file.split('/').pop()!.replace(/\.tscl$/, ''),
     inputs: parsed.inputs,
+    ...(parsed.extends ? { extends: Object.keys(extendedAttrs(parsed.extends.tag)) } : {}),
     imports: parsed.imports,
     script: parsed.script ? split.body : undefined,
     scriptImports: split.imports.map((imp) => imp.text),

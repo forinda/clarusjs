@@ -1,0 +1,3 @@
+@extends button
+@input variant: string = "primary"
+<button type="button" class="btn" [data-variant]="variant"><slot /></button>

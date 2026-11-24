@@ -439,3 +439,19 @@ test('a component whose root is a <fragment> takes no attributes or DOM events: 
     expect.stringMatching(/^src\/pages\/index\.tscl:7:9 .*'class' does not exist/),
   ])
 })
+
+test('@extends button: the tag takes every button attribute, typed; others are reported', () => {
+  const btn = '@extends button\n@input value: number = 0\n<button type="button">{{ value }}</button>\n'
+  const page = `@import btn from '../components/btn.tscl'
+<btn disabled form="f" name="n" formmethod="post" title="t" [value]="1">a</btn>
+<btn type="nope">b</btn>
+<btn href="/x">c</btn>
+<btn [value]="'s'">d</btn>
+`
+  const errors = check({ 'src/components/btn.tscl': btn, 'src/pages/index.tscl': page })
+  expect(errors).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:3:6 Type '"nope"' is not assignable to type '"button" \| "reset" \| "submit"/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:4:6 .*'href' does not exist/),
+    expect.stringMatching(/^src\/pages\/index\.tscl:5:7 Type 'string' is not assignable to type 'number'/),
+  ])
+})

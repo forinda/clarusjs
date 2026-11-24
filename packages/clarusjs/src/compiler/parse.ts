@@ -82,6 +82,8 @@ export type ParsedFile = {
   /** `@layout none` (#456): the page renders without its folder and config layouts. `layoutStart`: where it is. */
   layout?: 'none'
   layoutStart?: number
+  /** `@extends button`: the native element this component stands for; it takes all of that element's attributes. */
+  extends?: { tag: string; start: number }
   nodes: TemplateNode[]
 }
 
@@ -143,7 +145,11 @@ export function parse(source: string, file: string): ParsedFile {
       const typeStart = d![2] ? lineStart + line.lastIndexOf(d![2]!) : nameStart
       out.events.push({ name: d![1]!, type: d![2] ?? 'void', start: i, nameStart, typeStart })
     }
-    else if ((m = /^@layout(?:\s+(\S+))?\s*$/.exec(line))) {
+    else if ((m = /^@extends(?:\s+(\S+))?\s*$/.exec(line))) {
+      if (out.extends) fail('a component has one @extends', i)
+      if (!m[1]) fail('@extends takes an element name: @extends button', i)
+      out.extends = { tag: m[1]!, start: i }
+    } else if ((m = /^@layout(?:\s+(\S+))?\s*$/.exec(line))) {
       if (m[1] !== 'none') fail('@layout only takes none: @layout none renders the page without its folder and config layouts', i)
       out.layout = 'none'
       out.layoutStart = i

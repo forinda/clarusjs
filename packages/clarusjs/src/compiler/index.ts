@@ -4,6 +4,7 @@ import { ClarusError } from './errors.ts'
 import { emitServer } from './emit-server.ts'
 import { lower, SPREAD_REFUSED } from './ir.ts'
 import { autoImport, type ComponentNames } from './components.ts'
+import { ELEMENT_ATTRS } from './element-attrs.ts'
 import { awaitLists, parse, type Attr, type TemplateNode } from './parse.ts'
 
 export { ClarusError } from './errors.ts'
@@ -67,6 +68,7 @@ export type CompileResult = { code: string; stateful: boolean; css: string; warn
  */
 export function compile(source: string, options: CompileOptions): CompileResult {
   const parsed = parse(source, options.file)
+  checkExtends(parsed, options.file, source)
   const fragmentRoot = unwrapFragments(parsed, options.file, source)
   if (options.components) autoImport(parsed, options.components, options.file, source)
   if (options.layouts?.length && parsed.layout !== 'none') wrapInLayouts(parsed, options.layouts, options.file, source)
@@ -142,6 +144,26 @@ function markSlotContent(nodes: TemplateNode[], cls: string, components: Set<str
 
 // ARIA attributes that hold a list of ids (#463): a passed one joins the root's own instead of losing to it.
 const ID_LISTS = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'aria-owns']
+
+/**
+ * `@extends tag`: a known element, and the component's root is that element (one, or a stateless @if … @else of one
+ * each: an island re-renders blocks in the browser, without the passed attributes).
+ */
+function checkExtends(parsed: ReturnType<typeof parse>, file: string, source: string): void {
+  const ext = parsed.extends
+  if (!ext) return
+  const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
+  if (!ELEMENT_ATTRS[ext.tag]) fail(`@extends ${ext.tag}: clarusjs knows the attributes of ${Object.keys(ELEMENT_ATTRS).join(', ')}`, ext.start)
+  const top = (nodes: TemplateNode[]) => nodes.filter((n) => !(n.type === 'text' && !n.value.trim()) && !(n.type === 'element' && ['cl-head', 'script', 'style'].includes(n.tag)))
+  const nodes = top(parsed.nodes)
+  const is = (list: TemplateNode[]) => list.length === 1 && list[0]!.type === 'element' && list[0]!.tag === ext.tag
+  if (is(nodes)) return
+  const first = nodes[0]
+  const wrong = `@extends ${ext.tag}: the root must be a <${ext.tag}>, where the attributes land`
+  if (nodes.length !== 1 || first!.type !== 'if') return fail(wrong, (nodes[0] ?? { start: ext.start }).start)
+  if (parsed.script || parsed.inputs.some((i) => i.model)) fail(`@extends ${ext.tag}: an island's root must be one <${ext.tag}> (it re-renders an @if in the browser, without the passed attributes)`, first.start)
+  if (first.branches.at(-1)!.cond !== null || !first.branches.every((b) => is(top(b.children)))) fail(wrong, first.start)
+}
 
 /**
  * `<fragment>` groups nodes without rendering an element: each one is replaced by its children, anywhere in the
