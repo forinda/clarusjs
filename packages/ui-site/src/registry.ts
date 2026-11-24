@@ -393,4 +393,15 @@ export const registry: Entry[] = [
     island: false,
     since: '0.1.0',
   },
+  {
+    name: 'toggle',
+    title: 'Toggle',
+    description: 'A button that is on or off, alone or in a group with one Tab stop.',
+    files: ['toggle.css'],
+    parts: ['toggle.tscl', 'toggle-group.tscl', 'toggle-item.tscl'],
+    uses: [],
+    island: true,
+    since: '0.2.0',
+    sections: ['focus', 'toggle', 'motion'],
+  },
 ]

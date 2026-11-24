@@ -1,0 +1,16 @@
+{{-- Toggle item: one toggle inside <toggle-group>; [value] is what it adds to the group's value. --}}
+@context toggleGroup: { type: string; value: string; values: string[] }
+@input value: string
+@input disabled: boolean = false
+
+<button
+  type="button"
+  [aria-pressed]="String(toggleGroup.type === 'multiple' ? toggleGroup.values.includes(value) : toggleGroup.value === value)"
+  [data-state]="(toggleGroup.type === 'multiple' ? toggleGroup.values.includes(value) : toggleGroup.value === value) ? 'on' : 'off'"
+  [tabindex]="toggleGroup.type === 'single' && toggleGroup.value !== '' && toggleGroup.value !== value ? -1 : 0"
+  [data-value]="value"
+  [disabled]="disabled"
+  data-part="toggle-item"
+>
+  <slot />
+</button>

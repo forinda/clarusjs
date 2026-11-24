@@ -176,3 +176,39 @@ test('menu: a popover list of menu items opened by its trigger, named from conte
   expect(statefulOf('menu')).toBe(true)
   for (const p of ['menu-trigger', 'menu-list', 'menu-item']) expect(statefulOf(p)).toBe(false)
 })
+
+test('toggle: a button with aria-pressed and data-state, bound with [(pressed)]; a small island', async () => {
+  expect(await render('toggle', { pressed: true }, { default: 'Bold' })).toBe('<button type="button" aria-pressed="true" data-state="on" data-part="toggle">Bold</button>')
+  expect(await render('toggle', {}, { default: 'Bold' })).toContain('aria-pressed="false" data-state="off"')
+  expect(statefulOf('toggle')).toBe(true)
+})
+
+test('toggle group: a labelled group on context; the server writes each item\'s aria-pressed and one tab stop', async () => {
+  const page = `@import toggleGroup from './toggle-group.tscl'
+@import toggleItem from './toggle-item.tscl'
+
+<toggleGroup label="Alignment" value="center">
+  <toggleItem value="left">L</toggleItem>
+  <toggleItem value="center">C</toggleItem>
+  <toggleItem value="right">R</toggleItem>
+</toggleGroup>
+`
+  const html = await renderPage(page, ['toggle-group', 'toggle-item'])
+  expect(html).toMatch(/^<div role="group" aria-label="Alignment" data-part="toggle-group" data-type="single">/)
+  expect(html).toContain('<button type="button" aria-pressed="false" data-state="off" tabindex="-1" data-value="left" data-part="toggle-item">L</button>')
+  expect(html).toContain('<button type="button" aria-pressed="true" data-state="on" tabindex="0" data-value="center" data-part="toggle-item">C</button>')
+  expect(statefulOf('toggle-group')).toBe(true)
+  expect(statefulOf('toggle-item')).toBe(false)
+})
+
+test('#review: a toggle group with nothing pressed, or multiple, keeps its items tabbable before it attaches', async () => {
+  const page = (attrs: string) => `@import toggleGroup from './toggle-group.tscl'
+@import toggleItem from './toggle-item.tscl'
+
+<toggleGroup label="Format" ${attrs}>
+  <toggleItem value="bold">B</toggleItem>
+</toggleGroup>
+`
+  expect(await renderPage(page(''), ['toggle-group', 'toggle-item'])).toContain('tabindex="0"')
+  expect(await renderPage(page('type="multiple"'), ['toggle-group', 'toggle-item'])).toContain('tabindex="0"')
+})

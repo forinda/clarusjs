@@ -149,3 +149,17 @@ test('alert dialog: a click outside does not close it; Escape and Cancel do (as 
   await dialog.getByRole('button', { name: 'Delete' }).click()
   await expect(dialog).toBeHidden()
 })
+
+test('toggle: pressing flips aria-pressed; a single group keeps one pressed; arrow keys move between items', async ({ page }) => {
+  await page.goto('/components/toggle')
+  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
+  const bold = page.locator('.demo [data-part="toggle"]')
+  await bold.click()
+  await expect(bold).toHaveAttribute('aria-pressed', 'true')
+  const align = page.getByRole('group', { name: 'Alignment' })
+  await align.getByRole('button', { name: 'Center' }).click()
+  await expect(align.getByRole('button', { name: 'Center' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(align.getByRole('button', { name: 'Left' })).toHaveAttribute('aria-pressed', 'false')
+  await page.keyboard.press('ArrowRight')
+  await expect(align.getByRole('button', { name: 'Right' })).toBeFocused()
+})

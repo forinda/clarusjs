@@ -70,3 +70,40 @@ test('#465 review: a radio group moved into another form follows that form\'s re
   await new Promise((r) => setTimeout(r, 10))
   expect([m!.checked, s!.checked]).toEqual([false, true])
 })
+
+const groupHtml = (type: string, pressed: string[]) => '<cl-island c="toggle-group"><div role="group" aria-label="Format" data-part="toggle-group" data-type="' + type + '" data-cl-u="0">'
+  + ['bold', 'italic', 'underline'].map((v, i) => `<button type="button" aria-pressed="${pressed.includes(v)}" data-state="${pressed.includes(v) ? 'on' : 'off'}" tabindex="${i === 0 ? 0 : -1}" data-value="${v}" data-part="toggle-item">${v}</button>`).join('')
+  + '</div></cl-island>'
+const pressedItems = () => [...document.querySelectorAll('[data-part="toggle-item"]')].filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => (b as HTMLElement).dataset.value)
+
+test('toggle group single: pressing one releases the others; pressing the pressed one keeps it', async () => {
+  const { attach } = await client('toggle-group')
+  document.body.innerHTML = groupHtml('single', ['bold'])
+  attach(document.querySelector('cl-island')!, { label: 'Format', type: 'single', value: 'bold', values: [] })
+  byText('italic').click()
+  expect(pressedItems()).toEqual(['italic'])
+  byText('italic').click()
+  expect(pressedItems()).toEqual(['italic'])
+})
+
+test('toggle group multiple: each item toggles on its own', async () => {
+  const { attach } = await client('toggle-group')
+  document.body.innerHTML = groupHtml('multiple', [])
+  attach(document.querySelector('cl-island')!, { label: 'Format', type: 'multiple', value: '', values: [] })
+  byText('bold').click()
+  byText('underline').click()
+  expect(pressedItems()).toEqual(['bold', 'underline'])
+  byText('bold').click()
+  expect(pressedItems()).toEqual(['underline'])
+})
+
+test('toggle group: arrow keys move focus between items (one tab stop), Home and End too', async () => {
+  const { attach } = await client('toggle-group')
+  document.body.innerHTML = groupHtml('single', ['bold'])
+  attach(document.querySelector('cl-island')!, { label: 'Format', type: 'single', value: 'bold', values: [] })
+  byText('bold').focus()
+  key(byText('bold'), 'ArrowRight')
+  expect(document.activeElement).toBe(byText('italic'))
+  key(byText('italic'), 'End')
+  expect(document.activeElement).toBe(byText('underline'))
+})

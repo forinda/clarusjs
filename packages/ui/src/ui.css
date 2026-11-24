@@ -317,6 +317,56 @@
   }
   /* end part */
 
+  /* part: toggle */
+  /* Toggle and toggle group: pressed is tinted (and aria-pressed says so); a group joins its items into one row. */
+  :where([data-part='toggle']),
+  :where([data-part='toggle-item']) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--ui-input);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font: 500 var(--ui-font-size) var(--ui-font);
+    cursor: pointer;
+  }
+  :where([data-part='toggle']):hover,
+  :where([data-part='toggle-item']):hover {
+    background: var(--ui-accent-soft);
+  }
+  :where([data-part='toggle'])[aria-pressed='true'],
+  :where([data-part='toggle-item'])[aria-pressed='true'] {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent-soft-fg);
+    border-color: var(--ui-accent);
+  }
+  :where([data-part='toggle-item']):disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  :where([data-part='toggle-group']) {
+    display: inline-flex;
+  }
+  :where([data-part='toggle-group']) > :where([data-part='toggle-item']):not(:first-child) {
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  :where([data-part='toggle-group']) > :where([data-part='toggle-item']):not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  :where([data-part='toggle-group']) > :where([data-part='toggle-item']):focus-visible {
+    position: relative;
+    z-index: 1;
+  }
+  /* end part */
+
   /* part: switch-checkbox */
   /* Switch and checkbox: the native input, tinted; the label next to it. */
   :where([data-part='switch'], [data-part='checkbox']) {

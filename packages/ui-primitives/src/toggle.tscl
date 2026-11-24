@@ -1,0 +1,10 @@
+{{--
+  Toggle: a button that is on or off (aria-pressed), bound with [(pressed)]. A small island.
+
+  <toggle [(pressed)]="bold" aria-label="Bold">B</toggle>
+--}}
+@model pressed: boolean = false
+
+<button type="button" [aria-pressed]="String(pressed)" [data-state]="pressed ? 'on' : 'off'" data-part="toggle" (click)="pressed = !pressed">
+  <slot />
+</button>
