@@ -44,6 +44,21 @@ export function owner(node: Node): Element | null {
   return null
 }
 
+// What each island provides (#465), for the components it holds that another island re-renders.
+const provided = new WeakMap<Element, object>()
+/** @internal An island's provide()s, for content another island re-renders inside it. */
+export function provideOn(root: Element, cx: object): void { provided.set(root, cx) }
+/**
+ * The context a region renders with: its island's own, plus what each island holding the region (it sits in their
+ * slot ranges, between them and `root`) provides, outermost first. Spreading reads the getters now, so the region
+ * follows the values it read.
+ */
+function contextAt(node: Node, root: Element, own?: object): object | undefined {
+  const holders: Element[] = []
+  for (let n = node.parentNode; n && n !== root; n = n.parentNode) if ((n as Element).localName === 'cl-island') holders.unshift(n as Element)
+  return holders.length ? Object.assign({ ...own }, ...holders.map((h) => ({ ...provided.get(h) }))) : own
+}
+
 /** Slot ranges still open at `n`, among the siblings before it (#465). @internal */
 export function openSlots(n: Node): number {
   let open = 0
@@ -200,14 +215,14 @@ export function awaited(fn: () => unknown): { k(): number; v(): unknown } {
 }
 
 /** @internal Compiled components call this; apps don't. */
-export function region(ctx: Ctx, index: number, html: () => string, wire: () => void): void {
+export function region(ctx: Ctx, index: number, html: (cx?: object) => string, wire: () => void, cx?: object): void {
   const r = scan(ctx).regions[index]
   if (!r) return
   let dispose: (() => void) | null = null
   let first = true
   onDispose(() => dispose?.())
   effect(() => {
-    const next = html()
+    const next = html(contextAt(r.start, rootOf(ctx), cx))
     untrack(() => {
       if (!first) {
         // A nested island with new props is updated in place (DOM and state kept), not replaced.

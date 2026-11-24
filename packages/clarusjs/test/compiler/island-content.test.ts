@@ -14,6 +14,9 @@ const tick = () => new Promise((r) => setTimeout(r, 0))
 const parts: Record<string, string> = {
   box: "<script>\n  let open = state(true)\n</script>\n<div class=\"box\">\n  <button class=\"own\" (click)=\"open = !open\">t</button>\n  @if (open) { <i class=\"own-if\">on</i> }\n  <div class=\"slot\"><slot /></div>\n</div>\n",
   pick: "@model value: string = 'a'\n@event change: string\n<script>\n  function go(event) { if (emit('change', 'b', { reason: 'select', event })) value = 'b' }\n</script>\n<div><button class=\"pick\" (click)=\"go($event)\">p</button><slot /></div>\n",
+  prov: "@input v: string = 'x'\n<script>\n  provide('pv', { v })\n</script>\n<div class=\"prov\"><slot /></div>\n",
+  reader: "@context pv: { v: string }\n<b class=\"reader\">{{ pv.v }}</b>\n",
+  shell: "@context pv: { v: string }\n@input n: number = 0\n<p class=\"shell\">{{ pv.v }}:{{ n }} <slot /></p>\n",
   cnt: "<script>\n  let c = state(0)\n</script>\n<button class=\"cnt\" (click)=\"c++\">{{ c }}</button>\n",
 }
 let n = 0
@@ -118,3 +121,16 @@ test('a click on the outer island\'s content before it attaches (attach="interac
   expect($('.n').textContent).toBe('1')
 })
 
+
+test('context from an island that holds content written by another island reaches that content, in the browser too', async () => {
+  await mount("<script>\n  let v = state('a')\n</script>\n<button class=\"set\" (click)=\"v = 'b'\">s</button>\n<prov [v]=\"v\"><reader /></prov>\n")
+  expect($('.reader').textContent).toBe('a')
+  expect(document.querySelector('cl-island[c="page"]')!.hasAttribute('data-cl-error')).toBe(false)
+})
+
+test('a component in the content that the outer island re-renders gets the context of the island holding it', async () => {
+  await mount("<script>\n  let v = state('a')\n  let n = state(0)\n</script>\n<button class=\"inc\" (click)=\"n++\">+</button>\n<prov [v]=\"v\"><shell [n]=\"n\"><i>x</i></shell></prov>\n")
+  expect(document.querySelector('cl-island[c="page"]')!.hasAttribute('data-cl-error')).toBe(false)
+  click('.inc')
+  expect($('.shell').textContent).toContain('a:1')
+})

@@ -10,6 +10,9 @@ type Load = (src: string) => Promise<IslandModule>
 
 // Islands scheduled or loading. `data-cl-ready` is set only after attach() succeeds.
 const loading = new WeakSet<Element>()
+// Islands attaching now (attach="load"), so an island holding them waits for them (#465): content it re-renders
+// inside them reads what they provide.
+const pending = new WeakMap<Element, Promise<void>>()
 const updates = new WeakMap<Element, (props: Record<string, unknown>) => void>()
 // Each attached island's disposer: everything its attach() wired (effects, listeners) is released by it.
 const attached = new Map<Element, () => void>()
@@ -87,6 +90,9 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
     console.error(`[clarusjs] island "${el.getAttribute('c')}" failed to load`, err)
     return
   }
+  // Islands inside it attach first (#465). ponytail: one that attaches later (idle, visible, interaction) isn't waited
+  // for, so content re-rendered inside it before then lacks its context.
+  await Promise.all([...el.querySelectorAll('cl-island')].map((inner) => pending.get(inner)))
   try {
     attached.set(el, scope(() => {
       // An island with inputs returns how to update them: kept for a parent island that passes new props.
@@ -123,7 +129,11 @@ export async function attachAll(root: ParentNode = document, load: Load = lastLo
   for (const el of islands) {
     loading.add(el)
     const recorded = record(el)
-    if ((el.getAttribute('a') ?? 'load') === 'load') now.push(attachOne(el, load, recorded))
+    if ((el.getAttribute('a') ?? 'load') === 'load') {
+      const p = attachOne(el, load, recorded)
+      pending.set(el, p)
+      now.push(p)
+    }
     else schedule(el, () => void attachOne(el, load, recorded))
   }
   await Promise.all(now)
