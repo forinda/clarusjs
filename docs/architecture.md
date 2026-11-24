@@ -171,7 +171,7 @@ Server output (readable, roughly what you'll see in `dist/`):
 import { escape as __cl_escape, island as __cl_island } from 'clarusjs/runtime/server'
 
 export function render(__cl_props = {}, __cl_slots, __cl_opts) {
-  if (__cl_slots !== undefined) throw new Error("[clarusjs] <counter> does not accept children yet")
+  for (const __cl_k in __cl_slots) if (![].includes(__cl_k)) throw new Error(/* "<counter> has no <slot />…" */)
   const { start = 0 } = __cl_props
   let count = (start)
   const double = (() => count * 2)()
@@ -249,6 +249,13 @@ to change later, so it's fixed now.
 | `<!--[bn:k-->…<!--]-->` | `@if` or `@await` block `n` inside an island; `k` is the branch the server rendered (`-1` for none). An `@await` is always rendered at `k = 0` (pending); in the browser 1 is `@then`, 2 is `@catch` |
 | `<!--[cn-->…<!--]-->` | a child component inside an island whose props or slot content read state; the browser re-renders it, or, when it is a nested island, passes it the new props in place (its inputs are read-only signals; its state is kept) |
 | `<!--[fn-->…<!--]-->` | `@for` list `n` inside an island; each row is wrapped in `<!--[r-->…<!--]-->`, `@empty` content in `<!--[e-->…<!--]-->`. Markers inside a row repeat per row and are looked up within that row |
+
+An island's slot content (#465) adds no marker. A `<slot />` in an island sits outside its `@if`, `@for` and
+`@await` blocks and outside the content it gives child components, so the browser never re-renders it: the content
+is server HTML in the parent's scope, between the island's own markers. It carries no markers of its own (it comes
+from a page or a component without `<script>`; content from inside another island is a render error for now, since
+its markers would land in this island), and islands in it are `<cl-island>`s, skipped by this island's lookups. An
+island's slot passes no data and has no fallback content.
 
 Every component marks its top-level elements with the class `cl-c-<scope id>`
 (the id from its file path; the `cl-c-` class prefix is reserved), merged with

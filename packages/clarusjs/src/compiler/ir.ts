@@ -347,7 +347,8 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       return
     }
     if (node.tag === 'slot') {
-      if (stateful) fail('<slot /> is only supported in components without <script>', node.start)
+      // In an island (#465) the content is server HTML the browser never re-renders: so not where the browser re-renders.
+      if (stateful && scopeKey !== undefined) fail('in an island, <slot /> goes outside @if, @for and @await blocks and component content: the browser re-renders those, and slot content only exists on the server', node.start)
       let name = 'default'
       const props: { name: string; expr: string }[] = []
       for (const a of node.attrs) {
@@ -362,6 +363,9 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       out = fallback
       node.children.forEach((child) => visit(child, rawText))
       out = parent
+      // ponytail: island slots are plain holes for server HTML. Data and fallbacks would need the slot in the browser.
+      if (stateful && props.length) fail('in an island, a slot passes no data: render the component outside the island to use [name]="…" on <slot>', node.start)
+      if (stateful && fallback.length) fail('in an island, a slot has no fallback content', node.start)
       out.push({ kind: 'slot', name, props, fallback })
       return
     }

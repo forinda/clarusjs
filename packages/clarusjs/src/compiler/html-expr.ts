@@ -87,7 +87,7 @@ export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rew
   ]
   const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
   // Render options: when to attach, and (for the forms engine) the path this component is bound to.
-  const opts = [...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.class ? [`class: ${JSON.stringify(n.class)}`] : []), ...(n.paths ? [`paths: { ${n.paths.map((p) => `${JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }`] : [])]
+  const opts = [...(n.region >= 0 && slots.length ? ['inIsland: true'] : []), ...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.class ? [`class: ${JSON.stringify(n.class)}`] : []), ...(n.paths ? [`paths: { ${n.paths.map((p) => `${JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }`] : [])]
   if (opts.length) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { ${opts.join(', ')} })`
   return slotsArg ? `${renderName(n.name)}({ ${props} }, ${slotsArg})` : `${renderName(n.name)}({ ${props} })`
 }

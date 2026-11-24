@@ -1,7 +1,7 @@
 import { escape as __cl_escape, island as __cl_island, attr as __cl_attrHtml, classValue as __cl_classValue } from 'clarusjs/runtime/server'
 
 export function render(__cl_props = {}, __cl_slots, __cl_opts) {
-  if (__cl_slots !== undefined) throw new Error("[clarusjs] <class-forms> does not accept children yet")
+  for (const __cl_k in __cl_slots) if (![].includes(__cl_k)) throw new Error(__cl_k === "default" ? "[clarusjs] <class-forms> has no <slot /> for the content passed to it" : "[clarusjs] <class-forms> has no slot \"" + __cl_k + '"')
   const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""
   let open = (false)
   let size = ('big')

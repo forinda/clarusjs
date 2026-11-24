@@ -2,7 +2,7 @@ import { escape as __cl_escape, island as __cl_island, attr as __cl_attrHtml, pa
 import { render as __cl_render_step$counter } from '/src/components/step-counter.tscl'
 
 export function render(__cl_props = {}, __cl_slots, __cl_opts) {
-  if (__cl_slots !== undefined) throw new Error("[clarusjs] <events> does not accept children yet")
+  for (const __cl_k in __cl_slots) if (![].includes(__cl_k)) throw new Error(__cl_k === "default" ? "[clarusjs] <events> has no <slot /> for the content passed to it" : "[clarusjs] <events> has no slot \"" + __cl_k + '"')
   const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""
   const __cl_attrs = __cl_passed(__cl_props, [])
   let total = (0)

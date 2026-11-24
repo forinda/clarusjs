@@ -1,7 +1,7 @@
 import { escape as __cl_escape, island as __cl_island, attr as __cl_attrHtml } from 'clarusjs/runtime/server'
 
 export function render(__cl_props = {}, __cl_slots, __cl_opts) {
-  if (__cl_slots !== undefined) throw new Error("[clarusjs] <type-error> does not accept children yet")
+  for (const __cl_k in __cl_slots) if (![].includes(__cl_k)) throw new Error(__cl_k === "default" ? "[clarusjs] <type-error> has no <slot /> for the content passed to it" : "[clarusjs] <type-error> has no slot \"" + __cl_k + '"')
   const { count } = __cl_props
   const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""
   let n = (0)

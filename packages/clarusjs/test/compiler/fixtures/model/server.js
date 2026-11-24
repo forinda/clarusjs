@@ -1,7 +1,7 @@
 import { escape as __cl_escape, island as __cl_island, attr as __cl_attrHtml, passedHtml as __cl_passedHtml, passed as __cl_passed } from 'clarusjs/runtime/server'
 
 export function render(__cl_props = {}, __cl_slots, __cl_opts) {
-  if (__cl_slots !== undefined) throw new Error("[clarusjs] <model> does not accept children yet")
+  for (const __cl_k in __cl_slots) if (![].includes(__cl_k)) throw new Error(__cl_k === "default" ? "[clarusjs] <model> has no <slot /> for the content passed to it" : "[clarusjs] <model> has no slot \"" + __cl_k + '"')
   const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""
   const __cl_attrs = __cl_passed(__cl_props, [])
   let form = ({ name: '', plan: 'free', agree: false, size: 1 })

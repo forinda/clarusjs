@@ -7,7 +7,7 @@ description: "Wrap content with <slot />, named slots and fallback content, and 
 
 # Slots
 
-<p class="lead">A component without a script can wrap content: whatever you put between its tags renders at its <code>&lt;slot /&gt;</code>.</p>
+<p class="lead">A component can wrap content: whatever you put between its tags renders at its <code>&lt;slot /&gt;</code>.</p>
 
 ```tscl
 {{-- components/card.tscl --}}
@@ -66,3 +66,24 @@ A component can hand data to the content filling a slot. A list renders its rows
 <slotsDemo />
 
 `clarusjs check` checks the values where the component passes them; the names a fill receives are typed `any` for now. A fill that receives data can't be inside an [island](/guide/islands) yet (the compiler says so at its place): render that component outside the island, or pass the data in as props.
+
+## Slots in an island
+
+An [island](/guide/islands) wraps content too: a tab list or a menu keeps its state and handlers, and the page writes what goes inside.
+
+```tscl
+{{-- components/disclosure.tscl --}}
+<script>
+  let open = state(false)
+</script>
+<button (click)="open = !open" [aria-expanded]="open">More</button>
+<div [hidden]="!open"><slot /></div>
+```
+
+The server renders the content once, in the page's scope; the browser never re-renders it, and the island wires its own parts around it. So in an island:
+
+- **A `<slot />` sits outside `@if`, `@for` and `@await`**, and outside content it gives a child component: the browser re-renders those, and the content only exists on the server. Show and hide it with an attribute instead, like `[hidden]` above.
+- **A slot passes no data and has no fallback content.**
+- **The content comes from a page or a component without a script.** Content written inside another island is a render error for now.
+
+Each is an error that names the place.
