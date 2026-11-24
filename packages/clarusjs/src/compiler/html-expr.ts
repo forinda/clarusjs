@@ -17,18 +17,20 @@ export const asWritten: Rewriter = { expr: (e) => e, without: () => asWritten }
  * islands, a level that calls a component or places a slot joins its parts with __cl_join (a string, or a promise
  * when an awaiting component is in it); inside an island, a component call is checked not to be a promise.
  */
-export type ServerCtx = { island: string | null }
+export type ServerCtx = { island: string | null; top?: boolean }
 
 /** Could this HTML be a promise: does it call a component or place a slot (whose content may await)? */
 const mayWait = (nodes: IRNode[]) => walk(nodes).some((n) => n.kind === 'component' || n.kind === 'slot' || (n.kind === 'await' && n.block < 0))
 
-export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: ServerCtx): string {
+export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, top?: ServerCtx): string {
+  // An island's own level (top) joins its parts when it places a slot: the content may await (#430, #465).
+  const ctx = top?.top ? { island: top.island } : top
   const parts = nodes.map((n) => {
     if (n.kind === 'static') return JSON.stringify(n.html)
     // The fill (called with what the slot passes, when it takes data: #455), or the fallback.
     if (n.kind === 'slot') {
       const data = n.props.length ? `{ ${n.props.map((p) => `${p.name === '__proto__' ? '["__proto__"]' : p.name}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }` : 'undefined'
-      return `__cl_slot(__cl_slots?.[${JSON.stringify(n.name)}], ${data}, () => ${n.fallback.length ? htmlExpr(n.fallback, rw, ctx) : '""'})`
+      return `__cl_slot(__cl_slots?.[${JSON.stringify(n.name)}], ${data}, () => ${n.fallback.length ? htmlExpr(n.fallback, rw, ctx) : '""'}, __cl_cx)`
     }
     if (n.kind === 'connect' || n.kind === 'use') return '""' // its marker is static; the browser connects it
     // The attributes passed to this component (#463), on its root.
@@ -73,7 +75,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: Server
     const value = `__cl_escape(${wrapExpr(rw.expr(n.expr))})`
     return n.reactive ? `"<!--[${n.index}-->" + ${value} + "<!--]-->"` : value
   })
-  if (ctx && !ctx.island && mayWait(nodes)) return `__cl_join([${parts.join(', ')}])`
+  if (ctx && (!ctx.island || (top?.top && nodes.some((n) => n.kind === 'slot'))) && mayWait(nodes)) return `__cl_join([${parts.join(', ')}])`
   return parts.length ? parts.join(' + ') : '""'
 }
 
@@ -81,13 +83,13 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: Server
 export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rewriter, ctx?: ServerCtx): string {
   const props = n.props.map((p) => (p.name === '...' ? `...${wrapExpr(rw.expr(p.expr))}` : `${/^[A-Za-z_$][\w$]*$/.test(p.name) ? p.name : JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`)).join(', ') // a spread first (#406); data-x quoted
   const slots = [
-    ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw, ctx)}`] : []),
-    // A fill that receives data is a function of it; its names are its own, not signals (#455).
-    ...n.fills.map((f) => `${JSON.stringify(f.name)}: ${f.params !== undefined ? `(${f.params}) => ${htmlExpr(f.nodes, rw, ctx)}` : htmlExpr(f.nodes, rw, ctx)}`),
+    // Content is a function of the context where it is placed (#465), and of what its slot passes (#455).
+    ...(n.children.length ? [`"default": (_, __cl_cx) => ${htmlExpr(n.children, rw, ctx)}`] : []),
+    ...n.fills.map((f) => `${JSON.stringify(f.name)}: (${f.params ?? '_'}, __cl_cx) => ${htmlExpr(f.nodes, rw, ctx)}`),
   ]
   const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
   // Render options: when to attach, and (for the forms engine) the path this component is bound to.
-  const opts = [...(n.region >= 0 && slots.length ? ['inIsland: true'] : []), ...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.class ? [`class: ${JSON.stringify(n.class)}`] : []), ...(n.paths ? [`paths: { ${n.paths.map((p) => `${JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }`] : [])]
+  const opts = ['cx: __cl_cx', ...(n.region >= 0 && slots.length ? ['inIsland: true'] : []), ...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.class ? [`class: ${JSON.stringify(n.class)}`] : []), ...(n.paths ? [`paths: { ${n.paths.map((p) => `${JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }`] : [])]
   if (opts.length) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { ${opts.join(', ')} })`
   return slotsArg ? `${renderName(n.name)}({ ${props} }, ${slotsArg})` : `${renderName(n.name)}({ ${props} })`
 }

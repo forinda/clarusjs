@@ -65,3 +65,12 @@ test('in an island, a slot passes no data and has no fallback content', () => {
   expect(compileError(s('<slot [on]="on" />'))).toMatch(/^x\.tscl:4:1 .*in an island, a slot passes no data/)
   expect(compileError(s('<slot>none</slot>'))).toMatch(/^x\.tscl:4:1 .*in an island, a slot has no fallback content/)
 })
+
+test('content that awaits (#430) renders inside an island: the island waits for it', async () => {
+  const slow = server('<script server>\n  const v = await Promise.resolve(\'late\')\n</script>\n<b>{{ v }}</b>\n', 'slow.tscl')
+  const page = server(`@import tabs from './tabs.tscl'\n@import slow from './slow.tscl'\n<tabs><slow /></tabs>`, 'page.tscl')
+  const p = await importCode(page, 'islslot-await', { './tabs.tscl': server(tabs, 'tabs.tscl'), './slow.tscl': slow })
+  const html = await p.render({})
+  expect(html).toMatch(/<b[^>]*>late<\/b>/)
+  expect(html).toMatch(/^<cl-island c="tabs"/)
+})

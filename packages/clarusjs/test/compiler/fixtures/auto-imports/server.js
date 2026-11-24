@@ -8,5 +8,6 @@ export function render(__cl_props = {}, __cl_slots, __cl_opts) {
   if (__cl_opts?.attach) throw new Error("[clarusjs] <auto-imports> has no <script>, so attach=\"" + __cl_opts.attach + '" does nothing')
   const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""
   const __cl_attrs = __cl_passed(__cl_props, [])
-  return __cl_join(["<form", __cl_passedHtml(__cl_attrs, []), __cl_attrHtml("style", (__cl_attrs.style)), __cl_attrHtml("class", ["cl-c-auto-imports-1rvuax9", (__cl_class)].join("")), ">\n  ", __cl_render_text$field({ label: 'Name' }, { "default": "<input name=\"name\">" }), "\n  ", __cl_render_forms$text$field({ label: 'Email' }, { "default": "<input name=\"email\">" }), "\n  ", __cl_render_like$button({  }), "\n  <my-widget></my-widget>\n</form>"])
+  const __cl_cx = __cl_opts?.cx
+  return __cl_join(["<form", __cl_passedHtml(__cl_attrs, []), __cl_attrHtml("style", (__cl_attrs.style)), __cl_attrHtml("class", ["cl-c-auto-imports-1rvuax9", (__cl_class)].join("")), ">\n  ", __cl_render_text$field({ label: 'Name' }, { "default": (_, __cl_cx) => "<input name=\"name\">" }, { cx: __cl_cx }), "\n  ", __cl_render_forms$text$field({ label: 'Email' }, { "default": (_, __cl_cx) => "<input name=\"email\">" }, { cx: __cl_cx }), "\n  ", __cl_render_like$button({  }, undefined, { cx: __cl_cx }), "\n  <my-widget></my-widget>\n</form>"])
 }

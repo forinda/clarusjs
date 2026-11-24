@@ -2,11 +2,11 @@
 import type { ComponentIR } from './ir.ts'
 import { asWritten, htmlExpr, walk } from './html-expr.ts'
 import { rewriteServer } from './script.ts'
-import { indentScript, inputsLine, renderName } from './shared.ts'
+import { contextLines, indentScript, inputsLine, renderName } from './shared.ts'
 
 export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = false, loader?: string): string {
   const all = walk(ir.nodes)
-  const html = htmlExpr(ir.nodes, asWritten, { island: ir.stateful ? ir.name : null })
+  const html = htmlExpr(ir.nodes, asWritten, { island: ir.stateful ? ir.name : null, top: true })
   const runtime = [
     'escape as __cl_escape',
     all.some((n) => n.kind === 'hole' && n.json) && 'json as __cl_json',
@@ -47,6 +47,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
   out += `  const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""\n`
   // What the parent passed as attributes (#463), for the root element.
   if (html.includes('__cl_attrs')) out += `  const __cl_attrs = __cl_passed(__cl_props, ${JSON.stringify(ir.inputs.map((i) => i.name))})\n`
+  out += contextLines(ir, '__cl_opts?.cx')
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   if (ir.server) out += indentScript(ir.server.body)
   out += ir.stateful

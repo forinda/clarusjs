@@ -1,6 +1,7 @@
 // Small helpers shared by both emitters.
 import type { ComponentIR } from './ir.ts'
 import { templateRanges } from './script.ts'
+import { walk } from './html-expr.ts'
 
 /** `const { start = 0, name } = props`, or '' when the component has no inputs. */
 export function inputsLine(ir: ComponentIR): string {
@@ -28,3 +29,21 @@ export function indentScript(code: string): string {
 // Generated names carry a __cl_ prefix so they can't collide with names in the author's <script>.
 // `-` maps to `$`, which import names cannot contain after the first character, so the mapping is one-to-one.
 export const renderName = (name: string) => '__cl_render_' + name.replace(/-/g, '$')
+
+/**
+ * The context a component renders its children with (#465): what it was given (render option cx), plus what its
+ * script provides. provide(key, get) adds a getter, so a child reads the value current when it renders. Only when
+ * the component calls components, places slots, reads context or provides.
+ */
+export function contextLines(ir: ComponentIR, incoming: string): string {
+  const all = walk(ir.nodes)
+  if (!ir.provides && !ir.contexts.length && !all.some((n) => n.kind === 'component' || n.kind === 'slot')) return ''
+  let out = ir.provides
+    ? `  const __cl_cx = { ...${incoming} }\n  const provide = (k, get) => { Object.defineProperty(__cl_cx, k, { get, enumerable: true, configurable: true }) }\n`
+    : `  const __cl_cx = ${incoming}\n`
+  for (const c of ir.contexts) {
+    const missing = `throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> reads context "${c.name}", which no component around it provides`)})`
+    out += `  const ${c.name} = __cl_cx && ${JSON.stringify(c.name)} in __cl_cx ? __cl_cx.${c.name} : ${c.default !== undefined ? `(${c.default})` : `(() => { ${missing} })()`}\n`
+  }
+  return out
+}

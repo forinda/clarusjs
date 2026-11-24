@@ -62,6 +62,9 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
   out += `  const __cl_class = __cl_props.__cl_class ? " " + __cl_props.__cl_class : ""\n`
   // emit('name', value, { reason, event }) (#442): false when the parent cancelled it.
   if (ir.sends) out += `  const emit = (name, value, info) => __cl_emit(__cl_root, name, value, info)\n`
+  // The context children it re-renders get (#465). ponytail: the island's own provides only; its incoming context
+  // isn't serialized, so it can't pass on what was provided above it.
+  if (all.some((n) => n.kind === 'component')) out += `  const __cl_cx = undefined\n`
   // Inputs: read-only signals (writes are compile errors), set from props now and by the returned update.
   const inputs = ir.inputs.filter((i) => ir.signals.get(i.name) === 'input' || ir.signals.get(i.name) === 'model')
   const value = (i: (typeof inputs)[number], from: string) =>
