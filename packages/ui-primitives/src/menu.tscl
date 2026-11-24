@@ -1,0 +1,59 @@
+{{--
+  Menu (#465): a menu button. The list is a popover opened by its trigger (popovertarget), so opening, closing,
+  Escape and a click outside come from the browser, placed by CSS anchor positioning. This root is a small island: it
+  moves focus into the list when it opens, keeps aria-expanded in step, adds arrow keys, Home, End and typeahead, and
+  sends (select) with the chosen item's value, then closes ($info.cancel() keeps it open).
+
+  <menu id="file" (select)="run($event)">
+    <menu-trigger>File</menu-trigger>
+    <menu-list>
+      <menu-item value="new">New</menu-item>
+      <menu-item value="open">Open…</menu-item>
+    </menu-list>
+  </menu>
+
+  Give each one its own id: its trigger and list are named after it.
+--}}
+@input id: string
+@event select: string
+
+<script>
+  import { rovingFocus, typeahead } from '@clarusjs/ui-primitives'
+  provide('menu', { id })
+  // The trigger, list and items are the page's server HTML: wired here, this menu's only (not a menu nested in it).
+  function wire(el) {
+    const own = (node) => node.closest('[data-part="menu"]') === el
+    const list = [...el.querySelectorAll('[role="menu"]')].find(own)
+    const trigger = [...el.querySelectorAll('[aria-haspopup="menu"]')].find(own)
+    if (!list) return
+    // Its own items (each names its menu), not those of a menu nested in its list.
+    const items = `[role="menuitem"][data-menu="${CSS.escape(id)}"]:not([aria-disabled="true"])`
+    // Keys typed in a nested menu are that menu's: typeahead here doesn't move focus for them.
+    let nested = false
+    const mark = (event) => (nested = !own(event.target))
+    const toggle = (event) => {
+      const open = event.newState === 'open'
+      trigger?.setAttribute('aria-expanded', String(open))
+      if (open) list.querySelector(items)?.focus()
+    }
+    const click = (event) => {
+      const item = event.target.closest('[role="menuitem"]')
+      if (!item || !own(item) || item.getAttribute('aria-disabled') === 'true') return
+      if (emit('select', item.dataset.value, { reason: 'select', event })) list.hidePopover()
+    }
+    list.addEventListener('toggle', toggle)
+    list.addEventListener('click', click)
+    list.addEventListener('keydown', mark) // before typeahead's own listener
+    const stopKeys = rovingFocus(list, { items, orientation: 'vertical' })
+    const stopType = typeahead(list, { items, onMatch: (item) => nested || item.focus() })
+    return () => {
+      list.removeEventListener('toggle', toggle)
+      list.removeEventListener('click', click)
+      list.removeEventListener('keydown', mark)
+      stopKeys()
+      stopType()
+    }
+  }
+</script>
+
+<div data-part="menu" [use]="wire"><slot /></div>

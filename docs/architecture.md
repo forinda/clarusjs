@@ -266,13 +266,17 @@ to change later, so it's fixed now.
 | `<!--[bn:k-->…<!--]-->` | `@if` or `@await` block `n` inside an island; `k` is the branch the server rendered (`-1` for none). An `@await` is always rendered at `k = 0` (pending); in the browser 1 is `@then`, 2 is `@catch` |
 | `<!--[cn-->…<!--]-->` | a child component inside an island whose props or slot content read state; the browser re-renders it, or, when it is a nested island, passes it the new props in place (its inputs are read-only signals; its state is kept) |
 | `<!--[fn-->…<!--]-->` | `@for` list `n` inside an island; each row is wrapped in `<!--[r-->…<!--]-->`, `@empty` content in `<!--[e-->…<!--]-->`. Markers inside a row repeat per row and are looked up within that row |
+| `<!--[s-->…<!--]s-->` | content an island places at a `<slot />`: owned by the island around this one (see below) |
 
-An island's slot content (#465) adds no marker. A `<slot />` in an island sits outside its `@if`, `@for` and
-`@await` blocks and outside the content it gives child components, so the browser never re-renders it: the content
-is server HTML in the parent's scope, between the island's own markers. It carries no markers of its own (it comes
-from a page or a component without `<script>`; content from inside another island is a render error for now, since
-its markers would land in this island), and islands in it are `<cl-island>`s, skipped by this island's lookups. An
-island's slot passes no data and has no fallback content.
+An island's slot content (#465) sits in a slot range, `<!--[s-->…<!--]s-->`, one per `<slot />`. A `<slot />` in an
+island is outside its `@if`, `@for` and `@await` blocks and outside the content it gives child components, so the
+browser never re-renders the content: it is server HTML rendered in the scope of whoever wrote it, which may be
+another island (with that island's markers). **Ownership:** a node belongs to its nearest `<cl-island>`, except that
+each slot range it sits inside moves ownership one island outward (`owner()` in `runtime/dom.ts`); every lookup
+(markers, event delegation, `[use]`, child events, events replayed before attach, forms paths) uses it. So each
+island wires only its own markers, at any nesting depth, and no element is added between parent and child. An
+island's slot passes no data and has no fallback content. A component without a script places content with no
+marker.
 
 Every component marks its top-level elements with the class `cl-c-<scope id>`
 (the id from its file path; the `cl-c-` class prefix is reserved), merged with

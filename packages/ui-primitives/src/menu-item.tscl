@@ -1,0 +1,8 @@
+{{-- Menu item (#465): one choice in a <menu-list>; its value goes to the menu's (select). data-menu names its menu. --}}
+@context menu: { id: string }
+@input value: string
+@input disabled: boolean = false
+
+<button type="button" role="menuitem" tabindex="-1" [data-value]="value" [data-menu]="menu.id" [aria-disabled]="disabled ? 'true' : false" data-part="menu-item">
+  <slot />
+</button>

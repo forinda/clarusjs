@@ -1,0 +1,53 @@
+{{--
+  Radio group (#465): native radios in a fieldset, so the arrow keys, one Tab stop and form submission come from the
+  browser. The group is a small island; <radio>s have no script and read the group's name and value from context, so
+  the server writes which one is checked. Bind the value with [(value)]; (change) comes first with the new value, and
+  $info.cancel() keeps the current one.
+
+  <radio-group name="size" label="Size" [(value)]="size">
+    <radio value="s" label="Small" />
+    <radio value="m" label="Medium" />
+  </radio-group>
+--}}
+@input name: string
+@input label: string
+@model value: string = ''
+@event change: string
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  provide('radio', { name, value })
+  // The radios are the page's server HTML: kept in step with value here, and their changes go through (change).
+  function wire(el) {
+    const own = (node) => node.closest('[data-part="radio-group"]') === el
+    const change = (event) => {
+      const input = event.target
+      if (input.type !== 'radio' || !own(input)) return
+      if (emit('change', input.value, { reason: 'select', event })) value = input.value
+      else sync(value) // cancelled: the previous one is checked again
+    }
+    const sync = (selected) => {
+      for (const input of el.querySelectorAll('input[type="radio"]')) {
+        if (!own(input)) continue
+        input.checked = input.value === selected
+        input.closest('[data-part="radio"]')?.toggleAttribute('data-checked', input.checked)
+      }
+    }
+    // A form reset checks the radios it started with, without a change event: value says which one is checked. Heard
+    // on the document, so it follows the group into another form (a fragment swap can keep it in a new one).
+    const reset = (event) => event.target === el.form && setTimeout(() => sync(value))
+    el.addEventListener('change', change)
+    document.addEventListener('reset', reset)
+    const stop = effect(() => sync(value))
+    return () => {
+      el.removeEventListener('change', change)
+      document.removeEventListener('reset', reset)
+      stop()
+    }
+  }
+</script>
+
+<fieldset data-part="radio-group" [use]="wire">
+  <legend data-part="legend">{{ label }}</legend>
+  <slot />
+</fieldset>

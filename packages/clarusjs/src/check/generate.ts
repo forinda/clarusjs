@@ -6,7 +6,7 @@ import { parseExpressionAt } from 'acorn'
 import { routeFromFile } from '../server/handler.ts'
 import { ClarusError } from '../compiler/errors.ts'
 import { FOR_IMPLICIT, parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
-import { referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
+import { providesIn, referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
  * [virtual offset, length, source offset, exact, source length]. Exact spans are verbatim copies (offsets map one to
@@ -94,6 +94,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
   }
   if (options.loader) emit(`import { load as __cl_load } from ${JSON.stringify(options.loader)}\n`)
   const script = parsed.script ? splitImports(parsed.script.code, file, source, parsed.script.start) : null
+  // provide's rules (#465), located like the build's.
+  const provides = !!parsed.script && !!script && providesIn(script, file, source, parsed.script.start)
   if (parsed.script && script) {
     for (const imp of script.imports) {
       copy(imp.text, parsed.script.start + imp.start)
@@ -139,8 +141,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
     emit('\n')
   }
   emit('}\n')
-  // provide(key, value) (#465), unless the script has its own provide.
-  if (parsed.script && /\bprovide\s*\(/.test(parsed.script.code) && !/\b(function|const|let|var)\s+provide\b/.test(parsed.script.code)) emit('declare function provide(key: string, value: unknown): void\n')
+  // provide(key, value) (#465). It's reserved: a script's own provide clashes with it, as in the build.
+  if (provides) emit('declare function provide(key: string, value: unknown): void\n')
   if (parsed.events.length) emit('declare const emit: <K extends keyof Events>(name: K, ...args: Events[K] extends void ? [value?: undefined, info?: { reason?: string; event?: Event }] : [value: Events[K], info?: { reason?: string; event?: Event }]) => boolean\n')
   let loaderSpan: [number, number] | undefined
   if (options.loader) {

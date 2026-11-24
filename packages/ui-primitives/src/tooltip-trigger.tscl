@@ -1,0 +1,59 @@
+{{--
+  Tooltip trigger (#465): a button described by its <tooltip>, and its anchor. Browsers with interest invokers
+  (interestfor) show and hide the tooltip themselves; elsewhere this small island does: on hover (after a short delay)
+  and focus, kept open while the pointer is on the tooltip, closed on Escape, blur or leaving.
+--}}
+@input target: string
+
+<script>
+  function wire(el) {
+    if ('interestForElement' in el) return // the browser does it
+    const tip = () => document.getElementById(target)
+    let timer
+    const later = (fn, ms) => {
+      clearTimeout(timer)
+      timer = setTimeout(fn, ms)
+    }
+    const open = () => {
+      const t = tip()
+      if (t && !t.matches(':popover-open')) t.showPopover()
+    }
+    const close = () => {
+      clearTimeout(timer)
+      const t = tip()
+      if (t?.matches(':popover-open')) t.hidePopover()
+    }
+    const enter = () => later(open, 300)
+    // Focus keeps it open: leaving with the pointer closes it only when the trigger isn't focused.
+    const leave = () => document.activeElement === el || later(close, 100)
+    const key = (event) => {
+      if (event.key === 'Escape') close()
+    }
+    const t = tip()
+    const on = [
+      [el, 'pointerenter', enter],
+      [el, 'pointerleave', leave],
+      [el, 'focus', open],
+      [el, 'blur', close],
+      [el, 'keydown', key],
+      [t, 'pointerenter', () => clearTimeout(timer)],
+      [t, 'pointerleave', leave],
+    ]
+    for (const [node, type, fn] of on) node?.addEventListener(type, fn)
+    return () => {
+      clearTimeout(timer)
+      for (const [node, type, fn] of on) node?.removeEventListener(type, fn)
+    }
+  }
+</script>
+
+<button
+  type="button"
+  [interestfor]="target"
+  [aria-describedby]="target"
+  [style]="'anchor-name: --' + target"
+  data-part="trigger"
+  [use]="wire"
+>
+  <slot />
+</button>

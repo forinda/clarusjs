@@ -1,6 +1,7 @@
 // Island loader: finds <cl-island> elements, loads each one's chunk when its attach mode says so, calls attach(),
 // and replays what the visitor did before that. Browser only.
 
+import { owner } from './dom.ts'
 import { parse } from './serialize.ts'
 import { scope } from './signals.ts'
 
@@ -9,6 +10,15 @@ type Load = (src: string) => Promise<IslandModule>
 
 // Islands scheduled or loading. `data-cl-ready` is set only after attach() succeeds.
 const loading = new WeakSet<Element>()
+// Islands attaching now (attach="load"), so an island holding them waits for them (#465): content it re-renders
+// inside them reads what they provide.
+const pending = new WeakMap<Element, Promise<void>>()
+
+/** Does `inner` hold content of `el` in one of its slot ranges? */
+function holds(inner: Element, el: Element): true | void {
+  const walker = document.createTreeWalker(inner, 128) // comments
+  for (let n; (n = walker.nextNode()); ) if ((n as Comment).data === '[s' && owner(n.nextSibling!) === el) return true
+}
 const updates = new WeakMap<Element, (props: Record<string, unknown>) => void>()
 // Each attached island's disposer: everything its attach() wired (effects, listeners) is released by it.
 const attached = new Map<Element, () => void>()
@@ -29,7 +39,7 @@ function record(el: Element): { events: Recorded[]; stop(): void } {
   const events: Recorded[] = []
   const listener = (e: Event) => {
     const target = e.target as Element | null
-    if (!target || target.closest?.('cl-island') !== el) return
+    if (!target || owner(target) !== el) return
     if (HOLD.has(e.type)) e.preventDefault()
     events.push({ type: e.type, target, key: (e as KeyboardEvent).key })
   }
@@ -80,9 +90,17 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
     props = parse(el.getAttribute('p') ?? '{}') as Record<string, unknown>
     const s = el.getAttribute('s')
     state = s === null ? undefined : (parse(s) as Record<string, unknown>)
+    // Islands in it holding its content attach first (#465): content it re-renders there reads what they provide. One
+    // failing to load fails this one too (both retry). ponytail: later ones (idle, visible, interaction) aren't waited for.
+    for (const inner of el.querySelectorAll('cl-island')) {
+      if (!pending.has(inner) || !holds(inner, el)) continue
+      await pending.get(inner)
+      if (!pending.has(inner)) throw 0
+    }
   } catch (err) {
     recorded.stop()
     loading.delete(el) // network or parse failure: the next attachAll() retries
+    pending.delete(el)
     console.error(`[clarusjs] island "${el.getAttribute('c')}" failed to load`, err)
     return
   }
@@ -122,7 +140,11 @@ export async function attachAll(root: ParentNode = document, load: Load = lastLo
   for (const el of islands) {
     loading.add(el)
     const recorded = record(el)
-    if ((el.getAttribute('a') ?? 'load') === 'load') now.push(attachOne(el, load, recorded))
+    if ((el.getAttribute('a') ?? 'load') === 'load') {
+      const p = attachOne(el, load, recorded)
+      pending.set(el, p)
+      now.push(p)
+    }
     else schedule(el, () => void attachOne(el, load, recorded))
   }
   await Promise.all(now)
@@ -161,14 +183,16 @@ function arrive(): void {
 // its DOM and state are kept. False when it can't take them (not attached yet, or another component).
 ;(globalThis as { __clUpdate?: (el: Element, next: Element) => boolean }).__clUpdate = (el, next) => {
   const update = updates.get(el)
-  // The same component: the same name and the same source (two panel.tscl files share a name).
-  if (!update || el.getAttribute('c') !== next.getAttribute('c') || el.getAttribute('src') !== next.getAttribute('src')) return false
+  // The same component: the same name and the same source (two panel.tscl files share a name). An attached island
+  // without inputs has nothing to update (#465: re-rendered because the content it holds changed, which its parent
+  // wires in place).
+  if (!attached.has(el) || el.getAttribute('c') !== next.getAttribute('c') || el.getAttribute('src') !== next.getAttribute('src')) return false
   const p = next.getAttribute('p') ?? '{}'
   el.setAttribute('p', p)
   // Its paths for the forms engine (data-cl-path-<model>) move with it: a row removed above shifts the indexes.
   for (const { name } of [...el.attributes]) if (name.startsWith('data-cl-path-')) el.removeAttribute(name)
   for (const { name, value } of [...next.attributes]) if (name.startsWith('data-cl-path-')) el.setAttribute(name, value)
-  update(parse(p) as Record<string, unknown>)
+  update?.(parse(p) as Record<string, unknown>)
   return true
 }
 

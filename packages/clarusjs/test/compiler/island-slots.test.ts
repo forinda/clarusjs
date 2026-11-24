@@ -32,7 +32,7 @@ test('an island renders its content at <slot /> and wires its own parts around i
   const p = await importCode(page, 'islslot-page', { './tabs.tscl': server(tabs, 'tabs.tscl') })
   const c = await importCode(client(tabs, 'tabs.tscl'), 'islslot-c')
   document.body.innerHTML = await p.render({ who: '<x>' })
-  expect(document.querySelector('.head')!.innerHTML.trim()).toBe('<b>&lt;x&gt;</b>')
+  expect(document.querySelector('.head')!.innerHTML.replace(/<!--[^>]*-->/g, '').trim()).toBe('<b>&lt;x&gt;</b>')
   expect(document.querySelector('.body')!.textContent).toBe('hi <x>')
   await attachAll(document, async () => c)
   ;(document.querySelector('.more') as HTMLElement).click()
@@ -47,10 +47,11 @@ test('content for a slot the island lacks fails when rendering, naming it', asyn
   await expect(Promise.resolve().then(() => p.render({}))).rejects.toThrow(/<tabs> has no slot "foot"/)
 })
 
-test('an island can\'t take content from inside another island yet: a render error, naming it', async () => {
+test('an island takes content from inside another island (#465): it renders, inside the inner island\'s slot range', async () => {
   const outer = `@import tabs from './tabs.tscl'\n<script>\n  let on = state(true)\n</script>\n<tabs><p>{{ on }}</p></tabs>\n`
   const p = await importCode(server(outer, 'outer.tscl'), 'islslot-nested', { './tabs.tscl': server(tabs, 'tabs.tscl') })
-  await expect(Promise.resolve().then(() => p.render({}))).rejects.toThrow(/<tabs> can't take content from inside another island yet/)
+  const html = await p.render({})
+  expect(html).toMatch(/<!--\[s--><p[^>]*><!--\[\d+-->true<!--\]--><\/p><!--\]s-->/)
 })
 
 test('in an island, <slot /> inside a block or component content is a located build error', () => {
@@ -75,7 +76,7 @@ test('content that awaits (#430) renders inside an island: the island waits for 
   expect(html).toMatch(/^<cl-island c="tabs"/)
 })
 
-test('content from an island passed on through a component without a script still counts as from inside an island', async () => {
+test('content from an island passed on through a component without a script renders inside the inner island\'s slot range', async () => {
   const { mkdirSync, writeFileSync } = await import('node:fs')
   const modules: Record<string, string> = {
     'tabs': server(tabs, 'tabs.tscl'),
@@ -87,5 +88,17 @@ test('content from an island passed on through a component without a script stil
   mkdirSync(dir, { recursive: true })
   for (const [name, code] of Object.entries(modules)) writeFileSync(`${dir}${prefix}${name}.mjs`, code.replace(/from '\.\/(\w+)\.tscl'/g, (_, f) => `from './${prefix}${f}.mjs'`))
   const { render } = await import(/* @vite-ignore */ `${dir}${prefix}outer.mjs`)
-  await expect(Promise.resolve().then(() => render({}))).rejects.toThrow(/<tabs> can't take content from inside another island yet/)
+  expect(await render({})).toMatch(/<!--\[s--><p[^>]*><!--\[\d+-->true<!--\]--><\/p><!--\]s-->/)
+})
+
+test('an island wraps each slot\'s content in <!--[s-->…<!--]s-->; a component without a script adds nothing', async () => {
+  const page = server(`@import tabs from './tabs.tscl'\n<tabs>@slot('head') { <b>h</b> }<p>body</p></tabs>`, 'page.tscl')
+  const p = await importCode(page, 'islslot-ranges', { './tabs.tscl': server(tabs, 'tabs.tscl') })
+  const html: string = await p.render({})
+  expect(html.match(/<!--\[s-->/g)).toHaveLength(2)
+  expect(html).toMatch(/<!--\[s-->\s*<b[^>]*>h<\/b>\s*<!--\]s-->/)
+  expect(html).toMatch(/<!--\[s--><p[^>]*>body<\/p><!--\]s-->/)
+  const card = server('<div class="card"><slot /></div>', 'card.tscl')
+  const q = await importCode(server(`@import card from './card.tscl'\n<card><p>x</p></card>`, 'page.tscl'), 'islslot-static', { './card.tscl': card })
+  expect(await q.render({})).not.toContain('[s')
 })

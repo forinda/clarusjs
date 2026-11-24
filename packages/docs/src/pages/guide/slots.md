@@ -84,6 +84,6 @@ The server renders the content once, in the page's scope; the browser never re-r
 
 - **A `<slot />` sits outside `@if`, `@for` and `@await`**, and outside content it gives a child component: the browser re-renders those, and the content only exists on the server. Show and hide it with an attribute instead, like `[hidden]` above.
 - **A slot passes no data and has no fallback content.**
-- **The content comes from a page or a component without a script.** Content written inside another island is a render error for now.
+- **The content can come from anywhere,** another island included: its holes and handlers stay that island's, and the receiving island wires only its own. In the HTML, the content sits between `<!--[s-->` and `<!--]s-->`.
 
 Each is an error that names the place.

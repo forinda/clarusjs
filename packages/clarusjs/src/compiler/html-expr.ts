@@ -30,7 +30,9 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, top?: Server
     // The fill (called with what the slot passes, when it takes data: #455), or the fallback.
     if (n.kind === 'slot') {
       const data = n.props.length ? `{ ${n.props.map((p) => `${p.name === '__proto__' ? '["__proto__"]' : p.name}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }` : 'undefined'
-      return `__cl_slot(__cl_slots?.[${JSON.stringify(n.name)}], ${data}, () => ${n.fallback.length ? htmlExpr(n.fallback, rw, ctx) : '""'}, __cl_cx)`
+      const placed = `__cl_slot(__cl_slots?.[${JSON.stringify(n.name)}], ${data}, () => ${n.fallback.length ? htmlExpr(n.fallback, rw, ctx) : '""'}, __cl_cx)`
+      // In an island, its slot range (#465): the content in it is the outer island's (runtime/dom.ts owner()).
+      return ctx?.island ? `__cl_join(["<!--[s-->", ${placed}, "<!--]s-->"])` : placed
     }
     if (n.kind === 'connect' || n.kind === 'use') return '""' // its marker is static; the browser connects it
     // The attributes passed to this component (#463), on its root.
@@ -89,8 +91,7 @@ export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rew
   ]
   const slotsArg = slots.length ? `{ ${slots.join(', ')} }` : undefined
   // Render options: when to attach, and (for the forms engine) the path this component is bound to.
-  // Content from an island, or passed on from one through components without a script, is marked for the island check.
-  const opts = ['cx: __cl_cx', ...(slots.length ? [n.region >= 0 ? 'inIsland: true' : 'inIsland: __cl_opts?.inIsland'] : []), ...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.class ? [`class: ${JSON.stringify(n.class)}`] : []), ...(n.paths ? [`paths: { ${n.paths.map((p) => `${JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }`] : [])]
+  const opts = ['cx: __cl_cx', ...(n.attach ? [`attach: ${JSON.stringify(n.attach)}`] : []), ...(n.class ? [`class: ${JSON.stringify(n.class)}`] : []), ...(n.paths ? [`paths: { ${n.paths.map((p) => `${JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }`] : [])]
   if (opts.length) return `${renderName(n.name)}({ ${props} }, ${slotsArg ?? 'undefined'}, { ${opts.join(', ')} })`
   return slotsArg ? `${renderName(n.name)}({ ${props} }, ${slotsArg})` : `${renderName(n.name)}({ ${props} })`
 }

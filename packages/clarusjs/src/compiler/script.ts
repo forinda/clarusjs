@@ -369,18 +369,31 @@ export function rewriteClientExpr(expr: string, signals: Signals): string {
   return expr.slice(0, ast.start) + print(ast, expr, clientHook(expr, signals)) + expr.slice(ast.end)
 }
 
-/** provide(key, value) calls (#465): the key must be a string literal. True when the script provides anything. */
-export function providesIn(code: string, file: string, source: string, offset: number): boolean {
+/**
+ * provide(key, value) calls (#465): the key must be a string literal naming a value; provide itself is reserved (a
+ * script may not declare or import its own). True when the script provides anything. Shared by build and check.
+ */
+export function providesIn(split: { imports: { text: string; start: number }[]; body: string }, file: string, source: string, offset: number): boolean {
+  for (const imp of split.imports) {
+    if ((parseScript(imp.text).body[0] as N).specifiers.some((x: N) => x.local.name === 'provide')) throw new ClarusError('provide is reserved for context: rename this import (import { provide as other } …)', file, source, offset + imp.start)
+  }
+  const code = split.body
   let found = false
-  const hook: Hook = (node) => {
+  const usage = "provide is called with a string key and a value: provide('tabs', { value })"
+  const hook: Hook = (node, parent, key) => {
+    if (node.type === 'Identifier' && node.name === 'provide' && !(parent?.type === 'CallExpression' && key === 'callee') && (!isBinding(parent, key) || parent?.shorthand)) {
+      throw new ClarusError(usage, file, source, offset + node.start)
+    }
     const declared = (node.type === 'FunctionDeclaration' || node.type === 'VariableDeclarator' || node.type === 'ClassDeclaration') && node.id?.type === 'Identifier' && node.id.name === 'provide'
     if (declared) throw new ClarusError('provide is reserved for context: give this function another name', file, source, offset + node.start)
     if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === 'provide') {
       found = true
       const key = (node.arguments as N[])[0]
       if (!key || key.type !== 'Literal' || typeof key.value !== 'string' || node.arguments.length !== 2) {
-        throw new ClarusError("provide takes a string key and a value: provide('tabs', { value })", file, source, offset + node.start)
+        throw new ClarusError(usage, file, source, offset + node.start)
       }
+      // @context reads it by name, so the key must be one.
+      if (!/^[A-Za-z_$][\w$]*$/.test(key.value)) throw new ClarusError(`provide's key "${key.value}" isn't a name @context can read: use letters, digits, _ or $, like 'tabs'`, file, source, offset + node.start)
     }
     return undefined
   }

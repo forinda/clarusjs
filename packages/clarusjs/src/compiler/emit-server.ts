@@ -38,8 +38,6 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
   // A <script server> that awaits makes render async (#430): its parents join what it returns.
   out += `\nexport ${ir.server?.awaits ? 'async ' : ''}function render(__cl_props = {}, __cl_slots, __cl_opts) {\n`
   out += unknownSlotCheck(ir)
-  // ponytail: content from a parent island would carry that island's markers into this one. Lift with scoped lookups.
-  if (ir.stateful && walk(ir.nodes).some((n) => n.kind === 'slot')) out += `  if (__cl_slots !== undefined && __cl_opts?.inIsland) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> can't take content from inside another island yet: pass it from a page or a component without <script>`)})\n`
   if (!ir.stateful) out += `  if (__cl_opts?.attach) throw new Error(${JSON.stringify(`[clarusjs] <${ir.name}> has no <script>, so attach="`)} + __cl_opts.attach + '" does nothing')\n`
   // A component loader (#97): the data it loaded for this render fills the inputs; the parent's props win.
   if (loader) out += `  __cl_props = { ...__cl_loaded(${JSON.stringify(loader)}), ...__cl_props }\n`

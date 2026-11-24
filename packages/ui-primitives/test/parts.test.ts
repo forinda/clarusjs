@@ -135,3 +135,44 @@ test('tabs: Radix-shaped, on context; the server writes every ARIA attribute and
   expect(statefulOf('tabs')).toBe(true)
   for (const p of ['tab-list', 'tab', 'tab-panel']) expect(statefulOf(p)).toBe(false)
 })
+
+test('radio group: native radios in a fieldset, named and checked from context; only the group is an island', async () => {
+  const page = `@import radioGroup from './radio-group.tscl'
+@import radio from './radio.tscl'
+<radioGroup name="size" label="Size" value="m">
+  <radio value="s" label="Small" /><radio value="m" label="Medium" /><radio value="l" label="Large" [disabled]="true" />
+</radioGroup>
+`
+  const radio = (v: string, label: string, on: boolean, off = false) => `<label data-part="radio"${on ? ' data-checked=""' : ''}${off ? ' data-disabled=""' : ''}><input type="radio" name="size"${off ? ' disabled' : ''} value="${v}"${on ? ' checked' : ''}><span data-part="label">${label}</span></label>`
+  expect(await renderPage(page, ['radio-group', 'radio'])).toBe('<fieldset data-part="radio-group"><legend data-part="legend">Size</legend>'
+    + radio('s', 'Small', false) + radio('m', 'Medium', true) + radio('l', 'Large', false, true) + '</fieldset>')
+  expect(statefulOf('radio-group')).toBe(true)
+  expect(statefulOf('radio')).toBe(false)
+})
+
+test('tooltip: popover="hint" anchored to its trigger, which describes itself by it; the trigger is a small island', async () => {
+  expect(await render('tooltip', { id: 't' }, { default: 'Copy the link' })).toBe('<div id="t" popover="hint" role="tooltip" data-part="tooltip" data-side="top" style="position-anchor: --t; position-area: top; position-try-fallbacks: flip-block, flip-inline">Copy the link</div>')
+  expect(await render('tooltip-trigger', { target: 't' }, { default: 'Copy' })).toBe('<button type="button" interestfor="t" aria-describedby="t" style="anchor-name: --t" data-part="trigger">Copy</button>')
+  expect(statefulOf('tooltip')).toBe(false)
+  expect(statefulOf('tooltip-trigger')).toBe(true)
+})
+
+test('menu: a popover list of menu items opened by its trigger, named from context; only the root is an island', async () => {
+  const page = `@import menu from './menu.tscl'
+@import menuTrigger from './menu-trigger.tscl'
+@import menuList from './menu-list.tscl'
+@import menuItem from './menu-item.tscl'
+<menu id="file">
+  <menuTrigger>File</menuTrigger>
+  <menuList><menuItem value="new">New</menuItem><menuItem value="open" [disabled]="true">Open…</menuItem></menuList>
+</menu>
+`
+  expect(await renderPage(page, ['menu', 'menu-trigger', 'menu-list', 'menu-item'])).toBe('<div data-part="menu">'
+    + '<button type="button" id="file-trigger" popovertarget="file-list" aria-haspopup="menu" aria-controls="file-list" aria-expanded="false" style="anchor-name: --file" data-part="trigger">File</button>'
+    + '<div id="file-list" popover="auto" role="menu" aria-labelledby="file-trigger" style="position-anchor: --file; position-area: bottom span-right; position-try-fallbacks: flip-block, flip-inline" data-part="menu-list">'
+    + '<button type="button" role="menuitem" tabindex="-1" data-value="new" data-menu="file" data-part="menu-item">New</button>'
+    + '<button type="button" role="menuitem" tabindex="-1" data-value="open" data-menu="file" aria-disabled="true" data-part="menu-item">Open…</button>'
+    + '</div></div>')
+  expect(statefulOf('menu')).toBe(true)
+  for (const p of ['menu-trigger', 'menu-list', 'menu-item']) expect(statefulOf(p)).toBe(false)
+})

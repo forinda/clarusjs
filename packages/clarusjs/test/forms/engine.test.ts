@@ -96,6 +96,25 @@ test('paths join through components: a field inside [data-cl-path="shipping"] is
   expect(f.errors.map((e) => e.path)).toEqual(['shipping.street'])
 })
 
+test('#465 a field in an island\'s slot content takes its path from the island that wrote it, not the island holding it', () => {
+  // tabs (bound two ways, so it carries data-cl-path-value) holds the page's field in its slot range.
+  const { el, f } = mount(`<form data-cl-form="0"><cl-island c="tabs" data-cl-path="tab" data-cl-path-value="tab"><div data-cl-path="inner"><!--[s--><label><input required data-cl-path="name"><small data-cl-message></small></label><!--]s--></div></cl-island></form>`, { name: '', tab: 'a' })
+  leave(el('input'))
+  expect(f.errors.map((e) => e.path)).toEqual(['name'])
+})
+
+test('#465 review: a component\'s @value field inside another island\'s slot uses its own component\'s binding, not the holder\'s', () => {
+  const { el, f } = mount(`<form data-cl-form="0"><cl-island c="picker" data-cl-path-value="choice"><cl-island c="tabs" data-cl-path-value="tab"><!--[s--><label><input required data-cl-path="@value"><small data-cl-message></small></label><!--]s--></cl-island></cl-island></form>`, { choice: '', tab: '' })
+  leave(el('input'))
+  expect(f.errors.map((e) => e.path)).toEqual(['choice'])
+})
+
+test('#465 review: a component\'s @value field, the component sitting in another island\'s slot, skips the holder\'s paths', () => {
+  const { el, f } = mount(`<form data-cl-form="0"><cl-island c="holder"><div data-cl-path="address"><!--[s--><cl-island c="picker" data-cl-path-value="name"><label><input required data-cl-path="@value"><small data-cl-message></small></label></cl-island><!--]s--></div></cl-island></form>`, { name: '', address: {} })
+  leave(el('input'))
+  expect(f.errors.map((e) => e.path)).toEqual(['name'])
+})
+
 test('rows shifting: the error follows the field to its new path', () => {
   const { el, f } = mount(`<form data-cl-form="0"><label><input data-cl-path="lines.0.item" value="ok"></label><label><input required data-cl-path="lines.1.item"><small data-cl-message></small></label></form>`, { lines: [{ item: 'ok' }, { item: '' }] })
   const second = document.querySelectorAll('input')[1]!
