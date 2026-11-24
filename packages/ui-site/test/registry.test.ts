@@ -253,3 +253,27 @@ test('#review: every layered block declares Tailwind\'s layer order first', () =
     for (const b of blocks) expect(b.trim(), f).toMatch(/^@layer theme, base, components, utilities;\s*@layer components \{/)
   }
 })
+
+test('progress: a native <progress> with value and max, named by label; no value is indeterminate', async () => {
+  expect(await render('progress.tscl', { value: 40, label: 'Upload' })).toBe('<progress max="100" aria-label="Upload" data-part="progress" value="40"></progress>')
+  expect(await render('progress.tscl', { label: 'Loading' })).toBe('<progress max="100" aria-label="Loading" data-part="progress"></progress>')
+})
+
+test('meter: a native <meter> with value, min, max, low, high, optimum', async () => {
+  const html = await render('meter.tscl', { value: 0.7, low: 0.3, high: 0.8, optimum: 1, label: 'Storage' })
+  expect(html).toMatch(/^<meter /)
+  for (const a of ['value="0.7"', 'min="0"', 'max="1"', 'low="0.3"', 'high="0.8"', 'optimum="1"', 'aria-label="Storage"', 'data-part="meter"']) expect(html).toContain(a)
+})
+
+test('spinner: role="status" with a hidden label; the mark is aria-hidden; no spin under reduced motion', async () => {
+  expect(await render('spinner.tscl')).toBe('<span role="status" data-part="spinner"><span aria-hidden="true" data-part="spinner-mark"></span><span data-part="spinner-label">Loading</span></span>')
+  expect(await render('spinner.tscl', { label: 'Saving' })).toContain('>Saving</span>')
+  expect(source('spinner.tscl')).toContain('prefers-reduced-motion')
+})
+
+test('slider: <input type="range"> with value, min, max, step, name, disabled', async () => {
+  const html = await render('slider.tscl', { value: 30, step: 5, name: 'volume', 'aria-label': 'Volume' })
+  expect(html).toMatch(/^<input type="range" /)
+  for (const a of ['value="30"', 'min="0"', 'max="100"', 'step="5"', 'name="volume"', 'data-part="slider"', 'aria-label="Volume"']) expect(html).toContain(a)
+  expect(await render('slider.tscl', { disabled: true })).toContain(' disabled')
+})

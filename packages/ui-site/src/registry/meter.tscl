@@ -1,0 +1,29 @@
+{{-- Meter: a native <meter> for a value in a known range (storage used, a score); low, high and optimum colour it. --}}
+@input value: number
+@input min: number = 0
+@input max: number = 1
+@input low: number | null = null
+@input high: number | null = null
+@input optimum: number | null = null
+@input label: string = ''
+
+<meter
+  [value]="value"
+  [min]="min"
+  [max]="max"
+  [low]="low"
+  [high]="high"
+  [optimum]="optimum"
+  [aria-label]="label || null"
+  data-part="meter"
+></meter>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      width: 100%;
+      height: 8px;
+    }
+  }
+</style>

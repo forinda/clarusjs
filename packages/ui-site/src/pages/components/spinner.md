@@ -1,0 +1,32 @@
+---
+title: "Spinner"
+group: "Components"
+order: 27
+description: "A turning mark that tells screen readers it is loading."
+---
+
+# Spinner
+
+<p class="lead">A turning mark that tells screen readers it is loading.</p>
+
+<spinnerDemo />
+
+## Usage
+
+<<< ../../registry/spinner-demo.tscl
+
+## Source
+
+Copy it next to your components as `spinner.tscl`.
+
+<<< ../../registry/spinner.tscl
+
+## Styling
+
+- **On the root:** `class`, `style`, `id`, `aria-*` and `data-*` written on the tag land on its root element; `class` and `style` merge with its own.
+- **Selectors:** `data-part` names `spinner`, `spinner-mark`, `spinner-label`.
+- **Your rules win:** every rule here has zero specificity (`:where()`) and sits in `@layer components`, so your own CSS and Tailwind utilities override it.
+
+## Needs
+
+<needs name="spinner" />
