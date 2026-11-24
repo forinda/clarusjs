@@ -42,6 +42,7 @@ Releases are automated from `main` (see RELEASE.md): never run `npm publish` or 
 | `src/vite/` | `plugin.ts` (dev SSR, `vite build` = client build → server build → prerender, preview routing), `build.ts` (find components, prerender), `node.ts` (Node http ⇄ fetch) |
 | `packages/content/` | `@clarusjs/content`, published: Markdown pages as a page source (`clarusjs({ sources: [markdown()] })`). Build-time only; its dependencies (markdown-it, yaml) never reach `clarusjs` or a browser bundle |
 | `packages/ui-primitives/` | `@clarusjs/ui-primitives`, published: accessible behaviours (roving focus, typeahead, dismiss, transitions, focus return, positioning) as `(el, options) → dispose` functions for `[use]`, shipped as JS with JSDoc types. No dependencies; a size budget per behaviour |
+| `packages/ui/` | `@clarusjs/ui`, published: one stylesheet (`ui.css`) styling `ui-primitives`' parts by their `data-part` and state attributes, with `--ui-` tokens (light and dark), all in `:where()`. CSS only |
 | `packages/theme-docs/` | `@clarusjs/theme-docs`, published: the docs layout as a theme (`layout.tscl`, `theme.css` tokens, theme toggle, copy, callout), shipped as source. Configured by a `config` prop, extended by slots |
 | `packages/docs/` | the docs site, built with clarusjs; private. Its Playwright tests (`e2e/`) run against the built site and are the end-to-end proof of each framework feature |
 | `examples/counter/` | the POC app (private workspace package, depends on `clarusjs: workspace:*`) |

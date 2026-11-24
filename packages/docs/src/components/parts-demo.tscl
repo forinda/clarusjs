@@ -77,31 +77,7 @@
     display: flex;
     gap: 8px;
   }
-  [data-part='popover'] {
-    margin: 4px 0;
-    padding: 12px;
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-  }
-  dialog[open] {
-    padding: 16px 20px;
-    border: 1px solid var(--rule);
-    border-radius: 10px;
-  }
   p {
     margin: 0;
-  }
-</style>
-
-<style global>
-  /* Inside the field (its own island): the demo's look for its parts. */
-  .parts-demo [data-part='error'] {
-    margin: 4px 0 0;
-    color: var(--danger, #b42318);
-  }
-  .parts-demo [data-part='description'] {
-    margin: 4px 0 0;
-    color: var(--muted);
-    font-size: 14px;
   }
 </style>

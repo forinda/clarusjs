@@ -1,0 +1,44 @@
+{
+  "name": "@clarusjs/ui",
+  "version": "0.0.0",
+  "description": "A styled set for @clarusjs/ui-primitives: design tokens and thin, accessible styles over the parts' data-part and state attributes, light and dark.",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
+  "exports": {
+    "./ui.css": "./src/ui.css",
+    "./*": "./src/*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@clarusjs/ui-primitives": "workspace:^"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forinda/clarusjs.git",
+    "directory": "packages/ui"
+  },
+  "keywords": [
+    "clarusjs",
+    "css",
+    "design-tokens",
+    "ui"
+  ],
+  "homepage": "https://clarusjs.com/components",
+  "bugs": {
+    "url": "https://github.com/forinda/clarusjs/issues"
+  },
+  "devDependencies": {
+    "@clarusjs/ui-primitives": "workspace:^",
+    "vitest": "^5.1.1"
+  }
+}

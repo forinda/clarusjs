@@ -1815,7 +1815,7 @@ test('#370: the phone drawer as designed: Menu, a Learn / Guide switch, groups, 
   await expect(drawer.locator('.sidebar-switch a')).toHaveText(['Learn', 'Guide'])
   await expect(drawer.locator('.sidebar-switch a[aria-current="true"]')).toHaveText('Guide')
   await expect(drawer.locator('[data-search-open]')).toBeHidden() // the header's search button is there
-  await expect(drawer.locator('.sidebar-links a')).toHaveText(['Reference', 'Releases', 'GitHub', 'npm'])
+  await expect(drawer.locator('.sidebar-links a')).toHaveText(['Components', 'Reference', 'Releases', 'GitHub', 'npm'])
   await expect(drawer.locator('.sidebar-links')).toBeInViewport()
   // Nothing wider than the drawer.
   expect(await drawer.evaluate((d) => d.scrollWidth <= d.clientWidth)).toBe(true)
@@ -2535,4 +2535,33 @@ test('#465 parts: dialog and popover open with no JavaScript of their own, the a
   await demo.getByLabel('Size').selectOption('s') // the select part, two-way
   await expect(demo.locator('.parts-size')).toHaveText('Size: s')
   await expect(demo.getByRole('option', { name: 'Large' })).toBeDisabled()
+})
+
+// #467: the Components section, a page per part, styled by @clarusjs/ui; axe on every one.
+for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox']) {
+  test(`#467 components/${part}: the demo works and has no axe violations`, async ({ page }) => {
+    await page.goto(`/components/${part}`)
+    const gallery = page.locator(`[data-gallery="${part}"]`)
+    await expect(gallery.locator('xpath=ancestor::cl-island')).toHaveAttribute('data-cl-ready', '')
+    expect((await (await axe(page)).include(`[data-gallery="${part}"]`).analyze()).violations).toEqual([])
+  })
+}
+
+test('#467 components: @clarusjs/ui styles the parts in the site\'s tokens; interactions on a few pages', async ({ page }) => {
+  await page.goto('/components/dialog')
+  const trigger = page.getByRole('button', { name: 'Delete file…' })
+  expect(await trigger.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('8px') // ui.css's --ui-radius
+  await trigger.click()
+  const dialog = page.getByRole('dialog', { name: 'Delete this file?' })
+  await expect(dialog).toBeVisible()
+  expect((await (await axe(page)).include('dialog[open]').analyze()).violations).toEqual([]) // open, too
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await page.goto('/components/switch')
+  await page.getByRole('switch', { name: 'Notifications' }).click()
+  await expect(page.locator('.gallery-out')).toHaveText('Notifications off, terms not agreed.')
+  await page.goto('/components/combobox')
+  await page.getByRole('combobox', { name: 'Fruit' }).click()
+  await page.getByRole('option', { name: 'Banana' }).click()
+  await expect(page.locator('.gallery-out')).toHaveText('Fruit: banana')
 })
