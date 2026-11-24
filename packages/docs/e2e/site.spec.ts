@@ -2549,8 +2549,9 @@ for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select
 
 test('#465 tabs: Radix-shaped on context, server-rendered ARIA; click, arrow keys, Home and End select, panels follow', async ({ page }) => {
   await page.goto('/components/tabs')
-  const list = page.getByRole('tablist', { name: 'Install' })
-  const panel = (name: string) => page.getByRole('tabpanel', { name })
+  const gallery = page.locator('[data-gallery="tabs"]')
+  const list = gallery.getByRole('tablist', { name: 'Install' })
+  const panel = (name: string) => gallery.getByRole('tabpanel', { name })
   // Before any script: the server already hid the other panels, so nothing jumps.
   const html = await (await page.request.get('/components/tabs')).text()
   expect(html).toMatch(/id="gallery-install-panel-pnpm"[^>]*hidden/)
@@ -2566,6 +2567,25 @@ test('#465 tabs: Radix-shaped on context, server-rendered ARIA; click, arrow key
   await page.keyboard.press('Home')
   await expect(panel('npm')).toBeVisible()
   await expect(page.locator('#gallery-install-panel-yarn')).toBeHidden()
+})
+
+test('#465 tabs bound two ways in an island: [(value)], a cancelling (change), and the page\'s own handlers in a panel', async ({ page }) => {
+  await page.goto('/components/tabs')
+  const demo = page.locator('.tabs-bound-demo')
+  await expect(demo.locator('xpath=ancestor::cl-island').first()).toHaveAttribute('data-cl-ready', '')
+  const list = demo.getByRole('tablist', { name: 'Package manager' })
+  await list.getByRole('tab', { name: 'pnpm' }).click()
+  await expect(demo.locator('.bound-out')).toHaveText('Selected: pnpm')
+  await expect(demo.getByRole('tabpanel', { name: 'pnpm' })).toBeVisible()
+  await list.getByRole('tab', { name: 'npm', exact: true }).click()
+  await demo.locator('.bound-inc').click()
+  await demo.locator('.bound-inc').click()
+  await expect(demo.locator('.bound-count')).toHaveText('2')
+  await demo.getByLabel('Locked').check()
+  await list.getByRole('tab', { name: 'yarn' }).click()
+  await expect(list.getByRole('tab', { name: 'npm', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(demo.locator('.bound-out')).toHaveText('Selected: npm')
+  expect((await (await axe(page)).include('.tabs-bound-demo').analyze()).violations).toEqual([])
 })
 
 test('#467 components: @clarusjs/ui styles the parts in the site\'s tokens; interactions on a few pages', async ({ page }) => {
