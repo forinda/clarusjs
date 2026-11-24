@@ -39,16 +39,22 @@ export function owner(node: Node): Element | null {
       if (!out) return n as Element
       out--
     }
-    // Slot ranges still open at n, among the siblings before it.
-    let closed = 0
-    for (let s = n.previousSibling; s; s = s.previousSibling) {
-      if (s.nodeType !== 8) continue
-      const d = (s as Comment).data
-      if (d === ']s') closed++
-      else if (d === '[s') closed ? closed-- : out++
-    }
+    out += openSlots(n)
   }
   return null
+}
+
+/** Slot ranges still open at `n`, among the siblings before it (#465). @internal */
+export function openSlots(n: Node): number {
+  let open = 0
+  let closed = 0
+  for (let s = n.previousSibling; s; s = s.previousSibling) {
+    if (s.nodeType !== 8) continue
+    const d = (s as Comment).data
+    if (d === ']s') closed++
+    else if (d === '[s') closed ? closed-- : open++
+  }
+  return open
 }
 
 /** The island a context's root stands for: itself when it is one, else the island it is in (null: none). */
