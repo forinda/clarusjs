@@ -49,7 +49,9 @@ islands of JavaScript only where a component has a `<script>`. Vite runs it (`vi
 - `<slot />` and `<slot name="x">` receive content; `@slot('x') { … }` fills a named one.
 - `{{-- … --}}` is a template comment.
 - A component renders one root element: what a parent passes (attributes, `class`, `(event)`) lands on it. To group
-  several without an element, wrap them in `<fragment>` (it renders only its children and takes no attributes).
+  several without an element, wrap them in `<fragment>` (it renders only its children and takes no attributes). A
+  component whose root is a `<fragment>` takes nothing from its parent: `clarusjs check` reports any attribute, `class`
+  or `(event)` written on its tag.
 
 ### Islands and state
 

@@ -14,7 +14,7 @@ description: "Every directive and binding in .tscl templates, on one page."
 | `@input name: Type = default` | a typed input | [Inputs](/guide/inputs) |
 | `@model name: Type = default` | an input the parent binds two ways (`[(name)]`) | [Forms](/guide/forms) |
 | `@event name: Type`, `emit('name', value)` | an event the component sends its parent, and sending it | [Events](/guide/events#from-a-child-island-to-its-parent) |
-| `@extends input` | the component stands for that element: it takes all of its attributes, typed, onto its root | [Components](/guide/components#a-component-that-stands-for-an-element-extends) |
+| `@extends input` | the component stands for that element: its attributes, typed, land on its root (a declared input takes its name instead; the root's own attribute wins) | [Components](/guide/components#a-component-that-stands-for-an-element-extends) |
 | `@layout none` | a page without its folder and config layouts | [Layouts](/guide/layouts#folder-layouts) |
 | `@import name from './x.tscl'` | use a component | [Components](/guide/components) |
 | `@import { a } from './x.ts'` | import data | [Components](/guide/components) |

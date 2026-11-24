@@ -23,6 +23,7 @@ const parts: Record<string, string> = {
   clickable: "<button class=\"clk\" type=\"button\"><slot /></button>\n",
   wrapper: "<div class=\"wrap\"><slot /></div>\n",
   onlyEmitter: "@import emitter from './emitter.tscl'\n<emitter />\n",
+  xbtn: "@extends button\n<script>\n  let c = state(0)\n</script>\n<button class=\"xb\" type=\"button\" [data-c]=\"c\" (click)=\"c++\">{{ c }}</button>\n",
   emitter: "@event click: string\n<script>\n  function go(event) { emit('click', 'from-child', { event }) }\n</script>\n<button class=\"em\" (click)=\"go($event)\">e</button>\n",
 }
 let n = 0
@@ -234,4 +235,21 @@ test('<fragment> in an island: an @if branch of several elements switches, @for 
   click('.a')
   expect([...$('dl').children].map((e) => e.textContent).join(',')).toBe('1,v1,2,v2,3,v3')
   expect($('.box').querySelector('fragment')).toBeNull()
+})
+
+test('#review: an @extends island kept in place takes the new passed attributes; its own state-driven ones stay', async () => {
+  await mount("<script>\n  let locked = state(false)\n</script>\n<div><button class=\"lock\" (click)=\"locked = !locked\">l</button><xbtn [disabled]=\"locked\" [title]=\"locked ? 'off' : 'on'\" /></div>\n")
+  click('.xb')
+  expect($('.xb').getAttribute('data-c')).toBe('1')
+  expect($('.xb').hasAttribute('disabled')).toBe(false)
+  click('.lock')
+  await tick()
+  expect($('.xb').hasAttribute('disabled')).toBe(true)
+  expect($('.xb').getAttribute('title')).toBe('off')
+  expect($('.xb').getAttribute('data-c')).toBe('1') // state kept, its attribute too
+  expect($('.xb').textContent).toBe('1')
+  click('.lock')
+  await tick()
+  expect($('.xb').hasAttribute('disabled')).toBe(false)
+  expect($('.xb').getAttribute('title')).toBe('on')
 })

@@ -107,7 +107,7 @@ A fragment takes no attributes, and a component whose root is one takes none fro
 <text-field name="email" type="email" required placeholder="you@example.com" />
 ```
 
-- **The root is that element:** one `<input>` here (or, in a component without a `<script>`, an `@if` … `@else` of one each). Anything else is a build error.
+- **The root is that element:** one `<input>` here (or, in a stateless component, with no `<script>` and no `@model`, an `@if` … `@else` of one each). Anything else is a build error.
 - **Elements:** `button`, `input`, `textarea`, `select`, `option`, `a`, `img`, `form`, `label`, `details`, `dialog`, plus the attributes every element takes (`title`, `autofocus`, `popover`…).
 - **The rules above still hold:** the root's own attribute wins (`type` here), and a declared input is never an attribute.
 

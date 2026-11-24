@@ -100,12 +100,13 @@ const typeNames = (clause: string) =>
   clause.startsWith('{') ? clause.slice(1, -1).split(',').map((p) => p.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()!.trim()).filter(Boolean) : [clause.trim()]
 
 /**
- * A template's top-level nodes that render: no whitespace, no <cl-head>, <script> or <style>. What one-root, @extends,
+ * A template's top-level nodes that render: no whitespace or comments, no <cl-head>, <script> or <style>. What one-root, @extends,
  * fragment roots and check all look at.
  * @internal
  */
 export function rootNodes(nodes: TemplateNode[]): TemplateNode[] {
-  return nodes.filter((n) => !(n.type === 'text' && !n.value.trim()) && !(n.type === 'element' && ['cl-head', 'script', 'style'].includes(n.tag)))
+  // HTML comments render, but aren't a root: a text node of only comments and whitespace doesn't count.
+  return nodes.filter((n) => !(n.type === 'text' && !n.value.replace(/<!--[\s\S]*?-->/g, '').trim()) && !(n.type === 'element' && ['cl-head', 'script', 'style'].includes(n.tag)))
 }
 
 /**

@@ -208,7 +208,7 @@ function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source:
  * ponytail: nothing falls through with several top-level elements, or text or blocks beside one; Vue warns there.
  */
 function fallThrough(parsed: ReturnType<typeof parse>): void {
-  const meaningfulOf = (nodes: typeof parsed.nodes) => nodes.filter((n) => !(n.type === 'text' && !n.value.trim()) && !(n.type === 'element' && UNMARKED.has(n.tag)))
+  const meaningfulOf = (nodes: typeof parsed.nodes) => nodes.filter((n) => !(n.type === 'text' && !n.value.replace(/<!--[\s\S]*?-->/g, '').trim()) && !(n.type === 'element' && UNMARKED.has(n.tag)))
   const meaningful = meaningfulOf(parsed.nodes)
   if (meaningful.length !== 1) return
   const top = meaningful[0]!

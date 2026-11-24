@@ -134,3 +134,7 @@ test('#review: one-root: a fragment in an @if branch is not one element', () => 
   const one = (source: string) => lint(source, 'src/components/x.tscl').filter((m) => m.rule === 'one-root').length
   expect(one('@input a: boolean\n@if (a) { <fragment><b>1</b><i>2</i></fragment> } @else { <p>3</p> }\n')).toBe(1)
 })
+
+test('#review: one-root: an HTML comment beside the root is not another root', () => {
+  expect(lint('<!-- note -->\n<p>x</p>\n<!-- end -->\n', 'src/components/x.tscl').filter((m) => m.rule === 'one-root')).toEqual([])
+})

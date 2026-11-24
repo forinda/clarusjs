@@ -58,3 +58,11 @@ test('#review: an attribute the root writes itself is written once, its own', as
 test('#review: a root with its own [...] spread is an error with @extends (the passed attributes would be dropped)', () => {
   expect(error('@extends a\n@input rest: Record<string, string> = {}\n<a [...]="rest">x</a>\n')).toMatch(/btn\.tscl:3:1 .*\[\.\.\.\]/)
 })
+
+test('#review: an HTML comment beside the root is not another root', async () => {
+  expect(error('@extends button\n<!-- the save button -->\n<button>Save</button>\n')).toBe('')
+})
+
+test('#review: passed attributes land on a root with an HTML comment beside it', async () => {
+  expect(await render('<!-- card -->\n<div>x</div>\n', { id: 'a' })).toContain('<div id="a"')
+})
