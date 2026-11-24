@@ -334,13 +334,38 @@ function renderer(options: MarkdownOptions): Md {
     }
   })
 
+  // {since=0.16.0}, {deprecated=0.17.0 removed=0.18.0}: when a feature came and when it goes, as a badge (in a
+  // heading, a table cell or text). Not part of a heading's id or anchor text. Anything else in braces stays text.
+  const VERSION = /\{((?:since|deprecated|removed)=\d+\.\d+\.\d+(?:\s+(?:since|deprecated|removed)=\d+\.\d+\.\d+)*)\}/g
+  md.core.ruler.after('inline', 'cl_versions', (state) => {
+    for (const block of state.tokens) {
+      if (block.type !== 'inline' || !block.children) continue
+      block.children = block.children.flatMap((t) => {
+        if (t.type !== 'text' || !VERSION.test(t.content)) return [t]
+        VERSION.lastIndex = 0
+        const out: (typeof t)[] = []
+        let at = 0
+        for (const m of t.content.matchAll(VERSION)) {
+          out.push(Object.assign(new state.Token('text', '', 0), { content: t.content.slice(at, m.index) }))
+          const v = Object.fromEntries(m[1]!.split(/\s+/).map((kv) => kv.split('=') as [string, string]))
+          const label = v.since ? `Since ${v.since}` : v.deprecated ? `Deprecated in ${v.deprecated}${v.removed ? `, removed in ${v.removed}` : ''}` : `Removed in ${v.removed}`
+          const kind = v.since ? 'since' : v.deprecated ? 'deprecated' : 'removed'
+          out.push(Object.assign(new state.Token('html_inline', '', 0), { content: `<span class="version" data-version="${kind}">${escapeHtml(label)}</span>` }))
+          at = m.index! + m[0].length
+        }
+        out.push(Object.assign(new state.Token('text', '', 0), { content: t.content.slice(at) }))
+        return out.filter((x) => x.type !== 'text' || x.content)
+      })
+    }
+  })
+
   // Headings get an id and an anchor link; ids are unique within the page.
   md.core.ruler.push('cl_anchors', (state) => {
     const used = new Set<string>()
     state.tokens.forEach((token, i) => {
       if (token.type !== 'heading_open') return
       const inline = state.tokens[i + 1]!
-      const text = (inline.children ?? []).filter((t: Tok) => t.type === 'text' || t.type === 'code_inline').map((t: Tok) => t.content).join('')
+      const text = (inline.children ?? []).filter((t: Tok) => t.type === 'text' || t.type === 'code_inline').map((t: Tok) => t.content).join('').trim()
       const base = slugify(text)
       let id = base
       for (let n = 1; used.has(id); n++) id = `${base}-${n}`
@@ -529,7 +554,7 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       const headings = tokens.flatMap((t, i) => {
         // Top-level only, like the lesson steps: a heading inside a blockquote or list isn't a section of the page.
         if (t.type !== 'heading_open' || (t.tag !== 'h2' && t.tag !== 'h3') || t.level !== 0) return []
-        const text = (tokens[i + 1]!.children ?? []).filter((c: Tok) => c.type === 'text' || c.type === 'code_inline').map((c: Tok) => c.content).join('')
+        const text = (tokens[i + 1]!.children ?? []).filter((c: Tok) => c.type === 'text' || c.type === 'code_inline').map((c: Tok) => c.content).join('').trim()
         return [{ id: String(t.attrGet('id') ?? ''), text, level: t.tag === 'h2' ? 2 : 3 }]
       })
       const h1 = tokens.findIndex((t: Tok & { tag: string }) => t.type === 'heading_open' && t.tag === 'h1')

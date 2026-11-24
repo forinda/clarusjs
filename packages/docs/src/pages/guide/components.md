@@ -78,7 +78,7 @@ Attributes you write on a component's tag land on its root element: an `id` to l
 - **One root:** they land when the component has a single top-level element (or component, which passes them on), or one `@if` … `@else` whose branches each hold one element (outside islands): the branch that renders gets them. A component renders one root: `clarusjs check` warns about one with several top-level elements (the `one-root` rule; an error in a later release), since there is no root to choose.
 - **Server HTML only:** they ship no JavaScript. In an island they're in the first HTML; an island whose root has its own `[...]` spread, or is a component, takes none yet.
 
-### Several elements without a wrapper: `<fragment>`
+### Several elements without a wrapper: `<fragment>` {since=0.16.0}
 
 `<fragment>` groups elements without rendering one: only its children reach the page. Use it anywhere: as a component's root, in an `@if` branch, a `@for` row, or a slot.
 
@@ -93,7 +93,7 @@ Attributes you write on a component's tag land on its root element: an `id` to l
 
 A fragment takes no attributes, and a component whose root is one takes none from its parent either (no `class`, `id` or `(click)`): there is no element for them to land on, and `clarusjs check` reports each one.
 
-### A component that stands for an element: `@extends`
+### A component that stands for an element: `@extends` {since=0.16.0}
 
 `@extends input` makes a component take every attribute an `<input>` takes (`name`, `placeholder`, `required`, `disabled`, `autocomplete`…), typed by `clarusjs check`, and puts them on its root. You declare only what the component adds.
 

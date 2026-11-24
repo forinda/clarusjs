@@ -209,6 +209,21 @@ Link to another page by its file: `[Setup](./getting-started.tscl)` or `[Intro](
 
 Every build checks links once all pages are written: a link to a page or file that doesn't exist fails the build, and a link to a missing `#anchor` is a warning, each with the file and line and a "did you mean" suggestion. Set the levels with the plugin's `links` option.
 
+## Versions {since=0.5.0}
+
+Say when a feature came, and when it goes, with `{since=…}`, `{deprecated=…}` and `{removed=…}` after a heading, in a table cell or in text. Each becomes a small badge; it isn't part of the heading's `id` or of the page's contents.
+
+```md
+### Fragments {since=0.16.0}
+### The old API {deprecated=0.17.0 removed=0.18.0}
+
+| Syntax | What it does |
+|---|---|
+| `@extends input` {since=0.16.0} | the component stands for that element |
+```
+
+The badge is `<span class="version" data-version="since">Since 0.16.0</span>` (`deprecated` and `removed` read "Deprecated in 0.17.0, removed in 0.18.0" and "Removed in 0.18.0"); the docs theme styles it. Only `major.minor.patch` versions count: anything else in braces stays text.
+
 ## Containers and alerts
 
 `::: tip`, `::: info`, `::: warning` and `::: danger` blocks, with an optional title, and `::: details` (a native `<details>`):
