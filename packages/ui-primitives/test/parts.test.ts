@@ -135,3 +135,17 @@ test('tabs: Radix-shaped, on context; the server writes every ARIA attribute and
   expect(statefulOf('tabs')).toBe(true)
   for (const p of ['tab-list', 'tab', 'tab-panel']) expect(statefulOf(p)).toBe(false)
 })
+
+test('radio group: native radios in a fieldset, named and checked from context; only the group is an island', async () => {
+  const page = `@import radioGroup from './radio-group.tscl'
+@import radio from './radio.tscl'
+<radioGroup name="size" label="Size" value="m">
+  <radio value="s" label="Small" /><radio value="m" label="Medium" /><radio value="l" label="Large" [disabled]="true" />
+</radioGroup>
+`
+  const radio = (v: string, label: string, on: boolean, off = false) => `<label data-part="radio"${on ? ' data-checked=""' : ''}${off ? ' data-disabled=""' : ''}><input type="radio" name="size"${off ? ' disabled' : ''} value="${v}"${on ? ' checked' : ''}><span data-part="label">${label}</span></label>`
+  expect(await renderPage(page, ['radio-group', 'radio'])).toBe('<fieldset data-part="radio-group"><legend data-part="legend">Size</legend>'
+    + radio('s', 'Small', false) + radio('m', 'Medium', true) + radio('l', 'Large', false, true) + '</fieldset>')
+  expect(statefulOf('radio-group')).toBe(true)
+  expect(statefulOf('radio')).toBe(false)
+})

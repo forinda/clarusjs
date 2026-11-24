@@ -10,7 +10,9 @@
 @import uiField from '@clarusjs/ui-primitives/field.tscl'
 @import uiSelect from '@clarusjs/ui-primitives/select.tscl'
 @import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
-@input part: 'dialog' | 'popover' | 'accordion' | 'switch' | 'field' | 'select' | 'combobox'
+@import uiRadioGroup from '@clarusjs/ui-primitives/radio-group.tscl'
+@import uiRadio from '@clarusjs/ui-primitives/radio.tscl'
+@input part: 'dialog' | 'popover' | 'accordion' | 'switch' | 'field' | 'select' | 'combobox' | 'radio'
 
 <script>
   let on = state(true)
@@ -70,6 +72,13 @@
     />
   } @else if (part === 'select') {
     <uiSelect id="gallery-size" label="Size" [options]="sizes" [(value)]="size" />
+    <p class="gallery-out">Size: {{ size }}</p>
+  } @else if (part === 'radio') {
+    <uiRadioGroup name="gallery-size" label="Size" [(value)]="size">
+      <uiRadio value="s" label="Small" />
+      <uiRadio value="m" label="Medium" />
+      <uiRadio value="l" label="Large" />
+    </uiRadioGroup>
     <p class="gallery-out">Size: {{ size }}</p>
   } @else {
     <uiCombobox [id]="'gallery-fruit'" [label]="'Fruit'" [options]="fruits" [(value)]="fruit" />

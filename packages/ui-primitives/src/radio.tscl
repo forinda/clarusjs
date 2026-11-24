@@ -1,0 +1,10 @@
+{{-- Radio (#465): one native radio and its label, inside <radio-group>, which names it and says whether it's checked. --}}
+@context radio: { name: string; value: string }
+@input value: string
+@input label: string
+@input disabled: boolean = false
+
+<label data-part="radio" [data-checked]="value === radio.value ? '' : false" [data-disabled]="disabled ? '' : false">
+  <input type="radio" [name]="radio.name" [value]="value" [checked]="value === radio.value" [disabled]="disabled" />
+  <span data-part="label">{{ label }}</span>
+</label>

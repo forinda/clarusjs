@@ -2538,7 +2538,7 @@ test('#465 parts: dialog and popover open with no JavaScript of their own, the a
 })
 
 // #467: the Components section, a page per part, styled by @clarusjs/ui; axe on every one.
-for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox', 'tabs']) {
+for (const part of ['dialog', 'popover', 'accordion', 'switch', 'field', 'select', 'combobox', 'tabs', 'radio']) {
   test(`#467 components/${part}: the demo works and has no axe violations`, async ({ page }) => {
     await page.goto(`/components/${part}`)
     const gallery = page.locator(`[data-gallery="${part}"]`)
@@ -2586,6 +2586,20 @@ test('#465 tabs bound two ways in an island: [(value)], a cancelling (change), a
   await expect(list.getByRole('tab', { name: 'npm', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect(demo.locator('.bound-out')).toHaveText('Selected: npm')
   expect((await (await axe(page)).include('.tabs-bound-demo').analyze()).violations).toEqual([])
+})
+
+test('#465 radio group: native radios bound two ways from an island; arrow keys select; the server checked one', async ({ page }) => {
+  const html = await (await page.request.get('/components/radio')).text()
+  expect(html).toMatch(/value="m" checked/)
+  await page.goto('/components/radio')
+  const group = page.getByRole('group', { name: 'Size' })
+  await expect(page.locator('[data-gallery="radio"]').locator('xpath=ancestor::cl-island').first()).toHaveAttribute('data-cl-ready', '')
+  await group.getByRole('radio', { name: 'Small' }).check()
+  await expect(page.locator('.gallery-out')).toHaveText('Size: s')
+  await page.keyboard.press('ArrowDown')
+  await expect(group.getByRole('radio', { name: 'Medium' })).toBeChecked()
+  await expect(page.locator('.gallery-out')).toHaveText('Size: m')
+  await expect(group.locator('[data-part="radio"][data-checked]')).toHaveCount(1)
 })
 
 test('#467 components: @clarusjs/ui styles the parts in the site\'s tokens; interactions on a few pages', async ({ page }) => {
