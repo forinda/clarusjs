@@ -6,6 +6,9 @@
 
 :root {
   --ui-font: system-ui, sans-serif;
+  --ui-font-heading: var(--ui-font);
+  --ui-font-mono: ui-monospace, monospace;
+  --ui-font-size: 14px;
   --ui-radius: 8px;
   --ui-bg: #ffffff;
   --ui-fg: #17202a;
@@ -16,6 +19,26 @@
   --ui-accent-soft: #e3f2f2;
   --ui-danger: #b42318;
   --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+  --ui-card: #ffffff;
+  --ui-card-fg: #17202a;
+  --ui-popover: #ffffff;
+  --ui-popover-fg: #17202a;
+  --ui-secondary: #e3f2f2;
+  --ui-secondary-fg: #17202a;
+  --ui-muted-bg: #e3f2f2;
+  --ui-accent-soft-fg: #17202a;
+  --ui-danger-fg: #ffffff;
+  --ui-input: #c9d1d9;
+  --ui-ring: #0b6e70;
+  --ui-sidebar: #ffffff;
+  --ui-sidebar-fg: #17202a;
+  --ui-sidebar-accent: #e3f2f2;
+  --ui-sidebar-accent-fg: #17202a;
+  --ui-sidebar-border: #c9d1d9;
+  --ui-success: #067647;
+  --ui-success-fg: #ffffff;
+  --ui-warning: #b54708;
+  --ui-warning-fg: #ffffff;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
@@ -28,6 +51,26 @@
     --ui-accent-soft: #173233;
     --ui-danger: #ff8a80;
     --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+    --ui-card: #121a1b;
+    --ui-card-fg: #e6eded;
+    --ui-popover: #121a1b;
+    --ui-popover-fg: #e6eded;
+    --ui-secondary: #173233;
+    --ui-secondary-fg: #e6eded;
+    --ui-muted-bg: #173233;
+    --ui-accent-soft-fg: #e6eded;
+    --ui-danger-fg: #0b1415;
+    --ui-input: #2c3a3b;
+    --ui-ring: #4cc9cb;
+    --ui-sidebar: #121a1b;
+    --ui-sidebar-fg: #e6eded;
+    --ui-sidebar-accent: #173233;
+    --ui-sidebar-accent-fg: #e6eded;
+    --ui-sidebar-border: #2c3a3b;
+    --ui-success: #47cd89;
+    --ui-success-fg: #0b1415;
+    --ui-warning: #fdb022;
+    --ui-warning-fg: #0b1415;
   }
 }
 :root[data-theme='dark'] {
@@ -40,6 +83,26 @@
   --ui-accent-soft: #173233;
   --ui-danger: #ff8a80;
   --ui-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+  --ui-card: #121a1b;
+  --ui-card-fg: #e6eded;
+  --ui-popover: #121a1b;
+  --ui-popover-fg: #e6eded;
+  --ui-secondary: #173233;
+  --ui-secondary-fg: #e6eded;
+  --ui-muted-bg: #173233;
+  --ui-accent-soft-fg: #e6eded;
+  --ui-danger-fg: #0b1415;
+  --ui-input: #2c3a3b;
+  --ui-ring: #4cc9cb;
+  --ui-sidebar: #121a1b;
+  --ui-sidebar-fg: #e6eded;
+  --ui-sidebar-accent: #173233;
+  --ui-sidebar-accent-fg: #e6eded;
+  --ui-sidebar-border: #2c3a3b;
+  --ui-success: #47cd89;
+  --ui-success-fg: #0b1415;
+  --ui-warning: #fdb022;
+  --ui-warning-fg: #0b1415;
 }
 
 /* part: focus */

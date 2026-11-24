@@ -23,3 +23,10 @@ test('theme.css is ui.css\'s token rules, light and dark', () => {
     expect(theme).toContain(`--ui-${token}:`)
   }
 })
+
+test('theme builder: names.ts lists the 34 tokens theme.css defines', async () => {
+  const { TOKEN_NAMES } = await import('../src/theme/names.ts')
+  const root = read('../src/theme.css').match(/:root \{([^}]*)\}/)![1]!
+  expect([...TOKEN_NAMES].sort()).toEqual([...root.matchAll(/--ui-([\w-]+):/g)].map((m) => m[1]).sort())
+  expect(TOKEN_NAMES).toHaveLength(34)
+})

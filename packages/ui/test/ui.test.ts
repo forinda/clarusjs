@@ -43,3 +43,42 @@ test('after the tokens, every rule sits in exactly one named part section (/* pa
   const outside = body.replace(/\/\* part: [\w-]+ \*\/[\s\S]*?\/\* end part \*\//g, '').replace(/\/\*[\s\S]*?\*\//g, '').trim()
   expect(outside).toBe('')
 })
+
+const tokenRule = (re: RegExp) => Object.fromEntries([...(css.match(re)?.[1] ?? '').matchAll(/--ui-([\w-]+):\s*([^;]+);/g)].map((m) => [m[1]!, m[2]!.trim()]))
+const light = tokenRule(/^:root \{([^}]*)\}/m)
+const osDark = tokenRule(/@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme='light'\]\) \{([^}]*)\}/)
+const toggleDark = tokenRule(/^:root\[data-theme='dark'\] \{([^}]*)\}/m)
+const EXISTING = ['font', 'radius', 'bg', 'fg', 'muted', 'border', 'accent', 'accent-fg', 'accent-soft', 'danger', 'shadow']
+const NEW = ['card', 'card-fg', 'popover', 'popover-fg', 'secondary', 'secondary-fg', 'muted-bg', 'accent-soft-fg', 'danger-fg', 'input', 'ring', 'sidebar', 'sidebar-fg', 'sidebar-accent', 'sidebar-accent-fg', 'sidebar-border', 'font-heading', 'font-mono', 'font-size', 'success', 'success-fg', 'warning', 'warning-fg']
+const MODELESS = ['font', 'font-heading', 'font-mono', 'font-size', 'radius']
+
+test('theme builder: the :root rule defines 34 tokens, and both dark rules define every colour token', () => {
+  expect(Object.keys(light).sort()).toEqual([...EXISTING, ...NEW].sort())
+  const colours = [...EXISTING, ...NEW].filter((t) => !MODELESS.includes(t)).sort()
+  expect(Object.keys(osDark).sort()).toEqual(colours)
+  expect(toggleDark).toEqual(osDark)
+})
+
+test('theme builder: new tokens default to today\'s values', () => {
+  for (const set of [light, osDark]) {
+    expect(set.card).toBe(set.bg)
+    expect(set.popover).toBe(set.bg)
+    expect(set['card-fg']).toBe(set.fg)
+    expect(set['popover-fg']).toBe(set.fg)
+    expect(set.ring).toBe(set.accent)
+    expect(set.input).toBe(set.border)
+    expect(set.secondary).toBe(set['accent-soft'])
+    expect(set['secondary-fg']).toBe(set.fg)
+    expect(set['muted-bg']).toBe(set['accent-soft'])
+    expect(set['accent-soft-fg']).toBe(set.fg)
+    expect(set.sidebar).toBe(set.bg)
+    expect(set['sidebar-fg']).toBe(set.fg)
+    expect(set['sidebar-accent']).toBe(set['accent-soft'])
+    expect(set['sidebar-accent-fg']).toBe(set.fg)
+    expect(set['sidebar-border']).toBe(set.border)
+  }
+  expect(light['danger-fg']).toBe('#ffffff')
+  expect(light['font-size']).toBe('14px')
+  expect(light['font-heading']).toBe('var(--ui-font)')
+  expect(light['font-mono']).toBe('ui-monospace, monospace')
+})
