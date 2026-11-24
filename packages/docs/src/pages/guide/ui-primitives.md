@@ -2,7 +2,7 @@
 title: "UI primitives"
 group: "Interactivity"
 order: 11
-description: "Accessible behaviours and headless parts from @clarusjs/ui-primitives: roving focus, typeahead, dismiss, transitions and positioning with [use]; dialog, popover, accordion, tabs, radio group, switch, checkbox and field."
+description: "Accessible behaviours and headless parts from @clarusjs/ui-primitives: roving focus, typeahead, dismiss, transitions and positioning with [use]; dialog, popover, accordion, tabs, radio group, tooltip, menu, switch, checkbox and field."
 ---
 
 # UI primitives
@@ -94,6 +94,7 @@ Headless components in the same package, as `.tscl` files: they render the platf
 | `dialog.tscl`, `dialog-trigger.tscl`, `dialog-close.tscl` | `<dialog>` opened with the browser's command invokers (`commandfor`, `command="show-modal"`); focus kept in it, the page inert, Escape and (`dismissible`) a click outside close it | none |
 | `popover.tscl`, `popover-trigger.tscl` | the `popover` attribute and `popovertarget`, placed by CSS anchor positioning (`side`, `align`), flipping when there's no room | none |
 | `tooltip.tscl`, `tooltip-trigger.tscl` | a hint popover (`popover="hint"`) anchored to its trigger, which it describes; shown on hover and focus, closed by Escape. Browsers with `interestfor` do it themselves ([Tooltip](/components/tooltip)) | none where the browser has `interestfor`; else a small island |
+| `menu.tscl`, `menu-trigger.tscl`, `menu-list.tscl`, `menu-item.tscl` | a menu button: a popover list opened by its trigger (open, close, Escape, click outside from the browser); focus moves in on open, ↑ ↓ Home End and typeahead (`rovingFocus`, `typeahead`), `(select)` ([Menu](/components/menu)) | a small island (the menu) |
 | `accordion-item.tscl` | `<details>`; the same `group` makes items exclusive | none |
 | `tabs.tscl`, `tab-list.tscl`, `tab.tscl`, `tab-panel.tscl` | Radix-shaped tabs: the parts read the selection from [context](/guide/context), so the server writes their ARIA and `hidden`; arrow keys, Home and End (`rovingFocus`); `[(value)]`, `(change)` ([Tabs](/components/tabs)) | a small island (the root) |
 | `radio-group.tscl`, `radio.tscl` | native radios in a fieldset (arrow keys and one Tab stop from the browser); the radios read the group from [context](/guide/context); `[(value)]`, `(change)` ([Radio group](/components/radio)) | a small island (the group) |
@@ -106,4 +107,3 @@ Headless components in the same package, as `.tscl` files: they render the platf
 - **Attributes you add land on their root** (`id`, `aria-*`, `data-*`: see [Attributes on a component](/guide/components#attributes-on-a-component)), and a `class` merges.
 - **Field sends `(blur)`** ([component events](/guide/events#from-a-child-island-to-its-parent)).
 
-Menus, built on [context](/guide/context) like Tabs, come next.
