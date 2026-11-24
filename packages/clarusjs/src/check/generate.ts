@@ -155,6 +155,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
   emit('export type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
   // A child's event value (#442), any for a name it doesn't declare (that's reported once, on the binding).
   emit('export type __cl_Ev<T, K> = K extends keyof T ? T[K] : any\n')
+  // What a parent may pass a component as attributes for its root (#463): the names passed() in runtime/attrs.ts keeps.
+  emit('export type __cl_Passed = { id?: string; role?: string; tabindex?: string | number; hidden?: boolean; lang?: string; dir?: string; style?: string; [k: `data-${string}`]: unknown; [k: `aria-${string}`]: unknown }\n')
   // A <script server> may await at the top level: the check function is async then, as render is.
   const awaits = !!parsed.serverScript && /\bawait\b/.test(parsed.serverScript.code)
   emit(`\nexport default ${awaits ? 'async ' : ''}function __cl_check(__cl_props: __cl_Readonly<Inputs>) {\n`)
@@ -305,7 +307,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
           // reported on the variable, which maps to the tag.
           emit('  { const ')
           point('__cl_p', node.start, node.tag.length + 1) // the tag: `<card`
-          emit(`: __cl_Readonly<${alias(node.tag)}> = { `) // a child reads its inputs only, so readonly values fit
+          emit(`: __cl_Readonly<${alias(node.tag)} & __cl_Passed> = { `) // a child reads its inputs only, so readonly values fit; #463: attributes too
           // A spread (#406) first: it must provide the required inputs the tag doesn't write (TypeScript doesn't check a
           // spread's extra keys).
           for (const a of node.attrs) {
@@ -315,8 +317,20 @@ export function generateTs(source: string, file: string, options: { loader?: str
             emit('), ')
           }
           for (const a of node.attrs) {
+            // Static attributes (#463) are props too, for the child's root: id="x", data-test, aria-…
+            if (a.kind === 'static' && a.name !== 'class' && a.name !== 'attach') {
+              const quoted = !/^[A-Za-z_$][\w$]*$/.test(a.name)
+              if (quoted) emit('"')
+              copy(a.name, a.start)
+              if (quoted) emit('"')
+              emit(`: ${a.value === true ? 'true' : JSON.stringify(a.value)}, `)
+              continue
+            }
             if ((a.kind !== 'prop' && a.kind !== 'model') || a.name === '...') continue
+            const quoted = !/^[A-Za-z_$][\w$]*$/.test(a.name) // [aria-controls]
+            if (quoted) emit('"')
             copy(a.name, a.start + (a.kind === 'model' ? 2 : 1))
+            if (quoted) emit('"')
             emit(': (')
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit('), ')

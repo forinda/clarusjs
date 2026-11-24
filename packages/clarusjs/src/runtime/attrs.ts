@@ -121,3 +121,18 @@ export function spreadAttrs(obj: unknown, skip: readonly string[], tag?: string)
   }
   return { set, dropped }
 }
+
+// What a parent's attributes may set on a component's root (#463): attribute-like names only, so a page's load() data or
+// a layout's path never become attributes.
+const PASSED = /^(id|role|tabindex|hidden|lang|dir|style|(data|aria)-[\w:.-]+)$/
+
+/**
+ * The attributes a parent passed to a component (#463): its props with an attribute-like name that it doesn't declare
+ * as an input. They land on its root element (a spread, so the root's own attributes win; style merges).
+ * @internal Compiled components call this.
+ */
+export function passed(props: Record<string, unknown>, inputs: readonly string[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const k in props) if (PASSED.test(k) && !inputs.includes(k)) out[k] = props[k]
+  return out
+}

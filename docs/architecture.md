@@ -260,7 +260,10 @@ inside those (Vue's rule: a parent can style a child's outer element, not its
 inside). Every component is marked, styled or not, so a scope always stops at a
 child component. A static `class="…"` on a component tag is appended to the
 component's top-level elements (render option `class`; an island carries it to
-the browser in its props as `__cl_class`, for the blocks it re-renders). A plain
+the browser in its props as `__cl_class`, for the blocks it re-renders). Other
+attribute-like props a component doesn't declare (`id`, `role`, `tabindex`, `hidden`, `lang`, `dir`, `style`,
+`data-*`, `aria-*`; #463) are rendered on its single root element by the server (`passed()`, `passedHtml()`): the
+root's own attributes win, `style` and ARIA id lists merge, and no browser code is involved. A plain
 `<style>` and `<style global>` are global, plain CSS
 (a plain one warns, for one minor version, since it used to be scoped). All
 component styles are bundled into one stylesheet that every page links.

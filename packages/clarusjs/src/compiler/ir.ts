@@ -52,7 +52,7 @@ export type ComponentIR = {
 
 const ATTACH_MODES = ['load', 'idle', 'visible', 'interaction']
 // Elements a spread could make load something (their URL attributes are static only): no [...] on them.
-const SPREAD_REFUSED = new Set(['iframe', 'frame', 'embed', 'object', 'base', 'link', 'script', 'meta'])
+export const SPREAD_REFUSED = new Set(['iframe', 'frame', 'embed', 'object', 'base', 'link', 'script', 'meta'])
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
 
 /**
@@ -293,6 +293,15 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
           checkHandler(a.expr, file, source, a.start)
           listens.push({ name: a.name, handler: a.expr })
         }
+        else if (a.kind === 'interp') {
+          // name="a {{ b }}": the text, as a string prop.
+          for (const p of a.parts) if (typeof p !== 'string') checkExpr(p.expr, file, source, p.start)
+          props.push({ name: a.name, expr: `[${a.parts.map((p) => (typeof p === 'string' ? JSON.stringify(p) : `(${p.expr})`)).join(', ')}].join('')` })
+        }
+        else if (a.kind === 'static' && a.name !== 'attach') {
+          // An attribute for the child's root element (#463): passed as a prop; the child keeps attribute-like ones.
+          props.push({ name: a.name, expr: JSON.stringify(a.value) })
+        }
         else if (a.kind === 'static' && a.name === 'attach') {
           // When the island's code loads in the browser (see runtime/loader.ts).
           if (typeof a.value !== 'string' || !ATTACH_MODES.includes(a.value)) fail(`attach must be one of ${ATTACH_MODES.join(', ')}`, a.start)
@@ -463,7 +472,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         // Written attributes win over the spread's (class and style merge, in the fold): their names, lowercase.
         const skip = [...new Set(attrs.filter((x) => x !== a && x.kind !== 'event').map((x) => x.name.toLowerCase()))]
         const at = new ClarusError('', file, source, a.start)
-        const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, where: `${file}:${at.line}:${at.column}` }
+        const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, ...(a.expr === '__cl_attrs' ? {} : { where: `${file}:${at.line}:${at.column}` }) }
         if (reactive) dynamic.push(node_)
         out.push(node_)
       } else if (a.kind === 'prop' && a.name === 'engine') {

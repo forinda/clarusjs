@@ -37,7 +37,8 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     // Branch and row HTML is rendered in the browser with the same helpers as on the server.
     rendersHtml && 'escape as __cl_escape',
     rendersHtml && all.some((n) => n.kind === 'attr' && n.name !== '...') && 'attrHtml as __cl_attrHtml',
-    rendersHtml && all.some((n) => n.kind === 'attr' && n.name === '...') && 'spreadHtml as __cl_spreadHtml',
+    // The root's spread of passed attributes (#463) is rendered by the server only: no spreadHtml for it here.
+    rendersHtml && all.some((n) => n.kind === 'attr' && n.name === '...' && !('expr' in n.value && n.value.expr === '__cl_attrs')) && 'spreadHtml as __cl_spreadHtml',
     rendersHtml && hasBlocks && 'blockHtml as __cl_blockHtml',
     rendersHtml && hasFors && 'forHtml as __cl_forHtml',
     hasRegions && 'regionHtml as __cl_regionHtml',

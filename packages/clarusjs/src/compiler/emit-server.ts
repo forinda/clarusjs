@@ -12,7 +12,8 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     all.some((n) => n.kind === 'hole' && n.json) && 'json as __cl_json',
     ir.stateful && 'island as __cl_island',
     all.some((n) => n.kind === 'attr' && n.name !== '...') && 'attr as __cl_attrHtml',
-    all.some((n) => n.kind === 'attr' && n.name === '...') && 'spreadHtml as __cl_spreadHtml',
+    html.includes('__cl_spreadHtml(') && 'spreadHtml as __cl_spreadHtml',
+    html.includes('__cl_passedHtml(') && 'passedHtml as __cl_passedHtml',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_classValue(')) && 'classValue as __cl_classValue',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_styleValue(')) && 'styleValue as __cl_styleValue',
     all.some((n) => (n.kind === 'if' || n.kind === 'await') && n.block >= 0) && 'blockHtml as __cl_blockHtml',
@@ -23,6 +24,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     loader && 'loaded as __cl_loaded',
     html.includes('__cl_join(') && 'join as __cl_join',
     html.includes('__cl_sync(') && 'sync as __cl_sync',
+    html.includes('__cl_attrs') && 'passed as __cl_passed',
   ].filter(Boolean).join(', ')
   let out = `import { ${runtime} } from 'clarusjs/runtime/server'\n`
   for (const imp of ir.imports) out += `import { render as ${renderName(imp.name)} } from '${imp.from}${renderImports ? '?render' : ''}'\n`
@@ -44,6 +46,8 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
   if (loader) out += `  __cl_props = { ...__cl_loaded(${JSON.stringify(loader)}), ...__cl_props }\n`
   out += inputsLine(ir)
   out += `  const __cl_class = __cl_opts?.class ? " " + __cl_opts.class : ""\n`
+  // What the parent passed as attributes (#463), for the root element.
+  if (html.includes('__cl_attrs')) out += `  const __cl_attrs = __cl_passed(__cl_props, ${JSON.stringify(ir.inputs.map((i) => i.name))})\n`
   if (ir.script) out += indentScript(rewriteServer(ir.script))
   if (ir.server) out += indentScript(ir.server.body)
   out += ir.stateful

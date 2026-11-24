@@ -2454,3 +2454,12 @@ test('#442 component events: the form hears its fields\' (blur) and the combobox
   await form.getByRole('button', { name: 'Remove Kiswahili' }).click()
   await expect(activity).toHaveText('Removed Kiswahili (remove).')
 })
+
+test('#463 attributes on a component land on its root element', async ({ page }) => {
+  const html = await (await page.request.get('/guide/slots')).text()
+  expect(html).toMatch(/<ul[^>]*\bid="slots-demo-steps"[^>]*>/)
+  await page.goto('/guide/slots#slots-that-pass-data')
+  const list = page.getByRole('list', { name: 'Learn steps' }) // aria-label, from the tag
+  await expect(list).toHaveAttribute('id', 'slots-demo-steps')
+  await expect(list.getByRole('listitem')).toHaveCount(3)
+})

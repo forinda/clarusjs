@@ -31,6 +31,8 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: Server
       return `__cl_slot(__cl_slots?.[${JSON.stringify(n.name)}], ${data}, () => ${n.fallback.length ? htmlExpr(n.fallback, rw, ctx) : '""'})`
     }
     if (n.kind === 'connect') return '""' // its marker is static; the browser connects it
+    // The attributes passed to this component (#463), on its root.
+    if (n.kind === 'attr' && n.name === '...' && 'expr' in n.value && n.value.expr === '__cl_attrs') return `__cl_passedHtml(__cl_attrs, ${JSON.stringify((n.skip ?? []).filter((x) => /^(id|role|tabindex|hidden|lang|dir|(data|aria)-.+)$/.test(x)))})`
     if (n.kind === 'attr' && n.name === '...') return `__cl_spreadHtml(${attrValueExpr(n.value, rw.expr)}, ${JSON.stringify(n.skip ?? [])}, ${JSON.stringify(n.tag)}${rw === asWritten && n.where ? `, ${JSON.stringify(n.where)}` : ''})` // the place, for warnings: server code only
     if (n.kind === 'attr') return `__cl_attrHtml(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, rw.expr)}${tagArg(n)})`
     if (n.kind === 'if') {
@@ -77,7 +79,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: Server
 
 /** `render_child({ props }, { slots })` for a component node. */
 export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rewriter, ctx?: ServerCtx): string {
-  const props = n.props.map((p) => (p.name === '...' ? `...${wrapExpr(rw.expr(p.expr))}` : `${p.name}: ${wrapExpr(rw.expr(p.expr))}`)).join(', ') // a spread first (#406)
+  const props = n.props.map((p) => (p.name === '...' ? `...${wrapExpr(rw.expr(p.expr))}` : `${/^[A-Za-z_$][\w$]*$/.test(p.name) ? p.name : JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`)).join(', ') // a spread first (#406); data-x quoted
   const slots = [
     ...(n.children.length ? [`"default": ${htmlExpr(n.children, rw, ctx)}`] : []),
     // A fill that receives data is a function of it; its names are its own, not signals (#455).

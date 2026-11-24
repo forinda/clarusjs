@@ -336,3 +336,14 @@ test('#442 events: emit() is typed by @event, and a parent handler gets $event a
     expect.stringMatching(/^src\/pages\/index\.tscl:5:112 Type '"chnage"' is not assignable to type 'keyof Events'/),
   ])
 })
+
+test('#463 attributes on a component: attribute-like names pass (static or bound); other unknown names are still errors', () => {
+  const button = '@input label: string\n<button>{{ label }}</button>\n'
+  const page = `@import btn from '../components/btn.tscl'
+<btn [label]="'Save'" id="save" data-test="x" aria-label="Save it" [aria-controls]="'panel'" role="button" hidden tabindex="0" />
+<btn [label]="'Bad'" foo="1" />
+`
+  expect(check({ 'src/components/btn.tscl': button, 'src/pages/index.tscl': page })).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:3:22 .*'foo' does not exist/),
+  ])
+})
