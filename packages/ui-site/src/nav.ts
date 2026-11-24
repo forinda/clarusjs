@@ -9,7 +9,10 @@ export const theme: ThemeConfig = {
   brand: { text: 'clarus', accent: '.js ui', logo: '/logo.svg' },
   siteUrl: 'https://ui.clarusjs.com',
   sections,
-  menuLinks: [{ label: 'Docs', href: 'https://clarusjs.com' }],
+  menuLinks: [
+    { label: 'Theme', href: '/theme' },
+    { label: 'Docs', href: 'https://clarusjs.com' },
+  ],
   social: [{ label: 'GitHub', href: 'https://github.com/forinda/clarusjs', icon: 'github' }],
   search: true,
   editLink: 'https://github.com/forinda/clarusjs/edit/main/packages/ui-site/src/pages/:file',
