@@ -1,0 +1,30 @@
+{{-- Badge: a short label in a <span>, in four variants. --}}
+@input variant: 'default' | 'secondary' | 'outline' | 'destructive' = 'default'
+
+<span data-part="badge" [data-variant]="variant"><slot /></span>
+
+<style scoped>
+  :scope {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: var(--ui-accent);
+    color: var(--ui-accent-fg);
+    font: 600 12px/1.4 var(--ui-font);
+  }
+  :scope[data-variant='secondary'] {
+    background: var(--ui-accent-soft);
+    color: var(--ui-fg);
+  }
+  :scope[data-variant='outline'] {
+    background: transparent;
+    color: var(--ui-fg);
+    border-color: var(--ui-border);
+  }
+  :scope[data-variant='destructive'] {
+    background: var(--ui-danger);
+    color: var(--ui-bg);
+  }
+</style>

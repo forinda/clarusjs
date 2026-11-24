@@ -1,0 +1,38 @@
+{{-- Card: an <article> with a header, a body and a footer; a header or footer you don't fill is hidden. --}}
+
+<article data-part="card">
+  <header data-part="card-header"><slot name="header" /></header>
+  <div data-part="card-body"><slot /></div>
+  <footer data-part="card-footer"><slot name="footer" /></footer>
+</article>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid var(--ui-border);
+    border-radius: calc(var(--ui-radius) * 1.5);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font-family: var(--ui-font);
+  }
+  [data-part='card-header'] :is(h1, h2, h3, h4) {
+    margin: 0;
+    font-size: 18px;
+  }
+  [data-part='card-header'] p {
+    margin: 4px 0 0;
+    color: var(--ui-muted);
+    font-size: 14px;
+  }
+  [data-part='card-footer'] {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  [data-part='card-header']:empty,
+  [data-part='card-footer']:empty {
+    display: none;
+  }
+</style>

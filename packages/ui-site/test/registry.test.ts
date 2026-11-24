@@ -55,3 +55,36 @@ test('button: variants default, secondary, outline, ghost, destructive, link; si
   expect(pressed).toMatch(/<button [^>]*aria-pressed="true"/)
   expect(pressed).toMatch(/<button [^>]* disabled[ >]/)
 })
+
+test('input: a native <input> with data-part="input", type defaults to text, aria-invalid passes through', async () => {
+  expect(await render('input/input.tscl', { id: 'email' })).toBe('<input type="text" data-part="input" id="email">')
+  expect(await render('input/input.tscl', { type: 'email', 'aria-invalid': 'true' })).toMatch(/^<input [^>]*type="email"[^>]*aria-invalid="true"|^<input [^>]*aria-invalid="true"[^>]*type="email"/)
+})
+
+test('textarea: a native <textarea>, rows defaults to 3', async () => {
+  expect(await render('textarea/textarea.tscl', { id: 'bio' })).toBe('<textarea rows="3" data-part="textarea" id="bio"></textarea>')
+  expect(await render('textarea/textarea.tscl', { rows: 6 })).toContain('rows="6"')
+})
+
+test('label: a native <label>; control names the field it labels (for)', async () => {
+  expect(await render('label/label.tscl', { control: 'email' }, { default: 'Email' })).toBe('<label for="email" data-part="label">Email</label>')
+  expect(await render('label/label.tscl', {}, { default: 'Email' })).toBe('<label data-part="label">Email</label>')
+})
+
+test('card: an <article>; header, body and footer in order, and an unfilled header or footer is hidden', async () => {
+  expect(await render('card/card.tscl', {}, { header: '<h3>Plan</h3>', default: '<p>Body</p>', footer: '<p>Foot</p>' }))
+    .toBe('<article data-part="card"><header data-part="card-header"><h3>Plan</h3></header><div data-part="card-body"><p>Body</p></div><footer data-part="card-footer"><p>Foot</p></footer></article>')
+  expect(await render('card/card.tscl', {}, { default: 'x' })).toContain('<header data-part="card-header"></header>')
+  expect(source('card/card.tscl')).toMatch(/\[data-part='card-header'\]:empty,\s*\[data-part='card-footer'\]:empty\s*\{\s*display: none/)
+})
+
+test('badge: variants default, secondary, outline, destructive as data-variant on a <span>', async () => {
+  for (const variant of ['default', 'secondary', 'outline', 'destructive']) {
+    expect(await render('badge/badge.tscl', { variant }, { default: 'New' })).toBe(`<span data-part="badge" data-variant="${variant}">New</span>`)
+  }
+})
+
+test('alert: role="alert" only with [live]="true"; variants default, destructive; a title slot as <p data-part="title">', async () => {
+  expect(await render('alert/alert.tscl', {}, { title: 'Heads up', default: 'Saved.' })).toBe('<div data-part="alert" data-variant="default"><p data-part="title">Heads up</p><div data-part="description">Saved.</div></div>')
+  expect(await render('alert/alert.tscl', { live: true, variant: 'destructive' }, { default: 'Failed.' })).toMatch(/^<div role="alert" data-part="alert" data-variant="destructive">|^<div data-part="alert" data-variant="destructive" role="alert">/)
+})

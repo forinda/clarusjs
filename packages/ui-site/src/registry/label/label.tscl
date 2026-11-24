@@ -1,0 +1,11 @@
+{{-- Label: a native <label>. control is the id of the field it names (its for); or put the field inside it. --}}
+@input control: string = ''
+
+<label [for]="control || null" data-part="label"><slot /></label>
+
+<style scoped>
+  :scope {
+    color: var(--ui-fg);
+    font: 500 14px/1.4 var(--ui-font);
+  }
+</style>
