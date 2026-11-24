@@ -1125,6 +1125,24 @@ details.custom-block > summary {
 details.custom-block[open] > summary {
   margin-bottom: 8px;
 }
+.version {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.version[data-version='deprecated'], .version[data-version='removed'] {
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+}
 .code-block {
   position: relative;
   margin: 0 0 20px;
