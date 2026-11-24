@@ -17,11 +17,11 @@ export const unscoped = (html: string) => html.replace(/ class="cl-c-[\w-]+"/g, 
 export async function importCode(code: string, name: string, deps: Record<string, string> = {}, keepScope = false): Promise<any> {
   mkdirSync(TMP, { recursive: true })
   const id = `${name}-${process.pid}-${counter++}`
-  for (const [path, depCode] of Object.entries(deps)) {
-    const depFile = `${id}-dep-${counter++}.mjs`
-    writeFileSync(TMP + depFile, depCode)
-    code = code.split(`from '${path}'`).join(`from './${depFile}'`) // only module specifiers
-  }
+  // Deps may import each other (a component that renders another): every specifier is rewritten in each.
+  const files = Object.fromEntries(Object.keys(deps).map((path) => [path, `${id}-dep-${counter++}.mjs`]))
+  const relink = (text: string) => Object.entries(files).reduce((t, [path, file]) => t.split(`from '${path}'`).join(`from './${file}'`), text) // only module specifiers
+  for (const [path, depCode] of Object.entries(deps)) writeFileSync(TMP + files[path], relink(depCode))
+  code = relink(code)
   writeFileSync(`${TMP}${id}.mjs`, code)
   const mod = await import(/* @vite-ignore */ `${TMP}${id}.mjs`)
   if (keepScope || typeof mod.render !== 'function') return mod

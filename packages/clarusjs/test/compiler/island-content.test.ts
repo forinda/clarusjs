@@ -22,6 +22,7 @@ const parts: Record<string, string> = {
   cnt: "<script>\n  let c = state(0)\n</script>\n<button class=\"cnt\" (click)=\"c++\">{{ c }}</button>\n",
   clickable: "<button class=\"clk\" type=\"button\"><slot /></button>\n",
   wrapper: "<div class=\"wrap\"><slot /></div>\n",
+  onlyEmitter: "@import emitter from './emitter.tscl'\n<emitter />\n",
   emitter: "@event click: string\n<script>\n  function go(event) { emit('click', 'from-child', { event }) }\n</script>\n<button class=\"em\" (click)=\"go($event)\">e</button>\n",
 }
 let n = 0
@@ -32,7 +33,7 @@ async function mount(outer: string, opts: object = {}, loader: Loader = (modules
   const imports = names.map((x) => `@import ${x} from './${x}.tscl'`).join('\n') + '\n'
   const source = imports + outer
   const deps = Object.fromEntries(names.map((x) => [`./${x}.tscl`, serverOf(x)]))
-  const renderDeps = Object.fromEntries(names.map((x) => [`./${x}.tscl?render`, serverOf(x)]))
+  const renderDeps = { ...deps, ...Object.fromEntries(names.map((x) => [`./${x}.tscl?render`, serverOf(x)])) } // plain ones too: a component may render another
   const s = await importCode(compile(source, { file: 'page.tscl', target: 'server', clientUrl: '/page.js' }).code, `ic-s-${n}`, deps)
   const modules: Record<string, unknown> = { '/page.js': await importCode(compile(source, { file: 'page.tscl', target: 'client' }).code, `ic-c-${n}`, renderDeps) }
   for (const x of names) modules[`/${x}.js`] = await importCode(compile(parts[x]!, { file: `${x}.tscl`, target: 'client' }).code, `ic-${x}-${n}`, {})
@@ -209,8 +210,14 @@ test('#review: a click before the child island attaches is not taken as a DOM cl
   expect($('.calls').textContent).toBe('from-child')
 })
 
-test('#review: a static wrapper around an island that declares the event: once, with the value', async () => {
-  await mount("<script>\n  let calls = state([])\n</script>\n<wrapper (click)=\"calls = [...calls, String($event)]\"><emitter /></wrapper><p class=\"calls\">{{ calls.join(',') }}</p>\n")
+test('#review: (click) bound on a wrapper that declares nothing is its DOM click, once; an island in its content keeps its own events', async () => {
+  await mount("<script>\n  let calls = state([])\n</script>\n<wrapper (click)=\"calls = [...calls, typeof $event === 'string' ? $event : $event.type]\"><emitter /></wrapper><p class=\"calls\">{{ calls.join(',') }}</p>\n")
   click('.em')
-  expect($('.calls').textContent).toBe('from-child')
+  expect($('.calls').textContent).toBe('click')
+})
+
+test('#review: a stateless wrapper that renders only an island: the bound wrapper declares nothing, so the DOM click', async () => {
+  await mount("<script>\n  let calls = state([])\n</script>\n<onlyEmitter (click)=\"calls = [...calls, typeof $event === 'string' ? $event : $event.type]\" /><p class=\"calls\">{{ calls.join(',') }}</p>\n")
+  click('.em')
+  expect($('.calls').textContent).toBe('click')
 })

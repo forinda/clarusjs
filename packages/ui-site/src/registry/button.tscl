@@ -1,5 +1,5 @@
 {{-- Button: a native <button>, or a link (<a>) with the same look when href is set. class, style, id, aria-*,
-     data-* and (click) (any DOM event) you pass reach it. --}}
+     data-* and (click) (any DOM event that bubbles; (focusin) for focus) you pass reach it. --}}
 @input variant: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link' = 'default'
 @input size: 'sm' | 'md' | 'lg' = 'md'
 @input type: 'button' | 'submit' | 'reset' = 'button'

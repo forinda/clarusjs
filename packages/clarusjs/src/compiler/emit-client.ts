@@ -137,7 +137,10 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
       // (name)="…": the child island's emit('name', …) (#442).
       for (const l of n.listens ?? []) {
         const body = rewriteClient(l.handler, signals).trim()
-        lines.push(`__cl_listen(${ctx}, ${n.region}, ${JSON.stringify(l.name)}, ($event, $info) => { ${body}${body.includes('//') ? '\n  ' : ' '}})`)
+        // The bound component's island name (its file's, as the server writes it in c): its contract decides.
+        const from = ir.imports.find((i) => i.name === n.name)?.from ?? ''
+        const bound = (from.split(/[\\/]/).pop() ?? '').replace(/\.tscl$/, '').replace(/[^\w-]/g, '')
+        lines.push(`__cl_listen(${ctx}, ${n.region}, ${JSON.stringify(l.name)}, ($event, $info) => { ${body}${body.includes('//') ? '\n  ' : ' '}}, ${JSON.stringify(bound)})`)
       }
     }
     if (n.kind === 'if' && n.block >= 0) {

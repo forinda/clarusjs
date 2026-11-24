@@ -512,21 +512,24 @@ export function declare(root: Element, names: string[]): void {
  * (#442); any other name is the DOM event, bubbling up from what the child renders (Vue's fallthrough), unless the
  * child island declares it. @internal
  */
-export function listen(ctx: Ctx, index: number, name: string, handler: (value: unknown, info: { reason?: string; event?: Event; cancel(): void }) => void): void {
+export function listen(ctx: Ctx, index: number, name: string, handler: (value: unknown, info: { reason?: string; event?: Event; cancel(): void }) => void, bound?: string): void {
+  // The bound component's island (by its c name): only its emit() is this listener's, and only its contract decides
+  // whether a DOM event is one it sends itself. A wrapper that declares nothing gets the DOM event.
+  const isBound = (el: Element) => !bound || el.getAttribute('c') === bound
   fromChild(ctx, index, 'cl:event', name, (event, detail) => {
     const { value, reason, event: cause } = detail as { value: unknown; reason?: string; event?: Event }
     handler(value, { reason, event: cause, cancel: () => event.preventDefault() })
-  })
+  }, (from) => isBound(from as Element))
   const r = scan(ctx).regions[index]
   if (!r) return
   const host = r.start.parentNode!
   const dom = (event: Event) => {
     const from = event.target as Node
     if (!(r.start.compareDocumentPosition(from) & 4) || !(r.end.compareDocumentPosition(from) & 2)) return
-    // Through every island between the target and here: one not attached yet replays the event once it is (its
-    // emit() decides then); one that declares this name sends it as its own event.
+    // The bound island between the target and here: not attached yet, it replays the event once it is (its emit()
+    // decides then); declaring this name, it sends it as its own event.
     for (let n: Node | null = from; n && n !== host; n = n.parentNode) {
-      if ((n as Element).localName === 'cl-island' && (!(n as Element).hasAttribute('data-cl-ready') || declared.get(n as Element)?.includes(name))) return
+      if ((n as Element).localName === 'cl-island' && isBound(n as Element) && (!(n as Element).hasAttribute('data-cl-ready') || declared.get(n as Element)?.includes(name))) return
     }
     handler(event, { event, cancel: () => event.preventDefault() })
   }
@@ -535,7 +538,7 @@ export function listen(ctx: Ctx, index: number, name: string, handler: (value: u
 }
 
 /** Listen for `type` from the child island bound in region `index` only (not one nested in it), named `name`. */
-function fromChild(ctx: Ctx, index: number, type: string, name: string, take: (event: Event, detail: unknown) => void): void {
+function fromChild(ctx: Ctx, index: number, type: string, name: string, take: (event: Event, detail: unknown) => void, accept: (from: Node) => boolean = () => true): void {
   const r = scan(ctx).regions[index]
   if (!r) return
   const host = r.start.parentNode!
@@ -545,7 +548,7 @@ function fromChild(ctx: Ctx, index: number, type: string, name: string, take: (e
     // Only from inside this region: 4 = the target follows the start marker, 2 = it precedes the end marker.
     if (detail.name !== name || !(r.start.compareDocumentPosition(from) & 4) || !(r.end.compareDocumentPosition(from) & 2)) return
     // Only the child island this region binds: an island nested in it, which nobody bound, keeps its own.
-    if (owner(from) !== rootOf(ctx)) return
+    if (owner(from) !== rootOf(ctx) || !accept(from)) return
     event.stopPropagation()
     take(event, detail)
   }
