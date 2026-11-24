@@ -13,7 +13,7 @@
     width: var(--ui-skeleton-w);
     height: var(--ui-skeleton-h);
     border-radius: var(--ui-radius);
-    background: var(--ui-accent-soft);
+    background: var(--ui-muted-bg);
     animation: ui-skeleton-pulse 1.5s ease-in-out infinite;
   }
   @keyframes ui-skeleton-pulse {

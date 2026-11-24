@@ -20,7 +20,7 @@
     border-radius: 50%;
     background: var(--ui-accent-soft);
     color: var(--ui-fg);
-    font: 600 14px var(--ui-font);
+    font: 600 var(--ui-font-size) var(--ui-font);
   }
   [data-part='avatar-image'] {
     width: 100%;

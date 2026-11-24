@@ -1,5 +1,5 @@
 {{-- Alert: a message box with a title. [live]="true" makes it role="alert", for a message that appears after the page loads. --}}
-@input variant: 'default' | 'destructive' = 'default'
+@input variant: 'default' | 'destructive' | 'success' | 'warning' = 'default'
 @input live: boolean = false
 
 <div [role]="live ? 'alert' : null" data-part="alert" [data-variant]="variant">
@@ -16,11 +16,19 @@
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
     color: var(--ui-fg);
-    font: 14px/1.5 var(--ui-font);
+    font: var(--ui-font-size)/1.5 var(--ui-font);
   }
   :scope[data-variant='destructive'] {
     border-color: var(--ui-danger);
     color: var(--ui-danger);
+  }
+  :scope[data-variant='success'] {
+    border-color: var(--ui-success);
+    color: var(--ui-success);
+  }
+  :scope[data-variant='warning'] {
+    border-color: var(--ui-warning);
+    color: var(--ui-warning);
   }
   [data-part='alert-title'] {
     margin: 0;

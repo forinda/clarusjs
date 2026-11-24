@@ -1,5 +1,5 @@
-{{-- Badge: a short label in a <span>, in four variants. --}}
-@input variant: 'default' | 'secondary' | 'outline' | 'destructive' = 'default'
+{{-- Badge: a short label in a <span>, in six variants. --}}
+@input variant: 'default' | 'secondary' | 'outline' | 'destructive' | 'success' | 'warning' = 'default'
 
 <span data-part="badge" [data-variant]="variant"><slot /></span>
 
@@ -12,11 +12,11 @@
     border-radius: 999px;
     background: var(--ui-accent);
     color: var(--ui-accent-fg);
-    font: 600 12px/1.4 var(--ui-font);
+    font: 600 calc(var(--ui-font-size) - 2px)/1.4 var(--ui-font);
   }
   :scope[data-variant='secondary'] {
-    background: var(--ui-accent-soft);
-    color: var(--ui-fg);
+    background: var(--ui-secondary);
+    color: var(--ui-secondary-fg);
   }
   :scope[data-variant='outline'] {
     background: transparent;
@@ -25,6 +25,14 @@
   }
   :scope[data-variant='destructive'] {
     background: var(--ui-danger);
-    color: var(--ui-bg);
+    color: var(--ui-danger-fg);
+  }
+  :scope[data-variant='success'] {
+    background: var(--ui-success);
+    color: var(--ui-success-fg);
+  }
+  :scope[data-variant='warning'] {
+    background: var(--ui-warning);
+    color: var(--ui-warning-fg);
   }
 </style>

@@ -13,6 +13,18 @@
     }
     The build failed: check the log.
   </uiAlert>
+  <uiAlert variant="success">
+    @slot('title') {
+      Published
+    }
+    Your site is live.
+  </uiAlert>
+  <uiAlert variant="warning">
+    @slot('title') {
+      Almost full
+    }
+    You've used 90% of your storage.
+  </uiAlert>
 </div>
 
 <style scoped>

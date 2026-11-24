@@ -12,9 +12,7 @@
     border-radius: 4px;
     background: var(--ui-bg);
     color: var(--ui-fg);
-    font:
-      12px/1.5 ui-monospace,
-      monospace;
+    font: calc(var(--ui-font-size) - 2px)/1.5 var(--ui-font-mono);
     text-align: center;
   }
 </style>

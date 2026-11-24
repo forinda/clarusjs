@@ -13,18 +13,18 @@
     padding: 20px;
     border: 1px solid var(--ui-border);
     border-radius: calc(var(--ui-radius) * 1.5);
-    background: var(--ui-bg);
-    color: var(--ui-fg);
+    background: var(--ui-card);
+    color: var(--ui-card-fg);
     font-family: var(--ui-font);
   }
   [data-part='card-header'] :is(h1, h2, h3, h4) {
     margin: 0;
-    font-size: 18px;
+    font-size: calc(var(--ui-font-size) + 4px);
   }
   [data-part='card-header'] p {
     margin: 4px 0 0;
     color: var(--ui-muted);
-    font-size: 14px;
+    font-size: var(--ui-font-size);
   }
   [data-part='card-footer'] {
     display: flex;

@@ -6,6 +6,6 @@
 <style scoped>
   :scope {
     color: var(--ui-fg);
-    font: 500 14px/1.4 var(--ui-font);
+    font: 500 var(--ui-font-size)/1.4 var(--ui-font);
   }
 </style>

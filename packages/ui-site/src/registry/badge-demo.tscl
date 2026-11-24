@@ -5,6 +5,8 @@
   <uiBadge variant="secondary">Beta</uiBadge>
   <uiBadge variant="outline">Draft</uiBadge>
   <uiBadge variant="destructive">Failed</uiBadge>
+  <uiBadge variant="success">Paid</uiBadge>
+  <uiBadge variant="warning">Due soon</uiBadge>
 </div>
 
 <style scoped>

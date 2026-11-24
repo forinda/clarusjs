@@ -24,17 +24,17 @@
     width: 100%;
     min-height: 36px;
     padding: 0 12px;
-    border: 1px solid var(--ui-border);
+    border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
     color: var(--ui-fg);
-    font: 14px var(--ui-font);
+    font: var(--ui-font-size) var(--ui-font);
   }
   :scope::placeholder {
     color: var(--ui-muted);
   }
   :scope:focus-visible {
-    outline: 2px solid var(--ui-accent);
+    outline: 2px solid var(--ui-ring);
     outline-offset: 1px;
   }
   :scope[aria-invalid='true'] {

@@ -20,14 +20,14 @@
     border-radius: var(--ui-radius);
     background: var(--ui-accent);
     color: var(--ui-accent-fg);
-    font: 600 14px/1 var(--ui-font);
+    font: 600 var(--ui-font-size)/1 var(--ui-font);
     cursor: pointer;
   }
   :scope:hover {
     filter: brightness(1.08);
   }
   :scope:focus-visible {
-    outline: 2px solid var(--ui-accent);
+    outline: 2px solid var(--ui-ring);
     outline-offset: 2px;
   }
   :scope:disabled {
@@ -35,8 +35,8 @@
     cursor: not-allowed;
   }
   :scope[data-variant='secondary'] {
-    background: var(--ui-accent-soft);
-    color: var(--ui-fg);
+    background: var(--ui-secondary);
+    color: var(--ui-secondary-fg);
   }
   :scope[data-variant='outline'] {
     background: var(--ui-bg);
@@ -54,7 +54,7 @@
   }
   :scope[data-variant='destructive'] {
     background: var(--ui-danger);
-    color: var(--ui-bg);
+    color: var(--ui-danger-fg);
   }
   :scope[data-variant='link'] {
     background: transparent;
@@ -67,11 +67,11 @@
   :scope[data-size='sm'] {
     min-height: 30px;
     padding: 0 10px;
-    font-size: 13px;
+    font-size: calc(var(--ui-font-size) - 1px);
   }
   :scope[data-size='lg'] {
     min-height: 44px;
     padding: 0 20px;
-    font-size: 16px;
+    font-size: calc(var(--ui-font-size) + 2px);
   }
 </style>

@@ -145,3 +145,37 @@ test('#review: each usage example sits next to its component and imports only wh
 test('#review: a table with neither label nor caption is no nameless region (still focusable, to scroll)', async () => {
   expect(await render('table.tscl', {}, { default: '<tr><td>1</td></tr>' })).toBe('<div tabindex="0" data-part="table-scroll"><table data-part="table"><tr><td>1</td></tr></table></div>')
 })
+
+const scoped = (file: string) => /<style scoped>([\s\S]*?)<\/style>/.exec(source(file))?.[1] ?? ''
+
+test('#tokens: components use the token for their role', () => {
+  expect(scoped('card.tscl')).toMatch(/background: var\(--ui-card\)/)
+  expect(scoped('card.tscl')).toMatch(/color: var\(--ui-card-fg\)/)
+  expect(scoped('button.tscl')).toMatch(/\[data-variant='secondary'\][^}]*background: var\(--ui-secondary\);[^}]*color: var\(--ui-secondary-fg\)/)
+  expect(scoped('button.tscl')).toMatch(/\[data-variant='destructive'\][^}]*color: var\(--ui-danger-fg\)/)
+  expect(scoped('badge.tscl')).toMatch(/\[data-variant='destructive'\][^}]*color: var\(--ui-danger-fg\)/)
+  for (const f of ['input.tscl', 'textarea.tscl']) expect(scoped(f), f).toMatch(/border: 1px solid var\(--ui-input\)/)
+  expect(scoped('skeleton.tscl')).toContain('var(--ui-muted-bg)')
+  expect(scoped('table.tscl')).toContain('var(--ui-card)')
+  expect(scoped('kbd.tscl')).toContain('var(--ui-font-mono)')
+  for (const e of registry) for (const f of e.files.filter((x) => x.endsWith('.tscl'))) {
+    for (const [, o] of scoped(f).matchAll(/outline:\s*([^;]+);/g)) if (o !== 'none') expect(o, f).toContain('var(--ui-ring)')
+  }
+})
+
+test('#tokens: text sizes scale from --ui-font-size', () => {
+  for (const e of registry) for (const f of e.files.filter((x) => x.endsWith('.tscl'))) {
+    const css = scoped(f)
+    for (const [, v] of css.matchAll(/font-size:\s*([^;]+);/g)) expect(v, f).toMatch(/var\(--ui-font-size\)|^inherit$/)
+    for (const [, v] of css.matchAll(/(?<![-\w])font:\s*([^;]+);/g)) expect(v, f).toMatch(/var\(--ui-font-size\)|^inherit$/)
+  }
+})
+
+test('badge and alert: success and warning variants', async () => {
+  for (const variant of ['success', 'warning']) {
+    expect(await render('badge.tscl', { variant }, { default: 'x' })).toContain(`data-variant="${variant}"`)
+    expect(await render('alert.tscl', { variant }, { default: 'x' })).toContain(`data-variant="${variant}"`)
+    for (const f of ['badge.tscl', 'alert.tscl']) expect(scoped(f), f).toMatch(new RegExp(`\\[data-variant='${variant}'\\][^}]*var\\(--ui-${variant}`))
+  }
+  expect(scoped('badge.tscl')).toMatch(/\[data-variant='success'\][^}]*color: var\(--ui-success-fg\)/)
+})
