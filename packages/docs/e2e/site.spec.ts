@@ -2674,3 +2674,11 @@ test('events fallthrough: (click) on a component without that @event listens on 
   await demo.getByRole('button', { name: 'Like' }).click()
   await expect(demo.locator('.likes')).toHaveText('2 likes')
 })
+
+test('version badges: a feature says when it came; the heading id and contents leave the badge out', async ({ page }) => {
+  await page.goto('/guide/components')
+  const heading = page.locator('h3#a-component-that-stands-for-an-element-extends')
+  await expect(heading.locator('.version[data-version="since"]')).toHaveText('Since 0.16.0')
+  const toc = page.locator('aside.toc a[href="#a-component-that-stands-for-an-element-extends"]')
+  await expect(toc).toHaveText('A component that stands for an element: @extends')
+})

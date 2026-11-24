@@ -295,6 +295,9 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
 details.custom-block { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px; margin: 20px 0; }
 details.custom-block > summary { cursor: pointer; font-weight: 600; }
 details.custom-block[open] > summary { margin-bottom: 8px; }
+/* {since=…} / {deprecated=…} badges from @clarusjs/content: when a feature came, and when it goes. */
+.version { display: inline-block; vertical-align: middle; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; line-height: 1.6; white-space: nowrap; color: var(--accent); background: var(--accent-soft); }
+.version[data-version='deprecated'], .version[data-version='removed'] { color: var(--muted); background: var(--surface); border: 1px solid var(--rule); }
 
 /* Highlighted code from Markdown (Shiki, build time). Tokens carry both themes as variables; the page picks one. */
 .code-block { position: relative; margin: 0 0 20px; }
