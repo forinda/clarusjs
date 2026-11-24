@@ -88,13 +88,7 @@ function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[]; regions:
   const regions: Range[] = []
   type Open = { kind: 'hole' | 'block' | 'for' | 'row' | 'empty' | 'region'; index: number; k: number; start: Comment; rows: Range[]; empty: Range | null }
   const open: Open[] = []
-  // Every comment under the island, nested islands included: owner() keeps this island's (#465). ponytail: an island
-  // walks what its nested islands own too; skip their subtrees outside slot ranges if deep nesting shows up.
-  const island = islandOf(root)
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT)
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    if (!inside(ctx, n) || owner(n) !== island) continue
-    const c = n as Comment
+  const take = (c: Comment) => {
     const data = c.data
     let m: RegExpExecArray | null
     const push = (kind: Open['kind'], index = 0, k = 0) => open.push({ kind, index, k, start: c, rows: [], empty: null })
@@ -117,6 +111,19 @@ function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[]; regions:
       }
     }
   }
+  // One pass (#465): `level` counts the islands entered below this one, minus the slot ranges entered (each moves its
+  // content one island out), so the island's own comments are at 0 (the same answer as owner(), in linear time).
+  const visit = (parent: Node, level: number) => {
+    let ranges = 0
+    for (let n = parent.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 1) visit(n, level + ((n as Element).localName === 'cl-island' ? 1 : 0))
+      else if (n.nodeType !== 8) continue
+      else if ((n as Comment).data === '[s') { ranges++; level-- }
+      else if ((n as Comment).data === ']s') { if (ranges) { ranges--; level++ } }
+      else if (!level && inside(ctx, n)) take(n as Comment)
+    }
+  }
+  visit(root, 0)
   return { holes, blocks, fors, regions }
 }
 

@@ -13,6 +13,13 @@ const loading = new WeakSet<Element>()
 // Islands attaching now (attach="load"), so an island holding them waits for them (#465): content it re-renders
 // inside them reads what they provide.
 const pending = new WeakMap<Element, Promise<void>>()
+
+/** Does `inner` hold content of `el` in one of its slot ranges? */
+function holds(inner: Element, el: Element): boolean {
+  const walker = document.createTreeWalker(inner, 128) // comments
+  for (let n; (n = walker.nextNode()); ) if ((n as Comment).data === '[s' && n.nextSibling && owner(n.nextSibling) === el) return true
+  return false
+}
 const updates = new WeakMap<Element, (props: Record<string, unknown>) => void>()
 // Each attached island's disposer: everything its attach() wired (effects, listeners) is released by it.
 const attached = new Map<Element, () => void>()
@@ -90,9 +97,10 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
     console.error(`[clarusjs] island "${el.getAttribute('c')}" failed to load`, err)
     return
   }
-  // Islands inside it attach first (#465). ponytail: one that attaches later (idle, visible, interaction) isn't waited
-  // for, so content re-rendered inside it before then lacks its context.
-  await Promise.all([...el.querySelectorAll('cl-island')].map((inner) => pending.get(inner)))
+  // Islands inside it that hold its content attach first (#465): content it re-renders there reads what they provide.
+  // Others aren't waited for. ponytail: one that attaches later (idle, visible, interaction) isn't waited for either,
+  // so content re-rendered inside it before then lacks its context.
+  await Promise.all([...el.querySelectorAll('cl-island')].filter((inner) => holds(inner, el)).map((inner) => pending.get(inner)))
   try {
     attached.set(el, scope(() => {
       // An island with inputs returns how to update them: kept for a parent island that passes new props.

@@ -34,3 +34,12 @@ test('an [s the parser left without its ]s runs to the end of its parent; commen
   const hole = [...$('div').childNodes].find((n) => n.nodeType === 8 && (n as Comment).data === '[0')!
   expect(owner(hole)).toBe(island('a'))
 })
+
+test('scanning an island with a 2000-row list stays linear (#465 review)', async () => {
+  const { holes } = await import('../../src/runtime/dom.ts')
+  const rows = Array.from({ length: 2000 }, (_, i) => `<!--[r--><p><!--[0-->${i}<!--]--></p><!--]-->`).join('')
+  document.body.innerHTML = `<cl-island c="a"><div><!--[f0-->${rows}<!--]--></div></cl-island>`
+  const t = performance.now()
+  holes(island('a'))
+  expect(performance.now() - t).toBeLessThan(300)
+})

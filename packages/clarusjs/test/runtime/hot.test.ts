@@ -68,10 +68,9 @@ test('islands nested in the changed one keep their state too', async () => {
   calls = []
   serve(page('<cl-island c="outer" src="/src/outer.tscl?import"><p>new</p><cl-island c="counter" src="/src/counter.tscl?import"><b>y</b></cl-island></cl-island>'))
   await swap('http://localhost/src/outer.tscl?import&t=8')
-  // Nested islands attach first (#465: an island holding content reads what they provide).
   expect(calls.map((c) => [c.src, c.state])).toEqual([
-    ['/src/counter.tscl?import', { count: 1 }],
     ['/src/outer.tscl?import&t=8', { count: 0 }],
+    ['/src/counter.tscl?import', { count: 1 }],
   ])
 })
 

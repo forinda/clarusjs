@@ -103,6 +103,12 @@ test('#465 a field in an island\'s slot content takes its path from the island t
   expect(f.errors.map((e) => e.path)).toEqual(['name'])
 })
 
+test('#465 review: a component\'s @value field inside another island\'s slot uses its own component\'s binding, not the holder\'s', () => {
+  const { el, f } = mount(`<form data-cl-form="0"><cl-island c="picker" data-cl-path-value="choice"><cl-island c="tabs" data-cl-path-value="tab"><!--[s--><label><input required data-cl-path="@value"><small data-cl-message></small></label><!--]s--></cl-island></cl-island></form>`, { choice: '', tab: '' })
+  leave(el('input'))
+  expect(f.errors.map((e) => e.path)).toEqual(['choice'])
+})
+
 test('rows shifting: the error follows the field to its new path', () => {
   const { el, f } = mount(`<form data-cl-form="0"><label><input data-cl-path="lines.0.item" value="ok"></label><label><input required data-cl-path="lines.1.item"><small data-cl-message></small></label></form>`, { lines: [{ item: 'ok' }, { item: '' }] })
   const second = document.querySelectorAll('input')[1]!

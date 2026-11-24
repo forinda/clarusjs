@@ -134,3 +134,12 @@ test('a component in the content that the outer island re-renders gets the conte
   click('.inc')
   expect($('.shell').textContent).toContain('a:1')
 })
+
+test('an outer island doesn\'t wait for a nested island that holds none of its content (#465 review)', async () => {
+  const outer = compile("@import cnt from './cnt.tscl'\n<script>\n  let n = state(0)\n</script>\n<button class=\"inc\" (click)=\"n++\">{{ n }}</button>\n<cnt />\n", { file: 'o.tscl', target: 'client' }).code
+  const o = await importCode(outer, 'ic-wait-o', { './cnt.tscl?render': compile(parts.cnt!, { file: 'cnt.tscl', target: 'server', clientUrl: '/cnt.js' }).code })
+  document.body.innerHTML = '<cl-island c="o" src="/o.js" s="{&quot;n&quot;:0}"><button class="inc" data-cl-e="0"><!--[0-->0<!--]--></button><!--[c0--><cl-island c="cnt" src="/cnt.js"><button class="cnt" data-cl-e="0"><!--[0-->0<!--]--></button></cl-island><!--]--></cl-island>'
+  void attachAll(document, (src) => (src === '/o.js' ? Promise.resolve(o) : new Promise(() => {}))) // cnt never loads
+  for (let i = 0; i < 10; i++) await tick()
+  expect(document.querySelector('cl-island[c="o"]')!.hasAttribute('data-cl-ready')).toBe(true)
+})
