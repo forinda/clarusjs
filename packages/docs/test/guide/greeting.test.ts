@@ -19,7 +19,9 @@ test('puts slot content at <slot />', async () => {
 })
 
 test('takes attributes written on its tag', async () => {
-  // A parent's tag passes class (and id, style, aria-*, data-*) as the third argument.
-  const html = await render({ name: 'Ada' }, undefined, { class: 'hero' })
+  // id, aria-* and data-* written on its tag arrive with the props; class comes in the third argument.
+  const html = await render({ name: 'Ada', id: 'welcome', 'data-test': 'greeting' }, undefined, { class: 'hero' })
   expect(html).toMatch(/<p [^>]*class="[^"]*\bhero\b/)
+  expect(html).toContain('id="welcome"')
+  expect(html).toContain('data-test="greeting"')
 })

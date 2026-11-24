@@ -1,4 +1,4 @@
-{{-- The testing guide's example component (/guide/testing). --}}
+{{-- A greeting: a name, a tone, and anything you put inside it. --}}
 @input name: string
 @input tone: 'plain' | 'loud' = 'plain'
 

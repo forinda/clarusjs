@@ -21,9 +21,11 @@ pnpm add -D vitest
 
 <<< ../../../test/guide/vitest.config.example.ts [vitest.config.ts]
 
+Keep Vitest's default `node` environment for these tests (no `jsdom` or `happy-dom`): the plugin gives a test the server side of a component, the one with `render`, when it runs where a server would.
+
 ## Test what a component renders
 
-Import a component and call its `render(props, slots, attributes)`: it returns the HTML the server would send. Check what matters to you: the text, the attributes, what's escaped.
+Import a component and call its `render(props, slots, options)`: it returns the HTML the server would send. Check what matters to you: the text, the attributes, what's escaped.
 
 <<< ../../../test/guide/greeting.tscl [greeting.tscl]
 
@@ -31,7 +33,7 @@ Import a component and call its `render(props, slots, attributes)`: it returns t
 
 - **`props`** are the component's inputs.
 - **`slots`** map slot names to HTML: `default` for `<slot />`, and a name for each named slot.
-- **Attributes written on the tag** (`class`, `id`, `style`, `aria-*`, `data-*`) are the third argument. See [Components](/guide/components#attributes-on-a-component) for where they land.
+- **Attributes written on a tag** land on the component's root: `id`, `aria-*` and `data-*` arrive with the props (`render({ name: 'Ada', id: 'welcome' })`), and `class` in the options (`{ class: 'hero' }`). See [Components](/guide/components#attributes-on-a-component).
 - `render` can return a promise (a component that awaits data does): `await` it either way.
 
 ## Test islands in a browser
@@ -43,7 +45,11 @@ pnpm add -D @playwright/test @axe-core/playwright
 pnpm exec playwright install chromium
 ```
 
-Point Playwright's `webServer` at your built site (`vite build && vite preview`), then test what a visitor does:
+Point Playwright at your built site: it builds and serves it before the tests run.
+
+<<< ../../../e2e/playwright.config.example.ts [playwright.config.ts]
+
+Then test what a visitor does. Here `counter` is an island on this site's home page; use one of yours:
 
 <<< ../../../e2e/guide-testing.spec.ts [e2e/counter.spec.ts]
 

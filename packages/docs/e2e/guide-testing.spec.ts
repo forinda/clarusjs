@@ -1,4 +1,4 @@
-// The testing guide's browser example (/guide/testing): an island works when clicked, and the page passes axe.
+// An island works when clicked, and the page passes axe. (counter is this site's island: use one of yours.)
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
