@@ -1,0 +1,5 @@
+{{-- The testing guide's example component (/guide/testing). --}}
+@input name: string
+@input tone: 'plain' | 'loud' = 'plain'
+
+<p class="greeting" [data-tone]="tone">Hello, {{ name }}<slot /></p>
