@@ -20,6 +20,8 @@ const parts: Record<string, string> = {
   protoProv: "@input v: string = 'x'\n<script>\n  provide('__proto__', { v })\n</script>\n<div class=\"prov\"><slot /></div>\n",
   protoShell: "@context __proto__: { v: string }\n@input n: number = 0\n<p class=\"shell\">{{ __proto__.v }}:{{ n }}</p>\n",
   cnt: "<script>\n  let c = state(0)\n</script>\n<button class=\"cnt\" (click)=\"c++\">{{ c }}</button>\n",
+  clickable: "<button class=\"clk\" type=\"button\"><slot /></button>\n",
+  emitter: "@event click: string\n<script>\n  function go(event) { emit('click', 'from-child', { event }) }\n</script>\n<button class=\"em\" (click)=\"go($event)\">e</button>\n",
 }
 let n = 0
 type Loader = (modules: Record<string, unknown>) => (src: string) => Promise<any>
@@ -167,4 +169,25 @@ test('#465 review: a provider that failed to load doesn\'t disable the island wh
   expect(page.hasAttribute('data-cl-ready')).toBe(true)
   click('.inc')
   expect($('.shell').textContent).toContain('q:1')
+})
+
+test('#fallthrough: (click) on a component without @event click listens on what it renders; $event is the DOM event', async () => {
+  await mount("<script>\n  let got = state('')\n</script>\n<clickable (click)=\"got = $event.type\"><b>x</b></clickable><p class=\"got\">{{ got }}</p>\n")
+  click('.clk')
+  expect($('.got').textContent).toBe('click')
+})
+
+test('#fallthrough: a child island that declares @event click: the handler gets the emitted value, once', async () => {
+  await mount("<script>\n  let calls = state([])\n</script>\n<emitter (click)=\"calls = [...calls, String($event)]\" /><p class=\"calls\">{{ calls.join(',') }}</p>\n")
+  click('.em')
+  expect($('.calls').textContent).toBe('from-child')
+})
+
+test('#fallthrough: a child in an @if that comes back keeps exactly one listener', async () => {
+  await mount("<script>\n  let n = state(0)\n  let show = state(true)\n</script>\n<button class=\"tog\" (click)=\"show = !show\">t</button>\n@if (show) { <clickable (click)=\"n++\">c</clickable> }\n<p class=\"n\">{{ n }}</p>\n")
+  click('.tog')
+  click('.tog')
+  await attachAll(document)
+  click('.clk')
+  expect($('.n').textContent).toBe('1')
 })
