@@ -12,8 +12,9 @@ export function uiSection(name: string): string {
   return collapse(m[1]!)
 }
 
-/** A registry file's <style global> block, collapsed. */
-export function globalStyle(source: string): string {
+/** A registry file's global rules, collapsed: a .css file whole, a .tscl file's <style global> block. */
+export function globalStyle(source: string, file = '.tscl'): string {
+  if (file.endsWith('.css')) return collapse(source)
   const m = /<style global>([\s\S]*?)<\/style>/.exec(source)
   return m ? collapse(m[1]!) : ''
 }

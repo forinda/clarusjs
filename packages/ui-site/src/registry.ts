@@ -16,7 +16,8 @@ export type Entry = {
   island: boolean
   /** The @clarusjs/ui-primitives version it needs, when parts is not empty. */
   since?: string
-  /** For a styled part: the sections of @clarusjs/ui's ui.css its <style global> copies, in order. */
+  /** For a styled part: the sections of @clarusjs/ui's ui.css its global rules copy, in order (a .tscl's
+   *  <style global>, or a whole .css file for parts used as a set). */
   sections?: string[]
 }
 
@@ -183,5 +184,49 @@ export const registry: Entry[] = [
     island: true,
     since: '0.1.0',
     sections: ['focus', 'field-select', 'motion'],
+  },
+  {
+    name: 'dialog',
+    title: 'Dialog',
+    description: 'A modal dialog on native <dialog>: focus kept in it, Escape and a click outside close it.',
+    files: ['dialog.css'],
+    parts: ['dialog.tscl', 'dialog-trigger.tscl', 'dialog-close.tscl'],
+    uses: [],
+    island: false,
+    since: '0.1.0',
+    sections: ['focus', 'buttons', 'dialog', 'motion'],
+  },
+  {
+    name: 'popover',
+    title: 'Popover',
+    description: 'A panel anchored to its trigger, on the popover attribute.',
+    files: ['popover.css'],
+    parts: ['popover.tscl', 'popover-trigger.tscl'],
+    uses: [],
+    island: false,
+    since: '0.1.0',
+    sections: ['focus', 'buttons', 'popover', 'motion'],
+  },
+  {
+    name: 'tooltip',
+    title: 'Tooltip',
+    description: 'A short hint on hover and focus.',
+    files: ['tooltip.css'],
+    parts: ['tooltip.tscl', 'tooltip-trigger.tscl'],
+    uses: [],
+    island: true,
+    since: '0.1.0',
+    sections: ['focus', 'buttons', 'tooltip', 'motion'],
+  },
+  {
+    name: 'menu',
+    title: 'Menu',
+    description: 'A menu of actions: arrow keys, typeahead, Escape.',
+    files: ['menu.css'],
+    parts: ['menu.tscl', 'menu-trigger.tscl', 'menu-list.tscl', 'menu-item.tscl'],
+    uses: [],
+    island: true,
+    since: '0.1.0',
+    sections: ['focus', 'buttons', 'menu', 'motion'],
   },
 ]

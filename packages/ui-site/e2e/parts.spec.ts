@@ -42,3 +42,47 @@ test('field: shows its error after an invalid submit', async ({ page }) => {
   await expect(error).toBeVisible()
   await expect(error).toHaveText('Enter an email address.')
 })
+
+test('dialog: opens from its trigger; Escape closes it and focus returns to the trigger', async ({ page }) => {
+  await page.goto('/components/dialog')
+  const trigger = page.locator('.demo [data-part="trigger"]')
+  const dialog = page.locator('.demo dialog')
+  await trigger.click()
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(trigger).toBeFocused()
+})
+
+test('popover: opens from its trigger and closes on a click outside', async ({ page }) => {
+  await page.goto('/components/popover')
+  const popover = page.locator('.demo [data-part="popover"]')
+  await page.locator('.demo [data-part="trigger"]').click()
+  await expect(popover).toBeVisible()
+  await page.locator('h1').click()
+  await expect(popover).toBeHidden()
+})
+
+test('tooltip: shows on focus and hides on Escape', async ({ page }) => {
+  await page.goto('/components/tooltip')
+  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
+  const tip = page.locator('.demo [data-part="tooltip"]')
+  await page.locator('.demo cl-island button').first().focus()
+  await expect(tip).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(tip).toBeHidden()
+})
+
+test('menu: opens, arrow keys move, Escape closes and returns focus', async ({ page }) => {
+  await page.goto('/components/menu')
+  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
+  const trigger = page.locator('.demo [data-part="trigger"]')
+  await trigger.click()
+  const items = page.getByRole('menuitem')
+  await expect(items.first()).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(items.nth(1)).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.demo [data-part="menu-list"]')).toBeHidden()
+  await expect(trigger).toBeFocused()
+})
