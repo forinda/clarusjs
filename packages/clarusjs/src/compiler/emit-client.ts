@@ -31,6 +31,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     hasRegions && 'region as __cl_region',
     all.some((n) => n.kind === 'component' && !!n.models?.length) && 'model as __cl_model',
     all.some((n) => n.kind === 'component' && !!n.listens?.length) && 'listen as __cl_listen',
+    all.some((n) => n.kind === 'use') && 'use as __cl_useOn',
     ir.sends && 'emit as __cl_emit',
     kinds.has('model') && 'modelInput as __cl_modelInput',
     ir.inputs.some((i) => kinds.has('input') || i.model) && 'batch as __cl_batch',
@@ -109,6 +110,7 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
     if (a.kind === 'attr' && a.reactive && a.name === '...') lines.push(`__cl_spread(${ctx}, ${a.index}, () => ${attrValueExpr(a.value, rw.expr)}, ${JSON.stringify(a.skip ?? [])}, ${JSON.stringify(a.tag)})`)
     else if (a.kind === 'attr' && a.reactive) lines.push(`__cl_attr(${ctx}, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, rw.expr)}${tagArg(a)})`)
     if (a.kind === 'connect') lines.push(`__cl_connect(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)
+    if (a.kind === 'use') lines.push(`__cl_useOn(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)
   }
   for (const e of ir.events.filter((ev) => ev.scope === scope)) {
     const body = rewriteClient(e.handler, signals).trim()

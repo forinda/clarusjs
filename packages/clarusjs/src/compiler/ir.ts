@@ -21,6 +21,8 @@ export type IRNode =
   | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string }
   // [engine]="f": an element connected to a form from clarusjs/forms (marked data-cl-form="index").
   | { kind: 'connect'; expr: string; index: number }
+  // [use]="behaviour" (#464): an element handed to a function in the browser (marked data-cl-u="index").
+  | { kind: 'use'; expr: string; index: number }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
   | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
   // @await (#430): `block` shares @if's markers (<!--[bN:K-->, K = 0 pending, 1 then, 2 catch); -1 outside islands.
@@ -139,6 +141,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   let eventElementCount = 0
   let attrElementCount = 0
   let formCount = 0
+  let useCount = 0
   let selectModel: string | undefined // inside a <select [(value)]>: its bound value, for its options' `selected`
   // Under an [engine] element: the object its fields bind (one per form, so a path can't silently miss).
   let engineScope: { root: string | null } | null = null
@@ -264,6 +267,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       const listens: { name: string; handler: string }[] = []
       for (const a of node.attrs) {
         if (/^(class|style)\./.test(a.name)) fail(`a component takes a static class="…" only: [${a.name}] is for elements`, a.start)
+        if (a.kind === 'prop' && a.name === 'use') fail('[use] is for elements: put it on an element inside the component', a.start)
         // [...]="props" (#406): every key a prop, first, so props written on the tag win.
         if (a.kind === 'prop' && a.name === '...') {
           if (props.some((p) => p.name === '...')) fail('one [...] per element', a.start)
@@ -475,6 +479,13 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, ...(a.expr === '__cl_attrs' ? {} : { where: `${file}:${at.line}:${at.column}` }) }
         if (reactive) dynamic.push(node_)
         out.push(node_)
+      } else if (a.kind === 'prop' && a.name === 'use') {
+        // [use]="behaviour" (#464): the browser calls it with this element; what it returns, when the element goes.
+        if (!stateful) fail('[use] needs a <script> (an island): behaviours run in the browser', a.start)
+        checkExpr(a.expr, file, source, a.start)
+        const index = useCount++
+        emitStatic(` data-cl-u="${index}"`)
+        out.push({ kind: 'use', expr: a.expr, index })
       } else if (a.kind === 'prop' && a.name === 'engine') {
         // [engine]="f": this element's form (and its fields) belong to the forms engine f (clarusjs/forms).
         if (!stateful) fail('[engine] needs a <script> (an island): the forms engine runs in the browser', a.start)

@@ -299,6 +299,9 @@ importers:
       '@clarusjs/theme-docs':
         specifier: workspace:*
         version: link:../theme-docs
+      '@clarusjs/ui-primitives':
+        specifier: workspace:*
+        version: link:../ui-primitives
       clarusjs:
         specifier: workspace:*
         version: link:../clarusjs
@@ -441,6 +444,27 @@ importers:
       tailwindcss:
         specifier: 4.3.5
         version: 4.3.5
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.3.8
+        version: 8.3.8(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@types/node@26.6.6)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+
+  packages/ui-primitives:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      clarusjs:
+        specifier: workspace:^
+        version: link:../clarusjs
+      happy-dom:
+        specifier: ^21.0.4
+        version: 21.0.4
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

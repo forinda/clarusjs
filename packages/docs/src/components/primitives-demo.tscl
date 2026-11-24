@@ -1,0 +1,131 @@
+{{-- The UI primitives guide's demo: a toolbar (roving focus), a listbox (roving focus and typeahead) and a popover
+     (enter, position, dismiss and focus return), each wired with [use]. --}}
+
+<script>
+  import { dismiss, enter, focusReturn, position, rovingFocus, typeahead } from '@clarusjs/ui-primitives'
+  let bold = state(false)
+  let italic = state(false)
+  let fruit = state('Apple')
+  let open = state(false)
+  let closed = state('')
+  const fruits = ['Apple', 'Banana', 'Blueberry', 'Cherry', 'Mango']
+  let trigger // the popover's button, from its [use]
+  const keep = (el) => {
+    trigger = el
+  }
+  function close(reason) {
+    open = false
+    closed = 'Closed by ' + reason + '.'
+  }
+</script>
+
+<div class="primitives-demo">
+  <div role="toolbar" aria-label="Formatting" [use]="(el) => rovingFocus(el)">
+    <button type="button" [aria-pressed]="String(bold)" (click)="bold = !bold"><b>B</b> Bold</button>
+    <button type="button" [aria-pressed]="String(italic)" (click)="italic = !italic"><i>I</i> Italic</button>
+    <button type="button" disabled>Underline</button>
+    <button type="button" (click)="bold = false; italic = false">Clear</button>
+  </div>
+
+  <ul
+    role="listbox"
+    aria-label="Fruit"
+    [use]="[(el) => rovingFocus(el, { items: 'li', orientation: 'vertical' }), (el) => typeahead(el, { items: 'li' })]"
+  >
+    @for (f of fruits; track f) {
+      <li
+        role="option"
+        [aria-selected]="String(f === fruit)"
+        (click)="fruit = f"
+        (keydown)="if ($event.key === 'Enter' || $event.key === ' ') fruit = f"
+      >
+        {{ f }}
+      </li>
+    }
+  </ul>
+  <p class="primitives-picked" aria-live="polite">Picked: {{ fruit }}</p>
+
+  <button
+    type="button"
+    [use]="keep"
+    aria-controls="primitives-popover"
+    [aria-expanded]="String(open)"
+    (click)="open = !open"
+  >
+    Details
+  </button>
+  @if (open) {
+    <div
+      id="primitives-popover"
+      role="dialog"
+      aria-label="Details"
+      class="primitives-popup"
+      [use]="[
+        focusReturn,
+        enter,
+        (el) => position(el, trigger),
+        (el) => dismiss(el, { onDismiss: close, exclude: () => [trigger] }),
+      ]"
+    >
+      <p>Press Escape, or click outside, to close.</p>
+      <button type="button" (click)="close('the button')">Done</button>
+    </div>
+  }
+  <p class="primitives-closed" aria-live="polite">{{ closed }}</p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  [role='toolbar'] {
+    display: flex;
+    gap: 6px;
+  }
+  [aria-pressed='true'] {
+    background: var(--accent-soft, #e8f0ff);
+  }
+  [role='listbox'] {
+    margin: 0;
+    padding: 4px;
+    max-width: 220px;
+    list-style: none;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+  }
+  [role='option'] {
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  [role='option'][aria-selected='true'] {
+    font-weight: 600;
+  }
+  [role='option']:focus-visible {
+    outline: 2px solid var(--accent, #3b6cf6);
+  }
+  .primitives-popup {
+    z-index: 10;
+    padding: 12px;
+    background: var(--bg, #fff);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+    transform-origin: var(--transform-origin);
+    transition:
+      opacity 150ms,
+      transform 150ms;
+  }
+  .primitives-popup[data-starting-style] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  p {
+    margin: 0;
+  }
+</style>

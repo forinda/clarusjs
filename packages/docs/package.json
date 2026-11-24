@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@clarusjs/theme-docs": "workspace:*",
+    "@clarusjs/ui-primitives": "workspace:*",
     "clarusjs": "workspace:*"
   },
   "devDependencies": {

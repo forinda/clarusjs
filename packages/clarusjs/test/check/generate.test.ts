@@ -347,3 +347,19 @@ test('#463 attributes on a component: attribute-like names pass (static or bound
     expect.stringMatching(/^src\/pages\/index\.tscl:3:22 .*'foo' does not exist/),
   ])
 })
+
+test('#464 [use]: a function of the element (typed by its tag), or a list of them; anything else is an error', () => {
+  const c = `<script>
+  const focus = (el) => el.focus()
+  const grow = (el) => { el.rows = 4; return () => {} }
+</script>
+<button [use]="focus">a</button>
+<textarea [use]="[focus, grow]"></textarea>
+<p [use]="(el) => el.rows">p</p>
+<i [use]="42"></i>
+`
+  expect(check({ 'src/components/c.tscl': c })).toEqual([
+    "src/components/c.tscl:7:22 Property 'rows' does not exist on type 'HTMLParagraphElement'.",
+    expect.stringMatching(/^src\/components\/c\.tscl:8:11 Argument of type 'number' is not assignable/),
+  ])
+})

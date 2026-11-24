@@ -30,7 +30,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, ctx?: Server
       const data = n.props.length ? `{ ${n.props.map((p) => `${p.name === '__proto__' ? '["__proto__"]' : p.name}: ${wrapExpr(rw.expr(p.expr))}`).join(', ')} }` : 'undefined'
       return `__cl_slot(__cl_slots?.[${JSON.stringify(n.name)}], ${data}, () => ${n.fallback.length ? htmlExpr(n.fallback, rw, ctx) : '""'})`
     }
-    if (n.kind === 'connect') return '""' // its marker is static; the browser connects it
+    if (n.kind === 'connect' || n.kind === 'use') return '""' // its marker is static; the browser connects it
     // The attributes passed to this component (#463), on its root.
     if (n.kind === 'attr' && n.name === '...' && 'expr' in n.value && n.value.expr === '__cl_attrs') return `__cl_passedHtml(__cl_attrs, ${JSON.stringify((n.skip ?? []).filter((x) => /^(id|role|tabindex|hidden|lang|dir|(data|aria)-.+)$/.test(x)))})`
     if (n.kind === 'attr' && n.name === '...') return `__cl_spreadHtml(${attrValueExpr(n.value, rw.expr)}, ${JSON.stringify(n.skip ?? [])}, ${JSON.stringify(n.tag)}${rw === asWritten && n.where ? `, ${JSON.stringify(n.where)}` : ''})` // the place, for warnings: server code only

@@ -155,6 +155,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   emit('export type __cl_Readonly<T> = T extends (...args: any[]) => unknown ? T : T extends object ? { readonly [K in keyof T]: __cl_Readonly<T[K]> } : T\n')
   // A child's event value (#442), any for a name it doesn't declare (that's reported once, on the binding).
   emit('export type __cl_Ev<T, K> = K extends keyof T ? T[K] : any\n')
+  emit('export type __cl_Use<E> = ((el: E) => unknown) | readonly ((el: E) => unknown)[]\n')
   // What a parent may pass a component as attributes for its root (#463): the names passed() in runtime/attrs.ts keeps.
   emit('export type __cl_Passed = { id?: string; role?: string; tabindex?: string | number; hidden?: boolean; lang?: string; dir?: string; style?: string; [k: `data-${string}`]: unknown; [k: `aria-${string}`]: unknown }\n')
   // A <script server> may await at the top level: the check function is async then, as render is.
@@ -376,6 +377,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
           }
           else if (a.kind === 'prop' && node.tag === 'slot') {
             use(a.expr, attrValueStart(a)) // data the slot passes to its fill (#455): any value, whatever its name
+          } else if (a.kind === 'prop' && a.name === 'use') {
+            // [use]="behaviour" (#464): a function of this element (or a list of them), run in the browser.
+            emit(`  ;((__cl_u: __cl_Use<__cl_El<${JSON.stringify(node.tag.toLowerCase())}>>) => __cl_use(__cl_u))((`)
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit('));\n')
           } else if (a.kind === 'prop' && a.name === 'engine') {
             // [engine]="f": a form from clarusjs/forms.
             emit(`  ;((__cl_f: import('clarusjs/forms').Form<any>) => __cl_use(__cl_f))((`)

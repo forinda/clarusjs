@@ -350,6 +350,21 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void
   onDispose(() => { const at = list.indexOf(handler); if (at !== -1) list.splice(at, 1) }) // a removed branch or row stops listening
 }
 
+/**
+ * [use]="behaviour" (#464): call each behaviour (one, or a list) with the element marked data-cl-u="index", once; a
+ * function it returns runs when the branch, row or island goes.
+ * @internal Compiled components call this.
+ */
+export function use(ctx: Ctx, index: number, get: () => unknown): void {
+  const el = marked(ctx, `[data-cl-u="${index}"]`)
+  if (!el) return
+  for (const fn of [untrack(get)].flat()) {
+    if (typeof fn !== 'function') continue
+    const dispose = fn(el)
+    if (typeof dispose === 'function') onDispose(dispose)
+  }
+}
+
 /** The element matching `selector` in `ctx`: this island's (not a nested island's), and in a row, that row's. */
 export function marked(ctx: Ctx, selector: string): Element | undefined {
   const root = rootOf(ctx)
