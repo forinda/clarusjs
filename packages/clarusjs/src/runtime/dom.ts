@@ -27,6 +27,31 @@ function inside(ctx: Ctx, node: Node): boolean {
 }
 
 /**
+ * The island that owns `node` (#465): its nearest <cl-island>, except that each slot range (`<!--[s-->…<!--]s-->`) it
+ * sits inside moves ownership one island outward, so content an island passes to another stays its own. Null when
+ * no island owns it. An [s the parser left without its ]s runs to the end of its parent.
+ * @internal
+ */
+export function owner(node: Node): Element | null {
+  let out = 0
+  for (let n: Node | null = node; n; n = n.parentNode) {
+    if (n !== node && (n as Element).localName === 'cl-island') {
+      if (!out) return n as Element
+      out--
+    }
+    // Slot ranges still open at n, among the siblings before it.
+    let closed = 0
+    for (let s = n.previousSibling; s; s = s.previousSibling) {
+      if (s.nodeType !== 8) continue
+      const d = (s as Comment).data
+      if (d === ']s') closed++
+      else if (d === '[s') closed ? closed-- : out++
+    }
+  }
+  return null
+}
+
+/**
  * Find every marker in `ctx`, skipping nested islands:
  * holes `<!--[N-->`, @if blocks `<!--[bN:K-->`, @for lists `<!--[fN-->` with rows `<!--[r-->` and `<!--[e-->`,
  * all closed by `<!--]-->`.
