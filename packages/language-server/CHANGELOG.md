@@ -1,5 +1,15 @@
 # @clarusjs/language-server
 
+## 0.6.0
+
+### Minor Changes
+
+- [#470](https://github.com/forinda/clarusjs/pull/470) [`7e8c056`](https://github.com/forinda/clarusjs/commit/7e8c05654d6474e125b71b29ce4a6a19b9eb0f2a) Thanks [@forinda](https://github.com/forinda)! - Components used by name ([#458](https://github.com/forinda/clarusjs/issues/458)): completed as tags, with their inputs, hover and go to definition, without an `@import`.
+
+- [#474](https://github.com/forinda/clarusjs/pull/474) [`c0d028f`](https://github.com/forinda/clarusjs/commit/c0d028fc70e8c11c4d98ce9f6b32c6ff2699d755) Thanks [@forinda](https://github.com/forinda)! - `@event` ([#442](https://github.com/forinda/clarusjs/issues/442)): the language server completes and hovers a component's events with their value types; Prettier keeps `@event` and `@layout none` lines as directives (an object type on them no longer breaks formatting).
+
+- [#450](https://github.com/forinda/clarusjs/pull/450) [`12588c2`](https://github.com/forinda/clarusjs/commit/12588c21b2c4bc9f0a4d10a2d54ac2f74f8407cd) Thanks [@forinda](https://github.com/forinda)! - Hover on a component's attribute (`[title]`, `title="…"`, `[(open)]`, `(rate)`) shows the input or model as the component declares it, whole type and default, or the event it sends, without needing TypeScript.
+
 ## 0.5.0
 
 ### Minor Changes

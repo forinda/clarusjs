@@ -1,5 +1,12 @@
 # @clarusjs/theme-docs
 
+## 0.4.2
+
+### Patch Changes
+
+- Updated dependencies [[`0a9f2fb`](https://github.com/forinda/clarusjs/commit/0a9f2fbf6de7360750556f1c2c028e55be08296b), [`7e8c056`](https://github.com/forinda/clarusjs/commit/7e8c05654d6474e125b71b29ce4a6a19b9eb0f2a), [`40078ff`](https://github.com/forinda/clarusjs/commit/40078ffcfbdde79f96171b551ef2781b8950b4c9), [`c0d028f`](https://github.com/forinda/clarusjs/commit/c0d028fc70e8c11c4d98ce9f6b32c6ff2699d755), [`6d54f6f`](https://github.com/forinda/clarusjs/commit/6d54f6f1e610b5449a7caeb68ed50767dede92a7), [`b02ebc8`](https://github.com/forinda/clarusjs/commit/b02ebc83e348a81cd71e1e437902ec43bb71ad66), [`59426c5`](https://github.com/forinda/clarusjs/commit/59426c556d136bcc524a51b3dcd296f7f82bca23), [`e309175`](https://github.com/forinda/clarusjs/commit/e309175374892619d6d5a35f364ed93838851043), [`e61e09c`](https://github.com/forinda/clarusjs/commit/e61e09c6e2cece2d8a051f095afd075e1788e042), [`4324103`](https://github.com/forinda/clarusjs/commit/4324103b08cf161331e47c9b1e742fa918de5238), [`27a6a53`](https://github.com/forinda/clarusjs/commit/27a6a5333e6bdb371d5c7509eed4b8ea56d0f195), [`a8ea351`](https://github.com/forinda/clarusjs/commit/a8ea3512a4807e3398b01b4747fc027d29222976)]:
+  - clarusjs@0.15.0
+
 ## 0.4.1
 
 ### Patch Changes
