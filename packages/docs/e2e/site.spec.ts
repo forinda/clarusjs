@@ -689,6 +689,19 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   expect((await (await axe(page)).include('dialog.search-dialog').analyze()).violations).toEqual([])
 })
 
+test('attach="visible": an island attaches once it scrolls into view, in a real browser (its <cl-island> has no box)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 400 })
+  await page.goto('/guide/lazy-attach')
+  const island = page.locator('#visible-demo cl-island')
+  await expect(island).toHaveAttribute('a', 'visible')
+  expect((await page.locator('#visible-demo').boundingBox())!.y).toBeGreaterThan(400) // below the fold
+  await expect(island).not.toHaveAttribute('data-cl-ready', '')
+  await page.locator('#visible-demo').scrollIntoViewIfNeeded()
+  await expect(island).toHaveAttribute('data-cl-ready', '')
+  await page.locator('#visible-demo button').click()
+  await expect(page.locator('#visible-demo button')).toContainText('Clicked 1 times')
+})
+
 test('history.pushState and replaceState belong to the page: the router never turns them into a page load', async ({ page }) => {
   await page.goto('/guide/holes')
   await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')

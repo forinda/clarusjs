@@ -95,6 +95,21 @@ test('idle: attaches once the browser is idle', async () => {
   expect(load).toHaveBeenCalledTimes(1)
 })
 
+test('visible: watches what the island holds, not <cl-island> itself (display: contents has no box, so it never intersects)', async () => {
+  const watched: Element[] = []
+  vi.stubGlobal('IntersectionObserver', class {
+    observe(el: Element) { watched.push(el) }
+    disconnect() {}
+  })
+  const mods = await page(`@import counter from './counter.tscl'\n<counter attach="visible" />`)
+  void attachAll(document, vi.fn(async () => mods.counter))
+  await flush()
+  const island = document.querySelector('cl-island')!
+  expect(watched.length).toBeGreaterThan(0)
+  expect(watched).not.toContain(island)
+  expect(watched.every((el) => island.contains(el))).toBe(true)
+})
+
 test('visible: attaches when the island scrolls into view', async () => {
   let report!: (entries: { isIntersecting: boolean }[]) => void
   vi.stubGlobal('IntersectionObserver', class {
