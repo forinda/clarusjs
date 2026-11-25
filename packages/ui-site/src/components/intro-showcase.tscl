@@ -3,6 +3,7 @@
 
 <script server>
   const DIGITS = ['4', '8', '2', '9', '1', '6']
+  const BRICKS = [2.2, 1.4, 1.8, 1.2, 2.4, 1.6, 1.3, 2, 1.5]
   const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
   // Three weeks of a month; days 9 to 13 are the range that sweeps in (9 and 13 its ends).
   const DAYS = Array.from({ length: 21 }, (_, i) => ({
@@ -68,6 +69,32 @@
         </div>
       </div>
       <span class="name">Calendar</span>
+    </a>
+  </li>
+  <li>
+    <a href="/components/masonry">
+      <div class="scene" aria-hidden="true">
+        <div class="bricks">
+          @for (b of BRICKS; track $index) {
+            <span class="brick" [style]="'--h: ' + b + 'rem; --i: ' + $index"></span>
+          }
+        </div>
+      </div>
+      <span class="name">Masonry</span>
+    </a>
+  </li>
+  <li>
+    <a href="/components/signature-pad">
+      <div class="scene" aria-hidden="true">
+        <svg class="signature" viewBox="0 0 160 60">
+          <line x1="8" y1="46" x2="152" y2="46" />
+          <path
+            d="M14 40 C22 10 30 12 28 34 C26 46 40 22 46 30 C50 36 52 40 58 28 C62 18 66 42 74 34 C80 28 84 24 90 32 C96 40 104 22 112 28 C118 32 124 38 132 26 C136 20 142 24 146 30"
+            pathLength="100"
+          />
+        </svg>
+      </div>
+      <span class="name">Signature pad</span>
     </a>
   </li>
   <li>
@@ -373,6 +400,54 @@
       background: var(--ui-accent);
       color: var(--ui-accent-fg);
     }
+  }
+
+  /* Bricks of different heights settle into three columns, one after another. */
+  .bricks {
+    width: 80%;
+    columns: 3;
+    column-gap: 4px;
+  }
+  .brick {
+    display: block;
+    height: var(--h);
+    margin-bottom: 4px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, var(--ui-accent-soft), var(--ui-accent));
+    break-inside: avoid;
+    animation: settle 4s calc(var(--i) * 120ms) ease-out infinite both;
+  }
+  @keyframes settle {
+    0% {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    15%,
+    85% {
+      opacity: 1;
+      transform: none;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* A signature writes itself on the line. */
+  .signature {
+    width: 80%;
+    overflow: visible;
+  }
+  .signature line {
+    stroke: var(--ui-border);
+  }
+  .signature path {
+    fill: none;
+    stroke: var(--ui-fg);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 100;
+    animation: draw 4s ease-in-out infinite both;
   }
 
   /* A button saving: the spinner turns, the label breathes. */

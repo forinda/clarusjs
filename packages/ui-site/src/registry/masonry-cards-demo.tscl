@@ -1,0 +1,52 @@
+@import uiMasonry from './masonry.tscl'
+
+<script server>
+  const QUOTES = [
+    ['Ada', 'It took ten minutes to copy the dialog in, and it already matched our brand.'],
+    ['Grace', 'No JavaScript for most of the page. Our Lighthouse score went up the day we switched.'],
+    ['Alan', 'The table helpers do the sorting and paging; the markup stays ours.'],
+    ['Katherine', 'Keyboard and screen reader support out of the box, tested on every page.'],
+    ['Linus', 'Plain CSS or Tailwind, whichever the project uses.'],
+    ['Margaret', 'The theme builder gave us a dark mode in an afternoon, and one file to keep.'],
+  ].map(([name, text]) => ({ name: String(name), text: String(text) }))
+</script>
+
+{{-- Any content: cards of different lengths, each kept whole. --}}
+<div class="demo example">
+  <uiMasonry width="16rem">
+    @for (q of QUOTES; track q.name) {
+      <blockquote class="quote">
+        <p>{{ q.text }}</p>
+        <footer>{{ q.name }}</footer>
+      </blockquote>
+    }
+  </uiMasonry>
+</div>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
+
+{{-- Global: the cards sit inside the Masonry's own markup, out of this demo's scope. --}}
+<style global>
+  .quote {
+    padding: var(--ui-space-4);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-card);
+    color: var(--ui-card-fg);
+  }
+  .quote p {
+    margin: 0 0 var(--ui-space-2);
+  }
+  .quote footer {
+    color: var(--ui-muted);
+    font-weight: 600;
+  }
+</style>

@@ -1,10 +1,10 @@
 // The introduction: a showcase of components in motion first, the theme's code folded away so the page reads short.
 import { expect, test } from '@playwright/test'
 
-test('a showcase of six live tiles, each a link to its component', async ({ page }) => {
+test('a showcase of eight live tiles, each a link to its component', async ({ page }) => {
   await page.goto('/components')
   const tiles = page.locator('[data-showcase] a[href^="/components/"]')
-  await expect(tiles).toHaveCount(6)
+  await expect(tiles).toHaveCount(8)
   for (const href of [
     '/components/toast',
     '/components/chart',
