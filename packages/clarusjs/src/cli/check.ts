@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync,
 import { createRequire } from 'node:module'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { ClarusError } from '../compiler/errors.ts'
-import { lint, type LintConfig, type LintRuleDef } from '../compiler/lint.ts'
+import { applyFixes, lint, type LintConfig, type LintRuleDef } from '../compiler/lint.ts'
 import { checkIcons } from '../compiler/icon.ts'
 import { parse } from '../compiler/parse.ts'
 import { resolveIcon } from '../icons.ts'
@@ -17,7 +17,7 @@ import { routeFromFile } from '../server/handler.ts'
 
 /** A type error, a template error, or a lint finding (#304: `code` is the rule, usually a warning). */
 export type Diagnostic = { file: string; line: number; column: number; severity: 'error' | 'warning'; code: string; message: string }
-export type CheckResult = { diagnostics: Diagnostic[]; exitCode: 0 | 1; text: string; json: string }
+export type CheckResult = { diagnostics: Diagnostic[]; exitCode: 0 | 1; text: string; json: string; /** With fix: the files it rewrote. */ fixed?: string[] }
 
 const VIRTUAL = '.clarusjs/virtual'
 const posix = (path: string) => path.split(sep).join('/')
@@ -70,8 +70,8 @@ function typescriptDir(root: string, override?: string): string {
 /** A page source, as the Vite plugin's `sources` option takes it (Markdown from @clarusjs/content, …). */
 export type CheckSource = { extension: string; toTscl(code: string, file: string, context: { route: string; root: string; addDependency(file: string): void }): string }
 
-/** `lint`: the plugin's rule levels; `lintRules`: the project's own rules; `strict`: warnings fail too. */
-export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown; lint?: LintConfig; lintRules?: LintRuleDef[]; strict?: boolean; components?: { dirs?: string[]; auto?: boolean } }): CheckResult {
+/** `lint`: the plugin's rule levels; `lintRules`: the project's own rules; `strict`: warnings fail too; `fix`: lint fixes are written to the .tscl files first. */
+export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown; lint?: LintConfig; lintRules?: LintRuleDef[]; strict?: boolean; fix?: boolean; components?: { dirs?: string[]; auto?: boolean } }): CheckResult {
   const root = resolve(options.root)
   // Automatic component imports (#458), named as the plugin names them.
   const names = options.components?.auto === false ? undefined : componentIndex(findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => posix(relative(root, f))), options.components?.dirs ?? COMPONENT_DIRS).names
@@ -86,12 +86,24 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
   const pageFiles = findClarusFiles(resolve(root, 'src'), ['.tscl', ...sources.map((x) => x.extension)])
     .filter((f) => f.endsWith('.tscl') || f.startsWith(resolve(root, 'src/pages') + sep))
   const views: { file: string; source: string }[] = []
+  const fixed: string[] = []
 
   for (const path of pageFiles) {
     const file = posix(relative(root, path))
     const original = readFileSync(path, 'utf8')
     const src = sources.find((x) => path.endsWith(x.extension))
     let source = original
+    // fix: lint's fixes, written to the file (.tscl only: a page source's text is generated), before anything is checked.
+    if (options.fix && path.endsWith('.tscl')) {
+      try {
+        const next = applyFixes(original, lint(original, file, options.lint, options.lintRules))
+        if (next !== original) {
+          writeFileSync(path, next)
+          fixed.push(file)
+          source = next
+        }
+      } catch {} // a syntax error: reported below
+    }
     try {
       if (src) source = src.toTscl(original, path, { route: routeFromFile(`/${file}`), root, addDependency: () => {} })
     } catch (err) {
@@ -250,5 +262,6 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     exitCode: diagnostics.some((d) => d.severity === 'error' || options.strict) ? 1 : 0,
     text: diagnostics.map((d) => `${d.file}:${d.line}:${d.column} ${d.severity} ${d.code}: ${d.message}`).join('\n'),
     json: JSON.stringify(diagnostics, null, 2),
+    ...(options.fix ? { fixed } : {}),
   }
 }

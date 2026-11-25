@@ -24,7 +24,14 @@ export type LintLevel = 'off' | 'warn' | 'error'
  * A finding, at its 1-based line and column (`start`: its offset in the source).
  * @see https://clarusjs.com/reference/compiler#lint
  */
-export type LintMessage = { rule: string; severity: 'warning' | 'error'; message: string; file: string; line: number; column: number; start: number }
+export type LintMessage = { rule: string; severity: 'warning' | 'error'; message: string; file: string; line: number; column: number; start: number; fix?: LintFix }
+/**
+ * An edit that fixes a finding: the source from `start` to `end` (offsets) becomes `text`. `clarusjs check --fix` and
+ * the ESLint plugin apply them.
+ * @since 0.16.0
+ * @see https://clarusjs.com/guide/lint#fixes
+ */
+export type LintFix = { start: number; end: number; text: string }
 /**
  * A template element, as `parse` returns it.
  * @see https://clarusjs.com/guide/lint#writing-a-rule
@@ -46,7 +53,7 @@ export type LintContext = {
   /** Whether the template, the script, or an input's type or default reads `name`. */
   reads(name: string): boolean
   /** A finding at `start`, an offset in the source (an element's, an attribute's, an @input's). */
-  report(start: number, message: string): void
+  report(start: number, message: string, fix?: LintFix): void
 }
 /**
  * A lint rule: a name (used in levels and ignore comments) and a check over one file.
@@ -118,7 +125,7 @@ export const lintRules: LintRuleDef[] = [
     // layouts and whole documents are exempt. ponytail: a warning for now; an error in the next minor. Layouts are known
     // by their folder: a config layout kept elsewhere is warned about; pass lint the layout list when one needs it.
     name: 'one-root',
-    check({ file, parsed, report }) {
+    check({ file, source, parsed, report }) {
       if (/(^|[\\/])(pages|layouts)[\\/]/.test(file)) return
       const top = rootNodes
       const nodes = top(parsed.nodes)
@@ -130,7 +137,13 @@ export const lintRules: LintRuleDef[] = [
       const [first] = nodes
       if (nodes.length === 1 && first!.type === 'if' && first!.branches.at(-1)!.cond === null && first!.branches.every((b) => one(top(b.children)))) return
       const at = nodes.length > 1 && (first!.type === 'element') ? nodes[1]! : first
-      if (at) report(at.start, 'a component renders one root element, for what a parent passes it (attributes, class, events) to land on: wrap these in an element, or in <fragment> if no element is wanted')
+      if (!at) return
+      // The fix wraps the roots in <fragment>: the same HTML. Not re-indented (that would change a <pre>'s text).
+      const last = nodes.at(-1)!
+      const after = [...parsed.nodes.map((n) => n.start), ...parsed.styles.map((st) => st.tag), parsed.serverScript?.tag ?? -1, parsed.script ? source.lastIndexOf('<script', parsed.script.start) : -1].filter((x) => x > last.start)
+      const end = source.slice(0, after.length ? Math.min(...after) : source.length).trimEnd().length
+      const fix = { start: first!.start, end, text: `<fragment>\n${source.slice(first!.start, end)}\n</fragment>` }
+      report(at.start, 'a component renders one root element, for what a parent passes it (attributes, class, events) to land on: wrap these in an element, or in <fragment> if no element is wanted', fix)
     },
   },
   {
@@ -217,21 +230,39 @@ export function lint(source: string, file: string, config: LintConfig = {}, extr
   }
 
   const out: LintMessage[] = []
-  const add = (rule: string, severity: LintMessage['severity'], start: number, message: string) => {
+  const add = (rule: string, severity: LintMessage['severity'], start: number, message: string, fix?: LintFix) => {
     const { line, column } = new ClarusError(message, file, source, start)
     const skip = ignored.get(line)
     if (skip === 'all' || skip?.has(rule)) return
-    out.push({ rule, severity, message, file, line, column, start })
+    out.push({ rule, severity, message, file, line, column, start, ...(fix ? { fix } : {}) })
   }
   for (const rule of [...lintRules, ...extra]) {
     const level = config[rule.name] ?? 'warn'
     if (level === 'off') continue
     try {
-      rule.check({ ...base, report: (start, message) => add(rule.name, level === 'error' ? 'error' : 'warning', start, message) })
+      rule.check({ ...base, report: (start, message, fix) => add(rule.name, level === 'error' ? 'error' : 'warning', start, message, fix) })
     } catch (err) {
       // A project's rule with a bug: said where it shows, rather than ending check or the editor's diagnostics.
       add(rule.name, 'error', 0, `the rule failed: ${(err as Error).message}`)
     }
   }
   return out.sort((a, b) => a.start - b.start)
+}
+
+/**
+ * The source with the findings' fixes applied. Overlapping fixes: the first one (by position) wins; run lint again for
+ * the rest.
+ * @example
+ * ```ts
+ * import { applyFixes, lint } from 'clarusjs/compiler'
+ * const fixed = applyFixes(source, lint(source, 'src/components/card.tscl'))
+ * ```
+ * @since 0.16.0
+ * @see https://clarusjs.com/reference/compiler#applyfixes
+ */
+export function applyFixes(source: string, messages: readonly LintMessage[]): string {
+  const fixes = messages.flatMap((m) => (m.fix ? [m.fix] : [])).sort((a, b) => a.start - b.start)
+  const kept: LintFix[] = []
+  for (const f of fixes) if (!kept.length || f.start >= kept.at(-1)!.end) kept.push(f)
+  return kept.reduceRight((text, f) => text.slice(0, f.start) + f.text + text.slice(f.end), source)
 }

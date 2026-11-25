@@ -96,3 +96,9 @@ test('prefer-const leaves `let` state alone: the template or a copy-on-write upd
   // A shared() store is written the same way; derived() is read-only, so const it is.
   expect(where(run(source, { 'prefer-const': 'error' }, { languageOptions: { globals: { store: 'readonly' } } }))).toEqual(['3:7 prefer-const', '5:7 prefer-const'])
 })
+
+test('template fixes apply through --fix: several roots are wrapped in <fragment>', () => {
+  const out = new Linter().verifyAndFix('<h1>a</h1>\n<p>b</p>\n', [...clarusjs.configs.recommended, { files: ['**/*.tscl'] }], filename)
+  expect(out.output).toBe('<fragment>\n<h1>a</h1>\n<p>b</p>\n</fragment>\n')
+  expect(out.messages).toEqual([])
+})

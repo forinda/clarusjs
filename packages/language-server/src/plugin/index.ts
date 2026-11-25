@@ -7,7 +7,7 @@ import { completions, definition, hover } from '../components.ts'
 import { offsetAt } from '../positions.ts'
 import { references, renameEdits, renameRange } from '../references.ts'
 import { TOKEN_TYPES, tokensOf } from '../tokens.ts'
-import { diagnosticsFor } from './diagnostics.ts'
+import { diagnosticsFor, quickFixes } from './diagnostics.ts'
 
 /** The .tscl file a (possibly embedded) document belongs to. */
 export function sourceUri(context: LanguageServiceContext, uri: string): string {
@@ -27,6 +27,7 @@ export function createTsclServicePlugin(projectFor: (path: string) => Project): 
       referencesProvider: true,
       renameProvider: { prepareProvider: true },
       documentFormattingProvider: true,
+      codeActionProvider: { codeActionKinds: ['quickfix'] },
     },
     create(context) {
       /** The .tscl document's path, project and text (the project synced to the buffer), or nothing for others. */
@@ -46,6 +47,11 @@ export function createTsclServicePlugin(projectFor: (path: string) => Project): 
           let out: string
           try { out = await doc.project.format(doc.text, doc.path) } catch { return undefined }
           return out === doc.text ? [] : [{ range: { start: document.positionAt(0), end: document.positionAt(doc.text.length) }, newText: out }]
+        },
+        // A lint finding's fix (one-root wraps the top level in <fragment>, …) as a quick fix.
+        provideCodeActions(document, range) {
+          const doc = open(document)
+          return doc && quickFixes(doc.project, doc.path, doc.text, range)
         },
         provideDiagnostics(document) {
           const doc = open(document)

@@ -13,7 +13,7 @@ export { componentIndex, COMPONENT_DIRS, type ComponentNames } from './component
 import { foldClass } from './class-style.ts'
 export { checkIcons, type IconResolver } from './icon.ts'
 import type { IconResolver } from './icon.ts'
-export { lint, lintRules, type LintRule, type LintLevel, type LintConfig, type LintMessage, type LintRuleDef, type LintContext, type LintElement } from './lint.ts'
+export { applyFixes, lint, lintRules, type LintFix, type LintRule, type LintLevel, type LintConfig, type LintMessage, type LintRuleDef, type LintContext, type LintElement } from './lint.ts'
 export type { ParsedFile, InputDecl, EventDecl, ImportDecl, TemplateNode, Attr } from './parse.ts'
 
 /**
@@ -197,6 +197,9 @@ function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source:
       return n.children
     })
   const root = fragmentRoot(parsed.nodes)
+  // A <fragment> at the top level renders like its children written there: whitespace-only text between them is
+  // dropped, as at the top level (else wrapping inline roots in one would add spaces between them).
+  parsed.nodes = parsed.nodes.flatMap((n) => (n.type === 'element' && n.tag === 'fragment' && !n.attrs.length ? n.children.filter((c) => !(c.type === 'text' && !c.value.trim())) : [n]))
   parsed.nodes = flat(parsed.nodes)
   return root
 }

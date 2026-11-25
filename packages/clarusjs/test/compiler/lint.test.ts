@@ -138,3 +138,24 @@ test('#review: one-root: a fragment in an @if branch is not one element', () => 
 test('#review: one-root: an HTML comment beside the root is not another root', () => {
   expect(lint('<!-- note -->\n<p>x</p>\n<!-- end -->\n', 'src/components/x.tscl').filter((m) => m.rule === 'one-root')).toEqual([])
 })
+
+test('one-root fix: wraps the top level in <fragment>, leaving the rest of the file; the HTML is the same', async () => {
+  const { applyFixes, compile } = await import('../../src/compiler/index.ts')
+  const { importCode } = await import('../helpers.ts')
+  const component = 'src/components/x.tscl'
+  const source = '@input a: string = "A"\n<script>\n  let n = state(0)\n</script>\n\n<h1>{{ a }}</h1>\n<pre>  keep\n  this</pre>\n<button (click)="n++">{{ n }}</button>\n<!-- end -->\n\n<style scoped>\n  h1 { color: red; }\n</style>\n'
+  const [m] = lint(source, component).filter((x) => x.rule === 'one-root')
+  expect(m!.fix).toBeDefined()
+  const fixed = applyFixes(source, [m!])
+  expect(fixed).toBe('@input a: string = "A"\n<script>\n  let n = state(0)\n</script>\n\n<fragment>\n<h1>{{ a }}</h1>\n<pre>  keep\n  this</pre>\n<button (click)="n++">{{ n }}</button>\n</fragment>\n<!-- end -->\n\n<style scoped>\n  h1 { color: red; }\n</style>\n')
+  expect(lint(fixed, component).filter((x) => x.rule === 'one-root')).toEqual([])
+  const html = async (src: string) => ((await importCode(compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js', scope: 's' }).code, 'fix')).render({}) as string)
+  expect(await html(fixed)).toBe(await html(source))
+})
+
+test('applyFixes: several edits, from the end, skipping any that overlap; messages without one are ignored', async () => {
+  const { applyFixes } = await import('../../src/compiler/index.ts')
+  const at = (start: number, end: number, text: string) => ({ rule: 'r', severity: 'warning' as const, message: '', file: 'f', line: 1, column: 1, start, fix: { start, end, text } })
+  expect(applyFixes('abcdef', [at(0, 1, 'X'), at(4, 6, 'YZ!'), { ...at(2, 3, 'Q'), fix: undefined }])).toBe('XbcdYZ!')
+  expect(applyFixes('abcdef', [at(0, 3, 'X'), at(2, 4, 'Y')])).toBe('Xdef')
+})

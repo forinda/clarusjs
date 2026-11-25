@@ -437,3 +437,17 @@ test('#458 automatic imports: a component used by name is checked like an import
   // Off: the tags are plain HTML again.
   expect(check({ root, typescript, components: { auto: false } }).diagnostics).toEqual([])
 })
+
+test('fix: lint fixes are written to the .tscl files, and what they fixed is no longer reported', () => {
+  const pair = '@input a: string\n<dt>{{ a }}</dt>\n<dd><slot /></dd>\n'
+  const root = project({
+    'src/components/pair.tscl': pair,
+    'src/pages/index.tscl': `@import pair from '../components/pair.tscl'\n<dl><pair [a]="'x'">y</pair></dl>\n`,
+  })
+  expect(check({ root, typescript }).diagnostics.map((d) => d.code)).toEqual(['one-root'])
+  expect(readFileSync(resolve(root, 'src/components/pair.tscl'), 'utf8')).toBe(pair) // not without fix
+  const result = check({ root, typescript, fix: true })
+  expect(result.diagnostics).toEqual([])
+  expect(result.fixed).toEqual(['src/components/pair.tscl'])
+  expect(readFileSync(resolve(root, 'src/components/pair.tscl'), 'utf8')).toBe('@input a: string\n<fragment>\n<dt>{{ a }}</dt>\n<dd><slot /></dd>\n</fragment>\n')
+})

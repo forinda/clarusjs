@@ -37,3 +37,8 @@ test('#review: <cl-head> beside a fragment root: still a fragment root (nothing 
   const mod = await importCode(server('<cl-head><title>t</title></cl-head>\n<fragment><div>x</div></fragment>\n'), 'frag-head')
   expect(mod.render({ id: 'a' })).not.toContain('id="a"')
 })
+
+test('a root <fragment> renders like the same nodes at the top level: no whitespace between them', async () => {
+  const top = await render('<a href="/1">1</a>\n<a href="/2">2</a>\n')
+  expect(await render('<fragment>\n<a href="/1">1</a>\n<a href="/2">2</a>\n</fragment>\n')).toBe(top)
+})

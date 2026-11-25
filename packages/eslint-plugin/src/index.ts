@@ -134,6 +134,7 @@ const usesVars: Rule.RuleModule = {
 const template: Rule.RuleModule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     docs: { description: 'The template rules of clarusjs check: unused inputs and imports, images without alt, labels and buttons without names' },
     schema: [{ type: 'object', additionalProperties: { enum: ['off', 'warn', 'error'] } }],
   },
@@ -145,7 +146,11 @@ const template: Rule.RuleModule = {
         let found
         try { found = lint(context.sourceCode.text, context.filename, levels, own) } catch { return } // the parser reports it
         // One ESLint rule for them all: its severity is the configured one, and the finding's rule is in the message.
-        for (const m of found) context.report({ loc: { line: m.line, column: m.column - 1 }, message: `${m.message} (${m.rule})` })
+        // A finding's fix applies with eslint --fix, as with clarusjs check --fix.
+        for (const m of found) {
+          const fix = m.fix
+          context.report({ loc: { line: m.line, column: m.column - 1 }, message: `${m.message} (${m.rule})`, ...(fix ? { fix: (fixer: Rule.RuleFixer) => fixer.replaceTextRange([fix.start, fix.end], fix.text) } : {}) })
+        }
       },
     }
   },
