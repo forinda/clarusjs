@@ -17,7 +17,7 @@ description: "A short label, in four variants."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `badge.tscl`.
+Copy it into `src/components/ui/` as `badge.tscl`.
 
 <<< ../../registry/badge.tscl
 

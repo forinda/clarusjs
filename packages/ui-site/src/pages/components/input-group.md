@@ -17,7 +17,7 @@ description: "A field with text or icons before and after it."
 
 ## Source
 
-Copy it next to your components as `input-group.tscl`.
+Copy it into `src/components/ui/` as `input-group.tscl`.
 
 <<< ../../registry/input-group.tscl
 

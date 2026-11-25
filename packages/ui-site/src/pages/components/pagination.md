@@ -17,7 +17,7 @@ description: "Links to the pages of a long list, shortened with ellipses."
 
 ## Source
 
-Copy it next to your components as `pagination.tscl`.
+Copy it into `src/components/ui/` as `pagination.tscl`.
 
 <<< ../../registry/pagination.tscl
 

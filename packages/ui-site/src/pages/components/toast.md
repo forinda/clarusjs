@@ -19,7 +19,7 @@ The parts come from `@clarusjs/ui-primitives`; the look is `toast.css`, imported
 
 ## Source
 
-Copy it next to your components as `toast.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `toast.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
 
 <<< ../../registry/toast.css
 

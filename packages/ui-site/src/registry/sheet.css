@@ -1,6 +1,6 @@
 /*
   Sheet: the same rules as @clarusjs/ui's ui.css for dialog.tscl, dialog-trigger.tscl, dialog-close.tscl from
-  @clarusjs/ui-primitives, with data-side on the dialog. Copy it next to your components, @import it once.
+  @clarusjs/ui-primitives, with data-side on the dialog. Copy it into src/components/ui/, @import it once.
 */
 
 @layer theme, base, components, utilities;

@@ -1,6 +1,6 @@
 /*
   Tabs: the same rules as @clarusjs/ui's ui.css for tabs.tscl, tab-list.tscl, tab.tscl, tab-panel.tscl from @clarusjs/ui-primitives.
-  Copy it next to your components, @import it once, and change it to change the look.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
 */
 
 @layer theme, base, components, utilities;

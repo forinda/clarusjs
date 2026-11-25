@@ -17,7 +17,7 @@ description: "A round picture of someone, or their initials."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `avatar.tscl`.
+Copy it into `src/components/ui/` as `avatar.tscl`.
 
 <<< ../../registry/avatar.tscl
 

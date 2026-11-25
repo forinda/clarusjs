@@ -1,6 +1,6 @@
 /*
   Toast: the same rules as @clarusjs/ui's ui.css for toast-region.tscl from @clarusjs/ui-primitives (and the
-  messages toast() adds). Copy it next to your components, @import it once.
+  messages toast() adds). Copy it into src/components/ui/, @import it once.
 */
 
 @layer theme, base, components, utilities;

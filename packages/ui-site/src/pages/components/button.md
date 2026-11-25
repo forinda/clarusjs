@@ -17,7 +17,7 @@ description: "A native button in six variants and three sizes."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `button.tscl`.
+Copy it into `src/components/ui/` as `button.tscl`.
 
 <<< ../../registry/button.tscl
 

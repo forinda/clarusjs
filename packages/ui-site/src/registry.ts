@@ -2,12 +2,14 @@
 // entry's files, flat, and next to them its usage example (<name>-demo.tscl), which imports them as ./<file>. The pages' "needs" lists and the home
 // page's list come from here (and, later, the registry JSON a CLI would read).
 export type Entry = {
+  /** A component (the default), or a block: a whole page built from components, in src/registry/blocks/<name>/. */
+  kind?: 'component' | 'block'
   /** Page name, and the usage example's: 'button' (button-demo.tscl). */
   name: string
   title: string
   /** One line, shown in lists and as the page's lead. */
   description: string
-  /** Files in src/registry/ to copy; the first is the component. */
+  /** Files in src/registry/ to copy; the first is the component (a block's: its page, 'blocks/login/login.tscl'). */
   files: string[]
   /** @clarusjs/ui-primitives parts it renders ('switch.tscl', …); [] if none. */
   parts: string[]
@@ -428,3 +430,8 @@ export const registry: Entry[] = [
     sections: ['focus', 'sidebar', 'motion'],
   },
 ]
+
+/** The components (the component pages and lists). */
+export const components: Entry[] = registry.filter((e) => e.kind !== 'block')
+/** The blocks (/blocks): pages built from components, copied into an app's src/pages/. */
+export const blocks: Entry[] = registry.filter((e) => e.kind === 'block')

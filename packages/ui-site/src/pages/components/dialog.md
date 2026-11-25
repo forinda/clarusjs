@@ -19,7 +19,7 @@ The parts come from `@clarusjs/ui-primitives`; the look is `dialog.css`, importe
 
 ## Source
 
-Copy it next to your components as `dialog.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `dialog.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
 
 <<< ../../registry/dialog.css
 

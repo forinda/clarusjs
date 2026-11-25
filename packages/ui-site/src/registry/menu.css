@@ -1,6 +1,6 @@
 /*
   Menu: the same rules as @clarusjs/ui's ui.css for menu.tscl, menu-trigger.tscl, menu-list.tscl, menu-item.tscl from @clarusjs/ui-primitives.
-  Copy it next to your components, @import it once, and change it to change the look.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
 */
 
 @layer theme, base, components, utilities;

@@ -17,7 +17,7 @@ description: "A native table that scrolls sideways on small screens."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `table.tscl`.
+Copy it into `src/components/ui/` as `table.tscl`.
 
 <<< ../../registry/table.tscl
 

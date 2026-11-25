@@ -17,7 +17,7 @@ description: "What to show when there is nothing yet, with a way to start."
 
 ## Source
 
-Copy it next to your components as `empty.tscl`.
+Copy it into `src/components/ui/` as `empty.tscl`.
 
 <<< ../../registry/empty.tscl
 

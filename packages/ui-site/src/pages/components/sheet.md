@@ -19,7 +19,7 @@ The parts come from `@clarusjs/ui-primitives`; the look is `sheet.css`, imported
 
 ## Source
 
-Copy it next to your components as `sheet.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `sheet.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
 
 <<< ../../registry/sheet.css
 

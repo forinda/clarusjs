@@ -17,7 +17,7 @@ description: "A line between content, horizontal or vertical."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `separator.tscl`.
+Copy it into `src/components/ui/` as `separator.tscl`.
 
 <<< ../../registry/separator.tscl
 

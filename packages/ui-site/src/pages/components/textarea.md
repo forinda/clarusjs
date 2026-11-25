@@ -17,7 +17,7 @@ description: "A native multi-line text field that grows with resize."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `textarea.tscl`.
+Copy it into `src/components/ui/` as `textarea.tscl`.
 
 <<< ../../registry/textarea.tscl
 

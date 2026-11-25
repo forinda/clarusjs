@@ -21,7 +21,7 @@
   @for (u of uses; track u.name) {
     <li>
       <a [href]="'/components/' + u.name">{{ u.title }}</a
-      >, copied next to it
+      >, copied into <code>src/components/ui/</code>
     </li>
   }
 </ul>

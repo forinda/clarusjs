@@ -1,8 +1,8 @@
 {{-- Every component, linked, with its one line. --}}
-@import { registry } from '~/registry.ts'
+@import { components } from '~/registry.ts'
 
 <ul class="component-list">
-  @for (e of registry; track e.name) {
+  @for (e of components; track e.name) {
     <li>
       <a [href]="'/components/' + e.name">{{ e.title }}</a
       >: {{ e.description }}

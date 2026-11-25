@@ -1,6 +1,6 @@
 /*
   Sidebar: the same rules as @clarusjs/ui's ui.css for sidebar.tscl and sidebar-trigger.tscl from
-  @clarusjs/ui-primitives. Copy it next to your components, @import it once.
+  @clarusjs/ui-primitives. Copy it into src/components/ui/, @import it once.
 */
 
 @layer theme, base, components, utilities;

@@ -17,7 +17,7 @@ description: "A pulsing placeholder while content loads."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `skeleton.tscl`.
+Copy it into `src/components/ui/` as `skeleton.tscl`.
 
 <<< ../../registry/skeleton.tscl
 

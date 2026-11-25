@@ -17,7 +17,7 @@ description: "Content that opens and closes under a trigger, on native details."
 
 ## Source
 
-Copy it next to your components as `collapsible.tscl`.
+Copy it into `src/components/ui/` as `collapsible.tscl`.
 
 <<< ../../registry/collapsible.tscl
 
