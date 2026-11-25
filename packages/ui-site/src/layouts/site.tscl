@@ -32,8 +32,9 @@
   .content .demo {
     margin-bottom: 16px;
   }
-  /* The docs theme makes Markdown tables scroll (display: block); a chart's data table stays a table. */
-  .content [data-part='chart-table'] {
+  /* The docs theme makes Markdown tables scroll (display: block); a chart's data table and Table's stay tables. */
+  .content [data-part='chart-table'],
+  .content [data-part='table'] {
     display: table;
     overflow: visible;
   }

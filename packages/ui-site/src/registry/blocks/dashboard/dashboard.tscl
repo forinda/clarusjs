@@ -191,6 +191,11 @@
     :where(.dash-table-status button[aria-pressed='true']) {
       background: var(--ui-muted-bg);
     }
+    :where(.dash-table-count) {
+      color: var(--ui-muted);
+      font-weight: 400;
+      font-variant-numeric: tabular-nums;
+    }
     :where(.dash-table-status button:focus-visible),
     :where(.dash-table th button:focus-visible) {
       outline: 2px solid var(--ui-ring);

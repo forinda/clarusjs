@@ -38,10 +38,12 @@ layout: "/src/layouts/wide.tscl"
 
 <<< ../../registry/input.tscl
 
+<<< ../../registry/data-table.ts
+
 </blockView>
 
 ## Use it
 
-Copy `dashboard.tscl` into `src/pages/`, `dashboard-table.tscl`, `stat-card.tscl` and `data.ts` beside it, and the components under Code into `src/components/ui/`. Put `SIDEBAR_SCRIPT` from `@clarusjs/ui-primitives` in your `<head>` (for example `head.tags` in `vite.config.ts`), so a collapsed sidebar stays collapsed on load. Replace the data in `data.ts` with yours: `stats` for the cards, `visitors` for the chart, `rows` for the table; `filterRows`, `sortRows` and `pageRows` work on any rows of that shape.
+Copy `dashboard.tscl` into `src/pages/`, `dashboard-table.tscl`, `stat-card.tscl` and `data.ts` beside it, and the components under Code into `src/components/ui/`. Put `SIDEBAR_SCRIPT` from `@clarusjs/ui-primitives` in your `<head>` (for example `head.tags` in `vite.config.ts`), so a collapsed sidebar stays collapsed on load. Replace the data in `data.ts` with yours: `stats` for the cards, `visitors` for the chart, `rows` for the table; the table sorts, filters and pages them with [Data table](/components/data-table)'s helpers, which work on any rows.
 
 <needs name="dashboard" />

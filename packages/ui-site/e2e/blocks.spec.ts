@@ -452,7 +452,7 @@ test.describe('dashboard block', () => {
 
   test('the status switch and the search narrow the rows; none found says so', async ({ page }) => {
     await gotoDashboard(page)
-    await page.getByRole('button', { name: 'In progress', exact: true }).click()
+    await page.getByRole('button', { name: /^In progress \d+$/ }).click()
     for (const s of await bodyRows(page).locator('td[data-col="status"]').allTextContents()) expect(s.trim()).toBe('In progress')
     await page.getByRole('searchbox', { name: 'Search sections' }).fill('zzqq')
     await expect(table(page)).toContainText('No sections match.')

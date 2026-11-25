@@ -1,6 +1,7 @@
 {{--
   The dashboard's table: a status switch and a search over the sections, headers that sort (aria-sort, both ways), and
-  pages of 10. Its own island; the rows are in data.ts (filterRows, sortRows, pageRows).
+  pages of 10; Shift-click a second header to sort by it too. Its own island; the rows are in data.ts, and
+  data-table.ts sorts, filters, pages and counts them.
 --}}
 @import uiTable from '~/components/ui/table.tscl'
 @import uiBadge from '~/components/ui/badge.tscl'
@@ -8,7 +9,8 @@
 @import uiInput from '~/components/ui/input.tscl'
 
 <script>
-  import { filterRows, pageRows, rows, sortRows } from './data.ts'
+  import { facets, filterRows, nextSort, paginate, sortRows } from '~/components/ui/data-table.ts'
+  import { rows } from './data.ts'
   const COLUMNS = [
     { key: 'header', label: 'Header' },
     { key: 'type', label: 'Type' },
@@ -24,15 +26,22 @@
   ]
   let status = state('all')
   let query = state('')
-  let sort = state({ key: '', dir: 'ascending' })
+  let sort = state([{ id: '', desc: false }].slice(0, 0))
   let page = state(0)
+  const SEARCHED = ['header', 'type', 'reviewer']
+  const searched = () => filterRows(rows, { query, columns: SEARCHED })
+  // How many rows each status button would show, given the search.
+  const counts = () => facets(searched(), 'status')
+  const count = (value) => (value === 'all' ? searched().length : (counts().get(value) ?? 0))
   const view = () => {
-    const found = filterRows(rows, status, query)
-    return pageRows(sort.key ? sortRows(found, sort.key, sort.dir) : found, page, 10)
+    const found = filterRows(searched(), { filters: { status: status === 'all' ? [] : [status] } })
+    return paginate(sortRows(found, sort), page, 10)
   }
-  const ariaSort = (key) => (sort.key === key ? sort.dir : 'none')
-  function sortBy(key) {
-    sort = { key, dir: sort.key === key && sort.dir === 'ascending' ? 'descending' : 'ascending' }
+  // aria-sort goes on the first sort's column only (one per table).
+  const ariaSort = (key) => (sort[0]?.id === key ? (sort[0].desc ? 'descending' : 'ascending') : 'none')
+  const sorted = (key) => sort.find((s) => s.id === key)
+  function sortBy(key, event) {
+    sort = nextSort(sort, key, { multi: event.shiftKey })
     page = 0
     // The table's rows render again (with its headers): give the focus back to this one in the next frame.
     requestAnimationFrame(() => document.getElementById('dash-sort-' + key)?.focus())
@@ -53,7 +62,7 @@
     <div class="dash-table-status" role="group" aria-label="Status">
       @for (s of STATUSES; track s.value) {
         <button type="button" [aria-pressed]="status === s.value ? 'true' : 'false'" (click)="show(s.value)">
-          {{ s.label }}
+          {{ s.label }} <span class="dash-table-count">{{ count(s.value) }}</span>
         </button>
       }
     </div>
@@ -71,10 +80,10 @@
       <tr>
         @for (c of COLUMNS; track c.key) {
           <th scope="col" [aria-sort]="ariaSort(c.key)" [data-number]="c.number ? 'true' : false">
-            <button type="button" [id]="'dash-sort-' + c.key" (click)="sortBy(c.key)">
+            <button type="button" [id]="'dash-sort-' + c.key" (click)="sortBy(c.key, $event)">
               {{ c.label }}
-              @if (sort.key === c.key) {
-                @if (sort.dir === 'ascending') {<icon name="lucide:arrow-up" />} @else {<icon name="lucide:arrow-down" />}
+              @if (sorted(c.key)) {
+                @if (!sorted(c.key)?.desc) {<icon name="lucide:arrow-up" />} @else {<icon name="lucide:arrow-down" />}
               } @else {
                 <icon name="lucide:arrow-up-down" />
               }
@@ -108,7 +117,7 @@
       variant="outline"
       size="sm"
       aria-label="Previous page"
-      [disabled]="view().page === 0"
+      [disabled]="!view().canPrev"
       (click)="page = view().page - 1"
     >
       <icon name="lucide:chevron-left" />
@@ -117,7 +126,7 @@
       variant="outline"
       size="sm"
       aria-label="Next page"
-      [disabled]="view().page >= view().pages - 1"
+      [disabled]="!view().canNext"
       (click)="page = view().page + 1"
     >
       <icon name="lucide:chevron-right" />
