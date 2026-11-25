@@ -413,6 +413,7 @@
       --ui-control-md: calc(var(--ui-space) * 8);
       --ui-control-sm: calc(var(--ui-space) * 7);
       display: grid;
+      grid-template-columns: minmax(0, 1fr); /* the mini calendar fits the column, not the other way round */
       align-content: start;
       gap: var(--ui-space-4);
     }

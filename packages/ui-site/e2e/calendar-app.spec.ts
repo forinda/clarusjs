@@ -116,3 +116,20 @@ test("on a phone the page doesn't scroll sideways; the week scrolls inside", asy
 })
 
 // Its axe check is the blocks suite's (/blocks/calendar-app, the view inside the site's page).
+
+test("the mini calendar stays inside its side column, even with wider lists (another platform's fonts)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await open(page)
+  // Wider month and year lists, as another platform's fonts make them.
+  await page
+    .locator('.cal-side select')
+    .evaluateAll((els) => els.forEach((el) => ((el as HTMLElement).style.fontSize = '1.3em')))
+  const side = (await page.locator('.cal-side').boundingBox())!
+  const mini = (await page.locator('.cal-side [data-part="calendar"]').boundingBox())!
+  expect(mini.x + mini.width).toBeLessThanOrEqual(side.x + side.width + 1)
+  const next = (await page.locator('.cal-side [data-part="calendar-next-year"]').boundingBox())!
+  expect(next.width).toBeGreaterThanOrEqual(24)
+  expect(next.x + next.width).toBeLessThanOrEqual(side.x + side.width + 1)
+})
