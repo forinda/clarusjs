@@ -1,0 +1,23 @@
+@import uiDatePicker from './date-picker.tscl'
+{{-- A range: two picks, then it closes; the form gets stay and stay-end. --}}
+
+<form class="demo example" method="post" action="#">
+  <uiDatePicker id="range-stay" label="Stay" name="stay" [range]="true" value="2026-12-01" end="2026-12-03" />
+</form>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    justify-items: start;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  output {
+    color: var(--ui-muted);
+    font-family: var(--ui-font-mono);
+  }
+</style>

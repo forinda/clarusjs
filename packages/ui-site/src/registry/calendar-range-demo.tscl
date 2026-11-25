@@ -1,0 +1,29 @@
+@import uiCalendar from './calendar.tscl'
+
+<script>
+  let from = state('2026-11-03')
+  let to = state('2026-11-05')
+</script>
+
+{{-- range: the first click is the start, the second the end (either order); a third starts again. --}}
+<div class="demo example">
+  <uiCalendar id="range-cal" label="Pick your dates" [range]="true" [(value)]="from" [(end)]="to" />
+  <output>{{ from }} → {{ to || '…' }}</output>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    justify-items: start;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  output {
+    color: var(--ui-muted);
+    font-family: var(--ui-font-mono);
+  }
+</style>

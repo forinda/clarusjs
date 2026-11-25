@@ -1,0 +1,35 @@
+@import uiCalendar from './calendar.tscl'
+
+<script>
+  let day = state('2026-11-18')
+</script>
+
+{{-- Only days from November 9 to 27, and the week starting on Monday. --}}
+<div class="demo example">
+  <uiCalendar
+    id="limits-cal"
+    label="Pick a weekday this month"
+    min="2026-11-09"
+    max="2026-11-27"
+    [firstDay]="1"
+    [(value)]="day"
+  />
+  <output>{{ day }}</output>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    justify-items: start;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  output {
+    color: var(--ui-muted);
+    font-family: var(--ui-font-mono);
+  }
+</style>
