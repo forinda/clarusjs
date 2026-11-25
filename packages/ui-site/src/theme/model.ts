@@ -56,7 +56,7 @@ const HEX = /^#[0-9a-f]{6}$/i
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 const SURFACES = ['bg', 'card', 'popover', 'sidebar', 'accent-soft', 'secondary', 'muted-bg']
 const LINES = ['border', 'input', 'sidebar-border']
-const BRAND = ['accent', 'ring', 'danger', 'success', 'warning']
+const BRAND = ['accent', 'ring', 'danger', 'success', 'warning', 'chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5']
 
 /** A dark set from a light one: surfaces and text swap lightness (hue kept); brand colours get light enough to read. */
 export function darkFrom(light: Record<string, string>): Record<string, string> {

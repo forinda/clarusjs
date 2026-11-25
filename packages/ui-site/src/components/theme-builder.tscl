@@ -74,6 +74,10 @@
       ],
     },
     {
+      title: 'Chart',
+      tokens: [1, 2, 3, 4, 5].map((n) => t(`chart-${n}`, `Series ${n}`)),
+    },
+    {
       title: 'Sidebar',
       tokens: [
         t('sidebar', 'Sidebar'),

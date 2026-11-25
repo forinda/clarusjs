@@ -39,6 +39,11 @@ const teal: Theme = {
     'success-fg': '#ffffff',
     'warning': '#b54708',
     'warning-fg': '#ffffff',
+    'chart-1': '#0b6e70',
+    'chart-2': '#c2410c',
+    'chart-3': '#4f46e5',
+    'chart-4': '#a21caf',
+    'chart-5': '#15803d',
   },
   dark: {
     'bg': '#121a1b',
@@ -70,6 +75,11 @@ const teal: Theme = {
     'success-fg': '#0b1415',
     'warning': '#fdb022',
     'warning-fg': '#0b1415',
+    'chart-1': '#4cc9cb',
+    'chart-2': '#fdba74',
+    'chart-3': '#a5b4fc',
+    'chart-4': '#f0abfc',
+    'chart-5': '#86efac',
   },
 }
 
