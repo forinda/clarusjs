@@ -1,0 +1,25 @@
+@import uiFileUpload from './file-upload.tscl'
+{{-- Images only, up to 5 MB each and 6 in all: anything else is refused, saying why. --}}
+
+<div class="demo example">
+  <uiFileUpload
+    id="images-photos"
+    label="Photos"
+    name="photos"
+    accept="image/*"
+    [maxSize]="5 * 1024 * 1024"
+    [maxFiles]="6"
+    description="PNG, JPG or WebP, up to 5 MB each, 6 at most."
+  />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

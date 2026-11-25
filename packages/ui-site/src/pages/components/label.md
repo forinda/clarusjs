@@ -17,9 +17,15 @@ description: "A native label for a field."
 
 ## Source
 
-Copy it into `src/components/ui/` as `label.tscl`.
+Copy it into `src/components/ui/` as `label.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="label">
 
 <<< ../../registry/label.tscl
+
+<<< ../../registry/label.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

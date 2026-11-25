@@ -17,9 +17,15 @@ description: "Content that opens and closes under a trigger, on native details."
 
 ## Source
 
-Copy it into `src/components/ui/` as `collapsible.tscl`.
+Copy it into `src/components/ui/` as `collapsible.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="collapsible">
 
 <<< ../../registry/collapsible.tscl
+
+<<< ../../registry/collapsible.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

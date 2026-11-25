@@ -1,0 +1,13 @@
+{{-- Collapsible, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as collapsible.tscl.
+     Copy it into src/components/ui/ as collapsible.tscl. --}}
+@input open: boolean = false
+
+<details [open]="open" data-part="collapsible">
+  <summary
+    data-part="collapsible-trigger"
+    class="cursor-pointer font-sans font-semibold text-(length:--ui-font-size) leading-[normal] text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+  >
+    <slot name="trigger" />
+  </summary>
+  <div data-part="collapsible-content" class="pt-2 text-foreground"><slot /></div>
+</details>

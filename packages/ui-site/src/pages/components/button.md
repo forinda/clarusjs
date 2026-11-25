@@ -83,9 +83,15 @@ One primary action, the rest outline; group related ones with Button group.
 
 ## Source
 
-Copy it into `src/components/ui/` as `button.tscl`.
+Copy it into `src/components/ui/` as `button.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="button">
 
 <<< ../../registry/button.tscl
+
+<<< ../../registry/button.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

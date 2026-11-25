@@ -1,0 +1,165 @@
+{{-- File upload, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as file-upload.tscl.
+     Copy it into src/components/ui/ as file-upload.tscl. --}}
+@input id: string
+@input label: string = 'Upload files'
+@input name: string = 'files'
+@input accept: string = ''
+@input multiple: boolean = true
+@input maxSize: number = 0
+@input maxFiles: number = 0
+@input description: string = ''
+@event change: File[]
+
+<script>
+  let files = state([])
+  let problem = state('')
+  let dragging = state(false)
+
+  const units = (bytes) =>
+    bytes >= 1024 * 1024
+      ? `${Math.round((bytes / 1024 / 1024) * 10) / 10} MB`
+      : `${Math.max(1, Math.round(bytes / 1024))} KB`
+  // As the input's accept: a type ("image/png"), a family ("image/*") or an extension (".pdf").
+  const accepted = (file) =>
+    !accept ||
+    accept
+      .split(',')
+      .map((a) => a.trim().toLowerCase())
+      .some((a) =>
+        a.startsWith('.')
+          ? file.name.toLowerCase().endsWith(a)
+          : a.endsWith('/*')
+            ? file.type.startsWith(a.slice(0, -1))
+            : file.type === a,
+      )
+
+  // The input holds exactly the listed files (what its form sends).
+  const field = () => {
+    const el = document.getElementById(id)
+    return el instanceof HTMLInputElement ? el : null
+  }
+  function sync() {
+    const input = field()
+    if (!input) return
+    const transfer = new DataTransfer()
+    for (const f of files) transfer.items.add(f.file)
+    input.files = transfer.files
+    emit(
+      'change',
+      files.map((f) => f.file),
+    )
+  }
+  function add(list) {
+    const next = multiple ? [...files] : []
+    if (!multiple) for (const f of files) if (f.url) URL.revokeObjectURL(f.url)
+    const problems = ['']
+    problems.length = 0 // ponytail: a typed empty list (this checker infers [] as never[])
+    for (const file of list) {
+      if (!accepted(file)) problems.push(`${file.name} isn't an accepted type`)
+      else if (maxSize && file.size > maxSize) problems.push(`${file.name} is over ${units(maxSize)}`)
+      else if (maxFiles && next.length >= maxFiles) {
+        problems.push(`Up to ${maxFiles} ${maxFiles === 1 ? 'file' : 'files'}`)
+        break
+      } else {
+        const url = file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
+        next.push({ key: `${file.name}:${file.size}:${file.lastModified}:${Math.random()}`, file, url })
+      }
+      if (!multiple && next.length) break
+    }
+    files = next
+    problem = problems.join('. ') + (problems.length ? '.' : '')
+    sync()
+  }
+  function remove(key) {
+    const gone = files.find((f) => f.key === key)
+    if (gone?.url) URL.revokeObjectURL(gone.url)
+    files = files.filter((f) => f.key !== key)
+    problem = ''
+    sync()
+    field()?.focus()
+  }
+  function picked(event) {
+    add([...event.target.files])
+  }
+  function over(event) {
+    event.preventDefault()
+    dragging = true
+  }
+  function dropped(event) {
+    event.preventDefault()
+    dragging = false
+    add([...(event.dataTransfer?.files ?? [])])
+  }
+  function wire() {
+    return () => {
+      for (const f of files) if (f.url) URL.revokeObjectURL(f.url)
+    }
+  }
+</script>
+
+<div
+  data-part="file-upload"
+  [data-dragging]="dragging ? 'true' : false"
+  [use]="wire"
+  class="
+    grid gap-3 text-foreground font-sans text-(length:--ui-font-size) leading-[normal]
+    [&_[data-part=file-drop]]:grid [&_[data-part=file-drop]]:justify-items-center [&_[data-part=file-drop]]:gap-1 [&_[data-part=file-drop]]:py-8 [&_[data-part=file-drop]]:px-4 [&_[data-part=file-drop]]:border [&_[data-part=file-drop]]:border-dashed [&_[data-part=file-drop]]:border-input [&_[data-part=file-drop]]:rounded-lg [&_[data-part=file-drop]]:bg-background [&_[data-part=file-drop]]:text-center [&_[data-part=file-drop]]:cursor-pointer
+    [&_[data-part=file-drop]:hover]:border-primary [&_[data-part=file-drop]:hover]:bg-accent [&[data-dragging=true]_[data-part=file-drop]]:border-primary [&[data-dragging=true]_[data-part=file-drop]]:bg-accent
+    [&_[data-part=file-input]]:absolute [&_[data-part=file-input]]:w-px [&_[data-part=file-input]]:h-px [&_[data-part=file-input]]:opacity-0
+    [&:has([data-part=file-input]:focus-visible)_[data-part=file-drop]]:outline-2 [&:has([data-part=file-input]:focus-visible)_[data-part=file-drop]]:outline-ring [&:has([data-part=file-input]:focus-visible)_[data-part=file-drop]]:outline-offset-2
+    [&_[data-part=file-label]]:font-semibold [&_[data-part=file-hint]]:text-muted-foreground [&_[data-part=file-hint]]:text-[length:calc(var(--ui-font-size)-1px)]
+    [&_[data-part=file-error]]:m-0 [&_[data-part=file-error]]:text-destructive [&_[data-part=file-error]]:text-[length:calc(var(--ui-font-size)-1px)]
+    [&_[data-part=file-list]]:grid [&_[data-part=file-list]]:gap-2 [&_[data-part=file-list]]:m-0 [&_[data-part=file-list]]:p-0 [&_[data-part=file-list]]:list-none
+    [&_[data-part=file-item]]:grid [&_[data-part=file-item]]:grid-cols-[auto_minmax(0,1fr)_auto_auto] [&_[data-part=file-item]]:gap-3 [&_[data-part=file-item]]:items-center [&_[data-part=file-item]]:p-2 [&_[data-part=file-item]]:border [&_[data-part=file-item]]:border-border [&_[data-part=file-item]]:rounded-lg
+    [&_[data-part=file-preview]]:grid [&_[data-part=file-preview]]:place-items-center [&_[data-part=file-preview]]:size-[40px] [&_[data-part=file-preview]]:rounded-md [&_[data-part=file-preview]]:bg-muted [&_[data-part=file-preview]]:object-cover
+    [&_[data-part=file-name]]:overflow-hidden [&_[data-part=file-name]]:text-ellipsis [&_[data-part=file-name]]:whitespace-nowrap
+    [&_[data-part=file-size]]:text-muted-foreground [&_[data-part=file-size]]:text-[length:calc(var(--ui-font-size)-1px)] [&_[data-part=file-size]]:tabular-nums
+    [&_[data-part=file-remove]]:grid [&_[data-part=file-remove]]:place-items-center [&_[data-part=file-remove]]:p-1 [&_[data-part=file-remove]]:border-0 [&_[data-part=file-remove]]:border-none [&_[data-part=file-remove]]:rounded-md [&_[data-part=file-remove]]:bg-transparent [&_[data-part=file-remove]]:text-muted-foreground [&_[data-part=file-remove]]:cursor-pointer
+    [&_[data-part=file-remove]:hover]:bg-accent [&_[data-part=file-remove]:hover]:text-foreground [&_[data-part=file-remove]:focus-visible]:outline-2 [&_[data-part=file-remove]:focus-visible]:outline-ring [&_[data-part=file-remove]:focus-visible]:outline-offset-2
+  "
+>
+  <label
+    [for]="id"
+    data-part="file-drop"
+    (dragover)="over($event)"
+    (dragleave)="dragging = false"
+    (drop)="dropped($event)"
+  >
+    <icon name="lucide:upload" />
+    <span data-part="file-label">{{ label }}</span>
+    <span data-part="file-hint">Drop {{ multiple ? 'files' : 'a file' }} here, or <u>browse</u></span>
+    @if (description) {
+      <span data-part="file-hint">{{ description }}</span>
+    }
+  </label>
+  <input
+    type="file"
+    [id]="id"
+    [name]="name"
+    [accept]="accept || false"
+    [multiple]="multiple"
+    data-part="file-input"
+    (change)="picked($event)"
+  />
+  @if (problem) {
+    <p data-part="file-error" role="alert">{{ problem }}</p>
+  }
+  @if (files.length) {
+    <ul data-part="file-list" aria-label="Chosen files">
+      @for (f of files; track f.key) {
+        <li data-part="file-item">
+          @if (f.url) {
+            <img [src]="f.url" [alt]="f.file.name" data-part="file-preview" />
+          } @else {
+            <span data-part="file-preview" aria-hidden="true"><icon name="lucide:file" /></span>
+          }
+          <span data-part="file-name">{{ f.file.name }}</span>
+          <span data-part="file-size">{{ units(f.file.size) }}</span>
+          <button type="button" data-part="file-remove" [aria-label]="'Remove ' + f.file.name" (click)="remove(f.key)">
+            <icon name="lucide:x" />
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</div>

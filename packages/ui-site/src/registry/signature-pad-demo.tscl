@@ -1,0 +1,22 @@
+@import uiSignaturePad from './signature-pad.tscl'
+
+<form class="demo" method="post" action="#">
+  <p>I agree to the terms of this order.</p>
+  <uiSignaturePad name="signature" label="Your signature" />
+</form>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    max-width: 32rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  p {
+    margin: 0;
+  }
+</style>

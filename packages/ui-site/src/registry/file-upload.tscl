@@ -1,0 +1,253 @@
+{{--
+  File upload: a real <input type="file"> behind a labelled drop zone, so without JavaScript it still picks files and
+  sends them with its form. The island adds dropping, a list of the files (images with a preview) with a remove
+  button each, and checks: accept (as the input's: "image/*,.pdf"), maxSize in bytes, maxFiles. The input always holds
+  exactly the listed files, so the form sends what you see. (change) sends the File[] after each change.
+--}}
+@input id: string
+@input label: string = 'Upload files'
+@input name: string = 'files'
+@input accept: string = ''
+@input multiple: boolean = true
+@input maxSize: number = 0
+@input maxFiles: number = 0
+@input description: string = ''
+@event change: File[]
+
+<script>
+  let files = state([])
+  let problem = state('')
+  let dragging = state(false)
+
+  const units = (bytes) =>
+    bytes >= 1024 * 1024
+      ? `${Math.round((bytes / 1024 / 1024) * 10) / 10} MB`
+      : `${Math.max(1, Math.round(bytes / 1024))} KB`
+  // As the input's accept: a type ("image/png"), a family ("image/*") or an extension (".pdf").
+  const accepted = (file) =>
+    !accept ||
+    accept
+      .split(',')
+      .map((a) => a.trim().toLowerCase())
+      .some((a) =>
+        a.startsWith('.')
+          ? file.name.toLowerCase().endsWith(a)
+          : a.endsWith('/*')
+            ? file.type.startsWith(a.slice(0, -1))
+            : file.type === a,
+      )
+
+  // The input holds exactly the listed files (what its form sends).
+  const field = () => {
+    const el = document.getElementById(id)
+    return el instanceof HTMLInputElement ? el : null
+  }
+  function sync() {
+    const input = field()
+    if (!input) return
+    const transfer = new DataTransfer()
+    for (const f of files) transfer.items.add(f.file)
+    input.files = transfer.files
+    emit(
+      'change',
+      files.map((f) => f.file),
+    )
+  }
+  function add(list) {
+    const next = multiple ? [...files] : []
+    if (!multiple) for (const f of files) if (f.url) URL.revokeObjectURL(f.url)
+    const problems = ['']
+    problems.length = 0 // ponytail: a typed empty list (this checker infers [] as never[])
+    for (const file of list) {
+      if (!accepted(file)) problems.push(`${file.name} isn't an accepted type`)
+      else if (maxSize && file.size > maxSize) problems.push(`${file.name} is over ${units(maxSize)}`)
+      else if (maxFiles && next.length >= maxFiles) {
+        problems.push(`Up to ${maxFiles} ${maxFiles === 1 ? 'file' : 'files'}`)
+        break
+      } else {
+        const url = file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
+        next.push({ key: `${file.name}:${file.size}:${file.lastModified}:${Math.random()}`, file, url })
+      }
+      if (!multiple && next.length) break
+    }
+    files = next
+    problem = problems.join('. ') + (problems.length ? '.' : '')
+    sync()
+  }
+  function remove(key) {
+    const gone = files.find((f) => f.key === key)
+    if (gone?.url) URL.revokeObjectURL(gone.url)
+    files = files.filter((f) => f.key !== key)
+    problem = ''
+    sync()
+    field()?.focus()
+  }
+  function picked(event) {
+    add([...event.target.files])
+  }
+  function over(event) {
+    event.preventDefault()
+    dragging = true
+  }
+  function dropped(event) {
+    event.preventDefault()
+    dragging = false
+    add([...(event.dataTransfer?.files ?? [])])
+  }
+  function wire() {
+    return () => {
+      for (const f of files) if (f.url) URL.revokeObjectURL(f.url)
+    }
+  }
+</script>
+
+<div data-part="file-upload" [data-dragging]="dragging ? 'true' : false" [use]="wire">
+  <label
+    [for]="id"
+    data-part="file-drop"
+    (dragover)="over($event)"
+    (dragleave)="dragging = false"
+    (drop)="dropped($event)"
+  >
+    <icon name="lucide:upload" />
+    <span data-part="file-label">{{ label }}</span>
+    <span data-part="file-hint">Drop {{ multiple ? 'files' : 'a file' }} here, or <u>browse</u></span>
+    @if (description) {
+      <span data-part="file-hint">{{ description }}</span>
+    }
+  </label>
+  <input
+    type="file"
+    [id]="id"
+    [name]="name"
+    [accept]="accept || false"
+    [multiple]="multiple"
+    data-part="file-input"
+    (change)="picked($event)"
+  />
+  @if (problem) {
+    <p data-part="file-error" role="alert">{{ problem }}</p>
+  }
+  @if (files.length) {
+    <ul data-part="file-list" aria-label="Chosen files">
+      @for (f of files; track f.key) {
+        <li data-part="file-item">
+          @if (f.url) {
+            <img [src]="f.url" [alt]="f.file.name" data-part="file-preview" />
+          } @else {
+            <span data-part="file-preview" aria-hidden="true"><icon name="lucide:file" /></span>
+          }
+          <span data-part="file-name">{{ f.file.name }}</span>
+          <span data-part="file-size">{{ units(f.file.size) }}</span>
+          <button type="button" data-part="file-remove" [aria-label]="'Remove ' + f.file.name" (click)="remove(f.key)">
+            <icon name="lucide:x" />
+          </button>
+        </li>
+      }
+    </ul>
+  }
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: var(--ui-space-3);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where([data-part='file-drop']) {
+      display: grid;
+      justify-items: center;
+      gap: var(--ui-space-1);
+      padding: var(--ui-space-8) var(--ui-space-4);
+      border: 1px dashed var(--ui-input);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      text-align: center;
+      cursor: pointer;
+    }
+    :where([data-part='file-drop']:hover),
+    :where(:scope[data-dragging='true'] [data-part='file-drop']) {
+      border-color: var(--ui-accent);
+      background: var(--ui-accent-soft);
+    }
+    /* The input is the keyboard's way in: hidden from the eye, not from focus; the zone shows its focus. */
+    :where([data-part='file-input']) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+    :where(:scope:has([data-part='file-input']:focus-visible) [data-part='file-drop']) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+    :where([data-part='file-label']) {
+      font-weight: 600;
+    }
+    :where([data-part='file-hint']) {
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where([data-part='file-error']) {
+      margin: 0;
+      color: var(--ui-danger);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where([data-part='file-list']) {
+      display: grid;
+      gap: var(--ui-space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    :where([data-part='file-item']) {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      gap: var(--ui-space-3);
+      align-items: center;
+      padding: var(--ui-space-2);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+    }
+    :where([data-part='file-preview']) {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border-radius: calc(var(--ui-radius) - 2px);
+      background: var(--ui-muted-bg);
+      object-fit: cover;
+    }
+    :where([data-part='file-name']) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    :where([data-part='file-size']) {
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 1px);
+      font-variant-numeric: tabular-nums;
+    }
+    :where([data-part='file-remove']) {
+      display: grid;
+      place-items: center;
+      padding: var(--ui-space-1);
+      border: 0;
+      border-radius: calc(var(--ui-radius) - 2px);
+      background: transparent;
+      color: var(--ui-muted);
+      cursor: pointer;
+    }
+    :where([data-part='file-remove']:hover) {
+      background: var(--ui-accent-soft);
+      color: var(--ui-fg);
+    }
+    :where([data-part='file-remove']:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+  }
+</style>

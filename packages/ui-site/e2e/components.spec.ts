@@ -9,7 +9,8 @@ for (const entry of registry) {
   test(`${entry.name}: renders and shows its source exactly`, async ({ page }) => {
     expect((await page.goto(path))?.status()).toBe(200)
     await expect(page.locator('h1')).toHaveText(entry.title)
-    const blocks = page.locator('h2#source ~ .code-block pre')
+    // After the Source heading: directly, or inside the CSS / Tailwind switch (the CSS file first).
+    const blocks = page.locator('h2#source ~ .code-block pre, h2#source ~ * [data-flavor-code] .code-block:first-of-type pre')
     for (const [i, f] of entry.files.entries()) {
       const file = readFileSync(resolve(import.meta.dirname, '../src/registry', f), 'utf8').trimEnd()
       expect((await blocks.nth(i).innerText()).trimEnd()).toBe(file)
@@ -187,4 +188,30 @@ test('input: a filled input keeps its warning and error borders; a filled group 
   expect(colors.warn).toBe(colors.warning)
   expect(colors.bad).toBe(colors.danger)
   expect(colors.group).toBe(colors.danger)
+})
+
+test('aspect ratio: any ratio; the switcher changes the box\'s shape', async ({ page }) => {
+  await page.goto('/components/aspect-ratio')
+  const demo = page.locator('[class*="aspect-ratio-ratios-demo"]')
+  await page.locator('cl-island[c="aspect-ratio-ratios-demo"][data-cl-ready]').waitFor({ state: 'attached' })
+  const box = demo.locator('[data-part="aspect-ratio"]').first()
+  const shape = async () => { const b = (await box.boundingBox())!; return Math.round((b.width / b.height) * 100) / 100 }
+  await demo.getByRole('button', { name: '1:1' }).click()
+  await expect.poll(shape).toBe(1)
+  await demo.getByRole('button', { name: '21:9' }).click()
+  await expect(demo.getByRole('button', { name: '21:9' })).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(shape).toBe(2.33)
+})
+
+test('button group: its buttons join: inner corners square, outer ones round', async ({ page }) => {
+  await page.goto('/components/button-group')
+  const radii = await page.locator('.demo:not(.example) [data-part="button-group"]').first().evaluate((g) => [...g.children].map((b) => {
+    const s = getComputedStyle(b)
+    return [s.borderTopLeftRadius, s.borderTopRightRadius]
+  }))
+  expect(radii[0]![1]).toBe('0px')
+  expect(radii[1]).toEqual(['0px', '0px'])
+  expect(radii.at(-1)![0]).toBe('0px')
+  expect(radii[0]![0]).not.toBe('0px')
+  expect(radii.at(-1)![1]).not.toBe('0px')
 })

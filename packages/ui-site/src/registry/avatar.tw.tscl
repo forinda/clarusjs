@@ -1,0 +1,21 @@
+{{-- Avatar, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as avatar.tscl.
+     Copy it into src/components/ui/ as avatar.tscl. --}}
+@input parts: { image?: Record<string, string | boolean>; fallback?: Record<string, string | boolean> } = {}
+@input src: string = ''
+@input alt: string
+@input fallback: string = ''
+
+<span
+  data-part="avatar"
+  class="
+    inline-flex size-[40px] overflow-hidden rounded-[50%] bg-accent text-foreground font-sans font-semibold text-(length:--ui-font-size) leading-[normal]
+    [&>[data-part=avatar-image]]:size-full [&>[data-part=avatar-image]]:object-cover
+    [&>[data-part=avatar-fallback]]:grid [&>[data-part=avatar-fallback]]:place-items-center [&>[data-part=avatar-fallback]]:w-full
+  "
+>
+  @if (src) {
+    <img [...]="parts.image ?? {}" [src]="src" [alt]="alt" data-part="avatar-image" />
+  } @else {
+    <span [...]="parts.fallback ?? {}" role="img" [aria-label]="alt" data-part="avatar-fallback">{{ fallback }}</span>
+  }
+</span>

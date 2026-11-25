@@ -17,9 +17,15 @@ description: "Links to the pages of a long list, shortened with ellipses."
 
 ## Source
 
-Copy it into `src/components/ui/` as `pagination.tscl`.
+Copy it into `src/components/ui/` as `pagination.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="pagination">
 
 <<< ../../registry/pagination.tscl
+
+<<< ../../registry/pagination.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

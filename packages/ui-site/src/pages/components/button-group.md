@@ -17,9 +17,15 @@ description: "Buttons that belong together, joined into one row."
 
 ## Source
 
-Copy it into `src/components/ui/` as `button-group.tscl`.
+Copy it into `src/components/ui/` as `button-group.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="button-group">
 
 <<< ../../registry/button-group.tscl
+
+<<< ../../registry/button-group.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

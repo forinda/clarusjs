@@ -91,9 +91,15 @@ A search form: the field and its button, which waits while the search runs.
 
 ## Source
 
-Copy it into `src/components/ui/` as `input.tscl`.
+Copy it into `src/components/ui/` as `input.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="input">
 
 <<< ../../registry/input.tscl
+
+<<< ../../registry/input.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 
