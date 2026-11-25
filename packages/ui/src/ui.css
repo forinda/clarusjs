@@ -42,6 +42,12 @@
   --ui-success-fg: #ffffff;
   --ui-warning: #b54708;
   --ui-warning-fg: #ffffff;
+  /* Charts: five series colours, each 3:1 or more against the background. */
+  --ui-chart-1: #0b6e70;
+  --ui-chart-2: #c2410c;
+  --ui-chart-3: #4f46e5;
+  --ui-chart-4: #a21caf;
+  --ui-chart-5: #15803d;
   /* Spacing: steps of --ui-space (4px), set in the same rule so changing the unit rescales them. */
   --ui-space-1: calc(var(--ui-space) * 1);
   --ui-space-2: calc(var(--ui-space) * 2);
@@ -84,6 +90,11 @@
     --ui-success-fg: #0b1415;
     --ui-warning: #fdb022;
     --ui-warning-fg: #0b1415;
+    --ui-chart-1: #4cc9cb;
+    --ui-chart-2: #fdba74;
+    --ui-chart-3: #a5b4fc;
+    --ui-chart-4: #f0abfc;
+    --ui-chart-5: #86efac;
   }
 }
 :root[data-theme='dark'] {
@@ -116,6 +127,11 @@
   --ui-success-fg: #0b1415;
   --ui-warning: #fdb022;
   --ui-warning-fg: #0b1415;
+  --ui-chart-1: #4cc9cb;
+  --ui-chart-2: #fdba74;
+  --ui-chart-3: #a5b4fc;
+  --ui-chart-4: #f0abfc;
+  --ui-chart-5: #86efac;
 }
 
 @layer components {

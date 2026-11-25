@@ -1,0 +1,223 @@
+{{--
+  Dashboard: a sidebar that collapses (a panel on phones), four stat cards, an area chart with a range switch, and a
+  table that filters, sorts and pages. The pieces are beside it (stat-card.tscl, dashboard-table.tscl) and the data in
+  data.ts: replace it with yours. Copy the page into src/pages/ (as dashboard.tscl), the other files beside it, and the
+  components they import into src/components/ui/. Put SIDEBAR_SCRIPT from @clarusjs/ui-primitives in your <head> so a
+  collapsed sidebar stays collapsed on load.
+--}}
+@import '~/components/ui/sidebar.css'
+@import uiSidebar from '@clarusjs/ui-primitives/sidebar.tscl'
+@import uiSidebarTrigger from '@clarusjs/ui-primitives/sidebar-trigger.tscl'
+@import uiCard from '~/components/ui/card.tscl'
+@import uiChartInteractive from '~/components/ui/chart-interactive.tscl'
+@import statCard from './stat-card.tscl'
+@import dashboardTable from './dashboard-table.tscl'
+@import { stats, visitors } from './data.ts'
+
+<cl-head>
+  <title>Dashboard</title>
+</cl-head>
+
+<div class="dash">
+  <uiSidebar id="dash-nav" label="Dashboard">
+    <p class="dash-brand"><icon name="lucide:command" /> Acme Inc.</p>
+    <a href="#" aria-current="page"><icon name="lucide:layout-dashboard" /> Dashboard</a>
+    <a href="#"><icon name="lucide:list" /> Lifecycle</a>
+    <a href="#"><icon name="lucide:chart-bar" /> Analytics</a>
+    <a href="#"><icon name="lucide:folder" /> Projects</a>
+    <a href="#"><icon name="lucide:users" /> Team</a>
+  </uiSidebar>
+  <main class="dash-main" aria-labelledby="dash-title">
+    <header class="dash-header">
+      <uiSidebarTrigger target="dash-nav"
+        ><icon name="lucide:panel-left" /><span class="dash-sr">Toggle sidebar</span></uiSidebarTrigger
+      >
+      <h1 id="dash-title">Documents</h1>
+    </header>
+    <section class="dash-stats" aria-label="Key figures">
+      @for (s of stats; track s.label) {
+        <statCard [stat]="s" />
+      }
+    </section>
+    <uiCard>
+      @slot('header') {
+        <h2 class="dash-chart-title">Total visitors</h2>
+        <p class="dash-chart-lead">Desktop and mobile, by day</p>
+      }
+      <uiChartInteractive
+        label="Visitors by day"
+        [labels]="visitors.labels"
+        [series]="visitors.series"
+        [ranges]="[
+          { label: 'Last 3 months', last: 90 },
+          { label: 'Last 30 days', last: 30 },
+          { label: 'Last 7 days', last: 7 },
+        ]"
+      />
+    </uiCard>
+    <dashboardTable />
+  </main>
+</div>
+
+<style global>
+  /* Global, on dash- classes at zero specificity: much of it sits inside components (cards, the sidebar, the table),
+     where a block's scoped rules stop. */
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(.dash) {
+      display: flex;
+      min-height: 100vh;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where(.dash-brand) {
+      display: flex;
+      gap: var(--ui-space-2);
+      align-items: center;
+      margin: 0 0 var(--ui-space-3);
+      font-weight: 700;
+    }
+    :where(.dash [data-part='sidebar'] a) {
+      display: flex;
+      gap: var(--ui-space-2);
+      align-items: center;
+    }
+    :where(.dash-main) {
+      display: grid;
+      flex: 1;
+      gap: var(--ui-space-6);
+      align-content: start;
+      min-width: 0;
+      padding: var(--ui-space-4) var(--ui-space-6) var(--ui-space-10);
+    }
+    :where(.dash-header) {
+      display: flex;
+      gap: var(--ui-space-3);
+      align-items: center;
+      padding-bottom: var(--ui-space-3);
+      border-bottom: 1px solid var(--ui-border);
+    }
+    :where(.dash-header h1) {
+      margin: 0;
+      font-size: calc(var(--ui-font-size) * 1.15);
+    }
+    :where(.dash-sr) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    /* Four across, two, or one: never three and one left over. */
+    :where(.dash-stats) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--ui-space-4);
+    }
+    @media (min-width: 560px) {
+      :where(.dash-stats) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (min-width: 1100px) {
+      :where(.dash-stats) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+    :where(.dash-stats [data-part='card']) {
+      max-width: none;
+    }
+    :where(.dash-stat-label),
+    :where(.dash-stat-note),
+    :where(.dash-chart-lead) {
+      margin: 0;
+      color: var(--ui-muted);
+    }
+    /* The card's own rules size its header text: this one class beats them. */
+    :where(.dash-stats) .dash-stat-value {
+      margin: var(--ui-space-1) 0 0;
+      font-size: calc(var(--ui-font-size) * 1.9);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    :where(.dash-chart-title) {
+      margin: 0;
+      font-size: calc(var(--ui-font-size) * 1.15);
+    }
+    :where(.dash-main > [data-part='card']) {
+      max-width: none;
+    }
+    :where(.dash-table) {
+      display: grid;
+      gap: var(--ui-space-3);
+      min-width: 0;
+    }
+    :where(.dash-table-bar) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--ui-space-3);
+      align-items: center;
+    }
+    :where(.dash-table-bar h2) {
+      margin: 0 auto 0 0;
+      font-size: calc(var(--ui-font-size) * 1.15);
+    }
+    :where(.dash-table-bar [data-part='text-input']) {
+      width: min(100%, 16rem);
+    }
+    :where(.dash-table-status) {
+      display: flex;
+      gap: var(--ui-space-1);
+      padding: var(--ui-space-1);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+    }
+    :where(.dash-table-status button),
+    :where(.dash-table th button) {
+      display: inline-flex;
+      gap: var(--ui-space-1);
+      align-items: center;
+      padding: var(--ui-space-1) var(--ui-space-2);
+      border: 0;
+      border-radius: calc(var(--ui-radius) - 2px);
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    :where(.dash-table-status button[aria-pressed='true']) {
+      background: var(--ui-muted-bg);
+    }
+    :where(.dash-table-status button:focus-visible),
+    :where(.dash-table th button:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+    :where(.dash-table th) {
+      text-align: left;
+      white-space: nowrap;
+    }
+    :where(.dash-table [data-number]) {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    :where(.dash-table-empty) {
+      padding: var(--ui-space-8);
+      text-align: center;
+      color: var(--ui-muted);
+    }
+    :where(.dash-table-pages) {
+      display: flex;
+      gap: var(--ui-space-2);
+      align-items: center;
+      justify-content: flex-end;
+    }
+    :where(.dash-table-pages p) {
+      margin: 0 var(--ui-space-2) 0 0;
+      color: var(--ui-muted);
+    }
+  }
+</style>

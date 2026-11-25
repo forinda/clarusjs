@@ -1,0 +1,56 @@
+{{-- A block on /blocks: its name (linked), category and line from the registry, and its preview (the slot: an
+     <iframe> written in the page, since its src is never data). --}}
+@import { blocks } from '~/registry.ts'
+@input name: string
+
+<script server>
+  const entry = blocks.find((b) => b.name === name)
+  if (!entry) throw new Error(`blockRow: no block "${name}" in the registry`)
+</script>
+
+<section
+  class="block-row"
+  [data-block]="name"
+  [data-category]="entry.category ?? ''"
+  [aria-labelledby]="'block-' + name"
+>
+  <div class="block-row-head">
+    <h2 [id]="'block-' + name">
+      <a [href]="'/blocks/' + name">{{ entry.title }}</a>
+    </h2>
+    <span class="block-row-category">{{ entry.category }}</span>
+  </div>
+  <p>{{ entry.description }}</p>
+  <slot />
+</section>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 40px;
+  }
+  :scope[hidden] {
+    display: none;
+  }
+  .block-row-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: baseline;
+  }
+  h2 {
+    margin: 0;
+  }
+  p {
+    margin: 0;
+    color: var(--muted);
+  }
+  .block-row-category {
+    padding: 2px 8px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+</style>

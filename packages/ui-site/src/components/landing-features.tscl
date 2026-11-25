@@ -1,0 +1,56 @@
+{{-- What the library promises, in four cards. --}}
+
+<ul class="landing-features" aria-label="Why it works this way">
+  <li>
+    <icon name="lucide:clipboard-copy" />
+    <h3>Copy, don't install</h3>
+    <p>Each component is a file you paste into <code>src/components/ui/</code>. Change anything: it's yours.</p>
+  </li>
+  <li>
+    <icon name="lucide:feather" />
+    <h3>No JavaScript unless it needs it</h3>
+    <p>
+      Cards, badges, tables and charts render on the server and ship nothing. Dialogs and tabs ship a few hundred bytes.
+    </p>
+  </li>
+  <li>
+    <icon name="lucide:accessibility" />
+    <h3>Accessible by default</h3>
+    <p>Native elements first, keyboard paths and ARIA where they're not enough, and every page tested with axe.</p>
+  </li>
+  <li>
+    <icon name="lucide:palette" />
+    <h3>Themed by tokens</h3>
+    <p>
+      About forty <code>--ui-</code> tokens, light and dark. Tune them in the Theme sheet and copy one
+      <code>theme.css</code>.
+    </p>
+  </li>
+</ul>
+
+<style scoped>
+  :scope {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 24px 0;
+    list-style: none;
+  }
+  li {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    padding: 20px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  h3 {
+    margin: 0;
+    font-size: 17px;
+  }
+  p {
+    margin: 0;
+    color: var(--muted);
+  }
+</style>

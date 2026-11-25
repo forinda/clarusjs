@@ -1,6 +1,6 @@
 ---
 title: "Collapsible"
-group: "Components"
+group: "Panel"
 order: 31
 description: "Content that opens and closes under a trigger, on native details."
 ---

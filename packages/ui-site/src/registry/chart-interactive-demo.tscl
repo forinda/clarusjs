@@ -1,0 +1,37 @@
+@import uiChartInteractive from './chart-interactive.tscl'
+
+<script server>
+  // 90 days of made-up visits: a weekly rhythm and a slow rise, the same on every build.
+  const day = (i) =>
+    new Date(Date.UTC(2026, 7, 28 + i)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+  const labels = Array.from({ length: 90 }, (_, i) => day(i))
+  const wave = (i, base, swing) =>
+    Math.round(base + i * 1.5 + swing * Math.sin((i / 7) * Math.PI * 2) + ((i * 37) % 23))
+  const series = [
+    { name: 'Desktop', values: labels.map((_, i) => wave(i, 180, 40)) },
+    { name: 'Mobile', values: labels.map((_, i) => wave(i, 90, 25)) },
+  ]
+</script>
+
+<div class="demo">
+  <uiChartInteractive
+    label="Visitors, last 3 months"
+    [labels]="labels"
+    [series]="series"
+    [ranges]="[
+      { label: 'Last 3 months', last: 90 },
+      { label: 'Last 30 days', last: 30 },
+      { label: 'Last 7 days', last: 7 },
+    ]"
+  />
+</div>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

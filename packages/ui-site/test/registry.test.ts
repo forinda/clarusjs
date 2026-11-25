@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { compile } from 'clarusjs/compiler'
 import { expect, test } from 'vitest'
-import { blocks, codeFiles, components, registry } from '../src/registry.ts'
+import { COMPONENT_GROUPS, blocks, codeFiles, components, registry } from '../src/registry.ts'
 import { registryDir, render, source } from './render.ts'
 import { globalStyle, uiSection } from './css.ts'
 
@@ -19,7 +19,7 @@ test('blocks: registry entries of their own kind, apart from the components', ()
 
 test('every entry\'s files exist, and every file in src/registry is an entry\'s file or usage example', () => {
   for (const { file } of files) expect(existsSync(resolve(registryDir, file)), file).toBe(true)
-  const known = [...files.map((f) => f.file), ...components.map((e) => `${e.name}-demo.tscl`)].sort()
+  const known = [...files.map((f) => f.file), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`)])].sort()
   const found = (readdirSync(registryDir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => statSync(resolve(registryDir, f)).isFile())
   expect(found.sort()).toEqual(known)
 })
@@ -43,12 +43,14 @@ test('every block has a page at src/pages/blocks/<name>.md showing every file to
 const specifiers = (file: string) => [...source(file).matchAll(/(?:@import|^\s*import)\s[^'"]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!)
 const shared = (s: string) => /^@clarusjs\/ui-primitives(\/|$)/.test(s) || /^clarusjs(\/|$)/.test(s)
 
-test('copied files import only ui-primitives, clarusjs and the entries they list in uses', () => {
+test('copied files import only ui-primitives, clarusjs, their own files and those of the entries they list in uses', () => {
   for (const { entry, file } of files) {
     if (entry.kind === 'block') continue
     for (const s of specifiers(file)) {
-      const local = /^\.\/([a-z-]+)\.tscl$/.exec(s)?.[1]
-      const ok = shared(s) || (!!local && (entry.uses.includes(local) || entry.files.includes(`${local}.tscl`)))
+      // ./x: one of its own files, or of an entry it uses (chart-interactive takes chart-geometry.ts's types).
+      const local = /^\.\/([\w.-]+)$/.exec(s)?.[1]
+      const copied = [...entry.files, ...entry.uses.flatMap((u) => registry.find((e) => e.name === u)?.files ?? [])]
+      const ok = shared(s) || (!!local && copied.includes(local))
       expect(ok, `${file} imports ${s}`).toBe(true)
     }
   }
@@ -60,7 +62,7 @@ test('a block imports what works once pasted: components as the ~/components/ui/
     const dir = file.slice(0, file.lastIndexOf('/') + 1)
     for (const s of specifiers(file)) {
       // A component's file only if it is one that gets copied (card has card.tscl, no card.css).
-      const copied = /^~\/components\/ui\/([a-z-]+\.(?:tscl|css))$/.exec(s)?.[1]
+      const copied = /^~\/components\/ui\/([a-z-]+\.(?:tscl|css|ts))$/.exec(s)?.[1]
       const own = /^\.\/([\w.-]+)$/.exec(s)?.[1]
       const ok = shared(s) || (!!copied && codeFiles(entry).some((f) => f.path === `components/ui/${copied}`)) || (!!own && entry.files.includes(dir + own)) || (entry.packages ?? []).includes(s)
       expect(ok, `${file} imports ${s}`).toBe(true)
@@ -79,6 +81,27 @@ test('styles use only --ui-* custom properties', () => {
   for (const { file } of files) {
     for (const [, name] of source(file).matchAll(/var\(--([\w-]+)/g)) expect(name, file).toMatch(/^ui-/)
   }
+})
+
+test('button: loading shows a spinner, marks it busy and disables it; block, shape and dashed are data attributes', async () => {
+  const loading = await render('button.tscl', { loading: true }, { default: 'Save' })
+  expect(loading).toMatch(/<button [^>]*aria-busy="true"/)
+  expect(loading).toMatch(/<button [^>]* disabled[ >]/)
+  expect(loading).toContain('<span data-part="button-spinner" aria-hidden="true"></span>Save')
+  expect(await render('button.tscl', {}, { default: 'x' })).not.toContain('button-spinner')
+  expect(await render('button.tscl', { block: true }, { default: 'x' })).toContain('data-block="true"')
+  expect(await render('button.tscl', { shape: 'circle' }, { default: 'x' })).toContain('data-shape="circle"')
+  expect(await render('button.tscl', { shape: 'round' }, { default: 'x' })).toContain('data-shape="round"')
+  expect(await render('button.tscl', { variant: 'dashed' }, { default: 'x' })).toContain('data-variant="dashed"')
+})
+
+test('a component page shows each of its examples (examples: [...]) under Examples, with its code', () => {
+  for (const e of components) for (const x of e.examples ?? []) {
+    const md = readFileSync(page(e.name), 'utf8')
+    expect(md, `${e.name}: ${x}`).toContain(`<<< ../../registry/${e.name}-${x}-demo.tscl`)
+    expect(md, `${e.name}: ${x}`).toMatch(new RegExp(`^## Examples$`, 'm'))
+  }
+  expect(components.find((e) => e.name === 'button')!.examples).toEqual(['variants', 'sizes', 'icons', 'loading', 'shapes', 'block', 'disabled', 'actions'])
 })
 
 test('button: variants default, secondary, outline, ghost, destructive, link; sizes sm, md, lg', async () => {
@@ -400,10 +423,25 @@ test('spacing: padding, margin and gap come from the --ui-space scale, never raw
   }
 })
 
+test('every block has a category, for /blocks to group and filter by', () => {
+  for (const b of blocks) expect(b.category, b.name).toMatch(/^[A-Z][a-z]+$/)
+})
+
 test('codeFiles: a block\'s own files, then each component it uses, named as they are copied', () => {
   const login = blocks.find((b) => b.name === 'login')!
   expect(codeFiles(login).map((f) => f.path)).toEqual(['login.tscl', 'login-form.tscl', 'data.ts', 'components/ui/card.tscl', 'components/ui/field.tscl', 'components/ui/button.tscl', 'components/ui/toast.css'])
   expect(codeFiles(login)[3]!.file).toBe('card.tscl')
   const checkout = blocks.find((b) => b.name === 'checkout')!
   expect(codeFiles(checkout).map((f) => f.path)).toEqual(['checkout.tscl', 'checkout-form.tscl', 'data.ts', 'components/ui/field.tscl', 'components/ui/input.tscl', 'components/ui/button.tscl', 'components/ui/separator.tscl', 'components/ui/select.css', 'components/ui/toast.css'])
+})
+
+test('every component sits in one of the groups (PrimeVue\'s), and its page\'s frontmatter group says the same', () => {
+  expect(COMPONENT_GROUPS).toEqual(['Form', 'Button', 'Data', 'Panel', 'Overlay', 'Menu', 'Chart', 'Messages', 'Media', 'Misc'])
+  for (const c of components) {
+    expect(COMPONENT_GROUPS, c.name).toContain(c.group)
+    const page = readFileSync(resolve(import.meta.dirname, `../src/pages/components/${c.name}.md`), 'utf8')
+    expect(/^group: "([^"]+)"$/m.exec(page)?.[1], c.name).toBe(c.group)
+  }
+  const used = new Set(components.map((c) => c.group))
+  for (const g of COMPONENT_GROUPS) expect(used.has(g), g).toBe(true)
 })

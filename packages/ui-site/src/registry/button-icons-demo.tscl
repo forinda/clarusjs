@@ -1,0 +1,21 @@
+@import uiButton from './button.tscl'
+
+<div class="demo">
+  <uiButton><icon name="lucide:download" /> Download</uiButton>
+  <uiButton variant="outline">Next <icon name="lucide:arrow-right" /></uiButton>
+  <uiButton variant="secondary"><icon name="lucide:plus" /> New file</uiButton>
+  <uiButton variant="ghost" aria-label="Settings"><icon name="lucide:settings" /></uiButton>
+</div>
+
+<style scoped>
+  :scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-3);
+    align-items: center;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+  }
+</style>

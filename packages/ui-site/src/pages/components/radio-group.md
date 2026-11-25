@@ -1,6 +1,6 @@
 ---
 title: "Radio group"
-group: "Components"
+group: "Form"
 order: 16
 description: "Native radios in a fieldset: one choice from a few."
 ---

@@ -1,0 +1,29 @@
+@import uiButton from './button.tscl'
+@import uiButtonGroup from './button-group.tscl'
+
+<div class="demo">
+  <uiButton>Publish</uiButton>
+  <uiButton variant="outline">Save draft</uiButton>
+  <uiButtonGroup label="More actions">
+    <uiButton variant="outline">Duplicate</uiButton>
+    <uiButton variant="outline">Archive</uiButton>
+    <uiButton variant="outline" aria-label="Delete"><icon name="lucide:trash-2" /></uiButton>
+  </uiButtonGroup>
+</div>
+
+<style scoped>
+  :scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-3);
+    align-items: center;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+  }
+  /* Secondary actions apart, at the end of the row. */
+  [data-part='button-group'] {
+    margin-inline-start: auto;
+  }
+</style>

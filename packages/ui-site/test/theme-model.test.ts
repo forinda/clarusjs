@@ -24,7 +24,7 @@ test('toCss with a scope prefixes the dark selectors, for each selector in the l
   expect(css).toContain(":root[data-theme='dark'] .demo, :root[data-theme='dark'] [data-ui-preview] {")
 })
 
-test('every preset defines all 35 tokens in light and the colour tokens in dark', () => {
+test('every preset defines all 40 tokens in light and the colour tokens in dark', () => {
   for (const [name, t] of Object.entries(presets)) {
     expect(Object.keys(t.light).sort(), name).toEqual([...TOKEN_NAMES].sort())
     expect(Object.keys(t.dark).sort(), name).toEqual(TOKEN_NAMES.filter((n) => !MODELESS.includes(n)).sort())
@@ -88,4 +88,14 @@ test('spacing: decode accepts the densities the builder offers, nothing else', a
   expect(DENSITIES.map((d) => d.value)).toEqual(['3px', '4px', '5px'])
   expect(decode('teal~l!space!5px')).not.toBeNull()
   expect(decode('teal~l!space!7px')).toBeNull()
+})
+
+test('chart colours: five distinct, each at least 3:1 against the background in every preset and mode', () => {
+  for (const [name, t] of Object.entries(presets)) for (const mode of ['light', 'dark'] as const) {
+    const set = t[mode]
+    const colours = [1, 2, 3, 4, 5].map((n) => set[`chart-${n}`]!)
+    expect(new Set(colours).size, `${name} ${mode}`).toBe(5)
+    for (const c of colours) expect(contrast(c, set.bg!), `${name} ${mode} ${c}`).toBeGreaterThanOrEqual(3)
+  }
+  for (const n of [1, 2, 3, 4, 5]) expect(contrast(darkFrom(presets.teal.light)[`chart-${n}`]!, presets.teal.dark.bg!)).toBeGreaterThanOrEqual(3)
 })

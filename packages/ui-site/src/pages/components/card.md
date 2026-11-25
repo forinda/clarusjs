@@ -1,6 +1,6 @@
 ---
 title: "Card"
-group: "Components"
+group: "Panel"
 order: 5
 description: "A box with a header, a body and a footer."
 ---

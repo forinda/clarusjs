@@ -1,6 +1,6 @@
 ---
 title: "Progress"
-group: "Components"
+group: "Misc"
 order: 25
 description: "A native progress bar; without a value, it shows work in progress."
 ---

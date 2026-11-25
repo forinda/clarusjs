@@ -1,6 +1,6 @@
 ---
 title: "Sidebar"
-group: "Components"
+group: "Menu"
 order: 40
 description: "App navigation beside the page that collapses, and opens as a panel on phones."
 ---

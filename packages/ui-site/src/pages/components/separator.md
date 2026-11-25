@@ -1,6 +1,6 @@
 ---
 title: "Separator"
-group: "Components"
+group: "Panel"
 order: 8
 description: "A line between content, horizontal or vertical."
 ---

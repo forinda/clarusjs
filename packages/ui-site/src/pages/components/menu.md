@@ -1,6 +1,6 @@
 ---
 title: "Menu"
-group: "Components"
+group: "Menu"
 order: 21
 description: "A menu of actions: arrow keys, typeahead, Escape."
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Toggle"
-group: "Components"
+group: "Form"
 order: 38
 description: "A button that is on or off, alone or in a group with one Tab stop."
 ---

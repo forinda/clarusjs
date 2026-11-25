@@ -1,6 +1,6 @@
 ---
 title: "Tooltip"
-group: "Components"
+group: "Overlay"
 order: 20
 description: "A short hint on hover and focus."
 ---

@@ -34,6 +34,11 @@
   --color-success-foreground: var(--ui-success-fg);
   --color-warning: var(--ui-warning);
   --color-warning-foreground: var(--ui-warning-fg);
+  --color-chart-1: var(--ui-chart-1);
+  --color-chart-2: var(--ui-chart-2);
+  --color-chart-3: var(--ui-chart-3);
+  --color-chart-4: var(--ui-chart-4);
+  --color-chart-5: var(--ui-chart-5);
   --spacing: var(--ui-space);
   --radius-lg: var(--ui-radius);
   --radius-md: calc(var(--ui-radius) - 2px);

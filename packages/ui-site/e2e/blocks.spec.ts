@@ -10,7 +10,7 @@ test('the header links Components and Blocks, and its Theme button opens the the
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: 'Main' })
-  for (const [name, href] of [['Components', '/'], ['Blocks', '/blocks']]) await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('href', href!)
+  for (const [name, href] of [['Components', '/components'], ['Blocks', '/blocks']]) await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('href', href!)
   await page.getByRole('button', { name: 'Theme', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Theme' })).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Theme' }).getByRole('link', { name: /full preview/ })).toHaveAttribute('href', '/theme')
@@ -23,6 +23,44 @@ test('/blocks shows every block, full width, each linked to its page', async ({ 
     await expect(page.locator(`main a[href="/blocks/${b.name}"]`).first()).toBeVisible()
     await expect(page.locator(`iframe[src="/view/${b.name}"]`)).toBeAttached()
   }
+})
+
+test('/blocks: search and categories narrow the list; nothing found says so', async ({ page }) => {
+  await page.goto('/blocks')
+  await page.locator('cl-island[c="block-filter"][data-cl-ready]').waitFor({ state: 'attached' })
+  const row = (name: string) => page.locator(`[data-block="${name}"]`)
+  for (const b of blocks) await expect(row(b.name)).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search blocks' }).fill('cart')
+  await expect(row('checkout')).toBeVisible()
+  await expect(row('login')).toBeHidden()
+  await page.getByRole('searchbox', { name: 'Search blocks' }).fill('')
+  await page.getByRole('button', { name: 'Authentication' }).click()
+  await expect(page.getByRole('button', { name: 'Authentication' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(row('login')).toBeVisible()
+  await expect(row('checkout')).toBeHidden()
+  await page.getByRole('button', { name: 'All' }).click()
+  await expect(row('checkout')).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search blocks' }).fill('zzqq')
+  await expect(page.getByRole('status')).toHaveText('No blocks match "zzqq".')
+  await expect(row('login')).toBeHidden()
+})
+
+test('/blocks: each row says its block, its line and its category, from the registry', async ({ page }) => {
+  await page.goto('/blocks')
+  for (const b of blocks) {
+    const row = page.locator(`[data-block="${b.name}"]`)
+    await expect(row.getByRole('link', { name: b.title, exact: true })).toHaveAttribute('href', `/blocks/${b.name}`)
+    await expect(row).toContainText(b.description)
+    await expect(row).toContainText(b.category!)
+  }
+})
+
+test('the header search finds blocks', async ({ page }) => {
+  await page.goto('/blocks')
+  await page.locator('cl-island[c="search"][data-cl-ready]').waitFor({ state: 'attached' })
+  await page.keyboard.press('Control+k')
+  await page.getByRole('combobox', { name: 'Search the docs' }).fill('checkout')
+  await expect(page.locator('#search-results a[href^="/blocks/checkout"]').first()).toBeVisible()
 })
 
 test('/blocks/login: a full-width page, no docs sidebar; the frame at desktop, tablet and phone widths', async ({ page }) => {
@@ -93,11 +131,11 @@ test('/view/login: the block alone, no site chrome, kept out of search, the site
   expect(await (await request.get('/llms.txt')).text()).not.toContain('/view/')
 })
 
-for (const name of ['login', 'checkout']) {
+for (const name of ['login', 'checkout', 'dashboard']) {
   test(`/view/${name}: styled by theme.css (its tokens are set)`, async ({ page }) => {
     await page.goto(`/view/${name}`)
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ui-accent').trim())).not.toBe('')
-    await expect(page.locator('[data-part="control"]').first()).not.toHaveCSS('border-top-width', '0px')
+    await expect(page.locator('[data-part="control"], [data-part="card"]').first()).not.toHaveCSS('border-top-width', '0px')
     expect(await page.evaluate(() => getComputedStyle(document.body).margin)).toBe('0px')
   })
 }
@@ -109,11 +147,20 @@ test('/view/login: a theme saved on /theme applies to the block', async ({ page 
   await expect(page.locator('[data-ui-preview] [data-part="button"][data-variant="default"]').first()).toHaveCSS('background-color', 'rgb(255, 0, 0)')
 })
 
-for (const mode of modes) for (const name of ['login', 'checkout']) {
+for (const mode of modes) {
+  test(`/blocks has no accessibility violations (${mode.label})`, async ({ browser }) => {
+    const page = await pageIn(browser, mode)
+    await page.goto('/blocks')
+    await page.locator('cl-island[c="block-filter"][data-cl-ready]').waitFor({ state: 'attached' })
+    expect(await axeViolations(page)).toEqual([])
+  })
+}
+
+for (const mode of modes) for (const name of ['login', 'checkout', 'dashboard']) {
   test(`/blocks/${name} has no accessibility violations (${mode.label})`, async ({ browser }) => {
     const page = await pageIn(browser, mode)
     await page.goto(`/blocks/${name}`)
-    await expect(page.frameLocator('iframe').locator('form')).toBeVisible()
+    await expect(page.frameLocator('iframe').locator('main')).toBeVisible()
     expect(await axeViolations(page)).toEqual([])
   })
 }
@@ -322,6 +369,98 @@ test.describe('checkout block', () => {
     const summary = await page.getByRole('region', { name: 'Order summary' }).boundingBox()
     const form = await page.locator('form').boundingBox()
     expect(summary!.y).toBeLessThan(form!.y)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+})
+
+/** The dashboard page, once its table and chart have attached. */
+async function gotoDashboard(page: import('@playwright/test').Page) {
+  await page.goto('/view/dashboard')
+  await page.locator('cl-island[c="dashboard-table"][data-cl-ready]').waitFor({ state: 'attached' })
+  await page.locator('cl-island[c="chart-interactive"][data-cl-ready]').waitFor({ state: 'attached' })
+}
+
+test.describe('dashboard block', () => {
+  const table = (page: import('@playwright/test').Page) => page.getByRole('region', { name: 'Sections' })
+  const bodyRows = (page: import('@playwright/test').Page) => table(page).locator('tbody tr')
+
+  test('/blocks/dashboard: the frame, and Code lists its files and components', async ({ page }) => {
+    await page.goto('/blocks/dashboard')
+    await expect(page.frameLocator('iframe[src="/view/dashboard"]').locator('main')).toBeVisible()
+    await page.getByRole('button', { name: 'Code', exact: true }).click()
+    const tree = page.getByRole('navigation', { name: 'Files' })
+    for (const f of ['dashboard.tscl', 'dashboard-table.tscl', 'stat-card.tscl', 'data.ts', 'chart.tscl', 'chart-geometry.ts', 'chart-interactive.tscl', 'sidebar.css']) await expect(tree.getByRole('button', { name: f.includes('/') ? f : new RegExp(`(^|/)${f.replace('.', '\\.')}$`) })).toBeVisible()
+  })
+
+  test('four stat cards and the chart; its range switch changes the points', async ({ page }) => {
+    await gotoDashboard(page)
+    await expect(page.locator('[data-part="card"]').filter({ hasText: 'Total revenue' })).toBeVisible()
+    await expect(page.locator('.dash-stats [data-part="card"]')).toHaveCount(4)
+    // Never three and one: the rows hold 4, 2 or 1 cards.
+    for (const width of [1280, 1180, 900, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      const tops = await page.locator('.dash-stats [data-part="card"]').evaluateAll((cards) => cards.map((c) => Math.round(c.getBoundingClientRect().top)))
+      const perRow = [...new Set(tops)].map((t) => tops.filter((x) => x === t).length)
+      expect(perRow.every((n) => n === perRow[0]), `${width}: ${perRow}`).toBe(true)
+    }
+    const points = () => page.locator('[data-part="chart-line"]').first().evaluate((p) => (p.getAttribute('d')!.match(/[ML]/g) ?? []).length)
+    expect(await points()).toBe(90)
+    await page.getByRole('button', { name: 'Last 7 days' }).click()
+    await expect.poll(points).toBe(7)
+  })
+
+  test('the sidebar collapses on a desktop, and opens as a panel on a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await gotoDashboard(page)
+    const nav = page.locator('#dash-nav')
+    await expect(nav).toBeVisible()
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click()
+    await expect(nav).toHaveAttribute('data-state', 'collapsed')
+    await page.setViewportSize({ width: 390, height: 800 })
+    await page.reload()
+    await page.locator('cl-island[c="dashboard-table"][data-cl-ready]').waitFor({ state: 'attached' })
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click()
+    await expect(nav).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+
+  test('a column header sorts the rows both ways (aria-sort), and keeps the focus', async ({ page }) => {
+    await gotoDashboard(page)
+    const target = table(page).getByRole('button', { name: 'Target' })
+    const th = table(page).locator('th', { has: page.getByRole('button', { name: 'Target' }) })
+    await target.click()
+    await expect(th).toHaveAttribute('aria-sort', 'ascending')
+    const values = () => bodyRows(page).locator('td[data-col="target"]').allTextContents().then((t) => t.map(Number))
+    let v = await values()
+    expect(v).toEqual([...v].sort((a, b) => a - b))
+    await page.keyboard.press('Enter')
+    await expect(th).toHaveAttribute('aria-sort', 'descending')
+    await expect(target).toBeFocused()
+    v = await values()
+    expect(v).toEqual([...v].sort((a, b) => b - a))
+  })
+
+  test('pages of 10: Next shows rows 11 to 20', async ({ page }) => {
+    await gotoDashboard(page)
+    await expect(bodyRows(page)).toHaveCount(10)
+    const first = await bodyRows(page).first().textContent()
+    await page.getByRole('button', { name: 'Next page' }).click()
+    await expect(page.getByText('Page 2 of 3')).toBeVisible()
+    await expect(bodyRows(page)).toHaveCount(10)
+    await expect(bodyRows(page).first()).not.toHaveText(first!)
+  })
+
+  test('the status switch and the search narrow the rows; none found says so', async ({ page }) => {
+    await gotoDashboard(page)
+    await page.getByRole('button', { name: 'In progress', exact: true }).click()
+    for (const s of await bodyRows(page).locator('td[data-col="status"]').allTextContents()) expect(s.trim()).toBe('In progress')
+    await page.getByRole('searchbox', { name: 'Search sections' }).fill('zzqq')
+    await expect(table(page)).toContainText('No sections match.')
+  })
+
+  test('at phone width the page doesn\'t scroll sideways; the table scrolls in its own region', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await gotoDashboard(page)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   })
 })

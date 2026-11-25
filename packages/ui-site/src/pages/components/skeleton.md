@@ -1,6 +1,6 @@
 ---
 title: "Skeleton"
-group: "Components"
+group: "Misc"
 order: 9
 description: "A pulsing placeholder while content loads."
 ---

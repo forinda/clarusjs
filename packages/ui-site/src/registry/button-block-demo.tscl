@@ -1,0 +1,19 @@
+@import uiButton from './button.tscl'
+
+<div class="demo">
+  <uiButton block>Create account</uiButton>
+  <uiButton block variant="outline">Continue with email</uiButton>
+  <uiButton block variant="dashed"><icon name="lucide:plus" /> Add a row</uiButton>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    max-width: 24rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+  }
+</style>

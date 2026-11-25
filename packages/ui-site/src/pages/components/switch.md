@@ -1,6 +1,6 @@
 ---
 title: "Switch"
-group: "Components"
+group: "Form"
 order: 15
 description: "An on/off switch on a native checkbox."
 ---

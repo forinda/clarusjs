@@ -8,7 +8,7 @@
  */
 export type Item = { title: string; href: string; order?: number; badge?: string; xp?: number; minutes?: number }
 /** The icons a sidebar group can show (#369). */
-export type GroupIcon = 'info' | 'code' | 'box' | 'shield' | 'download' | 'book' | 'terminal' | 'sparkles' | 'layers' | 'wrench' | 'rocket' | 'file'
+export type GroupIcon = 'info' | 'code' | 'box' | 'shield' | 'download' | 'book' | 'terminal' | 'sparkles' | 'layers' | 'wrench' | 'rocket' | 'file' | 'form' | 'pointer' | 'table' | 'panel' | 'overlay' | 'menu' | 'chart' | 'message' | 'image' | 'grid'
 /**
  * A sidebar group. `icon`: shown beside its title. `collapsed`: closed until opened (the group of the current page is
  * always open).

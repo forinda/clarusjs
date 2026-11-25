@@ -1,6 +1,6 @@
 ---
 title: "Aspect ratio"
-group: "Components"
+group: "Panel"
 order: 35
 description: "A box that keeps its shape as its width changes."
 ---

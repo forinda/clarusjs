@@ -26,13 +26,38 @@ for (const entry of registry) {
     })
   }
 
-  if (!entry.island) {
+  // An island example (button-loading-demo) renders the component in the browser, so its page carries the component's
+  // render code; the component itself compiles to none (test/registry.test.ts).
+  const islandExample = (entry.examples ?? []).some((x) => readFileSync(resolve(import.meta.dirname, '../src/registry', `${entry.name}-${x}-demo.tscl`), 'utf8').includes('<script>'))
+  if (!entry.island && !islandExample) {
     test(`${entry.name}: no JavaScript of its own`, async ({ page }) => {
       const scripts: string[] = []
       page.on('request', (r) => { if (r.resourceType() === 'script') scripts.push(r.url()) })
       await page.goto(path)
       await page.waitForLoadState('networkidle')
-      expect(scripts.filter((s) => s.includes(`/${entry.name}-`) || s.includes(`/${entry.name}.`))).toEqual([])
+      // Its own code, not an example's (an example may be an island: button-loading-demo).
+      expect(scripts.filter((s) => !s.includes('-demo') && (s.includes(`/${entry.name}-`) || s.includes(`/${entry.name}.`)))).toEqual([])
     })
   }
 }
+
+test('/components/button: eight examples, each with its code; loading blocks a second click; circles are square', async ({ page }) => {
+  await page.goto('/components/button')
+  for (const name of ['Variants', 'Sizes', 'Icons', 'Loading', 'Shapes', 'Full width', 'Disabled', 'With other buttons']) {
+    await expect(page.getByRole('heading', { level: 3, name: new RegExp(`^${name}\\b`) })).toBeVisible()
+  }
+  await page.locator('cl-island[c="button-loading-demo"][data-cl-ready]').waitFor({ state: 'attached' })
+  const save = page.getByRole('button', { name: 'Click to save' })
+  await save.click()
+  const busy = page.getByRole('button', { name: 'Saving…' })
+  await expect(busy).toHaveAttribute('aria-busy', 'true')
+  await expect(busy).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Click to save' })).toBeEnabled({ timeout: 5000 })
+  for (const label of ['Add', 'Search']) {
+    const box = (await page.getByRole('button', { name: label, exact: true }).first().boundingBox())!
+    expect(Math.round(box.width)).toBe(Math.round(box.height))
+  }
+  const block = (await page.getByRole('button', { name: 'Create account' }).boundingBox())!
+  const container = (await page.getByRole('button', { name: 'Create account' }).locator('xpath=..').boundingBox())!
+  expect(block.width).toBeGreaterThan(container.width * 0.8)
+})

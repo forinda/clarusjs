@@ -1,11 +1,17 @@
-{{-- Every component, linked, with its one line. --}}
-@import { components } from '~/registry.ts'
+{{-- Every component, linked, with its one line, under its group (COMPONENT_GROUPS, the sidebar's order). --}}
+@import { COMPONENT_GROUPS, components } from '~/registry.ts'
 
-<ul class="component-list">
-  @for (e of components; track e.name) {
-    <li>
-      <a [href]="'/components/' + e.name">{{ e.title }}</a
-      >: {{ e.description }}
-    </li>
+<div class="component-list">
+  @for (g of COMPONENT_GROUPS; track g) {
+    <section [aria-labelledby]="'components-' + g.toLowerCase()">
+      <h3 [id]="'components-' + g.toLowerCase()">{{ g }}</h3>
+      <ul>
+        @for (e of components.filter((c) => c.group === g); track e.name) {
+          <li>
+            <a [href]="'/components/' + e.name">{{ e.title }}</a>: {{ e.description }}
+          </li>
+        }
+      </ul>
+    </section>
   }
-</ul>
+</div>

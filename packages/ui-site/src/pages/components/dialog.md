@@ -1,6 +1,6 @@
 ---
 title: "Dialog"
-group: "Components"
+group: "Overlay"
 order: 18
 description: "A modal dialog on native <dialog>: focus kept in it, Escape and a click outside close it."
 ---

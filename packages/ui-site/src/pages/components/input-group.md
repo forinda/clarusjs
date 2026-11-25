@@ -1,6 +1,6 @@
 ---
 title: "Input group"
-group: "Components"
+group: "Form"
 order: 34
 description: "A field with text or icons before and after it."
 ---

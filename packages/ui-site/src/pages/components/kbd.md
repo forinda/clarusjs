@@ -1,6 +1,6 @@
 ---
 title: "Kbd"
-group: "Components"
+group: "Misc"
 order: 11
 description: "A key to press, as in Ctrl K."
 ---

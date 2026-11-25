@@ -183,7 +183,7 @@ test('theme builder: a failing pair shows a warning next to its control, in the 
 
 test('theme builder: on a phone the sheet rises from the bottom; Escape closes it and focus returns; no sideways scroll', async ({ browser }) => {
   const page = await (await browser.newContext({ viewport: { width: 390, height: 800 } })).newPage()
-  await page.goto('/components/button')
+  await page.goto('/components/input') // a short page: this is about the sheet, and axe on a long page is slow
   const open = page.getByRole('button', { name: 'Theme', exact: true })
   expect((await open.boundingBox())!.width).toBeLessThan(44) // the icon alone; the name stays
   expect((await page.locator('.theme-toggle').first().boundingBox())!.x + 30).toBeLessThan(390)
@@ -285,4 +285,16 @@ test('theme builder: its controls are this library\'s parts (Select, Slider, Pop
   await expect(b.locator('[data-part="popover"]#tb-presets')).toHaveCount(1)
   await expect(b.locator('details.tb-colours input[type="color"]').first()).toBeAttached()
   for (const name of ['Copy CSS', 'Shuffle', 'Share link', 'Reset']) await expect(b.getByRole('button', { name, exact: true })).toHaveAttribute('data-part', 'button')
+})
+
+test('/theme previews the dashboard block (a frame that follows each edit), then the other components', async ({ page }) => {
+  await page.goto('/theme')
+  const dash = page.frameLocator('iframe[src="/view/dashboard"]')
+  await expect(dash.locator('.dash-stats [data-part="card"]')).toHaveCount(4)
+  await expect(dash.locator('[data-part="chart-interactive"]')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Components' })).toBeVisible()
+  await expect(page.locator('[data-ui-preview]')).toHaveCount(1)
+  await openSheet(page)
+  await page.getByLabel('Brand', { exact: true }).fill('#123456')
+  await expect.poll(() => dash.locator('.dash').evaluate((el) => getComputedStyle(el).getPropertyValue('--ui-accent').trim())).toBe('#123456')
 })

@@ -8,16 +8,20 @@ layout: "/src/layouts/wide.tscl"
 
 # Blocks
 
-<p class="lead">Whole pages built from the components: a login, a checkout, a dashboard. Copy one into <code>src/pages/</code>, the components it lists into <code>src/components/ui/</code>, and it looks done and works. Then swap in your data and your submit. They style themselves with your <code>theme.css</code>, so a theme from <a href="/theme">the theme builder</a> restyles them too.</p>
+<p class="lead">Whole pages built from the components: a login, a checkout, a dashboard. Copy one into <code>src/pages/</code>, the components it lists into <code>src/components/ui/</code>, and it looks done and works. Then swap in your data and your submit. They style themselves with your <code>theme.css</code>, so a theme from the header's Theme button restyles them too.</p>
 
-<div class="block-row">
-  <h2><a href="/blocks/login">Login</a></h2>
-  <p>Sign in with email and password, with errors on their fields and a handler you replace.</p>
+<blockFilter>
+
+<blockRow name="login">
   <iframe src="/view/login" title="Login preview" loading="lazy" style="width: 100%; height: 560px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
-</div>
+</blockRow>
 
-<div class="block-row">
-  <h2><a href="/blocks/checkout">Checkout</a></h2>
-  <p>A cart with live totals beside three steps, contact, shipping and payment, checked by Zod, with a handler you replace.</p>
+<blockRow name="checkout">
   <iframe src="/view/checkout" title="Checkout preview" loading="lazy" style="width: 100%; height: 760px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
-</div>
+</blockRow>
+
+<blockRow name="dashboard">
+  <iframe src="/view/dashboard" title="Dashboard preview" loading="lazy" style="width: 100%; height: 820px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
+</blockFilter>

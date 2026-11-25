@@ -1,0 +1,203 @@
+{{--
+  Chart: an area, line or bar chart drawn as SVG on the server, so it ships no JavaScript. Series colours are
+  --ui-chart-1 to --ui-chart-5. Screen readers get its label and the data as a table (visually hidden); several series
+  get a legend. Values below 0 are drawn at 0. Its geometry is chart-geometry.ts beside it.
+--}}
+@import { chartLayout } from './chart-geometry.ts'
+@import type { Series } from './chart-geometry.ts'
+@input label: string
+@input labels: string[]
+@input series: Series[]
+@input type: 'area' | 'line' | 'bar' = 'area'
+@input height: number = 240
+
+<figure data-part="chart" [data-type]="type">
+  {{-- One layout, computed once. --}}
+  {{-- One layout, computed once. Shapes are SVG stretched to the width (lines keep their stroke); text is HTML placed
+       by percent, so it stays the page's size however wide the chart is. --}}
+  @for (c of [chartLayout(labels, series, type, height)]; track c.width) {
+    <div data-part="chart-frame">
+      <svg
+        role="img"
+        [aria-label]="label"
+        [viewBox]="'0 0 ' + c.width + ' ' + c.height"
+        preserveAspectRatio="none"
+        [style]="'height: ' + c.height + 'px'"
+        data-part="chart-plot"
+      >
+        @for (t of c.ticks; track t.value) {
+          <line x1="0" [x2]="c.width" [y1]="t.y" [y2]="t.y" data-part="chart-grid" />
+        }
+        @for (p of c.paths; track $index) {
+          @if (p.area) {
+            <path
+              [d]="p.area"
+              [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'"
+              data-part="chart-area"
+            />
+          }
+          <path
+            [d]="p.line"
+            [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'"
+            data-part="chart-line"
+          />
+        }
+        @for (b of c.bars; track $index) {
+          <rect
+            [x]="b.x"
+            [y]="b.y"
+            [width]="b.w"
+            [height]="b.h"
+            [style]="'--ui-series: var(--ui-chart-' + ((b.series % 5) + 1) + ')'"
+            data-part="chart-bar"
+          />
+        }
+      </svg>
+      @for (t of c.ticks; track t.value) {
+        <span data-part="chart-tick" aria-hidden="true" [style]="'top: ' + t.y + 'px'">{{ t.value }}</span>
+      }
+    </div>
+    <div data-part="chart-labels" aria-hidden="true">
+      @for (l of c.labels; track l.i) {
+        <span
+          data-part="chart-label"
+          [data-align]="
+            type !== 'bar' && l.i === 0 ? 'start' : type !== 'bar' && l.i === labels.length - 1 ? 'end' : 'middle'
+          "
+          [style]="'left: ' + (l.x / c.width) * 100 + '%'"
+          >{{ l.text }}</span
+        >
+      }
+    </div>
+  }
+  @if (series.length > 1) {
+    <ul data-part="chart-legend" aria-hidden="true">
+      @for (s of series; track s.name) {
+        <li [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'">{{ s.name }}</li>
+      }
+    </ul>
+  }
+  <div data-part="chart-data">
+    <table data-part="chart-table">
+      <caption>
+        {{
+          label
+        }}
+      </caption>
+      <thead>
+        <tr>
+          <td></td>
+          @for (s of series; track s.name) {
+            <th scope="col">{{ s.name }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        {{-- Each row keeps its index (an inner @for has its own $index). --}}
+        @for (row of labels.map((text, i) => ({ text, i })); track row.i) {
+          <tr>
+            <th scope="row">{{ row.text }}</th>
+            @for (s of series; track s.name) {
+              <td>{{ s.values[row.i] ?? '' }}</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</figure>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: var(--ui-space-2);
+      margin: 0;
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where([data-part='chart-frame']) {
+      position: relative;
+    }
+    :where([data-part='chart-plot']) {
+      display: block;
+      width: 100%;
+      overflow: visible;
+    }
+    /* A tick's value sits just above its line, at the left. */
+    :where([data-part='chart-tick']) {
+      position: absolute;
+      left: 0;
+      transform: translateY(-100%);
+      padding-bottom: calc(var(--ui-space) / 2);
+      line-height: 1;
+    }
+    :where([data-part='chart-labels']) {
+      position: relative;
+      height: 1.5em;
+    }
+    :where([data-part='chart-label']) {
+      position: absolute;
+      top: 4px;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+    :where([data-part='chart-label'][data-align='start']) {
+      transform: none;
+    }
+    :where([data-part='chart-label'][data-align='end']) {
+      transform: translateX(-100%);
+    }
+    :where([data-part='chart-grid']) {
+      stroke: var(--ui-border);
+      stroke-dasharray: 3 3;
+    }
+    :where([data-part='chart-tick']),
+    :where([data-part='chart-label']) {
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 2px);
+    }
+    :where([data-part='chart-area']) {
+      fill: color-mix(in srgb, var(--ui-series) 22%, transparent);
+    }
+    :where([data-part='chart-line']) {
+      fill: none;
+      stroke: var(--ui-series);
+      stroke-width: 2;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+    }
+    :where([data-part='chart-bar']) {
+      fill: var(--ui-series);
+    }
+    :where([data-part='chart-legend']) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--ui-space-4);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where([data-part='chart-legend'] li)::before {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: var(--ui-space-2);
+      border-radius: 2px;
+      background: var(--ui-series);
+    }
+    /* The data, for screen readers only (on a wrapper: a table never gets narrower than its content). */
+    :where([data-part='chart-data']) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: clip; /* clip, not hidden: hidden makes it a scroll area */
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+</style>

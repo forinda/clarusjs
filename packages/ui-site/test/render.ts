@@ -16,6 +16,8 @@ export const unscoped = (html: string) => html.replace(/ class="cl-c-[\w-]+"/g, 
 /** opts carries what a parent tag passes besides props, e.g. { class: 'mine' }. */
 export async function render(file: string, props: Record<string, unknown> = {}, slots?: Record<string, string>, opts?: Record<string, unknown>): Promise<string> {
   const { code } = compile(source(file), { file, target: 'server', clientUrl: '/x.js', collapseWhitespace: true })
-  const mod = await import(`data:text/javascript,${encodeURIComponent(code.replaceAll("'clarusjs/runtime/server'", `'${clarus('runtime/server.ts')}'`))}`)
+  // A component's own imports ('./chart-geometry.ts') resolve beside it: a data: URL has no folder of its own.
+  const local = code.replace(/(from\s+)'\.\/([\w.-]+)'/g, (_, from, name) => `${from}'${pathToFileURL(resolve(registryDir, name)).href}'`)
+  const mod = await import(`data:text/javascript,${encodeURIComponent(local.replaceAll("'clarusjs/runtime/server'", `'${clarus('runtime/server.ts')}'`))}`)
   return unscoped(await mod.render(props, slots, opts))
 }
