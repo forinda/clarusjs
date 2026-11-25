@@ -1,6 +1,6 @@
 @import uiBadge from './badge.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiBadge>Default</uiBadge>
   <uiBadge variant="secondary">Secondary</uiBadge>
   <uiBadge variant="outline">Outline</uiBadge>

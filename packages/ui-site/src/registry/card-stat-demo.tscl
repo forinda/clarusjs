@@ -1,7 +1,7 @@
 @import uiCard from './card.tscl'
 @import uiBadge from './badge.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiCard>
     @slot('header') {
       <p class="stat-label">Revenue</p>

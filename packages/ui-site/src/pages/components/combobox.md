@@ -17,6 +17,16 @@ The parts come from `@clarusjs/ui-primitives`; the look is `combobox.css`, impor
 
 <<< ../../registry/combobox-demo.tscl
 
+## Examples
+
+### Several values
+
+`[multiple]`: each pick becomes a chip; Backspace in the empty input removes the last.
+
+<comboboxMultipleDemo />
+
+<<< ../../registry/combobox-multiple-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `combobox.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.

@@ -2,7 +2,7 @@
 @import uiLabel from './label.tscl'
 {{-- Error is aria-invalid, its message linked with aria-describedby; a warning is status="warning". --}}
 
-<div class="demo">
+<div class="demo example">
   <uiInput aria-label="Enabled" placeholder="Enabled" />
   <uiInput aria-label="Disabled" placeholder="Disabled" disabled />
   <uiInput aria-label="Read-only" value="Read-only value" readonly />

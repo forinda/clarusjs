@@ -1,0 +1,19 @@
+@import uiField from './field.tscl'
+
+<div class="demo example">
+  <uiField id="desc-username" label="Username" description="Letters, numbers and dashes; shown on your profile." />
+  <uiField id="desc-email" label="Email" type="email" description="We'll only use it to sign you in." />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

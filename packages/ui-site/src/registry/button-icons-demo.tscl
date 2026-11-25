@@ -1,6 +1,6 @@
 @import uiButton from './button.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiButton><icon name="lucide:download" /> Download</uiButton>
   <uiButton variant="outline">Next <icon name="lucide:arrow-right" /></uiButton>
   <uiButton variant="secondary"><icon name="lucide:plus" /> New file</uiButton>

@@ -9,7 +9,7 @@
   }
 </script>
 
-<div class="demo">
+<div class="demo example">
   <uiButton loading>Loading</uiButton>
   <uiButton variant="outline" loading>Saving draft</uiButton>
   <uiButton [loading]="saving" (click)="save()">{{ saving ? 'Saving…' : 'Click to save' }}</uiButton>

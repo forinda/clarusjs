@@ -15,6 +15,32 @@ description: "A label, an input, a description and an error, wired together."
 
 <<< ../../registry/field-demo.tscl
 
+## Examples
+
+### With a description
+
+A line under the label saying what goes in, linked to the input.
+
+<fieldDescriptionDemo />
+
+<<< ../../registry/field-description-demo.tscl
+
+### Errors
+
+`[show]` shows the error at once, after a submit say; without it, once the field has been left.
+
+<fieldErrorDemo />
+
+<<< ../../registry/field-error-demo.tscl
+
+### Types
+
+Any input type: the keyboard on phones follows it (email, tel, number, date, url).
+
+<fieldTypesDemo />
+
+<<< ../../registry/field-types-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `field.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.

@@ -1,6 +1,6 @@
 @import uiBadge from './badge.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiBadge variant="success"><icon name="lucide:circle-check" /> Paid</uiBadge>
   <uiBadge variant="warning"><icon name="lucide:clock" /> Pending</uiBadge>
   <uiBadge variant="destructive"><icon name="lucide:circle-x" /> Failed</uiBadge>

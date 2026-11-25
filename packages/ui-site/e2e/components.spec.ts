@@ -123,3 +123,30 @@ test('badge: an icon and its word have room between them', async ({ page }) => {
   const text = await badge.evaluate((b) => { const r = document.createRange(); r.selectNodeContents(b.lastChild!); return r.getBoundingClientRect().left })
   expect(text - gap).toBeGreaterThanOrEqual(3)
 })
+
+test('select: a disabled one looks disabled', async ({ page }) => {
+  await page.goto('/components/select')
+  const locked = page.getByLabel('Plan (locked)')
+  await expect(locked).toBeDisabled()
+  expect(Number(await locked.evaluate((e) => getComputedStyle(e).opacity))).toBeLessThan(1)
+})
+
+test('combobox: an option already picked shows a check in the list, not only a chip', async ({ page }) => {
+  await page.goto('/components/combobox')
+  const demo = page.locator('[class*="combobox-multiple-demo"]')
+  await demo.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  const input = demo.getByRole('combobox')
+  await input.fill('Ru')
+  await input.press('ArrowDown')
+  await input.press('Enter')
+  await input.fill('')
+  await input.press('ArrowDown')
+  const rust = demo.getByRole('option', { name: 'Rust' })
+  await expect(rust).toHaveAttribute('aria-selected', 'true')
+  expect(await rust.evaluate((o) => getComputedStyle(o, '::after').content)).not.toBe('none')
+  expect(await demo.getByRole('option', { name: 'Go' }).evaluate((o) => getComputedStyle(o, '::after').content)).toBe('none')
+  // The open list is on top of what follows it on the page (the code block), not under it.
+  const kotlin = demo.getByRole('option', { name: 'Kotlin' })
+  await kotlin.scrollIntoViewIfNeeded()
+  expect(await kotlin.evaluate((o) => { const r = o.getBoundingClientRect(); return o.contains(document.elementFromPoint(r.right - 8, r.top + r.height / 2)) })).toBe(true)
+})

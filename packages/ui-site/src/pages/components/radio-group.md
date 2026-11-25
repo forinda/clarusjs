@@ -15,6 +15,16 @@ description: "Native radios in a fieldset: one choice from a few."
 
 <<< ../../registry/radio-group-demo.tscl
 
+## Examples
+
+### A disabled option
+
+An option that can't be chosen today, still listed so people know it exists.
+
+<radioGroupDisabledDemo />
+
+<<< ../../registry/radio-group-disabled-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `radio-group.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.

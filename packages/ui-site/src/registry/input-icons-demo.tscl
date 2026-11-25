@@ -2,7 +2,7 @@
 @import uiInput from './input.tscl'
 @import uiKbd from './kbd.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiInputGroup>
     @slot('start') {
       <icon name="lucide:search" />

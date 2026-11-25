@@ -537,6 +537,10 @@
   :where([data-part='control'])[aria-invalid='true'] {
     border: 1px solid var(--ui-danger);
   }
+  :where([data-part='control']):disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
   :where([data-part='description']) {
     margin: 0;
     color: var(--ui-muted);
@@ -625,8 +629,22 @@
   :where([data-part='option'])[data-highlighted] {
     background: var(--ui-accent-soft);
   }
+  /* An option already picked: bold, and a check at its end (aria-selected says so to screen readers). */
   :where([data-part='option'])[aria-selected='true'] {
+    display: flex;
+    align-items: center;
     font-weight: 600;
+  }
+  :where([data-part='option'])[aria-selected='true']::after {
+    content: '';
+    flex: none;
+    width: 0.35em;
+    height: 0.7em;
+    margin-inline-start: auto;
+    margin-block-end: 0.15em;
+    border: solid var(--ui-accent);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
   }
   :where([data-part='status']) {
     margin: 0;

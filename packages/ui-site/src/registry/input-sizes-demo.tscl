@@ -12,7 +12,7 @@
 
 {{-- One size for a row of controls: data-size on what holds them (a Select is an island, so it takes the size from
      around it); a Button takes its own size. --}}
-<div class="demo">
+<div class="demo example">
   <div class="row" data-size="sm">
     <uiInput aria-label="Small search" placeholder="Search" />
     <uiSelect id="size-demo-sm" label="Small status" [options]="options" value="all" />

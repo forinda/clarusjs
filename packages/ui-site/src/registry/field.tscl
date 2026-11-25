@@ -73,6 +73,10 @@
     :where([data-part='control'])[aria-invalid='true'] {
       border: 1px solid var(--ui-danger);
     }
+    :where([data-part='control']):disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
     :where([data-part='description']) {
       margin: 0;
       color: var(--ui-muted);

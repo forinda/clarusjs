@@ -1,6 +1,6 @@
 @import uiSwitch from './switch.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiSwitch label="Off" />
   <uiSwitch label="On" [checked]="true" />
   <uiSwitch label="Disabled" disabled />

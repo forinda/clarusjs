@@ -1,0 +1,26 @@
+@import uiRadioGroup from './radio-group.tscl'
+
+<script server>
+  const delivery = [
+    { value: 'standard', label: 'Standard, 3 to 5 days' },
+    { value: 'express', label: 'Express, next day' },
+    { value: 'pickup', label: 'Pick up in store (closed today)', disabled: true },
+  ]
+</script>
+
+<div class="demo example">
+  <uiRadioGroup name="delivery" label="Delivery" [options]="delivery" value="standard" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

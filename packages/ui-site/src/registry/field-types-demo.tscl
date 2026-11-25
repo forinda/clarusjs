@@ -1,0 +1,22 @@
+@import uiField from './field.tscl'
+
+<div class="demo example">
+  <uiField id="types-email" label="Email" type="email" placeholder="you@example.com" />
+  <uiField id="types-phone" label="Phone" type="tel" placeholder="+1 555 0100" />
+  <uiField id="types-age" label="Age" type="number" />
+  <uiField id="types-date" label="Start date" type="date" />
+  <uiField id="types-site" label="Website" type="url" placeholder="https://" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
