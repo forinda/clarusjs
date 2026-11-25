@@ -24,7 +24,7 @@ Copy it into `src/components/ui/` as `input-group.tscl`.
 ## Styling
 
 - **On the root:** `class`, `style`, `id`, `aria-*` and `data-*` written on the tag land on its root element; `class` and `style` merge with its own.
-- **Selectors:** `data-part` names `input-group`, `input-group-start`, `input-group-end`.
+- **Selectors:** `data-part` names `input-group`, `input-group-start`, `input-group-end`; state attribute `data-variant` (`filled`, `borderless`, `underlined`).
 - **Your rules win:** every rule here has zero specificity (`:where()`) and sits in `@layer components`, so your own CSS and Tailwind utilities override it.
 
 ## Needs

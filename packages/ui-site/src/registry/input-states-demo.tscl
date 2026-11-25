@@ -1,0 +1,46 @@
+@import uiInput from './input.tscl'
+@import uiLabel from './label.tscl'
+{{-- Error is aria-invalid, its message linked with aria-describedby; a warning is status="warning". --}}
+
+<div class="demo">
+  <uiInput aria-label="Enabled" placeholder="Enabled" />
+  <uiInput aria-label="Disabled" placeholder="Disabled" disabled />
+  <uiInput aria-label="Read-only" value="Read-only value" readonly />
+  <div class="field">
+    <uiLabel control="states-email">Email</uiLabel>
+    <uiInput id="states-email" type="email" value="ada@" aria-invalid="true" aria-describedby="states-email-error" />
+    <p id="states-email-error" class="message error">Enter a full email address.</p>
+  </div>
+  <div class="field">
+    <uiLabel control="states-name">Display name</uiLabel>
+    <uiInput id="states-name" value="admin" status="warning" aria-describedby="states-name-warn" />
+    <p id="states-name-warn" class="message warn">Others can see this name.</p>
+  </div>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  .field {
+    display: grid;
+    gap: var(--ui-space-1);
+  }
+  .message {
+    margin: 0;
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  .error {
+    color: var(--ui-danger);
+  }
+  .warn {
+    color: var(--ui-fg);
+  }
+</style>

@@ -15,6 +15,32 @@ description: "A short label, in four variants."
 
 <<< ../../registry/badge-demo.tscl
 
+## Examples
+
+### Variants
+
+Six variants: a status in a word.
+
+<badgeVariantsDemo />
+
+<<< ../../registry/badge-variants-demo.tscl
+
+### With icons
+
+An icon before the word makes a status scan faster; the word still says it.
+
+<badgeIconsDemo />
+
+<<< ../../registry/badge-icons-demo.tscl
+
+### Counts
+
+A count in a button: its name says what's counted, for screen readers; past 99, 99+.
+
+<badgeCountsDemo />
+
+<<< ../../registry/badge-counts-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `badge.tscl`.

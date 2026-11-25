@@ -1,0 +1,20 @@
+@import uiCheckbox from './checkbox.tscl'
+
+<div class="demo">
+  <uiCheckbox label="Unchecked" />
+  <uiCheckbox label="Checked" [checked]="true" />
+  <uiCheckbox label="Disabled" disabled />
+  <uiCheckbox label="Disabled and checked" disabled [checked]="true" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

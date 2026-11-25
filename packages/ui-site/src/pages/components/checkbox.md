@@ -15,6 +15,16 @@ description: "A native checkbox with its label."
 
 <<< ../../registry/checkbox-demo.tscl
 
+## Examples
+
+### States
+
+Unchecked, checked, and disabled either way.
+
+<checkboxStatesDemo />
+
+<<< ../../registry/checkbox-states-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `checkbox.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
