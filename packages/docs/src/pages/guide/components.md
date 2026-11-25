@@ -187,7 +187,7 @@ clarusjs({ components: { libraries: ['@clarusjs/ui-primitives'] } })
 - **Names:** the library's prefix and the file's path, joined with hyphens (`ui` and `tab-list.tscl` make `<ui-tab-list>`, `ui` and `menu/item.tscl` make `<ui-menu-item>`). Give it your own prefix with `{ from: '@clarusjs/ui-primitives', prefix: 'p' }` (`<p-tabs>`).
 - **Who wins:** an `@import` in the file, then your own components, then libraries. A name two libraries share is a build error that names both: `@import` the one you mean.
 - **Only listed ones:** installing a package that ships components doesn't add tags to your templates until you list it.
-- **Checked and in your editor:** `clarusjs check` types their inputs as for your own. The dev server and `check` write the names to `.clarusjs/components.json`, where the editor finds them (it doesn't run your Vite config); run either once after adding a library.
+- **Checked and in your editor:** `clarusjs check` types their inputs as for your own. The dev server and `check` write the names, and your `components.dirs`, to `.clarusjs/components.json`, where the editor finds them (it doesn't run your Vite config); run either once after adding a library or changing the folders.
 
 ### Making a library
 

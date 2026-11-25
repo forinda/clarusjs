@@ -1,10 +1,10 @@
 // Component libraries (auto-imports from installed packages): the app lists them, each describes itself in its
 // package.json, and the names go to .clarusjs/components.json for the editor.
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { expect, test } from 'vitest'
-import { componentNames, readComponentNames, resolveLibraries } from '../../src/vite/libraries.ts'
+import { componentNames, readComponentNames, readComponents, resolveLibraries } from '../../src/vite/libraries.ts'
 
 function app(files: Record<string, string>): string {
   const root = mkdtempSync(resolve(tmpdir(), 'cl-libs-'))
@@ -44,10 +44,33 @@ test('componentNames: yours and the libraries\', written to .clarusjs/components
   expect(names['acme-dialog']).toBe('/src/components/acme-dialog.tscl') // yours win
   expect(names['acme-menu-item']).toBe('@acme/ui/menu/item.tscl')
   expect(names['user-card']).toBe('/src/components/user-card.tscl')
-  expect(JSON.parse(readFileSync(resolve(root, '.clarusjs/components.json'), 'utf8'))).toEqual({ names })
+  expect(JSON.parse(readFileSync(resolve(root, '.clarusjs/components.json'), 'utf8'))).toEqual({ dirs: ['src/components', 'src/layouts'], names })
   expect(readComponentNames(root)).toEqual(names)
-  expect(componentNames(root, { auto: false })).toBeUndefined()
   expect(readComponentNames(app({}))).toBeUndefined()
+})
+
+test('#review: with automatic imports off, components.json lists none (an earlier run\'s names aren\'t left for the editor)', () => {
+  const root = app({ ...lib, 'src/components/user-card.tscl': '<div />\n' })
+  componentNames(root, { libraries: ['@acme/ui'] })
+  expect(componentNames(root, { auto: false, libraries: ['@acme/ui'] })).toBeUndefined()
+  expect(JSON.parse(readFileSync(resolve(root, '.clarusjs/components.json'), 'utf8'))).toEqual({ dirs: [], names: {} })
+})
+
+test('#review: the configured folders are written too, for the editor', () => {
+  const root = app({ 'src/widgets/user-card.tscl': '<div />\n', 'src/components/old-card.tscl': '<div />\n' })
+  expect(Object.keys(componentNames(root, { dirs: ['src/widgets'] })!)).toEqual(['user-card'])
+  expect(readComponents(root)).toEqual({ dirs: ['src/widgets'], names: { 'user-card': '/src/widgets/user-card.tscl' } })
+})
+
+test('#review: components.json is replaced whole (a new file renamed over it), never rewritten in place', () => {
+  const root = app({ 'src/components/user-card.tscl': '<div />\n' })
+  componentNames(root)
+  const file = resolve(root, '.clarusjs/components.json')
+  const before = statSync(file).ino
+  writeFileSync(resolve(root, 'src/components/user-list.tscl'), '<div />\n')
+  componentNames(root)
+  expect(statSync(file).ino).not.toBe(before)
+  expect(readdirSync(resolve(root, '.clarusjs'))).toEqual(['components.json'])
 })
 
 test('a library component used only by name is built: its island chunk and its styles (no @import anywhere)', async () => {
@@ -56,15 +79,21 @@ test('a library component used only by name is built: its island chunk and its s
   const { default: clarusjs } = await import('../../src/vite/plugin.ts')
   const root = app({
     'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', exports: { './*': './src/*' }, clarusjs: { components: './src', prefix: 'acme' } }),
-    'node_modules/@acme/ui/src/count.tscl': '<script>\n  let n = state(0)\n</script>\n<button type="button" (click)="n++">{{ n }}</button>\n<style scoped>\n  :scope { letter-spacing: 4.75px; }\n</style>\n',
+    'node_modules/@acme/ui/src/count.tscl': "@import knob from '@acme/controls/knob.tscl'\n<script>\n  let n = state(0)\n</script>\n<button type=\"button\" (click)=\"n++\">{{ n }} <knob /></button>\n<style scoped>\n  :scope { letter-spacing: 4.75px; }\n</style>\n",
+    // #review: the library's own dependency, installed only inside it (as pnpm does), resolved from the library's file.
+    'node_modules/@acme/ui/node_modules/@acme/controls/package.json': JSON.stringify({ name: '@acme/controls', exports: { './*': './src/*' } }),
+    'node_modules/@acme/ui/node_modules/@acme/controls/src/knob.tscl': '<script>\n  let on = state(false)\n</script>\n<i (click)="on = !on">o</i>\n<style scoped>\n  :scope { word-spacing: 3.25px; }\n</style>\n',
     'src/pages/index.tscl': '<main><acme-count /></main>\n',
   })
   symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ components: { libraries: ['@acme/ui'] } })] })).buildApp()
   const assets = resolve(root, 'dist/client/assets')
   const files = (readdirSync(assets, { recursive: true }) as string[]).filter((f) => statSync(resolve(assets, f)).isFile()).map((f) => f.replaceAll('\\', '/'))
-  expect(files.map((f) => readFileSync(resolve(assets, f), 'utf8')).join('\n')).toContain('4.75px')
+  const text = files.map((f) => readFileSync(resolve(assets, f), 'utf8')).join('\n')
+  expect(text).toContain('4.75px')
+  expect(text).toContain('3.25px')
   expect(files.some((f) => /(^|\/)count-[\w-]+\.js$/.test(f))).toBe(true)
+  expect(files.some((f) => /(^|\/)knob-[\w-]+\.js$/.test(f))).toBe(true)
   expect(readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')).toMatch(/<cl-island c="count"[^>]*>/)
 }, 120_000)
 
@@ -80,9 +109,11 @@ test('#review: a prefix that isn\'t kebab-case, and exports that don\'t map the 
   expect(resolveLibraries(root, ['@acme/ui'])[0]!.files).toEqual(['dialog.tscl'])
 })
 
-test('#review: a components.json without names, or with odd values, reads as nothing', () => {
-  for (const text of ['{}', '{"names":null}', '{"names":{"a-b":5}}', 'nope']) {
+test('#review: a components.json without names reads as nothing; an odd entry is dropped, the rest kept', () => {
+  for (const text of ['{}', '{"names":null}', 'nope']) {
     const root = app({ '.clarusjs/components.json': text })
     expect(readComponentNames(root), text).toBeUndefined()
   }
+  const root = app({ '.clarusjs/components.json': '{"dirs":[5],"names":{"a-b":5,"c-d":[],"ui-tabs":"@acme/ui/tabs.tscl","e-f":["/a.tscl","/b.tscl"]}}' })
+  expect(readComponents(root)).toEqual({ names: { 'ui-tabs': '@acme/ui/tabs.tscl', 'e-f': ['/a.tscl', '/b.tscl'] } })
 })

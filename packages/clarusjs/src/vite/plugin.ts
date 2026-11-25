@@ -3,7 +3,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, watch as watchFs, writeFileSync } from 'node:fs'
 import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib'
-import { createRequire } from 'node:module'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
@@ -12,7 +11,7 @@ import { parse } from '../compiler/parse.ts'
 import { autoImport, COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
 import { componentNames, type LibraryOption } from './libraries.ts'
 import type { LintConfig, LintRuleDef } from '../compiler/lint.ts'
-import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, routeToFile } from './build.ts'
+import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, resolvePackage, routeToFile } from './build.ts'
 export { packageOf } from './build.ts'
 /** Newest commit time (unix seconds) of every file under a folder, from one `git log` (themes use it for "last updated"). */
 export { gitDates } from './sitemap.ts'
@@ -69,9 +68,7 @@ const scopeFor = (root: string, file: string) => scopeId(relative(root, file).sp
  */
 function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<string, { css: string[]; components: string[] }> {
   const deps = new Map<string, { css: string[]; components: string[] }>()
-  const require = createRequire(resolve(root, 'package.json'))
   const names = files.names(root)
-  const packageFile = (spec: string) => { try { return realpathSync(require.resolve(spec.replace(/\?.*$/, ''))) } catch { return undefined } }
   const read = (file: string) => {
     if (!deps.has(file)) {
       let parsed
@@ -86,8 +83,9 @@ function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<strin
         const path = from.replace(/\?.*$/, '')
         return path.startsWith('/') ? resolve(root, `.${path}`) : resolve(dirname(file), path)
       }
-      // A path alias (~/, tsconfig paths, Vite's resolve.alias), else a package specifier.
-      const bare = (from: string) => resolveAlias(from.replace(/\?.*$/, ''), aliases) ?? packageFile(from)
+      // A path alias (~/, tsconfig paths, Vite's resolve.alias), else a package specifier (from this file, then the app).
+      const packageFile = (spec: string) => { const found = resolvePackage(root, file, spec); return found && realpathSync(found) }
+      const bare = (from: string) => resolveAlias(from.replace(/\?.*$/, ''), aliases) ?? packageFile(from.replace(/\?.*$/, ''))
       deps.set(file, {
         css: parsed?.cssImports.map((c) => (/^[./]/.test(c.from) ? near(c.from) : bare(c.from))).filter((f): f is string => !!f) ?? [],
         // Components in packages too ('@clarusjs/theme-docs/layout.tscl'): their stylesheets are the page's as well.

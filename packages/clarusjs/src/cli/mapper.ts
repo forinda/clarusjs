@@ -7,14 +7,15 @@ import { existsSync } from 'node:fs'
 import { dirname, relative, resolve, sep } from 'node:path'
 import { generateTolerant } from '../check/generate.ts'
 import { COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
-import { readComponentNames } from '../vite/libraries.ts'
+import { readComponents } from '../vite/libraries.ts'
 import { findClarusFiles } from '../vite/build.ts'
 import { loaderOf } from './check.ts'
 
 /**
  * The components a file can use by name (#458), each as a path relative to it (TypeScript resolves those; the build's
- * root paths it doesn't). The project: the nearest folder above with a package.json. ponytail: the default folders,
- * listed on each transform; read the Vite config's `components.dirs`, and cache, if it shows.
+ * root paths it doesn't). The project: the nearest folder above with a package.json. Its folders: the config's
+ * `components.dirs`, as the plugin or check last wrote them, else the default ones. ponytail: listed on each
+ * transform; cache if it shows.
  */
 function namesFor(fileName: string): ComponentNames | undefined {
   let root = dirname(fileName)
@@ -22,13 +23,14 @@ function namesFor(fileName: string): ComponentNames | undefined {
     if (dirname(root) === root) return undefined
     root = dirname(root)
   }
+  const written = readComponents(root)
   const files = findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => relative(root, f).split(sep).join('/'))
   const rel = (path: string) => { const r = relative(dirname(fileName), resolve(root, path.slice(1))).split(sep).join('/'); return r.startsWith('.') ? r : `./${r}` }
   const names: ComponentNames = {}
-  for (const [name, path] of Object.entries(componentIndex(files, COMPONENT_DIRS).names)) names[name] = Array.isArray(path) ? path.map(rel) : rel(path)
+  for (const [name, path] of Object.entries(componentIndex(files, written?.dirs ?? COMPONENT_DIRS).names)) names[name] = Array.isArray(path) ? path.map(rel) : rel(path)
   // Component libraries' names, as the plugin or `clarusjs check` last wrote them (imported by package path). The
   // app's own come from its files above, so they're never stale and win.
-  for (const [name, path] of Object.entries(readComponentNames(root) ?? {})) if (!(name in names) && ![path].flat().some((p) => p.startsWith('/'))) names[name] = path
+  for (const [name, path] of Object.entries(written?.names ?? {})) if (!(name in names) && ![path].flat().some((p) => p.startsWith('/'))) names[name] = path
   return names
 }
 

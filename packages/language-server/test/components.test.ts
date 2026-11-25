@@ -157,6 +157,20 @@ test('#review: a components.json without names, or with odd values, is ignored (
   }
 })
 
+test('#review: the app\'s own components come from the folders components.json lists (the config\'s components.dirs)', async () => {
+  const { root, project, at } = await setup()
+  for (const file of ['src/widgets/user-card.tscl', 'src/components/old-card.tscl'].map((f) => resolve(root, f))) {
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, '<div></div>\n')
+    project.update(file, '<div></div>\n')
+  }
+  expect(labels(at('<§', completions))).toContain('old-card') // the default folders, before any run
+  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  writeFileSync(resolve(root, '.clarusjs/components.json'), JSON.stringify({ dirs: ['src/widgets'], names: {} }))
+  expect(labels(at('<§', completions))).toContain('user-card')
+  expect(labels(at('<§', completions))).not.toContain('old-card')
+})
+
 test('#442 @event: completed as a binding with its value type, and hovered', async () => {
   const { root, project, at } = await setup()
   const file = resolve(root, 'src/components/stepper.tscl')

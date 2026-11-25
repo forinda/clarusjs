@@ -169,3 +169,15 @@ test('transform: a library component used by name (from .clarusjs/components.jso
   const out = transform({ fileName: resolve(root, 'src/pages/index.tscl'), content: '<acme-dialog />\n' })
   expect(out.text).toContain('from "@acme/ui/dialog.tscl"')
 })
+
+test('#review: transform names the app\'s components from the folders the config lists (written to components.json)', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'cl-map-dirs-'))
+  writeFileSync(resolve(root, 'package.json'), '{}')
+  for (const dir of ['src/pages', 'src/components', 'src/widgets', '.clarusjs']) mkdirSync(resolve(root, dir), { recursive: true })
+  writeFileSync(resolve(root, 'src/components/acme-dialog.tscl'), '<div />\n') // not in the configured folders
+  writeFileSync(resolve(root, 'src/widgets/user-card.tscl'), '<div />\n')
+  writeFileSync(resolve(root, '.clarusjs/components.json'), JSON.stringify({ dirs: ['src/widgets'], names: { 'acme-dialog': '@acme/ui/dialog.tscl' } }))
+  const out = transform({ fileName: resolve(root, 'src/pages/index.tscl'), content: '<acme-dialog /><user-card />\n' })
+  expect(out.text).toContain('from "@acme/ui/dialog.tscl"')
+  expect(out.text).toContain('from "../widgets/user-card.tscl"')
+})
