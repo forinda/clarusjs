@@ -18,6 +18,9 @@
   import {
     countries,
     currency,
+    formatCard,
+    formatCvc,
+    formatExpiry,
     formatMoney,
     placeOrder,
     quantityOf,
@@ -76,6 +79,14 @@
     },
     { onError: () => toast("Couldn't place the order. Check your connection and try again.", { type: 'error' }) },
   )
+  // The card fields format as they're typed: the field shows the formatted value at once, and the order keeps it.
+  const formats = { card: formatCard, expiry: formatExpiry, cvc: formatCvc }
+  function format(key, event) {
+    const field = event.target
+    const next = formats[key](field.value, String(event.inputType).startsWith('delete'))
+    if (field.value !== next) field.value = next
+    order = { ...order, [key]: next }
+  }
   const server = () => (JSON.stringify(order) === sent ? (place.result?.errors ?? {}) : {})
   // This page's own rules first: an old answer never hides what's wrong now.
   const errors = () => ({ ...server(), ...validateOrder(order) })
@@ -200,7 +211,10 @@
         placeholder="1234 1234 1234 1234"
         [error]="error('card')"
         [show]="tried"
+        autocomplete="cc-number"
+        inputmode="numeric"
         [(value)]="order.card"
+        (input)="format('card', $event)"
       />
       <div class="checkout-row">
         <uiField
@@ -210,7 +224,10 @@
           placeholder="MM/YY"
           [error]="error('expiry')"
           [show]="tried"
+          autocomplete="cc-exp"
+          inputmode="numeric"
           [(value)]="order.expiry"
+          (input)="format('expiry', $event)"
         />
         <uiField
           id="checkout-cvc"
@@ -219,7 +236,10 @@
           placeholder="123"
           [error]="error('cvc')"
           [show]="tried"
+          autocomplete="cc-csc"
+          inputmode="numeric"
           [(value)]="order.cvc"
+          (input)="format('cvc', $event)"
         />
       </div>
     </fieldset>

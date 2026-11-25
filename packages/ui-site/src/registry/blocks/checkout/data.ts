@@ -57,6 +57,29 @@ export function formatMoney(cents: number, code: string = currency): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).format(cents / 100)
 }
 
+const digits = (v: string, max: number) => v.replace(/\D/g, '').slice(0, max)
+
+/** A card number as it's typed: digits only (19 at most), in groups of four. */
+export function formatCard(value: string): string {
+  return digits(value, 19).replace(/(\d{4})(?=\d)/g, '$1 ')
+}
+
+/**
+ * An expiry as it's typed, MM/YY: the slash comes once the month is done (not while deleting it), and a first digit
+ * no month starts with (2 to 9) is that month (4 is 04).
+ */
+export function formatExpiry(value: string, deleting = false): string {
+  let d = digits(value, 4)
+  if (/^[2-9]$/.test(d)) d = '0' + d
+  if (d.length > 2) return d.slice(0, 2) + '/' + d.slice(2)
+  return d.length === 2 && !deleting ? d + '/' : d
+}
+
+/** A CVC as it's typed: up to 4 digits. */
+export function formatCvc(value: string): string {
+  return digits(value, 4)
+}
+
 /** The Luhn check card numbers carry. */
 const luhn = (digits: string) =>
   [...digits]

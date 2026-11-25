@@ -342,6 +342,26 @@ test.describe('checkout block', () => {
     await expect(page.getByLabel('Email')).toHaveValue('ada@example.com')
   })
 
+  test('the card number groups in fours and the expiry takes MM/YY as they are typed, key by key', async ({ page }) => {
+    await gotoCheckout(page)
+    await fill(page, { card: '' })
+    const card = page.getByLabel('Card number')
+    await card.fill('')
+    await card.pressSequentially('4242424242424242')
+    await expect(card).toHaveValue('4242 4242 4242 4242')
+    await expect(card).toBeFocused()
+    await expect(card).toHaveAttribute('autocomplete', 'cc-number')
+    await expect(card).toHaveAttribute('inputmode', 'numeric')
+    const expiry = page.getByLabel('Expiry')
+    await expiry.fill('')
+    await expiry.pressSequentially('1230')
+    await expect(expiry).toHaveValue('12/30')
+    await expiry.press('Backspace')
+    await expiry.press('Backspace') // the slash goes, and isn't put back
+    await expect(expiry).toHaveValue('12')
+    await expect(page.getByLabel('CVC')).toHaveAttribute('autocomplete', 'cc-csc')
+  })
+
   test('a declined card: a toast, the error on its field, focused; a good card places the order', async ({ page }) => {
     await gotoCheckout(page)
     await fill(page, { card: '4000 0000 0000 0002' })

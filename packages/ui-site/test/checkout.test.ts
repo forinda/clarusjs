@@ -1,6 +1,9 @@
 // The checkout block's rules: totals in whole cents, and what an order needs before placeOrder is called.
 import { expect, test } from 'vitest'
 import {
+  formatCard,
+  formatCvc,
+  formatExpiry,
   formatMoney,
   placeOrder,
   quantityOf,
@@ -103,4 +106,17 @@ test("validateStep: only that step's fields, by its Zod schema", () => {
   expect(Object.keys(validateStep(1, blank, now)).sort()).toEqual(['address', 'city', 'country', 'name', 'postal'])
   expect(validateStep(1, { ...blank, ...good, card: '' }, now)).toEqual({})
   expect(validateStep(2, { ...good, cvc: 'x' }, now)).toEqual({ cvc: 'Use the 3 or 4 digits on the card.' })
+})
+
+test('card fields format as they are typed: the number in fours, the expiry as MM/YY, the CVC in digits', () => {
+  expect(formatCard('4242424242424242')).toBe('4242 4242 4242 4242')
+  expect(formatCard('4242 42a4-2')).toBe('4242 4242')
+  expect(formatCard('1'.repeat(25))).toBe('1111 1111 1111 1111 111') // 19 digits at most
+  expect(formatExpiry('1')).toBe('1')
+  expect(formatExpiry('12')).toBe('12/') // the slash comes as the month is done
+  expect(formatExpiry('12/', true)).toBe('12') // but not while deleting it
+  expect(formatExpiry('1230')).toBe('12/30')
+  expect(formatExpiry('12/305')).toBe('12/30')
+  expect(formatExpiry('4')).toBe('04/') // no month starts with 4: it's April
+  expect(formatCvc('12a34 5')).toBe('1234')
 })
