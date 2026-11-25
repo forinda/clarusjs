@@ -100,7 +100,7 @@ order: 1
 - **Left out:** `sidebar: false`, dynamic routes (`[step].tscl`) and files or folders starting with `_`.
 - **The config wins:** an item it lists replaces the page with the same `href`, so it can rename or move a page and add entries that aren't pages.
 - An empty `href` on a section means its first page.
-- **Icons and collapsing:** a group's `icon` shows beside its title (`info`, `code`, `box`, `shield`, `download`, `book`, `terminal`, `sparkles`, `layers`, `wrench`, `rocket`, `file`), and `collapsed: true` keeps it closed until opened. The group holding the current page is always open, and opening and closing needs no JavaScript.
+- **Icons and collapsing:** a group's `icon` shows beside its title (`info`, `code`, `box`, `shield`, `download`, `book`, `terminal`, `sparkles`, `layers`, `wrench`, `rocket`, `file`, and for a component library's groups `form`, `pointer`, `table`, `panel`, `overlay`, `menu`, `chart`, `message`, `image`, `grid`), and `collapsed: true` keeps it closed until opened. The group holding the current page is always open, and opening and closing needs no JavaScript.
 - **Badges:** a page's frontmatter `badge: "New"` (or an item's `badge`) shows a small label beside it.
 - **The phone drawer:** "Menu", a switch between the sections (leave one out with `switch: false` on it), the groups, and a row of links at the bottom: the config's `menuLinks` (`[{ label: 'Releases', href: '/releases' }]`), then its `social` links.
 

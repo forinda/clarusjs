@@ -1,6 +1,6 @@
 ---
 title: "Textarea"
-group: "Components"
+group: "Form"
 order: 3
 description: "A native multi-line text field that grows with resize."
 ---

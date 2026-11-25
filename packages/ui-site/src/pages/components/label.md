@@ -1,6 +1,6 @@
 ---
 title: "Label"
-group: "Components"
+group: "Form"
 order: 4
 description: "A native label for a field."
 ---

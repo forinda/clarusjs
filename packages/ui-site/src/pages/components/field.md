@@ -1,6 +1,6 @@
 ---
 title: "Field"
-group: "Components"
+group: "Form"
 order: 17
 description: "A label, an input, a description and an error, wired together."
 ---

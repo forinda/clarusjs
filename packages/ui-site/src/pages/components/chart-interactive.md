@@ -1,6 +1,6 @@
 ---
 title: "Chart (interactive)"
-group: "Components"
+group: "Chart"
 order: 28
 description: "A chart with a range switch and a tooltip that follows the pointer or the arrow keys."
 ---

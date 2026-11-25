@@ -1,6 +1,6 @@
 ---
 title: "Alert dialog"
-group: "Components"
+group: "Overlay"
 order: 37
 description: "A dialog that asks before something can't be undone."
 ---

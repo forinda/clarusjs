@@ -1,6 +1,6 @@
 ---
 title: "Combobox"
-group: "Components"
+group: "Form"
 order: 24
 description: "A text field that filters a list of options as you type."
 ---

@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { compile } from 'clarusjs/compiler'
 import { expect, test } from 'vitest'
-import { blocks, codeFiles, components, registry } from '../src/registry.ts'
+import { COMPONENT_GROUPS, blocks, codeFiles, components, registry } from '../src/registry.ts'
 import { registryDir, render, source } from './render.ts'
 import { globalStyle, uiSection } from './css.ts'
 
@@ -412,4 +412,15 @@ test('codeFiles: a block\'s own files, then each component it uses, named as the
   expect(codeFiles(login)[3]!.file).toBe('card.tscl')
   const checkout = blocks.find((b) => b.name === 'checkout')!
   expect(codeFiles(checkout).map((f) => f.path)).toEqual(['checkout.tscl', 'checkout-form.tscl', 'data.ts', 'components/ui/field.tscl', 'components/ui/input.tscl', 'components/ui/button.tscl', 'components/ui/separator.tscl', 'components/ui/select.css', 'components/ui/toast.css'])
+})
+
+test('every component sits in one of the groups (PrimeVue\'s), and its page\'s frontmatter group says the same', () => {
+  expect(COMPONENT_GROUPS).toEqual(['Form', 'Button', 'Data', 'Panel', 'Overlay', 'Menu', 'Chart', 'Messages', 'Media', 'Misc'])
+  for (const c of components) {
+    expect(COMPONENT_GROUPS, c.name).toContain(c.group)
+    const page = readFileSync(resolve(import.meta.dirname, `../src/pages/components/${c.name}.md`), 'utf8')
+    expect(/^group: "([^"]+)"$/m.exec(page)?.[1], c.name).toBe(c.group)
+  }
+  const used = new Set(components.map((c) => c.group))
+  for (const g of COMPONENT_GROUPS) expect(used.has(g), g).toBe(true)
 })

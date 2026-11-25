@@ -1,6 +1,6 @@
 ---
 title: "Button"
-group: "Components"
+group: "Button"
 order: 1
 description: "A native button in six variants and three sizes."
 ---

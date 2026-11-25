@@ -1,6 +1,6 @@
 ---
 title: "Breadcrumb"
-group: "Components"
+group: "Menu"
 order: 29
 description: "Where a page sits in the site, as links back up."
 ---

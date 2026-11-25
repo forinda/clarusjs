@@ -1,6 +1,6 @@
 ---
 title: "Chart"
-group: "Components"
+group: "Chart"
 order: 27
 description: "An area, line or bar chart drawn as SVG on the server, coloured by the chart tokens."
 ---

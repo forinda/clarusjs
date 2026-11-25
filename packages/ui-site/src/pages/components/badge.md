@@ -1,6 +1,6 @@
 ---
 title: "Badge"
-group: "Components"
+group: "Misc"
 order: 6
 description: "A short label, in four variants."
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Button group"
-group: "Components"
+group: "Button"
 order: 33
 description: "Buttons that belong together, joined into one row."
 ---

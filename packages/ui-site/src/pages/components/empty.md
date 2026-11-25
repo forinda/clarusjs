@@ -1,6 +1,6 @@
 ---
 title: "Empty"
-group: "Components"
+group: "Misc"
 order: 32
 description: "What to show when there is nothing yet, with a way to start."
 ---

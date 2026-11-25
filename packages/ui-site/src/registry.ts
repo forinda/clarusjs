@@ -1,9 +1,14 @@
 // Every component people can copy. src/registry/ is laid out like the components folder they copy into: each
 // entry's files, flat, and next to them its usage example (<name>-demo.tscl), which imports them as ./<file>. The pages' "needs" lists and the home
 // page's list come from here (and, later, the registry JSON a CLI would read).
+/** The component groups, as PrimeVue groups its own, in sidebar order. */
+export const COMPONENT_GROUPS = ['Form', 'Button', 'Data', 'Panel', 'Overlay', 'Menu', 'Chart', 'Messages', 'Media', 'Misc'] as const
+
 export type Entry = {
   /** A component (the default), or a block: a whole page built from components, in src/registry/blocks/<name>/. */
   kind?: 'component' | 'block'
+  /** A component's group in the sidebar and lists (one of COMPONENT_GROUPS). */
+  group?: (typeof COMPONENT_GROUPS)[number]
   /** A block's category on /blocks ('Authentication'), to group and filter by. */
   category?: string
   /** Page name, and the usage example's: 'button' (button-demo.tscl). */
@@ -33,6 +38,7 @@ export type Entry = {
 export const registry: Entry[] = [
   {
     name: 'button',
+    group: 'Button',
     title: 'Button',
     description: 'A native button in six variants and three sizes.',
     files: ['button.tscl'],
@@ -42,6 +48,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'input',
+    group: 'Form',
     title: 'Input',
     description: 'A native text field, styled, with an invalid state from aria-invalid.',
     files: ['input.tscl'],
@@ -52,6 +59,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'textarea',
+    group: 'Form',
     title: 'Textarea',
     description: 'A native multi-line text field that grows with resize.',
     files: ['textarea.tscl'],
@@ -62,6 +70,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'label',
+    group: 'Form',
     title: 'Label',
     description: 'A native label for a field.',
     files: ['label.tscl'],
@@ -71,6 +80,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'card',
+    group: 'Panel',
     title: 'Card',
     description: 'A box with a header, a body and a footer.',
     files: ['card.tscl'],
@@ -81,6 +91,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'badge',
+    group: 'Misc',
     title: 'Badge',
     description: 'A short label, in four variants.',
     files: ['badge.tscl'],
@@ -90,6 +101,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'alert',
+    group: 'Messages',
     title: 'Alert',
     description: 'A message box with a title, plain or destructive.',
     files: ['alert.tscl'],
@@ -99,6 +111,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'separator',
+    group: 'Panel',
     title: 'Separator',
     description: 'A line between content, horizontal or vertical.',
     files: ['separator.tscl'],
@@ -108,6 +121,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'skeleton',
+    group: 'Misc',
     title: 'Skeleton',
     description: 'A pulsing placeholder while content loads.',
     files: ['skeleton.tscl'],
@@ -117,6 +131,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'avatar',
+    group: 'Media',
     title: 'Avatar',
     description: 'A round picture of someone, or their initials.',
     files: ['avatar.tscl'],
@@ -126,6 +141,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'kbd',
+    group: 'Misc',
     title: 'Kbd',
     description: 'A key to press, as in Ctrl K.',
     files: ['kbd.tscl'],
@@ -135,6 +151,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'table',
+    group: 'Data',
     title: 'Table',
     description: 'A native table that scrolls sideways on small screens.',
     files: ['table.tscl'],
@@ -144,6 +161,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'accordion',
+    group: 'Panel',
     title: 'Accordion',
     description: 'Questions that open one at a time, on native details.',
     files: ['accordion.tscl'],
@@ -155,6 +173,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'checkbox',
+    group: 'Form',
     title: 'Checkbox',
     description: 'A native checkbox with its label.',
     files: ['checkbox.tscl'],
@@ -166,6 +185,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'switch',
+    group: 'Form',
     title: 'Switch',
     description: 'An on/off switch on a native checkbox.',
     files: ['switch.tscl'],
@@ -177,6 +197,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'radio-group',
+    group: 'Form',
     title: 'Radio group',
     description: 'Native radios in a fieldset: one choice from a few.',
     files: ['radio-group.tscl'],
@@ -188,6 +209,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'field',
+    group: 'Form',
     title: 'Field',
     description: 'A label, an input, a description and an error, wired together.',
     files: ['field.tscl'],
@@ -200,6 +222,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'dialog',
+    group: 'Overlay',
     title: 'Dialog',
     description: 'A modal dialog on native <dialog>: focus kept in it, Escape and a click outside close it.',
     files: ['dialog.css'],
@@ -211,6 +234,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'popover',
+    group: 'Overlay',
     title: 'Popover',
     description: 'A panel anchored to its trigger, on the popover attribute.',
     files: ['popover.css'],
@@ -222,6 +246,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'tooltip',
+    group: 'Overlay',
     title: 'Tooltip',
     description: 'A short hint on hover and focus.',
     files: ['tooltip.css'],
@@ -233,6 +258,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'menu',
+    group: 'Menu',
     title: 'Menu',
     description: 'A menu of actions: arrow keys, typeahead, Escape.',
     files: ['menu.css'],
@@ -244,6 +270,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'tabs',
+    group: 'Panel',
     title: 'Tabs',
     description: 'Tabs over panels you write: arrow keys, Home and End, ARIA from the server.',
     files: ['tabs.css'],
@@ -255,6 +282,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'select',
+    group: 'Form',
     title: 'Select',
     description: 'A native select with its label, bound two ways.',
     files: ['select.css'],
@@ -266,6 +294,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'combobox',
+    group: 'Form',
     title: 'Combobox',
     description: 'A text field that filters a list of options as you type.',
     files: ['combobox.css'],
@@ -277,6 +306,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'progress',
+    group: 'Misc',
     title: 'Progress',
     description: 'A native progress bar; without a value, it shows work in progress.',
     files: ['progress.tscl'],
@@ -286,6 +316,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'meter',
+    group: 'Misc',
     title: 'Meter',
     description: 'A native meter for a value in a known range.',
     files: ['meter.tscl'],
@@ -295,6 +326,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'chart',
+    group: 'Chart',
     title: 'Chart',
     description: 'An area, line or bar chart drawn as SVG on the server, coloured by the chart tokens.',
     files: ['chart.tscl', 'chart-geometry.ts'],
@@ -304,6 +336,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'chart-interactive',
+    group: 'Chart',
     title: 'Chart (interactive)',
     description: 'A chart with a range switch and a tooltip that follows the pointer or the arrow keys.',
     files: ['chart-interactive.tscl'],
@@ -313,6 +346,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'spinner',
+    group: 'Misc',
     title: 'Spinner',
     description: 'A turning mark that tells screen readers it is loading.',
     files: ['spinner.tscl'],
@@ -322,6 +356,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'slider',
+    group: 'Form',
     title: 'Slider',
     description: 'A native range input, styled.',
     files: ['slider.tscl'],
@@ -332,6 +367,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'breadcrumb',
+    group: 'Menu',
     title: 'Breadcrumb',
     description: 'Where a page sits in the site, as links back up.',
     files: ['breadcrumb.tscl'],
@@ -341,6 +377,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'pagination',
+    group: 'Data',
     title: 'Pagination',
     description: 'Links to the pages of a long list, shortened with ellipses.',
     files: ['pagination.tscl'],
@@ -350,6 +387,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'collapsible',
+    group: 'Panel',
     title: 'Collapsible',
     description: 'Content that opens and closes under a trigger, on native details.',
     files: ['collapsible.tscl'],
@@ -359,6 +397,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'empty',
+    group: 'Misc',
     title: 'Empty',
     description: 'What to show when there is nothing yet, with a way to start.',
     files: ['empty.tscl'],
@@ -369,6 +408,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'button-group',
+    group: 'Button',
     title: 'Button group',
     description: 'Buttons that belong together, joined into one row.',
     files: ['button-group.tscl'],
@@ -379,6 +419,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'input-group',
+    group: 'Form',
     title: 'Input group',
     description: 'A field with text or icons before and after it.',
     files: ['input-group.tscl'],
@@ -389,6 +430,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'aspect-ratio',
+    group: 'Panel',
     title: 'Aspect ratio',
     description: 'A box that keeps its shape as its width changes.',
     files: ['aspect-ratio.tscl'],
@@ -398,6 +440,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'sheet',
+    group: 'Overlay',
     title: 'Sheet',
     description: 'A dialog against one side of the screen, for navigation, filters or a form.',
     files: ['sheet.css'],
@@ -409,6 +452,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'alert-dialog',
+    group: 'Overlay',
     title: 'Alert dialog',
     description: "A dialog that asks before something can't be undone.",
     files: ['alert-dialog.tscl'],
@@ -419,6 +463,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'toggle',
+    group: 'Form',
     title: 'Toggle',
     description: 'A button that is on or off, alone or in a group with one Tab stop.',
     files: ['toggle.css'],
@@ -430,6 +475,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'toast',
+    group: 'Messages',
     title: 'Toast',
     description: 'Short messages any island can send, announced politely, gone after a few seconds.',
     files: ['toast.css'],
@@ -442,6 +488,7 @@ export const registry: Entry[] = [
   },
   {
     name: 'sidebar',
+    group: 'Menu',
     title: 'Sidebar',
     description: 'App navigation beside the page that collapses, and opens as a panel on phones.',
     files: ['sidebar.css'],

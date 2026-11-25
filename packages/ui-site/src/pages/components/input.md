@@ -1,6 +1,6 @@
 ---
 title: "Input"
-group: "Components"
+group: "Form"
 order: 2
 description: "A native text field, styled, with an invalid state from aria-invalid."
 ---

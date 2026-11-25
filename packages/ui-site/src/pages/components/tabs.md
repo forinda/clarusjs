@@ -1,6 +1,6 @@
 ---
 title: "Tabs"
-group: "Components"
+group: "Panel"
 order: 22
 description: "Tabs over panels you write: arrow keys, Home and End, ARIA from the server."
 ---

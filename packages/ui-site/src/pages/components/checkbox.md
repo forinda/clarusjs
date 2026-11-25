@@ -1,6 +1,6 @@
 ---
 title: "Checkbox"
-group: "Components"
+group: "Form"
 order: 14
 description: "A native checkbox with its label."
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Alert"
-group: "Components"
+group: "Messages"
 order: 7
 description: "A message box with a title, plain or destructive."
 ---

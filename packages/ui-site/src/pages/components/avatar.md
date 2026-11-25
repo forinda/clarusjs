@@ -1,6 +1,6 @@
 ---
 title: "Avatar"
-group: "Components"
+group: "Media"
 order: 10
 description: "A round picture of someone, or their initials."
 ---

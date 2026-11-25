@@ -1,6 +1,6 @@
 ---
 title: "Toast"
-group: "Components"
+group: "Messages"
 order: 39
 description: "Short messages any island can send, announced politely, gone after a few seconds."
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Sheet"
-group: "Components"
+group: "Overlay"
 order: 36
 description: "A dialog against one side of the screen, for navigation, filters or a form."
 ---

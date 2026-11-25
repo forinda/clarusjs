@@ -1,6 +1,6 @@
 ---
 title: "Accordion"
-group: "Components"
+group: "Panel"
 order: 13
 description: "Questions that open one at a time, on native details."
 ---

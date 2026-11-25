@@ -1,6 +1,6 @@
 ---
 title: "Select"
-group: "Components"
+group: "Form"
 order: 23
 description: "A native select with its label, bound two ways."
 ---

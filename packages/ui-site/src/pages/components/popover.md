@@ -1,6 +1,6 @@
 ---
 title: "Popover"
-group: "Components"
+group: "Overlay"
 order: 19
 description: "A panel anchored to its trigger, on the popover attribute."
 ---

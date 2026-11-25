@@ -1,6 +1,6 @@
 ---
 title: "Slider"
-group: "Components"
+group: "Form"
 order: 28
 description: "A native range input, styled."
 ---

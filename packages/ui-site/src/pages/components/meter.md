@@ -1,6 +1,6 @@
 ---
 title: "Meter"
-group: "Components"
+group: "Misc"
 order: 26
 description: "A native meter for a value in a known range."
 ---

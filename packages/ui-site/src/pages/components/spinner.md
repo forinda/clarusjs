@@ -1,6 +1,6 @@
 ---
 title: "Spinner"
-group: "Components"
+group: "Misc"
 order: 27
 description: "A turning mark that tells screen readers it is loading."
 ---

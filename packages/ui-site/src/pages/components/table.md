@@ -1,6 +1,6 @@
 ---
 title: "Table"
-group: "Components"
+group: "Data"
 order: 12
 description: "A native table that scrolls sideways on small screens."
 ---

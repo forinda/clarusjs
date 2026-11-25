@@ -1,6 +1,6 @@
 ---
 title: "Pagination"
-group: "Components"
+group: "Data"
 order: 30
 description: "Links to the pages of a long list, shortened with ellipses."
 ---
