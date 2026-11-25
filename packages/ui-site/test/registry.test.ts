@@ -43,12 +43,14 @@ test('every block has a page at src/pages/blocks/<name>.md showing every file to
 const specifiers = (file: string) => [...source(file).matchAll(/(?:@import|^\s*import)\s[^'"]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!)
 const shared = (s: string) => /^@clarusjs\/ui-primitives(\/|$)/.test(s) || /^clarusjs(\/|$)/.test(s)
 
-test('copied files import only ui-primitives, clarusjs and the entries they list in uses', () => {
+test('copied files import only ui-primitives, clarusjs, their own files and those of the entries they list in uses', () => {
   for (const { entry, file } of files) {
     if (entry.kind === 'block') continue
     for (const s of specifiers(file)) {
-      const local = /^\.\/([a-z-]+)\.tscl$/.exec(s)?.[1]
-      const ok = shared(s) || (!!local && (entry.uses.includes(local) || entry.files.includes(`${local}.tscl`)))
+      // ./x: one of its own files, or of an entry it uses (chart-interactive takes chart-geometry.ts's types).
+      const local = /^\.\/([\w.-]+)$/.exec(s)?.[1]
+      const copied = [...entry.files, ...entry.uses.flatMap((u) => registry.find((e) => e.name === u)?.files ?? [])]
+      const ok = shared(s) || (!!local && copied.includes(local))
       expect(ok, `${file} imports ${s}`).toBe(true)
     }
   }

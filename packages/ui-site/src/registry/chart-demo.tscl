@@ -1,0 +1,31 @@
+@import uiChart from './chart.tscl'
+
+<div class="demo">
+  <uiChart
+    label="Visitors this week"
+    [labels]="['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']"
+    [series]="[
+      { name: 'Desktop', values: [186, 305, 237, 273, 209, 214, 160] },
+      { name: 'Mobile', values: [80, 200, 120, 190, 130, 140, 110] },
+    ]"
+  />
+  <uiChart
+    label="Sign-ups by month"
+    type="bar"
+    [height]="180"
+    [labels]="['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']"
+    [series]="[{ name: 'Sign-ups', values: [42, 58, 51, 77, 69, 94] }]"
+  />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-8);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

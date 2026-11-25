@@ -1,0 +1,165 @@
+{{--
+  Interactive chart: chart.tscl with a range switch (the last 7, 30, 90 points…) and a tooltip that follows the pointer
+  or, with the plot focused, the arrow keys (Home and End for the ends, Escape to hide it). The tooltip is a polite live
+  region, so screen readers hear the point.
+--}}
+@import uiChart from './chart.tscl'
+@import type { Series } from './chart-geometry.ts'
+@input label: string
+@input labels: string[]
+@input series: Series[]
+@input type: 'area' | 'line' | 'bar' = 'area'
+@input height: number = 240
+@input ranges: { label: string; last: number }[] = []
+
+<script>
+  let last = state(ranges[0]?.last ?? labels.length)
+  let active = state(-1)
+  const shownLabels = () => labels.slice(-last)
+  const shownSeries = () => series.map((s) => ({ ...s, values: s.values.slice(-last) }))
+  const count = () => shownLabels().length
+  // Where point i sits across the plot, in %: bars are centred in their slot.
+  const at = (i) => (type === 'bar' ? ((i + 0.5) / count()) * 100 : count() === 1 ? 50 : (i / (count() - 1)) * 100)
+  function pick(range) {
+    last = range
+    active = -1
+  }
+  function point(event) {
+    const box = event.currentTarget.querySelector('[data-part="chart-plot"]')?.getBoundingClientRect()
+    if (!box || !count()) return
+    const f = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width))
+    active = type === 'bar' ? Math.min(count() - 1, Math.floor(f * count())) : Math.round(f * (count() - 1))
+  }
+  function key(event) {
+    const n = count()
+    const to = {
+      ArrowRight: Math.min(n - 1, active + 1),
+      ArrowLeft: Math.max(0, active < 0 ? n - 1 : active - 1),
+      Home: 0,
+      End: n - 1,
+      Escape: -1,
+    }[event.key]
+    if (to === undefined) return
+    event.preventDefault()
+    active = to
+  }
+</script>
+
+<div data-part="chart-interactive">
+  @if (ranges.length) {
+    <div data-part="chart-ranges" role="group" aria-label="Range">
+      @for (r of ranges; track r.last) {
+        <button type="button" [aria-pressed]="last === r.last ? 'true' : 'false'" (click)="pick(r.last)">
+          {{ r.label }}
+        </button>
+      }
+    </div>
+  }
+  <div
+    data-part="chart-surface"
+    tabindex="0"
+    role="group"
+    [aria-label]="label + ': the arrow keys read each point'"
+    (pointermove)="point($event)"
+    (pointerleave)="active = -1"
+    (keydown)="key($event)"
+  >
+    <uiChart [label]="label" [labels]="shownLabels()" [series]="shownSeries()" [type]="type" [height]="height" />
+    <div data-part="chart-guide" [hidden]="active < 0" [style]="'left: ' + at(active) + '%'"></div>
+    <div
+      data-part="chart-tooltip"
+      role="status"
+      aria-live="polite"
+      [hidden]="active < 0"
+      [style]="'--ui-tooltip-x: ' + at(active)"
+    >
+      @if (active >= 0) {
+        <strong>{{ shownLabels()[active] }}</strong>
+        @for (s of shownSeries(); track s.name) {
+          <span [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'"
+            >{{ s.name }}: {{ s.values[active] }}</span
+          >
+        }
+      }
+    </div>
+  </div>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: var(--ui-space-3);
+    }
+    :where([data-part='chart-ranges']) {
+      display: flex;
+      flex-wrap: wrap;
+      justify-self: end;
+      gap: var(--ui-space-1);
+      padding: var(--ui-space-1);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+    }
+    :where([data-part='chart-ranges'] button) {
+      padding: var(--ui-space-1) var(--ui-space-3);
+      border: 0;
+      border-radius: calc(var(--ui-radius) - 2px);
+      background: transparent;
+      color: var(--ui-muted);
+      font: var(--ui-font-size) var(--ui-font);
+      cursor: pointer;
+    }
+    :where([data-part='chart-ranges'] button[aria-pressed='true']) {
+      background: var(--ui-muted-bg);
+      color: var(--ui-fg);
+    }
+    :where([data-part='chart-ranges'] button:focus-visible),
+    :where([data-part='chart-surface']:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+    :where([data-part='chart-surface']) {
+      position: relative;
+      border-radius: var(--ui-radius);
+    }
+    :where([data-part='chart-guide']) {
+      position: absolute;
+      top: 0;
+      bottom: 40px;
+      width: 1px;
+      background: var(--ui-border);
+      pointer-events: none;
+    }
+    :where([data-part='chart-tooltip']) {
+      position: absolute;
+      top: 0;
+      left: clamp(0px, calc(var(--ui-tooltip-x) * 1%), calc(100% - 12rem));
+      display: grid;
+      gap: var(--ui-space-1);
+      min-width: 9rem;
+      max-width: 12rem;
+      padding: var(--ui-space-2) var(--ui-space-3);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-popover);
+      color: var(--ui-popover-fg);
+      box-shadow: var(--ui-shadow);
+      font-size: calc(var(--ui-font-size) - 1px);
+      pointer-events: none;
+    }
+    :where([data-part='chart-tooltip'] span)::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: var(--ui-space-2);
+      border-radius: 2px;
+      background: var(--ui-series);
+    }
+    :where([data-part='chart-guide'][hidden]),
+    :where([data-part='chart-tooltip'][hidden]) {
+      display: none;
+    }
+  }
+</style>

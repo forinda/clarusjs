@@ -26,3 +26,11 @@
   [app]="app"
   >@slot('header-end') {<themeSheet />}@if (!app) {<themeReset />}<slot /><toastRegion
 /></docsTheme>
+
+<style global>
+  /* The docs theme makes Markdown tables scroll (display: block); a chart's data table stays a table. */
+  .content [data-part='chart-table'] {
+    display: table;
+    overflow: visible;
+  }
+</style>
