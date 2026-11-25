@@ -36,6 +36,6 @@ layout: "/src/layouts/wide.tscl"
 
 Copy `checkout.tscl` into `src/pages/`, `checkout-form.tscl` and `data.ts` beside it, and the components under Code into `src/components/ui/`. Install `zod` (the rules are a Zod schema per step). In `data.ts`, put your cart in `sampleCart` (or load it), set `currency`, `shippingCents` and `taxRate`, and replace `placeOrder` with your own: it gets the order with its lines, and returns `{ errors: { card: '…' } }` to show an error on a field, or `{ id }` when it worked. A toast says which; the page brings its own `<toastRegion />`, so drop it if your layout has one. Money is whole cents throughout.
 
-The sample declines the card `4000 0000 0000 0002` and fails for `offline@example.com`; `4242 4242 4242 4242` goes through.
+The sample declines the card `4000 0000 0000 0002` and fails for `offline@example.com`; `4242 4242 4242 4242` goes through. Numbers that fail the Luhn check every card number carries (`1111 1111 1111 1111`) say "Check the card number.", as a real card form would.
 
 <needs name="checkout" />

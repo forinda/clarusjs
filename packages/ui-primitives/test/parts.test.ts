@@ -66,6 +66,13 @@ test('field: label, control, description and error wired by id; the error shows 
   expect(shown).toContain('<p id="email-error" data-part="error" role="alert">Required</p>')
 })
 
+test('field: autocomplete and inputmode reach the input (card numbers: autofill and a number pad), and are left out when unset', async () => {
+  const card = await render('field', { id: 'card', label: 'Card number', autocomplete: 'cc-number', inputmode: 'numeric' })
+  expect(card).toMatch(/<input id="card"[^>]* autocomplete="cc-number" inputmode="numeric"/)
+  const plain = await render('field', { id: 'email', label: 'Email' })
+  expect(plain).not.toMatch(/autocomplete|inputmode/)
+})
+
 test('every part type-checks and lints clean (clarusjs check --strict, as a project of them)', async () => {
   const { check } = await import(pathToFileURL(resolve(import.meta.dirname, '../node_modules/clarusjs/src/cli/check.ts')).href)
   const { cpSync, mkdirSync, mkdtempSync, readdirSync, symlinkSync, writeFileSync } = await import('node:fs')
