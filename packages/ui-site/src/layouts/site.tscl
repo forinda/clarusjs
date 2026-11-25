@@ -47,4 +47,8 @@
   .content [data-part='prose'] * {
     all: revert-layer;
   }
+  /* The docs theme spaces every paragraph (unlayered, so it wins): a toast's message is one, and stays flush. */
+  [data-part='toast-message'] {
+    margin: 0;
+  }
 </style>
