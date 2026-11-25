@@ -1,0 +1,93 @@
+{{-- Date picker, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as date-picker.tscl.
+     Copy it into src/components/ui/ as date-picker.tscl. --}}
+@import uiCalendar from './calendar.tscl'
+@input id: string
+@input label: string
+@input name: string = 'date'
+@input placeholder: string = 'Pick a date'
+@input range: boolean = false
+@input min: string = ''
+@input max: string = ''
+@input locale: string = 'en-US'
+@input firstDay: number = 0
+@model value: string = ''
+@model end: string = ''
+
+<script>
+  import { parseIso } from './calendar-dates.ts'
+  const format = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+  const text = () => {
+    const a = parseIso(value)
+    const b = parseIso(end)
+    if (range && a && b) return format.formatRange(a, b)
+    if (a) return range ? format.format(a) + ' – …' : format.format(a)
+    return placeholder
+  }
+  const popover = () => document.getElementById(`${id}-popover`)
+  // A day picked: done once there's a date (both, for a range); the focus goes back to the button.
+  function chosen() {
+    if (range && !(value && end)) return
+    popover()?.hidePopover()
+    document.getElementById(`${id}-trigger`)?.focus()
+  }
+  // Opened: the keyboard starts on the chosen day (or today).
+  function toggled(event) {
+    if (event.newState !== 'open') return
+    requestAnimationFrame(() => {
+      const day = popover()?.querySelector('[data-part="calendar-day"][tabindex="0"]')
+      if (day instanceof HTMLElement) day.focus()
+    })
+  }
+</script>
+
+<div
+  data-part="date-picker"
+  [data-empty]="value ? false : 'true'"
+  class="
+    inline-grid gap-1 text-foreground font-sans text-(length:--ui-font-size) leading-[normal]
+    [&_[data-part=date-picker-label]]:font-medium
+    [&_[data-part=date-picker-trigger]]:inline-flex [&_[data-part=date-picker-trigger]]:gap-2 [&_[data-part=date-picker-trigger]]:items-center [&_[data-part=date-picker-trigger]]:min-w-[14rem] [&_[data-part=date-picker-trigger]]:min-h-[var(--ui-control-h,var(--ui-control-md))] [&_[data-part=date-picker-trigger]]:px-3 [&_[data-part=date-picker-trigger]]:border [&_[data-part=date-picker-trigger]]:border-input [&_[data-part=date-picker-trigger]]:rounded-lg [&_[data-part=date-picker-trigger]]:bg-background [&_[data-part=date-picker-trigger]]:text-foreground [&_[data-part=date-picker-trigger]]:font-[inherit] [&_[data-part=date-picker-trigger]]:text-start [&_[data-part=date-picker-trigger]]:cursor-pointer
+    [&[data-empty=true]_[data-part=date-picker-trigger]]:text-muted-foreground [&_[data-part=date-picker-trigger]:focus-visible]:outline-2 [&_[data-part=date-picker-trigger]:focus-visible]:outline-ring [&_[data-part=date-picker-trigger]:focus-visible]:outline-offset-1
+    [&_[data-part=date-picker-popover]]:[position-area:bottom_span-right] [&_[data-part=date-picker-popover]]:[position-try-fallbacks:flip-block] [&_[data-part=date-picker-popover]]:my-1 [&_[data-part=date-picker-popover]]:mx-0 [&_[data-part=date-picker-popover]]:p-0 [&_[data-part=date-picker-popover]]:border [&_[data-part=date-picker-popover]]:border-border [&_[data-part=date-picker-popover]]:rounded-lg [&_[data-part=date-picker-popover]]:bg-popover [&_[data-part=date-picker-popover]]:text-popover-foreground [&_[data-part=date-picker-popover]]:[box-shadow:var(--ui-shadow)]
+  "
+>
+  <span [id]="id + '-label'" data-part="date-picker-label">{{ label }}</span>
+  <button
+    type="button"
+    [id]="id + '-trigger'"
+    [popovertarget]="id + '-popover'"
+    aria-haspopup="dialog"
+    [aria-labelledby]="id + '-label ' + id + '-text'"
+    [style]="'anchor-name: --' + id"
+    data-part="date-picker-trigger"
+  >
+    <icon name="lucide:calendar" />
+    <span [id]="id + '-text'">{{ text() }}</span>
+  </button>
+  <div
+    [id]="id + '-popover'"
+    popover="auto"
+    role="dialog"
+    [aria-label]="label"
+    [style]="'position-anchor: --' + id"
+    data-part="date-picker-popover"
+    (toggle)="toggled($event)"
+  >
+    <uiCalendar
+      [id]="id + '-calendar'"
+      [label]="label"
+      [range]="range"
+      [min]="min"
+      [max]="max"
+      [locale]="locale"
+      [firstDay]="firstDay"
+      [(value)]="value"
+      [(end)]="end"
+      (select)="chosen()"
+    />
+  </div>
+  <input type="hidden" [name]="name" [value]="value" />
+  @if (range) {
+    <input type="hidden" [name]="name + '-end'" [value]="end" />
+  }
+</div>

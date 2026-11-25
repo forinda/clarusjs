@@ -1,0 +1,22 @@
+@import uiDatePicker from './date-picker.tscl'
+
+<form class="demo" method="post" action="#">
+  <uiDatePicker id="demo-delivery" label="Delivery date" name="delivery" />
+</form>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    justify-items: start;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  output {
+    color: var(--ui-muted);
+    font-family: var(--ui-font-mono);
+  }
+</style>

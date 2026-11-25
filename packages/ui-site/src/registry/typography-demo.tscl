@@ -1,0 +1,59 @@
+@import './typography.css'
+
+<div class="demo">
+  {{-- A page has one h1 (its own title here), so these notes start at h2; h1 is set larger still. --}}
+  <article data-part="prose">
+    <h2>Field notes</h2>
+    <p>
+      Plain HTML, as Markdown gives it: <strong>no classes</strong>. Read the <a href="/components">component list</a>,
+      press <kbd>Ctrl</kbd> + <kbd>K</kbd> to search, or call <code>render(props)</code>.
+    </p>
+    <h3>What we packed</h3>
+    <ul>
+      <li>A tent and two sleeping bags</li>
+      <li>
+        Food for three days
+        <ul>
+          <li>Oats and coffee</li>
+        </ul>
+      </li>
+    </ul>
+    <h4>The route</h4>
+    <ol>
+      <li>Up the ridge before noon</li>
+      <li>Down to the lake</li>
+    </ol>
+    <blockquote><p>The view from the top was worth every step.</p></blockquote>
+    <pre><code>const pack = ['tent', 'stove', 'map']</code></pre>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Day</th>
+          <th scope="col">Distance</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>One</td>
+          <td>12 km</td>
+        </tr>
+        <tr>
+          <td>Two</td>
+          <td>9 km</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr />
+    <p>Back home by Sunday.</p>
+  </article>
+</div>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

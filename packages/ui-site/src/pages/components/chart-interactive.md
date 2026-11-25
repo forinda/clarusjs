@@ -19,7 +19,13 @@ description: "A chart with a range switch and a tooltip that follows the pointer
 
 Copy it into `src/components/ui/` as `chart-interactive.tscl`, beside the chart. It takes the chart's inputs and `ranges` (`{ label, last }`: show the last N points). Focus the plot and the arrow keys read each point (Home, End, Escape to hide).
 
+<sourceFlavor name="chart-interactive">
+
 <<< ../../registry/chart-interactive.tscl
+
+<<< ../../registry/chart-interactive.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

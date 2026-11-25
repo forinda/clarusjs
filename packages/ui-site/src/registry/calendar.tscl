@@ -1,0 +1,214 @@
+{{--
+  Calendar: a month of days to pick from, by pointer or keyboard. Arrow keys move a day (left, right) or a week (up,
+  down); PageUp and PageDown a month, with Shift a year; Home and End the week's first and last day; Enter or Space
+  picks. Bind the day with [(value)] ('YYYY-MM-DD'); [range]="true" picks a start ([(value)]) and an end ([(end)]).
+  id prefixes its days' ids (two calendars on a page need different ones). min and max bound it (days outside stay reachable, and say they're unavailable). locale names the months and days
+  (en-US unless you say); firstDay is the week's first day (0 Sunday … 6 Saturday). Its dates are calendar-dates.ts.
+--}}
+@input id: string = 'calendar'
+@input label: string = 'Calendar'
+@input range: boolean = false
+@input min: string = ''
+@input max: string = ''
+@input locale: string = 'en-US'
+@input firstDay: number = 0
+@model value: string = ''
+@model end: string = ''
+@event select: string
+
+<script>
+  import { addDays, addMonths, clamp, inRange, monthGrid, parseIso, today, weekStart } from './calendar-dates.ts'
+  // The day the keyboard is on; its month is the one shown. Today is known in the browser only (a static page's
+  // "today" would be the day it was built), so it's set once the calendar is live.
+  let focus = state(clamp(value || today(), min, max))
+  let now = state('')
+  let hovered = state('')
+  const date = (iso, options) =>
+    new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...options }).format(parseIso(iso) ?? undefined)
+  const weeks = () => monthGrid(focus, firstDay)
+  const days = () =>
+    weeks()[0].map((d) => ({ short: date(d.iso, { weekday: 'short' }), long: date(d.iso, { weekday: 'long' }) }))
+  const off = (iso) => (min !== '' && iso < min) || (max !== '' && iso > max)
+  const picked = (iso) => (range ? iso === value || iso === end : iso === value)
+  // Between a start and an end (or, while choosing the end, the day under the pointer).
+  const between = (iso) => range && value !== '' && inRange(iso, value, end || hovered || value) && !picked(iso)
+  function show(iso) {
+    focus = iso
+    requestAnimationFrame(() => document.getElementById(`${id}-${iso}`)?.focus())
+  }
+  function pick(iso) {
+    if (off(iso)) return
+    if (!range) value = iso
+    else if (!value || end) {
+      value = iso
+      end = ''
+    } else if (iso < value) {
+      end = value
+      value = iso
+    } else end = iso
+    focus = iso
+    emit('select', iso)
+  }
+  function key(event) {
+    const moves = {
+      ArrowLeft: () => addDays(focus, -1),
+      ArrowRight: () => addDays(focus, 1),
+      ArrowUp: () => addDays(focus, -7),
+      ArrowDown: () => addDays(focus, 7),
+      PageUp: () => addMonths(focus, event.shiftKey ? -12 : -1),
+      PageDown: () => addMonths(focus, event.shiftKey ? 12 : 1),
+      Home: () => weekStart(focus, firstDay),
+      End: () => addDays(weekStart(focus, firstDay), 6),
+    }
+    const move = moves[event.key]
+    if (!move) return
+    event.preventDefault()
+    show(move())
+  }
+  function wire() {
+    now = today()
+  }
+</script>
+
+<div data-part="calendar" [data-range]="range ? 'true' : false" [use]="wire">
+  <div data-part="calendar-head">
+    <button type="button" data-part="calendar-prev" aria-label="Previous month" (click)="show(addMonths(focus, -1))">
+      <icon name="lucide:chevron-left" />
+    </button>
+    <p data-part="calendar-title" aria-live="polite">{{ date(focus, { month: 'long', year: 'numeric' }) }}</p>
+    <button type="button" data-part="calendar-next" aria-label="Next month" (click)="show(addMonths(focus, 1))">
+      <icon name="lucide:chevron-right" />
+    </button>
+  </div>
+  <table
+    data-part="calendar-grid"
+    [aria-label]="label + ', ' + date(focus, { month: 'long', year: 'numeric' })"
+    (keydown)="key($event)"
+  >
+    <thead>
+      <tr>
+        @for (d of days(); track d.long) {
+          <th scope="col" [abbr]="d.long">{{ d.short }}</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (week of weeks(); track week[0].iso) {
+        <tr>
+          @for (d of week; track d.iso) {
+            <td>
+              <button
+                type="button"
+                [id]="id + '-' + d.iso"
+                data-part="calendar-day"
+                [tabindex]="d.iso === focus ? 0 : -1"
+                [aria-label]="
+                  date(d.iso, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) +
+                  (off(d.iso) ? ', unavailable' : '')
+                "
+                [aria-pressed]="picked(d.iso) ? 'true' : 'false'"
+                [aria-disabled]="off(d.iso) ? 'true' : false"
+                [aria-current]="d.iso === now ? 'date' : false"
+                [data-outside]="d.outside ? 'true' : false"
+                [data-between]="between(d.iso) ? 'true' : false"
+                (click)="pick(d.iso)"
+                (focusin)="focus = d.iso"
+                (mouseover)="hovered = d.iso"
+              >
+                {{ Number(d.iso.slice(8)) }}
+              </button>
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: inline-grid;
+      gap: var(--ui-space-2);
+      padding: var(--ui-space-3);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where([data-part='calendar-head']) {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    :where([data-part='calendar-title']) {
+      margin: 0;
+      font-weight: 600;
+    }
+    :where([data-part='calendar-prev']),
+    :where([data-part='calendar-next']) {
+      display: grid;
+      place-items: center;
+      width: var(--ui-control-sm);
+      height: var(--ui-control-sm);
+      padding: 0;
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      cursor: pointer;
+    }
+    :where([data-part='calendar-grid']) {
+      border-collapse: collapse;
+    }
+    :where([data-part='calendar-grid'] th) {
+      padding: 0 0 var(--ui-space-1);
+      color: var(--ui-muted);
+      font-weight: 400;
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where([data-part='calendar-grid'] td) {
+      padding: calc(var(--ui-space) / 4);
+    }
+    :where([data-part='calendar-day']) {
+      width: var(--ui-control-md);
+      height: var(--ui-control-md);
+      padding: 0;
+      border: 0;
+      border-radius: var(--ui-radius);
+      background: transparent;
+      color: var(--ui-fg);
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+    }
+    :where([data-part='calendar-day']:hover) {
+      background: var(--ui-accent-soft);
+    }
+    :where([data-part='calendar-day'][data-outside='true']) {
+      color: var(--ui-muted);
+    }
+    :where([data-part='calendar-day'][aria-current='date']) {
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    :where([data-part='calendar-day'][data-between='true']) {
+      border-radius: 0;
+      background: var(--ui-accent-soft);
+    }
+    :where([data-part='calendar-day'][aria-pressed='true']) {
+      background: var(--ui-accent);
+      color: var(--ui-accent-fg);
+    }
+    :where([data-part='calendar-day'][aria-disabled='true']) {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    :where([data-part='calendar-day']:focus-visible),
+    :where([data-part='calendar-prev']:focus-visible),
+    :where([data-part='calendar-next']:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 1px;
+    }
+  }
+</style>

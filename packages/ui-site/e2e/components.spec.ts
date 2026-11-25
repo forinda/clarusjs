@@ -10,7 +10,7 @@ for (const entry of registry) {
     expect((await page.goto(path))?.status()).toBe(200)
     await expect(page.locator('h1')).toHaveText(entry.title)
     // After the Source heading: directly, or inside the CSS / Tailwind switch (the CSS file first).
-    const blocks = page.locator('h2#source ~ .code-block pre, h2#source ~ * [data-flavor-code] .code-block pre')
+    const blocks = page.locator('h2#source ~ .code-block pre, h2#source ~ * [data-flavor-code] .code-block:first-of-type pre')
     for (const [i, f] of entry.files.entries()) {
       const file = readFileSync(resolve(import.meta.dirname, '../src/registry', f), 'utf8').trimEnd()
       expect((await blocks.nth(i).innerText()).trimEnd()).toBe(file)
