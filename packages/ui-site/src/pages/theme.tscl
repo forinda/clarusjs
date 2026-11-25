@@ -30,7 +30,7 @@
   }
   @media (min-width: 960px) {
     .workbench {
-      grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr);
+      grid-template-columns: 260px minmax(0, 1fr);
       grid-template-areas: 'panel toolbar' 'panel preview';
       align-items: start;
     }
