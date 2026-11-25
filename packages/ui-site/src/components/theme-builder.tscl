@@ -1,6 +1,14 @@
 {{-- The theme builder (in the header's sheet, theme-sheet.tscl): presets, every colour token, fonts and shape, edited
      per mode. An edit is saved and set live on the page (#ui-theme, what every demo and block reads), and on /theme's
-     preview as inline custom properties. Copy CSS hands out theme.css. --}}
+     preview as inline custom properties. Copy CSS hands out theme.css. Its controls are this library's own parts;
+     the colours stay native <input type="color"> (no picker part yet) in a <details>. --}}
+@import '~/registry/select.css'
+@import '~/registry/popover.css'
+@import uiSelect from '@clarusjs/ui-primitives/select.tscl'
+@import uiPopover from '@clarusjs/ui-primitives/popover.tscl'
+@import uiPopoverTrigger from '@clarusjs/ui-primitives/popover-trigger.tscl'
+@import uiSlider from '~/registry/slider.tscl'
+@import uiButton from '~/registry/button.tscl'
 
 <script>
   import { effect } from 'clarusjs/runtime'
@@ -76,6 +84,12 @@
       ],
     },
   ]
+  const SIZE_OPTIONS = SIZES.map((z) => ({ value: z, label: z }))
+  const SHADOW_OPTIONS = [
+    { value: 'none', label: 'None' },
+    { value: 'soft', label: 'Soft' },
+    { value: 'strong', label: 'Strong' },
+  ]
   const clone = (theme) => ({ light: { ...theme.light }, dark: { ...theme.dark } })
 
   let base = state('teal')
@@ -110,6 +124,7 @@
       theme = { light, dark: edited.includes(key) ? theme.dark : { ...theme.dark, [key]: darkFrom(light)[key] } }
     }
   }
+  const radius = (event) => set('radius', event.target.value + 'px')
   function font(key, value) {
     set(key, value)
     loadFonts(value)
@@ -173,7 +188,9 @@
     }
   }
   const wire = (el) => {
-    load()
+    // ponytail: on the next tick, once this island is wired. A change made while it attaches never reaches the
+    // nested selects (they keep the server's value); fix that in the runtime if another island needs it.
+    setTimeout(load)
     // Light or dark: the one the site shows (the header's switch, else the system setting), followed as it changes.
     const dark = matchMedia('(prefers-color-scheme: dark)')
     const follow = () => {
@@ -221,26 +238,26 @@
 
 <div class="theme-builder" role="group" aria-label="Theme controls" [data-mode]="mode" [use]="wire">
   <div class="tb-rows">
-    <button type="button" class="row" id="tb-preset" popovertarget="tb-presets">
+    <uiPopoverTrigger target="tb-presets">
       <span class="row-label">Preset</span>
       <span class="row-value">{{ PRESETS.find((p) => p.name === base)?.label ?? 'Custom' }}</span>
       <span class="dot" [style]="'--sw: ' + theme[mode].accent"></span>
-    </button>
-    <div id="tb-presets" popover class="pop" role="group" aria-label="Presets">
-      @for (p of PRESETS; track p.name) {
-        <button
-          type="button"
-          class="pick"
-          [aria-label]="p.label + ' preset'"
-          [aria-pressed]="String(base === p.name)"
-          (click)="pick(p.name)"
-          popovertarget="tb-presets"
-          popovertargetaction="hide"
-        >
-          <span class="dot" [style]="'--sw: ' + p.accent"></span> {{ p.label }}
-        </button>
-      }
-    </div>
+    </uiPopoverTrigger>
+    <uiPopover id="tb-presets" side="right" align="start">
+      <div class="presets" role="group" aria-label="Presets">
+        @for (p of PRESETS; track p.name) {
+          <button
+            type="button"
+            class="pick"
+            [aria-label]="p.label + ' preset'"
+            [aria-pressed]="String(base === p.name)"
+            (click)="pick(p.name); document.getElementById('tb-presets')?.hidePopover()"
+          >
+            <span class="dot" [style]="'--sw: ' + p.accent"></span> {{ p.label }}
+          </button>
+        }
+      </div>
+    </uiPopover>
     <label class="row" for="tb-brand">
       <span class="row-label">Brand</span>
       <code class="row-value">{{ theme[mode].accent }}</code>
@@ -252,78 +269,72 @@
         (input)="set('accent', $event.target.value)"
       />
     </label>
-    <label class="row" for="tb-heading">
-      <span class="row-label">Heading font</span>
-      <select
+    <div class="row row-select">
+      <uiSelect
         id="tb-heading"
-        aria-label="Heading font"
-        class="row-value"
-        (change)="font('font-heading', $event.target.value)"
-      >
-        @for (f of HEADINGS; track f.label) {
-          <option [value]="f.value" [selected]="theme.light['font-heading'] === f.value">{{ f.label }}</option>
-        }
-      </select>
-      <icon name="lucide:heading" />
-    </label>
-    <label class="row" for="tb-font">
-      <span class="row-label">Body font</span>
-      <select id="tb-font" aria-label="Body font" class="row-value" (change)="font('font', $event.target.value)">
-        @for (f of FONTS; track f.label) {
-          <option [value]="f.value" [selected]="theme.light.font === f.value">{{ f.label }}</option>
-        }
-      </select>
-      <icon name="lucide:type" />
-    </label>
-    <label class="row" for="tb-mono">
-      <span class="row-label">Code font</span>
-      <select id="tb-mono" aria-label="Code font" class="row-value" (change)="font('font-mono', $event.target.value)">
-        @for (f of MONOS; track f.label) {
-          <option [value]="f.value" [selected]="theme.light['font-mono'] === f.value">{{ f.label }}</option>
-        }
-      </select>
-      <icon name="lucide:code" />
-    </label>
-    <label class="row" for="tb-size">
-      <span class="row-label">Base size</span>
-      <select id="tb-size" aria-label="Base size" class="row-value" (change)="set('font-size', $event.target.value)">
-        @for (z of SIZES; track z) {
-          <option [value]="z" [selected]="theme.light['font-size'] === z">{{ z }}</option>
-        }
-      </select>
-      <icon name="lucide:a-large-small" />
-    </label>
-    <label class="row" for="tb-radius">
-      <span class="row-label">Radius</span>
+        label="Heading font"
+        [options]="HEADINGS"
+        [(value)]="theme.light['font-heading']"
+        (change)="font('font-heading', $event)"
+      />
+    </div>
+    <div class="row row-select">
+      <uiSelect
+        id="tb-font"
+        label="Body font"
+        [options]="FONTS"
+        [(value)]="theme.light.font"
+        (change)="font('font', $event)"
+      />
+    </div>
+    <div class="row row-select">
+      <uiSelect
+        id="tb-mono"
+        label="Code font"
+        [options]="MONOS"
+        [(value)]="theme.light['font-mono']"
+        (change)="font('font-mono', $event)"
+      />
+    </div>
+    <div class="row row-select">
+      <uiSelect
+        id="tb-size"
+        label="Base size"
+        [options]="SIZE_OPTIONS"
+        [(value)]="theme.light['font-size']"
+        (change)="set('font-size', $event)"
+      />
+    </div>
+    <div class="row">
+      <span class="row-label" id="tb-radius-label">Radius</span>
       <span class="row-value">{{ theme.light.radius }}</span>
-      <input
-        type="range"
+      <uiSlider
         id="tb-radius"
         aria-label="Radius"
-        min="0"
-        max="20"
+        [min]="0"
+        [max]="20"
         [value]="parseInt(theme.light.radius)"
-        (input)="set('radius', $event.target.value + 'px')"
+        (input)="radius($event)"
       />
-    </label>
-    <label class="row" for="tb-density">
-      <span class="row-label">Density</span>
-      <select id="tb-density" aria-label="Density" class="row-value" (change)="set('space', $event.target.value)">
-        @for (d of DENSITIES; track d.value) {
-          <option [value]="d.value" [selected]="theme.light.space === d.value">{{ d.label }}</option>
-        }
-      </select>
-      <icon name="lucide:move-horizontal" />
-    </label>
-    <label class="row" for="tb-shadow">
-      <span class="row-label">Shadow</span>
-      <select id="tb-shadow" aria-label="Shadow" class="row-value" (change)="setShadow($event.target.value)">
-        <option value="none" [selected]="shadow === 'none'">None</option>
-        <option value="soft" [selected]="shadow === 'soft'">Soft</option>
-        <option value="strong" [selected]="shadow === 'strong'">Strong</option>
-      </select>
-      <icon name="lucide:layers" />
-    </label>
+    </div>
+    <div class="row row-select">
+      <uiSelect
+        id="tb-density"
+        label="Density"
+        [options]="DENSITIES"
+        [(value)]="theme.light.space"
+        (change)="set('space', $event)"
+      />
+    </div>
+    <div class="row row-select">
+      <uiSelect
+        id="tb-shadow"
+        label="Shadow"
+        [options]="SHADOW_OPTIONS"
+        [(value)]="shadow"
+        (change)="setShadow($event)"
+      />
+    </div>
   </div>
   <details class="tb-colours">
     <summary><icon name="lucide:palette" /> Every colour ({{ mode }})</summary>
@@ -350,29 +361,29 @@
     }
   </details>
   <div class="tb-actions">
-    <button type="button" class="primary" (click)="copy()">
-      <icon name="lucide:copy" /> {{ copied ? 'Copied' : 'Copy CSS' }}
-    </button>
-    <button type="button" (click)="shuffle()"><icon name="lucide:shuffle" /> Shuffle</button>
-    <button type="button" (click)="share()">
-      <icon name="lucide:link" /> {{ shared ? 'Link copied' : 'Share link' }}
-    </button>
-    <button type="button" (click)="reset()"><icon name="lucide:rotate-ccw" /> Reset</button>
+    <uiButton (click)="copy()"><icon name="lucide:copy" /> {{ copied ? 'Copied' : 'Copy CSS' }}</uiButton>
+    <uiButton variant="outline" (click)="shuffle()"><icon name="lucide:shuffle" /> Shuffle</uiButton>
+    <uiButton variant="outline" (click)="share()"
+      ><icon name="lucide:link" /> {{ shared ? 'Link copied' : 'Share link' }}</uiButton
+    >
+    <uiButton variant="outline" (click)="reset()"><icon name="lucide:rotate-ccw" /> Reset</uiButton>
   </div>
 </div>
 
-<style scoped>
+<style global>
+  /* Global: much of it sits inside the library's parts (a select, a popover), where scoped rules stop. */
   /* A slim panel of rows (shadcn's /create): each a choice and its value; every colour in its own section. */
-  :scope.theme-builder {
+  .theme-builder {
     display: grid;
     gap: 8px;
     align-content: start;
   }
-  .tb-rows {
+  .theme-builder .tb-rows {
     display: grid;
     gap: 4px;
   }
-  .row {
+  .theme-builder .row,
+  .theme-builder .tb-rows > [data-part='trigger'] {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto auto;
@@ -388,12 +399,12 @@
     text-align: left;
     cursor: pointer;
   }
-  .row-label {
+  .theme-builder .row-label {
     grid-column: 1;
     color: var(--muted);
     font-size: 11px;
   }
-  .row-value {
+  .theme-builder .row-value {
     grid-column: 1;
     min-width: 0;
     overflow: hidden;
@@ -402,19 +413,41 @@
     font-size: 13px;
     font-weight: 600;
   }
-  select.row-value {
-    appearance: none;
+  /* A select row: its label small and muted, its control the row's value, borderless. */
+  .theme-builder .row-select {
+    grid-template-columns: minmax(0, 1fr);
+    cursor: default;
+  }
+  .theme-builder .row-select > :last-child {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .theme-builder .row-select [data-part='select'] {
+    gap: 0;
+    max-width: none;
+    min-width: 0;
+  }
+  .theme-builder .row-select [data-part='label'] {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 400;
+  }
+  .theme-builder .row-select select {
+    min-height: 0;
     padding: 0;
     border: 0;
     background: none;
     color: inherit;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
   }
-  .row > :last-child {
+  .theme-builder .row > :last-child,
+  .theme-builder .tb-rows > [data-part='trigger'] > :last-child {
     grid-column: 2;
     grid-row: 1 / span 2;
   }
-  .row input[type='color'] {
+  .theme-builder .row input[type='color'] {
     width: 22px;
     height: 22px;
     padding: 0;
@@ -423,16 +456,16 @@
     background: none;
     cursor: pointer;
   }
-  .row input[type='range'] {
+  .theme-builder .row [data-part='slider'] {
     width: 84px;
   }
-  .dot {
+  .theme-builder .dot {
     width: 16px;
     height: 16px;
     border-radius: 50%;
     background: var(--sw);
   }
-  .pop {
+  .theme-builder #tb-presets {
     position-area: right span-bottom;
     margin: 0 0 0 8px;
     padding: 6px;
@@ -441,7 +474,7 @@
     background: var(--bg);
     color: inherit;
   }
-  .pick {
+  .theme-builder .pick {
     display: flex;
     gap: 8px;
     align-items: center;
@@ -455,10 +488,10 @@
     text-align: left;
     cursor: pointer;
   }
-  .pick[aria-pressed='true'] {
+  .theme-builder .pick[aria-pressed='true'] {
     background: var(--accent-soft);
   }
-  .tb-colours summary {
+  .theme-builder .tb-colours summary {
     display: flex;
     gap: 6px;
     align-items: center;
@@ -467,7 +500,7 @@
     font-size: 13px;
     font-weight: 600;
   }
-  fieldset {
+  .theme-builder fieldset {
     display: grid;
     gap: 6px;
     margin: 8px 0 0;
@@ -475,49 +508,38 @@
     border: 1px solid var(--rule);
     border-radius: 8px;
   }
-  .colour {
+  .theme-builder .colour {
     display: grid;
     grid-template-columns: 1fr auto 5.5em;
     gap: 8px;
     align-items: center;
     font-size: 12px;
   }
-  .colour input {
+  .theme-builder .colour input {
     width: 28px;
     height: 20px;
     padding: 0;
     border: 0;
     background: none;
   }
-  .warn {
+  .theme-builder .warn {
     grid-column: 1 / -1;
     margin: 0;
     color: var(--ui-danger, #b42318);
     font-size: 12px;
   }
-  .warn[hidden] {
+  .theme-builder .warn[hidden] {
     display: none;
   }
-  .tb-actions {
+  .theme-builder .tb-actions {
     display: grid;
     gap: 4px;
   }
-  .tb-actions button {
+  .theme-builder .tb-actions [data-part='button'] {
     display: inline-flex;
     gap: 6px;
     align-items: center;
     justify-content: center;
-    padding: 6px 12px;
-    border: 1px solid var(--rule);
-    border-radius: 8px;
-    background: var(--bg);
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-  }
-  .primary {
-    background: var(--fg);
-    color: var(--bg);
-    font-weight: 600;
+    width: 100%;
   }
 </style>

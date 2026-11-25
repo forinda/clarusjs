@@ -273,3 +273,16 @@ test('theme builder: Preset opens a list of named presets', async ({ page }) => 
   await expect(page.getByRole('button', { name: /^Preset/ })).toContainText('Indigo')
   await expect(page.getByRole('button', { name: 'Indigo preset' })).toBeHidden() // the list closes
 })
+
+test('theme builder: its controls are this library\'s parts (Select, Slider, Popover, Button); colours stay native, in a <details>', async ({ page }) => {
+  await page.goto('/components/button')
+  await openSheet(page)
+  const b = page.locator('.theme-builder')
+  for (const label of ['Heading font', 'Body font', 'Code font', 'Base size', 'Density', 'Shadow']) {
+    await expect(b.locator('[data-part="select"]').filter({ has: page.getByLabel(label, { exact: true }) })).toHaveCount(1)
+  }
+  await expect(b.locator('[data-part="slider"]')).toHaveAttribute('aria-label', 'Radius')
+  await expect(b.locator('[data-part="popover"]#tb-presets')).toHaveCount(1)
+  await expect(b.locator('details.tb-colours input[type="color"]').first()).toBeAttached()
+  for (const name of ['Copy CSS', 'Shuffle', 'Share link', 'Reset']) await expect(b.getByRole('button', { name, exact: true })).toHaveAttribute('data-part', 'button')
+})
