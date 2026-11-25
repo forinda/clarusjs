@@ -83,3 +83,25 @@ test('selection: Shift-click selects a range; the header checkbox goes indetermi
   await demo.getByRole('button', { name: 'Clear selection' }).click()
   await expect(status).toHaveText('None selected')
 })
+
+test("columns resize: drag a header's edge, or focus it and use the arrow keys; sorting keeps the widths", async ({
+  page,
+}) => {
+  const demo = await open(page)
+  const handle = demo.getByRole('separator', { name: 'Resize Role' })
+  const th = demo.locator('th:has(#people-sort-role)')
+  const width = () => th.evaluate((el) => Math.round(el.getBoundingClientRect().width))
+  const before = await width()
+  await expect(handle).toHaveAttribute('aria-valuenow', String(before))
+  await handle.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(width).toBe(before + 16)
+  const box = (await handle.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2, { steps: 4 })
+  await page.mouse.up()
+  await expect.poll(width).toBe(before + 76)
+  await demo.getByRole('button', { name: 'Name', exact: true }).click()
+  await expect.poll(width).toBe(before + 76)
+})

@@ -3,6 +3,7 @@
 @import uiButton from './button.tscl'
 
 <script>
+  import { resizeColumn } from '@clarusjs/ui-primitives/resize-column.js'
   import { facets, filterRows, nextSort, paginate, parseTable, serializeTable, sortRows } from './data-table.ts'
   const PEOPLE = [
     { id: '1', name: 'Amara Okafor', team: 'Design', role: 'Product designer', joined: 2021 },
@@ -30,6 +31,9 @@
   let query = state('')
   let teams = state([''].slice(0, 0))
   let page = state(0)
+  // Column widths, as resized: kept, so the table rendering again (a sort, a page) keeps them.
+  let widths = state({ name: 0 })
+  const resized = (id, w) => (widths = { ...widths, [id]: w })
   const table = () => ({ sort, query, filters: { team: teams }, page })
   const searched = () => filterRows(PEOPLE, { query, columns: ['name', 'role'] })
   // How many people each team button would show, given the search.
@@ -94,7 +98,12 @@
     <thead>
       <tr>
         @for (c of COLUMNS; track c.id) {
-          <th scope="col" [aria-sort]="ariaSort(c.id)" [data-number]="c.number ? 'true' : false">
+          <th
+            scope="col"
+            [aria-sort]="ariaSort(c.id)"
+            [data-number]="c.number ? 'true' : false"
+            [style]="widths[c.id] ? 'width: ' + widths[c.id] + 'px' : false"
+          >
             <button type="button" [id]="'people-sort-' + c.id" (click)="sortBy(c.id, $event)">
               {{ c.label }}
               @if (sorted(c.id)) {
@@ -103,6 +112,11 @@
                 <icon name="lucide:arrow-up-down" />
               }
             </button>
+            <span
+              class="people-resize"
+              [aria-label]="'Resize ' + c.label"
+              [use]="(el) => resizeColumn(el, { min: 80, max: 480, onResize: (w) => resized(c.id, w) })"
+            ></span>
           </th>
         }
       </tr>
@@ -144,7 +158,7 @@
     </uiButton>
   </div>
   <p class="people-url">
-    URL: <code>?{{ serializeTable(table()) }}</code>
+    URL: <code>{{ serializeTable(table()) ? '?' + serializeTable(table()) : 'no query (the defaults)' }}</code>
   </p>
 </div>
 
@@ -214,6 +228,7 @@
 {{-- Global: the header buttons and cells sit inside the Table's own markup, out of this demo's scope. --}}
 <style global>
   .demo th:has(> [id^='people-sort-']) {
+    position: relative;
     text-align: left;
     white-space: nowrap;
   }
@@ -229,6 +244,22 @@
     font: inherit;
     font-weight: 600;
     cursor: pointer;
+  }
+  /* The resize handle: the header's end edge, a line while hovered, held or focused. */
+  .people-resize {
+    position: absolute;
+    inset-block: var(--ui-space-2);
+    inset-inline-end: 0;
+    width: calc(var(--ui-space) * 1.5);
+    border-inline-end: 2px solid transparent;
+    cursor: col-resize;
+    touch-action: none;
+  }
+  .people-resize:hover,
+  .people-resize:active,
+  .people-resize:focus-visible {
+    border-color: var(--ui-accent);
+    outline: none;
   }
   .demo [data-number='true'] {
     text-align: right;

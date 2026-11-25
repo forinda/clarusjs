@@ -70,6 +70,10 @@ Each is its own module, so an island ships only the ones it imports (all six are
 
 `position(floating, anchor, { side, align, offset, flip })` places `floating` next to `anchor` (fixed), inside the window, on scroll and resize too, and flips to the other side when there's no room. It sets `data-side` and `data-align`, and the CSS variables `--anchor-width`, `--anchor-height`, `--available-width`, `--available-height` and `--transform-origin`.
 
+### resizeColumn
+
+`resizeColumn(handle, { min, max, step, target, onResize })` makes `handle`, inside a `<th>`, the column's resize handle: a focusable vertical `separator` with the width as its value. Drag it, or use the arrow keys (by `step`, 16 px), Home and End (to `min` and `max`); right to left, they follow the line. It sets the column's `style.width` as it goes (`target` sizes another element), and `onResize(width)` gets the width to keep at the end of a drag and on each key. Name the handle (`aria-label="Resize Name"`). It isn't in the package's index, to keep that small: import it as `@clarusjs/ui-primitives/resize-column.js`.
+
 ## Parts
 
 Headless components in the same package, as `.tscl` files: they render the platform's own elements with their ARIA and state attributes, and no styles. Import them under a name of your own (`<dialog>` and `<switch>` are already HTML and SVG tags):

@@ -23,6 +23,8 @@ description: "Sort (by several columns), search, filter, page and count rows, an
 - **`select(sel, id, { range, order })`, `selectAll(sel, ids, on)`, `selectionState(sel, ids)`:** row selection as `{ ids, anchor }`. A click toggles a row and makes it the anchor; with `range` (Shift-click) every row from the anchor to it, in `order` (the rows as shown), takes its new state. `selectionState` says whether the header checkbox is checked (`all`), indeterminate (`some`) or clear (`none`).
 - **`parseTable(params, filterIds)`, `serializeTable(state)`:** the state to and from the URL (`?sort=joined.desc,name&q=…&team=Sales&page=2`), leaving defaults out. Replace the URL as it changes and the address is a link to that view; read it on load to open there.
 
+Drag a header's edge (or focus it and use the arrow keys) to resize a column: that's `resizeColumn` from `@clarusjs/ui-primitives`, a `[use]` behaviour that sets the column's width as it goes and reports it to keep (here in state, so a sort keeps it).
+
 Pass a third argument, `(row, id) => value`, to `sortRows`, `filterRows` or `facets` when a column isn't a property of the row. Sort a column by Shift-clicking its header after another's.
 
 <<< ../../registry/data-table-demo.tscl
