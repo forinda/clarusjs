@@ -17,9 +17,15 @@ description: "A native table that scrolls sideways on small screens."
 
 ## Source
 
-Copy it into `src/components/ui/` as `table.tscl`.
+Copy it into `src/components/ui/` as `table.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="table">
 
 <<< ../../registry/table.tscl
+
+<<< ../../registry/table.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

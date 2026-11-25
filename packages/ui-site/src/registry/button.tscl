@@ -1,7 +1,8 @@
 {{-- Button: a native <button>, or a link (<a>) with the same look when href is set. class, style, id, aria-*,
      data-* and (click) (any DOM event that bubbles; (focusin) for focus) you pass reach it. loading shows a spinner
      and disables it (aria-busy); block fills its container; shape round or circle (an icon alone: give it an
-     aria-label). An icon goes where you put it in the content, before or after the text. --}}
+     aria-label). An icon goes where you put it in the content, before or after the text. In a button group, its inner
+     corners square off. --}}
 @input variant: 'default' | 'secondary' | 'outline' | 'dashed' | 'ghost' | 'destructive' | 'link' = 'default'
 @input size: 'sm' | 'md' | 'lg' = 'md'
 @input type: 'button' | 'submit' | 'reset' = 'button'
@@ -47,7 +48,9 @@
       min-height: var(--ui-control-md);
       padding: 0 calc(var(--ui-space) * 3.5);
       border: 1px solid transparent;
-      border-radius: var(--ui-radius);
+      /* Corners from a button group, if it's in one (it sets these: a parent's rules can't reach a component's own). */
+      border-radius: var(--ui-group-radius-start, var(--ui-radius)) var(--ui-group-radius-end, var(--ui-radius))
+        var(--ui-group-radius-end, var(--ui-radius)) var(--ui-group-radius-start, var(--ui-radius));
       background: var(--ui-accent);
       color: var(--ui-accent-fg);
       font: 600 var(--ui-font-size)/1 var(--ui-font);

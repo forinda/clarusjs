@@ -10,7 +10,7 @@ for (const entry of registry) {
     expect((await page.goto(path))?.status()).toBe(200)
     await expect(page.locator('h1')).toHaveText(entry.title)
     // After the Source heading: directly, or inside the CSS / Tailwind switch (the CSS file first).
-    const blocks = page.locator('h2#source ~ .code-block pre, h2#source ~ * [data-flavor-code] .code-block pre')
+    const blocks = page.locator('h2#source ~ .code-block pre, h2#source ~ * [data-flavor-code] .code-block:first-of-type pre')
     for (const [i, f] of entry.files.entries()) {
       const file = readFileSync(resolve(import.meta.dirname, '../src/registry', f), 'utf8').trimEnd()
       expect((await blocks.nth(i).innerText()).trimEnd()).toBe(file)
@@ -201,4 +201,17 @@ test('aspect ratio: any ratio; the switcher changes the box\'s shape', async ({ 
   await demo.getByRole('button', { name: '21:9' }).click()
   await expect(demo.getByRole('button', { name: '21:9' })).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(shape).toBe(2.33)
+})
+
+test('button group: its buttons join: inner corners square, outer ones round', async ({ page }) => {
+  await page.goto('/components/button-group')
+  const radii = await page.locator('.demo:not(.example) [data-part="button-group"]').first().evaluate((g) => [...g.children].map((b) => {
+    const s = getComputedStyle(b)
+    return [s.borderTopLeftRadius, s.borderTopRightRadius]
+  }))
+  expect(radii[0]![1]).toBe('0px')
+  expect(radii[1]).toEqual(['0px', '0px'])
+  expect(radii.at(-1)![0]).toBe('0px')
+  expect(radii[0]![0]).not.toBe('0px')
+  expect(radii.at(-1)![1]).not.toBe('0px')
 })

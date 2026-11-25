@@ -1,0 +1,10 @@
+{{-- Label, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as label.tscl.
+     Copy it into src/components/ui/ as label.tscl. --}}
+@input control: string = ''
+
+<label
+  [for]="control || null"
+  data-part="form-label"
+  class="text-foreground font-sans font-medium text-(length:--ui-font-size) leading-[1.4]"
+  ><slot
+/></label>

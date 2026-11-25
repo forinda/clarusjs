@@ -13,7 +13,61 @@
 @import twAlert from '~/registry/alert.tw.tscl'
 @import uiInput from '~/registry/input.tscl'
 @import twInput from '~/registry/input.tw.tscl'
-@import { ALERT_VARIANTS, BADGE_VARIANTS, BUTTON_VARIANTS, INPUT_VARIANTS, SIZES } from './tailwind-parity.ts'
+@import uiTextarea from '~/registry/textarea.tscl'
+@import twTextarea from '~/registry/textarea.tw.tscl'
+@import uiLabel from '~/registry/label.tscl'
+@import twLabel from '~/registry/label.tw.tscl'
+@import uiKbd from '~/registry/kbd.tscl'
+@import twKbd from '~/registry/kbd.tw.tscl'
+@import uiSeparator from '~/registry/separator.tscl'
+@import twSeparator from '~/registry/separator.tw.tscl'
+@import uiSkeleton from '~/registry/skeleton.tscl'
+@import twSkeleton from '~/registry/skeleton.tw.tscl'
+@import uiButtonGroup from '~/registry/button-group.tscl'
+@import twButtonGroup from '~/registry/button-group.tw.tscl'
+@import uiAvatar from '~/registry/avatar.tscl'
+@import twAvatar from '~/registry/avatar.tw.tscl'
+@import uiSpinner from '~/registry/spinner.tscl'
+@import twSpinner from '~/registry/spinner.tw.tscl'
+@import uiEmpty from '~/registry/empty.tscl'
+@import twEmpty from '~/registry/empty.tw.tscl'
+@import uiInputGroup from '~/registry/input-group.tscl'
+@import twInputGroup from '~/registry/input-group.tw.tscl'
+@import uiAspectRatio from '~/registry/aspect-ratio.tscl'
+@import twAspectRatio from '~/registry/aspect-ratio.tw.tscl'
+@import uiBreadcrumb from '~/registry/breadcrumb.tscl'
+@import twBreadcrumb from '~/registry/breadcrumb.tw.tscl'
+@import uiPagination from '~/registry/pagination.tscl'
+@import twPagination from '~/registry/pagination.tw.tscl'
+@import uiTable from '~/registry/table.tscl'
+@import twTable from '~/registry/table.tw.tscl'
+@import uiProgress from '~/registry/progress.tscl'
+@import twProgress from '~/registry/progress.tw.tscl'
+@import uiMeter from '~/registry/meter.tscl'
+@import twMeter from '~/registry/meter.tw.tscl'
+@import uiSlider from '~/registry/slider.tscl'
+@import twSlider from '~/registry/slider.tw.tscl'
+@import uiCollapsible from '~/registry/collapsible.tscl'
+@import twCollapsible from '~/registry/collapsible.tw.tscl'
+@import uiChart from '~/registry/chart.tscl'
+@import twChart from '~/registry/chart.tw.tscl'
+@import uiChartInteractive from '~/registry/chart-interactive.tscl'
+@import twChartInteractive from '~/registry/chart-interactive.tw.tscl'
+@import uiFileUpload from '~/registry/file-upload.tscl'
+@import twFileUpload from '~/registry/file-upload.tw.tscl'
+@import uiSignaturePad from '~/registry/signature-pad.tscl'
+@import twSignaturePad from '~/registry/signature-pad.tw.tscl'
+@import uiCalendar from '~/registry/calendar.tscl'
+@import twCalendar from '~/registry/calendar.tw.tscl'
+@import uiDatePicker from '~/registry/date-picker.tscl'
+@import twDatePicker from '~/registry/date-picker.tw.tscl'
+@import uiResizable from '~/registry/resizable.tscl'
+@import twResizable from '~/registry/resizable.tw.tscl'
+@import uiScrollArea from '~/registry/scroll-area.tscl'
+@import twScrollArea from '~/registry/scroll-area.tw.tscl'
+@import uiOtpInput from '~/registry/otp-input.tscl'
+@import twOtpInput from '~/registry/otp-input.tw.tscl'
+@import { ALERT_VARIANTS, BADGE_VARIANTS, BUTTON_VARIANTS, CHART_TYPES, INPUT_VARIANTS, SIZES } from './tailwind-parity.ts'
 
 <cl-head>
   <meta name="sitemap" content="false" />
@@ -75,6 +129,203 @@
   }
   <div data-pair="input-disabled"><uiInput disabled aria-label="a" /><twInput disabled aria-label="a" /></div>
   <div data-pair="input-readonly"><uiInput readonly aria-label="a" /><twInput readonly aria-label="a" /></div>
+  <div data-pair="textarea"><uiTextarea aria-label="a" value="Text" /><twTextarea aria-label="a" value="Text" /></div>
+  <div data-pair="textarea-invalid">
+    <uiTextarea aria-label="a" aria-invalid="true" /><twTextarea aria-label="a" aria-invalid="true" />
+  </div>
+  <div data-pair="textarea-disabled"><uiTextarea aria-label="a" disabled /><twTextarea aria-label="a" disabled /></div>
+  <div data-pair="label"><uiLabel control="x">Email</uiLabel><twLabel control="x">Email</twLabel></div>
+  <div data-pair="kbd"><uiKbd>⌘K</uiKbd><twKbd>⌘K</twKbd></div>
+  <div data-pair="separator"><uiSeparator /><twSeparator /></div>
+  <div data-pair="separator-vertical" class="row">
+    <uiSeparator orientation="vertical" /><twSeparator orientation="vertical" />
+  </div>
+  <div data-pair="skeleton"><uiSkeleton width="120px" height="12px" /><twSkeleton width="120px" height="12px" /></div>
+  <div data-pair="button-group">
+    <uiButtonGroup label="g"
+      ><uiButton variant="outline">A</uiButton><uiButton variant="outline">B</uiButton
+      ><uiButton variant="outline">C</uiButton></uiButtonGroup
+    >
+    <twButtonGroup label="g"
+      ><uiButton variant="outline">A</uiButton><uiButton variant="outline">B</uiButton
+      ><uiButton variant="outline">C</uiButton></twButtonGroup
+    >
+  </div>
+  <div data-pair="avatar-fallback"><uiAvatar alt="Ada" fallback="AL" /><twAvatar alt="Ada" fallback="AL" /></div>
+  <div data-pair="avatar-image"><uiAvatar alt="Logo" src="/logo.svg" /><twAvatar alt="Logo" src="/logo.svg" /></div>
+  <div data-pair="spinner"><uiSpinner /><twSpinner /></div>
+  <div data-pair="empty">
+    <uiEmpty>@slot('icon') {<span>i</span>}@slot('title') {No projects}Create one to start.@slot('action') {<span>New</span>}</uiEmpty>
+    <twEmpty>@slot('icon') {<span>i</span>}@slot('title') {No projects}Create one to start.@slot('action') {<span>New</span>}</twEmpty>
+  </div>
+  <div data-pair="empty-bare"><uiEmpty>Nothing yet.</uiEmpty><twEmpty>Nothing yet.</twEmpty></div>
+  @for (v of INPUT_VARIANTS; track v) {
+    <div [data-pair]="'input-group-' + v">
+      <uiInputGroup [variant]="v">@slot('start') {$}<uiInput aria-label="a" />@slot('end') {.00}</uiInputGroup>
+      <twInputGroup [variant]="v">@slot('start') {$}<uiInput aria-label="a" />@slot('end') {.00}</twInputGroup>
+    </div>
+    <div [data-pair]="'input-group-invalid-' + v">
+      <uiInputGroup [variant]="v"><uiInput aria-label="a" aria-invalid="true" /></uiInputGroup>
+      <twInputGroup [variant]="v"><uiInput aria-label="a" aria-invalid="true" /></twInputGroup>
+    </div>
+  }
+  <div data-pair="aspect-ratio">
+    <uiAspectRatio ratio="4/3"><img src="/logo.svg" alt="" /></uiAspectRatio
+    ><twAspectRatio ratio="4/3"><img src="/logo.svg" alt="" /></twAspectRatio>
+  </div>
+  <div data-pair="breadcrumb">
+    <uiBreadcrumb
+      [items]="[{ label: 'Home', href: '/' }, { label: 'Components', href: '/components' }, { label: 'Button' }]"
+    /><twBreadcrumb
+      [items]="[{ label: 'Home', href: '/' }, { label: 'Components', href: '/components' }, { label: 'Button' }]"
+    />
+  </div>
+  <div data-pair="pagination-start">
+    <uiPagination [page]="1" [pages]="3" href="?p={page}" label="One" /><twPagination
+      [page]="1"
+      [pages]="3"
+      href="?p={page}"
+      label="Two"
+    />
+  </div>
+  <div data-pair="pagination-middle">
+    <uiPagination [page]="6" [pages]="12" href="?p={page}" label="Three" /><twPagination
+      [page]="6"
+      [pages]="12"
+      href="?p={page}"
+      label="Four"
+    />
+  </div>
+  <div data-pair="table">
+    <uiTable caption="Invoices"
+      ><thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>INV-1</td>
+          <td>$5</td>
+        </tr>
+        <tr>
+          <td>INV-2</td>
+          <td>$7</td>
+        </tr>
+      </tbody></uiTable
+    >
+    <twTable caption="Invoices"
+      ><thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>INV-1</td>
+          <td>$5</td>
+        </tr>
+        <tr>
+          <td>INV-2</td>
+          <td>$7</td>
+        </tr>
+      </tbody></twTable
+    >
+  </div>
+  <div data-pair="progress"><uiProgress [value]="40" label="a" /><twProgress [value]="40" label="a" /></div>
+  <div data-pair="meter"><uiMeter [value]="0.4" label="a" /><twMeter [value]="0.4" label="a" /></div>
+  <div data-pair="slider"><uiSlider [value]="30" aria-label="a" /><twSlider [value]="30" aria-label="a" /></div>
+  <div data-pair="slider-disabled">
+    <uiSlider [value]="30" aria-label="a" disabled /><twSlider [value]="30" aria-label="a" disabled />
+  </div>
+  <div data-pair="collapsible">
+    <uiCollapsible [open]="true">@slot('trigger') {More}Hidden text.</uiCollapsible
+    ><twCollapsible [open]="true">@slot('trigger') {More}Hidden text.</twCollapsible>
+  </div>
+  @for (t of CHART_TYPES; track t) {
+    <div [data-pair]="'chart-' + t">
+      <uiChart
+        label="c"
+        [type]="t"
+        [labels]="['A', 'B', 'C']"
+        [series]="[
+          { name: 'X', values: [1, 4, 2] },
+          { name: 'Y', values: [3, 1, 2] },
+        ]"
+      />
+      <twChart
+        label="c"
+        [type]="t"
+        [labels]="['A', 'B', 'C']"
+        [series]="[
+          { name: 'X', values: [1, 4, 2] },
+          { name: 'Y', values: [3, 1, 2] },
+        ]"
+      />
+    </div>
+  }
+  <div data-pair="chart-interactive">
+    <uiChartInteractive
+      label="c"
+      [labels]="['A', 'B', 'C']"
+      [series]="[{ name: 'X', values: [1, 4, 2] }]"
+      [ranges]="[
+        { label: 'All', last: 3 },
+        { label: 'Last 2', last: 2 },
+      ]"
+    />
+    <twChartInteractive
+      label="c"
+      [labels]="['A', 'B', 'C']"
+      [series]="[{ name: 'X', values: [1, 4, 2] }]"
+      [ranges]="[
+        { label: 'All', last: 3 },
+        { label: 'Last 2', last: 2 },
+      ]"
+    />
+  </div>
+  <div data-pair="file-upload"><uiFileUpload id="pu1" label="Files" /><twFileUpload id="pu2" label="Files" /></div>
+  <div data-pair="file-upload-described">
+    <uiFileUpload id="pu3" label="Photos" description="Up to 5 MB." /><twFileUpload
+      id="pu4"
+      label="Photos"
+      description="Up to 5 MB."
+    />
+  </div>
+  <div data-pair="signature-pad"><uiSignaturePad name="sp1" /><twSignaturePad name="sp2" /></div>
+  <div data-pair="calendar">
+    <uiCalendar id="pc1" value="2026-11-18" min="2026-11-05" /><twCalendar
+      id="pc2"
+      value="2026-11-18"
+      min="2026-11-05"
+    />
+  </div>
+  <div data-pair="calendar-range">
+    <uiCalendar id="pc3" [range]="true" value="2026-11-10" end="2026-11-13" /><twCalendar
+      id="pc4"
+      [range]="true"
+      value="2026-11-10"
+      end="2026-11-13"
+    />
+  </div>
+  <div data-pair="date-picker"><uiDatePicker id="pd1" label="When" /><twDatePicker id="pd2" label="When" /></div>
+  <div data-pair="date-picker-set">
+    <uiDatePicker id="pd3" label="When" value="2026-11-18" /><twDatePicker id="pd4" label="When" value="2026-11-18" />
+  </div>
+  <div data-pair="resizable"><uiResizable id="pr1" /><twResizable id="pr2" /></div>
+  <div data-pair="resizable-vertical">
+    <uiResizable id="pr3" orientation="vertical" /><twResizable id="pr4" orientation="vertical" />
+  </div>
+  <div data-pair="scroll-area"><uiScrollArea label="a">x</uiScrollArea><twScrollArea label="a">x</twScrollArea></div>
+  <div data-pair="scroll-area-horizontal">
+    <uiScrollArea label="a" orientation="horizontal">x</uiScrollArea
+    ><twScrollArea label="a" orientation="horizontal">x</twScrollArea>
+  </div>
+  <div data-pair="otp-input">
+    <uiOtpInput id="po1" label="Code" value="12" /><twOtpInput id="po2" label="Code" value="12" />
+  </div>
 </main>
 
 <style scoped>
@@ -82,6 +333,10 @@
     display: grid;
     gap: 12px;
     padding: 16px;
+  }
+  .row {
+    display: flex;
+    height: 24px;
   }
   [data-pair] {
     display: grid;

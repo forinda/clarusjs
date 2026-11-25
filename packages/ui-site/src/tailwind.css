@@ -49,7 +49,7 @@
 }
 
 /* What the Tailwind versions of the components need besides utilities: the control sizes (the nearest data-size wins,
-   by inheritance) and the button's spinner. */
+   by inheritance) and their animations. */
 @layer components {
   [data-size='sm'] {
     --ui-control-h: var(--ui-control-sm);
@@ -67,5 +67,15 @@
 @keyframes ui-button-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+@keyframes ui-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@keyframes ui-skeleton-pulse {
+  50% {
+    opacity: 0.5;
   }
 }

@@ -9,14 +9,13 @@
     :where(:scope) {
       display: inline-flex;
     }
+    /* The buttons square their inner corners: they read these (a component's own rules always beat a parent's). */
     :where(:scope > *:not(:first-child)) {
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
+      --ui-group-radius-start: 0;
       margin-left: calc(var(--ui-space) * -0.25);
     }
     :where(:scope > *:not(:last-child)) {
-      border-top-right-radius: 0;
-      border-bottom-right-radius: 0;
+      --ui-group-radius-end: 0;
     }
     :where(:scope > *:focus-visible) {
       position: relative;

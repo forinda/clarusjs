@@ -1,0 +1,14 @@
+{{-- Skeleton, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as skeleton.tscl.
+     Copy it into src/components/ui/ as skeleton.tscl. --}}
+@input width: string = '100%'
+@input height: string = '16px'
+
+<div
+  aria-hidden="true"
+  data-part="skeleton"
+  [style]="'--ui-skeleton-w: ' + width + '; --ui-skeleton-h: ' + height"
+  class="
+    w-(--ui-skeleton-w) h-(--ui-skeleton-h) rounded-lg bg-muted animate-[ui-skeleton-pulse_1.5s_ease-in-out_infinite]
+    motion-reduce:animate-none
+  "
+></div>

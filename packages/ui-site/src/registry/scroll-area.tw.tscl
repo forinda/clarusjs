@@ -1,0 +1,23 @@
+{{-- Scroll area, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as scroll-area.tscl.
+     Copy it into src/components/ui/ as scroll-area.tscl. --}}
+@input label: string
+@input orientation: 'vertical' | 'horizontal' | 'both' = 'vertical'
+
+<div
+  data-part="scroll-area"
+  role="region"
+  [aria-label]="label"
+  tabindex="0"
+  [data-orientation]="orientation"
+  class="
+    [--ui-scroll-cover:var(--ui-bg)] [--ui-scroll-shade:color-mix(in_srgb,var(--ui-fg)_18%,transparent)]
+    overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:var(--ui-border)_transparent] text-foreground
+    [background:linear-gradient(var(--ui-scroll-cover)_30%,transparent)_top/100%_calc(var(--ui-space)*10),linear-gradient(transparent,var(--ui-scroll-cover)_70%)_bottom/100%_calc(var(--ui-space)*10),radial-gradient(farthest-side_at_50%_0,var(--ui-scroll-shade),transparent)_top/100%_calc(var(--ui-space)*3),radial-gradient(farthest-side_at_50%_100%,var(--ui-scroll-shade),transparent)_bottom/100%_calc(var(--ui-space)*3),var(--ui-scroll-cover)]
+    data-[orientation=horizontal]:[background:linear-gradient(to_right,var(--ui-scroll-cover)_30%,transparent)_left/calc(var(--ui-space)*10)_100%,linear-gradient(to_left,var(--ui-scroll-cover)_30%,transparent)_right/calc(var(--ui-space)*10)_100%,radial-gradient(farthest-side_at_0_50%,var(--ui-scroll-shade),transparent)_left/calc(var(--ui-space)*3)_100%,radial-gradient(farthest-side_at_100%_50%,var(--ui-scroll-shade),transparent)_right/calc(var(--ui-space)*3)_100%,var(--ui-scroll-cover)]
+    bg-no-repeat [background-attachment:local,local,scroll,scroll]
+    data-[orientation=horizontal]:overflow-x-auto data-[orientation=horizontal]:overflow-y-hidden data-[orientation=both]:overflow-auto
+    hover:[scrollbar-color:var(--ui-muted)_transparent] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2
+  "
+>
+  <slot />
+</div>

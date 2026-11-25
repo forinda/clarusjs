@@ -1,0 +1,16 @@
+{{-- Spinner, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as spinner.tscl.
+     Copy it into src/components/ui/ as spinner.tscl. --}}
+@input label: string = 'Loading'
+
+<span
+  role="status"
+  data-part="spinner"
+  class="
+    relative inline-flex
+    [&>[data-part=spinner-mark]]:size-[1.25em] [&>[data-part=spinner-mark]]:border-2 [&>[data-part=spinner-mark]]:border-muted [&>[data-part=spinner-mark]]:border-t-primary [&>[data-part=spinner-mark]]:rounded-[50%] [&>[data-part=spinner-mark]]:animate-[ui-spin_0.8s_linear_infinite]
+    motion-reduce:[&>[data-part=spinner-mark]]:animate-none motion-reduce:[&>[data-part=spinner-mark]]:border-t-muted motion-reduce:[&>[data-part=spinner-mark]]:border-r-primary
+    [&>[data-part=spinner-label]]:absolute [&>[data-part=spinner-label]]:w-px [&>[data-part=spinner-label]]:h-px [&>[data-part=spinner-label]]:overflow-hidden [&>[data-part=spinner-label]]:[clip-path:inset(50%)] [&>[data-part=spinner-label]]:whitespace-nowrap
+  "
+>
+  <span aria-hidden="true" data-part="spinner-mark"></span><span data-part="spinner-label">{{ label }}</span>
+</span>

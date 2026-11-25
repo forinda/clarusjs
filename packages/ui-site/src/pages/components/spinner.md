@@ -17,9 +17,15 @@ description: "A turning mark that tells screen readers it is loading."
 
 ## Source
 
-Copy it into `src/components/ui/` as `spinner.tscl`.
+Copy it into `src/components/ui/` as `spinner.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="spinner">
 
 <<< ../../registry/spinner.tscl
+
+<<< ../../registry/spinner.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

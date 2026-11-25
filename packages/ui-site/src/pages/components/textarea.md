@@ -35,9 +35,15 @@ A limit (`maxlength`) and what's left, read politely rather than on every key.
 
 ## Source
 
-Copy it into `src/components/ui/` as `textarea.tscl`.
+Copy it into `src/components/ui/` as `textarea.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="textarea">
 
 <<< ../../registry/textarea.tscl
+
+<<< ../../registry/textarea.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 
