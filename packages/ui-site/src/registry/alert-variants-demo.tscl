@@ -1,0 +1,40 @@
+@import uiAlert from './alert.tscl'
+
+<div class="demo">
+  <uiAlert>
+    @slot('title') {
+      Heads up
+    }
+    A new version is ready.
+  </uiAlert>
+  <uiAlert variant="success">
+    @slot('title') {
+      Saved
+    }
+    Your changes are live.
+  </uiAlert>
+  <uiAlert variant="warning">
+    @slot('title') {
+      Almost full
+    }
+    You've used 90% of your storage.
+  </uiAlert>
+  <uiAlert variant="destructive">
+    @slot('title') {
+      Couldn't publish
+    }
+    Check your connection and try again.
+  </uiAlert>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

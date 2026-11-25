@@ -91,7 +91,8 @@ export const registry: Entry[] = [
     files: ['card.tscl'],
     parts: [],
     uses: [],
-    example: ['button'],
+    example: ['button', 'badge'],
+    examples: ['actions', 'stat'],
     island: false,
   },
   {
@@ -102,6 +103,8 @@ export const registry: Entry[] = [
     files: ['badge.tscl'],
     parts: [],
     uses: [],
+    example: ['button'],
+    examples: ['variants', 'icons', 'counts'],
     island: false,
   },
   {
@@ -112,6 +115,8 @@ export const registry: Entry[] = [
     files: ['alert.tscl'],
     parts: [],
     uses: [],
+    example: ['button'],
+    examples: ['variants', 'icons'],
     island: false,
   },
   {
@@ -184,6 +189,7 @@ export const registry: Entry[] = [
     files: ['checkbox.tscl'],
     parts: ['checkbox.tscl'],
     uses: [],
+    examples: ['states'],
     island: true,
     since: '0.1.0',
     sections: ['focus', 'switch-checkbox', 'motion'],
@@ -196,6 +202,7 @@ export const registry: Entry[] = [
     files: ['switch.tscl'],
     parts: ['switch.tscl'],
     uses: [],
+    examples: ['states', 'settings'],
     island: true,
     since: '0.1.0',
     sections: ['focus', 'switch-checkbox', 'motion'],
