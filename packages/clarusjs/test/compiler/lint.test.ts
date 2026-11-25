@@ -165,9 +165,6 @@ test('#review: one-root fix: none when a <script> or <style> sits between the ro
   const { importCode } = await import('../helpers.ts')
   const component = 'src/components/x.tscl'
   const fixOf = (src: string) => lint(src, component).find((m) => m.rule === 'one-root')?.fix
-  expect(fixOf('<a>1</a>\n<script>\n  let c = state(0)\n</script>\n<b (click)="c++">2</b>\n')).toBeUndefined()
-  expect(fixOf('<a>1</a>\n<script server>\n  const x = 1\n</script>\n<b>{{ x }}</b>\n')).toBeUndefined()
-  expect(fixOf('<a>1</a>\n<style>\n  a {}\n</style>\n<b>2</b>\n')).toBeUndefined()
   const html = async (src: string) => (await importCode(compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js', scope: 's' }).code, 'fixr')).render({}) as string
   for (const src of ['hello {{ 1 }}\n', 'Hi <b>there</b> friend\n', '<b>a</b>\r\n<i>b</i>\r\n']) {
     const [m] = lint(src, component).filter((x) => x.rule === 'one-root')
@@ -182,14 +179,31 @@ test('#review 2: no fix around a declaration between the roots; a final text kee
   const { importCode } = await import('../helpers.ts')
   const component = 'src/components/x.tscl'
   const fixOf = (src: string) => lint(src, component).find((m) => m.rule === 'one-root')?.fix
-  expect(fixOf('a\n@input name: string = "Ada"\n{{ name }}\n')).toBeUndefined()
-  expect(fixOf('<a>1</a>\n@import { x } from "./x.ts"\n<b>{{ x }}</b>\n')).toBeUndefined()
-  expect(fixOf("<p>a</p>\n@import './card.css'\n<p>b</p>\n")).toBeUndefined()
-  expect(fixOf("<p>a</p>\n@event pick: string\n<p>b</p>\n")).toBeUndefined()
-  expect(fixOf("<p>a</p>\n@extends p\n<p>b</p>\n")).toBeUndefined()
   const html = async (src: string) => (await importCode(compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js', scope: 's' }).code, 'fixr2')).render({}) as string
   for (const src of ['Hello <b>x</b>', 'Hello <b>x</b> there', '<b>x</b>\nHello']) {
     const fixed = applyFixes(src, lint(src, component).filter((m) => m.rule === 'one-root'))
     expect(await html(fixed), src).toBe(await html(src))
   }
+})
+
+test('one-root fix: declarations, <script> and <style> between the roots move above them, in order; the HTML is the same', async () => {
+  const { applyFixes, compile } = await import('../../src/compiler/index.ts')
+  const { importCode } = await import('../helpers.ts')
+  const component = 'src/components/x.tscl'
+  const fix = (src: string) => applyFixes(src, lint(src, component).filter((m) => m.rule === 'one-root'))
+  expect(fix("<p>a</p>\n@import './card.css'\n<script>\n  let n = state(0)\n</script>\n<p>{{ n }}</p>\n")).toBe("@import './card.css'\n<script>\n  let n = state(0)\n</script>\n<fragment>\n<p>a</p>\n<p>{{ n }}</p>\n</fragment>\n")
+  const html = async (src: string) => (await importCode(compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js', scope: 's' }).code, 'hoist')).render({}) as string
+  const cases = [
+    'a\n@input name: string = "Ada"\n{{ name }}\n',
+    '<a>1</a>\n<script>\n  let c = state(0)\n</script>\n<b (click)="c++">{{ c }}</b>\n',
+    '<a>1</a>\n<script server>\n  const x = 1\n</script>\n<b>{{ x }}</b>\n',
+    '<a>1</a>\n<style scoped>\n  a { color: red; }\n</style>\n<b>2</b>\n',
+    '<p>a</p>\n@input u: string = "y"\n<!-- note -->\n@input t: string = "x"\n<p>{{ t }}{{ u }}</p>\n',
+  ]
+  for (const src of cases) {
+    const fixed = fix(src)
+    expect(lint(fixed, component).filter((m) => m.rule === 'one-root'), fixed).toEqual([])
+    expect(await html(fixed), src).toBe(await html(src))
+  }
+  expect(fix(cases[4]!)).toContain('<fragment>\n<p>a</p>\n<!-- note -->\n<p>{{ t }}{{ u }}</p>') // a comment renders: it stays
 })

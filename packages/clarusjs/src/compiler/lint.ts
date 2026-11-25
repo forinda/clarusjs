@@ -144,19 +144,35 @@ export const lintRules: LintRuleDef[] = [
       const after = [...parsed.nodes.map((n) => n.start), ...blocks].filter((x) => x > last.start)
       const rawEnd = after.length ? Math.min(...after) : source.length
       const end = source.slice(0, rawEnd).trimEnd().length
-      // No fix with a <script>, <style> or declaration (@input, @import…) between the roots: inside a <fragment> it
-      // would no longer be the component's.
-      // Every declaration the parser keeps (@input, @import of any kind, @event, @extends…): each field but the template.
+      // A <script>, <style> or declaration (@input, any @import, @event…) between the roots moves above them, in order:
+      // inside a <fragment> it would no longer be the component's, and at the top level its place doesn't matter.
+      // Every declaration the parser keeps: each field but the template (scripts and styles by their tags, above).
       const declared = Object.entries(parsed).flatMap(([key, value]) => {
-        if (key === 'nodes') return []
+        if (['nodes', 'script', 'serverScript', 'styles'].includes(key)) return []
         if (typeof value === 'number') return [value] // layoutStart
         const items: unknown[] = Array.isArray(value) ? value : [value]
         return items.flatMap((d) => (d && typeof d === 'object' && typeof (d as { start?: unknown }).start === 'number' ? [(d as { start: number }).start] : []))
       })
+      const inside = (x: number) => x > first!.start && x < end
+      const moving = new Set([...blocks, ...declared].filter(inside))
+      // The span cut where each top-level thing starts; each piece runs to the next.
+      const cuts = [...new Set([first!.start, ...parsed.nodes.map((n) => n.start).filter(inside), ...moving])].sort((a, b) => a - b)
+      const pieces = cuts.map((c, i) => ({ c, text: source.slice(c, cuts[i + 1] ?? end) }))
       const nl = source.includes('\r\n') ? '\r\n' : '\n'
+      const moved = pieces.filter((p) => moving.has(p.c)).map((p) => p.text.trimEnd() + nl).join('')
+      // The whitespace before a declaration or <script> isn't part of the template: it goes with what moves. A line
+      // break takes its place between two nodes that aren't text (a root <fragment> drops it); next to text it'd join it.
+      const typeAt = new Map(parsed.nodes.map((n) => [n.start, n.type]))
+      const stay = pieces.filter((p) => !moving.has(p.c))
+      const kept = stay.map((p, i) => {
+        const next = stay[i + 1]
+        if (!next || next.c === pieces[pieces.indexOf(p) + 1]?.c || typeAt.get(p.c) === 'text') return p.text // text: its end is rendered
+        const text = p.text.trimEnd()
+        return typeAt.get(p.c) !== 'text' && typeAt.get(next.c) !== 'text' ? text + nl : text
+      }).join('').trimEnd()
       // A line break before </fragment>, except after text that had none: it would become part of that text.
       const close = last.type !== 'text' || source.slice(end, rawEnd).includes('\n') ? nl : ''
-      const fix = [...blocks, ...declared].some((b) => b > first!.start && b < end) ? undefined : { start: first!.start, end, text: `<fragment>${nl}${source.slice(first!.start, end)}${close}</fragment>` }
+      const fix = { start: first!.start, end, text: `${moved}<fragment>${nl}${kept}${close}</fragment>` }
       report(at.start, 'a component renders one root element, for what a parent passes it (attributes, class, events) to land on: wrap these in an element, or in <fragment> if no element is wanted', fix)
     },
   },
