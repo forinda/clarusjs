@@ -1,0 +1,128 @@
+@import uiTable from './table.tscl'
+@import uiButton from './button.tscl'
+
+<script>
+  import { select, selectAll, selectionState } from './data-table.ts'
+  const INVOICES = [
+    { id: 'INV-001', customer: 'Amara Okafor', amount: 250 },
+    { id: 'INV-002', customer: 'Daniel Kim', amount: 150 },
+    { id: 'INV-003', customer: 'Grace Mensah', amount: 350 },
+    { id: 'INV-004', customer: 'Lucas Moreau', amount: 450 },
+    { id: 'INV-005', customer: 'Hana Sato', amount: 550 },
+    { id: 'INV-006', customer: 'Chloé Martin', amount: 200 },
+  ]
+  const ORDER = INVOICES.map((i) => i.id)
+  let sel = state({ ids: [''].slice(0, 0), anchor: '' })
+  const all = () => selectionState(sel, ORDER)
+  const picked = (id) => sel.ids.includes(id)
+  // A checkbox can't be indeterminate from HTML: set it on the element once the table has rendered again, and put
+  // the focus back where it was (the rows render again with the selection).
+  function sync(focus) {
+    requestAnimationFrame(() => {
+      const head = document.getElementById('inv-all')
+      if (head instanceof HTMLInputElement) head.indeterminate = all() === 'some'
+      document.getElementById(focus)?.focus()
+    })
+  }
+  function pick(id, event) {
+    sel = select(sel, id, { range: event.shiftKey, order: ORDER })
+    sync('inv-' + id)
+  }
+  function toggleAll() {
+    sel = selectAll(sel, ORDER, all() !== 'all')
+    sync('inv-all')
+  }
+  function clear() {
+    sel = { ids: [], anchor: '' }
+    sync('')
+  }
+  const money = (n) => '$' + n.toFixed(2)
+</script>
+
+{{-- Row selection: Shift-click a second checkbox to select the rows between; the header checkbox is checked,
+     indeterminate or clear, and selects or clears them all. --}}
+<div class="demo example">
+  <div class="inv-bar">
+    <p role="status">{{ sel.ids.length ? sel.ids.length + ' selected' : 'None selected' }}</p>
+    <uiButton variant="outline" size="sm" [disabled]="!sel.ids.length" (click)="clear()">Clear selection</uiButton>
+  </div>
+  <uiTable label="Invoices">
+    <thead>
+      <tr>
+        <th scope="col" class="inv-check">
+          <input
+            id="inv-all"
+            type="checkbox"
+            aria-label="Select all"
+            [checked]="all() === 'all'"
+            (click)="toggleAll()"
+          />
+        </th>
+        <th scope="col">Invoice</th>
+        <th scope="col">Customer</th>
+        <th scope="col" data-number="true">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (i of INVOICES; track i.id) {
+        <tr [data-selected]="picked(i.id) ? 'true' : false">
+          <td class="inv-check">
+            <input
+              [id]="'inv-' + i.id"
+              type="checkbox"
+              [aria-label]="'Select ' + i.id"
+              [checked]="picked(i.id)"
+              (click)="pick(i.id, $event)"
+            />
+          </td>
+          <td>{{ i.id }}</td>
+          <td>{{ i.customer }}</td>
+          <td data-number="true">{{ money(i.amount) }}</td>
+        </tr>
+      }
+    </tbody>
+  </uiTable>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  .inv-bar {
+    display: flex;
+    gap: var(--ui-space-3);
+    align-items: center;
+    justify-content: space-between;
+  }
+  .inv-bar p {
+    margin: 0;
+    color: var(--ui-muted);
+  }
+</style>
+
+{{-- Global: the cells sit inside the Table's own markup, out of this demo's scope. --}}
+<style global>
+  .inv-check {
+    width: 1%;
+  }
+  .inv-check input {
+    width: calc(var(--ui-space) * 4);
+    height: calc(var(--ui-space) * 4);
+    margin: 0;
+    accent-color: var(--ui-accent);
+    vertical-align: middle;
+  }
+  tr[data-selected='true'] > td {
+    background: var(--ui-accent-soft);
+  }
+  .demo [data-number='true'] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+</style>

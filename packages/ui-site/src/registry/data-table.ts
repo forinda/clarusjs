@@ -141,3 +141,32 @@ export function serializeTable(state: TableState): string {
   if (state.page > 0) params.set('page', String(state.page + 1))
   return params.toString().replaceAll('%2C', ',') // commas are fine in a query, and easier to read
 }
+
+export type Selection = { ids: string[]; anchor: string }
+
+/**
+ * The selection after a click on row id's checkbox: it toggles, and becomes the anchor. With range (Shift-click)
+ * every row from the anchor to it, in order (the rows as shown), takes the clicked row's new state.
+ */
+export function select(sel: Selection, id: string, { range = false, order = [] as readonly string[] } = {}): Selection {
+  const on = !sel.ids.includes(id)
+  const from = order.indexOf(sel.anchor)
+  const to = order.indexOf(id)
+  const span = range && from >= 0 && to >= 0 ? order.slice(Math.min(from, to), Math.max(from, to) + 1) : [id]
+  return { ids: setAll(sel.ids, span, on), anchor: id }
+}
+
+/** Every one of ids selected (on) or not, the rest as they were: the header checkbox. */
+export function selectAll(sel: Selection, ids: readonly string[], on: boolean): Selection {
+  return { ...sel, ids: setAll(sel.ids, ids, on) }
+}
+
+/** Whether all, some or none of ids are selected: the header checkbox is checked, indeterminate or clear. */
+export function selectionState(sel: Selection, ids: readonly string[]): 'all' | 'some' | 'none' {
+  const n = ids.filter((id) => sel.ids.includes(id)).length
+  return n && n === ids.length ? 'all' : n ? 'some' : 'none'
+}
+
+function setAll(ids: readonly string[], span: readonly string[], on: boolean): string[] {
+  return on ? [...ids, ...span.filter((id) => !ids.includes(id))] : ids.filter((id) => !span.includes(id))
+}

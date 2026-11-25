@@ -285,6 +285,7 @@ export const registry: Entry[] = [
     parts: [],
     uses: [],
     example: ['table', 'badge', 'button', 'input'],
+    examples: ['selection'],
     island: true,
   },
   {

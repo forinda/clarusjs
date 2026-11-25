@@ -6,6 +6,9 @@ import {
   nextSort,
   paginate,
   parseTable,
+  select,
+  selectAll,
+  selectionState,
   serializeTable,
   sortRows,
 } from '../src/registry/data-table.ts'
@@ -132,4 +135,29 @@ test('the URL: sort, query, filters and page (from 1 in the URL), defaults left 
     filters: { status: [] },
     page: 0,
   })
+})
+
+test('select: a click toggles a row and becomes the anchor; Shift-click sets every row from the anchor to it, in display order', () => {
+  const order = ['a', 'b', 'c', 'd', 'e']
+  let sel = select({ ids: [], anchor: '' }, 'b', { order })
+  expect(sel).toEqual({ ids: ['b'], anchor: 'b' })
+  sel = select(sel, 'd', { range: true, order })
+  expect(sel).toEqual({ ids: ['b', 'c', 'd'], anchor: 'd' })
+  sel = select(sel, 'c', { order })
+  expect(sel.ids).toEqual(['b', 'd'])
+  sel = select(sel, 'a', { range: true, order }) // a was off, so from c to a turns on
+  expect(sel).toEqual({ ids: ['b', 'd', 'a', 'c'], anchor: 'a' })
+  sel = select(sel, 'b', { range: true, order }) // b was on, so from a to b turns off
+  expect(sel).toEqual({ ids: ['d', 'c'], anchor: 'b' })
+  expect(select({ ids: [], anchor: 'gone' }, 'e', { range: true, order }).ids).toEqual(['e']) // no anchor shown: a plain toggle
+})
+
+test('selectAll and selectionState: the header checkbox, for the rows on show', () => {
+  const sel = { ids: ['x', 'a'], anchor: 'a' }
+  expect(selectAll(sel, ['a', 'b'], true).ids).toEqual(['x', 'a', 'b'])
+  expect(selectAll(sel, ['a', 'b'], false).ids).toEqual(['x'])
+  expect(selectionState(sel, ['a', 'b'])).toBe('some')
+  expect(selectionState(sel, ['a'])).toBe('all')
+  expect(selectionState(sel, ['b'])).toBe('none')
+  expect(selectionState(sel, [])).toBe('none')
 })

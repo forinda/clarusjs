@@ -46,10 +46,7 @@ test('pages of 5, with where you are; a link with the state in it opens on that 
   demo = await open(page, '?sort=joined.desc&team=Sales&q=a')
   await expect(demo.getByRole('searchbox', { name: 'Search people' })).toHaveValue('a')
   await expect(demo.getByRole('button', { name: /^Sales \d+$/ })).toHaveAttribute('aria-pressed', 'true')
-  await expect(demo.locator('th:has(#people-sort-joined)')).toHaveAttribute(
-    'aria-sort',
-    'descending',
-  )
+  await expect(demo.locator('th:has(#people-sort-joined)')).toHaveAttribute('aria-sort', 'descending')
 })
 
 for (const mode of modes) {
@@ -59,3 +56,30 @@ for (const mode of modes) {
     expect(await axeViolations(page)).toEqual([])
   })
 }
+
+test('selection: Shift-click selects a range; the header checkbox goes indeterminate, then selects or clears them all', async ({
+  page,
+}) => {
+  await page.goto('/components/data-table')
+  await page.locator('cl-island[c="data-table-selection-demo"][data-cl-ready]').waitFor({ state: 'attached' })
+  const demo = page.locator('[class*="data-table-selection-demo"]')
+  const all = demo.getByRole('checkbox', { name: 'Select all' })
+  const status = demo.getByRole('status')
+  await expect(status).toHaveText('None selected')
+  await demo.getByRole('checkbox', { name: 'Select INV-002' }).click()
+  await demo.getByRole('checkbox', { name: 'Select INV-004' }).click({ modifiers: ['Shift'] })
+  for (const n of ['002', '003', '004'])
+    await expect(demo.getByRole('checkbox', { name: `Select INV-${n}` })).toBeChecked()
+  await expect(demo.getByRole('checkbox', { name: 'Select INV-005' })).not.toBeChecked()
+  await expect(status).toHaveText('3 selected')
+  expect(await all.evaluate((el: HTMLInputElement) => el.indeterminate)).toBe(true)
+  await all.click()
+  await expect(status).toHaveText('6 selected')
+  await expect(all).toBeChecked()
+  expect(await all.evaluate((el: HTMLInputElement) => el.indeterminate)).toBe(false)
+  await all.click()
+  await expect(status).toHaveText('None selected')
+  await demo.getByRole('checkbox', { name: 'Select INV-001' }).click()
+  await demo.getByRole('button', { name: 'Clear selection' }).click()
+  await expect(status).toHaveText('None selected')
+})
