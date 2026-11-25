@@ -231,6 +231,26 @@
     :where([data-part='calendar-year']) {
       margin-right: var(--ui-space-1);
     }
+    /* A narrow screen: the lists take the first row, the arrows the second (‹ « left, › » right), so the header is
+       no wider than the days. */
+    @media (max-width: 30rem) {
+      :where([data-part='calendar-head']) {
+        flex-wrap: wrap;
+      }
+      :where([data-part='calendar-month']) {
+        order: -2;
+        flex: 1 1 60%;
+        margin: 0;
+      }
+      :where([data-part='calendar-year']) {
+        order: -1;
+        flex: 1 1 30%;
+        margin: 0;
+      }
+      :where([data-part='calendar-prev']) {
+        margin-right: auto;
+      }
+    }
     :where([data-part='calendar-prev']),
     :where([data-part='calendar-next']),
     :where([data-part='calendar-prev-year']),
