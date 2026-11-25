@@ -71,3 +71,39 @@ test('/components/input: one size scale: an input, a select and a button in a ro
     expect(heights, size).toEqual([px, px, px])
   }
 })
+
+test('/components/input: the interactive examples: password shows and hides, clear empties and keeps the focus, the count follows', async ({ page }) => {
+  await page.goto('/components/input')
+  for (const c of ['input-password-demo', 'input-clear-demo', 'input-count-demo']) await page.locator(`cl-island[c="${c}"][data-cl-ready]`).waitFor({ state: 'attached' })
+  const password = page.getByLabel('Password', { exact: true })
+  await password.fill('hunter2')
+  await expect(password).toHaveAttribute('type', 'password')
+  await page.getByRole('button', { name: 'Show password' }).click()
+  await expect(password).toHaveAttribute('type', 'text')
+  await expect(password).toHaveValue('hunter2') // the same input: what was typed stays
+  await expect(page.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true')
+  const query = page.getByLabel('Filter', { exact: true })
+  await query.fill('invoices')
+  await page.getByRole('button', { name: 'Clear' }).click()
+  await expect(query).toHaveValue('')
+  await expect(query).toBeFocused()
+  const bio = page.getByLabel('Short bio')
+  await bio.fill('Hello')
+  await expect(page.getByText('5 / 80')).toBeVisible()
+})
+
+test('/components/input: the four variants look different; warning and invalid colour the border', async ({ page }) => {
+  await page.goto('/components/input')
+  const v = (name: string) => page.locator(`[data-part="text-input"][data-variant="${name}"]`).first()
+  await expect(v('filled')).not.toHaveCSS('background-color', await v('borderless').evaluate((e) => getComputedStyle(e).backgroundColor))
+  await expect(v('borderless')).toHaveCSS('border-top-width', '0px')
+  await expect(v('underlined')).toHaveCSS('border-top-width', '0px')
+  await expect(v('underlined')).not.toHaveCSS('border-bottom-width', '0px')
+})
+
+test('/components/input: inside an input group the input has no box of its own (the group is the box)', async ({ page }) => {
+  await page.goto('/components/input')
+  const inGroup = page.locator('[data-part="input-group"] > [data-part="text-input"]').first()
+  await expect(inGroup).toHaveCSS('border-top-width', '0px')
+  await expect(inGroup).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+})

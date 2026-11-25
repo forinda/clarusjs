@@ -1,6 +1,8 @@
-{{-- Input group: a field with text or icons before (start) and after (end) it, as one box. --}}
+{{-- Input group: a field with text or icons before (start) and after (end) it, as one box. variant as Input's:
+     outline (the default), filled, borderless or underlined; it turns red when its input is aria-invalid. --}}
+@input variant: 'outline' | 'filled' | 'borderless' | 'underlined' = 'outline'
 
-<div data-part="input-group">
+<div data-part="input-group" [data-variant]="variant === 'outline' ? false : variant">
   <span data-part="input-group-start"><slot name="start" /></span><slot /><span data-part="input-group-end"
     ><slot name="end"
   /></span>
@@ -21,6 +23,22 @@
     :where(:scope:focus-within) {
       outline: 2px solid var(--ui-ring);
       outline-offset: 1px;
+    }
+    :where(:scope:has([aria-invalid='true'])) {
+      border-color: var(--ui-danger);
+    }
+    :where(:scope[data-variant='filled']) {
+      border-color: transparent;
+      background: var(--ui-muted-bg);
+    }
+    :where(:scope[data-variant='borderless']) {
+      border-width: 0;
+      background: transparent;
+    }
+    :where(:scope[data-variant='underlined']) {
+      border-width: 0 0 1px;
+      border-radius: 0;
+      background: transparent;
     }
     :where(:scope > input) {
       flex: 1;

@@ -1,11 +1,20 @@
 {{-- Input: a native <input>. Every <input> attribute you pass (name, value, placeholder, required, disabled…),
-     and id, class, style, aria-* and data-*, land on it. size sm or lg, or a data-size around it, sets its height. --}}
+     and id, class, style, aria-* and data-*, land on it. size sm or lg, or a data-size around it, sets its height.
+     variant: outline (the default), filled, borderless or underlined. Error is aria-invalid; status="warning" warns. --}}
 @input type: string = 'text'
 @input size: '' | 'sm' | 'md' | 'lg' = ''
+@input variant: 'outline' | 'filled' | 'borderless' | 'underlined' = 'outline'
+@input status: '' | 'warning' = ''
 
 @extends input
 
-<input [type]="type" data-part="text-input" [data-size]="size || false" />
+<input
+  [type]="type"
+  data-part="text-input"
+  [data-size]="size || false"
+  [data-variant]="variant === 'outline' ? false : variant"
+  [data-status]="status || false"
+/>
 
 <style scoped>
   @layer theme, base, components, utilities;
@@ -31,9 +40,45 @@
     :where(:scope[aria-invalid='true']) {
       border-color: var(--ui-danger);
     }
+    :where(:scope[data-status='warning']) {
+      border-color: var(--ui-warning);
+    }
+    :where(:scope[data-variant='filled']) {
+      border-color: transparent;
+      background: var(--ui-muted-bg);
+    }
+    :where(:scope[data-variant='borderless']) {
+      border-width: 0;
+      background: transparent;
+    }
+    /* A line under it, no box: the line takes the error and warning colours. */
+    :where(:scope[data-variant='underlined']) {
+      border-width: 0 0 1px;
+      border-radius: 0;
+      background: transparent;
+      padding-inline: 0;
+    }
+    :where(:scope[data-variant='filled'][aria-invalid='true']),
+    :where(:scope[data-variant='underlined'][aria-invalid='true']) {
+      border-color: var(--ui-danger);
+    }
+    :where(:scope:read-only:not(:disabled)) {
+      background: var(--ui-muted-bg);
+    }
     :where(:scope:disabled) {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+    /* In an input group, the group is the box. */
+    :where([data-part='input-group'] > :scope) {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    :where([data-part='input-group'] > :scope:focus-visible) {
+      outline: none;
     }
     :where([data-size='sm'] :scope),
     :where(:scope[data-size='sm']) {

@@ -101,6 +101,7 @@ test('a component page shows each of its examples (examples: [...]) under Exampl
     expect(md, `${e.name}: ${x}`).toContain(`<<< ../../registry/${e.name}-${x}-demo.tscl`)
     expect(md, `${e.name}: ${x}`).toMatch(new RegExp(`^## Examples$`, 'm'))
   }
+  expect(components.find((e) => e.name === 'input')!.examples).toEqual(['variants', 'sizes', 'icons', 'addons', 'states', 'password', 'clear', 'count', 'search'])
   expect(components.find((e) => e.name === 'button')!.examples).toEqual(['variants', 'sizes', 'icons', 'loading', 'shapes', 'block', 'disabled', 'actions'])
 })
 
@@ -125,6 +126,14 @@ test('input: size sm or lg sets data-size; without it, none (a [data-size] aroun
   expect(await render('input.tscl', { size: 'sm' })).toContain('data-size="sm"')
   expect(await render('input.tscl', { size: 'lg' })).toContain('data-size="lg"')
   expect(await render('input.tscl', {})).not.toContain('data-size')
+})
+
+test('input: variant filled, borderless or underlined and status warning are data attributes; outline adds none', async () => {
+  for (const variant of ['filled', 'borderless', 'underlined']) expect(await render('input.tscl', { variant })).toContain(`data-variant="${variant}"`)
+  expect(await render('input.tscl', { variant: 'outline' })).not.toContain('data-variant')
+  expect(await render('input.tscl', { status: 'warning' })).toContain('data-status="warning"')
+  expect(await render('input-group.tscl', { variant: 'filled' }, { default: '' })).toContain('data-variant="filled"')
+  expect(source('input-group.tscl')).toMatch(/:has\(\[aria-invalid='true'\]\)/)
 })
 
 test('sizes: every control takes its height from --ui-control-sm|md|lg, under [data-size] on itself or around it', () => {

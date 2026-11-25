@@ -1,0 +1,40 @@
+@import uiInputGroup from './input-group.tscl'
+@import uiInput from './input.tscl'
+@import uiKbd from './kbd.tscl'
+
+<div class="demo">
+  <uiInputGroup>
+    @slot('start') {
+      <icon name="lucide:search" />
+    }
+    <uiInput aria-label="Search" placeholder="Search…" />
+    @slot('end') {
+      <uiKbd>⌘K</uiKbd>
+    }
+  </uiInputGroup>
+  <uiInputGroup>
+    @slot('start') {
+      <icon name="lucide:user" />
+    }
+    <uiInput aria-label="Username" placeholder="Username" />
+  </uiInputGroup>
+  <uiInputGroup variant="filled">
+    <uiInput aria-label="Amount" inputmode="decimal" placeholder="0.00" />
+    @slot('end') {
+      <icon name="lucide:dollar-sign" />
+    }
+  </uiInputGroup>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
