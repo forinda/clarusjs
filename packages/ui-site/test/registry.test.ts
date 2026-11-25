@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { compile } from 'clarusjs/compiler'
 import { expect, test } from 'vitest'
-import { blocks, components, registry } from '../src/registry.ts'
+import { blocks, codeFiles, components, registry } from '../src/registry.ts'
 import { registryDir, render, source } from './render.ts'
 import { globalStyle, uiSection } from './css.ts'
 
@@ -31,10 +31,11 @@ test('every component has a page at src/pages/components/<name>.md that shows ea
   }
 })
 
-test('every block has a page at src/pages/blocks/<name>.md showing each file, and a view at src/pages/view/<name>.tscl', () => {
+test('every block has a page at src/pages/blocks/<name>.md showing every file to copy, in the Code tree\'s order, and a view', () => {
   for (const e of blocks) {
     const md = readFileSync(resolve(pages, 'blocks', `${e.name}.md`), 'utf8')
-    for (const f of e.files) expect(md, `${e.name}: ${f}`).toContain(`<<< ../../registry/${f}`)
+    const shown = [...md.matchAll(/^<<< \.\.\/\.\.\/registry\/(\S+)/gm)].map((m) => m[1])
+    expect(shown, e.name).toEqual(codeFiles(e).map((f) => f.file))
     expect(existsSync(resolve(pages, 'view', `${e.name}.tscl`)), e.name).toBe(true)
   }
 })
@@ -396,4 +397,10 @@ test('spacing: padding, margin and gap come from the --ui-space scale, never raw
       expect(value!.replace(/var\(--ui-space[\w-]*\)/g, '').match(/-?\d*\.?\d+px/g), `${f}: ${prop}: ${value}`).toBeNull()
     }
   }
+})
+
+test('codeFiles: a block\'s own files, then each component it uses, named as they are copied', () => {
+  const login = blocks.find((b) => b.name === 'login')!
+  expect(codeFiles(login).map((f) => f.path)).toEqual(['login.tscl', 'data.ts', 'components/ui/card.tscl', 'components/ui/field.tscl', 'components/ui/button.tscl'])
+  expect(codeFiles(login)[2]!.file).toBe('card.tscl')
 })

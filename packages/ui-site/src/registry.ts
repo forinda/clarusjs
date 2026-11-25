@@ -446,3 +446,13 @@ export const registry: Entry[] = [
 export const components: Entry[] = registry.filter((e) => e.kind !== 'block')
 /** The blocks (/blocks): pages built from components, copied into an app's src/pages/. */
 export const blocks: Entry[] = registry.filter((e) => e.kind === 'block')
+
+/**
+ * Every file the Code view of a block shows, as it's copied: the block's own (page first), then each component it
+ * uses, under components/ui/. `file` is its path in src/registry/.
+ */
+export function codeFiles(entry: Entry): { path: string; file: string }[] {
+  const own = entry.files.map((file) => ({ path: file.slice(file.lastIndexOf('/') + 1), file }))
+  const used = entry.uses.flatMap((u) => registry.find((e) => e.name === u)?.files ?? []).map((file) => ({ path: `components/ui/${file}`, file }))
+  return [...own, ...used]
+}

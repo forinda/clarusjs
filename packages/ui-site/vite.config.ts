@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
 import markdown from '@clarusjs/content'
 import { themeDocs } from '@clarusjs/theme-docs/vite.js'
-import { APPLY_SCRIPT } from './src/theme/apply.ts'
+import { APPLY_SCRIPT, SCHEME_SCRIPT } from './src/theme/apply.ts'
 import { SIDEBAR_SCRIPT } from '@clarusjs/ui-primitives/sidebar.js'
 
 export default defineConfig({
@@ -25,6 +25,8 @@ export default defineConfig({
           ['link', { rel: 'icon', href: '/logo.svg', type: 'image/svg+xml' }],
           // A theme saved on /theme, applied to demos before the first paint (src/theme/apply.ts).
           ['script', { id: 'ui-theme-apply' }, APPLY_SCRIPT],
+          // The header's light/dark choice, followed by block frames too, as soon as it changes (src/theme/apply.ts).
+          ['script', { id: 'ui-scheme' }, SCHEME_SCRIPT],
           // A collapsed sidebar, remembered, applied before the first paint (@clarusjs/ui-primitives).
           ['script', { id: 'ui-sidebar-apply' }, SIDEBAR_SCRIPT],
         ],

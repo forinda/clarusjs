@@ -14,3 +14,10 @@ const FONT_LOADER = `function(t){${JSON.stringify(GOOGLE_FONTS)}.forEach(functio
 export const loadFonts: (text: string) => void = new Function(`return ${FONT_LOADER}`)()
 
 export const APPLY_SCRIPT = `try{var c=localStorage.getItem(${JSON.stringify(STORAGE_KEY)});if(typeof c=="string"&&c.length<=20000&&c.indexOf("<")<0){var s=document.createElement("style");s.id="ui-theme";s.textContent=c;document.head.appendChild(s);(${FONT_LOADER})(c)}}catch(e){}`
+
+/**
+ * Every page, the block views in frames too: the light/dark choice the header's switch saved (theme-docs keeps it in
+ * localStorage as clarusjs-theme), applied before the first paint and again whenever another page or the page
+ * around a frame changes it.
+ */
+export const SCHEME_SCRIPT = `(function(){function a(){try{var t=localStorage.getItem("clarusjs-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);else document.documentElement.removeAttribute("data-theme")}catch(e){}}a();addEventListener("storage",function(e){if(!e.key||e.key==="clarusjs-theme")a()})})()`
