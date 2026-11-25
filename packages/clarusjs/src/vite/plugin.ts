@@ -10,6 +10,7 @@ import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig }
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
 import { COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
+import { componentNames, type LibraryOption } from './libraries.ts'
 import type { LintConfig, LintRuleDef } from '../compiler/lint.ts'
 import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, routeToFile } from './build.ts'
 export { packageOf } from './build.ts'
@@ -189,9 +190,11 @@ export type ClarusOptions = {
   /**
    * Automatic component imports (#458): a kebab-case file under these folders is used by its name, without @import
    * (`src/components/forms/text-field.tscl` → `<forms-text-field>`, or `<text-field>` when no other has that name).
-   * Defaults: `{ dirs: ['src/components', 'src/layouts'], auto: true }`.
+   * Defaults: `{ dirs: ['src/components', 'src/layouts'], auto: true }`. `libraries`: installed component libraries whose
+   * components are used the same way (`libraries: ['@clarusjs/ui-primitives']` → `<ui-dialog>`), each described by its
+   * package.json; your own components win over theirs.
    */
-  components?: { dirs?: string[]; auto?: boolean }
+  components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }
   /** Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. */
   adapter?: 'netlify'
   /** Fragment navigation: each static and server page also answers at <path>/index.frag.html. */
@@ -348,11 +351,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     pages: (root) => files.find(resolve(root, 'src/pages')).filter((f) => isPageFile(f.split(sep).join('/'))),
     layouts: (file, root) => layoutsFor(root, file, options.layouts ?? []),
     // ponytail: the folders are listed on every compile (cheap next to compiling); cache per build if it shows up.
-    names: (root) => {
-      if (options.components?.auto === false) return undefined
-      const found = findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => relative(root, f).split(sep).join('/'))
-      return componentIndex(found, options.components?.dirs ?? COMPONENT_DIRS).names
-    },
+    // The names are also written to .clarusjs/components.json, for the editor.
+    names: (root) => componentNames(root, options.components),
     components: (appRoot) => reachableComponents(appRoot, [...files.find(resolve(appRoot, 'src')), ...extra(appRoot).filter((f) => existsSync(f))], (file) => files.read(file, appRoot), extensions, aliases),
     read: (file, appRoot) => {
       const code = readFileSync(file, 'utf8')
@@ -494,6 +494,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           config.logger.warn(`clarusjs: ${file} isn't imported automatically: its name isn't kebab-case (rename it, or @import it)`)
         }
       }
+      // The names, libraries' too, once now: a library that isn't installed fails here, and the editor gets
+      // .clarusjs/components.json as soon as the dev server or a build starts.
+      componentNames(root, options.components)
     },
     // Order matters: the server build needs the client's hashed URLs, and prerendering needs the server build.
     async buildApp(builder) {

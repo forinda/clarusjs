@@ -53,6 +53,48 @@ export function componentIndex(files: string[], dirs: string[]): { names: Compon
 }
 
 /**
+ * A component library an app uses, resolved: its package `name`, the `prefix` of its tags, and its `.tscl` files
+ * (posix, relative to the folder its package.json's `clarusjs.components` names).
+ * @since 0.16.0
+ * @see https://clarusjs.com/guide/components#components-from-libraries
+ */
+export type Library = { name: string; prefix: string; files: string[] }
+
+/**
+ * Name each library component: its prefix, folders and file joined with hyphens (`ui` + `dialog.tscl` → `ui-dialog`),
+ * imported as `<package>/<file>`. Only kebab-case names with a hyphen; a name two libraries share is ambiguous.
+ * @example
+ * libraryNames([{ name: '@clarusjs/ui-primitives', prefix: 'ui', files: ['dialog.tscl'] }])
+ * // { 'ui-dialog': '@clarusjs/ui-primitives/dialog.tscl' }
+ * @since 0.16.0
+ * @see https://clarusjs.com/guide/components#components-from-libraries
+ */
+export function libraryNames(libraries: Library[]): ComponentNames {
+  const found = new Map<string, string[]>()
+  for (const lib of libraries) {
+    for (const file of [...lib.files].sort()) {
+      if (!file.endsWith('.tscl')) continue
+      const segments = [...(lib.prefix ? [lib.prefix] : []), ...file.slice(0, -'.tscl'.length).split('/')]
+      const name = segments.join('-')
+      if (!segments.every((s) => KEBAB.test(s)) || !name.includes('-')) continue
+      found.set(name, [...(found.get(name) ?? []), `${lib.name}/${file}`])
+    }
+  }
+  return Object.fromEntries([...found].map(([name, paths]) => [name, paths.length === 1 ? paths[0]! : paths]))
+}
+
+/**
+ * The app's own component names with the libraries' added: a name the app's own components have stays theirs.
+ * @example
+ * withLibraries(componentIndex(files, COMPONENT_DIRS).names, libraryNames(libraries))
+ * @since 0.16.0
+ * @see https://clarusjs.com/guide/components#components-from-libraries
+ */
+export function withLibraries(own: ComponentNames, libraries: ComponentNames): ComponentNames {
+  return { ...libraries, ...own }
+}
+
+/**
  * Add an import for each component tag the template uses that `names` knows and the file doesn't import itself (only
  * those). A tag that names two components is a located error. Other hyphenated tags stay HTML (web components).
  */

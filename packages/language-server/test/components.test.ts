@@ -133,6 +133,21 @@ test('#458 automatic components: completed, hovered and followed by name, withou
   expect(link?.targetUri).toContain('src/components/forms/text-field.tscl')
 })
 
+test('library components (from .clarusjs/components.json, written by the plugin or check): completed, hovered, followed', async () => {
+  const { root, at } = await setup()
+  const lib = resolve(root, 'node_modules/@acme/ui')
+  mkdirSync(resolve(lib, 'src'), { recursive: true })
+  writeFileSync(resolve(lib, 'package.json'), JSON.stringify({ name: '@acme/ui', exports: { './*': './src/*' }, clarusjs: { components: './src', prefix: 'acme' } }))
+  writeFileSync(resolve(lib, 'src/dialog.tscl'), '@input heading: string\n<dialog>{{ heading }}</dialog>\n')
+  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  writeFileSync(resolve(root, '.clarusjs/components.json'), JSON.stringify({ names: { 'acme-dialog': '@acme/ui/dialog.tscl', 'badge-x': '/src/components/gone.tscl' } }))
+  expect(labels(at('<§', completions))).toContain('acme-dialog')
+  expect(labels(at('<§', completions))).not.toContain('badge-x') // the app's own come from its files, not the last run
+  expect(labels(at('<acme-dialog §', completions))).toContain('[heading]')
+  const [link] = at(`<acme-dia§log />\n`, definition) ?? []
+  expect(decodeURIComponent(link?.targetUri ?? '')).toContain('node_modules/@acme/ui/src/dialog.tscl')
+})
+
 test('#442 @event: completed as a binding with its value type, and hovered', async () => {
   const { root, project, at } = await setup()
   const file = resolve(root, 'src/components/stepper.tscl')

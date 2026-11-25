@@ -159,3 +159,13 @@ test('#458 transform: a component used by name is imported relative to the file,
   expect(out.diagnostics).toEqual([])
   expect(out.text).toContain('from "../../components/forms/text-field.tscl"')
 })
+
+test('transform: a library component used by name (from .clarusjs/components.json) is imported by its package path', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'cl-map-lib-'))
+  writeFileSync(resolve(root, 'package.json'), '{}')
+  mkdirSync(resolve(root, 'src/pages'), { recursive: true })
+  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  writeFileSync(resolve(root, '.clarusjs/components.json'), JSON.stringify({ names: { 'acme-dialog': '@acme/ui/dialog.tscl' } }))
+  const out = transform({ fileName: resolve(root, 'src/pages/index.tscl'), content: '<acme-dialog />\n' })
+  expect(out.text).toContain('from "@acme/ui/dialog.tscl"')
+})

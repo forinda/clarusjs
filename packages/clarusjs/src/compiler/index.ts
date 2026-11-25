@@ -9,7 +9,7 @@ import { awaitLists, fragmentRoot, parse, rootNodes, type Attr, type TemplateNod
 
 export { ClarusError } from './errors.ts'
 export { parse } from './parse.ts'
-export { componentIndex, COMPONENT_DIRS, type ComponentNames } from './components.ts'
+export { componentIndex, COMPONENT_DIRS, libraryNames, withLibraries, type ComponentNames, type Library } from './components.ts'
 import { foldClass } from './class-style.ts'
 export { checkIcons, type IconResolver } from './icon.ts'
 import type { IconResolver } from './icon.ts'

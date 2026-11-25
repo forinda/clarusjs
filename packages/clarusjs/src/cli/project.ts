@@ -1,10 +1,11 @@
 // What `clarusjs check` needs from the app's Vite config: the clarusjs plugin's page sources (Markdown, …) and
 // resolve.alias, so check sees the same pages and imports as the build. Read with Vite's own config loader.
+import type { LibraryOption } from '../vite/libraries.ts'
 import { resolve } from 'node:path'
 import type { CheckSource } from './check.ts'
 import type { LintConfig, LintRuleDef } from '../compiler/lint.ts'
 
-type Plugin = { name?: string; api?: { sources?: CheckSource[]; lint?: LintConfig; lintRules?: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean } } }
+type Plugin = { name?: string; api?: { sources?: CheckSource[]; lint?: LintConfig; lintRules?: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] } } }
 
 /** Vite's plugins option: plugins, falsy entries, nested arrays and promises of any of these. */
 async function flatten(plugins: unknown): Promise<Plugin[]> {
@@ -13,7 +14,7 @@ async function flatten(plugins: unknown): Promise<Plugin[]> {
   return value && typeof value === 'object' ? [value as Plugin] : []
 }
 
-type Project = { sources: CheckSource[]; viteAliases: unknown; lint: LintConfig | undefined; lintRules: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean } }
+type Project = { sources: CheckSource[]; viteAliases: unknown; lint: LintConfig | undefined; lintRules: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] } }
 const none: Project = { sources: [], viteAliases: undefined, lint: undefined, lintRules: [] }
 
 export async function loadProject(root: string): Promise<Project> {

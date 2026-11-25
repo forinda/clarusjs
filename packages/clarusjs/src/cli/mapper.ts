@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs'
 import { dirname, relative, resolve, sep } from 'node:path'
 import { generateTolerant } from '../check/generate.ts'
 import { COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
+import { readComponentNames } from '../vite/libraries.ts'
 import { findClarusFiles } from '../vite/build.ts'
 import { loaderOf } from './check.ts'
 
@@ -25,6 +26,9 @@ function namesFor(fileName: string): ComponentNames | undefined {
   const rel = (path: string) => { const r = relative(dirname(fileName), resolve(root, path.slice(1))).split(sep).join('/'); return r.startsWith('.') ? r : `./${r}` }
   const names: ComponentNames = {}
   for (const [name, path] of Object.entries(componentIndex(files, COMPONENT_DIRS).names)) names[name] = Array.isArray(path) ? path.map(rel) : rel(path)
+  // Component libraries' names, as the plugin or `clarusjs check` last wrote them (imported by package path). The
+  // app's own come from its files above, so they're never stale and win.
+  for (const [name, path] of Object.entries(readComponentNames(root) ?? {})) if (!(name in names) && ![path].flat().some((p) => p.startsWith('/'))) names[name] = path
   return names
 }
 

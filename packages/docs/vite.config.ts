@@ -30,6 +30,8 @@ export default defineConfig({
       fragments: true,
       // `pnpm docs:check` lints templates too: the built-in rules, and this site's own (see the Lint guide).
       lintRules: [noInlineStyle],
+      // ui-primitives' parts are used by name, without @import (`<ui-tabs>`; see Components from libraries).
+      components: { libraries: ['@clarusjs/ui-primitives'] },
       // Paths people type out of habit (see the Routing guide): a 301 on Netlify, a forwarding page anywhere else.
       redirects: { '/docs': '/guide/getting-started' },
       // The public address: canonical URLs and social cards on every page (public/og.png unless a page sets its own).

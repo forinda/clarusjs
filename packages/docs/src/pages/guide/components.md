@@ -167,3 +167,38 @@ Import a component from a package by its path, as you would any module. It can b
 ```
 
 clarusjs follows `@import` lines from `src/` into packages, so a package's islands get their own chunk and its styles join yours, in development and in builds. A package shares components by shipping its `.tscl` files (export them in `package.json`, for example `"exports": { "./*": "./src/*" }`).
+
+## Components from libraries {since=0.16.0}
+
+List a component library in your config, and its components work by name, like your own [automatic imports](#automatic-imports):
+
+```ts
+// vite.config.ts
+clarusjs({ components: { libraries: ['@clarusjs/ui-primitives'] } })
+```
+
+```tscl
+<ui-tabs label="Package manager" [(value)]="pm">
+  <ui-tab-list><ui-tab value="npm">npm</ui-tab></ui-tab-list>
+  <ui-tab-panel value="npm"><code>npm install clarusjs</code></ui-tab-panel>
+</ui-tabs>
+```
+
+- **Names:** the library's prefix and the file's path, joined with hyphens (`ui` and `tab-list.tscl` make `<ui-tab-list>`, `ui` and `menu/item.tscl` make `<ui-menu-item>`). Give it your own prefix with `{ from: '@clarusjs/ui-primitives', prefix: 'p' }` (`<p-tabs>`).
+- **Who wins:** an `@import` in the file, then your own components, then libraries. A name two libraries share is a build error that names both: `@import` the one you mean.
+- **Only listed ones:** installing a package that ships components doesn't add tags to your templates until you list it.
+- **Checked and in your editor:** `clarusjs check` types their inputs as for your own. The dev server and `check` write the names to `.clarusjs/components.json`, where the editor finds them (it doesn't run your Vite config); run either once after adding a library.
+
+### Making a library
+
+Say where the components are and their prefix in the library's `package.json`, and export the files so `<package>/<file>` imports them:
+
+```json
+{
+  "name": "@acme/ui",
+  "clarusjs": { "components": "./src", "prefix": "acme" },
+  "exports": { "./*": "./src/*" }
+}
+```
+
+Every `.tscl` file under `src/` is then a component: `src/dialog.tscl` is `<acme-dialog>`, imported as `@acme/ui/dialog.tscl`.

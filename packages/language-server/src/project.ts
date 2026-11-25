@@ -112,7 +112,7 @@ export class Project {
     const named = new Set(own.map((i) => i.name))
     const auto = Object.entries(this.componentNames())
       .filter((e): e is [string, string] => typeof e[1] === 'string' && !named.has(e[0]))
-      .map(([name, specifier]): Import => ({ name, nameStart: -1, specifier, target: resolve(this.root, specifier.slice(1)), start: -1, end: -1 }))
+      .map(([name, specifier]): Import => ({ name, nameStart: -1, specifier, target: specifier.startsWith('/') ? resolve(this.root, specifier.slice(1)) : this.resolve(specifier, path), start: -1, end: -1 }))
     return [...own, ...auto]
   }
 
@@ -122,7 +122,13 @@ export class Project {
    */
   componentNames(): ComponentNames {
     const files = [...this.texts.keys()].filter((p) => p.endsWith('.tscl')).map((p) => relative(this.root, p).split(sep).join('/'))
-    return componentIndex(files, ['src/components', 'src/layouts']).names
+    const own = componentIndex(files, ['src/components', 'src/layouts']).names
+    // Component libraries' names: from .clarusjs/components.json, which the plugin and `clarusjs check` write (the
+    // editor doesn't run the Vite config). The app's own come from its files above, so they're never stale.
+    let written: ComponentNames = {}
+    try { written = (JSON.parse(readFileSync(resolve(this.root, '.clarusjs/components.json'), 'utf8')) as { names: ComponentNames }).names } catch {}
+    const libraries = Object.fromEntries(Object.entries(written).filter(([, v]) => ![v].flat().some((p) => p.startsWith('/'))))
+    return { ...libraries, ...own }
   }
 
   /** A component's interface (its last good parse), read from disk when it isn't indexed (a package's). */
