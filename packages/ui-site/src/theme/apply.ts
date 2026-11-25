@@ -13,7 +13,11 @@ const FONT_LOADER = `function(t){${JSON.stringify(GOOGLE_FONTS)}.forEach(functio
 /** Adds a stylesheet link for each offered Google Font that `text` (CSS or token values) names in quotes. */
 export const loadFonts: (text: string) => void = new Function(`return ${FONT_LOADER}`)()
 
-export const APPLY_SCRIPT = `try{var c=localStorage.getItem(${JSON.stringify(STORAGE_KEY)});if(typeof c=="string"&&c.length<=20000&&c.indexOf("<")<0){var s=document.createElement("style");s.id="ui-theme";s.textContent=c;document.head.appendChild(s);(${FONT_LOADER})(c)}}catch(e){}`
+/**
+ * Sets the saved theme as <style id="ui-theme"> before the first paint, and again (or removes it) whenever another tab,
+ * or the page around a block's frame, saves or resets one.
+ */
+export const APPLY_SCRIPT = `(function(){var k=${JSON.stringify(STORAGE_KEY)};function a(){try{var c=localStorage.getItem(k),s=document.getElementById("ui-theme");if(typeof c=="string"&&c.length<=20000&&c.indexOf("<")<0){if(!s){s=document.createElement("style");s.id="ui-theme";document.head.appendChild(s)}s.textContent=c;(${FONT_LOADER})(c)}else if(s)s.remove()}catch(e){}}a();addEventListener("storage",function(e){if(!e.key||e.key===k)a()})})()`
 
 /**
  * Every page, the block views in frames too: the light/dark choice the header's switch saved (theme-docs keeps it in

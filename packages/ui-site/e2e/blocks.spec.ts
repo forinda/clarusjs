@@ -6,11 +6,14 @@ import { presets } from '../src/theme/presets.ts'
 import { SCOPE, STORAGE_KEY } from '../src/theme/apply.ts'
 import { axeViolations, modes, pageIn } from './helpers.ts'
 
-test('the header links Components, Blocks and Theme on a desktop', async ({ page }) => {
+test('the header links Components and Blocks, and its Theme button opens the theme sheet', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: 'Main' })
-  for (const [name, href] of [['Components', '/'], ['Blocks', '/blocks'], ['Theme', '/theme']]) await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('href', href!)
+  for (const [name, href] of [['Components', '/'], ['Blocks', '/blocks']]) await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('href', href!)
+  await page.getByRole('button', { name: 'Theme', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Theme' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Theme' }).getByRole('link', { name: /full preview/ })).toHaveAttribute('href', '/theme')
 })
 
 test('/blocks shows every block, full width, each linked to its page', async ({ page }) => {
@@ -178,14 +181,12 @@ test.describe('login block', () => {
   })
 })
 
-test('/theme: a full-width tool page, the builder beside its preview on a desktop', async ({ page }) => {
+test('/theme: a full-width tool page, no docs sidebar', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/theme')
   await expect(page.locator('nav[aria-label="Sidebar"], .sidebar')).toHaveCount(0)
-  const panel = await page.locator('.theme-builder').boundingBox()
   const preview = await page.locator('[data-ui-preview]').first().boundingBox()
-  expect(preview!.x).toBeGreaterThan(panel!.x + panel!.width - 1)
-  expect(panel!.x).toBeGreaterThanOrEqual(16)
+  expect(preview!.x).toBeGreaterThanOrEqual(16)
 })
 
 test('/blocks/login: Copy page says so when the clipboard refuses', async ({ page }) => {

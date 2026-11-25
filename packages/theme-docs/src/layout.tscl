@@ -33,7 +33,7 @@
   <body>
     {{-- First in the tab order: keyboard and screen reader users jump past the header and page list. --}}
     <a class="skip-link" href="#content">Skip to content</a>
-    <siteHeader [config]="config" [path]="path" [app]="app" />
+    <siteHeader [config]="config" [path]="path" [app]="app">@slot('end') {<slot name="header-end"></slot>}</siteHeader>
     @if (app) {
       <main class="content app" id="content" tabindex="-1"><slot /></main>
     } @else if (sectionKey(config.sections, path)) {

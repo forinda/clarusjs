@@ -1,5 +1,6 @@
-{{-- The theme builder: presets, every colour token, fonts and shape, edited per mode, set live on the preview
-     ([data-ui-preview]) as inline custom properties. Copy CSS hands out theme.css. --}}
+{{-- The theme builder (in the header's sheet, theme-sheet.tscl): presets, every colour token, fonts and shape, edited
+     per mode. An edit is saved and set live on the page (#ui-theme, what every demo and block reads), and on /theme's
+     preview as inline custom properties. Copy CSS hands out theme.css. --}}
 
 <script>
   import { effect } from 'clarusjs/runtime'
@@ -80,7 +81,6 @@
   let base = state('teal')
   let theme = state(clone(presets.teal))
   let mode = state('light')
-  let narrow = state(false)
   let edited = state([])
   let shadow = state('soft')
   let copied = state(false)
@@ -138,13 +138,6 @@
       dark: tint(theme.dark, fromOklch([0.78, 0.13, h]), theme.dark.bg, fromOklch([0.27, 0.05, h])),
     }
   }
-  function openPanel() {
-    const panel = document.getElementById('tb-panel')
-    if (panel instanceof HTMLDialogElement) {
-      panel.close()
-      panel.showModal()
-    }
-  }
   function reset() {
     pick(base)
   }
@@ -181,9 +174,6 @@
   }
   const wire = (el) => {
     load()
-    // The panel is a <dialog>: inline (open, non-modal) on wide screens; on a phone a drawer opened with showModal().
-    const reopen = () => el.setAttribute('open', '')
-    el.addEventListener('close', reopen)
     // Light or dark: the one the site shows (the header's switch, else the system setting), followed as it changes.
     const dark = matchMedia('(prefers-color-scheme: dark)')
     const follow = () => {
@@ -201,12 +191,21 @@
       for (const [key, value] of Object.entries(values)) preview.style.setProperty(`--ui-${key}`, String(value))
       // The scale is computed where it's declared: declare it here too, so it follows this unit, not the page's.
       for (const n of SPACE_STEPS) preview.style.setProperty(`--ui-space-${n}`, `calc(var(--ui-space) * ${n})`)
-      preview.style.maxWidth = narrow ? '390px' : ''
     })
+    // Saved, and set on this page at once: the stylesheet every demo and block reads. Other tabs and the block
+    // frames hear the save (a storage event) and set it too (APPLY_SCRIPT).
     const save = effect(() => {
       if (!dirty) return
+      const css = toCss(theme, SCOPE)
+      let sheet = document.getElementById('ui-theme')
+      if (!sheet) {
+        sheet = document.createElement('style')
+        sheet.id = 'ui-theme'
+        document.head.append(sheet)
+      }
+      sheet.textContent = css
       try {
-        localStorage.setItem(STORAGE_KEY, toCss(theme, SCOPE))
+        localStorage.setItem(STORAGE_KEY, css)
         localStorage.setItem(SOURCE_KEY, encode(theme, base))
       } catch {}
     })
@@ -214,185 +213,157 @@
     return () => {
       stop()
       save()
-      el.removeEventListener('close', reopen)
       watch.disconnect()
       dark.removeEventListener('change', follow)
     }
   }
 </script>
 
-<fragment>
-  <div class="tb-toolbar" role="toolbar" aria-label="Preview">
-    <button type="button" class="customize" aria-haspopup="dialog" (click)="openPanel()">Customize</button>
-    <div class="seg">
-      <button type="button" aria-label="Desktop width" [aria-pressed]="String(!narrow)" (click)="narrow = false">
-        <icon name="lucide:monitor" />
-      </button>
-      <button type="button" aria-label="Phone width" [aria-pressed]="String(narrow)" (click)="narrow = true">
-        <icon name="lucide:smartphone" />
-      </button>
-    </div>
-  </div>
-
-  <dialog class="theme-builder" id="tb-panel" open aria-label="Theme controls" [data-mode]="mode" [use]="wire">
-    <div class="tb-rows">
-      <button type="button" class="row" id="tb-preset" popovertarget="tb-presets">
-        <span class="row-label">Preset</span>
-        <span class="row-value">{{ PRESETS.find((p) => p.name === base)?.label ?? 'Custom' }}</span>
-        <span class="dot" [style]="'--sw: ' + theme[mode].accent"></span>
-      </button>
-      <div id="tb-presets" popover class="pop" role="group" aria-label="Presets">
-        @for (p of PRESETS; track p.name) {
-          <button
-            type="button"
-            class="pick"
-            [aria-label]="p.label + ' preset'"
-            [aria-pressed]="String(base === p.name)"
-            (click)="pick(p.name)"
-            popovertarget="tb-presets"
-            popovertargetaction="hide"
-          >
-            <span class="dot" [style]="'--sw: ' + p.accent"></span> {{ p.label }}
-          </button>
-        }
-      </div>
-      <label class="row" for="tb-brand">
-        <span class="row-label">Brand</span>
-        <code class="row-value">{{ theme[mode].accent }}</code>
-        <input
-          type="color"
-          id="tb-brand"
-          aria-label="Brand"
-          [value]="theme[mode].accent"
-          (input)="set('accent', $event.target.value)"
-        />
-      </label>
-      <label class="row" for="tb-heading">
-        <span class="row-label">Heading font</span>
-        <select
-          id="tb-heading"
-          aria-label="Heading font"
-          class="row-value"
-          (change)="font('font-heading', $event.target.value)"
+<div class="theme-builder" role="group" aria-label="Theme controls" [data-mode]="mode" [use]="wire">
+  <div class="tb-rows">
+    <button type="button" class="row" id="tb-preset" popovertarget="tb-presets">
+      <span class="row-label">Preset</span>
+      <span class="row-value">{{ PRESETS.find((p) => p.name === base)?.label ?? 'Custom' }}</span>
+      <span class="dot" [style]="'--sw: ' + theme[mode].accent"></span>
+    </button>
+    <div id="tb-presets" popover class="pop" role="group" aria-label="Presets">
+      @for (p of PRESETS; track p.name) {
+        <button
+          type="button"
+          class="pick"
+          [aria-label]="p.label + ' preset'"
+          [aria-pressed]="String(base === p.name)"
+          (click)="pick(p.name)"
+          popovertarget="tb-presets"
+          popovertargetaction="hide"
         >
-          @for (f of HEADINGS; track f.label) {
-            <option [value]="f.value" [selected]="theme.light['font-heading'] === f.value">{{ f.label }}</option>
-          }
-        </select>
-        <icon name="lucide:heading" />
-      </label>
-      <label class="row" for="tb-font">
-        <span class="row-label">Body font</span>
-        <select id="tb-font" aria-label="Body font" class="row-value" (change)="font('font', $event.target.value)">
-          @for (f of FONTS; track f.label) {
-            <option [value]="f.value" [selected]="theme.light.font === f.value">{{ f.label }}</option>
-          }
-        </select>
-        <icon name="lucide:type" />
-      </label>
-      <label class="row" for="tb-mono">
-        <span class="row-label">Code font</span>
-        <select id="tb-mono" aria-label="Code font" class="row-value" (change)="font('font-mono', $event.target.value)">
-          @for (f of MONOS; track f.label) {
-            <option [value]="f.value" [selected]="theme.light['font-mono'] === f.value">{{ f.label }}</option>
-          }
-        </select>
-        <icon name="lucide:code" />
-      </label>
-      <label class="row" for="tb-size">
-        <span class="row-label">Base size</span>
-        <select id="tb-size" aria-label="Base size" class="row-value" (change)="set('font-size', $event.target.value)">
-          @for (z of SIZES; track z) {
-            <option [value]="z" [selected]="theme.light['font-size'] === z">{{ z }}</option>
-          }
-        </select>
-        <icon name="lucide:a-large-small" />
-      </label>
-      <label class="row" for="tb-radius">
-        <span class="row-label">Radius</span>
-        <span class="row-value">{{ theme.light.radius }}</span>
-        <input
-          type="range"
-          id="tb-radius"
-          aria-label="Radius"
-          min="0"
-          max="20"
-          [value]="parseInt(theme.light.radius)"
-          (input)="set('radius', $event.target.value + 'px')"
-        />
-      </label>
-      <label class="row" for="tb-density">
-        <span class="row-label">Density</span>
-        <select id="tb-density" aria-label="Density" class="row-value" (change)="set('space', $event.target.value)">
-          @for (d of DENSITIES; track d.value) {
-            <option [value]="d.value" [selected]="theme.light.space === d.value">{{ d.label }}</option>
-          }
-        </select>
-        <icon name="lucide:move-horizontal" />
-      </label>
-      <label class="row" for="tb-shadow">
-        <span class="row-label">Shadow</span>
-        <select id="tb-shadow" aria-label="Shadow" class="row-value" (change)="setShadow($event.target.value)">
-          <option value="none" [selected]="shadow === 'none'">None</option>
-          <option value="soft" [selected]="shadow === 'soft'">Soft</option>
-          <option value="strong" [selected]="shadow === 'strong'">Strong</option>
-        </select>
-        <icon name="lucide:layers" />
-      </label>
-    </div>
-    <details class="tb-colours">
-      <summary><icon name="lucide:palette" /> Every colour ({{ mode }})</summary>
-      @for (g of GROUPS; track g.title) {
-        <fieldset>
-          <legend>{{ g.title }}</legend>
-          @for (tok of g.tokens; track tok.key) {
-            <div class="colour">
-              <label [for]="'tb-' + tok.key">{{ tok.label }}</label>
-              <input
-                type="color"
-                [id]="'tb-' + tok.key"
-                [aria-describedby]="low(tok.key) ? 'tb-' + tok.key + '-warn' : null"
-                [value]="theme[mode][tok.key]"
-                (input)="set(tok.key, $event.target.value)"
-              />
-              <code>{{ theme[mode][tok.key] }}</code>
-              <p class="warn" [id]="'tb-' + tok.key + '-warn'" [hidden]="!low(tok.key)">
-                Low contrast ({{ ratio(tok.key) }}:1, needs 4.5)
-              </p>
-            </div>
-          }
-        </fieldset>
+          <span class="dot" [style]="'--sw: ' + p.accent"></span> {{ p.label }}
+        </button>
       }
-    </details>
-    <div class="tb-actions">
-      <button type="button" class="primary" (click)="copy()">
-        <icon name="lucide:copy" /> {{ copied ? 'Copied' : 'Copy CSS' }}
-      </button>
-      <button type="button" (click)="shuffle()"><icon name="lucide:shuffle" /> Shuffle</button>
-      <button type="button" (click)="share()">
-        <icon name="lucide:link" /> {{ shared ? 'Link copied' : 'Share link' }}
-      </button>
-      <button type="button" (click)="reset()"><icon name="lucide:rotate-ccw" /> Reset</button>
     </div>
-    <form method="dialog" class="tb-close"><button>Close</button></form>
-  </dialog>
-</fragment>
+    <label class="row" for="tb-brand">
+      <span class="row-label">Brand</span>
+      <code class="row-value">{{ theme[mode].accent }}</code>
+      <input
+        type="color"
+        id="tb-brand"
+        aria-label="Brand"
+        [value]="theme[mode].accent"
+        (input)="set('accent', $event.target.value)"
+      />
+    </label>
+    <label class="row" for="tb-heading">
+      <span class="row-label">Heading font</span>
+      <select
+        id="tb-heading"
+        aria-label="Heading font"
+        class="row-value"
+        (change)="font('font-heading', $event.target.value)"
+      >
+        @for (f of HEADINGS; track f.label) {
+          <option [value]="f.value" [selected]="theme.light['font-heading'] === f.value">{{ f.label }}</option>
+        }
+      </select>
+      <icon name="lucide:heading" />
+    </label>
+    <label class="row" for="tb-font">
+      <span class="row-label">Body font</span>
+      <select id="tb-font" aria-label="Body font" class="row-value" (change)="font('font', $event.target.value)">
+        @for (f of FONTS; track f.label) {
+          <option [value]="f.value" [selected]="theme.light.font === f.value">{{ f.label }}</option>
+        }
+      </select>
+      <icon name="lucide:type" />
+    </label>
+    <label class="row" for="tb-mono">
+      <span class="row-label">Code font</span>
+      <select id="tb-mono" aria-label="Code font" class="row-value" (change)="font('font-mono', $event.target.value)">
+        @for (f of MONOS; track f.label) {
+          <option [value]="f.value" [selected]="theme.light['font-mono'] === f.value">{{ f.label }}</option>
+        }
+      </select>
+      <icon name="lucide:code" />
+    </label>
+    <label class="row" for="tb-size">
+      <span class="row-label">Base size</span>
+      <select id="tb-size" aria-label="Base size" class="row-value" (change)="set('font-size', $event.target.value)">
+        @for (z of SIZES; track z) {
+          <option [value]="z" [selected]="theme.light['font-size'] === z">{{ z }}</option>
+        }
+      </select>
+      <icon name="lucide:a-large-small" />
+    </label>
+    <label class="row" for="tb-radius">
+      <span class="row-label">Radius</span>
+      <span class="row-value">{{ theme.light.radius }}</span>
+      <input
+        type="range"
+        id="tb-radius"
+        aria-label="Radius"
+        min="0"
+        max="20"
+        [value]="parseInt(theme.light.radius)"
+        (input)="set('radius', $event.target.value + 'px')"
+      />
+    </label>
+    <label class="row" for="tb-density">
+      <span class="row-label">Density</span>
+      <select id="tb-density" aria-label="Density" class="row-value" (change)="set('space', $event.target.value)">
+        @for (d of DENSITIES; track d.value) {
+          <option [value]="d.value" [selected]="theme.light.space === d.value">{{ d.label }}</option>
+        }
+      </select>
+      <icon name="lucide:move-horizontal" />
+    </label>
+    <label class="row" for="tb-shadow">
+      <span class="row-label">Shadow</span>
+      <select id="tb-shadow" aria-label="Shadow" class="row-value" (change)="setShadow($event.target.value)">
+        <option value="none" [selected]="shadow === 'none'">None</option>
+        <option value="soft" [selected]="shadow === 'soft'">Soft</option>
+        <option value="strong" [selected]="shadow === 'strong'">Strong</option>
+      </select>
+      <icon name="lucide:layers" />
+    </label>
+  </div>
+  <details class="tb-colours">
+    <summary><icon name="lucide:palette" /> Every colour ({{ mode }})</summary>
+    @for (g of GROUPS; track g.title) {
+      <fieldset>
+        <legend>{{ g.title }}</legend>
+        @for (tok of g.tokens; track tok.key) {
+          <div class="colour">
+            <label [for]="'tb-' + tok.key">{{ tok.label }}</label>
+            <input
+              type="color"
+              [id]="'tb-' + tok.key"
+              [aria-describedby]="low(tok.key) ? 'tb-' + tok.key + '-warn' : null"
+              [value]="theme[mode][tok.key]"
+              (input)="set(tok.key, $event.target.value)"
+            />
+            <code>{{ theme[mode][tok.key] }}</code>
+            <p class="warn" [id]="'tb-' + tok.key + '-warn'" [hidden]="!low(tok.key)">
+              Low contrast ({{ ratio(tok.key) }}:1, needs 4.5)
+            </p>
+          </div>
+        }
+      </fieldset>
+    }
+  </details>
+  <div class="tb-actions">
+    <button type="button" class="primary" (click)="copy()">
+      <icon name="lucide:copy" /> {{ copied ? 'Copied' : 'Copy CSS' }}
+    </button>
+    <button type="button" (click)="shuffle()"><icon name="lucide:shuffle" /> Shuffle</button>
+    <button type="button" (click)="share()">
+      <icon name="lucide:link" /> {{ shared ? 'Link copied' : 'Share link' }}
+    </button>
+    <button type="button" (click)="reset()"><icon name="lucide:rotate-ccw" /> Reset</button>
+  </div>
+</div>
 
 <style scoped>
   /* A slim panel of rows (shadcn's /create): each a choice and its value; every colour in its own section. */
   :scope.theme-builder {
-    position: sticky;
-    top: 16px;
-    width: auto;
-    max-width: none;
-    max-height: calc(100dvh - var(--header-height) - 32px);
-    overflow-y: auto;
-    margin: 0;
-    padding: 8px;
-    border: 1px solid var(--rule);
-    border-radius: 14px;
-    background: var(--code-bg, var(--bg));
-    color: inherit;
     display: grid;
     gap: 8px;
     align-content: start;
@@ -531,10 +502,7 @@
     display: grid;
     gap: 4px;
   }
-  .tb-actions button,
-  .seg button,
-  .customize,
-  .tb-close button {
+  .tb-actions button {
     display: inline-flex;
     gap: 6px;
     align-items: center;
@@ -547,45 +515,9 @@
     font: inherit;
     cursor: pointer;
   }
-  .seg {
-    display: flex;
-    gap: 4px;
-  }
-  .seg button[aria-pressed='true'],
   .primary {
     background: var(--fg);
     color: var(--bg);
     font-weight: 600;
-  }
-  :scope.tb-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-  .customize,
-  .tb-close {
-    display: none;
-  }
-  @media (max-width: 959px) {
-    .customize,
-    .tb-close {
-      display: block;
-    }
-    :scope.theme-builder:not(:modal) {
-      display: none;
-    }
-    :scope.theme-builder:modal {
-      position: fixed;
-      inset: 0 0 0 auto;
-      width: min(320px, 100vw);
-      height: 100dvh;
-      max-height: none;
-      overflow: auto;
-      padding: 12px;
-      border-radius: 0;
-      background: Canvas;
-      color: CanvasText;
-    }
   }
 </style>

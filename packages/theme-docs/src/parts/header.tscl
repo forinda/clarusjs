@@ -1,6 +1,6 @@
 {{--
   The site header (a public part, #360): the menu button, brand, section links, Learn status, search, social links and
-  the theme toggle. Replace it with themeDocs({ components: { header } }) (#361).
+  the theme toggle, and before it the site's own (slot "end"). Replace it with themeDocs({ components: { header } }) (#361).
 --}}
 @import themeToggle from '../theme-toggle.tscl'
 @import pageTransitions from '../view-transitions.tscl'
@@ -55,6 +55,8 @@
       </button>
       <div id="more" class="more" popover>@for (link of config.social ?? []; track link.href) {<a [href]="link.href">{{ link.label }}</a>}</div>
     }
+    {{-- What a site adds (slot "end"; the layout's "header-end"), kept across fragment navigations too. --}}
+    <span class="persist" data-cl-persist="header-end"><slot name="end"></slot></span>
     {{-- Kept across fragment navigations: the same element, with its state. --}}
     <span class="persist" data-cl-persist="theme"><themeToggle /></span>
     @if (config.viewTransitions) {<span class="persist" data-cl-persist="view-transitions"><pageTransitions /></span>}

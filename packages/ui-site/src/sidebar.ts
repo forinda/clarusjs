@@ -10,5 +10,4 @@ export const sidebar: Section[] = [
     groups: [{ title: 'Get started', icon: 'rocket', items: [{ title: 'Introduction', href: '/', order: 1 }] }, { title: 'Components', icon: 'box', items: [] }],
   },
   { key: 'blocks', title: 'Blocks', href: '/blocks', groups: [{ title: 'Blocks', icon: 'layers', items: [] }] },
-  { key: 'theme', title: 'Theme', href: '/theme', groups: [] },
 ]

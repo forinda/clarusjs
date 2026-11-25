@@ -1,0 +1,107 @@
+{{--
+  The theme builder in a sheet, opened by the header's Theme button on every page (and /theme's Customize): from the
+  right on a desktop, from the bottom on a phone. An edit restyles every demo and block at once, here and in other
+  tabs and frames. The builder's code loads when the sheet first shows.
+--}}
+@import '~/registry/sheet.css'
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+@import uiDialogClose from '@clarusjs/ui-primitives/dialog-close.tscl'
+@import themeBuilder from '~/components/theme-builder.tscl'
+
+<span class="theme-sheet">
+  <uiDialogTrigger target="theme-sheet"
+    ><icon name="lucide:palette" /><span class="ts-label">Theme</span></uiDialogTrigger
+  >
+  <uiDialog id="theme-sheet" data-side="right">
+    @slot('title') {
+      Theme
+    }
+    <p class="ts-lead">Every demo and block takes these at once. Saved in this browser.</p>
+    <themeBuilder attach="visible" />
+    <div class="ts-end">
+      <a href="/theme">Open the full preview</a>
+      <uiDialogClose target="theme-sheet">Done</uiDialogClose>
+    </div>
+  </uiDialog>
+</span>
+
+<style scoped>
+  :scope {
+    display: contents;
+  }
+  [data-part='trigger'] {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 500;
+  }
+  [data-part='trigger']:hover {
+    border-color: var(--accent);
+    color: var(--fg);
+  }
+  #theme-sheet {
+    width: min(360px, 100%);
+    padding: 16px;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.5 var(--sans, system-ui);
+  }
+  .ts-lead {
+    margin: 0 0 12px;
+    color: var(--muted);
+  }
+  .ts-end {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+  .ts-end a {
+    color: inherit;
+  }
+  /* Edits show on the page at once: keep it in view, undimmed. */
+  #theme-sheet::backdrop {
+    background: transparent;
+  }
+  /* A phone: the sheet rises from the bottom (and the label folds away: below). */
+  @media (max-width: 767px) {
+    [data-part='trigger'] {
+      padding: 6px;
+      border-color: transparent;
+    }
+    #theme-sheet {
+      inset: auto 0 0 0;
+      width: 100%;
+      height: auto;
+      max-height: 85dvh;
+      border-radius: 14px 14px 0 0;
+      animation-name: ui-sheet-bottom;
+    }
+  }
+</style>
+
+<style global>
+  /* Inside the trigger's and the dialog's own markup, which scoped rules don't reach. */
+  #theme-sheet [data-part='title'] {
+    margin: 0 0 8px;
+    font-size: 18px;
+  }
+  @media (max-width: 767px) {
+    .ts-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+</style>

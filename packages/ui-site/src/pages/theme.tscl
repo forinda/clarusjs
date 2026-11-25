@@ -1,6 +1,6 @@
 @import wide from '~/layouts/wide.tscl'
 @import themePreview from '~/components/theme-preview.tscl'
-@import themeBuilder from '~/components/theme-builder.tscl'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
 
 <wide
   [title]="'Theme'"
@@ -8,40 +8,36 @@
   [description]="'Tune the --ui- tokens over a live dashboard of the components, then copy your theme.css.'"
 >
   <div class="theme-page">
-    <h1>Theme</h1>
-    <p class="lead">
-      Every component styles itself with the <code>--ui-</code> tokens. Change them here and see the whole set at once.
-    </p>
-    <div class="workbench">
-      <themeBuilder />
-      <themePreview />
+    <div class="theme-head">
+      <div>
+        <h1>Theme</h1>
+        <p class="lead">
+          Every component styles itself with the <code>--ui-</code> tokens. Change them in the Theme sheet (the header's
+          button, on every page) and see the whole set at once.
+        </p>
+      </div>
+      {{-- The same sheet as the header's button. --}}
+      <uiDialogTrigger target="theme-sheet"><icon name="lucide:sliders-horizontal" /> Customize</uiDialogTrigger>
     </div>
+    <themePreview />
   </div>
 </wide>
 
 <style scoped>
-  .workbench {
-    display: grid;
+  .theme-head {
+    display: flex;
+    flex-wrap: wrap;
     gap: 16px;
-    grid-template-columns: minmax(0, 1fr);
+    align-items: end;
+    justify-content: space-between;
+    margin-bottom: 16px;
   }
-  .tb-toolbar {
-    order: -1;
+  .theme-head .lead {
+    margin-bottom: 0;
   }
-  @media (min-width: 960px) {
-    .workbench {
-      grid-template-columns: 260px minmax(0, 1fr);
-      grid-template-areas: 'panel toolbar' 'panel preview';
-      align-items: start;
-    }
-    .theme-builder {
-      grid-area: panel;
-    }
-    .tb-toolbar {
-      grid-area: toolbar;
-    }
-    [data-ui-preview] {
-      grid-area: preview;
-    }
+  [data-part='trigger'] {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
   }
 </style>

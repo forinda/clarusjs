@@ -25,3 +25,15 @@ test('a stored value with < in it, or a huge one, is ignored', () => {
   run()
   expect(document.getElementById('ui-theme')).toBeNull()
 })
+
+test('a theme saved in another tab or the page around a frame (a storage event) replaces this one; a reset removes it', () => {
+  localStorage.setItem(STORAGE_KEY, '.demo { --ui-accent: #ff0000; }')
+  run()
+  localStorage.setItem(STORAGE_KEY, '.demo { --ui-accent: #00ff00; }')
+  dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }))
+  expect(document.querySelectorAll('#ui-theme')).toHaveLength(1)
+  expect(document.getElementById('ui-theme')?.textContent).toBe('.demo { --ui-accent: #00ff00; }')
+  localStorage.removeItem(STORAGE_KEY)
+  dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }))
+  expect(document.getElementById('ui-theme')).toBeNull()
+})

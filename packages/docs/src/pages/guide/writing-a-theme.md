@@ -21,7 +21,7 @@ The inputs are `LayoutInputs`, exported from `@clarusjs/theme-docs/nav.ts`:
 | `headings?: Heading[]` | the page's h2 and h3, for "On this page" |
 | `app?: boolean` | a tool rather than a page: no sidebar or footers |
 
-And the slots: the default one (the page), `sidebar-top`, `sidebar-bottom`, `content-top`, `content-bottom` and `footer`. A theme has them all, even empty: a site that fills one would otherwise fail to render.
+And the slots: the default one (the page), `header-end`, `sidebar-top`, `sidebar-bottom`, `content-top`, `content-bottom` and `footer`. A theme has them all, even empty: a site that fills one would otherwise fail to render.
 
 `nav.ts` has what a theme needs to read `config`: `sectionKey()` (the current section), `groupsOf()` (its sidebar groups), `crumb()`, `pager()`, `editHref()`, `updatedOf()`. A theme imports them from the docs theme rather than copying them.
 
@@ -60,7 +60,7 @@ A layout with a header, the sidebar, the page with "On this page", and a footer,
     <meta name="description" [content]="description" />
   </head>
   <body>
-    <header><a href="/">{{ config.brand.text }}</a></header>
+    <header><a href="/">{{ config.brand.text }}</a><slot name="header-end"></slot></header>
     @if (!app) {
       <nav aria-label="Pages">
         <slot name="sidebar-top"></slot>
