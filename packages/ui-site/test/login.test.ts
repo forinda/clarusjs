@@ -15,4 +15,8 @@ test('signIn (the stub to replace): answers who signed in, or an error for its f
   const call = signIn({ email: 'ada@example.com', password: '12345678' }, { signal: controller.signal })
   controller.abort()
   await expect(call).rejects.toThrow()
+  // A signal already aborted rejects at once, without waiting.
+  const early = new AbortController()
+  early.abort()
+  await expect(signIn({ email: 'ada@example.com', password: '12345678' }, { signal: early.signal })).rejects.toThrow()
 })

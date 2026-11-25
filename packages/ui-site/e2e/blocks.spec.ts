@@ -129,6 +129,7 @@ test.describe('login block', () => {
   test('valid details sign in: the button waits, then a status says who', async ({ page }) => {
     await page.clock.install() // the stub waits 300ms: time moves only when the test says
     await page.goto('/view/login')
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000)
     await page.getByLabel('Email').fill('ada@example.com')
     await page.getByLabel('Password', { exact: true }).fill('correct horse')
     await page.getByRole('button', { name: 'Sign in' }).click()
@@ -146,6 +147,19 @@ test.describe('login block', () => {
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByText('Wrong email or password.')).toBeVisible()
     await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  test('an error from signIn is focused; changing what was rejected lets this page\'s own rules speak again', async ({ page }) => {
+    await page.goto('/view/login')
+    await page.getByLabel('Email').fill('taken@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('12345678')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByText('Wrong email or password.')).toBeVisible()
+    await expect(page.getByLabel('Password', { exact: true })).toBeFocused()
+    await page.getByLabel('Password', { exact: true }).fill('x')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByText('Use at least 8 characters.')).toBeVisible()
+    await expect(page.getByText('Wrong email or password.')).toBeHidden()
   })
 
   test('a failed call shows an alert, and the form can be sent again', async ({ page }) => {
@@ -172,4 +186,23 @@ test('/theme: a full-width tool page, the builder beside its preview on a deskto
   const preview = await page.locator('[data-ui-preview]').first().boundingBox()
   expect(preview!.x).toBeGreaterThan(panel!.x + panel!.width - 1)
   expect(panel!.x).toBeGreaterThanOrEqual(16)
+})
+
+test('/blocks/login: Copy page says so when the clipboard refuses', async ({ page }) => {
+  await page.addInitScript(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new DOMException('denied', 'NotAllowedError')) } }) })
+  await page.goto('/blocks/login')
+  await page.getByRole('button', { name: 'Copy page' }).click()
+  await expect(page.getByRole('alert')).toContainText("Couldn't copy")
+  await expect(page.getByRole('button', { name: 'Copied' })).toHaveCount(0)
+})
+
+test('the header\'s light/dark switch shows what another tab chose', async ({ context }) => {
+  const one = await context.newPage()
+  const two = await context.newPage()
+  await one.goto('/')
+  await two.goto('/')
+  const toggle = (p: import('@playwright/test').Page) => p.locator('.theme-toggle').first()
+  for (let i = 0; i < 3 && (await one.locator('html').getAttribute('data-theme')) !== 'dark'; i++) await toggle(one).click()
+  await expect(two.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(toggle(two)).toHaveAttribute('aria-label', 'Theme: dark (change)')
 })

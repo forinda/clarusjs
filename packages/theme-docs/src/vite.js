@@ -220,7 +220,7 @@ export function readPages(dir) {
     const updated = dates.get(resolve(dir, file))
     if (updated !== undefined) page.updated = updated
     // Not in the sidebar: asked not to be, a dynamic route, or a .tscl page kept out of search engines (noindex; a Markdown page says sidebar: false).
-    const noindex = m[2] === 'tscl' && /<meta\s+name="robots"\s+content="[^"]*\bnoindex\b/.test(text)
+    const noindex = m[2] === 'tscl' && [...text.matchAll(/<meta\b[^>]*>/gi)].some(([tag]) => /\bname=["']robots["']/i.test(tag) && /\bcontent=["'][^"']*\bnoindex\b/i.test(tag))
     if (data.sidebar === 'false' || noindex || parts.some((part) => part.startsWith('['))) page.hidden = true
     pages.push(page)
   }

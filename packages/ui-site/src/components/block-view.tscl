@@ -7,7 +7,7 @@
 @input name: string
 
 <script>
-  import { effect } from 'clarusjs/runtime'
+  import { browser, effect } from 'clarusjs/runtime'
   const entry = blocks.find((b) => b.name === name)
   const files = entry ? codeFiles(entry) : []
   const SIZES = [
@@ -19,7 +19,7 @@
   let size = state('desktop')
   let file = state(0)
   let copied = state(false)
-  let body = typeof document === 'undefined' ? null : document.body // the block's body once wired
+  let body = browser ? document.body : null // the block's body once wired
   function wire(el) {
     body = el
     return effect(() => {
@@ -34,13 +34,17 @@
       body?.querySelector('iframe')?.contentWindow?.location.reload()
     } catch {}
   }
+  let copyFailed = state(false)
   async function copy() {
     const text = body?.querySelectorAll('.code-block')[0]?.querySelector('pre')?.innerText ?? ''
+    copyFailed = false
     try {
       await navigator.clipboard.writeText(text)
       copied = true
       setTimeout(() => (copied = false), 1500)
-    } catch {}
+    } catch {
+      copyFailed = true // the browser refused (no permission, or not a secure page)
+    }
   }
 </script>
 
@@ -82,6 +86,9 @@
     <a class="block-open" [href]="'/view/' + name" target="_blank" rel="noopener"
       ><icon name="lucide:external-link" /> Open in new tab</a
     >
+    @if (copyFailed) {
+      <p class="block-copy-error" role="alert">Couldn't copy: open Code, select the page's code and copy it.</p>
+    }
   </div>
   <div class="block-body" [use]="wire">
     <nav class="block-files" aria-label="Files" [hidden]="mode !== 'code'">
@@ -141,6 +148,11 @@
   }
   button[aria-pressed='true'] {
     background: var(--accent-soft);
+  }
+  .block-copy-error {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--bad, #b42318);
   }
   .block-copy,
   .block-open {

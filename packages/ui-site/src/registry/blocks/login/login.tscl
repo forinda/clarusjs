@@ -14,9 +14,20 @@
   let email = state('')
   let password = state('')
   let tried = state(false)
-  // The call: pending while it runs, one at a time, its answer in .result and a thrown error in .error.
-  const login = action((_, { signal }) => signIn({ email, password }, { signal }))
-  const errors = () => ({ ...validateLogin({ email, password }), ...(login.result?.errors ?? {}) })
+  // The call: pending while it runs, one at a time, its answer in .result and a thrown error in .error. The
+  // credentials it sent are kept, so its errors stand only while those are unchanged; the first one is focused.
+  let sent = state({ email: '', password: '' })
+  const login = action(async (_, { signal }) => {
+    sent = { email, password }
+    const answer = await signIn({ email, password }, { signal })
+    const first = Object.keys(answer.errors ?? {})[0]
+    // After the answer is shown (showing it renders the fields again): the next frame.
+    if (first) requestAnimationFrame(() => document.getElementById('login-' + first)?.focus())
+    return answer
+  })
+  const server = () => (email === sent.email && password === sent.password ? (login.result?.errors ?? {}) : {})
+  // This page's own rules first: an old answer never hides what's wrong now.
+  const errors = () => ({ ...server(), ...validateLogin({ email, password }) })
   function submit(event) {
     event.preventDefault()
     tried = true

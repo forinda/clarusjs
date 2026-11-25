@@ -15,6 +15,7 @@ export function validateLogin(values: Credentials): LoginErrors {
 
 const wait = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason)
     const timer = setTimeout(resolve, ms)
     signal?.addEventListener('abort', () => (clearTimeout(timer), reject(signal.reason)), { once: true })
   })
