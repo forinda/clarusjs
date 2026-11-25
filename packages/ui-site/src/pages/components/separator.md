@@ -17,9 +17,15 @@ description: "A line between content, horizontal or vertical."
 
 ## Source
 
-Copy it into `src/components/ui/` as `separator.tscl`.
+Copy it into `src/components/ui/` as `separator.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="separator">
 
 <<< ../../registry/separator.tscl
+
+<<< ../../registry/separator.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

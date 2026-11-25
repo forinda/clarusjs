@@ -17,9 +17,15 @@ description: "A field with text or icons before and after it."
 
 ## Source
 
-Copy it into `src/components/ui/` as `input-group.tscl`.
+Copy it into `src/components/ui/` as `input-group.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="input-group">
 
 <<< ../../registry/input-group.tscl
+
+<<< ../../registry/input-group.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

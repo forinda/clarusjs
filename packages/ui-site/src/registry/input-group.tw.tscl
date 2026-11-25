@@ -1,0 +1,23 @@
+{{-- Input group, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as input-group.tscl.
+     Copy it into src/components/ui/ as input-group.tscl. --}}
+@input variant: 'outline' | 'filled' | 'borderless' | 'underlined' = 'outline'
+
+<div
+  data-part="input-group"
+  [data-variant]="variant === 'outline' ? false : variant"
+  class="
+    flex items-stretch border border-input rounded-lg bg-background text-foreground font-sans text-(length:--ui-font-size) leading-[normal]
+    focus-within:outline-2 focus-within:outline-ring focus-within:outline-offset-1
+    data-[variant=filled]:not-has-[[aria-invalid=true]]:border-transparent data-[variant=filled]:bg-muted
+    data-[variant=borderless]:border-0 data-[variant=borderless]:bg-transparent
+    data-[variant=underlined]:border-0 data-[variant=underlined]:border-b data-[variant=underlined]:rounded-none data-[variant=underlined]:bg-transparent
+    has-[[aria-invalid=true]]:border-destructive
+    [&>input]:flex-1 [&>input]:min-w-0 [&>input]:border-0 [&>input]:border-none [&>input]:bg-transparent [&>input]:outline-none
+    [&>[data-part=input-group-start]]:flex [&>[data-part=input-group-start]]:items-center [&>[data-part=input-group-start]]:px-2.5 [&>[data-part=input-group-start]]:text-muted-foreground [&>[data-part=input-group-end]]:flex [&>[data-part=input-group-end]]:items-center [&>[data-part=input-group-end]]:px-2.5 [&>[data-part=input-group-end]]:text-muted-foreground
+    [&>[data-part=input-group-start]:empty]:hidden [&>[data-part=input-group-end]:empty]:hidden
+  "
+>
+  <span data-part="input-group-start"><slot name="start" /></span><slot /><span data-part="input-group-end"
+    ><slot name="end"
+  /></span>
+</div>

@@ -1,0 +1,18 @@
+{{-- Empty, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as empty.tscl.
+     Copy it into src/components/ui/ as empty.tscl. --}}
+
+<div
+  data-part="empty"
+  class="
+    grid justify-items-center gap-2 py-8 px-4 border border-dashed border-border rounded-lg text-foreground font-sans text-center
+    [&>[data-part=empty-icon]]:grid [&>[data-part=empty-icon]]:place-items-center [&>[data-part=empty-icon]]:size-[48px] [&>[data-part=empty-icon]]:rounded-[50%] [&>[data-part=empty-icon]]:bg-muted [&>[data-part=empty-icon]]:text-muted-foreground
+    [&>[data-part=empty-title]]:m-0 [&>[data-part=empty-title]]:font-heading [&>[data-part=empty-title]]:font-semibold [&>[data-part=empty-title]]:text-[length:calc(var(--ui-font-size)+2px)] [&>[data-part=empty-title]]:leading-[normal]
+    [&>[data-part=empty-description]]:max-w-[40ch] [&>[data-part=empty-description]]:text-muted-foreground
+    [&>[data-part]:empty]:hidden
+  "
+>
+  <div aria-hidden="true" data-part="empty-icon"><slot name="icon" /></div>
+  <p data-part="empty-title"><slot name="title" /></p>
+  <div data-part="empty-description"><slot /></div>
+  <div data-part="empty-action"><slot name="action" /></div>
+</div>

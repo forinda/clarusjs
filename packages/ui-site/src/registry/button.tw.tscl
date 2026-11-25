@@ -18,7 +18,7 @@
     [data-block]="block ? 'true' : false"
     [data-shape]="shape === 'default' ? false : shape"
     class="
-      inline-flex items-center justify-center gap-1.5 min-h-(--ui-control-md) px-3.5 border border-transparent rounded-lg bg-primary text-primary-foreground font-sans font-semibold text-(length:--ui-font-size) leading-none cursor-pointer
+      inline-flex items-center justify-center gap-1.5 min-h-(--ui-control-md) px-3.5 border border-transparent rounded-[var(--ui-group-radius-start,var(--ui-radius))_var(--ui-group-radius-end,var(--ui-radius))_var(--ui-group-radius-end,var(--ui-radius))_var(--ui-group-radius-start,var(--ui-radius))] bg-primary text-primary-foreground font-sans font-semibold text-(length:--ui-font-size) leading-none cursor-pointer
       hover:brightness-[1.08]
       focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2
       disabled:opacity-50 disabled:cursor-not-allowed
@@ -53,7 +53,7 @@
     [aria-busy]="loading ? 'true' : false"
     [disabled]="disabled || loading"
     class="
-      inline-flex items-center justify-center gap-1.5 min-h-(--ui-control-md) px-3.5 border border-transparent rounded-lg bg-primary text-primary-foreground font-sans font-semibold text-(length:--ui-font-size) leading-none cursor-pointer
+      inline-flex items-center justify-center gap-1.5 min-h-(--ui-control-md) px-3.5 border border-transparent rounded-[var(--ui-group-radius-start,var(--ui-radius))_var(--ui-group-radius-end,var(--ui-radius))_var(--ui-group-radius-end,var(--ui-radius))_var(--ui-group-radius-start,var(--ui-radius))] bg-primary text-primary-foreground font-sans font-semibold text-(length:--ui-font-size) leading-none cursor-pointer
       hover:brightness-[1.08]
       focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2
       disabled:opacity-50 disabled:cursor-not-allowed

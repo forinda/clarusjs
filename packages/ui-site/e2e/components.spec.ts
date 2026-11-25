@@ -202,3 +202,16 @@ test('aspect ratio: any ratio; the switcher changes the box\'s shape', async ({ 
   await expect(demo.getByRole('button', { name: '21:9' })).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(shape).toBe(2.33)
 })
+
+test('button group: its buttons join: inner corners square, outer ones round', async ({ page }) => {
+  await page.goto('/components/button-group')
+  const radii = await page.locator('.demo:not(.example) [data-part="button-group"]').first().evaluate((g) => [...g.children].map((b) => {
+    const s = getComputedStyle(b)
+    return [s.borderTopLeftRadius, s.borderTopRightRadius]
+  }))
+  expect(radii[0]![1]).toBe('0px')
+  expect(radii[1]).toEqual(['0px', '0px'])
+  expect(radii.at(-1)![0]).toBe('0px')
+  expect(radii[0]![0]).not.toBe('0px')
+  expect(radii.at(-1)![1]).not.toBe('0px')
+})

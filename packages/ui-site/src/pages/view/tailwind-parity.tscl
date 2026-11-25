@@ -13,6 +13,26 @@
 @import twAlert from '~/registry/alert.tw.tscl'
 @import uiInput from '~/registry/input.tscl'
 @import twInput from '~/registry/input.tw.tscl'
+@import uiTextarea from '~/registry/textarea.tscl'
+@import twTextarea from '~/registry/textarea.tw.tscl'
+@import uiLabel from '~/registry/label.tscl'
+@import twLabel from '~/registry/label.tw.tscl'
+@import uiKbd from '~/registry/kbd.tscl'
+@import twKbd from '~/registry/kbd.tw.tscl'
+@import uiSeparator from '~/registry/separator.tscl'
+@import twSeparator from '~/registry/separator.tw.tscl'
+@import uiSkeleton from '~/registry/skeleton.tscl'
+@import twSkeleton from '~/registry/skeleton.tw.tscl'
+@import uiButtonGroup from '~/registry/button-group.tscl'
+@import twButtonGroup from '~/registry/button-group.tw.tscl'
+@import uiAvatar from '~/registry/avatar.tscl'
+@import twAvatar from '~/registry/avatar.tw.tscl'
+@import uiSpinner from '~/registry/spinner.tscl'
+@import twSpinner from '~/registry/spinner.tw.tscl'
+@import uiEmpty from '~/registry/empty.tscl'
+@import twEmpty from '~/registry/empty.tw.tscl'
+@import uiInputGroup from '~/registry/input-group.tscl'
+@import twInputGroup from '~/registry/input-group.tw.tscl'
 @import { ALERT_VARIANTS, BADGE_VARIANTS, BUTTON_VARIANTS, INPUT_VARIANTS, SIZES } from './tailwind-parity.ts'
 
 <cl-head>
@@ -75,6 +95,46 @@
   }
   <div data-pair="input-disabled"><uiInput disabled aria-label="a" /><twInput disabled aria-label="a" /></div>
   <div data-pair="input-readonly"><uiInput readonly aria-label="a" /><twInput readonly aria-label="a" /></div>
+  <div data-pair="textarea"><uiTextarea aria-label="a" value="Text" /><twTextarea aria-label="a" value="Text" /></div>
+  <div data-pair="textarea-invalid">
+    <uiTextarea aria-label="a" aria-invalid="true" /><twTextarea aria-label="a" aria-invalid="true" />
+  </div>
+  <div data-pair="textarea-disabled"><uiTextarea aria-label="a" disabled /><twTextarea aria-label="a" disabled /></div>
+  <div data-pair="label"><uiLabel control="x">Email</uiLabel><twLabel control="x">Email</twLabel></div>
+  <div data-pair="kbd"><uiKbd>⌘K</uiKbd><twKbd>⌘K</twKbd></div>
+  <div data-pair="separator"><uiSeparator /><twSeparator /></div>
+  <div data-pair="separator-vertical" class="row">
+    <uiSeparator orientation="vertical" /><twSeparator orientation="vertical" />
+  </div>
+  <div data-pair="skeleton"><uiSkeleton width="120px" height="12px" /><twSkeleton width="120px" height="12px" /></div>
+  <div data-pair="button-group">
+    <uiButtonGroup label="g"
+      ><uiButton variant="outline">A</uiButton><uiButton variant="outline">B</uiButton
+      ><uiButton variant="outline">C</uiButton></uiButtonGroup
+    >
+    <twButtonGroup label="g"
+      ><uiButton variant="outline">A</uiButton><uiButton variant="outline">B</uiButton
+      ><uiButton variant="outline">C</uiButton></twButtonGroup
+    >
+  </div>
+  <div data-pair="avatar-fallback"><uiAvatar alt="Ada" fallback="AL" /><twAvatar alt="Ada" fallback="AL" /></div>
+  <div data-pair="avatar-image"><uiAvatar alt="Logo" src="/logo.svg" /><twAvatar alt="Logo" src="/logo.svg" /></div>
+  <div data-pair="spinner"><uiSpinner /><twSpinner /></div>
+  <div data-pair="empty">
+    <uiEmpty>@slot('icon') {<span>i</span>}@slot('title') {No projects}Create one to start.@slot('action') {<span>New</span>}</uiEmpty>
+    <twEmpty>@slot('icon') {<span>i</span>}@slot('title') {No projects}Create one to start.@slot('action') {<span>New</span>}</twEmpty>
+  </div>
+  <div data-pair="empty-bare"><uiEmpty>Nothing yet.</uiEmpty><twEmpty>Nothing yet.</twEmpty></div>
+  @for (v of INPUT_VARIANTS; track v) {
+    <div [data-pair]="'input-group-' + v">
+      <uiInputGroup [variant]="v">@slot('start') {$}<uiInput aria-label="a" />@slot('end') {.00}</uiInputGroup>
+      <twInputGroup [variant]="v">@slot('start') {$}<uiInput aria-label="a" />@slot('end') {.00}</twInputGroup>
+    </div>
+    <div [data-pair]="'input-group-invalid-' + v">
+      <uiInputGroup [variant]="v"><uiInput aria-label="a" aria-invalid="true" /></uiInputGroup>
+      <twInputGroup [variant]="v"><uiInput aria-label="a" aria-invalid="true" /></twInputGroup>
+    </div>
+  }
 </main>
 
 <style scoped>
@@ -82,6 +142,10 @@
     display: grid;
     gap: 12px;
     padding: 16px;
+  }
+  .row {
+    display: flex;
+    height: 24px;
   }
   [data-pair] {
     display: grid;
