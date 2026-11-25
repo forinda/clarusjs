@@ -149,4 +149,17 @@ test('combobox: an option already picked shows a check in the list, not only a c
   const kotlin = demo.getByRole('option', { name: 'Kotlin' })
   await kotlin.scrollIntoViewIfNeeded()
   expect(await kotlin.evaluate((o) => { const r = o.getBoundingClientRect(); return o.contains(document.elementFromPoint(r.right - 8, r.top + r.height / 2)) })).toBe(true)
+test('sizes: the nearest size wins: a small control inside a large row is small, and md resets it', async ({ page }) => {
+  await page.goto('/components/input')
+  const heights = await page.evaluate(() => {
+    const input = document.querySelector('[data-part="text-input"]')!
+    const control = document.querySelector('[data-part="control"]')!
+    const box = document.createElement('div')
+    box.dataset.size = 'lg'
+    const make = (el: Element, size?: string) => { const c = el.cloneNode(true) as HTMLElement; if (size) c.dataset.size = size; else delete c.dataset.size; box.append(c); return c }
+    const cases = [make(input, 'sm'), make(input, 'md'), make(input), make(control, 'sm'), make(control)]
+    document.querySelector('.content')!.append(box)
+    return cases.map((c) => Math.round(c.getBoundingClientRect().height))
+  })
+  expect(heights).toEqual([30, 36, 44, 30, 44])
 })

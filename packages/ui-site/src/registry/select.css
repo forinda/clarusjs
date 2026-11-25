@@ -26,24 +26,27 @@
     color: var(--ui-fg);
   }
   :where([data-part='control']) {
-    min-height: var(--ui-control-md);
+    min-height: var(--ui-control-h, var(--ui-control-md));
     padding: var(--ui-space-1) calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
     color: var(--ui-fg);
-    font: var(--ui-font-size) var(--ui-font);
+    font: var(--ui-control-font, var(--ui-font-size)) var(--ui-font);
   }
-  /* Sizes: data-size on the control or on anything around it. */
-  :where([data-size='sm'] [data-part='control']),
-  :where([data-part='control'][data-size='sm']) {
-    min-height: var(--ui-control-sm);
-    font-size: calc(var(--ui-font-size) - 1px);
+  /* Sizes: the nearest data-size (on the control, or on anything around it) sets these, and they inherit, so a
+     control's own size wins over its row's. */
+  :where([data-size='sm']) {
+    --ui-control-h: var(--ui-control-sm);
+    --ui-control-font: calc(var(--ui-font-size) - 1px);
   }
-  :where([data-size='lg'] [data-part='control']),
-  :where([data-part='control'][data-size='lg']) {
-    min-height: var(--ui-control-lg);
-    font-size: calc(var(--ui-font-size) + 2px);
+  :where([data-size='md']) {
+    --ui-control-h: var(--ui-control-md);
+    --ui-control-font: var(--ui-font-size);
+  }
+  :where([data-size='lg']) {
+    --ui-control-h: var(--ui-control-lg);
+    --ui-control-font: calc(var(--ui-font-size) + 2px);
   }
   :where([data-part='control'])[aria-invalid='true'] {
     border: 1px solid var(--ui-danger);

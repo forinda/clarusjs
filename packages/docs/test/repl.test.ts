@@ -27,7 +27,8 @@ describe('highlightTscl', () => {
   })
 
   test('time grows linearly with a long line (it was quadratic: 8x the line took 64x the time)', () => {
-    // The best of five runs, which load on the machine hardly moves; linear is ~8x, quadratic ~64x.
+    // The best of five runs, which load on the machine hardly moves; linear is ~8x, quadratic ~64x. Lines long enough
+    // that each run takes milliseconds: a sub-millisecond base made the ratio timer noise on a busy CI runner.
     const time = (n: number) => {
       const line = '<p class="a">' + 'word '.repeat(n) + '</p>'
       highlightTscl(line) // warm up
@@ -39,7 +40,7 @@ describe('highlightTscl', () => {
       }
       return best
     }
-    expect(time(40_000) / time(5_000)).toBeLessThan(24)
+    expect(time(160_000) / time(20_000)).toBeLessThan(24)
   })
 
   test('escapes <, & and quotes', () => {
