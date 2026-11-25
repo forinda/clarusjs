@@ -24,9 +24,6 @@
       outline: 2px solid var(--ui-ring);
       outline-offset: 1px;
     }
-    :where(:scope:has([aria-invalid='true'])) {
-      border-color: var(--ui-danger);
-    }
     :where(:scope[data-variant='filled']) {
       border-color: transparent;
       background: var(--ui-muted-bg);
@@ -39,6 +36,10 @@
       border-width: 0 0 1px;
       border-radius: 0;
       background: transparent;
+    }
+    /* After the variants, so a filled or underlined group keeps it. */
+    :where(:scope:has([aria-invalid='true'])) {
+      border-color: var(--ui-danger);
     }
     :where(:scope > input) {
       flex: 1;

@@ -37,12 +37,6 @@
       outline: 2px solid var(--ui-ring);
       outline-offset: 1px;
     }
-    :where(:scope[aria-invalid='true']) {
-      border-color: var(--ui-danger);
-    }
-    :where(:scope[data-status='warning']) {
-      border-color: var(--ui-warning);
-    }
     :where(:scope[data-variant='filled']) {
       border-color: transparent;
       background: var(--ui-muted-bg);
@@ -58,8 +52,11 @@
       background: transparent;
       padding-inline: 0;
     }
-    :where(:scope[data-variant='filled'][aria-invalid='true']),
-    :where(:scope[data-variant='underlined'][aria-invalid='true']) {
+    /* After the variants, so a filled or underlined input keeps them: a warning, then an error over it. */
+    :where(:scope[data-status='warning']) {
+      border-color: var(--ui-warning);
+    }
+    :where(:scope[aria-invalid='true']) {
       border-color: var(--ui-danger);
     }
     :where(:scope:read-only:not(:disabled)) {

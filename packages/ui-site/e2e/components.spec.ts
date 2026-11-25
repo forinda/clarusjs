@@ -165,3 +165,26 @@ test('sizes: the nearest size wins: a small control inside a large row is small,
   })
   expect(heights).toEqual([30, 36, 44, 30, 44])
 })
+
+test('input: a filled input keeps its warning and error borders; a filled group keeps its error border', async ({ page }) => {
+  await page.goto('/components/input')
+  const colors = await page.evaluate(() => {
+    const input = document.querySelector('[data-part="text-input"]')!
+    const group = document.querySelector('[data-part="input-group"]')!
+    const root = document.querySelector('.content')!
+    const warn = input.cloneNode() as HTMLElement
+    Object.assign(warn.dataset, { variant: 'filled', status: 'warning' })
+    const bad = input.cloneNode() as HTMLElement
+    bad.dataset.variant = 'filled'
+    bad.setAttribute('aria-invalid', 'true')
+    const g = group.cloneNode(true) as HTMLElement
+    g.dataset.variant = 'filled'
+    g.querySelector('input')!.setAttribute('aria-invalid', 'true')
+    root.append(warn, bad, g)
+    const probe = (v: string) => { const p = document.createElement('p'); p.style.color = `var(${v})`; root.append(p); const c = getComputedStyle(p).color; p.remove(); return c }
+    return { warn: getComputedStyle(warn).borderTopColor, bad: getComputedStyle(bad).borderTopColor, group: getComputedStyle(g).borderTopColor, warning: probe('--ui-warning'), danger: probe('--ui-danger') }
+  })
+  expect(colors.warn).toBe(colors.warning)
+  expect(colors.bad).toBe(colors.danger)
+  expect(colors.group).toBe(colors.danger)
+})
