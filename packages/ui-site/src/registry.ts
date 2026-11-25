@@ -92,6 +92,17 @@ export const registry: Entry[] = [
     island: true,
   },
   {
+    name: 'signature-pad',
+    group: 'Form',
+    title: 'Signature pad',
+    description: 'Sign with a mouse, finger or pen, or type a name instead; the signature is a PNG its form sends.',
+    files: ['signature-pad.tscl'],
+    tailwind: ['signature-pad.tw.tscl'],
+    parts: [],
+    uses: [],
+    island: true,
+  },
+  {
     name: 'label',
     group: 'Form',
     title: 'Label',
