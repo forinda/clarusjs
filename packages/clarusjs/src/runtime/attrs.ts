@@ -8,14 +8,16 @@ const URL_ATTRS = new Set([
 // SVG animation values can set an href, but only on animation elements; elsewhere these are ordinary data.
 const ANIMATION_ATTRS = new Set(['to', 'from', 'values', 'by'])
 const ANIMATION_ELEMENTS = new Set(['animate', 'set', 'animatemotion', 'animatetransform'])
-// Attributes that load an image, where a raster data: URL is fine.
+// Attributes that load an image, where a raster data: URL or an object URL (blob:, a preview of a picked file) is fine:
+// an image can't run script. Attributes that load a page or a script (iframe, embed, object, script) are static only,
+// so a bound value never reaches them; href keeps refusing blob: (a blob of HTML would open as this site's page).
 const IMAGE_ATTRS = new Set(['src', 'srcset', 'poster'])
 const SAFE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel'])
 const RASTER_DATA = /^data:image\/(png|gif|jpe?g|webp|avif|bmp);/i
 export const UNSAFE_URL = 'about:invalid#unsafe'
 
 /**
- * Allowlist: a relative URL, a safe scheme, or (for image attributes) a raster data: image.
+ * Allowlist: a relative URL, a safe scheme, or (for image attributes) a raster data: image or an object URL.
  * Browsers ignore control characters and whitespace around and inside the scheme, so the check does too.
  */
 function safeUrl(url: string, image: boolean): boolean {
@@ -23,7 +25,7 @@ function safeUrl(url: string, image: boolean): boolean {
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(compact)?.[1]?.toLowerCase()
   if (!scheme) return true // relative: /x, ../x, #x, ?x
   if (SAFE_SCHEMES.has(scheme)) return true
-  return image && RASTER_DATA.test(compact)
+  return image && (scheme === 'blob' || RASTER_DATA.test(compact))
 }
 
 // false is a value here, not a missing attribute: enumerated attributes (removing one means its default), and the
