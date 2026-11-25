@@ -1,16 +1,38 @@
 {{-- Button: a native <button>, or a link (<a>) with the same look when href is set. class, style, id, aria-*,
-     data-* and (click) (any DOM event that bubbles; (focusin) for focus) you pass reach it. --}}
-@input variant: 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link' = 'default'
+     data-* and (click) (any DOM event that bubbles; (focusin) for focus) you pass reach it. loading shows a spinner
+     and disables it (aria-busy); block fills its container; shape round or circle (an icon alone: give it an
+     aria-label). An icon goes where you put it in the content, before or after the text. --}}
+@input variant: 'default' | 'secondary' | 'outline' | 'dashed' | 'ghost' | 'destructive' | 'link' = 'default'
 @input size: 'sm' | 'md' | 'lg' = 'md'
 @input type: 'button' | 'submit' | 'reset' = 'button'
 @input disabled: boolean = false
 @input href: string = ''
+@input loading: boolean = false
+@input block: boolean = false
+@input shape: 'default' | 'round' | 'circle' = 'default'
 
 @if (href) {
-  <a [href]="href" data-part="button" [data-variant]="variant" [data-size]="size"><slot /></a>
+  <a
+    [href]="href"
+    data-part="button"
+    [data-variant]="variant"
+    [data-size]="size"
+    [data-block]="block ? 'true' : false"
+    [data-shape]="shape === 'default' ? false : shape"
+    ><slot
+  /></a>
 } @else {
-  <button [type]="type" data-part="button" [data-variant]="variant" [data-size]="size" [disabled]="disabled">
-    <slot />
+  <button
+    [type]="type"
+    data-part="button"
+    [data-variant]="variant"
+    [data-size]="size"
+    [data-block]="block ? 'true' : false"
+    [data-shape]="shape === 'default' ? false : shape"
+    [aria-busy]="loading ? 'true' : false"
+    [disabled]="disabled || loading"
+  >
+    @if (loading) {<span data-part="button-spinner" aria-hidden="true"></span>}<slot />
   </button>
 }
 
@@ -51,6 +73,17 @@
       color: var(--ui-fg);
       border-color: var(--ui-border);
     }
+    :where(:scope[data-variant='dashed']) {
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      border-color: var(--ui-border);
+      border-style: dashed;
+    }
+    :where(:scope[data-variant='dashed']:hover) {
+      border-color: var(--ui-accent);
+      color: var(--ui-accent);
+      filter: none;
+    }
     :where(:scope[data-variant='ghost']) {
       background: transparent;
       color: var(--ui-fg);
@@ -81,6 +114,46 @@
       min-height: 44px;
       padding: 0 var(--ui-space-5);
       font-size: calc(var(--ui-font-size) + 2px);
+    }
+    :where(:scope[data-block='true']) {
+      display: flex;
+      width: 100%;
+    }
+    :where(:scope[data-shape='round']) {
+      border-radius: 999px;
+    }
+    /* An icon alone: as wide as it is tall. */
+    :where(:scope[data-shape='circle']) {
+      width: 36px;
+      padding: 0;
+      border-radius: 50%;
+    }
+    :where(:scope[data-shape='circle'][data-size='sm']) {
+      width: 30px;
+    }
+    :where(:scope[data-shape='circle'][data-size='lg']) {
+      width: 44px;
+    }
+    :where(:scope[aria-busy='true']) {
+      cursor: progress;
+    }
+    :where([data-part='button-spinner']) {
+      width: 1em;
+      height: 1em;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: ui-button-spin 0.7s linear infinite;
+    }
+    @keyframes ui-button-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :where([data-part='button-spinner']) {
+        animation-duration: 2s;
+      }
     }
   }
 </style>

@@ -1,0 +1,24 @@
+@import uiButton from './button.tscl'
+
+<div class="demo">
+  <uiButton>Default</uiButton>
+  <uiButton variant="secondary">Secondary</uiButton>
+  <uiButton variant="outline">Outline</uiButton>
+  <uiButton variant="dashed">Dashed</uiButton>
+  <uiButton variant="ghost">Ghost</uiButton>
+  <uiButton variant="destructive">Destructive</uiButton>
+  <uiButton variant="link">Link</uiButton>
+</div>
+
+<style scoped>
+  :scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-3);
+    align-items: center;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+  }
+</style>

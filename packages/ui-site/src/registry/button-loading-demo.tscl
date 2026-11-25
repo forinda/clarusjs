@@ -1,0 +1,29 @@
+@import uiButton from './button.tscl'
+
+<script>
+  let saving = state(false)
+  // Your call goes here: the button stays busy until it settles.
+  function save() {
+    saving = true
+    setTimeout(() => (saving = false), 2000)
+  }
+</script>
+
+<div class="demo">
+  <uiButton loading>Loading</uiButton>
+  <uiButton variant="outline" loading>Saving draft</uiButton>
+  <uiButton [loading]="saving" (click)="save()">{{ saving ? 'Saving…' : 'Click to save' }}</uiButton>
+</div>
+
+<style scoped>
+  :scope {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-3);
+    align-items: center;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+  }
+</style>

@@ -183,7 +183,7 @@ test('theme builder: a failing pair shows a warning next to its control, in the 
 
 test('theme builder: on a phone the sheet rises from the bottom; Escape closes it and focus returns; no sideways scroll', async ({ browser }) => {
   const page = await (await browser.newContext({ viewport: { width: 390, height: 800 } })).newPage()
-  await page.goto('/components/button')
+  await page.goto('/components/input') // a short page: this is about the sheet, and axe on a long page is slow
   const open = page.getByRole('button', { name: 'Theme', exact: true })
   expect((await open.boundingBox())!.width).toBeLessThan(44) // the icon alone; the name stays
   expect((await page.locator('.theme-toggle').first().boundingBox())!.x + 30).toBeLessThan(390)

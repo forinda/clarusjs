@@ -19,7 +19,7 @@ test('blocks: registry entries of their own kind, apart from the components', ()
 
 test('every entry\'s files exist, and every file in src/registry is an entry\'s file or usage example', () => {
   for (const { file } of files) expect(existsSync(resolve(registryDir, file)), file).toBe(true)
-  const known = [...files.map((f) => f.file), ...components.map((e) => `${e.name}-demo.tscl`)].sort()
+  const known = [...files.map((f) => f.file), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`)])].sort()
   const found = (readdirSync(registryDir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => statSync(resolve(registryDir, f)).isFile())
   expect(found.sort()).toEqual(known)
 })
@@ -81,6 +81,27 @@ test('styles use only --ui-* custom properties', () => {
   for (const { file } of files) {
     for (const [, name] of source(file).matchAll(/var\(--([\w-]+)/g)) expect(name, file).toMatch(/^ui-/)
   }
+})
+
+test('button: loading shows a spinner, marks it busy and disables it; block, shape and dashed are data attributes', async () => {
+  const loading = await render('button.tscl', { loading: true }, { default: 'Save' })
+  expect(loading).toMatch(/<button [^>]*aria-busy="true"/)
+  expect(loading).toMatch(/<button [^>]* disabled[ >]/)
+  expect(loading).toContain('<span data-part="button-spinner" aria-hidden="true"></span>Save')
+  expect(await render('button.tscl', {}, { default: 'x' })).not.toContain('button-spinner')
+  expect(await render('button.tscl', { block: true }, { default: 'x' })).toContain('data-block="true"')
+  expect(await render('button.tscl', { shape: 'circle' }, { default: 'x' })).toContain('data-shape="circle"')
+  expect(await render('button.tscl', { shape: 'round' }, { default: 'x' })).toContain('data-shape="round"')
+  expect(await render('button.tscl', { variant: 'dashed' }, { default: 'x' })).toContain('data-variant="dashed"')
+})
+
+test('a component page shows each of its examples (examples: [...]) under Examples, with its code', () => {
+  for (const e of components) for (const x of e.examples ?? []) {
+    const md = readFileSync(page(e.name), 'utf8')
+    expect(md, `${e.name}: ${x}`).toContain(`<<< ../../registry/${e.name}-${x}-demo.tscl`)
+    expect(md, `${e.name}: ${x}`).toMatch(new RegExp(`^## Examples$`, 'm'))
+  }
+  expect(components.find((e) => e.name === 'button')!.examples).toEqual(['variants', 'sizes', 'icons', 'loading', 'shapes', 'block', 'disabled', 'actions'])
 })
 
 test('button: variants default, secondary, outline, ghost, destructive, link; sizes sm, md, lg', async () => {

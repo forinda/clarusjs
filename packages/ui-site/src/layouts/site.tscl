@@ -28,6 +28,10 @@
 /></docsTheme>
 
 <style global>
+  /* A demo and the code shown after it (<<< on a page) don't touch. */
+  .content .demo {
+    margin-bottom: 16px;
+  }
   /* The docs theme makes Markdown tables scroll (display: block); a chart's data table stays a table. */
   .content [data-part='chart-table'] {
     display: table;

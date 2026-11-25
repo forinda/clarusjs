@@ -22,6 +22,8 @@ export type Entry = {
   parts: string[]
   /** Other entries it imports as ./<name>.tscl. */
   uses: string[]
+  /** More examples for its page, each <name>-<example>-demo.tscl beside it, shown under Examples in this order. */
+  examples?: string[]
   /** Other entries its usage example imports (not needed by the component itself). */
   example?: string[]
   /** false: ships no JavaScript. */
@@ -40,10 +42,12 @@ export const registry: Entry[] = [
     name: 'button',
     group: 'Button',
     title: 'Button',
-    description: 'A native button in six variants and three sizes.',
+    description: 'A native button in seven variants and three sizes, with icons, loading, shapes and full width.',
     files: ['button.tscl'],
     parts: [],
     uses: [],
+    example: ['button-group'],
+    examples: ['variants', 'sizes', 'icons', 'loading', 'shapes', 'block', 'disabled', 'actions'],
     island: false,
   },
   {
