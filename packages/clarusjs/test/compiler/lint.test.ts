@@ -184,6 +184,9 @@ test('#review 2: no fix around a declaration between the roots; a final text kee
   const fixOf = (src: string) => lint(src, component).find((m) => m.rule === 'one-root')?.fix
   expect(fixOf('a\n@input name: string = "Ada"\n{{ name }}\n')).toBeUndefined()
   expect(fixOf('<a>1</a>\n@import { x } from "./x.ts"\n<b>{{ x }}</b>\n')).toBeUndefined()
+  expect(fixOf("<p>a</p>\n@import './card.css'\n<p>b</p>\n")).toBeUndefined()
+  expect(fixOf("<p>a</p>\n@event pick: string\n<p>b</p>\n")).toBeUndefined()
+  expect(fixOf("<p>a</p>\n@extends p\n<p>b</p>\n")).toBeUndefined()
   const html = async (src: string) => (await importCode(compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js', scope: 's' }).code, 'fixr2')).render({}) as string
   for (const src of ['Hello <b>x</b>', 'Hello <b>x</b> there', '<b>x</b>\nHello']) {
     const fixed = applyFixes(src, lint(src, component).filter((m) => m.rule === 'one-root'))

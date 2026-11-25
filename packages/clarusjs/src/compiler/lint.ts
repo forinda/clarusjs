@@ -146,9 +146,13 @@ export const lintRules: LintRuleDef[] = [
       const end = source.slice(0, rawEnd).trimEnd().length
       // No fix with a <script>, <style> or declaration (@input, @import…) between the roots: inside a <fragment> it
       // would no longer be the component's.
-      const declared = [...parsed.inputs, ...parsed.events, ...parsed.contexts, ...parsed.imports, ...parsed.typeImports, ...parsed.dataImports, ...parsed.types].map((d) => d.start)
-      if (parsed.extends) declared.push(parsed.extends.start)
-      if (parsed.layoutStart !== undefined) declared.push(parsed.layoutStart)
+      // Every declaration the parser keeps (@input, @import of any kind, @event, @extends…): each field but the template.
+      const declared = Object.entries(parsed).flatMap(([key, value]) => {
+        if (key === 'nodes') return []
+        if (typeof value === 'number') return [value] // layoutStart
+        const items: unknown[] = Array.isArray(value) ? value : [value]
+        return items.flatMap((d) => (d && typeof d === 'object' && typeof (d as { start?: unknown }).start === 'number' ? [(d as { start: number }).start] : []))
+      })
       const nl = source.includes('\r\n') ? '\r\n' : '\n'
       // A line break before </fragment>, except after text that had none: it would become part of that text.
       const close = last.type !== 'text' || source.slice(end, rawEnd).includes('\n') ? nl : ''
