@@ -1,0 +1,122 @@
+{{--
+  Resizable: two panels (slots start and end) and a handle between them. Drag the handle, or focus it and use the
+  arrow keys (step at a time; Home and End go to min and max). size is the first panel's share in percent: bind it
+  with [(size)]. orientation="vertical" stacks the panels. label names the handle for screen readers.
+--}}
+@input id: string
+@input label: string = 'Resize'
+@input orientation: 'horizontal' | 'vertical' = 'horizontal'
+@input min: number = 10
+@input max: number = 90
+@input step: number = 5
+@model size: number = 50
+
+<script>
+  let dragging = state(false)
+  const fit = (n) => Math.round(Math.min(max, Math.max(min, n)))
+  const across = () => orientation === 'horizontal'
+  function down(event) {
+    event.target.closest('[data-part="resizable-handle"]').setPointerCapture(event.pointerId)
+    dragging = true
+  }
+  function move(event) {
+    if (!dragging) return
+    const box = event.target.closest('[data-part="resizable"]').getBoundingClientRect()
+    size = fit(
+      across() ? ((event.clientX - box.left) / box.width) * 100 : ((event.clientY - box.top) / box.height) * 100,
+    )
+  }
+  function up() {
+    dragging = false
+  }
+  function key(event) {
+    const back = across() ? 'ArrowLeft' : 'ArrowUp'
+    const forth = across() ? 'ArrowRight' : 'ArrowDown'
+    const moves = { [back]: size - step, [forth]: size + step, Home: min, End: max }
+    if (!(event.key in moves)) return
+    event.preventDefault()
+    size = fit(moves[event.key])
+  }
+</script>
+
+<div
+  data-part="resizable"
+  [data-orientation]="orientation"
+  [data-dragging]="dragging ? 'true' : false"
+  [style]="'--ui-split: ' + size + '%'"
+>
+  <div [id]="id + '-start'" data-part="resizable-panel"><slot name="start" /></div>
+  <div
+    data-part="resizable-handle"
+    role="separator"
+    tabindex="0"
+    [aria-label]="label"
+    [aria-controls]="id + '-start'"
+    [aria-orientation]="across() ? 'vertical' : 'horizontal'"
+    [aria-valuenow]="size"
+    [aria-valuemin]="min"
+    [aria-valuemax]="max"
+    (pointerdown)="down($event)"
+    (pointermove)="move($event)"
+    (pointerup)="up()"
+    (pointercancel)="up()"
+    (keydown)="key($event)"
+  ></div>
+  <div data-part="resizable-panel"><slot name="end" /></div>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      grid-template-columns: minmax(0, var(--ui-split)) auto minmax(0, 1fr);
+      min-height: 0;
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where(:scope[data-orientation='vertical']) {
+      grid-template-columns: none;
+      grid-template-rows: minmax(0, var(--ui-split)) auto minmax(0, 1fr);
+    }
+    :where(:scope[data-dragging='true']) {
+      user-select: none;
+    }
+    :where([data-part='resizable-panel']) {
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+    }
+    /* A thin line with a wider grab area; it shows the accent while held, hovered or focused. */
+    :where([data-part='resizable-handle']) {
+      position: relative;
+      width: 1px;
+      background: var(--ui-border);
+      cursor: col-resize;
+      touch-action: none;
+    }
+    :where(:scope[data-orientation='vertical'] [data-part='resizable-handle']) {
+      width: auto;
+      height: 1px;
+      cursor: row-resize;
+    }
+    :where([data-part='resizable-handle'])::before {
+      content: '';
+      position: absolute;
+      inset: 0 calc(var(--ui-space) * -1.5);
+    }
+    :where(:scope[data-orientation='vertical'] [data-part='resizable-handle'])::before {
+      inset: calc(var(--ui-space) * -1.5) 0;
+    }
+    :where([data-part='resizable-handle']:hover),
+    :where(:scope[data-dragging='true'] [data-part='resizable-handle']) {
+      background: var(--ui-accent);
+    }
+    :where([data-part='resizable-handle']:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 1px;
+    }
+  }
+</style>

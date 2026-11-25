@@ -1,0 +1,68 @@
+{{-- OTP input, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as otp-input.tscl.
+     Copy it into src/components/ui/ as otp-input.tscl. --}}
+@input id: string
+@input label: string
+@input name: string = 'code'
+@input length: number = 6
+@model value: string = ''
+@event complete: string
+
+<script>
+  let focused = state(false)
+  const cells = () => Array.from({ length }, (_, i) => i)
+  function type(event) {
+    const field = event.target
+    const digits = field.value.replace(/\D/g, '').slice(0, length)
+    if (field.value !== digits) field.value = digits
+    value = digits
+    if (digits.length === length) emit('complete', digits)
+  }
+  // The caret stays at the end: the boxes fill and empty in order.
+  function end(event) {
+    const field = event.target
+    field.setSelectionRange(field.value.length, field.value.length)
+  }
+</script>
+
+<div
+  data-part="otp"
+  class="
+    inline-grid gap-2 text-foreground font-sans text-(length:--ui-font-size) leading-[normal]
+    [&_[data-part=otp-label]]:font-medium [&_[data-part=otp-field]]:relative [&_[data-part=otp-cells]]:flex [&_[data-part=otp-cells]]:gap-2
+    [&_[data-part=otp-cell]]:grid [&_[data-part=otp-cell]]:place-items-center [&_[data-part=otp-cell]]:size-(--ui-control-lg) [&_[data-part=otp-cell]]:border [&_[data-part=otp-cell]]:border-input [&_[data-part=otp-cell]]:rounded-lg [&_[data-part=otp-cell]]:bg-background [&_[data-part=otp-cell]]:font-semibold [&_[data-part=otp-cell]]:tabular-nums [&_[data-part=otp-cell]]:text-[length:calc(var(--ui-font-size)+6px)]
+    [&_[data-part=otp-cell][data-active=true]]:border-ring [&_[data-part=otp-cell][data-active=true]]:[box-shadow:0_0_0_1px_var(--ui-ring)]
+    [&_[data-part=otp-input]]:absolute [&_[data-part=otp-input]]:inset-0 [&_[data-part=otp-input]]:w-full [&_[data-part=otp-input]]:p-0 [&_[data-part=otp-input]]:border-0 [&_[data-part=otp-input]]:border-none [&_[data-part=otp-input]]:font-[inherit] [&_[data-part=otp-input]]:opacity-0
+  "
+>
+  <label [for]="id" data-part="otp-label">{{ label }}</label>
+  <div data-part="otp-field">
+    <div data-part="otp-cells" aria-hidden="true">
+      @for (i of cells(); track i) {
+        <span
+          data-part="otp-cell"
+          [data-filled]="i < value.length ? 'true' : false"
+          [data-active]="focused && i === Math.min(value.length, length - 1) ? 'true' : false"
+        >
+          {{ value[i] ?? '' }}
+        </span>
+      }
+    </div>
+    <input
+      [id]="id"
+      [name]="name"
+      data-part="otp-input"
+      type="text"
+      autocomplete="one-time-code"
+      inputmode="numeric"
+      pattern="[0-9]*"
+      [maxlength]="length"
+      [value]="value"
+      spellcheck="false"
+      (input)="type($event)"
+      (focus)="focused = true"
+      (blur)="focused = false"
+      (click)="end($event)"
+      (keyup)="end($event)"
+    />
+  </div>
+</div>
