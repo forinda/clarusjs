@@ -176,3 +176,17 @@ test('#review: one-root fix: none when a <script> or <style> sits between the ro
     if (src.includes('\r\n')) expect(fixed.replace(/\r\n/g, '')).not.toContain('\n')
   }
 })
+
+test('#review 2: no fix around a declaration between the roots; a final text keeps its ending', async () => {
+  const { applyFixes, compile } = await import('../../src/compiler/index.ts')
+  const { importCode } = await import('../helpers.ts')
+  const component = 'src/components/x.tscl'
+  const fixOf = (src: string) => lint(src, component).find((m) => m.rule === 'one-root')?.fix
+  expect(fixOf('a\n@input name: string = "Ada"\n{{ name }}\n')).toBeUndefined()
+  expect(fixOf('<a>1</a>\n@import { x } from "./x.ts"\n<b>{{ x }}</b>\n')).toBeUndefined()
+  const html = async (src: string) => (await importCode(compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js', scope: 's' }).code, 'fixr2')).render({}) as string
+  for (const src of ['Hello <b>x</b>', 'Hello <b>x</b> there', '<b>x</b>\nHello']) {
+    const fixed = applyFixes(src, lint(src, component).filter((m) => m.rule === 'one-root'))
+    expect(await html(fixed), src).toBe(await html(src))
+  }
+})

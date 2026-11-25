@@ -142,10 +142,17 @@ export const lintRules: LintRuleDef[] = [
       const last = nodes.at(-1)!
       const blocks = [...parsed.styles.map((st) => st.tag), parsed.serverScript?.tag ?? -1, parsed.script ? source.lastIndexOf('<script', parsed.script.start) : -1]
       const after = [...parsed.nodes.map((n) => n.start), ...blocks].filter((x) => x > last.start)
-      const end = source.slice(0, after.length ? Math.min(...after) : source.length).trimEnd().length
-      // No fix with a <script> or <style> between the roots: inside a <fragment> it would no longer be the component's.
+      const rawEnd = after.length ? Math.min(...after) : source.length
+      const end = source.slice(0, rawEnd).trimEnd().length
+      // No fix with a <script>, <style> or declaration (@input, @import…) between the roots: inside a <fragment> it
+      // would no longer be the component's.
+      const declared = [...parsed.inputs, ...parsed.events, ...parsed.contexts, ...parsed.imports, ...parsed.typeImports, ...parsed.dataImports, ...parsed.types].map((d) => d.start)
+      if (parsed.extends) declared.push(parsed.extends.start)
+      if (parsed.layoutStart !== undefined) declared.push(parsed.layoutStart)
       const nl = source.includes('\r\n') ? '\r\n' : '\n'
-      const fix = blocks.some((b) => b > first!.start && b < end) ? undefined : { start: first!.start, end, text: `<fragment>${nl}${source.slice(first!.start, end)}${nl}</fragment>` }
+      // A line break before </fragment>, except after text that had none: it would become part of that text.
+      const close = last.type !== 'text' || source.slice(end, rawEnd).includes('\n') ? nl : ''
+      const fix = [...blocks, ...declared].some((b) => b > first!.start && b < end) ? undefined : { start: first!.start, end, text: `<fragment>${nl}${source.slice(first!.start, end)}${close}</fragment>` }
       report(at.start, 'a component renders one root element, for what a parent passes it (attributes, class, events) to land on: wrap these in an element, or in <fragment> if no element is wanted', fix)
     },
   },

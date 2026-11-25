@@ -42,3 +42,8 @@ test('a root <fragment> renders like the same nodes at the top level: no whitesp
   const top = await render('<a href="/1">1</a>\n<a href="/2">2</a>\n')
   expect(await render('<fragment>\n<a href="/1">1</a>\n<a href="/2">2</a>\n</fragment>\n')).toBe(top)
 })
+
+test('#review: a root fragment drops only the line break after <fragment>, not other leading space', async () => {
+  expect(await render('<fragment> Hi <b>x</b></fragment>\n')).toBe(' Hi <b>x</b>')
+  expect(await render('<fragment>\r\nHi <b>x</b></fragment>\n')).toBe('Hi <b>x</b>')
+})

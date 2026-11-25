@@ -451,3 +451,12 @@ test('fix: lint fixes are written to the .tscl files, and what they fixed is no 
   expect(result.fixed).toEqual(['src/components/pair.tscl'])
   expect(readFileSync(resolve(root, 'src/components/pair.tscl'), 'utf8')).toBe('@input a: string\n<fragment>\n<dt>{{ a }}</dt>\n<dd><slot /></dd>\n</fragment>\n')
 })
+
+test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('#review: fix: a file it cannot write is reported, with its path', async () => {
+  const { chmodSync } = await import('node:fs')
+  const root = project({ 'src/components/pair.tscl': '<dt>a</dt>\n<dd>b</dd>\n' })
+  chmodSync(resolve(root, 'src/components/pair.tscl'), 0o444)
+  const result = check({ root, typescript, fix: true })
+  expect(result.fixed).toEqual([])
+  expect(result.diagnostics).toContainEqual(expect.objectContaining({ file: 'src/components/pair.tscl', code: 'fix', severity: 'error', message: expect.stringMatching(/^--fix could not write src\/components\/pair\.tscl: /) }))
+})

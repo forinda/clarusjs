@@ -95,14 +95,17 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     let source = original
     // fix: lint's fixes, written to the file (.tscl only: a page source's text is generated), before anything is checked.
     if (options.fix && path.endsWith('.tscl')) {
-      try {
-        const next = applyFixes(original, lint(original, file, options.lint, options.lintRules))
-        if (next !== original) {
+      let next = original
+      try { next = applyFixes(original, lint(original, file, options.lint, options.lintRules)) } catch {} // a syntax error: reported below
+      if (next !== original) {
+        try {
           writeFileSync(path, next)
           fixed.push(file)
           source = next
+        } catch (err) {
+          diagnostics.push({ file, line: 1, column: 1, severity: 'error', code: 'fix', message: `--fix could not write ${file}: ${(err as Error).message}` })
         }
-      } catch {} // a syntax error: reported below
+      }
     }
     try {
       if (src) source = src.toTscl(original, path, { route: routeFromFile(`/${file}`), root, addDependency: () => {} })

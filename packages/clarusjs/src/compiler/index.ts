@@ -204,7 +204,7 @@ function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source:
     if (n.type !== 'element' || n.tag !== 'fragment' || n.attrs.length) return [n]
     const kept = n.children.filter((c) => !(c.type === 'text' && !c.value.trim()))
     const head = kept[0]
-    if (head?.type === 'text') kept[0] = { ...head, value: head.value.trimStart() }
+    if (head?.type === 'text') kept[0] = { ...head, value: head.value.replace(/^[ \t]*\r?\n/, '') } // only that line break
     return kept
   })
   parsed.nodes = flat(parsed.nodes)
