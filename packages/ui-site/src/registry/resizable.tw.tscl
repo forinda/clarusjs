@@ -1,0 +1,73 @@
+{{-- Resizable, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as resizable.tscl.
+     Copy it into src/components/ui/ as resizable.tscl. --}}
+@input id: string
+@input label: string = 'Resize'
+@input orientation: 'horizontal' | 'vertical' = 'horizontal'
+@input min: number = 10
+@input max: number = 90
+@input step: number = 5
+@model size: number = 50
+
+<script>
+  let dragging = state(false)
+  const fit = (n) => Math.round(Math.min(max, Math.max(min, n)))
+  const across = () => orientation === 'horizontal'
+  function down(event) {
+    event.target.closest('[data-part="resizable-handle"]').setPointerCapture(event.pointerId)
+    dragging = true
+  }
+  function move(event) {
+    if (!dragging) return
+    const box = event.target.closest('[data-part="resizable"]').getBoundingClientRect()
+    size = fit(
+      across() ? ((event.clientX - box.left) / box.width) * 100 : ((event.clientY - box.top) / box.height) * 100,
+    )
+  }
+  function up() {
+    dragging = false
+  }
+  function key(event) {
+    const back = across() ? 'ArrowLeft' : 'ArrowUp'
+    const forth = across() ? 'ArrowRight' : 'ArrowDown'
+    const moves = { [back]: size - step, [forth]: size + step, Home: min, End: max }
+    if (!(event.key in moves)) return
+    event.preventDefault()
+    size = fit(moves[event.key])
+  }
+</script>
+
+<div
+  data-part="resizable"
+  class="
+    grid grid-cols-[minmax(0,var(--ui-split))_auto_minmax(0,1fr)] min-h-0 border border-border rounded-lg text-foreground font-sans text-(length:--ui-font-size) leading-[normal]
+    data-[orientation=vertical]:grid-cols-none data-[orientation=vertical]:grid-rows-[minmax(0,var(--ui-split))_auto_minmax(0,1fr)] data-[dragging=true]:select-none
+    [&>[data-part=resizable-panel]]:min-w-0 [&>[data-part=resizable-panel]]:min-h-0 [&>[data-part=resizable-panel]]:overflow-auto
+    [&>[data-part=resizable-handle]]:relative [&>[data-part=resizable-handle]]:w-px [&>[data-part=resizable-handle]]:bg-border [&>[data-part=resizable-handle]]:cursor-col-resize [&>[data-part=resizable-handle]]:touch-none
+    [&>[data-part=resizable-handle]]:before:content-[''] [&>[data-part=resizable-handle]]:before:absolute [&>[data-part=resizable-handle]]:before:inset-y-0 [&>[data-part=resizable-handle]]:before:-inset-x-[calc(var(--ui-space)*1.5)]
+    [&[data-orientation=vertical]>[data-part=resizable-handle]]:w-auto [&[data-orientation=vertical]>[data-part=resizable-handle]]:h-px [&[data-orientation=vertical]>[data-part=resizable-handle]]:cursor-row-resize [&[data-orientation=vertical]>[data-part=resizable-handle]]:before:inset-x-0 [&[data-orientation=vertical]>[data-part=resizable-handle]]:before:-inset-y-[calc(var(--ui-space)*1.5)]
+    [&>[data-part=resizable-handle]:hover]:bg-primary [&[data-dragging=true]>[data-part=resizable-handle]]:bg-primary
+    [&>[data-part=resizable-handle]:focus-visible]:outline-2 [&>[data-part=resizable-handle]:focus-visible]:outline-ring [&>[data-part=resizable-handle]:focus-visible]:outline-offset-1
+  "
+  [data-orientation]="orientation"
+  [data-dragging]="dragging ? 'true' : false"
+  [style]="'--ui-split: ' + size + '%'"
+>
+  <div [id]="id + '-start'" data-part="resizable-panel"><slot name="start" /></div>
+  <div
+    data-part="resizable-handle"
+    role="separator"
+    tabindex="0"
+    [aria-label]="label"
+    [aria-controls]="id + '-start'"
+    [aria-orientation]="across() ? 'vertical' : 'horizontal'"
+    [aria-valuenow]="size"
+    [aria-valuemin]="min"
+    [aria-valuemax]="max"
+    (pointerdown)="down($event)"
+    (pointermove)="move($event)"
+    (pointerup)="up()"
+    (pointercancel)="up()"
+    (keydown)="key($event)"
+  ></div>
+  <div data-part="resizable-panel"><slot name="end" /></div>
+</div>
