@@ -188,3 +188,16 @@ test('input: a filled input keeps its warning and error borders; a filled group 
   expect(colors.bad).toBe(colors.danger)
   expect(colors.group).toBe(colors.danger)
 })
+
+test('aspect ratio: any ratio; the switcher changes the box\'s shape', async ({ page }) => {
+  await page.goto('/components/aspect-ratio')
+  const demo = page.locator('[class*="aspect-ratio-ratios-demo"]')
+  await page.locator('cl-island[c="aspect-ratio-ratios-demo"][data-cl-ready]').waitFor({ state: 'attached' })
+  const box = demo.locator('[data-part="aspect-ratio"]').first()
+  const shape = async () => { const b = (await box.boundingBox())!; return Math.round((b.width / b.height) * 100) / 100 }
+  await demo.getByRole('button', { name: '1:1' }).click()
+  await expect.poll(shape).toBe(1)
+  await demo.getByRole('button', { name: '21:9' }).click()
+  await expect(demo.getByRole('button', { name: '21:9' })).toHaveAttribute('aria-pressed', 'true')
+  await expect.poll(shape).toBe(2.33)
+})

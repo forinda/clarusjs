@@ -468,3 +468,11 @@ test('every component sits in one of the groups (PrimeVue\'s), and its page\'s f
   const used = new Set(components.map((c) => c.group))
   for (const g of COMPONENT_GROUPS) expect(used.has(g), g).toBe(true)
 })
+
+test('file upload: without JavaScript, a real file input in a labelled drop zone, sent with its form', async () => {
+  const html = await render('file-upload.tscl', { id: 'docs', label: 'Attachments', name: 'attachments', accept: 'image/*,.pdf', multiple: true })
+  expect(html).toMatch(/<label for="docs" data-part="file-drop"/)
+  expect(html).toMatch(/<input type="file" id="docs" name="attachments" accept="image\/\*,\.pdf" multiple/)
+  expect(html).toContain('Attachments')
+  expect(html).not.toContain('data-part="file-list"')
+})

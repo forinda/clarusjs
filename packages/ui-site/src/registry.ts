@@ -75,6 +75,17 @@ export const registry: Entry[] = [
     island: false,
   },
   {
+    name: 'file-upload',
+    group: 'Form',
+    title: 'File upload',
+    description: 'Pick or drop files: a list with image previews and remove buttons, checked by type, size and count.',
+    files: ['file-upload.tscl'],
+    parts: [],
+    uses: [],
+    examples: ['images', 'single'],
+    island: true,
+  },
+  {
     name: 'label',
     group: 'Form',
     title: 'Label',
@@ -454,6 +465,7 @@ export const registry: Entry[] = [
     files: ['aspect-ratio.tscl'],
     parts: [],
     uses: [],
+    examples: ['ratios'],
     island: false,
   },
   {

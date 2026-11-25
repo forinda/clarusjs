@@ -1,0 +1,21 @@
+@import uiFileUpload from './file-upload.tscl'
+
+<form class="demo" method="post" enctype="multipart/form-data" action="#">
+  <uiFileUpload
+    id="demo-attachments"
+    label="Attachments"
+    name="attachments"
+    description="Any file, as many as you like."
+  />
+</form>
+
+<style scoped>
+  :scope {
+    display: grid;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
