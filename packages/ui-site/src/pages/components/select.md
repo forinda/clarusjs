@@ -17,6 +17,16 @@ The parts come from `@clarusjs/ui-primitives`; the look is `select.css`, importe
 
 <<< ../../registry/select-demo.tscl
 
+## Examples
+
+### States
+
+A placeholder until something is chosen, an option that can't be picked, and the whole select disabled.
+
+<selectStatesDemo />
+
+<<< ../../registry/select-states-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `select.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.

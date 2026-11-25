@@ -1,0 +1,20 @@
+@import uiField from './field.tscl'
+{{-- [show] shows the error at once (after a submit, say); without it, once the field has been left. --}}
+
+<div class="demo example">
+  <uiField id="error-email" label="Email" type="email" value="ada@" error="Enter a full email address." [show]="true" />
+  <uiField id="error-password" label="Password" type="password" error="Use at least 8 characters." [show]="true" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

@@ -1,6 +1,6 @@
 @import uiButton from './button.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiButton size="sm">Small</uiButton>
   <uiButton>Medium</uiButton>
   <uiButton size="lg">Large</uiButton>

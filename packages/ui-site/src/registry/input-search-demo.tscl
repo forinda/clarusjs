@@ -11,7 +11,7 @@
   }
 </script>
 
-<form class="demo" role="search" (submit)="search($event)">
+<form class="demo example" role="search" (submit)="search($event)">
   <uiInput type="search" name="q" aria-label="Search the docs" placeholder="Search the docs" />
   <uiButton type="submit" [loading]="searching"><icon name="lucide:search" /> Search</uiButton>
 </form>

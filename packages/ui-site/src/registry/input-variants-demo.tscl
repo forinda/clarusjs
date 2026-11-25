@@ -1,6 +1,6 @@
 @import uiInput from './input.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiInput aria-label="Outline" placeholder="Outline (the default)" />
   <uiInput variant="filled" aria-label="Filled" placeholder="Filled" />
   <uiInput variant="borderless" aria-label="Borderless" placeholder="Borderless" />

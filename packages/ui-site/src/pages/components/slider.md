@@ -15,6 +15,24 @@ description: "A native range input, styled."
 
 <<< ../../registry/slider-demo.tscl
 
+## Examples
+
+### Showing its value
+
+An `<output>` beside the label, kept in step as it moves.
+
+<sliderValueDemo />
+
+<<< ../../registry/slider-value-demo.tscl
+
+### Steps and disabled
+
+`step` with tick marks from a `<datalist>` (`list`), and a disabled one.
+
+<sliderStepsDemo />
+
+<<< ../../registry/slider-steps-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `slider.tscl`.

@@ -1,7 +1,7 @@
 @import uiCard from './card.tscl'
 @import uiButton from './button.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiCard>
     @slot('header') {
       <h3 class="card-title">Invite your team</h3>

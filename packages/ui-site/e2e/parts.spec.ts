@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test('accordion: opens one item at a time', async ({ page }) => {
   await page.goto('/components/accordion')
-  const items = page.locator('.demo details')
+  const items = page.locator('.demo:not(.example) details')
   await items.nth(1).locator('summary').click()
   await expect(items.nth(1)).toHaveAttribute('open', '')
   await expect(items.nth(0)).not.toHaveAttribute('open', '')
@@ -11,9 +11,9 @@ test('accordion: opens one item at a time', async ({ page }) => {
 for (const name of ['checkbox', 'switch']) {
   test(`${name}: toggles with click and Space`, async ({ page }) => {
     await page.goto(`/components/${name}`)
-    await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
-    const input = page.locator(`.demo [data-part="${name}"] input`).first()
-    const out = page.locator('.demo .out')
+    await page.locator('.demo:not(.example) cl-island[data-cl-ready]').first().waitFor()
+    const input = page.locator(`.demo:not(.example) [data-part="${name}"] input`).first()
+    const out = page.locator('.demo:not(.example) .out')
     await expect(out).toHaveText('off')
     await input.click()
     await expect(out).toHaveText('on')
@@ -24,8 +24,8 @@ for (const name of ['checkbox', 'switch']) {
 
 test('radio group: arrow keys select', async ({ page }) => {
   await page.goto('/components/radio-group')
-  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
-  const out = page.locator('.demo .out')
+  await page.locator('.demo:not(.example) cl-island[data-cl-ready]').first().waitFor()
+  const out = page.locator('.demo:not(.example) .out')
   await expect(out).toHaveText('m')
   await page.getByRole('radio', { name: 'Medium', exact: true }).focus()
   await page.keyboard.press('ArrowDown')
@@ -35,18 +35,18 @@ test('radio group: arrow keys select', async ({ page }) => {
 
 test('field: shows its error after an invalid submit', async ({ page }) => {
   await page.goto('/components/field')
-  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
-  const error = page.locator('.demo [data-part="error"]')
+  await page.locator('.demo:not(.example) cl-island[data-cl-ready]').first().waitFor()
+  const error = page.locator('.demo:not(.example) [data-part="error"]')
   await expect(error).toBeHidden()
-  await page.locator('.demo button[type="submit"]').click()
+  await page.locator('.demo:not(.example) button[type="submit"]').click()
   await expect(error).toBeVisible()
   await expect(error).toHaveText('Enter an email address.')
 })
 
 test('dialog: opens from its trigger; Escape closes it and focus returns to the trigger', async ({ page }) => {
   await page.goto('/components/dialog')
-  const trigger = page.locator('.demo [data-part="trigger"]')
-  const dialog = page.locator('.demo dialog')
+  const trigger = page.locator('.demo:not(.example) [data-part="trigger"]')
+  const dialog = page.locator('.demo:not(.example) dialog')
   await trigger.click()
   await expect(dialog).toBeVisible()
   await page.keyboard.press('Escape')
@@ -56,8 +56,8 @@ test('dialog: opens from its trigger; Escape closes it and focus returns to the 
 
 test('popover: opens from its trigger and closes on a click outside', async ({ page }) => {
   await page.goto('/components/popover')
-  const popover = page.locator('.demo [data-part="popover"]')
-  await page.locator('.demo [data-part="trigger"]').click()
+  const popover = page.locator('.demo:not(.example) [data-part="popover"]')
+  await page.locator('.demo:not(.example) [data-part="trigger"]').click()
   await expect(popover).toBeVisible()
   await page.locator('h1').click()
   await expect(popover).toBeHidden()
@@ -65,9 +65,9 @@ test('popover: opens from its trigger and closes on a click outside', async ({ p
 
 test('tooltip: shows on focus and hides on Escape', async ({ page }) => {
   await page.goto('/components/tooltip')
-  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
-  const tip = page.locator('.demo [data-part="tooltip"]')
-  await page.locator('.demo cl-island button').first().focus()
+  await page.locator('.demo:not(.example) cl-island[data-cl-ready]').first().waitFor()
+  const tip = page.locator('.demo:not(.example) [data-part="tooltip"]')
+  await page.locator('.demo:not(.example) cl-island button').first().focus()
   await expect(tip).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(tip).toBeHidden()
@@ -75,21 +75,21 @@ test('tooltip: shows on focus and hides on Escape', async ({ page }) => {
 
 test('menu: opens, arrow keys move, Escape closes and returns focus', async ({ page }) => {
   await page.goto('/components/menu')
-  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
-  const trigger = page.locator('.demo [data-part="trigger"]')
+  await page.locator('.demo:not(.example) cl-island[data-cl-ready]').first().waitFor()
+  const trigger = page.locator('.demo:not(.example) [data-part="trigger"]')
   await trigger.click()
   const items = page.getByRole('menuitem')
   await expect(items.first()).toBeFocused()
   await page.keyboard.press('ArrowDown')
   await expect(items.nth(1)).toBeFocused()
   await page.keyboard.press('Escape')
-  await expect(page.locator('.demo [data-part="menu-list"]')).toBeHidden()
+  await expect(page.locator('.demo:not(.example) [data-part="menu-list"]')).toBeHidden()
   await expect(trigger).toBeFocused()
 })
 
 test('tabs: select by click and arrow keys; the panel follows', async ({ page }) => {
   await page.goto('/components/tabs')
-  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
+  await page.locator('.demo:not(.example) cl-island[data-cl-ready]').first().waitFor()
   const tab = (name: string) => page.getByRole('tab', { name, exact: true })
   await tab('pnpm').click()
   await expect(tab('pnpm')).toHaveAttribute('aria-selected', 'true')
@@ -101,27 +101,27 @@ test('tabs: select by click and arrow keys; the panel follows', async ({ page })
 
 test('select: changes its value', async ({ page }) => {
   await page.goto('/components/select')
-  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
-  await page.locator('.demo select').selectOption('l')
-  await expect(page.locator('.demo .out')).toHaveText('l')
+  await page.locator('.demo:not(.example) cl-island[data-cl-ready]').first().waitFor()
+  await page.locator('.demo:not(.example) select').selectOption('l')
+  await expect(page.locator('.demo:not(.example) .out')).toHaveText('l')
 })
 
 test('combobox: filters as you type, and Enter picks', async ({ page }) => {
   await page.goto('/components/combobox')
-  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
-  const input = page.getByRole('combobox')
+  await page.locator('.demo:not(.example) cl-island[data-cl-ready]').first().waitFor()
+  const input = page.locator('.demo:not(.example)').getByRole('combobox')
   await input.fill('ban')
-  await expect(page.getByRole('option')).toHaveText(['Banana'])
+  await expect(page.locator('.demo:not(.example)').getByRole('option')).toHaveText(['Banana'])
   await input.press('ArrowDown')
   await input.press('Enter')
-  await expect(page.locator('.demo .out')).toHaveText('banana')
+  await expect(page.locator('.demo:not(.example) .out')).toHaveText('banana')
 })
 
 test('sheet: slides in from its side; Escape closes it and focus returns', async ({ page }) => {
   await page.goto('/components/sheet')
-  const trigger = page.locator('.demo [data-part="trigger"]').first()
+  const trigger = page.locator('.demo:not(.example) [data-part="trigger"]').first()
   await trigger.click()
-  const sheet = page.locator('.demo dialog[data-side="right"]')
+  const sheet = page.locator('.demo:not(.example) dialog[data-side="right"]')
   await expect(sheet).toBeVisible()
   await sheet.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished))) // measured after the slide
   const box = await sheet.boundingBox()
@@ -133,7 +133,7 @@ test('sheet: slides in from its side; Escape closes it and focus returns', async
 
 test('alert dialog: a click outside does not close it; Escape and Cancel do (as cancel); the action does too', async ({ page }) => {
   await page.goto('/components/alert-dialog')
-  const trigger = page.locator('.demo [data-part="trigger"]').first()
+  const trigger = page.locator('.demo:not(.example) [data-part="trigger"]').first()
   const dialog = page.getByRole('alertdialog')
   await trigger.click()
   await expect(dialog).toBeVisible()
@@ -152,11 +152,11 @@ test('alert dialog: a click outside does not close it; Escape and Cancel do (as 
 
 test('toggle: pressing flips aria-pressed; a single group keeps one pressed; arrow keys move between items', async ({ page }) => {
   await page.goto('/components/toggle')
-  await page.locator('.demo cl-island[data-cl-ready]').first().waitFor()
-  const bold = page.locator('.demo [data-part="toggle"]')
+  await page.locator('.demo:not(.example) cl-island[data-cl-ready]').first().waitFor()
+  const bold = page.locator('.demo:not(.example) [data-part="toggle"]')
   await bold.click()
   await expect(bold).toHaveAttribute('aria-pressed', 'true')
-  const align = page.getByRole('group', { name: 'Alignment' })
+  const align = page.locator('.demo:not(.example)').getByRole('group', { name: 'Alignment' })
   await align.getByRole('button', { name: 'Center' }).click()
   await expect(align.getByRole('button', { name: 'Center' })).toHaveAttribute('aria-pressed', 'true')
   await expect(align.getByRole('button', { name: 'Left' })).toHaveAttribute('aria-pressed', 'false')
@@ -167,16 +167,16 @@ test('toggle: pressing flips aria-pressed; a single group keeps one pressed; arr
 test('toast: a message appears in the polite region without taking focus; its action runs', async ({ page }) => {
   await page.goto('/components/toast')
   await page.locator('cl-island[c="toast-demo"][data-cl-ready]').waitFor({ state: 'attached' })
-  const save = page.locator('.demo').getByRole('button', { name: 'Save' })
+  const save = page.locator('.demo:not(.example)').getByRole('button', { name: 'Save' })
   await save.click()
   const region = page.getByRole('region', { name: 'Notifications' })
   await expect(region.locator('[data-part="toast-message"]')).toHaveText(['Saved'])
   await expect(region.locator('[aria-live="polite"]')).toHaveCount(1)
   await expect(save).toBeFocused()
-  await page.locator('.demo').getByRole('button', { name: 'Delete project' }).click()
-  await expect(page.locator('.demo .out')).toHaveText('1')
+  await page.locator('.demo:not(.example)').getByRole('button', { name: 'Delete project' }).click()
+  await expect(page.locator('.demo:not(.example) .out')).toHaveText('1')
   await region.getByRole('button', { name: 'Undo' }).click()
-  await expect(page.locator('.demo .out')).toHaveText('0')
+  await expect(page.locator('.demo:not(.example) .out')).toHaveText('0')
 })
 
 test('sidebar: the trigger collapses it on a wide screen, and a reload keeps it collapsed from the first paint', async ({ page }) => {
@@ -185,12 +185,12 @@ test('sidebar: the trigger collapses it on a wide screen, and a reload keeps it 
   await page.locator('cl-island[c="sidebar-trigger"][data-cl-ready]').waitFor({ state: 'attached' })
   const nav = page.getByRole('navigation', { name: 'Project' })
   await expect(nav).toBeVisible()
-  await page.locator('.demo').getByRole('button', { name: 'Menu' }).click()
+  await page.locator('.demo:not(.example)').getByRole('button', { name: 'Menu' }).click()
   await expect(nav).toBeHidden()
   await page.reload()
   expect(await page.evaluate(() => document.documentElement.dataset.sidebar)).toBe('collapsed')
   await expect(nav).toBeHidden()
-  await page.locator('.demo').getByRole('button', { name: 'Menu' }).click()
+  await page.locator('.demo:not(.example)').getByRole('button', { name: 'Menu' }).click()
   await expect(nav).toBeVisible()
 })
 
@@ -200,7 +200,7 @@ test('sidebar: on a phone the trigger opens it as a panel; Escape closes it', as
   await page.locator('cl-island[c="sidebar-trigger"][data-cl-ready]').waitFor({ state: 'attached' })
   const nav = page.getByRole('navigation', { name: 'Project' })
   await expect(nav).toBeHidden()
-  await page.locator('.demo').getByRole('button', { name: 'Menu' }).click()
+  await page.locator('.demo:not(.example)').getByRole('button', { name: 'Menu' }).click()
   await expect(nav).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(nav).toBeHidden()
@@ -210,7 +210,7 @@ test('sidebar: on a phone the trigger opens it as a panel; Escape closes it', as
 test('toast kinds: each kind is tinted, has its icon, and says its kind to screen readers', async ({ page }) => {
   await page.goto('/components/toast')
   await page.locator('cl-island[c="toast-demo"][data-cl-ready]').waitFor({ state: 'attached' })
-  await page.locator('.demo').getByRole('button', { name: 'Fail' }).click()
+  await page.locator('.demo:not(.example)').getByRole('button', { name: 'Fail' }).click()
   const item = page.locator('[data-part="toast"][data-type="error"]')
   await expect(item).toContainText('Error:')
   await expect(item).toContainText('Upload failed')

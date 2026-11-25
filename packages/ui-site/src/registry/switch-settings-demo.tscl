@@ -1,6 +1,6 @@
 @import uiSwitch from './switch.tscl'
 
-<ul class="demo" aria-label="Notifications">
+<ul class="demo example" aria-label="Notifications">
   <li>
     <uiSwitch label="Email" [checked]="true" />
     <p>A summary of the day, at 6pm.</p>

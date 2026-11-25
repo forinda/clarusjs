@@ -1,6 +1,6 @@
 @import uiAlert from './alert.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiAlert>
     @slot('title') {
       Heads up

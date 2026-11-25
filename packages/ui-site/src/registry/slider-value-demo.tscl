@@ -1,0 +1,40 @@
+@import uiSlider from './slider.tscl'
+@import uiLabel from './label.tscl'
+
+<script>
+  let volume = state(40)
+  // Listened to, not bound: a bound value renders the slider again on every input, which ends the drag.
+  const moved = (event) => (volume = Number(event.target.value))
+</script>
+
+<div class="demo example">
+  <div class="head">
+    <uiLabel control="value-volume">Volume</uiLabel>
+    <output for="value-volume">{{ volume }}%</output>
+  </div>
+  <uiSlider id="value-volume" [value]="40" (input)="moved($event)" />
+</div>
+
+<style global>
+  .head {
+    display: flex;
+    justify-content: space-between;
+  }
+  .head output {
+    color: var(--ui-muted);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

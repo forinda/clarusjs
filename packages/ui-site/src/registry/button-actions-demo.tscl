@@ -1,7 +1,7 @@
 @import uiButton from './button.tscl'
 @import uiButtonGroup from './button-group.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiButton>Publish</uiButton>
   <uiButton variant="outline">Save draft</uiButton>
   <uiButtonGroup label="More actions">

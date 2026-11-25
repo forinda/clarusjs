@@ -1,7 +1,7 @@
 @import uiAlert from './alert.tscl'
 @import uiButton from './button.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiAlert variant="success">
     @slot('title') {
       <icon name="lucide:circle-check" /> Payment received

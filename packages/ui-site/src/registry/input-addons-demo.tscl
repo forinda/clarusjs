@@ -3,7 +3,7 @@
 @import uiButton from './button.tscl'
 {{-- Text before and after, and a field joined to its button. --}}
 
-<div class="demo">
+<div class="demo example">
   <uiInputGroup>
     @slot('start') {
       https://

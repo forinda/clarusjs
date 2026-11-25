@@ -1,6 +1,6 @@
 @import uiButton from './button.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiButton block>Create account</uiButton>
   <uiButton block variant="outline">Continue with email</uiButton>
   <uiButton block variant="dashed"><icon name="lucide:plus" /> Add a row</uiButton>

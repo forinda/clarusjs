@@ -1,0 +1,29 @@
+@import uiSlider from './slider.tscl'
+@import uiLabel from './label.tscl'
+
+<div class="demo example">
+  <uiLabel control="steps-quality">Quality (steps of 25)</uiLabel>
+  <uiSlider id="steps-quality" [min]="0" [max]="100" [step]="25" [value]="50" list="steps-quality-marks" />
+  <datalist id="steps-quality-marks">
+    <option value="0"></option>
+    <option value="25"></option>
+    <option value="50"></option>
+    <option value="75"></option>
+    <option value="100"></option>
+  </datalist>
+  <uiLabel control="steps-disabled">Disabled</uiLabel>
+  <uiSlider id="steps-disabled" [value]="30" disabled />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

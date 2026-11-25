@@ -1,6 +1,6 @@
 @import uiCheckbox from './checkbox.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiCheckbox label="Unchecked" />
   <uiCheckbox label="Checked" [checked]="true" />
   <uiCheckbox label="Disabled" disabled />

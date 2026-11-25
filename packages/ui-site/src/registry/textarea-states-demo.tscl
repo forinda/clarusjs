@@ -1,0 +1,38 @@
+@import uiTextarea from './textarea.tscl'
+@import uiLabel from './label.tscl'
+
+<div class="demo example">
+  <uiTextarea aria-label="Notes" placeholder="Notes" />
+  <uiTextarea aria-label="Disabled" placeholder="Disabled" disabled />
+  <uiTextarea aria-label="Read-only" value="This was sent and can't be changed." readonly />
+  <div class="field">
+    <uiLabel control="states-reason">Reason</uiLabel>
+    <uiTextarea id="states-reason" aria-invalid="true" aria-describedby="states-reason-error" />
+    <p id="states-reason-error" class="error">Tell us why, in a sentence or two.</p>
+  </div>
+</div>
+
+<style global>
+  .field {
+    display: grid;
+    gap: var(--ui-space-1);
+  }
+  .error {
+    margin: 0;
+    color: var(--ui-danger);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+</style>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

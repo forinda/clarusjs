@@ -19,7 +19,7 @@
   }
 </script>
 
-<div class="demo">
+<div class="demo example">
   <uiInputGroup>
     @slot('start') {
       <icon name="lucide:filter" />

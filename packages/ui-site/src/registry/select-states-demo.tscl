@@ -1,0 +1,28 @@
+@import './select.css'
+@import uiSelect from '@clarusjs/ui-primitives/select.tscl'
+
+<script server>
+  const plans = [
+    { value: 'free', label: 'Free' },
+    { value: 'team', label: 'Team' },
+    { value: 'enterprise', label: 'Enterprise (contact us)', disabled: true },
+  ]
+</script>
+
+<div class="demo example">
+  <uiSelect id="states-plan" label="Plan" placeholder="Choose a plan" [options]="plans" />
+  <uiSelect id="states-locked" label="Plan (locked)" [options]="plans" value="team" disabled />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

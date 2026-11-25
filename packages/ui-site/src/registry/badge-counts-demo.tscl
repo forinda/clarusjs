@@ -2,7 +2,7 @@
 @import uiButton from './button.tscl'
 {{-- A count says what it counts in the button's name, for screen readers; past 99 it shows 99+. --}}
 
-<div class="demo">
+<div class="demo example">
   <uiButton variant="outline">Inbox <uiBadge>12</uiBadge></uiButton>
   <uiButton variant="outline" aria-label="Notifications, 3 unread"
     ><icon name="lucide:bell" /> <uiBadge variant="destructive">3</uiBadge></uiButton
