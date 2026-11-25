@@ -44,8 +44,10 @@ test('componentNames: yours and the libraries\', written to .clarusjs/components
   expect(names['acme-dialog']).toBe('/src/components/acme-dialog.tscl') // yours win
   expect(names['acme-menu-item']).toBe('@acme/ui/menu/item.tscl')
   expect(names['user-card']).toBe('/src/components/user-card.tscl')
-  expect(JSON.parse(readFileSync(resolve(root, '.clarusjs/components.json'), 'utf8'))).toEqual({ dirs: ['src/components', 'src/layouts'], names })
-  expect(readComponentNames(root)).toEqual(names)
+  // The file holds the libraries' names, none shadowed: the editor lays the app's own, read live, over them.
+  const libraries = { 'acme-dialog': '@acme/ui/dialog.tscl', 'acme-menu-item': '@acme/ui/menu/item.tscl' }
+  expect(JSON.parse(readFileSync(resolve(root, '.clarusjs/components.json'), 'utf8'))).toEqual({ dirs: ['src/components', 'src/layouts'], names: libraries })
+  expect(readComponentNames(root)).toEqual(libraries)
   expect(readComponentNames(app({}))).toBeUndefined()
 })
 
@@ -59,7 +61,7 @@ test('#review: with automatic imports off, components.json lists none (an earlie
 test('#review: the configured folders are written too, for the editor', () => {
   const root = app({ 'src/widgets/user-card.tscl': '<div />\n', 'src/components/old-card.tscl': '<div />\n' })
   expect(Object.keys(componentNames(root, { dirs: ['src/widgets'] })!)).toEqual(['user-card'])
-  expect(readComponents(root)).toEqual({ dirs: ['src/widgets'], names: { 'user-card': '/src/widgets/user-card.tscl' } })
+  expect(readComponents(root)).toEqual({ dirs: ['src/widgets'], names: {} })
 })
 
 test('#review: components.json is replaced whole (a new file renamed over it), never rewritten in place', () => {
@@ -67,8 +69,7 @@ test('#review: components.json is replaced whole (a new file renamed over it), n
   componentNames(root)
   const file = resolve(root, '.clarusjs/components.json')
   const before = statSync(file).ino
-  writeFileSync(resolve(root, 'src/components/user-list.tscl'), '<div />\n')
-  componentNames(root)
+  componentNames(root, { dirs: ['src/widgets'] })
   expect(statSync(file).ino).not.toBe(before)
   expect(readdirSync(resolve(root, '.clarusjs'))).toEqual(['components.json'])
 })

@@ -56,15 +56,16 @@ export function resolveLibraries(root: string, list: LibraryOption[]): Library[]
 }
 
 /**
- * Every component name the app's templates may use without an @import: its own (`dirs`), then its libraries'. Written,
- * with the folders, to .clarusjs/components.json for the editor (none when automatic imports are off). Undefined then.
+ * Every component name the app's templates may use without an @import: its own (`dirs`), then its libraries'. The
+ * folders and the libraries' names, none shadowed, go to .clarusjs/components.json for the editor, which lays the
+ * app's own (read live) over them; none when automatic imports are off. Undefined then.
  */
 export function componentNames(root: string, options: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] } = {}): ComponentNames | undefined {
   const dirs = options.auto === false ? [] : (options.dirs ?? COMPONENT_DIRS)
   const own = componentIndex(findClarusFiles(resolve(root, 'src'), ['.tscl']).map((f) => posix(relative(root, f))), dirs).names
-  const names = options.auto === false ? {} : withLibraries(own, libraryNames(resolveLibraries(root, options.libraries ?? [])))
+  const libraries = options.auto === false ? {} : libraryNames(resolveLibraries(root, options.libraries ?? []))
   const file = resolve(root, '.clarusjs/components.json')
-  const text = `${JSON.stringify({ dirs, names }, null, 2)}\n`
+  const text = `${JSON.stringify({ dirs, names: libraries }, null, 2)}\n`
   if (!existsSync(file) || readFileSync(file, 'utf8') !== text) {
     mkdirSync(dirname(file), { recursive: true })
     // Whole or not at all: the editor may read it while this writes.
@@ -72,11 +73,11 @@ export function componentNames(root: string, options: { dirs?: string[]; auto?: 
     writeFileSync(temp, text)
     renameSync(temp, file)
   }
-  return options.auto === false ? undefined : names
+  return options.auto === false ? undefined : withLibraries(own, libraries)
 }
 
 /**
- * The folders and names the plugin or `clarusjs check` last wrote for this app, if either has run. Written by a tool,
+ * The folders and libraries' names the plugin or `clarusjs check` last wrote for this app, if either has run. Written by a tool,
  * but it may be stale or hand-edited: an entry that isn't a path (or several) is dropped, the rest kept.
  */
 export function readComponents(root: string): { dirs?: string[]; names: ComponentNames } | undefined {
@@ -89,7 +90,7 @@ export function readComponents(root: string): { dirs?: string[]; names: Componen
   return dirs ? { dirs, names } : { names }
 }
 
-/** The names the plugin or `clarusjs check` last wrote for this app, if either has run. */
+/** The libraries' names the plugin or `clarusjs check` last wrote for this app, if either has run. */
 export function readComponentNames(root: string): ComponentNames | undefined {
   return readComponents(root)?.names
 }

@@ -1,9 +1,9 @@
 // The TypeScript 7.1 content mapper (`clarusjs mapper`): .tscl → TypeScript with a span map, template errors as
 // mapper diagnostics, the JSON-RPC protocol over stdio, and a real `tsc --runExternalCode` run on a small project.
 import { spawn, spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { transform } from '../../src/cli/mapper.ts'
 
@@ -168,6 +168,23 @@ test('transform: a library component used by name (from .clarusjs/components.jso
   writeFileSync(resolve(root, '.clarusjs/components.json'), JSON.stringify({ names: { 'acme-dialog': '@acme/ui/dialog.tscl' } }))
   const out = transform({ fileName: resolve(root, 'src/pages/index.tscl'), content: '<acme-dialog />\n' })
   expect(out.text).toContain('from "@acme/ui/dialog.tscl"')
+})
+
+test('#review: a library name an app component shadowed comes back once that component is gone (no run in between)', async () => {
+  const { componentNames } = await import('../../src/vite/libraries.ts')
+  const root = mkdtempSync(resolve(tmpdir(), 'cl-map-shadow-'))
+  const files: Record<string, string> = {
+    'package.json': '{}',
+    'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', exports: { './*': './src/*' }, clarusjs: { components: './src', prefix: 'acme' } }),
+    'node_modules/@acme/ui/src/dialog.tscl': '<dialog />\n',
+    'src/components/acme-dialog.tscl': '<div />\n',
+  }
+  for (const [file, text] of Object.entries(files)) { mkdirSync(dirname(resolve(root, file)), { recursive: true }); writeFileSync(resolve(root, file), text) }
+  componentNames(root, { libraries: ['@acme/ui'] })
+  const page = resolve(root, 'src/pages/index.tscl')
+  expect(transform({ fileName: page, content: '<acme-dialog />\n' }).text).toContain('from "../components/acme-dialog.tscl"')
+  rmSync(resolve(root, 'src/components/acme-dialog.tscl'))
+  expect(transform({ fileName: page, content: '<acme-dialog />\n' }).text).toContain('from "@acme/ui/dialog.tscl"')
 })
 
 test('#review: transform names the app\'s components from the folders the config lists (written to components.json)', () => {
