@@ -56,3 +56,25 @@ for (const mode of modes) {
     await page.context().close()
   })
 }
+
+for (const [where, open] of [['the landing playground', null], ['the Theme sheet', 'sheet']] as const) {
+  test(`${where}: the radius slider moves smoothly: the same element, focused, one step per key`, async ({ page }) => {
+    await page.goto('/')
+    let slider
+    if (open) {
+      await page.getByRole('button', { name: 'Theme', exact: true }).click()
+      await page.locator('.theme-builder[data-ready]').waitFor()
+      slider = page.locator('#theme-sheet').getByLabel('Radius')
+    } else {
+      await page.locator('cl-island[c="landing-playground"][data-cl-ready]').waitFor({ state: 'attached' })
+      slider = page.locator('.landing-playground').getByLabel('Radius')
+    }
+    await slider.focus()
+    const start = Number(await slider.inputValue())
+    await slider.evaluate((el) => ((el as HTMLElement & { mark?: boolean }).mark = true))
+    for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight')
+    await expect(slider).toHaveValue(String(start + 4))
+    await expect(slider).toBeFocused()
+    expect(await slider.evaluate((el) => (el as HTMLElement & { mark?: boolean }).mark === true)).toBe(true)
+  })
+}

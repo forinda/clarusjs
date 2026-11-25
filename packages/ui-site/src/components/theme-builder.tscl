@@ -230,10 +230,18 @@
         localStorage.setItem(SOURCE_KEY, encode(theme, base))
       } catch {}
     })
+    // The radius slider's value isn't bound (that renders the slider again on every input and ends the drag): a preset,
+    // a shared link or Reset sets it here, in place.
+    const slide = effect(() => {
+      const value = String(parseInt(theme.light.radius))
+      const input = el.querySelector('[data-part="slider"]')
+      if (input instanceof HTMLInputElement && input.value !== value) input.value = value
+    })
     el.setAttribute('data-ready', '')
     return () => {
       stop()
       save()
+      slide()
       watch.disconnect()
       dark.removeEventListener('change', follow)
     }
@@ -312,14 +320,7 @@
     <div class="row">
       <span class="row-label" id="tb-radius-label">Radius</span>
       <span class="row-value">{{ theme.light.radius }}</span>
-      <uiSlider
-        id="tb-radius"
-        aria-label="Radius"
-        [min]="0"
-        [max]="20"
-        [value]="parseInt(theme.light.radius)"
-        (input)="radius($event)"
-      />
+      <uiSlider id="tb-radius" aria-label="Radius" [min]="0" [max]="20" [value]="8" (input)="radius($event)" />
     </div>
     <div class="row row-select">
       <uiSelect
