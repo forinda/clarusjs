@@ -1,6 +1,7 @@
 {{-- Light, dark or the system setting; remembered in localStorage and applied as data-theme on <html>. --}}
 
 <script>
+  import { browser, onDispose } from 'clarusjs/runtime'
   const order = ['system', 'light', 'dark']
   let mode = state('system')
   function apply() {
@@ -14,12 +15,21 @@
     } catch {}
     apply()
   }
-  // In the browser, start from the saved choice (the server always renders "system").
-  if (typeof document !== 'undefined') {
+  // In the browser, start from the saved choice (the server always renders "system"), and follow it when another
+  // tab (or a page around this one) changes it.
+  const saved = () => {
     try {
       mode = localStorage.getItem('clarusjs-theme') || 'system'
     } catch {}
     apply()
+  }
+  if (browser) {
+    saved()
+    const changed = (e) => {
+      if (!e.key || e.key === 'clarusjs-theme') saved()
+    }
+    addEventListener('storage', changed)
+    onDispose(() => removeEventListener('storage', changed))
   }
 </script>
 

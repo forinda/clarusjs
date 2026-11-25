@@ -1,6 +1,6 @@
 /*
   Menu: the same rules as @clarusjs/ui's ui.css for menu.tscl, menu-trigger.tscl, menu-list.tscl, menu-item.tscl from @clarusjs/ui-primitives.
-  Copy it next to your components, @import it once, and change it to change the look.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
 */
 
 @layer theme, base, components, utilities;
@@ -15,7 +15,7 @@
   /* Buttons: triggers and closes. */
   :where([data-part='trigger'], [data-part='close']) {
     font: 600 var(--ui-font-size) var(--ui-font);
-    padding: 8px 14px;
+    padding: var(--ui-space-2) calc(var(--ui-space) * 3.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
@@ -31,8 +31,8 @@
     display: inline-block;
   }
   :where([data-part='menu-list']) {
-    margin: 4px 0;
-    padding: 4px;
+    margin: var(--ui-space-1) 0;
+    padding: var(--ui-space-1);
     min-width: 160px;
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
@@ -44,7 +44,7 @@
   :where([data-part='menu-item']) {
     display: block;
     width: 100%;
-    padding: 6px 10px;
+    padding: calc(var(--ui-space) * 1.5) calc(var(--ui-space) * 2.5);
     border: 0;
     border-radius: calc(var(--ui-radius) - 2px);
     background: none;

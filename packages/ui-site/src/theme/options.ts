@@ -15,6 +15,12 @@ export const MONOS: Option[] = [
   { label: 'JetBrains Mono', value: "'JetBrains Mono', ui-monospace, monospace", google: 'JetBrains Mono' },
 ]
 export const SIZES = ['13px', '14px', '15px', '16px', '18px']
+/** The spacing unit (--ui-space): every padding, margin and gap is a step of it. */
+export const DENSITIES: Option[] = [
+  { label: 'Compact', value: '3px' },
+  { label: 'Default', value: '4px' },
+  { label: 'Comfortable', value: '5px' },
+]
 /** [light, dark] shadow per choice. */
 export const SHADOWS: Record<'none' | 'soft' | 'strong', [string, string]> = {
   none: ['none', 'none'],

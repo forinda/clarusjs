@@ -1,0 +1,9 @@
+/* A block's own page (/view/<name>): the base an app's own pages would have. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}

@@ -50,11 +50,14 @@ const osDark = tokenRule(/@media \(prefers-color-scheme: dark\) \{\s*:root:not\(
 const toggleDark = tokenRule(/^:root\[data-theme='dark'\] \{([^}]*)\}/m)
 const EXISTING = ['font', 'radius', 'bg', 'fg', 'muted', 'border', 'accent', 'accent-fg', 'accent-soft', 'danger', 'shadow']
 const NEW = ['card', 'card-fg', 'popover', 'popover-fg', 'secondary', 'secondary-fg', 'muted-bg', 'accent-soft-fg', 'danger-fg', 'input', 'ring', 'sidebar', 'sidebar-fg', 'sidebar-accent', 'sidebar-accent-fg', 'sidebar-border', 'font-heading', 'font-mono', 'font-size', 'success', 'success-fg', 'warning', 'warning-fg']
-const MODELESS = ['font', 'font-heading', 'font-mono', 'font-size', 'radius']
+const SPACE = ['space', ...[1, 2, 3, 4, 5, 6, 8, 10, 12].map((n) => `space-${n}`)]
+const MODELESS = ['font', 'font-heading', 'font-mono', 'font-size', 'radius', ...SPACE]
 
-test('theme builder: the :root rule defines 34 tokens, and both dark rules define every colour token', () => {
-  expect(Object.keys(light).sort()).toEqual([...EXISTING, ...NEW].sort())
-  const colours = [...EXISTING, ...NEW].filter((t) => !MODELESS.includes(t)).sort()
+test('theme builder: the :root rule defines 35 tokens and the spacing scale, and both dark rules define every colour token', () => {
+  expect(Object.keys(light).sort()).toEqual([...EXISTING, ...NEW, ...SPACE].sort())
+  expect(light.space).toBe('4px')
+  expect(light['space-6']).toBe('calc(var(--ui-space) * 6)')
+  const colours = [...EXISTING, ...NEW, ...SPACE].filter((t) => !MODELESS.includes(t)).sort()
   expect(Object.keys(osDark).sort()).toEqual(colours)
   expect(toggleDark).toEqual(osDark)
 })
@@ -152,4 +155,11 @@ test('toast kinds: success, error, info, warning tint the toast from their token
     expect(toast, kind).toMatch(new RegExp(`\\[data-type='${kind}'\\][^{]*\\{[^}]*var\\(--ui-${token}\\)`))
   }
   expect(toast).toMatch(/:where\(\[data-part='toast-kind'\]\) \{[^}]*clip-path: inset\(50%\)/)
+})
+
+test('spacing: every padding, margin and gap is a step of --ui-space, never raw pixels', () => {
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/[^{}]*\{[^{}]*--ui-[\w-]+\s*:[^{}]*\}/g, '')
+  for (const [, prop, value] of rules.matchAll(/(?<![-\w])((?:padding|margin)(?:-[a-z-]+)?|gap|row-gap|column-gap)\s*:\s*([^;}]+)/g)) {
+    expect(value!.replace(/var\(--ui-space[\w-]*\)/g, '').match(/\d*\.?\d+px/g), `${prop}: ${value}`).toBeNull()
+  }
 })

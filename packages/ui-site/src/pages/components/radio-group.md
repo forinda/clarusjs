@@ -17,7 +17,7 @@ description: "Native radios in a fieldset: one choice from a few."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `radio-group.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+Copy it into `src/components/ui/` as `radio-group.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
 
 <<< ../../registry/radio-group.tscl
 

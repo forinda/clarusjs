@@ -1,33 +1,67 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { compile } from 'clarusjs/compiler'
 import { expect, test } from 'vitest'
-import { registry } from '../src/registry.ts'
+import { blocks, codeFiles, components, registry } from '../src/registry.ts'
 import { registryDir, render, source } from './render.ts'
 import { globalStyle, uiSection } from './css.ts'
 
-const page = (name: string) => resolve(import.meta.dirname, '../src/pages/components', `${name}.md`)
+const pages = resolve(import.meta.dirname, '../src/pages')
+const page = (name: string) => resolve(pages, 'components', `${name}.md`)
 const files = registry.flatMap((e) => e.files.map((f) => ({ entry: e, file: f })))
+
+test('blocks: registry entries of their own kind, apart from the components', () => {
+  expect(blocks.map((b) => b.name)).toContain('login')
+  expect(components.every((e) => e.kind !== 'block')).toBe(true)
+  expect(blocks.every((e) => e.kind === 'block')).toBe(true)
+  expect(components.length + blocks.length).toBe(registry.length)
+})
 
 test('every entry\'s files exist, and every file in src/registry is an entry\'s file or usage example', () => {
   for (const { file } of files) expect(existsSync(resolve(registryDir, file)), file).toBe(true)
-  const known = [...files.map((f) => f.file), ...registry.map((e) => `${e.name}-demo.tscl`)].sort()
-  expect(readdirSync(registryDir).sort()).toEqual(known)
+  const known = [...files.map((f) => f.file), ...components.map((e) => `${e.name}-demo.tscl`)].sort()
+  const found = (readdirSync(registryDir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => statSync(resolve(registryDir, f)).isFile())
+  expect(found.sort()).toEqual(known)
 })
 
-test('every entry has a page at src/pages/components/<name>.md that shows each of its files with <<<', () => {
-  for (const e of registry) {
+test('every component has a page at src/pages/components/<name>.md that shows each of its files with <<<', () => {
+  for (const e of components) {
     const md = readFileSync(page(e.name), 'utf8')
     for (const f of e.files) expect(md, `${e.name}: ${f}`).toMatch(new RegExp(`^<<< \\.\\./\\.\\./registry/${f.replace('.', '\\.')}`, 'm'))
   }
 })
 
+test('every block has a page at src/pages/blocks/<name>.md showing every file to copy, in the Code tree\'s order, and a view', () => {
+  for (const e of blocks) {
+    const md = readFileSync(resolve(pages, 'blocks', `${e.name}.md`), 'utf8')
+    const shown = [...md.matchAll(/^<<< \.\.\/\.\.\/registry\/(\S+)/gm)].map((m) => m[1])
+    expect(shown, e.name).toEqual(codeFiles(e).map((f) => f.file))
+    expect(existsSync(resolve(pages, 'view', `${e.name}.tscl`)), e.name).toBe(true)
+  }
+})
+
+const specifiers = (file: string) => [...source(file).matchAll(/(?:@import|^\s*import)\s[^'"]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!)
+const shared = (s: string) => /^@clarusjs\/ui-primitives\//.test(s) || /^clarusjs(\/|$)/.test(s)
+
 test('copied files import only ui-primitives, clarusjs and the entries they list in uses', () => {
   for (const { entry, file } of files) {
-    const specifiers = [...source(file).matchAll(/(?:@import|^\s*import)\s[^'"]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!)
-    for (const s of specifiers) {
+    if (entry.kind === 'block') continue
+    for (const s of specifiers(file)) {
       const local = /^\.\/([a-z-]+)\.tscl$/.exec(s)?.[1]
-      const ok = /^@clarusjs\/ui-primitives\//.test(s) || /^clarusjs(\/|$)/.test(s) || (!!local && (entry.uses.includes(local) || entry.files.includes(`${local}.tscl`)))
+      const ok = shared(s) || (!!local && (entry.uses.includes(local) || entry.files.includes(`${local}.tscl`)))
+      expect(ok, `${file} imports ${s}`).toBe(true)
+    }
+  }
+})
+
+test('a block imports what works once pasted: components as ~/components/ui/<name>.tscl (listed in uses), its own files as ./', () => {
+  for (const { entry, file } of files) {
+    if (entry.kind !== 'block') continue
+    const dir = file.slice(0, file.lastIndexOf('/') + 1)
+    for (const s of specifiers(file)) {
+      const component = /^~\/components\/ui\/([a-z-]+)\.tscl$/.exec(s)?.[1]
+      const own = /^\.\/([\w.-]+)$/.exec(s)?.[1]
+      const ok = shared(s) || (!!component && entry.uses.includes(component)) || (!!own && entry.files.includes(dir + own))
       expect(ok, `${file} imports ${s}`).toBe(true)
     }
   }
@@ -131,7 +165,7 @@ test('#review: a no-JavaScript component\'s data-part names are its own, never o
 })
 
 test('#review: each usage example sits next to its component and imports only what works once pasted, all listed in Needs', () => {
-  for (const e of registry) {
+  for (const e of components) {
     const demo = readFileSync(resolve(registryDir, `${e.name}-demo.tscl`), 'utf8')
     for (const [, s] of demo.matchAll(/@import\s+(?:[\w$]+\s+from\s+)?'([^']+)'/g)) {
       const local = /^\.\/([a-z-]+)\.(tscl|css)$/.exec(s!)
@@ -182,10 +216,10 @@ test('badge and alert: success and warning variants', async () => {
 
 const pageText = (name: string) => readFileSync(resolve(import.meta.dirname, '../src/pages/components', `${name}.md`), 'utf8')
 const styling = (name: string) => /## Styling\n([\s\S]*?)(\n## |$)/.exec(pageText(name))?.[1] ?? ''
-const tsclFiles = registry.flatMap((e) => e.files.filter((f) => f.endsWith('.tscl')).map((f) => ({ e, f })))
+const tsclFiles = components.flatMap((e) => e.files.filter((f) => f.endsWith('.tscl')).map((f) => ({ e, f })))
 
 test('#overrides: every selector in a component\'s <style scoped> has zero specificity', () => {
-  for (const { f } of tsclFiles) {
+  for (const f of registry.flatMap((e) => e.files.filter((x) => x.endsWith('.tscl')))) {
     const css = scoped(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/@keyframes[^{]*\{(?:[^{}]*\{[^}]*\})*[^}]*\}/g, '')
     for (const [, list] of css.matchAll(/(?:^|[;{}])\s*([^;{}@]+?)\s*\{/g)) {
       for (const sel of list!.split(',').map((x) => x.trim())) expect(sel, `${f}: ${sel}`).toMatch(/^:where\(.*\)(::[\w-]+)?$/)
@@ -222,7 +256,7 @@ test('#overrides: every <style scoped>, <style global> and copied .css puts its 
 })
 
 test('every component page has a Styling section naming class, style, its parts keys and data-part names', () => {
-  for (const e of registry) {
+  for (const e of components) {
     const text = styling(e.name)
     expect(text, e.name).toContain('`class`')
     expect(text, e.name).toContain('`style`')
@@ -352,4 +386,21 @@ test('#review: pagination never puts an ellipsis for a single page', async () =>
 
 test('#review: the spinner positions its hidden label inside itself', () => {
   expect(source('spinner.tscl')).toMatch(/:where\(:scope\) \{[^}]*position: relative/)
+})
+
+test('spacing: padding, margin and gap come from the --ui-space scale, never raw pixels', () => {
+  const props = /(?<![-\w])(padding|margin|gap|row-gap|column-gap|padding-[a-z-]+|margin-[a-z-]+|inset|top|right|bottom|left)\s*:\s*([^;}]+)/g
+  for (const e of registry) for (const f of e.files.filter((x) => /\.(tscl|css)$/.test(x))) {
+    const css = [...source(f).matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n') || (f.endsWith('.css') ? source(f) : '')
+    for (const [, prop, value] of css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(props)) {
+      if (/^(top|right|bottom|left|inset)$/.test(prop!) ) continue // positions, not spacing
+      expect(value!.replace(/var\(--ui-space[\w-]*\)/g, '').match(/-?\d*\.?\d+px/g), `${f}: ${prop}: ${value}`).toBeNull()
+    }
+  }
+})
+
+test('codeFiles: a block\'s own files, then each component it uses, named as they are copied', () => {
+  const login = blocks.find((b) => b.name === 'login')!
+  expect(codeFiles(login).map((f) => f.path)).toEqual(['login.tscl', 'data.ts', 'components/ui/card.tscl', 'components/ui/field.tscl', 'components/ui/button.tscl'])
+  expect(codeFiles(login)[2]!.file).toBe('card.tscl')
 })

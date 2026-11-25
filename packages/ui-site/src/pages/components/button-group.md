@@ -17,7 +17,7 @@ description: "Buttons that belong together, joined into one row."
 
 ## Source
 
-Copy it next to your components as `button-group.tscl`.
+Copy it into `src/components/ui/` as `button-group.tscl`.
 
 <<< ../../registry/button-group.tscl
 

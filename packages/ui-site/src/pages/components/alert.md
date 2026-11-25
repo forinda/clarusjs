@@ -17,7 +17,7 @@ description: "A message box with a title, plain or destructive."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `alert.tscl`.
+Copy it into `src/components/ui/` as `alert.tscl`.
 
 <<< ../../registry/alert.tscl
 

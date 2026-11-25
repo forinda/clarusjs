@@ -17,7 +17,7 @@ description: "A native text field, styled, with an invalid state from aria-inval
 
 ## Source
 
-Copy it into your components folder (next to the others) as `input.tscl`.
+Copy it into `src/components/ui/` as `input.tscl`.
 
 <<< ../../registry/input.tscl
 

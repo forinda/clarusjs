@@ -17,7 +17,7 @@ description: "A native progress bar; without a value, it shows work in progress.
 
 ## Source
 
-Copy it next to your components as `progress.tscl`.
+Copy it into `src/components/ui/` as `progress.tscl`.
 
 <<< ../../registry/progress.tscl
 

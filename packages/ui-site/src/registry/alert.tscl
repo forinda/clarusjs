@@ -14,8 +14,8 @@
   @layer components {
     :where(:scope) {
       display: grid;
-      gap: 4px;
-      padding: 12px 16px;
+      gap: var(--ui-space-1);
+      padding: var(--ui-space-3) var(--ui-space-4);
       border: 1px solid var(--ui-border);
       border-radius: var(--ui-radius);
       background: var(--ui-bg);

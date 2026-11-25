@@ -17,7 +17,7 @@ description: "A label, an input, a description and an error, wired together."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `field.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+Copy it into `src/components/ui/` as `field.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
 
 <<< ../../registry/field.tscl
 

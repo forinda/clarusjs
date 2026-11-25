@@ -9,7 +9,7 @@
     :where(:scope) {
       display: inline-flex;
       align-items: center;
-      padding: 2px 8px;
+      padding: calc(var(--ui-space) * 0.5) var(--ui-space-2);
       border: 1px solid transparent;
       border-radius: 999px;
       background: var(--ui-accent);

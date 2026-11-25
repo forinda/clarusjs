@@ -17,7 +17,7 @@ description: "A box that keeps its shape as its width changes."
 
 ## Source
 
-Copy it next to your components as `aspect-ratio.tscl`.
+Copy it into `src/components/ui/` as `aspect-ratio.tscl`.
 
 <<< ../../registry/aspect-ratio.tscl
 

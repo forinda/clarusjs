@@ -17,7 +17,7 @@ description: "A dialog that asks before something can't be undone."
 
 ## Source
 
-Copy it next to your components as `alert-dialog.tscl`.
+Copy it into `src/components/ui/` as `alert-dialog.tscl`.
 
 <<< ../../registry/alert-dialog.tscl
 

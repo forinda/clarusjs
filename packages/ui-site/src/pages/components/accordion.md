@@ -17,7 +17,7 @@ description: "Questions that open one at a time, on native details."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `accordion.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+Copy it into `src/components/ui/` as `accordion.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
 
 <<< ../../registry/accordion.tscl
 

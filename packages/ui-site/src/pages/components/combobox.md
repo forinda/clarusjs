@@ -19,7 +19,7 @@ The parts come from `@clarusjs/ui-primitives`; the look is `combobox.css`, impor
 
 ## Source
 
-Copy it next to your components as `combobox.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `combobox.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
 
 <<< ../../registry/combobox.css
 

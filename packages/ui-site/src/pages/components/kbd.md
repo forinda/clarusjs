@@ -17,7 +17,7 @@ description: "A key to press, as in Ctrl K."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `kbd.tscl`.
+Copy it into `src/components/ui/` as `kbd.tscl`.
 
 <<< ../../registry/kbd.tscl
 

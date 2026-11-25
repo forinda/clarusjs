@@ -1,6 +1,6 @@
 /*
   Popover: the same rules as @clarusjs/ui's ui.css for popover.tscl, popover-trigger.tscl from @clarusjs/ui-primitives.
-  Copy it next to your components, @import it once, and change it to change the look.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
 */
 
 @layer theme, base, components, utilities;
@@ -15,7 +15,7 @@
   /* Buttons: triggers and closes. */
   :where([data-part='trigger'], [data-part='close']) {
     font: 600 var(--ui-font-size) var(--ui-font);
-    padding: 8px 14px;
+    padding: var(--ui-space-2) calc(var(--ui-space) * 3.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
@@ -28,8 +28,8 @@
 
   /* Popover: a little gap from its trigger, wherever it's placed. */
   :where([data-part='popover']) {
-    margin: 6px;
-    padding: 12px 14px;
+    margin: calc(var(--ui-space) * 1.5);
+    padding: var(--ui-space-3) calc(var(--ui-space) * 3.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-popover);

@@ -13,7 +13,7 @@
       box-sizing: border-box;
       width: 100%;
       min-height: 36px;
-      padding: 0 12px;
+      padding: 0 var(--ui-space-3);
       border: 1px solid var(--ui-input);
       border-radius: var(--ui-radius);
       background: var(--ui-bg);

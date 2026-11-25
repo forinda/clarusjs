@@ -17,7 +17,7 @@ description: "Where a page sits in the site, as links back up."
 
 ## Source
 
-Copy it next to your components as `breadcrumb.tscl`.
+Copy it into `src/components/ui/` as `breadcrumb.tscl`.
 
 <<< ../../registry/breadcrumb.tscl
 

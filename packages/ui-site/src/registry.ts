@@ -2,12 +2,14 @@
 // entry's files, flat, and next to them its usage example (<name>-demo.tscl), which imports them as ./<file>. The pages' "needs" lists and the home
 // page's list come from here (and, later, the registry JSON a CLI would read).
 export type Entry = {
+  /** A component (the default), or a block: a whole page built from components, in src/registry/blocks/<name>/. */
+  kind?: 'component' | 'block'
   /** Page name, and the usage example's: 'button' (button-demo.tscl). */
   name: string
   title: string
   /** One line, shown in lists and as the page's lead. */
   description: string
-  /** Files in src/registry/ to copy; the first is the component. */
+  /** Files in src/registry/ to copy; the first is the component (a block's: its page, 'blocks/login/login.tscl'). */
   files: string[]
   /** @clarusjs/ui-primitives parts it renders ('switch.tscl', …); [] if none. */
   parts: string[]
@@ -427,4 +429,30 @@ export const registry: Entry[] = [
     since: '0.2.0',
     sections: ['focus', 'sidebar', 'motion'],
   },
+  {
+    kind: 'block',
+    name: 'login',
+    title: 'Login',
+    description: 'Sign in with email and password, with errors on their fields and a handler you replace.',
+    files: ['blocks/login/login.tscl', 'blocks/login/data.ts'],
+    parts: ['field.tscl'],
+    uses: ['card', 'field', 'button'],
+    island: true,
+    since: '0.1.0',
+  },
 ]
+
+/** The components (the component pages and lists). */
+export const components: Entry[] = registry.filter((e) => e.kind !== 'block')
+/** The blocks (/blocks): pages built from components, copied into an app's src/pages/. */
+export const blocks: Entry[] = registry.filter((e) => e.kind === 'block')
+
+/**
+ * Every file the Code view of a block shows, as it's copied: the block's own (page first), then each component it
+ * uses, under components/ui/. `file` is its path in src/registry/.
+ */
+export function codeFiles(entry: Entry): { path: string; file: string }[] {
+  const own = entry.files.map((file) => ({ path: file.slice(file.lastIndexOf('/') + 1), file }))
+  const used = entry.uses.flatMap((u) => registry.find((e) => e.name === u)?.files ?? []).map((file) => ({ path: `components/ui/${file}`, file }))
+  return [...own, ...used]
+}

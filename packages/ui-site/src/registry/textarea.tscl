@@ -13,7 +13,7 @@
     :where(:scope) {
       box-sizing: border-box;
       width: 100%;
-      padding: 8px 12px;
+      padding: var(--ui-space-2) var(--ui-space-3);
       border: 1px solid var(--ui-input);
       border-radius: var(--ui-radius);
       background: var(--ui-bg);

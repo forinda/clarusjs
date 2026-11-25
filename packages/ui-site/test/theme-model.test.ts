@@ -7,7 +7,7 @@ import { TOKEN_NAMES } from '../src/theme/names.ts'
 import { collapse, tokenRules } from './css.ts'
 
 const themeCss = readFileSync(resolve(import.meta.dirname, '../src/theme.css'), 'utf8')
-const MODELESS = ['font', 'font-heading', 'font-mono', 'font-size', 'radius']
+const MODELESS = ['font', 'font-heading', 'font-mono', 'font-size', 'radius', 'space']
 const luminance = (hex: string) => {
   const c = hex.replace('#', '').match(/../g)!.map((x) => parseInt(x, 16) / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
   return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!
@@ -24,7 +24,7 @@ test('toCss with a scope prefixes the dark selectors, for each selector in the l
   expect(css).toContain(":root[data-theme='dark'] .demo, :root[data-theme='dark'] [data-ui-preview] {")
 })
 
-test('every preset defines all 34 tokens in light and the colour tokens in dark', () => {
+test('every preset defines all 35 tokens in light and the colour tokens in dark', () => {
   for (const [name, t] of Object.entries(presets)) {
     expect(Object.keys(t.light).sort(), name).toEqual([...TOKEN_NAMES].sort())
     expect(Object.keys(t.dark).sort(), name).toEqual(TOKEN_NAMES.filter((n) => !MODELESS.includes(n)).sort())
@@ -72,4 +72,20 @@ test('#review: restore() recovers the shadow choice and which dark tokens were s
   const t = { light: { ...presets.teal.light, shadow: 'none' }, dark: { ...presets.teal.dark, shadow: 'none', bg: '#000000' } }
   expect(restore(t)).toEqual({ shadow: 'none', edited: ['bg'] })
   expect(restore(presets.teal)).toEqual({ shadow: 'soft', edited: [] })
+})
+
+test('spacing: one --ui-space unit, and the scale from it in the same rule (so a scope that changes the unit rescales)', async () => {
+  const { SPACE_STEPS } = await import('../src/theme/model.ts')
+  expect(SPACE_STEPS).toEqual([1, 2, 3, 4, 5, 6, 8, 10, 12])
+  const css = toCss({ ...presets.teal, light: { ...presets.teal.light, space: '5px' } }, '.demo')
+  const first = css.slice(0, css.indexOf('}'))
+  expect(first).toContain('--ui-space: 5px;')
+  for (const n of SPACE_STEPS) expect(first).toContain(`--ui-space-${n}: calc(var(--ui-space) * ${n});`)
+})
+
+test('spacing: decode accepts the densities the builder offers, nothing else', async () => {
+  const { DENSITIES } = await import('../src/theme/options.ts')
+  expect(DENSITIES.map((d) => d.value)).toEqual(['3px', '4px', '5px'])
+  expect(decode('teal~l!space!5px')).not.toBeNull()
+  expect(decode('teal~l!space!7px')).toBeNull()
 })

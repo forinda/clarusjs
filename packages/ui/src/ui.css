@@ -12,6 +12,7 @@
   --ui-font-mono: ui-monospace, monospace;
   --ui-font-size: 14px;
   --ui-radius: 8px;
+  --ui-space: 4px;
   --ui-bg: #ffffff;
   --ui-fg: #17202a;
   --ui-muted: #5b6670;
@@ -41,6 +42,16 @@
   --ui-success-fg: #ffffff;
   --ui-warning: #b54708;
   --ui-warning-fg: #ffffff;
+  /* Spacing: steps of --ui-space (4px), set in the same rule so changing the unit rescales them. */
+  --ui-space-1: calc(var(--ui-space) * 1);
+  --ui-space-2: calc(var(--ui-space) * 2);
+  --ui-space-3: calc(var(--ui-space) * 3);
+  --ui-space-4: calc(var(--ui-space) * 4);
+  --ui-space-5: calc(var(--ui-space) * 5);
+  --ui-space-6: calc(var(--ui-space) * 6);
+  --ui-space-8: calc(var(--ui-space) * 8);
+  --ui-space-10: calc(var(--ui-space) * 10);
+  --ui-space-12: calc(var(--ui-space) * 12);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
@@ -121,7 +132,7 @@
   /* Buttons: triggers and closes. */
   :where([data-part='trigger'], [data-part='close']) {
     font: 600 var(--ui-font-size) var(--ui-font);
-    padding: 8px 14px;
+    padding: var(--ui-space-2) calc(var(--ui-space) * 3.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
@@ -137,7 +148,7 @@
   /* Dialog: centred by the browser; the backdrop dims the page. */
   :where([data-part='dialog']) {
     max-width: min(32rem, calc(100vw - 32px));
-    padding: 20px 24px;
+    padding: var(--ui-space-5) var(--ui-space-6);
     border: 1px solid var(--ui-border);
     border-radius: calc(var(--ui-radius) * 1.5);
     background: var(--ui-card);
@@ -149,7 +160,7 @@
     background: rgb(0 0 0 / 0.45);
   }
   :where([data-part='title']) {
-    margin: 0 0 8px;
+    margin: 0 0 var(--ui-space-2);
     font-size: calc(var(--ui-font-size) + 4px);
   }
   /* end part */
@@ -204,8 +215,8 @@
   /* part: popover */
   /* Popover: a little gap from its trigger, wherever it's placed. */
   :where([data-part='popover']) {
-    margin: 6px;
-    padding: 12px 14px;
+    margin: calc(var(--ui-space) * 1.5);
+    padding: var(--ui-space-3) calc(var(--ui-space) * 3.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-popover);
@@ -219,8 +230,8 @@
   /* part: tooltip */
   /* Tooltip: small, inverted, a little gap from its trigger. */
   :where([data-part='tooltip']) {
-    margin: 6px;
-    padding: 4px 8px;
+    margin: calc(var(--ui-space) * 1.5);
+    padding: var(--ui-space-1) var(--ui-space-2);
     border: 0;
     border-radius: calc(var(--ui-radius) - 2px);
     background: var(--ui-fg);
@@ -236,8 +247,8 @@
     display: inline-block;
   }
   :where([data-part='menu-list']) {
-    margin: 4px 0;
-    padding: 4px;
+    margin: var(--ui-space-1) 0;
+    padding: var(--ui-space-1);
     min-width: 160px;
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
@@ -249,7 +260,7 @@
   :where([data-part='menu-item']) {
     display: block;
     width: 100%;
-    padding: 6px 10px;
+    padding: calc(var(--ui-space) * 1.5) calc(var(--ui-space) * 2.5);
     border: 0;
     border-radius: calc(var(--ui-radius) - 2px);
     background: none;
@@ -276,13 +287,13 @@
   }
   :where([data-part='accordion-item']) > :where([data-part='trigger']) {
     display: list-item;
-    padding: 10px 2px;
+    padding: calc(var(--ui-space) * 2.5) calc(var(--ui-space) * 0.5);
     border: 0;
     background: none;
     cursor: pointer;
   }
   :where([data-part='panel']) {
-    padding: 0 2px 12px;
+    padding: 0 calc(var(--ui-space) * 0.5) var(--ui-space-3);
     color: var(--ui-muted);
   }
   /* end part */
@@ -295,13 +306,13 @@
   }
   :where([data-part='tabs']) > :where([data-part='list']) {
     display: flex;
-    gap: 4px;
+    gap: var(--ui-space-1);
     border-bottom: 1px solid var(--ui-border);
   }
   :where([data-part='tab']) {
     font: 600 var(--ui-font-size) var(--ui-font);
-    padding: 8px 12px;
-    margin-bottom: -1px;
+    padding: var(--ui-space-2) var(--ui-space-3);
+    margin-bottom: calc(var(--ui-space) * -0.25);
     border: 0;
     border-bottom: 2px solid transparent;
     background: none;
@@ -313,7 +324,7 @@
     color: var(--ui-fg);
   }
   :where([data-part='tabs']) > :where([data-part='panel']) {
-    padding: 12px 2px;
+    padding: var(--ui-space-3) calc(var(--ui-space) * 0.5);
     color: var(--ui-fg);
   }
   /* end part */
@@ -325,10 +336,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: calc(var(--ui-space) * 1.5);
     min-height: 36px;
     min-width: 36px;
-    padding: 0 10px;
+    padding: 0 calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
@@ -354,7 +365,7 @@
     display: inline-flex;
   }
   :where([data-part='toggle-group']) > :where([data-part='toggle-item']):not(:first-child) {
-    margin-left: -1px;
+    margin-left: calc(var(--ui-space) * -0.25);
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
   }
@@ -373,7 +384,7 @@
   :where([data-part='switch'], [data-part='checkbox']) {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--ui-space-2);
     font: var(--ui-font-size) var(--ui-font);
     color: var(--ui-fg);
     cursor: pointer;
@@ -420,7 +431,7 @@
   /* Radio group: a fieldset with its legend; radios like checkboxes, round. */
   :where([data-part='radio-group']) {
     display: grid;
-    gap: 8px;
+    gap: var(--ui-space-2);
     margin: 0;
     padding: 0;
     border: 0;
@@ -429,13 +440,13 @@
   }
   :where([data-part='radio-group']) > :where([data-part='legend']) {
     padding: 0;
-    margin-bottom: 4px;
+    margin-bottom: var(--ui-space-1);
     font-weight: 600;
   }
   :where([data-part='radio']) {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--ui-space-2);
     cursor: pointer;
   }
   :where([data-part='radio']) input {
@@ -454,7 +465,7 @@
   /* Field and select: label, control, description, error. */
   :where([data-part='field'], [data-part='select']) {
     display: grid;
-    gap: 4px;
+    gap: var(--ui-space-1);
     max-width: 360px;
     font: var(--ui-font-size) var(--ui-font);
     color: var(--ui-fg);
@@ -466,7 +477,7 @@
   }
   :where([data-part='control']) {
     min-height: 34px;
-    padding: 4px 10px;
+    padding: var(--ui-space-1) calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
@@ -487,11 +498,11 @@
     font-size: calc(var(--ui-font-size) - 1px);
   }
   :where([data-part='option']) {
-    padding: 6px 10px;
+    padding: calc(var(--ui-space) * 1.5) calc(var(--ui-space) * 2.5);
     border-radius: calc(var(--ui-radius) - 2px);
   }
   :where([data-part='select']) ::picker(select) {
-    padding: 4px;
+    padding: var(--ui-space-1);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-popover);
@@ -504,7 +515,7 @@
   /* Combobox: chips in the control, a list below. */
   :where([data-part='combobox']) {
     display: grid;
-    gap: 4px;
+    gap: var(--ui-space-1);
     max-width: 360px;
     font: var(--ui-font-size) var(--ui-font);
     color: var(--ui-fg);
@@ -513,8 +524,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px;
-    padding: 2px 6px;
+    gap: var(--ui-space-1);
+    padding: calc(var(--ui-space) * 0.5) calc(var(--ui-space) * 1.5);
   }
   :where([data-part='combobox']) > :where([data-part='control']):focus-within {
     border-color: var(--ui-ring);
@@ -524,7 +535,7 @@
     flex: 1;
     min-width: 6ch;
     min-height: 26px;
-    padding: 0 4px;
+    padding: 0 var(--ui-space-1);
     border: 0;
     background: none;
     color: var(--ui-fg);
@@ -534,8 +545,8 @@
   :where([data-part='chip']) {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    padding: 0 2px 0 8px;
+    gap: calc(var(--ui-space) * 0.5);
+    padding: 0 calc(var(--ui-space) * 0.5) 0 var(--ui-space-2);
     border-radius: 999px;
     background: var(--ui-accent-soft);
     font-size: calc(var(--ui-font-size) - 1px);
@@ -550,8 +561,8 @@
     cursor: pointer;
   }
   :where([data-part='listbox']) {
-    margin-top: 4px;
-    padding: 4px;
+    margin-top: var(--ui-space-1);
+    padding: var(--ui-space-1);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-popover);
@@ -582,9 +593,9 @@
      from the remembered choice); on phones a popover panel from the left. */
   :where([data-part='sidebar']) {
     flex-direction: column;
-    gap: 2px;
+    gap: calc(var(--ui-space) * 0.5);
     margin: 0;
-    padding: 12px;
+    padding: var(--ui-space-3);
     border: 0;
     background: var(--ui-sidebar);
     color: var(--ui-sidebar-fg);
@@ -593,7 +604,7 @@
   }
   :where([data-part='sidebar']) a {
     display: block;
-    padding: 6px 10px;
+    padding: calc(var(--ui-space) * 1.5) calc(var(--ui-space) * 2.5);
     border-radius: var(--ui-radius);
     color: inherit;
     text-decoration: none;
@@ -604,7 +615,7 @@
     color: var(--ui-sidebar-accent-fg);
   }
   :where([data-part='sidebar-trigger']) {
-    padding: 6px 10px;
+    padding: calc(var(--ui-space) * 1.5) calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
@@ -651,7 +662,7 @@
   }
   :where([data-part='toast-list']) {
     display: grid;
-    gap: 8px;
+    gap: var(--ui-space-2);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -659,9 +670,9 @@
   :where([data-part='toast']) {
     position: relative;
     display: flex;
-    gap: 8px;
+    gap: var(--ui-space-2);
     align-items: center;
-    padding: 12px 14px;
+    padding: var(--ui-space-3) calc(var(--ui-space) * 3.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-popover);
@@ -675,7 +686,7 @@
   }
   :where([data-part='toast-action']),
   :where([data-part='toast-close']) {
-    padding: 4px 8px;
+    padding: var(--ui-space-1) var(--ui-space-2);
     border: 1px solid var(--ui-border);
     border-radius: calc(var(--ui-radius) - 2px);
     background: transparent;

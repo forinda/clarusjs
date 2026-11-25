@@ -23,5 +23,5 @@
   [description]="description"
   [headings]="headings"
   [app]="app"
-  ><themeReset /><slot /><toastRegion
+  >@if (!app) {<themeReset />}<slot /><toastRegion
 /></docsTheme>

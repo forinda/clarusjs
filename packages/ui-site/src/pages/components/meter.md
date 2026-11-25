@@ -17,7 +17,7 @@ description: "A native meter for a value in a known range."
 
 ## Source
 
-Copy it next to your components as `meter.tscl`.
+Copy it into `src/components/ui/` as `meter.tscl`.
 
 <<< ../../registry/meter.tscl
 

@@ -19,7 +19,7 @@ The parts come from `@clarusjs/ui-primitives`; the look is `toggle.css`, importe
 
 ## Source
 
-Copy it next to your components as `toggle.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `toggle.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
 
 <<< ../../registry/toggle.css
 

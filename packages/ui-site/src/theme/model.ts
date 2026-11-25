@@ -2,13 +2,15 @@
 // only). Turned into theme.css text, a dark set from a light one, a WCAG contrast check, and a compact link.
 import { TOKEN_NAMES } from './names.ts'
 import { presets, type PresetName } from './presets.ts'
-import { FONTS, HEADINGS, MONOS, SHADOWS } from './options.ts'
+import { DENSITIES, FONTS, HEADINGS, MONOS, SHADOWS } from './options.ts'
 
 export type Mode = 'light' | 'dark'
 export type Theme = { light: Record<string, string>; dark: Record<string, string> }
 
 /** Tokens with one value for both modes. */
-export const MODELESS = ['font', 'font-heading', 'font-mono', 'font-size', 'radius']
+export const MODELESS = ['font', 'font-heading', 'font-mono', 'font-size', 'radius', 'space']
+/** The spacing scale: --ui-space-N = N × --ui-space, written in the same rule as the unit. */
+export const SPACE_STEPS = [1, 2, 3, 4, 5, 6, 8, 10, 12]
 
 /** Text/background pairs the builder checks for contrast (WCAG AA, 4.5:1). */
 export const PAIRS: [fg: string, bg: string][] = [
@@ -25,7 +27,8 @@ export function toCss(theme: Theme, scope = ':root'): string {
   const root = scope === ':root'
   const osDark = root ? ":root:not([data-theme='light'])" : under(":root:not([data-theme='light'])", scope)
   const toggleDark = root ? ":root[data-theme='dark']" : under(":root[data-theme='dark']", scope)
-  return `${scope} {\n${decl(theme.light, '  ')}}\n@media (prefers-color-scheme: dark) {\n  ${osDark} {\n${decl(theme.dark, '    ')}  }\n}\n${toggleDark} {\n${decl(theme.dark, '  ')}}\n`
+  const scale = `\n  /* Spacing: steps of --ui-space (4px), set in the same rule so changing the unit rescales them. */\n${SPACE_STEPS.map((n) => `  --ui-space-${n}: calc(var(--ui-space) * ${n});\n`).join('')}`
+  return `${scope} {\n${decl(theme.light, '  ')}${scale}}\n@media (prefers-color-scheme: dark) {\n  ${osDark} {\n${decl(theme.dark, '    ')}  }\n}\n${toggleDark} {\n${decl(theme.dark, '  ')}}\n`
 }
 
 // sRGB hex ⇄ OKLCH (Björn Ottosson's OKLab), enough to flip lightness and keep hue.
@@ -102,6 +105,7 @@ function allowed(name: string, value: string, m: 'l' | 'd'): boolean {
   if (name === 'font-heading') return HEADINGS.some((f) => f.value === value)
   if (name === 'font-mono') return MONOS.some((f) => f.value === value)
   if (name === 'font-size' || name === 'radius') return PX.test(value)
+  if (name === 'space') return DENSITIES.some((d) => d.value === value)
   if (name === 'shadow') return Object.values(SHADOWS).some((pair) => pair[m === 'l' ? 0 : 1] === value)
   return HEX.test(value)
 }

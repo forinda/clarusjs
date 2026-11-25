@@ -17,7 +17,7 @@ description: "A turning mark that tells screen readers it is loading."
 
 ## Source
 
-Copy it next to your components as `spinner.tscl`.
+Copy it into `src/components/ui/` as `spinner.tscl`.
 
 <<< ../../registry/spinner.tscl
 

@@ -16,6 +16,9 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "paths": {
+      "~/components/ui/*": [
+        "./src/registry/*"
+      ],
       "~/*": [
         "./src/*"
       ]

@@ -17,7 +17,7 @@ description: "A native range input, styled."
 
 ## Source
 
-Copy it next to your components as `slider.tscl`.
+Copy it into `src/components/ui/` as `slider.tscl`.
 
 <<< ../../registry/slider.tscl
 

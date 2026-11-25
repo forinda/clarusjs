@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { registry } from '../src/registry.ts'
+import { components as registry } from '../src/registry.ts'
 import { axeViolations, modes, pageIn } from './helpers.ts'
 
 for (const entry of registry) {

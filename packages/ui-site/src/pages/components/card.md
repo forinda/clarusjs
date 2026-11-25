@@ -17,7 +17,7 @@ description: "A box with a header, a body and a footer."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `card.tscl`.
+Copy it into `src/components/ui/` as `card.tscl`.
 
 <<< ../../registry/card.tscl
 

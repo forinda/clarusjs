@@ -1,6 +1,6 @@
 /*
   Sidebar: the same rules as @clarusjs/ui's ui.css for sidebar.tscl and sidebar-trigger.tscl from
-  @clarusjs/ui-primitives. Copy it next to your components, @import it once.
+  @clarusjs/ui-primitives. Copy it into src/components/ui/, @import it once.
 */
 
 @layer theme, base, components, utilities;
@@ -16,9 +16,9 @@
      from the remembered choice); on phones a popover panel from the left. */
   :where([data-part='sidebar']) {
     flex-direction: column;
-    gap: 2px;
+    gap: calc(var(--ui-space) * 0.5);
     margin: 0;
-    padding: 12px;
+    padding: var(--ui-space-3);
     border: 0;
     background: var(--ui-sidebar);
     color: var(--ui-sidebar-fg);
@@ -27,7 +27,7 @@
   }
   :where([data-part='sidebar']) a {
     display: block;
-    padding: 6px 10px;
+    padding: calc(var(--ui-space) * 1.5) calc(var(--ui-space) * 2.5);
     border-radius: var(--ui-radius);
     color: inherit;
     text-decoration: none;
@@ -38,7 +38,7 @@
     color: var(--ui-sidebar-accent-fg);
   }
   :where([data-part='sidebar-trigger']) {
-    padding: 6px 10px;
+    padding: calc(var(--ui-space) * 1.5) calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);

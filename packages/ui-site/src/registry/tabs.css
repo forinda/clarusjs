@@ -1,6 +1,6 @@
 /*
   Tabs: the same rules as @clarusjs/ui's ui.css for tabs.tscl, tab-list.tscl, tab.tscl, tab-panel.tscl from @clarusjs/ui-primitives.
-  Copy it next to your components, @import it once, and change it to change the look.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
 */
 
 @layer theme, base, components, utilities;
@@ -19,13 +19,13 @@
   }
   :where([data-part='tabs']) > :where([data-part='list']) {
     display: flex;
-    gap: 4px;
+    gap: var(--ui-space-1);
     border-bottom: 1px solid var(--ui-border);
   }
   :where([data-part='tab']) {
     font: 600 var(--ui-font-size) var(--ui-font);
-    padding: 8px 12px;
-    margin-bottom: -1px;
+    padding: var(--ui-space-2) var(--ui-space-3);
+    margin-bottom: calc(var(--ui-space) * -0.25);
     border: 0;
     border-bottom: 2px solid transparent;
     background: none;
@@ -37,7 +37,7 @@
     color: var(--ui-fg);
   }
   :where([data-part='tabs']) > :where([data-part='panel']) {
-    padding: 12px 2px;
+    padding: var(--ui-space-3) calc(var(--ui-space) * 0.5);
     color: var(--ui-fg);
   }
 

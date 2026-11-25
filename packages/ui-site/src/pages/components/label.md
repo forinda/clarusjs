@@ -17,7 +17,7 @@ description: "A native label for a field."
 
 ## Source
 
-Copy it into your components folder (next to the others) as `label.tscl`.
+Copy it into `src/components/ui/` as `label.tscl`.
 
 <<< ../../registry/label.tscl
 
