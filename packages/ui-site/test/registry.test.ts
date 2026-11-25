@@ -41,7 +41,7 @@ test('every block has a page at src/pages/blocks/<name>.md showing every file to
 })
 
 const specifiers = (file: string) => [...source(file).matchAll(/(?:@import|^\s*import)\s[^'"]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]!)
-const shared = (s: string) => /^@clarusjs\/ui-primitives\//.test(s) || /^clarusjs(\/|$)/.test(s)
+const shared = (s: string) => /^@clarusjs\/ui-primitives(\/|$)/.test(s) || /^clarusjs(\/|$)/.test(s)
 
 test('copied files import only ui-primitives, clarusjs and the entries they list in uses', () => {
   for (const { entry, file } of files) {
@@ -54,14 +54,15 @@ test('copied files import only ui-primitives, clarusjs and the entries they list
   }
 })
 
-test('a block imports what works once pasted: components as ~/components/ui/<name>.tscl (listed in uses), its own files as ./', () => {
+test('a block imports what works once pasted: components as the ~/components/ui/ files they copy, its own files as ./, npm packages listed in packages', () => {
   for (const { entry, file } of files) {
     if (entry.kind !== 'block') continue
     const dir = file.slice(0, file.lastIndexOf('/') + 1)
     for (const s of specifiers(file)) {
-      const component = /^~\/components\/ui\/([a-z-]+)\.tscl$/.exec(s)?.[1]
+      // A component's file only if it is one that gets copied (card has card.tscl, no card.css).
+      const copied = /^~\/components\/ui\/([a-z-]+\.(?:tscl|css))$/.exec(s)?.[1]
       const own = /^\.\/([\w.-]+)$/.exec(s)?.[1]
-      const ok = shared(s) || (!!component && entry.uses.includes(component)) || (!!own && entry.files.includes(dir + own))
+      const ok = shared(s) || (!!copied && codeFiles(entry).some((f) => f.path === `components/ui/${copied}`)) || (!!own && entry.files.includes(dir + own)) || (entry.packages ?? []).includes(s)
       expect(ok, `${file} imports ${s}`).toBe(true)
     }
   }
@@ -401,6 +402,8 @@ test('spacing: padding, margin and gap come from the --ui-space scale, never raw
 
 test('codeFiles: a block\'s own files, then each component it uses, named as they are copied', () => {
   const login = blocks.find((b) => b.name === 'login')!
-  expect(codeFiles(login).map((f) => f.path)).toEqual(['login.tscl', 'data.ts', 'components/ui/card.tscl', 'components/ui/field.tscl', 'components/ui/button.tscl'])
-  expect(codeFiles(login)[2]!.file).toBe('card.tscl')
+  expect(codeFiles(login).map((f) => f.path)).toEqual(['login.tscl', 'login-form.tscl', 'data.ts', 'components/ui/card.tscl', 'components/ui/field.tscl', 'components/ui/button.tscl', 'components/ui/toast.css'])
+  expect(codeFiles(login)[3]!.file).toBe('card.tscl')
+  const checkout = blocks.find((b) => b.name === 'checkout')!
+  expect(codeFiles(checkout).map((f) => f.path)).toEqual(['checkout.tscl', 'checkout-form.tscl', 'data.ts', 'components/ui/field.tscl', 'components/ui/input.tscl', 'components/ui/button.tscl', 'components/ui/separator.tscl', 'components/ui/select.css', 'components/ui/toast.css'])
 })

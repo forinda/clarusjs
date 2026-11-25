@@ -1,0 +1,13 @@
+{{-- The checkout block alone (the frame on /blocks/checkout shows it). Out of the nav, search and the sitemap. --}}
+@import '~/theme.css'
+@import '~/view.css'
+@import checkout from '~/registry/blocks/checkout/checkout.tscl'
+
+<cl-head>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+</cl-head>
+
+<div data-ui-preview>
+  <checkout />
+</div>

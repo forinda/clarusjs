@@ -19,6 +19,8 @@ export type Entry = {
   example?: string[]
   /** false: ships no JavaScript. */
   island: boolean
+  /** npm packages to install beside it ('zod'). */
+  packages?: string[]
   /** The @clarusjs/ui-primitives version it needs, when parts is not empty. */
   since?: string
   /** For a styled part: the sections of @clarusjs/ui's ui.css its global rules copy, in order (a .tscl's
@@ -434,11 +436,23 @@ export const registry: Entry[] = [
     name: 'login',
     title: 'Login',
     description: 'Sign in with email and password, with errors on their fields and a handler you replace.',
-    files: ['blocks/login/login.tscl', 'blocks/login/data.ts'],
-    parts: ['field.tscl'],
-    uses: ['card', 'field', 'button'],
+    files: ['blocks/login/login.tscl', 'blocks/login/login-form.tscl', 'blocks/login/data.ts'],
+    parts: ['field.tscl', 'toast-region.tscl'],
+    uses: ['card', 'field', 'button', 'toast'],
     island: true,
-    since: '0.1.0',
+    since: '0.2.0',
+  },
+  {
+    kind: 'block',
+    name: 'checkout',
+    title: 'Checkout',
+    description: 'A cart with live totals beside three steps, contact, shipping and payment, checked by Zod, with a handler you replace.',
+    files: ['blocks/checkout/checkout.tscl', 'blocks/checkout/checkout-form.tscl', 'blocks/checkout/data.ts'],
+    parts: ['field.tscl', 'select.tscl', 'toast-region.tscl'],
+    uses: ['field', 'input', 'button', 'separator', 'select', 'toast'],
+    packages: ['zod'],
+    island: true,
+    since: '0.2.0',
   },
 ]
 
