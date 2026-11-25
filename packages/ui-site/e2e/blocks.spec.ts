@@ -131,6 +131,20 @@ test.describe('login block', () => {
     await expect(page.getByLabel('Password', { exact: true })).toHaveValue('correct horse')
   })
 
+  test('after a failed submit, typing the password key by key keeps every key and the focus', async ({ page }) => {
+    await gotoLogin(page)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    const password = page.getByLabel('Password', { exact: true })
+    await password.click()
+    await password.pressSequentially('correct horse')
+    await expect(password).toHaveValue('correct horse')
+    await expect(password).toBeFocused()
+    await page.getByLabel('Email').click()
+    await page.getByLabel('Email').pressSequentially('ada@example.com')
+    await expect(page.getByLabel('Email')).toHaveValue('ada@example.com')
+    await expect(page.getByLabel('Email')).toBeFocused()
+  })
+
   test('an empty submit shows an error on each field and focuses the first', async ({ page }) => {
     await gotoLogin(page)
     await page.getByRole('button', { name: 'Sign in' }).click()
