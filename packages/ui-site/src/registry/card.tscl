@@ -21,7 +21,10 @@
       color: var(--ui-card-fg);
       font-family: var(--ui-font);
     }
-    :where([data-part='card-header'] :is(h1), :where(h2), :where(h3), :where(h4)) {
+    :where([data-part='card-header'] h1),
+    :where([data-part='card-header'] h2),
+    :where([data-part='card-header'] h3),
+    :where([data-part='card-header'] h4) {
       margin: 0;
       font-size: calc(var(--ui-font-size) + 4px);
     }

@@ -47,3 +47,25 @@
   --font-heading: var(--ui-font-heading);
   --font-mono: var(--ui-font-mono);
 }
+
+/* What the Tailwind versions of the components need besides utilities: the control sizes (the nearest data-size wins,
+   by inheritance) and the button's spinner. */
+@layer components {
+  [data-size='sm'] {
+    --ui-control-h: var(--ui-control-sm);
+    --ui-control-font: calc(var(--ui-font-size) - 1px);
+  }
+  [data-size='md'] {
+    --ui-control-h: var(--ui-control-md);
+    --ui-control-font: var(--ui-font-size);
+  }
+  [data-size='lg'] {
+    --ui-control-h: var(--ui-control-lg);
+    --ui-control-font: calc(var(--ui-font-size) + 2px);
+  }
+}
+@keyframes ui-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

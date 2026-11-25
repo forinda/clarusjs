@@ -1,0 +1,17 @@
+{{-- Card, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as card.tscl; the root
+     styles its pieces, so a class in parts adds to them. Copy it into src/components/ui/ as card.tscl. --}}
+@input parts: { header?: Record<string, string | boolean>; body?: Record<string, string | boolean>; footer?: Record<string, string | boolean> } = {}
+
+<article
+  data-part="card"
+  class="
+    grid gap-4 p-5 border border-border rounded-[calc(var(--ui-radius)*1.5)] bg-card text-card-foreground font-sans
+    [&>[data-part=card-header]:empty]:hidden [&>[data-part=card-header]_:is(h1,h2,h3,h4)]:m-0 [&>[data-part=card-header]_:is(h1,h2,h3,h4)]:text-[length:calc(var(--ui-font-size)+4px)]
+    [&>[data-part=card-header]_p]:mt-1 [&>[data-part=card-header]_p]:mb-0 [&>[data-part=card-header]_p]:mx-0 [&>[data-part=card-header]_p]:text-muted-foreground [&>[data-part=card-header]_p]:text-(length:--ui-font-size)
+    [&>[data-part=card-footer]]:flex [&>[data-part=card-footer]]:gap-2 [&>[data-part=card-footer]]:justify-end [&>[data-part=card-footer]:empty]:hidden
+  "
+>
+  <header [...]="parts.header ?? {}" data-part="card-header"><slot name="header" /></header>
+  <div [...]="parts.body ?? {}" data-part="card-body"><slot /></div>
+  <footer [...]="parts.footer ?? {}" data-part="card-footer"><slot name="footer" /></footer>
+</article>

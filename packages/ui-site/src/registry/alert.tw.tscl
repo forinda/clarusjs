@@ -1,0 +1,21 @@
+{{-- Alert, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as alert.tscl; the root
+     styles its title, so a class in parts adds to it. Copy it into src/components/ui/ as alert.tscl. --}}
+@input variant: 'default' | 'destructive' | 'success' | 'warning' = 'default'
+@input live: boolean = false
+@input parts: { title?: Record<string, string | boolean>; description?: Record<string, string | boolean> } = {}
+
+<div
+  [role]="live ? 'alert' : null"
+  data-part="alert"
+  [data-variant]="variant"
+  class="
+    grid gap-1 py-3 px-4 border border-border rounded-lg bg-background text-foreground font-sans text-(length:--ui-font-size) leading-[1.5]
+    data-[variant=destructive]:border-destructive data-[variant=destructive]:text-destructive
+    data-[variant=success]:border-success data-[variant=success]:text-success
+    data-[variant=warning]:border-warning data-[variant=warning]:text-warning
+    [&>[data-part=alert-title]]:m-0 [&>[data-part=alert-title]]:font-semibold [&>[data-part=alert-title]:empty]:hidden
+  "
+>
+  <p [...]="parts.title ?? {}" data-part="alert-title"><slot name="title" /></p>
+  <div [...]="parts.description ?? {}" data-part="alert-description"><slot /></div>
+</div>

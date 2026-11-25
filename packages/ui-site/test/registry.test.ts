@@ -19,7 +19,7 @@ test('blocks: registry entries of their own kind, apart from the components', ()
 
 test('every entry\'s files exist, and every file in src/registry is an entry\'s file or usage example', () => {
   for (const { file } of files) expect(existsSync(resolve(registryDir, file)), file).toBe(true)
-  const known = [...files.map((f) => f.file), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`)])].sort()
+  const known = [...files.map((f) => f.file), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`), ...(e.tailwind ?? [])])].sort()
   const found = (readdirSync(registryDir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => statSync(resolve(registryDir, f)).isFile())
   expect(found.sort()).toEqual(known)
 })
@@ -475,4 +475,18 @@ test('file upload: without JavaScript, a real file input in a labelled drop zone
   expect(html).toMatch(/<input type="file" id="docs" name="attachments" accept="image\/\*,\.pdf" multiple/)
   expect(html).toContain('Attachments')
   expect(html).not.toContain('data-part="file-list"')
+})
+
+test('tailwind: each component\'s Tailwind twin (<name>.tw.tscl) takes the same inputs, models and events, has no <style>, and its page shows it under the CSS / Tailwind switch', () => {
+  const decls = (text: string) => [...text.matchAll(/^@(input|model|event) ([\w]+)[^\n]*$/gm)].map((m) => m[0].replace(/\s+/g, ' ')).sort()
+  const twins = components.filter((e) => e.tailwind?.length)
+  expect(twins.map((e) => e.name).sort()).toEqual(['alert', 'badge', 'button', 'card', 'input'])
+  for (const e of twins) {
+    const tw = e.tailwind![0]!
+    expect(tw, e.name).toBe(e.files[0]!.replace(/\.tscl$/, '.tw.tscl'))
+    expect(decls(source(tw)), e.name).toEqual(decls(source(e.files[0]!)))
+    expect(source(tw), e.name).not.toMatch(/<style/)
+    const md = readFileSync(page(e.name), 'utf8')
+    expect(md, e.name).toMatch(new RegExp(`<sourceFlavor name="${e.name}">\\s*<<< \\.\\./\\.\\./registry/${e.files[0]!.replace('.', '\\.')}\\s*<<< \\.\\./\\.\\./registry/${tw.replace(/\./g, '\\.')}\\s*</sourceFlavor>`))
+  }
 })

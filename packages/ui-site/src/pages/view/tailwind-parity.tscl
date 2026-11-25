@@ -1,0 +1,92 @@
+{{-- Each component beside its Tailwind version, in every case: the Tailwind test compares their computed styles. The
+     only page that loads Tailwind. Out of the nav, search and the sitemap. --}}
+@import '~/theme.css'
+@import '~/tailwind.css'
+@import '~/view.css'
+@import uiButton from '~/registry/button.tscl'
+@import twButton from '~/registry/button.tw.tscl'
+@import uiBadge from '~/registry/badge.tscl'
+@import twBadge from '~/registry/badge.tw.tscl'
+@import uiCard from '~/registry/card.tscl'
+@import twCard from '~/registry/card.tw.tscl'
+@import uiAlert from '~/registry/alert.tscl'
+@import twAlert from '~/registry/alert.tw.tscl'
+@import uiInput from '~/registry/input.tscl'
+@import twInput from '~/registry/input.tw.tscl'
+@import { ALERT_VARIANTS, BADGE_VARIANTS, BUTTON_VARIANTS, INPUT_VARIANTS, SIZES } from './tailwind-parity.ts'
+
+<cl-head>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+  <title>Tailwind parity</title>
+</cl-head>
+
+<main class="parity">
+  @for (v of BUTTON_VARIANTS; track v) {
+    <div [data-pair]="'button-' + v">
+      <uiButton [variant]="v">Save</uiButton><twButton [variant]="v">Save</twButton>
+    </div>
+  }
+  @for (s of SIZES; track s) {
+    <div [data-pair]="'button-size-' + s"><uiButton [size]="s">Save</uiButton><twButton [size]="s">Save</twButton></div>
+    <div [data-pair]="'button-circle-' + s">
+      <uiButton [size]="s" shape="circle" aria-label="Add">+</uiButton
+      ><twButton [size]="s" shape="circle" aria-label="Add">+</twButton>
+    </div>
+  }
+  <div data-pair="button-round"><uiButton shape="round">Save</uiButton><twButton shape="round">Save</twButton></div>
+  <div data-pair="button-block"><uiButton block>Save</uiButton><twButton block>Save</twButton></div>
+  <div data-pair="button-disabled"><uiButton disabled>Save</uiButton><twButton disabled>Save</twButton></div>
+  <div data-pair="button-loading"><uiButton loading>Save</uiButton><twButton loading>Save</twButton></div>
+  @for (v of BADGE_VARIANTS; track v) {
+    <div [data-pair]="'badge-' + v"><uiBadge [variant]="v">New</uiBadge><twBadge [variant]="v">New</twBadge></div>
+  }
+  @for (v of ALERT_VARIANTS; track v) {
+    <div [data-pair]="'alert-' + v">
+      <uiAlert [variant]="v">@slot('title') {Heads up}Text.</uiAlert><twAlert [variant]="v">@slot('title') {Heads up}Text.</twAlert>
+    </div>
+  }
+  <div data-pair="alert-untitled"><uiAlert>Text.</uiAlert><twAlert>Text.</twAlert></div>
+  <div data-pair="card">
+    <uiCard>@slot('header') {<h3>Title</h3><p>Lead</p>}Body@slot('footer') {<span>Foot</span>}</uiCard>
+    <twCard>@slot('header') {<h3>Title</h3><p>Lead</p>}Body@slot('footer') {<span>Foot</span>}</twCard>
+  </div>
+  <div data-pair="card-empty"><uiCard>Body</uiCard><twCard>Body</twCard></div>
+  @for (v of INPUT_VARIANTS; track v) {
+    <div [data-pair]="'input-' + v">
+      <uiInput [variant]="v" aria-label="a" /><twInput [variant]="v" aria-label="a" />
+    </div>
+    <div [data-pair]="'input-warning-' + v">
+      <uiInput [variant]="v" status="warning" aria-label="a" /><twInput [variant]="v" status="warning" aria-label="a" />
+    </div>
+    <div [data-pair]="'input-invalid-' + v">
+      <uiInput [variant]="v" aria-invalid="true" aria-label="a" /><twInput
+        [variant]="v"
+        aria-invalid="true"
+        aria-label="a"
+      />
+    </div>
+  }
+  @for (s of SIZES; track s) {
+    <div [data-pair]="'input-size-' + s">
+      <uiInput [size]="s" aria-label="a" /><twInput [size]="s" aria-label="a" />
+    </div>
+    <div [data-size]="s" [data-pair]="'input-row-' + s"><uiInput aria-label="a" /><twInput aria-label="a" /></div>
+  }
+  <div data-pair="input-disabled"><uiInput disabled aria-label="a" /><twInput disabled aria-label="a" /></div>
+  <div data-pair="input-readonly"><uiInput readonly aria-label="a" /><twInput readonly aria-label="a" /></div>
+</main>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+  }
+  [data-pair] {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+</style>

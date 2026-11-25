@@ -22,6 +22,8 @@ export type Entry = {
   parts: string[]
   /** Other entries it imports as ./<name>.tscl. */
   uses: string[]
+  /** Its Tailwind version (<name>.tw.tscl, the same inputs and look, classes instead of <style>), copied as <name>.tscl. */
+  tailwind?: string[]
   /** More examples for its page, each <name>-<example>-demo.tscl beside it, shown under Examples in this order. */
   examples?: string[]
   /** Other entries its usage example imports (not needed by the component itself). */
@@ -44,6 +46,7 @@ export const registry: Entry[] = [
     title: 'Button',
     description: 'A native button in seven variants and three sizes, with icons, loading, shapes and full width.',
     files: ['button.tscl'],
+    tailwind: ['button.tw.tscl'],
     parts: [],
     uses: [],
     example: ['button-group'],
@@ -56,6 +59,7 @@ export const registry: Entry[] = [
     title: 'Input',
     description: 'A native text field in four variants and three sizes, with icons, add-ons, states and the usual patterns.',
     files: ['input.tscl'],
+    tailwind: ['input.tw.tscl'],
     parts: [],
     uses: [],
     example: ['label', 'select', 'button', 'input-group', 'kbd'],
@@ -101,6 +105,7 @@ export const registry: Entry[] = [
     title: 'Card',
     description: 'A box with a header, a body and a footer.',
     files: ['card.tscl'],
+    tailwind: ['card.tw.tscl'],
     parts: [],
     uses: [],
     example: ['button', 'badge'],
@@ -113,6 +118,7 @@ export const registry: Entry[] = [
     title: 'Badge',
     description: 'A short label, in four variants.',
     files: ['badge.tscl'],
+    tailwind: ['badge.tw.tscl'],
     parts: [],
     uses: [],
     example: ['button'],
@@ -125,6 +131,7 @@ export const registry: Entry[] = [
     title: 'Alert',
     description: 'A message box with a title, plain or destructive.',
     files: ['alert.tscl'],
+    tailwind: ['alert.tw.tscl'],
     parts: [],
     uses: [],
     example: ['button'],

@@ -35,9 +35,15 @@ A number and its trend: the building block of a dashboard.
 
 ## Source
 
-Copy it into `src/components/ui/` as `card.tscl`.
+Copy it into `src/components/ui/` as `card.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="card">
 
 <<< ../../registry/card.tscl
+
+<<< ../../registry/card.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

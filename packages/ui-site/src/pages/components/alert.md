@@ -35,9 +35,15 @@ An icon in the title for the eye, and what to do next under the text.
 
 ## Source
 
-Copy it into `src/components/ui/` as `alert.tscl`.
+Copy it into `src/components/ui/` as `alert.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="alert">
 
 <<< ../../registry/alert.tscl
+
+<<< ../../registry/alert.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 
