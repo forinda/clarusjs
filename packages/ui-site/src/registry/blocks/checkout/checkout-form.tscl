@@ -35,12 +35,17 @@
   } from './data.ts'
   let lines = state(sampleCart.map((l) => ({ ...l })))
   let order = state({
+    firstName: '',
+    lastName: '',
     email: '',
-    name: '',
+    phone: '',
     address: '',
+    apartment: '',
     city: '',
+    region: '',
     postal: '',
     country: 'US',
+    cardName: '',
     card: '',
     expiry: '',
     cvc: '',
@@ -154,56 +159,127 @@
     </ol>
     <fieldset [hidden]="step !== 0">
       <legend>Contact</legend>
+      <div class="checkout-row">
+        <uiField
+          id="checkout-firstName"
+          label="First name"
+          placeholder="Ada"
+          name="firstName"
+          autocomplete="given-name"
+          [error]="error('firstName')"
+          [show]="tried"
+          [(value)]="order.firstName"
+        />
+        <uiField
+          id="checkout-lastName"
+          label="Last name"
+          placeholder="Lovelace"
+          name="lastName"
+          autocomplete="family-name"
+          [error]="error('lastName')"
+          [show]="tried"
+          [(value)]="order.lastName"
+        />
+      </div>
       <uiField
         id="checkout-email"
         label="Email"
-        type="email"
+        placeholder="you@example.com"
         name="email"
+        type="email"
+        autocomplete="email"
         [error]="error('email')"
         [show]="tried"
         [(value)]="order.email"
+      />
+      <uiField
+        id="checkout-phone"
+        label="Phone"
+        placeholder="+1 555 123 4567"
+        name="phone"
+        type="tel"
+        autocomplete="tel"
+        [error]="error('phone')"
+        [show]="tried"
+        [(value)]="order.phone"
       />
     </fieldset>
     <fieldset [hidden]="step !== 1">
       <legend>Shipping</legend>
       <uiField
-        id="checkout-name"
-        label="Full name"
-        name="name"
-        [error]="error('name')"
-        [show]="tried"
-        [(value)]="order.name"
-      />
-      <uiField
         id="checkout-address"
         label="Address"
+        placeholder="123 Main Street"
         name="address"
+        autocomplete="address-line1"
         [error]="error('address')"
         [show]="tried"
         [(value)]="order.address"
+      />
+      <uiField
+        id="checkout-apartment"
+        label="Apartment, suite, etc. (optional)"
+        placeholder="Apt 4B"
+        name="apartment"
+        autocomplete="address-line2"
+        [error]="error('apartment')"
+        [show]="tried"
+        [(value)]="order.apartment"
       />
       <div class="checkout-row">
         <uiField
           id="checkout-city"
           label="City"
+          placeholder="San Francisco"
           name="city"
+          autocomplete="address-level2"
           [error]="error('city')"
           [show]="tried"
           [(value)]="order.city"
         />
         <uiField
+          id="checkout-region"
+          label="State / province"
+          placeholder="California"
+          name="region"
+          autocomplete="address-level1"
+          [error]="error('region')"
+          [show]="tried"
+          [(value)]="order.region"
+        />
+      </div>
+      <div class="checkout-row">
+        <uiField
           id="checkout-postal"
           label="Postal code"
+          placeholder="94103"
           name="postal"
+          autocomplete="postal-code"
           [error]="error('postal')"
           [show]="tried"
           [(value)]="order.postal"
         />
+        <uiSelect
+          id="checkout-country"
+          label="Country"
+          name="country"
+          [options]="countries"
+          [(value)]="order.country"
+        />
       </div>
-      <uiSelect id="checkout-country" label="Country" name="country" [options]="countries" [(value)]="order.country" />
     </fieldset>
     <fieldset [hidden]="step !== 2">
       <legend>Payment</legend>
+      <uiField
+        id="checkout-cardName"
+        label="Name on card"
+        placeholder="As shown on the card"
+        name="cardName"
+        autocomplete="cc-name"
+        [error]="error('cardName')"
+        [show]="tried"
+        [(value)]="order.cardName"
+      />
       <uiField
         id="checkout-card"
         label="Card number"
