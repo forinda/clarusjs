@@ -400,6 +400,10 @@ test('spacing: padding, margin and gap come from the --ui-space scale, never raw
   }
 })
 
+test('every block has a category, for /blocks to group and filter by', () => {
+  for (const b of blocks) expect(b.category, b.name).toMatch(/^[A-Z][a-z]+$/)
+})
+
 test('codeFiles: a block\'s own files, then each component it uses, named as they are copied', () => {
   const login = blocks.find((b) => b.name === 'login')!
   expect(codeFiles(login).map((f) => f.path)).toEqual(['login.tscl', 'login-form.tscl', 'data.ts', 'components/ui/card.tscl', 'components/ui/field.tscl', 'components/ui/button.tscl', 'components/ui/toast.css'])

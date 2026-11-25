@@ -25,6 +25,44 @@ test('/blocks shows every block, full width, each linked to its page', async ({ 
   }
 })
 
+test('/blocks: search and categories narrow the list; nothing found says so', async ({ page }) => {
+  await page.goto('/blocks')
+  await page.locator('cl-island[c="block-filter"][data-cl-ready]').waitFor({ state: 'attached' })
+  const row = (name: string) => page.locator(`[data-block="${name}"]`)
+  for (const b of blocks) await expect(row(b.name)).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search blocks' }).fill('cart')
+  await expect(row('checkout')).toBeVisible()
+  await expect(row('login')).toBeHidden()
+  await page.getByRole('searchbox', { name: 'Search blocks' }).fill('')
+  await page.getByRole('button', { name: 'Authentication' }).click()
+  await expect(page.getByRole('button', { name: 'Authentication' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(row('login')).toBeVisible()
+  await expect(row('checkout')).toBeHidden()
+  await page.getByRole('button', { name: 'All' }).click()
+  await expect(row('checkout')).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search blocks' }).fill('zzqq')
+  await expect(page.getByRole('status')).toHaveText('No blocks match "zzqq".')
+  await expect(row('login')).toBeHidden()
+})
+
+test('/blocks: each row says its block, its line and its category, from the registry', async ({ page }) => {
+  await page.goto('/blocks')
+  for (const b of blocks) {
+    const row = page.locator(`[data-block="${b.name}"]`)
+    await expect(row.getByRole('link', { name: b.title, exact: true })).toHaveAttribute('href', `/blocks/${b.name}`)
+    await expect(row).toContainText(b.description)
+    await expect(row).toContainText(b.category!)
+  }
+})
+
+test('the header search finds blocks', async ({ page }) => {
+  await page.goto('/blocks')
+  await page.locator('cl-island[c="search"][data-cl-ready]').waitFor({ state: 'attached' })
+  await page.keyboard.press('Control+k')
+  await page.getByRole('combobox', { name: 'Search the docs' }).fill('checkout')
+  await expect(page.locator('#search-results a[href^="/blocks/checkout"]').first()).toBeVisible()
+})
+
 test('/blocks/login: a full-width page, no docs sidebar; the frame at desktop, tablet and phone widths', async ({ page }) => {
   await page.setViewportSize({ width: 1400, height: 900 })
   await page.goto('/blocks/login')
@@ -108,6 +146,15 @@ test('/view/login: a theme saved on /theme applies to the block', async ({ page 
   await page.goto('/view/login')
   await expect(page.locator('[data-ui-preview] [data-part="button"][data-variant="default"]').first()).toHaveCSS('background-color', 'rgb(255, 0, 0)')
 })
+
+for (const mode of modes) {
+  test(`/blocks has no accessibility violations (${mode.label})`, async ({ browser }) => {
+    const page = await pageIn(browser, mode)
+    await page.goto('/blocks')
+    await page.locator('cl-island[c="block-filter"][data-cl-ready]').waitFor({ state: 'attached' })
+    expect(await axeViolations(page)).toEqual([])
+  })
+}
 
 for (const mode of modes) for (const name of ['login', 'checkout']) {
   test(`/blocks/${name} has no accessibility violations (${mode.label})`, async ({ browser }) => {
