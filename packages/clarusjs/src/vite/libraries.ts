@@ -1,7 +1,8 @@
 // Component libraries: auto-imports from installed packages. The app lists them (`components.libraries`), each describes
 // itself in its package.json (`"clarusjs": { "components": "./src", "prefix": "ui" }`). The plugin and `clarusjs check`
 // resolve the names and write them to .clarusjs/components.json, which the editor reads (it doesn't run the Vite config).
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, relative, resolve, sep } from 'node:path'
 import { COMPONENT_DIRS, componentIndex, libraryNames, withLibraries, type ComponentNames, type Library } from '../compiler/components.ts'
 import { findClarusFiles } from './build.ts'
@@ -37,6 +38,17 @@ export function resolveLibraries(root: string, list: LibraryOption[]): Library[]
     const base = resolve(dir, meta.components)
     const files = findClarusFiles(base, ['.tscl']).map((f) => posix(relative(base, f))).sort()
     const prefix = typeof option === 'object' && option.prefix !== undefined ? option.prefix : (meta.prefix ?? '')
+    if (prefix && !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(prefix)) throw new Error(`[clarusjs] the prefix "${prefix}" of "${name}" isn't kebab-case (lowercase letters, digits and hyphens): its tags couldn't be named`)
+    // Each is imported as <package>/<file>: the package's exports must map that to the file found here.
+    const require = createRequire(resolve(root, 'package.json'))
+    for (const file of files) {
+      const spec = `${name}/${file}`
+      let found: string | undefined
+      try { found = realpathSync(require.resolve(spec)) } catch {}
+      if (found !== realpathSync(resolve(base, file))) {
+        throw new Error(`[clarusjs] "${spec}" doesn't resolve to ${posix(relative(root, resolve(base, file)))}: the library's package.json exports must map its components, for example "exports": { "./*": "${meta.components.replace(/\/?$/, '/')}*" }`)
+      }
+    }
     return { name, prefix, files }
   })
 }
@@ -60,9 +72,9 @@ export function componentNames(root: string, options: { dirs?: string[]; auto?: 
 
 /** The names the plugin or `clarusjs check` last wrote for this app, if either has run. */
 export function readComponentNames(root: string): ComponentNames | undefined {
-  try {
-    return (JSON.parse(readFileSync(resolve(root, '.clarusjs/components.json'), 'utf8')) as { names: ComponentNames }).names
-  } catch {
-    return undefined
-  }
+  let names: unknown
+  try { names = (JSON.parse(readFileSync(resolve(root, '.clarusjs/components.json'), 'utf8')) as { names?: unknown }).names } catch { return undefined }
+  // Written by a tool, but it may be stale or hand-edited: only names to a path, or to several.
+  const path = (v: unknown) => typeof v === 'string' || (Array.isArray(v) && v.every((p) => typeof p === 'string'))
+  return names && typeof names === 'object' && Object.values(names).every(path) ? (names as ComponentNames) : undefined
 }

@@ -148,6 +148,15 @@ test('library components (from .clarusjs/components.json, written by the plugin 
   expect(decodeURIComponent(link?.targetUri ?? '')).toContain('node_modules/@acme/ui/src/dialog.tscl')
 })
 
+test('#review: a components.json without names, or with odd values, is ignored (own components still complete)', async () => {
+  const { root, at } = await setup()
+  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  for (const text of ['{}', '{"names":null}', '{"names":{"a-b":5}}']) {
+    writeFileSync(resolve(root, '.clarusjs/components.json'), text)
+    expect(() => at('<§', completions), text).not.toThrow()
+  }
+})
+
 test('#442 @event: completed as a binding with its value type, and hovered', async () => {
   const { root, project, at } = await setup()
   const file = resolve(root, 'src/components/stepper.tscl')

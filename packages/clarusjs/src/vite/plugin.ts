@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
-import { COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
+import { autoImport, COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
 import { componentNames, type LibraryOption } from './libraries.ts'
 import type { LintConfig, LintRuleDef } from '../compiler/lint.ts'
 import { findClarusFiles, packageOf as packageOfFile, prerender, reachableComponents, routeToFile } from './build.ts'
@@ -70,11 +70,17 @@ const scopeFor = (root: string, file: string) => scopeId(relative(root, file).sp
 function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<string, { css: string[]; components: string[] }> {
   const deps = new Map<string, { css: string[]; components: string[] }>()
   const require = createRequire(resolve(root, 'package.json'))
+  const names = files.names(root)
   const packageFile = (spec: string) => { try { return realpathSync(require.resolve(spec.replace(/\?.*$/, ''))) } catch { return undefined } }
   const read = (file: string) => {
     if (!deps.has(file)) {
       let parsed
-      try { parsed = parse(files.read(file, root), file) } catch { parsed = null } // errors surface on compile
+      try {
+        const text = files.read(file, root)
+        parsed = parse(text, file)
+        // Components used by their tag (automatic imports, libraries too) are the page's as well.
+        if (names) autoImport(parsed, names, file, text)
+      } catch { parsed = null } // errors surface on compile
       // Relative to the file, or root-relative ('/src/layouts/docs.tscl', as Vite resolves it).
       const near = (from: string) => {
         const path = from.replace(/\?.*$/, '')
@@ -353,7 +359,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     // ponytail: the folders are listed on every compile (cheap next to compiling); cache per build if it shows up.
     // The names are also written to .clarusjs/components.json, for the editor.
     names: (root) => componentNames(root, options.components),
-    components: (appRoot) => reachableComponents(appRoot, [...files.find(resolve(appRoot, 'src')), ...extra(appRoot).filter((f) => existsSync(f))], (file) => files.read(file, appRoot), extensions, aliases),
+    components: (appRoot) => reachableComponents(appRoot, [...files.find(resolve(appRoot, 'src')), ...extra(appRoot).filter((f) => existsSync(f))], (file) => files.read(file, appRoot), extensions, aliases, files.names(appRoot)),
     read: (file, appRoot) => {
       const code = readFileSync(file, 'utf8')
       const src = sources.find((x) => file.endsWith(x.extension))

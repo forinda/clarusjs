@@ -155,7 +155,7 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
   // generated .tscl, with the imports its conversion adds.
   const converted = new Map(views.map((v) => [realpathSync(resolve(root, v.file)), v.source]))
   const textOf = (p: string) => converted.get(realpathSync(p)) ?? readFileSync(p, 'utf8')
-  const components = reachableComponents(root, pageFiles, textOf, ['.tscl'], aliases)
+  const components = reachableComponents(root, pageFiles, textOf, ['.tscl'], aliases, names)
   for (const path of components.filter((p) => !p.startsWith(resolve(appRoot, 'src') + sep))) {
     const pkg = packageInfo(path)
     const vpath = resolve(virtualRoot, '_pkg', pkg.name, `${relative(pkg.dir, path)}.ts`)
@@ -172,17 +172,20 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     }
   }
   const require = createRequire(resolve(root, 'package.json'))
-  for (const path of components) {
-    for (const m of textOf(path).matchAll(/^@import\s+[A-Za-z_$][\w-]*\s+from\s+(['"])([^'"./][^'"]*\.tscl)\1/gm)) {
-      try {
-        // An alias (~/, tsconfig paths, resolve.alias) first, as the build resolves it; then a package.
-        const file = realpathSync(resolveAlias(m[2]!, aliases) ?? require.resolve(m[2]!))
-        // A package's (or an outside folder's) component, or one of this project's own .tscl files.
-        const target = virtualOf.get(file) ?? (file.startsWith(appRoot + sep) ? resolve(virtualRoot, `${relative(appRoot, file)}.ts`) : undefined)
-        if (target) paths[`${m[2]}.ts`] = [`./${posix(relative(resolve(root, '.clarusjs'), target))}`]
-      } catch {} // an unresolvable import is reported by the template compiler
-    }
+  const mapSpecifier = (spec: string) => {
+    try {
+      // An alias (~/, tsconfig paths, resolve.alias) first, as the build resolves it; then a package.
+      const file = realpathSync(resolveAlias(spec, aliases) ?? require.resolve(spec))
+      // A package's (or an outside folder's) component, or one of this project's own .tscl files.
+      const target = virtualOf.get(file) ?? (file.startsWith(appRoot + sep) ? resolve(virtualRoot, `${relative(appRoot, file)}.ts`) : undefined)
+      if (target) paths[`${spec}.ts`] = [`./${posix(relative(resolve(root, '.clarusjs'), target))}`]
+    } catch {} // an unresolvable import is reported by the template compiler
   }
+  for (const path of components) {
+    for (const m of textOf(path).matchAll(/^@import\s+[A-Za-z_$][\w-]*\s+from\s+(['"])([^'"./][^'"]*\.tscl)\1/gm)) mapSpecifier(m[2]!)
+  }
+  // Library components used by name (no @import line): their package paths too.
+  for (const spec of Object.values(names ?? {}).flat()) if (!spec.startsWith('/') && spec.endsWith('.tscl')) mapSpecifier(spec)
 
   // Path aliases (~/, tsconfig/jsconfig paths), as the build resolves them: each to the real folder, then to its
   // mirror of generated template files (a component import resolves to its .tscl.ts there). They replace the

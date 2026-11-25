@@ -15,7 +15,7 @@ function app(files: Record<string, string>): string {
   return root
 }
 const lib = {
-  'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', clarusjs: { components: './src', prefix: 'acme' } }),
+  'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', exports: { './*': './src/*' }, clarusjs: { components: './src', prefix: 'acme' } }),
   'node_modules/@acme/ui/src/dialog.tscl': '<dialog><slot /></dialog>\n',
   'node_modules/@acme/ui/src/menu/item.tscl': '<li><slot /></li>\n',
   'node_modules/@acme/ui/src/helper.js': '',
@@ -48,4 +48,41 @@ test('componentNames: yours and the libraries\', written to .clarusjs/components
   expect(readComponentNames(root)).toEqual(names)
   expect(componentNames(root, { auto: false })).toBeUndefined()
   expect(readComponentNames(app({}))).toBeUndefined()
+})
+
+test('a library component used only by name is built: its island chunk and its styles (no @import anywhere)', async () => {
+  const { createBuilder } = await import('vite')
+  const { readdirSync, statSync, symlinkSync } = await import('node:fs')
+  const { default: clarusjs } = await import('../../src/vite/plugin.ts')
+  const root = app({
+    'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', exports: { './*': './src/*' }, clarusjs: { components: './src', prefix: 'acme' } }),
+    'node_modules/@acme/ui/src/count.tscl': '<script>\n  let n = state(0)\n</script>\n<button type="button" (click)="n++">{{ n }}</button>\n<style scoped>\n  :scope { letter-spacing: 4.75px; }\n</style>\n',
+    'src/pages/index.tscl': '<main><acme-count /></main>\n',
+  })
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ components: { libraries: ['@acme/ui'] } })] })).buildApp()
+  const assets = resolve(root, 'dist/client/assets')
+  const files = (readdirSync(assets, { recursive: true }) as string[]).filter((f) => statSync(resolve(assets, f)).isFile()).map((f) => f.replaceAll('\\', '/'))
+  expect(files.map((f) => readFileSync(resolve(assets, f), 'utf8')).join('\n')).toContain('4.75px')
+  expect(files.some((f) => /(^|\/)count-[\w-]+\.js$/.test(f))).toBe(true)
+  expect(readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')).toMatch(/<cl-island c="count"[^>]*>/)
+}, 120_000)
+
+test('#review: a prefix that isn\'t kebab-case, and exports that don\'t map the components, are errors saying so', () => {
+  const root = app({
+    'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', exports: { './*': './src/*' }, clarusjs: { components: './src', prefix: 'acme' } }),
+    'node_modules/@acme/ui/src/dialog.tscl': '<dialog />\n',
+    'node_modules/@acme/bad/package.json': JSON.stringify({ name: '@acme/bad', exports: { '.': './index.js' }, clarusjs: { components: './src', prefix: 'bad' } }),
+    'node_modules/@acme/bad/src/dialog.tscl': '<dialog />\n',
+  })
+  expect(() => resolveLibraries(root, [{ from: '@acme/ui', prefix: 'UI' }])).toThrow(/prefix "UI" .*kebab-case/)
+  expect(() => resolveLibraries(root, ['@acme/bad'])).toThrow(/"@acme\/bad\/dialog\.tscl" doesn't resolve to .*exports.*"\.\/\*": "\.\/src\/\*"/)
+  expect(resolveLibraries(root, ['@acme/ui'])[0]!.files).toEqual(['dialog.tscl'])
+})
+
+test('#review: a components.json without names, or with odd values, reads as nothing', () => {
+  for (const text of ['{}', '{"names":null}', '{"names":{"a-b":5}}', 'nope']) {
+    const root = app({ '.clarusjs/components.json': text })
+    expect(readComponentNames(root), text).toBeUndefined()
+  }
 })

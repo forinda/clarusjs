@@ -125,9 +125,12 @@ export class Project {
     const own = componentIndex(files, ['src/components', 'src/layouts']).names
     // Component libraries' names: from .clarusjs/components.json, which the plugin and `clarusjs check` write (the
     // editor doesn't run the Vite config). The app's own come from its files above, so they're never stale.
-    let written: ComponentNames = {}
-    try { written = (JSON.parse(readFileSync(resolve(this.root, '.clarusjs/components.json'), 'utf8')) as { names: ComponentNames }).names } catch {}
-    const libraries = Object.fromEntries(Object.entries(written).filter(([, v]) => ![v].flat().some((p) => p.startsWith('/'))))
+    let written: unknown
+    try { written = (JSON.parse(readFileSync(resolve(this.root, '.clarusjs/components.json'), 'utf8')) as { names?: unknown }).names } catch {}
+    // A tool writes it, but it may be stale or hand-edited: only names to package paths (one, or several) count.
+    const pkg = (v: unknown) => typeof v === 'string' && !v.startsWith('/')
+    const entries = written && typeof written === 'object' ? Object.entries(written) : []
+    const libraries: ComponentNames = Object.fromEntries(entries.filter(([, v]) => pkg(v) || (Array.isArray(v) && v.length > 0 && v.every(pkg))))
     return { ...libraries, ...own }
   }
 
