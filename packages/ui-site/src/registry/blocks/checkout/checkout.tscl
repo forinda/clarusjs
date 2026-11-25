@@ -1,0 +1,39 @@
+{{--
+  Checkout: one page with the cart and its totals beside contact, shipping and payment. The form is
+  checkout-form.tscl beside it, the cart, prices, rules and the call it makes in data.ts: replace them with yours.
+  Copy the page into src/pages/ (as checkout.tscl), the other two beside it, and the components they import into
+  src/components/ui/. The page brings its own <toastRegion />: drop it if your layout has one.
+--}}
+@import checkoutForm from './checkout-form.tscl'
+@import '~/components/ui/toast.css'
+@import toastRegion from '@clarusjs/ui-primitives/toast-region.tscl'
+
+<cl-head>
+  <title>Checkout</title>
+</cl-head>
+
+<main class="checkout" aria-labelledby="checkout-title">
+  <h1 id="checkout-title">Checkout</h1>
+  <checkoutForm />
+  <toastRegion label="Checkout messages" />
+</main>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      box-sizing: border-box;
+      min-height: 100vh;
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: var(--ui-space-8) var(--ui-space-4);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where(:scope h1) {
+      margin: 0 0 var(--ui-space-6);
+      font-size: calc(var(--ui-font-size) * 1.75);
+    }
+  }
+</style>

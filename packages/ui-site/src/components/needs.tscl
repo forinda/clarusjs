@@ -18,10 +18,14 @@
       <code>@clarusjs/ui-primitives</code> {{ entry.since ? '≥ ' + entry.since : '' }}: {{ entry.parts.join(', ') }}
     </li>
   }
+  @for (p of entry.packages ?? []; track p) {
+    <li>
+      <code>{{ p }}</code>, from npm: <code>pnpm add {{ p }}</code>
+    </li>
+  }
   @for (u of uses; track u.name) {
     <li>
-      <a [href]="'/components/' + u.name">{{ u.title }}</a
-      >, copied into <code>src/components/ui/</code>
+      <a [href]="'/components/' + u.name">{{ u.title }}</a>, copied into <code>src/components/ui/</code>
     </li>
   }
 </ul>
