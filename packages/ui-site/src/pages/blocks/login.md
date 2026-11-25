@@ -14,6 +14,8 @@ layout: "/src/layouts/wide.tscl"
 
 <<< ../../registry/blocks/login/login.tscl
 
+<<< ../../registry/blocks/login/login-form.tscl
+
 <<< ../../registry/blocks/login/data.ts
 
 <<< ../../registry/card.tscl
@@ -22,10 +24,12 @@ layout: "/src/layouts/wide.tscl"
 
 <<< ../../registry/button.tscl
 
+<<< ../../registry/toast.css
+
 </blockView>
 
 ## Use it
 
-Copy `login.tscl` into `src/pages/` and `data.ts` beside it, and the components under Code into `src/components/ui/`. Replace `signIn` in `data.ts` with your own: it gets the email and password and returns `{ errors: { password: '…' } }` to show an error on a field, or `{ user }` when it worked.
+Copy `login.tscl` into `src/pages/`, `login-form.tscl` and `data.ts` beside it, and the components under Code into `src/components/ui/`. Replace `signIn` in `data.ts` with your own: it gets the email and password and returns `{ errors: { password: '…' } }` to show an error on a field, or `{ user }` when it worked. A toast says which; the page brings its own `<toastRegion />`, so drop it if your layout has one.
 
 <needs name="login" />

@@ -434,11 +434,11 @@ export const registry: Entry[] = [
     name: 'login',
     title: 'Login',
     description: 'Sign in with email and password, with errors on their fields and a handler you replace.',
-    files: ['blocks/login/login.tscl', 'blocks/login/data.ts'],
-    parts: ['field.tscl'],
-    uses: ['card', 'field', 'button'],
+    files: ['blocks/login/login.tscl', 'blocks/login/login-form.tscl', 'blocks/login/data.ts'],
+    parts: ['field.tscl', 'toast-region.tscl'],
+    uses: ['card', 'field', 'button', 'toast'],
     island: true,
-    since: '0.1.0',
+    since: '0.2.0',
   },
 ]
 
