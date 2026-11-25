@@ -133,6 +133,44 @@ test('#458 automatic components: completed, hovered and followed by name, withou
   expect(link?.targetUri).toContain('src/components/forms/text-field.tscl')
 })
 
+test('library components (from .clarusjs/components.json, written by the plugin or check): completed, hovered, followed', async () => {
+  const { root, at } = await setup()
+  const lib = resolve(root, 'node_modules/@acme/ui')
+  mkdirSync(resolve(lib, 'src'), { recursive: true })
+  writeFileSync(resolve(lib, 'package.json'), JSON.stringify({ name: '@acme/ui', exports: { './*': './src/*' }, clarusjs: { components: './src', prefix: 'acme' } }))
+  writeFileSync(resolve(lib, 'src/dialog.tscl'), '@input heading: string\n<dialog>{{ heading }}</dialog>\n')
+  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  writeFileSync(resolve(root, '.clarusjs/components.json'), JSON.stringify({ names: { 'acme-dialog': '@acme/ui/dialog.tscl', 'badge-x': '/src/components/gone.tscl' } }))
+  expect(labels(at('<§', completions))).toContain('acme-dialog')
+  expect(labels(at('<§', completions))).not.toContain('badge-x') // the app's own come from its files, not the last run
+  expect(labels(at('<acme-dialog §', completions))).toContain('[heading]')
+  const [link] = at(`<acme-dia§log />\n`, definition) ?? []
+  expect(decodeURIComponent(link?.targetUri ?? '')).toContain('node_modules/@acme/ui/src/dialog.tscl')
+})
+
+test('#review: a components.json without names, or with odd values, is ignored (own components still complete)', async () => {
+  const { root, at } = await setup()
+  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  for (const text of ['{}', '{"names":null}', '{"names":{"a-b":5}}']) {
+    writeFileSync(resolve(root, '.clarusjs/components.json'), text)
+    expect(() => at('<§', completions), text).not.toThrow()
+  }
+})
+
+test('#review: the app\'s own components come from the folders components.json lists (the config\'s components.dirs)', async () => {
+  const { root, project, at } = await setup()
+  for (const file of ['src/widgets/user-card.tscl', 'src/components/old-card.tscl'].map((f) => resolve(root, f))) {
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, '<div></div>\n')
+    project.update(file, '<div></div>\n')
+  }
+  expect(labels(at('<§', completions))).toContain('old-card') // the default folders, before any run
+  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  writeFileSync(resolve(root, '.clarusjs/components.json'), JSON.stringify({ dirs: ['src/widgets'], names: {} }))
+  expect(labels(at('<§', completions))).toContain('user-card')
+  expect(labels(at('<§', completions))).not.toContain('old-card')
+})
+
 test('#442 @event: completed as a binding with its value type, and hovered', async () => {
   const { root, project, at } = await setup()
   const file = resolve(root, 'src/components/stepper.tscl')

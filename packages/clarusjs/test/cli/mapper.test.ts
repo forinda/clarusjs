@@ -1,9 +1,9 @@
 // The TypeScript 7.1 content mapper (`clarusjs mapper`): .tscl → TypeScript with a span map, template errors as
 // mapper diagnostics, the JSON-RPC protocol over stdio, and a real `tsc --runExternalCode` run on a small project.
 import { spawn, spawnSync } from 'node:child_process'
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { expect, test } from 'vitest'
 import { transform } from '../../src/cli/mapper.ts'
 
@@ -158,4 +158,43 @@ test('#458 transform: a component used by name is imported relative to the file,
   const out = transform({ fileName: resolve(root, 'src/pages/admin/users.tscl'), content: `<text-field [label]="'x'" />\n` })
   expect(out.diagnostics).toEqual([])
   expect(out.text).toContain('from "../../components/forms/text-field.tscl"')
+})
+
+test('transform: a library component used by name (from .clarusjs/components.json) is imported by its package path', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'cl-map-lib-'))
+  writeFileSync(resolve(root, 'package.json'), '{}')
+  mkdirSync(resolve(root, 'src/pages'), { recursive: true })
+  mkdirSync(resolve(root, '.clarusjs'), { recursive: true })
+  writeFileSync(resolve(root, '.clarusjs/components.json'), JSON.stringify({ names: { 'acme-dialog': '@acme/ui/dialog.tscl' } }))
+  const out = transform({ fileName: resolve(root, 'src/pages/index.tscl'), content: '<acme-dialog />\n' })
+  expect(out.text).toContain('from "@acme/ui/dialog.tscl"')
+})
+
+test('#review: a library name an app component shadowed comes back once that component is gone (no run in between)', async () => {
+  const { componentNames } = await import('../../src/vite/libraries.ts')
+  const root = mkdtempSync(resolve(tmpdir(), 'cl-map-shadow-'))
+  const files: Record<string, string> = {
+    'package.json': '{}',
+    'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', exports: { './*': './src/*' }, clarusjs: { components: './src', prefix: 'acme' } }),
+    'node_modules/@acme/ui/src/dialog.tscl': '<dialog />\n',
+    'src/components/acme-dialog.tscl': '<div />\n',
+  }
+  for (const [file, text] of Object.entries(files)) { mkdirSync(dirname(resolve(root, file)), { recursive: true }); writeFileSync(resolve(root, file), text) }
+  componentNames(root, { libraries: ['@acme/ui'] })
+  const page = resolve(root, 'src/pages/index.tscl')
+  expect(transform({ fileName: page, content: '<acme-dialog />\n' }).text).toContain('from "../components/acme-dialog.tscl"')
+  rmSync(resolve(root, 'src/components/acme-dialog.tscl'))
+  expect(transform({ fileName: page, content: '<acme-dialog />\n' }).text).toContain('from "@acme/ui/dialog.tscl"')
+})
+
+test('#review: transform names the app\'s components from the folders the config lists (written to components.json)', () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'cl-map-dirs-'))
+  writeFileSync(resolve(root, 'package.json'), '{}')
+  for (const dir of ['src/pages', 'src/components', 'src/widgets', '.clarusjs']) mkdirSync(resolve(root, dir), { recursive: true })
+  writeFileSync(resolve(root, 'src/components/acme-dialog.tscl'), '<div />\n') // not in the configured folders
+  writeFileSync(resolve(root, 'src/widgets/user-card.tscl'), '<div />\n')
+  writeFileSync(resolve(root, '.clarusjs/components.json'), JSON.stringify({ dirs: ['src/widgets'], names: { 'acme-dialog': '@acme/ui/dialog.tscl' } }))
+  const out = transform({ fileName: resolve(root, 'src/pages/index.tscl'), content: '<acme-dialog /><user-card />\n' })
+  expect(out.text).toContain('from "@acme/ui/dialog.tscl"')
+  expect(out.text).toContain('from "../widgets/user-card.tscl"')
 })

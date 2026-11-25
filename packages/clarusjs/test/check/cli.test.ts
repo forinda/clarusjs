@@ -460,3 +460,13 @@ test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('#review: 
   expect(result.fixed).toEqual([])
   expect(result.diagnostics).toContainEqual(expect.objectContaining({ file: 'src/components/pair.tscl', code: 'fix', severity: 'error', message: expect.stringMatching(/^--fix could not write src\/components\/pair\.tscl: /) }))
 })
+
+test('a library component used only by name is type-checked like an imported one', () => {
+  const root = project({
+    'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui', exports: { './*': './src/*' }, clarusjs: { components: './src', prefix: 'acme' } }),
+    'node_modules/@acme/ui/src/badge.tscl': '@input label: string\n<b>{{ label }}</b>\n',
+    'src/pages/index.tscl': `<acme-badge [label]="'ok'" />\n<acme-badge [lable]="'typo'" />\n`,
+  })
+  const result = check({ root, typescript, components: { libraries: ['@acme/ui'] } })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/pages/index.tscl:2 TS2561'])
+})

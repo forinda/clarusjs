@@ -112,17 +112,27 @@ export class Project {
     const named = new Set(own.map((i) => i.name))
     const auto = Object.entries(this.componentNames())
       .filter((e): e is [string, string] => typeof e[1] === 'string' && !named.has(e[0]))
-      .map(([name, specifier]): Import => ({ name, nameStart: -1, specifier, target: resolve(this.root, specifier.slice(1)), start: -1, end: -1 }))
+      .map(([name, specifier]): Import => ({ name, nameStart: -1, specifier, target: specifier.startsWith('/') ? resolve(this.root, specifier.slice(1)) : this.resolve(specifier, path), start: -1, end: -1 }))
     return [...own, ...auto]
   }
 
   /**
-   * The automatic component names (#458), as the build names them: kebab-case files under src/components and
-   * src/layouts. ponytail: the default folders; a project's `components.dirs` needs its Vite config loaded.
+   * The automatic component names (#458), as the build names them: kebab-case files under the config's
+   * `components.dirs` (src/components and src/layouts by default).
    */
   componentNames(): ComponentNames {
+    // From .clarusjs/components.json, which the plugin and `clarusjs check` write (the editor doesn't run the Vite
+    // config): the folders, and the libraries' names. The app's own come from its files, so they're never stale.
+    let written: { dirs?: unknown; names?: unknown } | undefined
+    try { written = JSON.parse(readFileSync(resolve(this.root, '.clarusjs/components.json'), 'utf8')) as typeof written } catch {}
+    const dirs = Array.isArray(written?.dirs) && written.dirs.every((d) => typeof d === 'string') ? (written.dirs as string[]) : ['src/components', 'src/layouts']
     const files = [...this.texts.keys()].filter((p) => p.endsWith('.tscl')).map((p) => relative(this.root, p).split(sep).join('/'))
-    return componentIndex(files, ['src/components', 'src/layouts']).names
+    const own = componentIndex(files, dirs).names
+    // A tool writes it, but it may be stale or hand-edited: only names to package paths (one, or several) count.
+    const pkg = (v: unknown) => typeof v === 'string' && !v.startsWith('/')
+    const entries = written?.names && typeof written.names === 'object' ? Object.entries(written.names) : []
+    const libraries: ComponentNames = Object.fromEntries(entries.filter(([, v]) => pkg(v) || (Array.isArray(v) && v.length > 0 && v.every(pkg))))
+    return { ...libraries, ...own }
   }
 
   /** A component's interface (its last good parse), read from disk when it isn't indexed (a package's). */

@@ -5,6 +5,7 @@ import { readdirSync, realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { parse } from '../compiler/parse.ts'
+import { autoImport, type ComponentNames } from '../compiler/components.ts'
 
 /** Absolute paths of every component file under `srcDir` (`.tscl`, or any page source extension given). */
 export function findClarusFiles(srcDir: string, extensions: string[] = ['.tscl']): string[] {
@@ -97,12 +98,23 @@ export function packageOf(file: string): string | undefined {
 }
 
 /**
- * Component files reachable from `start` through @import lines: relative paths, root-relative ('/src/…') and package
+ * Where a package specifier imported by `from` leads, as Node finds it: from the importing file first (a library's own
+ * dependencies live in its node_modules), then from the app. Undefined when neither finds it.
+ * @internal The build and the plugin's page graph share it.
+ */
+export function resolvePackage(root: string, from: string, spec: string): string | undefined {
+  for (const origin of [from, resolve(root, 'package.json')]) {
+    try { return createRequire(origin).resolve(spec) } catch {}
+  }
+  return undefined
+}
+
+/**
+ * Component files reachable from `start` through @import lines (and tags `names` imports automatically): relative paths, root-relative ('/src/…') and package
  * specifiers ('@clarusjs/theme-docs/layout.tscl', resolved as Node would from the app). Real paths, so a workspace
  * package linked into node_modules is one file, not two.
  */
-export function reachableComponents(root: string, start: string[], read: (file: string) => string, extensions: string[], aliases: Alias[] = []): string[] {
-  const require = createRequire(resolve(root, 'package.json'))
+export function reachableComponents(root: string, start: string[], read: (file: string) => string, extensions: string[], aliases: Alias[] = [], names?: ComponentNames): string[] {
   const seen = new Set<string>()
   const queue = start.map((f) => realpathSync(f))
   while (queue.length) {
@@ -110,14 +122,21 @@ export function reachableComponents(root: string, start: string[], read: (file: 
     if (seen.has(file)) continue
     seen.add(file)
     let imports: { from: string }[]
-    try { imports = parse(read(file), file).imports } catch { continue } // compile errors are reported elsewhere
+    // With the automatic imports (#458, libraries too): a component used only by its tag is reachable as well.
+    try {
+      const text = read(file)
+      const parsed = parse(text, file)
+      if (names) autoImport(parsed, names, file, text)
+      imports = parsed.imports
+    } catch { continue } // compile errors are reported elsewhere
     for (const { from } of imports) {
       const spec = from.replace(/\?.*$/, '')
       if (!extensions.some((e) => spec.endsWith(e))) continue
       let target: string
       try {
-        target = spec.startsWith('.') ? resolve(dirname(file), spec) : spec.startsWith('/') ? resolve(root, spec.slice(1)) : resolveAlias(spec, aliases) ?? require.resolve(spec)
-        target = realpathSync(target)
+        const found = spec.startsWith('.') ? resolve(dirname(file), spec) : spec.startsWith('/') ? resolve(root, spec.slice(1)) : resolveAlias(spec, aliases) ?? resolvePackage(root, file, spec)
+        if (!found) continue // an unresolvable import is reported when the component compiles
+        target = realpathSync(found)
       } catch { continue } // an unresolvable import is reported when the component compiles
       if (!seen.has(target)) queue.push(target)
     }

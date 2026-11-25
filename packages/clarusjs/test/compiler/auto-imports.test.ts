@@ -57,3 +57,24 @@ test('an explicit @import is kept; an ambiguous short name is a located error na
   const at = (() => { try { compile('<p>\n  <date-field />\n</p>\n', { file: 'page.tscl', target: 'server', components }); return '' } catch (e) { return e instanceof ClarusError ? e.message : String(e) } })()
   expect(at).toMatch(/^page\.tscl:2:3 <date-field> could be \/a\/date-field\.tscl or \/b\/date-field\.tscl: use its full name/)
 })
+
+test('library components: prefix + file name, imported by the package path; yours win; two libraries with one name are ambiguous', async () => {
+  const { libraryNames, withLibraries } = await import('../../src/compiler/components.ts')
+  const libs = libraryNames([
+    { name: '@clarusjs/ui-primitives', prefix: 'ui', files: ['dialog.tscl', 'toast-region.tscl', 'parts/tab.tscl', 'Bad.tscl', 'x.ts'] },
+    { name: 'other-ui', prefix: 'ui', files: ['dialog.tscl'] },
+    { name: 'bare', prefix: '', files: ['data-grid.tscl', 'grid.tscl'] },
+  ])
+  expect(libs['ui-toast-region']).toBe('@clarusjs/ui-primitives/toast-region.tscl')
+  expect(libs['ui-parts-tab']).toBe('@clarusjs/ui-primitives/parts/tab.tscl')
+  expect(libs['ui-dialog']).toEqual(['@clarusjs/ui-primitives/dialog.tscl', 'other-ui/dialog.tscl'])
+  expect(libs['data-grid']).toBe('bare/data-grid.tscl')
+  expect(libs.grid).toBeUndefined() // no hyphen
+  expect(Object.keys(libs).some((n) => /bad/i.test(n))).toBe(false)
+  const own = componentIndex(['src/components/data-grid.tscl'], DIRS).names
+  const all = withLibraries(own, libs)
+  expect(all['data-grid']).toBe('/src/components/data-grid.tscl') // yours win
+  expect(all['ui-toast-region']).toBe('@clarusjs/ui-primitives/toast-region.tscl')
+  const code = compile('<ui-toast-region />\n', { file: 'src/pages/x.tscl', target: 'server', clientUrl: '/x.js', components: all }).code
+  expect(code).toContain("from '@clarusjs/ui-primitives/toast-region.tscl")
+})
