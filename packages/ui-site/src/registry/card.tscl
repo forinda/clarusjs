@@ -13,8 +13,8 @@
   @layer components {
     :where(:scope) {
       display: grid;
-      gap: 16px;
-      padding: 20px;
+      gap: var(--ui-space-4);
+      padding: var(--ui-space-5);
       border: 1px solid var(--ui-border);
       border-radius: calc(var(--ui-radius) * 1.5);
       background: var(--ui-card);
@@ -26,13 +26,13 @@
       font-size: calc(var(--ui-font-size) + 4px);
     }
     :where([data-part='card-header'] p) {
-      margin: 4px 0 0;
+      margin: var(--ui-space-1) 0 0;
       color: var(--ui-muted);
       font-size: var(--ui-font-size);
     }
     :where([data-part='card-footer']) {
       display: flex;
-      gap: 8px;
+      gap: var(--ui-space-2);
       justify-content: flex-end;
     }
     :where([data-part='card-header']:empty),

@@ -23,9 +23,9 @@
 <style scoped>
   :scope {
     display: grid;
-    gap: 12px;
+    gap: var(--ui-space-3);
     justify-items: start;
-    padding: 24px;
+    padding: var(--ui-space-6);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);

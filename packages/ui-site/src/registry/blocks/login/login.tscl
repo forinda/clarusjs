@@ -78,7 +78,7 @@
       display: grid;
       place-items: center;
       min-height: 100vh;
-      padding: 24px 16px;
+      padding: var(--ui-space-6) var(--ui-space-4);
       background: var(--ui-muted-bg);
       color: var(--ui-fg);
       font: var(--ui-font-size) var(--ui-font);
@@ -109,7 +109,7 @@
     }
     :where(.login-form) {
       display: grid;
-      gap: 16px;
+      gap: var(--ui-space-4);
     }
     :where(.login-form [data-part='field']) {
       max-width: none;
@@ -124,7 +124,7 @@
     }
     :where(.login-forgot) {
       justify-self: end;
-      margin-top: -8px;
+      margin-top: calc(var(--ui-space-2) * -1);
       font-size: calc(var(--ui-font-size) - 1px);
     }
     :where(.login-status) {

@@ -15,7 +15,7 @@
   /* Field and select: label, control, description, error. */
   :where([data-part='field'], [data-part='select']) {
     display: grid;
-    gap: 4px;
+    gap: var(--ui-space-1);
     max-width: 360px;
     font: var(--ui-font-size) var(--ui-font);
     color: var(--ui-fg);
@@ -27,7 +27,7 @@
   }
   :where([data-part='control']) {
     min-height: 34px;
-    padding: 4px 10px;
+    padding: var(--ui-space-1) calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
@@ -48,11 +48,11 @@
     font-size: calc(var(--ui-font-size) - 1px);
   }
   :where([data-part='option']) {
-    padding: 6px 10px;
+    padding: calc(var(--ui-space) * 1.5) calc(var(--ui-space) * 2.5);
     border-radius: calc(var(--ui-radius) - 2px);
   }
   :where([data-part='select']) ::picker(select) {
-    padding: 4px;
+    padding: var(--ui-space-1);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-popover);
@@ -63,7 +63,7 @@
   /* Combobox: chips in the control, a list below. */
   :where([data-part='combobox']) {
     display: grid;
-    gap: 4px;
+    gap: var(--ui-space-1);
     max-width: 360px;
     font: var(--ui-font-size) var(--ui-font);
     color: var(--ui-fg);
@@ -72,8 +72,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px;
-    padding: 2px 6px;
+    gap: var(--ui-space-1);
+    padding: calc(var(--ui-space) * 0.5) calc(var(--ui-space) * 1.5);
   }
   :where([data-part='combobox']) > :where([data-part='control']):focus-within {
     border-color: var(--ui-ring);
@@ -83,7 +83,7 @@
     flex: 1;
     min-width: 6ch;
     min-height: 26px;
-    padding: 0 4px;
+    padding: 0 var(--ui-space-1);
     border: 0;
     background: none;
     color: var(--ui-fg);
@@ -93,8 +93,8 @@
   :where([data-part='chip']) {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    padding: 0 2px 0 8px;
+    gap: calc(var(--ui-space) * 0.5);
+    padding: 0 calc(var(--ui-space) * 0.5) 0 var(--ui-space-2);
     border-radius: 999px;
     background: var(--ui-accent-soft);
     font-size: calc(var(--ui-font-size) - 1px);
@@ -109,8 +109,8 @@
     cursor: pointer;
   }
   :where([data-part='listbox']) {
-    margin-top: 4px;
-    padding: 4px;
+    margin-top: var(--ui-space-1);
+    padding: var(--ui-space-1);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-popover);

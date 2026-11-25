@@ -24,7 +24,7 @@
     /* Buttons: triggers and closes. */
     :where([data-part='trigger'], [data-part='close']) {
       font: 600 var(--ui-font-size) var(--ui-font);
-      padding: 8px 14px;
+      padding: var(--ui-space-2) calc(var(--ui-space) * 3.5);
       border: 1px solid var(--ui-border);
       border-radius: var(--ui-radius);
       background: var(--ui-bg);
@@ -43,13 +43,13 @@
     }
     :where([data-part='accordion-item']) > :where([data-part='trigger']) {
       display: list-item;
-      padding: 10px 2px;
+      padding: calc(var(--ui-space) * 2.5) calc(var(--ui-space) * 0.5);
       border: 0;
       background: none;
       cursor: pointer;
     }
     :where([data-part='panel']) {
-      padding: 0 2px 12px;
+      padding: 0 calc(var(--ui-space) * 0.5) var(--ui-space-3);
       color: var(--ui-muted);
     }
 

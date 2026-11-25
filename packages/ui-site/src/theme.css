@@ -10,6 +10,7 @@
   --ui-font-mono: ui-monospace, monospace;
   --ui-font-size: 14px;
   --ui-radius: 8px;
+  --ui-space: 4px;
   --ui-bg: #ffffff;
   --ui-fg: #17202a;
   --ui-muted: #5b6670;
@@ -39,6 +40,16 @@
   --ui-success-fg: #ffffff;
   --ui-warning: #b54708;
   --ui-warning-fg: #ffffff;
+  /* Spacing: steps of --ui-space (4px), set in the same rule so changing the unit rescales them. */
+  --ui-space-1: calc(var(--ui-space) * 1);
+  --ui-space-2: calc(var(--ui-space) * 2);
+  --ui-space-3: calc(var(--ui-space) * 3);
+  --ui-space-4: calc(var(--ui-space) * 4);
+  --ui-space-5: calc(var(--ui-space) * 5);
+  --ui-space-6: calc(var(--ui-space) * 6);
+  --ui-space-8: calc(var(--ui-space) * 8);
+  --ui-space-10: calc(var(--ui-space) * 10);
+  --ui-space-12: calc(var(--ui-space) * 12);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {

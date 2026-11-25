@@ -15,8 +15,8 @@
 <style scoped>
   :scope {
     display: grid;
-    gap: 12px;
-    padding: 24px;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
@@ -24,7 +24,7 @@
   }
   .row {
     display: flex;
-    gap: 12px;
+    gap: var(--ui-space-3);
     align-items: center;
     height: 20px;
   }

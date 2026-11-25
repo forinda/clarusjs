@@ -14,11 +14,14 @@ test('theme.css is ui.css\'s token rules, light and dark', () => {
   }
 })
 
-test('theme builder: names.ts lists the 34 tokens theme.css defines', async () => {
+test('theme builder: names.ts lists the 35 tokens theme.css defines (the spacing scale comes from --ui-space)', async () => {
   const { TOKEN_NAMES } = await import('../src/theme/names.ts')
   const root = read('../src/theme.css').match(/:root \{([^}]*)\}/)![1]!
-  expect([...TOKEN_NAMES].sort()).toEqual([...root.matchAll(/--ui-([\w-]+):/g)].map((m) => m[1]).sort())
-  expect(TOKEN_NAMES).toHaveLength(34)
+  const defined = [...root.matchAll(/--ui-([\w-]+):/g)].map((m) => m[1]!)
+  expect([...TOKEN_NAMES].sort()).toEqual(defined.filter((n) => !/^space-\d+$/.test(n)).sort())
+  expect(TOKEN_NAMES).toHaveLength(35)
+  expect(root).toContain('--ui-space: 4px;')
+  expect(root).toContain('--ui-space-4: calc(var(--ui-space) * 4);')
 })
 
 test('theme builder: tailwind.css maps every colour token, the radius and the fonts into @theme inline', () => {
@@ -34,5 +37,6 @@ test('theme builder: tailwind.css maps every colour token, the radius and the fo
   }
   for (const [tw_, ui] of Object.entries(map)) expect(tw, tw_).toContain(`--color-${tw_}: var(--ui-${ui});`)
   expect(tw).toContain('--radius-lg: var(--ui-radius);')
+  expect(tw).toContain('--spacing: var(--ui-space);') // p-4, gap-6…: the same steps as the components
   for (const [f, ui] of [['sans', 'font'], ['heading', 'font-heading'], ['mono', 'font-mono']]) expect(tw).toContain(`--font-${f}: var(--ui-${ui});`)
 })

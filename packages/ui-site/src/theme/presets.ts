@@ -9,6 +9,7 @@ const teal: Theme = {
     'font-mono': 'ui-monospace, monospace',
     'font-size': '14px',
     'radius': '8px',
+    'space': '4px',
     'bg': '#ffffff',
     'fg': '#17202a',
     'muted': '#5b6670',

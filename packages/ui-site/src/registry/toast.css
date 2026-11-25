@@ -21,7 +21,7 @@
   }
   :where([data-part='toast-list']) {
     display: grid;
-    gap: 8px;
+    gap: var(--ui-space-2);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -29,9 +29,9 @@
   :where([data-part='toast']) {
     position: relative;
     display: flex;
-    gap: 8px;
+    gap: var(--ui-space-2);
     align-items: center;
-    padding: 12px 14px;
+    padding: var(--ui-space-3) calc(var(--ui-space) * 3.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
     background: var(--ui-popover);
@@ -45,7 +45,7 @@
   }
   :where([data-part='toast-action']),
   :where([data-part='toast-close']) {
-    padding: 4px 8px;
+    padding: var(--ui-space-1) var(--ui-space-2);
     border: 1px solid var(--ui-border);
     border-radius: calc(var(--ui-radius) - 2px);
     background: transparent;

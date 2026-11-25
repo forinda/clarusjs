@@ -388,6 +388,17 @@ test('#review: the spinner positions its hidden label inside itself', () => {
   expect(source('spinner.tscl')).toMatch(/:where\(:scope\) \{[^}]*position: relative/)
 })
 
+test('spacing: padding, margin and gap come from the --ui-space scale, never raw pixels', () => {
+  const props = /(?<![-\w])(padding|margin|gap|row-gap|column-gap|padding-[a-z-]+|margin-[a-z-]+|inset|top|right|bottom|left)\s*:\s*([^;}]+)/g
+  for (const e of registry) for (const f of e.files.filter((x) => /\.(tscl|css)$/.test(x))) {
+    const css = [...source(f).matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n') || (f.endsWith('.css') ? source(f) : '')
+    for (const [, prop, value] of css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(props)) {
+      if (/^(top|right|bottom|left|inset)$/.test(prop!) ) continue // positions, not spacing
+      expect(value!.replace(/var\(--ui-space[\w-]*\)/g, '').match(/-?\d*\.?\d+px/g), `${f}: ${prop}: ${value}`).toBeNull()
+    }
+  }
+})
+
 test('codeFiles: a block\'s own files, then each component it uses, named as they are copied', () => {
   const login = blocks.find((b) => b.name === 'login')!
   expect(codeFiles(login).map((f) => f.path)).toEqual(['login.tscl', 'data.ts', 'components/ui/card.tscl', 'components/ui/field.tscl', 'components/ui/button.tscl'])
