@@ -33,6 +33,13 @@
     popover()?.hidePopover()
     document.getElementById(`${id}-trigger`)?.focus()
   }
+  // Clear: no date (nor end), the popover closes and the focus goes back to the button.
+  function clear() {
+    value = ''
+    end = ''
+    popover()?.hidePopover()
+    document.getElementById(`${id}-trigger`)?.focus()
+  }
   // Opened: the keyboard starts on the chosen day (or today).
   function toggled(event) {
     if (event.newState !== 'open') return
@@ -78,6 +85,9 @@
       [(end)]="end"
       (select)="chosen()"
     />
+    <div data-part="date-picker-footer">
+      <button type="button" data-part="date-picker-clear" [disabled]="!value && !end" (click)="clear()">Clear</button>
+    </div>
   </div>
   <input type="hidden" [name]="name" [value]="value" />
   @if (range) {
@@ -130,6 +140,29 @@
       background: var(--ui-popover);
       color: var(--ui-popover-fg);
       box-shadow: var(--ui-shadow);
+    }
+    :where([data-part='date-picker-footer']) {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0 var(--ui-space-3) var(--ui-space-3);
+    }
+    :where([data-part='date-picker-clear']) {
+      min-height: var(--ui-control-sm);
+      padding: 0 var(--ui-space-3);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: inherit;
+      cursor: pointer;
+    }
+    :where([data-part='date-picker-clear']:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    :where([data-part='date-picker-clear']:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 1px;
     }
   }
 </style>
