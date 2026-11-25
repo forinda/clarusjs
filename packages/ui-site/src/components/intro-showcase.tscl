@@ -1,0 +1,416 @@
+{{-- The introduction's showcase: six components in motion, each a link to its page. CSS only (no JavaScript); still
+     for visitors who ask for less motion. --}}
+
+<script server>
+  const DIGITS = ['4', '8', '2', '9', '1', '6']
+  const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  // Three weeks of a month; days 9 to 13 are the range that sweeps in (9 and 13 its ends).
+  const DAYS = Array.from({ length: 21 }, (_, i) => ({
+    n: i + 1,
+    kind: i + 1 === 9 || i + 1 === 13 ? 'end' : i + 1 > 9 && i + 1 < 13 ? 'mid' : '',
+  }))
+</script>
+
+<ul class="showcase" data-showcase aria-label="Components in motion">
+  <li>
+    <a href="/components/toast">
+      <div class="scene toasts" aria-hidden="true">
+        <div class="toast ok" style="--i: 0"><span class="mark"></span>Saved</div>
+        <div class="toast info" style="--i: 1"><span class="mark"></span>New version</div>
+        <div class="toast warn" style="--i: 2"><span class="mark"></span>Almost full</div>
+      </div>
+      <span class="name">Toast</span>
+    </a>
+  </li>
+  <li>
+    <a href="/components/chart">
+      <div class="scene" aria-hidden="true">
+        <svg class="chart" viewBox="0 0 120 60" preserveAspectRatio="none">
+          <path class="area" d="M0 50 L20 38 L40 42 L60 22 L80 28 L100 12 L120 18 L120 60 L0 60 Z" />
+          <path class="line" d="M0 50 L20 38 L40 42 L60 22 L80 28 L100 12 L120 18" pathLength="100" />
+        </svg>
+      </div>
+      <span class="name">Chart</span>
+    </a>
+  </li>
+  <li>
+    <a href="/components/otp-input">
+      <div class="scene otp" aria-hidden="true">
+        @for (d of DIGITS; track $index) {
+          <span class="cell" [style]="'--i: ' + $index"
+            ><span class="digit">{{ d }}</span></span
+          >
+        }
+      </div>
+      <span class="name">OTP input</span>
+    </a>
+  </li>
+  <li>
+    <a href="/components/switch">
+      <div class="scene switches" aria-hidden="true">
+        <span class="switch" style="--i: 0"><span class="thumb"></span></span>
+        <span class="switch" style="--i: 1"><span class="thumb"></span></span>
+        <span class="switch" style="--i: 2"><span class="thumb"></span></span>
+      </div>
+      <span class="name">Switch</span>
+    </a>
+  </li>
+  <li>
+    <a href="/components/calendar">
+      <div class="scene" aria-hidden="true">
+        <div class="month">
+          @for (w of WEEKDAYS; track $index) {
+            <span class="weekday">{{ w }}</span>
+          }
+          @for (d of DAYS; track d.n) {
+            <span class="day" [data-kind]="d.kind || false" [style]="'--i: ' + d.n">{{ d.n }}</span>
+          }
+        </div>
+      </div>
+      <span class="name">Calendar</span>
+    </a>
+  </li>
+  <li>
+    <a href="/components/button">
+      <div class="scene" aria-hidden="true">
+        <span class="saving"><span class="spinner"></span><span class="label">Saving</span></span>
+      </div>
+      <span class="name">Button</span>
+    </a>
+  </li>
+</ul>
+
+<style scoped>
+  :scope {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    gap: var(--ui-space-3);
+    margin: var(--ui-space-6) 0 var(--ui-space-8);
+    padding: 0;
+    list-style: none;
+  }
+  :scope a {
+    display: grid;
+    gap: var(--ui-space-2);
+    height: 100%;
+    padding: var(--ui-space-3);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-card);
+    color: var(--ui-card-fg);
+    text-decoration: none;
+    transition:
+      border-color 150ms,
+      transform 150ms;
+  }
+  :scope a:hover {
+    border-color: var(--ui-accent);
+    transform: translateY(-2px);
+  }
+  :scope a:focus-visible {
+    outline: 2px solid var(--ui-ring);
+    outline-offset: 2px;
+  }
+  .name {
+    font-weight: 600;
+  }
+  .scene {
+    display: grid;
+    place-items: center;
+    height: 7.5rem;
+    overflow: hidden;
+    border-radius: calc(var(--ui-radius) / 1.5);
+    background: var(--ui-muted-bg);
+  }
+
+  /* Toasts slide in one after another, wait, and leave. */
+  .toasts {
+    align-content: center;
+    gap: var(--ui-space-1);
+  }
+  .toast {
+    display: flex;
+    gap: var(--ui-space-2);
+    align-items: center;
+    width: 9.5rem;
+    padding: var(--ui-space-1) var(--ui-space-2);
+    border: 1px solid var(--ui-border);
+    border-left: 3px solid var(--tone);
+    border-radius: calc(var(--ui-radius) / 2);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    font-size: calc(var(--ui-font-size) - 2px);
+    box-shadow: var(--ui-shadow);
+    animation: slide-in 4.5s calc(var(--i) * 250ms) ease-out infinite both;
+  }
+  .ok {
+    --tone: var(--ui-success);
+  }
+  .info {
+    --tone: var(--ui-accent);
+  }
+  .warn {
+    --tone: var(--ui-warning);
+  }
+  .mark {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--tone);
+  }
+  @keyframes slide-in {
+    0% {
+      opacity: 0;
+      transform: translateX(120%);
+    }
+    12%,
+    78% {
+      opacity: 1;
+      transform: none;
+    }
+    90%,
+    100% {
+      opacity: 0;
+      transform: translateX(120%);
+    }
+  }
+
+  /* The line draws itself; the area fades in under it. */
+  .chart {
+    width: 85%;
+    height: 70%;
+    overflow: visible;
+  }
+  .line {
+    fill: none;
+    stroke: var(--ui-chart-1, var(--ui-accent));
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 100;
+    animation: draw 4s ease-in-out infinite both;
+  }
+  .area {
+    fill: color-mix(in srgb, var(--ui-chart-1, var(--ui-accent)) 22%, transparent);
+    animation: fade 4s ease-in-out infinite both;
+  }
+  @keyframes draw {
+    0% {
+      stroke-dashoffset: 100;
+    }
+    55%,
+    85% {
+      stroke-dashoffset: 0;
+    }
+    100% {
+      stroke-dashoffset: 0;
+      opacity: 0;
+    }
+  }
+  @keyframes fade {
+    0%,
+    35% {
+      opacity: 0;
+    }
+    60%,
+    85% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* A code fills in, a box at a time, the next box lit. */
+  .otp {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ui-space-1);
+  }
+  .cell {
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 2rem;
+    border: 1px solid var(--ui-input);
+    border-radius: calc(var(--ui-radius) / 2);
+    background: var(--ui-bg);
+    font-weight: 700;
+    animation: lit 4s calc(var(--i) * 400ms) step-end infinite both;
+  }
+  .digit {
+    animation: type 4s calc(var(--i) * 400ms) ease-out infinite both;
+  }
+  @keyframes lit {
+    0% {
+      border-color: var(--ui-ring);
+      box-shadow: 0 0 0 1px var(--ui-ring);
+    }
+    10%,
+    100% {
+      border-color: var(--ui-input);
+      box-shadow: none;
+    }
+  }
+  @keyframes type {
+    0%,
+    9% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    14%,
+    80% {
+      opacity: 1;
+      transform: none;
+    }
+    95%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* Switches flip on and off, one after another. */
+  .switches {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ui-space-3);
+  }
+  .switch {
+    position: relative;
+    width: 2.5rem;
+    height: 1.4rem;
+    border-radius: 999px;
+    background: var(--ui-input);
+    animation: track 3s calc(var(--i) * 300ms) ease-in-out infinite both;
+  }
+  .thumb {
+    position: absolute;
+    top: 0.2rem;
+    left: 0.2rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--ui-bg);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+    animation: thumb 3s calc(var(--i) * 300ms) ease-in-out infinite both;
+  }
+  @keyframes track {
+    0%,
+    20%,
+    90%,
+    100% {
+      background: var(--ui-input);
+    }
+    35%,
+    75% {
+      background: var(--ui-accent);
+    }
+  }
+  @keyframes thumb {
+    0%,
+    20%,
+    90%,
+    100% {
+      transform: none;
+    }
+    35%,
+    75% {
+      transform: translateX(1.1rem);
+    }
+  }
+
+  /* Three weeks under their weekdays; a range sweeps in, its ends filled, its middle tinted. */
+  .month {
+    display: grid;
+    grid-template-columns: repeat(7, 1.5rem);
+    gap: 2px 0;
+    font-size: calc(var(--ui-font-size) - 3px);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+  .weekday {
+    color: var(--ui-muted);
+    font-weight: 600;
+  }
+  .day {
+    display: grid;
+    place-items: center;
+    height: 1.4rem;
+  }
+  .day[data-kind='mid'] {
+    animation: range 4s calc(var(--i) * 90ms) ease-in-out infinite both;
+  }
+  .day[data-kind='end'] {
+    border-radius: 6px;
+    font-weight: 700;
+    animation: end 4s calc(var(--i) * 90ms) ease-in-out infinite both;
+  }
+  @keyframes range {
+    0%,
+    15%,
+    85%,
+    100% {
+      background: transparent;
+    }
+    30%,
+    70% {
+      background: var(--ui-accent-soft);
+    }
+  }
+  @keyframes end {
+    0%,
+    10%,
+    90%,
+    100% {
+      background: transparent;
+      color: inherit;
+    }
+    22%,
+    78% {
+      background: var(--ui-accent);
+      color: var(--ui-accent-fg);
+    }
+  }
+
+  /* A button saving: the spinner turns, the label breathes. */
+  .saving {
+    display: inline-flex;
+    gap: var(--ui-space-2);
+    align-items: center;
+    padding: var(--ui-space-2) var(--ui-space-4);
+    border-radius: var(--ui-radius);
+    background: var(--ui-accent);
+    color: var(--ui-accent-fg);
+    font-weight: 600;
+  }
+  .spinner {
+    width: 0.9rem;
+    height: 0.9rem;
+    border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .label {
+    animation: breathe 1.6s ease-in-out infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+  @keyframes breathe {
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :scope * {
+      animation: none !important; /* over every tile's own rules, whatever their weight */
+    }
+  }
+</style>
