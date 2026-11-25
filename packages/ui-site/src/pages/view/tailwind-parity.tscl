@@ -33,6 +33,22 @@
 @import twEmpty from '~/registry/empty.tw.tscl'
 @import uiInputGroup from '~/registry/input-group.tscl'
 @import twInputGroup from '~/registry/input-group.tw.tscl'
+@import uiAspectRatio from '~/registry/aspect-ratio.tscl'
+@import twAspectRatio from '~/registry/aspect-ratio.tw.tscl'
+@import uiBreadcrumb from '~/registry/breadcrumb.tscl'
+@import twBreadcrumb from '~/registry/breadcrumb.tw.tscl'
+@import uiPagination from '~/registry/pagination.tscl'
+@import twPagination from '~/registry/pagination.tw.tscl'
+@import uiTable from '~/registry/table.tscl'
+@import twTable from '~/registry/table.tw.tscl'
+@import uiProgress from '~/registry/progress.tscl'
+@import twProgress from '~/registry/progress.tw.tscl'
+@import uiMeter from '~/registry/meter.tscl'
+@import twMeter from '~/registry/meter.tw.tscl'
+@import uiSlider from '~/registry/slider.tscl'
+@import twSlider from '~/registry/slider.tw.tscl'
+@import uiCollapsible from '~/registry/collapsible.tscl'
+@import twCollapsible from '~/registry/collapsible.tw.tscl'
 @import { ALERT_VARIANTS, BADGE_VARIANTS, BUTTON_VARIANTS, INPUT_VARIANTS, SIZES } from './tailwind-parity.ts'
 
 <cl-head>
@@ -135,6 +151,81 @@
       <twInputGroup [variant]="v"><uiInput aria-label="a" aria-invalid="true" /></twInputGroup>
     </div>
   }
+  <div data-pair="aspect-ratio">
+    <uiAspectRatio ratio="4/3"><img src="/logo.svg" alt="" /></uiAspectRatio
+    ><twAspectRatio ratio="4/3"><img src="/logo.svg" alt="" /></twAspectRatio>
+  </div>
+  <div data-pair="breadcrumb">
+    <uiBreadcrumb
+      [items]="[{ label: 'Home', href: '/' }, { label: 'Components', href: '/components' }, { label: 'Button' }]"
+    /><twBreadcrumb
+      [items]="[{ label: 'Home', href: '/' }, { label: 'Components', href: '/components' }, { label: 'Button' }]"
+    />
+  </div>
+  <div data-pair="pagination-start">
+    <uiPagination [page]="1" [pages]="3" href="?p={page}" label="One" /><twPagination
+      [page]="1"
+      [pages]="3"
+      href="?p={page}"
+      label="Two"
+    />
+  </div>
+  <div data-pair="pagination-middle">
+    <uiPagination [page]="6" [pages]="12" href="?p={page}" label="Three" /><twPagination
+      [page]="6"
+      [pages]="12"
+      href="?p={page}"
+      label="Four"
+    />
+  </div>
+  <div data-pair="table">
+    <uiTable caption="Invoices"
+      ><thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>INV-1</td>
+          <td>$5</td>
+        </tr>
+        <tr>
+          <td>INV-2</td>
+          <td>$7</td>
+        </tr>
+      </tbody></uiTable
+    >
+    <twTable caption="Invoices"
+      ><thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>INV-1</td>
+          <td>$5</td>
+        </tr>
+        <tr>
+          <td>INV-2</td>
+          <td>$7</td>
+        </tr>
+      </tbody></twTable
+    >
+  </div>
+  <div data-pair="progress"><uiProgress [value]="40" label="a" /><twProgress [value]="40" label="a" /></div>
+  <div data-pair="meter"><uiMeter [value]="0.4" label="a" /><twMeter [value]="0.4" label="a" /></div>
+  <div data-pair="slider"><uiSlider [value]="30" aria-label="a" /><twSlider [value]="30" aria-label="a" /></div>
+  <div data-pair="slider-disabled">
+    <uiSlider [value]="30" aria-label="a" disabled /><twSlider [value]="30" aria-label="a" disabled />
+  </div>
+  <div data-pair="collapsible">
+    <uiCollapsible [open]="true">@slot('trigger') {More}Hidden text.</uiCollapsible
+    ><twCollapsible [open]="true">@slot('trigger') {More}Hidden text.</twCollapsible>
+  </div>
 </main>
 
 <style scoped>

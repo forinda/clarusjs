@@ -1,0 +1,31 @@
+{{-- Table, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as table.tscl.
+     Copy it into src/components/ui/ as table.tscl. --}}
+@input caption: string = ''
+@input label: string = ''
+@input parts: { table?: Record<string, string | boolean> } = {}
+
+<div
+  [role]="label || caption ? 'region' : null"
+  [aria-label]="label || caption || null"
+  tabindex="0"
+  data-part="table-scroll"
+  class="
+    max-w-full overflow-x-auto border border-border rounded-lg bg-card
+    focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2
+    [&_table]:w-full [&_table]:border-collapse [&_table]:text-foreground [&_table]:font-sans [&_table]:text-(length:--ui-font-size) [&_table]:leading-[1.5]
+    [&_caption]:py-2 [&_caption]:px-3 [&_caption]:text-muted-foreground [&_caption]:text-start
+    [&_:is(th,td)]:py-2 [&_:is(th,td)]:px-3 [&_:is(th,td)]:border-b [&_:is(th,td)]:border-b-border [&_:is(th,td)]:text-start [&_:is(th,td)]:whitespace-nowrap
+    [&_th]:font-semibold [&_tr:last-child>td]:border-b-0
+  "
+>
+  <table [...]="parts.table ?? {}" data-part="table">
+    @if (caption) {
+      <caption>
+        {{
+          caption
+        }}
+      </caption>
+    }
+    <slot />
+  </table>
+</div>
