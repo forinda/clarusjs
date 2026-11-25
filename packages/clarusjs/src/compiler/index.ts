@@ -199,7 +199,14 @@ function unwrapFragments(parsed: ReturnType<typeof parse>, file: string, source:
   const root = fragmentRoot(parsed.nodes)
   // A <fragment> at the top level renders like its children written there: whitespace-only text between them is
   // dropped, as at the top level (else wrapping inline roots in one would add spaces between them).
-  parsed.nodes = parsed.nodes.flatMap((n) => (n.type === 'element' && n.tag === 'fragment' && !n.attrs.length ? n.children.filter((c) => !(c.type === 'text' && !c.value.trim())) : [n]))
+  // Text with words keeps its spaces, but not the line break after <fragment> (written at the top level, it'd start there).
+  parsed.nodes = parsed.nodes.flatMap((n) => {
+    if (n.type !== 'element' || n.tag !== 'fragment' || n.attrs.length) return [n]
+    const kept = n.children.filter((c) => !(c.type === 'text' && !c.value.trim()))
+    const head = kept[0]
+    if (head?.type === 'text') kept[0] = { ...head, value: head.value.trimStart() }
+    return kept
+  })
   parsed.nodes = flat(parsed.nodes)
   return root
 }

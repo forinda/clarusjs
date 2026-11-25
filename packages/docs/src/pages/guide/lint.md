@@ -63,7 +63,7 @@ npx clarusjs check --fix
 
 | Rule | Fix |
 |---|---|
-| `one-root` | wraps the component's top level in `<fragment>`: the same HTML, and the warning goes. Replace it with an element when you want what a parent passes to land on one |
+| `one-root` | wraps the component's top level in `<fragment>`: the same HTML, and the warning goes. Replace it with an element when you want what a parent passes to land on one. No fix when a `<script>` or `<style>` sits between the roots: move it above or below them first |
 
 A fix doesn't re-indent (that would change the text of a `<pre>` inside); run the [formatter](/guide/formatting) afterwards. From code, `applyFixes(source, lint(source, file))` from `clarusjs/compiler` returns the fixed source.
 

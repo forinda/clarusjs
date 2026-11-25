@@ -159,3 +159,20 @@ test('applyFixes: several edits, from the end, skipping any that overlap; messag
   expect(applyFixes('abcdef', [at(0, 1, 'X'), at(4, 6, 'YZ!'), { ...at(2, 3, 'Q'), fix: undefined }])).toBe('XbcdYZ!')
   expect(applyFixes('abcdef', [at(0, 3, 'X'), at(2, 4, 'Y')])).toBe('Xdef')
 })
+
+test('#review: one-root fix: none when a <script> or <style> sits between the roots; text and CRLF keep their rendering', async () => {
+  const { applyFixes, compile } = await import('../../src/compiler/index.ts')
+  const { importCode } = await import('../helpers.ts')
+  const component = 'src/components/x.tscl'
+  const fixOf = (src: string) => lint(src, component).find((m) => m.rule === 'one-root')?.fix
+  expect(fixOf('<a>1</a>\n<script>\n  let c = state(0)\n</script>\n<b (click)="c++">2</b>\n')).toBeUndefined()
+  expect(fixOf('<a>1</a>\n<script server>\n  const x = 1\n</script>\n<b>{{ x }}</b>\n')).toBeUndefined()
+  expect(fixOf('<a>1</a>\n<style>\n  a {}\n</style>\n<b>2</b>\n')).toBeUndefined()
+  const html = async (src: string) => (await importCode(compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js', scope: 's' }).code, 'fixr')).render({}) as string
+  for (const src of ['hello {{ 1 }}\n', 'Hi <b>there</b> friend\n', '<b>a</b>\r\n<i>b</i>\r\n']) {
+    const [m] = lint(src, component).filter((x) => x.rule === 'one-root')
+    const fixed = applyFixes(src, [m!])
+    expect(await html(fixed), src).toBe(await html(src))
+    if (src.includes('\r\n')) expect(fixed.replace(/\r\n/g, '')).not.toContain('\n')
+  }
+})

@@ -140,9 +140,12 @@ export const lintRules: LintRuleDef[] = [
       if (!at) return
       // The fix wraps the roots in <fragment>: the same HTML. Not re-indented (that would change a <pre>'s text).
       const last = nodes.at(-1)!
-      const after = [...parsed.nodes.map((n) => n.start), ...parsed.styles.map((st) => st.tag), parsed.serverScript?.tag ?? -1, parsed.script ? source.lastIndexOf('<script', parsed.script.start) : -1].filter((x) => x > last.start)
+      const blocks = [...parsed.styles.map((st) => st.tag), parsed.serverScript?.tag ?? -1, parsed.script ? source.lastIndexOf('<script', parsed.script.start) : -1]
+      const after = [...parsed.nodes.map((n) => n.start), ...blocks].filter((x) => x > last.start)
       const end = source.slice(0, after.length ? Math.min(...after) : source.length).trimEnd().length
-      const fix = { start: first!.start, end, text: `<fragment>\n${source.slice(first!.start, end)}\n</fragment>` }
+      // No fix with a <script> or <style> between the roots: inside a <fragment> it would no longer be the component's.
+      const nl = source.includes('\r\n') ? '\r\n' : '\n'
+      const fix = blocks.some((b) => b > first!.start && b < end) ? undefined : { start: first!.start, end, text: `<fragment>${nl}${source.slice(first!.start, end)}${nl}</fragment>` }
       report(at.start, 'a component renders one root element, for what a parent passes it (attributes, class, events) to land on: wrap these in an element, or in <fragment> if no element is wanted', fix)
     },
   },
