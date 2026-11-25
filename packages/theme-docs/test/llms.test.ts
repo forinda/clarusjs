@@ -13,6 +13,8 @@ write('guide/forms.md', '---\ntitle: Forms\ngroup: Interactivity\ndescription: T
 write('guide/hidden.md', '---\ntitle: Secret\nsidebar: false\n---\n\n# Secret\n')
 write('tour/[step].tscl', '<p>x</p>\n')
 write('404.tscl', '<h1>Not found</h1>\n')
+// A page kept out of search engines is kept out of llms.txt too (and the sidebar).
+write('view/login.tscl', '<cl-head>\n  <meta name="robots" content="noindex" />\n</cl-head>\n<p>x</p>\n')
 
 test('llms.txt: title, summary, then each sidebar group with its pages, linked, with their descriptions', () => {
   const text = llmsTxt(dir, { title: 'clarusjs', summary: 'A compiler for islands.', site: 'https://clarusjs.com' })

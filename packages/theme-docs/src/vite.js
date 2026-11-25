@@ -181,7 +181,8 @@ export function themeDocs(options = {}) {
 /**
  * Every page under `dir` with its source `file`, its last commit time (`updated`, from one `git log`) and its sidebar
  * entry: frontmatter `title` (else the first `# ` heading, or a .tscl page's `[title]="'…'"`, else the file name),
- * `group` (else the subfolder inside its section), `order`. `hidden` (not in the sidebar): `sidebar: false` and
+ * `group` (else the subfolder inside its section), `order`. `hidden` (not in the sidebar): `sidebar: false`, a .tscl page's
+ * `<meta name="robots" content="noindex">`, and
  * dynamic routes (`[step]`). Files or folders starting with `_` aren't pages.
  * @param {string} dir
  * @returns {import('./nav.ts').PageInfo[]}
@@ -218,7 +219,9 @@ export function readPages(dir) {
     }
     const updated = dates.get(resolve(dir, file))
     if (updated !== undefined) page.updated = updated
-    if (data.sidebar === 'false' || parts.some((part) => part.startsWith('['))) page.hidden = true
+    // Not in the sidebar: asked not to be, a dynamic route, or a .tscl page kept out of search engines (noindex; a Markdown page says sidebar: false).
+    const noindex = m[2] === 'tscl' && /<meta\s+name="robots"\s+content="[^"]*\bnoindex\b/.test(text)
+    if (data.sidebar === 'false' || noindex || parts.some((part) => part.startsWith('['))) page.hidden = true
     pages.push(page)
   }
   return pages
