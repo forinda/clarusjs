@@ -15,3 +15,9 @@ layout: "/src/layouts/wide.tscl"
   <p>Sign in with email and password, with errors on their fields and a handler you replace.</p>
   <iframe src="/view/login" title="Login preview" loading="lazy" style="width: 100%; height: 560px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
 </div>
+
+<div class="block-row">
+  <h2><a href="/blocks/checkout">Checkout</a></h2>
+  <p>A cart with live totals beside three steps, contact, shipping and payment, checked by Zod, with a handler you replace.</p>
+  <iframe src="/view/checkout" title="Checkout preview" loading="lazy" style="width: 100%; height: 760px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</div>

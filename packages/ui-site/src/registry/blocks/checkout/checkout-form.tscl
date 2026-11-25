@@ -1,0 +1,396 @@
+{{--
+  The checkout form: the cart (quantities and removals update the totals at once, in whole cents) beside three steps,
+  contact, shipping and payment. Continue checks the step by its Zod schema (data.ts) and shows its errors, the first
+  one focused; Back keeps what was typed. placeOrder (data.ts) runs as an action() (clarusjs/fetch): the button waits
+  while it runs, a toast says when it worked, or why not, and an error goes back to its field's step. Its own island,
+  so typing never re-renders the page around it.
+--}}
+@import '~/components/ui/select.css'
+@import uiField from '~/components/ui/field.tscl'
+@import uiInput from '~/components/ui/input.tscl'
+@import uiButton from '~/components/ui/button.tscl'
+@import uiSeparator from '~/components/ui/separator.tscl'
+@import uiSelect from '@clarusjs/ui-primitives/select.tscl'
+
+<script>
+  import { action } from 'clarusjs/fetch'
+  import { toast } from '@clarusjs/ui-primitives'
+  import {
+    countries,
+    currency,
+    formatMoney,
+    placeOrder,
+    quantityOf,
+    sampleCart,
+    shippingCents,
+    stepOf,
+    steps,
+    taxRate,
+    totals,
+    validateOrder,
+    validateStep,
+  } from './data.ts'
+  let lines = state(sampleCart.map((l) => ({ ...l })))
+  let order = state({
+    email: '',
+    name: '',
+    address: '',
+    city: '',
+    postal: '',
+    country: 'US',
+    card: '',
+    expiry: '',
+    cvc: '',
+  })
+  let step = state(0)
+  let tried = state(false) // this step's Continue was pressed: show its errors
+  const last = steps.length - 1
+  const sum = () => totals(lines, shippingCents, taxRate)
+  const money = (cents) => formatMoney(cents, currency)
+  const setQuantity = (id, event) =>
+    (lines = lines.map((l) => (l.id === id ? { ...l, quantity: quantityOf(event.target.value) } : l)))
+  const remove = (id) => (lines = lines.filter((l) => l.id !== id))
+  // After the step shows (it renders first): the next frame.
+  const focus = (key) => requestAnimationFrame(() => document.getElementById('checkout-' + key)?.focus())
+  function go(to, show = false) {
+    step = to
+    tried = show
+    focus(steps[to].fields[0])
+  }
+  // The call: pending while it runs, one at a time, its answer in .result and a thrown error in .error. The order
+  // it sent is kept, so its errors stand only while that is unchanged; the first one is focused.
+  let sent = state('')
+  const place = action(
+    async (_, { signal }) => {
+      sent = JSON.stringify(order)
+      const answer = await placeOrder({ ...order, lines }, { signal })
+      const found = answer.errors ?? {}
+      const first = Object.keys(found)[0]
+      if (first) {
+        toast(found[first], { type: 'error' })
+        step = stepOf(first)
+        tried = true
+        focus(first)
+      } else toast('Order placed: ' + answer.id + '.', { type: 'success' })
+      return answer
+    },
+    { onError: () => toast("Couldn't place the order. Check your connection and try again.", { type: 'error' }) },
+  )
+  const server = () => (JSON.stringify(order) === sent ? (place.result?.errors ?? {}) : {})
+  // This page's own rules first: an old answer never hides what's wrong now.
+  const errors = () => ({ ...server(), ...validateOrder(order) })
+  const error = (key) => errors()[key] ?? ''
+  function submit(event) {
+    event.preventDefault()
+    const found = Object.keys(step < last ? validateStep(step, order) : validateOrder(order))
+    if (found.length) {
+      tried = true
+      return found[0] && stepOf(found[0]) !== step ? go(stepOf(found[0]), true) : focus(found[0])
+    }
+    if (step < last) go(step + 1)
+    else place.run()
+  }
+</script>
+
+<div class="checkout-grid">
+  <section class="checkout-summary" aria-labelledby="checkout-summary-title">
+    <h2 id="checkout-summary-title">Order summary</h2>
+    @if (lines.length) {
+      <ul class="checkout-lines">
+        @for (l of lines; track l.id) {
+          <li [data-testid]="'line-' + l.id">
+            <div class="checkout-line-name">
+              <strong>{{ l.name }}</strong>
+              <span>{{ l.variant }}</span>
+            </div>
+            <uiInput
+              type="number"
+              min="0"
+              max="99"
+              inputmode="numeric"
+              [value]="String(l.quantity)"
+              [aria-label]="'Quantity of ' + l.name"
+              (input)="setQuantity(l.id, $event)"
+            />
+            <span class="checkout-money">{{ money(l.unitCents * quantityOf(l.quantity)) }}</span>
+            <uiButton variant="ghost" size="sm" [aria-label]="'Remove ' + l.name" (click)="remove(l.id)">×</uiButton>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="checkout-empty">Your cart is empty.</p>
+    }
+    <uiSeparator />
+    <dl class="checkout-totals">
+      <dt>Subtotal</dt>
+      <dd>{{ money(sum().subtotal) }}</dd>
+      <dt>Shipping</dt>
+      <dd>{{ money(sum().shipping) }}</dd>
+      <dt>Tax</dt>
+      <dd>{{ money(sum().tax) }}</dd>
+      <dt class="checkout-total-label">Total</dt>
+      <dd class="checkout-total" data-testid="checkout-total">{{ money(sum().total) }}</dd>
+    </dl>
+  </section>
+
+  <form novalidate (submit)="submit($event)">
+    <ol class="checkout-steps" aria-label="Steps">
+      @for (s of steps; track s.title) {
+        <li [aria-current]="$index === step ? 'step' : false" [data-done]="$index < step ? 'true' : false">
+          <span class="checkout-step-n">{{ $index + 1 }}</span> {{ s.title }}
+        </li>
+      }
+    </ol>
+    <fieldset [hidden]="step !== 0">
+      <legend>Contact</legend>
+      <uiField
+        id="checkout-email"
+        label="Email"
+        type="email"
+        name="email"
+        [error]="error('email')"
+        [show]="tried"
+        [(value)]="order.email"
+      />
+    </fieldset>
+    <fieldset [hidden]="step !== 1">
+      <legend>Shipping</legend>
+      <uiField
+        id="checkout-name"
+        label="Full name"
+        name="name"
+        [error]="error('name')"
+        [show]="tried"
+        [(value)]="order.name"
+      />
+      <uiField
+        id="checkout-address"
+        label="Address"
+        name="address"
+        [error]="error('address')"
+        [show]="tried"
+        [(value)]="order.address"
+      />
+      <div class="checkout-row">
+        <uiField
+          id="checkout-city"
+          label="City"
+          name="city"
+          [error]="error('city')"
+          [show]="tried"
+          [(value)]="order.city"
+        />
+        <uiField
+          id="checkout-postal"
+          label="Postal code"
+          name="postal"
+          [error]="error('postal')"
+          [show]="tried"
+          [(value)]="order.postal"
+        />
+      </div>
+      <uiSelect id="checkout-country" label="Country" name="country" [options]="countries" [(value)]="order.country" />
+    </fieldset>
+    <fieldset [hidden]="step !== 2">
+      <legend>Payment</legend>
+      <uiField
+        id="checkout-card"
+        label="Card number"
+        name="card"
+        placeholder="1234 1234 1234 1234"
+        [error]="error('card')"
+        [show]="tried"
+        [(value)]="order.card"
+      />
+      <div class="checkout-row">
+        <uiField
+          id="checkout-expiry"
+          label="Expiry"
+          name="expiry"
+          placeholder="MM/YY"
+          [error]="error('expiry')"
+          [show]="tried"
+          [(value)]="order.expiry"
+        />
+        <uiField
+          id="checkout-cvc"
+          label="CVC"
+          name="cvc"
+          placeholder="123"
+          [error]="error('cvc')"
+          [show]="tried"
+          [(value)]="order.cvc"
+        />
+      </div>
+    </fieldset>
+    <div class="checkout-actions">
+      @if (step > 0) {
+        <uiButton type="button" variant="outline" size="lg" (click)="go(step - 1)">Back</uiButton>
+      }
+      <uiButton type="submit" size="lg" [disabled]="place.pending || !lines.length">
+        {{
+          step < last
+            ? 'Continue to ' + steps[step + 1].title
+            : place.pending
+              ? 'Placing order…'
+              : 'Place order · ' + money(sum().total)
+        }}
+      </uiButton>
+    </div>
+  </form>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope h2) {
+      margin: 0 0 var(--ui-space-4);
+      font-size: calc(var(--ui-font-size) * 1.15);
+    }
+    :where(:scope) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+      gap: var(--ui-space-8);
+      align-items: start;
+    }
+    :where(.checkout-summary) {
+      grid-column: 2;
+      grid-row: 1;
+      padding: var(--ui-space-5);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-card);
+      color: var(--ui-card-fg);
+    }
+    :where(:scope form) {
+      display: grid;
+      gap: var(--ui-space-6);
+      grid-column: 1;
+      grid-row: 1;
+    }
+    :where(:scope fieldset) {
+      display: grid;
+      gap: var(--ui-space-3);
+      margin: 0;
+      padding: 0;
+      border: 0;
+      min-width: 0;
+    }
+    :where(:scope legend) {
+      margin-bottom: var(--ui-space-2);
+      padding: 0;
+      font-weight: 600;
+      font-size: calc(var(--ui-font-size) * 1.1);
+    }
+    :where(:scope [data-part='field']),
+    :where(:scope [data-part='select']) {
+      max-width: none;
+      min-width: 0;
+      grid-template-columns: minmax(0, 1fr);
+    }
+    :where(.checkout-row) {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--ui-space-3);
+    }
+    :where(.checkout-lines) {
+      display: grid;
+      gap: var(--ui-space-3);
+      margin: 0 0 var(--ui-space-4);
+      padding: 0;
+      list-style: none;
+    }
+    :where(.checkout-lines li) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 64px 72px auto;
+      gap: var(--ui-space-2);
+      align-items: center;
+    }
+    :where(.checkout-line-name) {
+      display: grid;
+      min-width: 0;
+    }
+    :where(.checkout-line-name span),
+    :where(.checkout-empty) {
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where(.checkout-money),
+    :where(.checkout-totals dd) {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    :where(.checkout-totals) {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: var(--ui-space-2);
+      margin: var(--ui-space-4) 0 0;
+    }
+    :where(.checkout-totals dd) {
+      margin: 0;
+    }
+    :where(.checkout-total-label),
+    :where(.checkout-total) {
+      font-weight: 700;
+    }
+    :where(:scope fieldset[hidden]) {
+      display: none;
+    }
+    :where(.checkout-steps) {
+      display: flex;
+      gap: var(--ui-space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where(.checkout-steps li) {
+      display: flex;
+      flex: 1;
+      gap: var(--ui-space-2);
+      align-items: center;
+      padding-bottom: var(--ui-space-2);
+      border-bottom: 2px solid var(--ui-border);
+    }
+    :where(.checkout-steps li[aria-current='step']),
+    :where(.checkout-steps li[data-done]) {
+      border-color: var(--ui-accent);
+      color: var(--ui-fg);
+    }
+    :where(.checkout-steps li[aria-current='step']) {
+      font-weight: 600;
+    }
+    :where(.checkout-step-n) {
+      display: inline-grid;
+      place-items: center;
+      width: 1.5em;
+      height: 1.5em;
+      border-radius: 50%;
+      background: var(--ui-muted-bg);
+      font-variant-numeric: tabular-nums;
+    }
+    :where(.checkout-steps li[aria-current='step'] .checkout-step-n),
+    :where(.checkout-steps li[data-done] .checkout-step-n) {
+      background: var(--ui-accent);
+      color: var(--ui-accent-fg);
+    }
+    :where(.checkout-actions) {
+      display: flex;
+      gap: var(--ui-space-3);
+    }
+    :where(.checkout-actions [type='submit']) {
+      flex: 1;
+    }
+    @media (max-width: 760px) {
+      :where(:scope) {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      :where(.checkout-summary),
+      :where(:scope form) {
+        grid-column: 1;
+        grid-row: auto;
+      }
+    }
+  }
+</style>

@@ -54,14 +54,14 @@ test('copied files import only ui-primitives, clarusjs and the entries they list
   }
 })
 
-test('a block imports what works once pasted: components as ~/components/ui/<name>.tscl or .css (listed in uses), its own files as ./', () => {
+test('a block imports what works once pasted: components as ~/components/ui/<name>.tscl or .css (listed in uses), its own files as ./, npm packages listed in packages', () => {
   for (const { entry, file } of files) {
     if (entry.kind !== 'block') continue
     const dir = file.slice(0, file.lastIndexOf('/') + 1)
     for (const s of specifiers(file)) {
       const component = /^~\/components\/ui\/([a-z-]+)\.(?:tscl|css)$/.exec(s)?.[1]
       const own = /^\.\/([\w.-]+)$/.exec(s)?.[1]
-      const ok = shared(s) || (!!component && entry.uses.includes(component)) || (!!own && entry.files.includes(dir + own))
+      const ok = shared(s) || (!!component && entry.uses.includes(component)) || (!!own && entry.files.includes(dir + own)) || (entry.packages ?? []).includes(s)
       expect(ok, `${file} imports ${s}`).toBe(true)
     }
   }
@@ -403,4 +403,6 @@ test('codeFiles: a block\'s own files, then each component it uses, named as the
   const login = blocks.find((b) => b.name === 'login')!
   expect(codeFiles(login).map((f) => f.path)).toEqual(['login.tscl', 'login-form.tscl', 'data.ts', 'components/ui/card.tscl', 'components/ui/field.tscl', 'components/ui/button.tscl', 'components/ui/toast.css'])
   expect(codeFiles(login)[3]!.file).toBe('card.tscl')
+  const checkout = blocks.find((b) => b.name === 'checkout')!
+  expect(codeFiles(checkout).map((f) => f.path)).toEqual(['checkout.tscl', 'checkout-form.tscl', 'data.ts', 'components/ui/field.tscl', 'components/ui/input.tscl', 'components/ui/button.tscl', 'components/ui/separator.tscl', 'components/ui/select.css', 'components/ui/toast.css'])
 })

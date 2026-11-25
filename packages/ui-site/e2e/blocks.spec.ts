@@ -90,7 +90,7 @@ test('/view/login: the block alone, no site chrome, kept out of search, the site
   expect(await (await request.get('/llms.txt')).text()).not.toContain('/view/')
 })
 
-for (const name of ['login']) {
+for (const name of ['login', 'checkout']) {
   test(`/view/${name}: styled by theme.css (its tokens are set)`, async ({ page }) => {
     await page.goto(`/view/${name}`)
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ui-accent').trim())).not.toBe('')
@@ -106,10 +106,10 @@ test('/view/login: a theme saved on /theme applies to the block', async ({ page 
   await expect(page.locator('[data-ui-preview] [data-part="button"][data-variant="default"]').first()).toHaveCSS('background-color', 'rgb(255, 0, 0)')
 })
 
-for (const mode of modes) {
-  test(`/blocks/login has no accessibility violations (${mode.label})`, async ({ browser }) => {
+for (const mode of modes) for (const name of ['login', 'checkout']) {
+  test(`/blocks/${name} has no accessibility violations (${mode.label})`, async ({ browser }) => {
     const page = await pageIn(browser, mode)
-    await page.goto('/blocks/login')
+    await page.goto(`/blocks/${name}`)
     await expect(page.frameLocator('iframe').locator('form')).toBeVisible()
     expect(await axeViolations(page)).toEqual([])
   })
@@ -190,6 +190,121 @@ test.describe('login block', () => {
   test('at phone width nothing scrolls sideways', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 })
     await gotoLogin(page)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+})
+
+/** The checkout page, once its island has attached. */
+async function gotoCheckout(page: import('@playwright/test').Page) {
+  await page.goto('/view/checkout')
+  await page.locator('cl-island[c="checkout-form"][data-cl-ready]').waitFor({ state: 'attached' })
+}
+
+test.describe('checkout block', () => {
+  const next = (page: import('@playwright/test').Page) => page.getByRole('button', { name: /Continue to/ }).click()
+  const fill = async (
+    page: import('@playwright/test').Page,
+    { card = '4242 4242 4242 4242', email = 'ada@example.com' } = {},
+  ) => {
+    await page.getByLabel('Email').fill(email)
+    await next(page)
+    await page.getByLabel('Full name').fill('Ada Lovelace')
+    await page.getByLabel('Address').fill('12 St James Sq')
+    await page.getByLabel('City').fill('London')
+    await page.getByLabel('Postal code').fill('SW1Y 4JH')
+    await page.getByLabel('Country').selectOption('GB')
+    await next(page)
+    await page.getByLabel('Card number').fill(card)
+    await page.getByLabel('Expiry').fill('12/30')
+    await page.getByLabel('CVC').fill('123')
+  }
+  const place = (page: import('@playwright/test').Page) => page.getByRole('button', { name: /Place order/ })
+
+  test('/blocks/checkout: the frame, and Code lists its files and components', async ({ page }) => {
+    await page.goto('/blocks/checkout')
+    await expect(page.frameLocator('iframe[src="/view/checkout"]').locator('form')).toBeVisible()
+    await page.getByRole('button', { name: 'Code', exact: true }).click()
+    const tree = page.getByRole('navigation', { name: 'Files' })
+    for (const f of ['checkout.tscl', 'checkout-form.tscl', 'data.ts', 'field.tscl', 'select.css', 'toast.css'])
+      await expect(tree.getByRole('button', { name: f })).toBeVisible()
+    await expect(page.locator('.needs')).toContainText('pnpm add zod')
+  })
+
+  test('typing key by key keeps every key and the focus', async ({ page }) => {
+    await gotoCheckout(page)
+    await page.getByLabel('Email').pressSequentially('ada@example.com')
+    await expect(page.getByLabel('Email')).toHaveValue('ada@example.com')
+    await expect(page.getByLabel('Email')).toBeFocused()
+  })
+
+  test('changing a quantity updates its line and the total', async ({ page }) => {
+    await gotoCheckout(page)
+    const total = page.getByTestId('checkout-total')
+    await expect(total).toHaveText('$143.24')
+    await page.getByLabel('Quantity of Canvas tote').fill('3')
+    await expect(page.getByTestId('line-tote')).toContainText('$66.00')
+    await expect(total).toHaveText('$167.00')
+    await page.getByLabel('Quantity of Canvas tote').fill('-2')
+    await expect(page.getByTestId('line-tote')).toContainText('$0.00')
+  })
+
+  test("an empty cart says so and can't be ordered", async ({ page }) => {
+    await gotoCheckout(page)
+    for (const name of ['Linen shirt', 'Canvas tote', 'Wool socks'])
+      await page.getByRole('button', { name: `Remove ${name}` }).click()
+    await expect(page.getByText('Your cart is empty.')).toBeVisible()
+    await expect(page.getByTestId('checkout-total')).toHaveText('$0.00')
+    await expect(page.getByRole('button', { name: /Continue to/ })).toBeDisabled()
+  })
+
+  test('three steps: Continue checks only this step, focusing its first error; Back keeps what was typed', async ({
+    page,
+  }) => {
+    await gotoCheckout(page)
+    const steps = page.getByRole('list', { name: 'Steps' })
+    await expect(steps.locator('[aria-current="step"]')).toHaveText(/Contact/)
+    await page.getByRole('button', { name: 'Continue to Shipping' }).click()
+    await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByLabel('Email')).toBeFocused()
+    await page.getByLabel('Email').fill('ada@example.com')
+    await page.getByRole('button', { name: 'Continue to Shipping' }).click()
+    await expect(steps.locator('[aria-current="step"]')).toHaveText(/Shipping/)
+    await expect(page.getByLabel('Full name')).toBeFocused()
+    await expect(page.getByLabel('Full name')).not.toHaveAttribute('aria-invalid', 'true') // not shown before this step's Continue
+    await page.getByRole('button', { name: 'Continue to Payment' }).click()
+    await expect(page.getByLabel('Full name')).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByLabel('Card number')).toBeHidden()
+    await page.getByRole('button', { name: 'Back' }).click()
+    await expect(page.getByLabel('Email')).toHaveValue('ada@example.com')
+  })
+
+  test('a declined card: a toast, the error on its field, focused; a good card places the order', async ({ page }) => {
+    await gotoCheckout(page)
+    await fill(page, { card: '4000 0000 0000 0002' })
+    await place(page).click()
+    await expect(page.locator('[data-part="toast"][data-type="error"]')).toContainText('Your card was declined.')
+    await expect(page.locator('[data-part="field"]').getByText('Your card was declined.')).toBeVisible()
+    await expect(page.getByLabel('Card number')).toBeFocused()
+    await page.getByLabel('Card number').fill('4242 4242 4242 4242')
+    await expect(page.locator('[data-part="field"]').getByText('Your card was declined.')).toBeHidden()
+    await place(page).click()
+    await expect(page.locator('[data-part="toast"][data-type="success"]')).toContainText(/Order placed: ord_\w+/)
+  })
+
+  test('a failed call says so in a toast, and the order can be sent again', async ({ page }) => {
+    await gotoCheckout(page)
+    await fill(page, { email: 'offline@example.com' })
+    await place(page).click()
+    await expect(page.locator('[data-part="toast"][data-type="error"]')).toContainText("Couldn't place the order")
+    await expect(place(page)).toBeEnabled()
+  })
+
+  test('at phone width the summary comes first and nothing scrolls sideways', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await gotoCheckout(page)
+    const summary = await page.getByRole('region', { name: 'Order summary' }).boundingBox()
+    const form = await page.locator('form').boundingBox()
+    expect(summary!.y).toBeLessThan(form!.y)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   })
 })
