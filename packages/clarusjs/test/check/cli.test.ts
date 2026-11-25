@@ -80,7 +80,7 @@ test('the command line runs check, with --json and an exit code', async () => {
   expect(JSON.parse(run.stdout)).toEqual([expect.objectContaining({ file: 'src/pages/index.tscl', line: 2, column: 9, severity: 'error', code: 'TS2339' })])
   const help = spawnSync(process.execPath, ['--experimental-strip-types', '--no-warnings', cli, '--help'], { encoding: 'utf8' })
   expect(help.stdout).toMatch(/check \[options\] \[dir\]/)
-})
+}, 30_000) // two Node processes: slow on Windows runners
 
 test('#23: the type-checking guide shows the real output for its example', () => {
   const guide = readFileSync(resolve(import.meta.dirname, '../../../docs/src/pages/guide/type-checking.md'), 'utf8')
@@ -176,7 +176,7 @@ test('review: views.d.ts is declarations only, so an app tsconfig can include it
   const errors = run.stdout.split('\n').filter((l) => l.includes('error TS'))
   expect(errors).toHaveLength(1)
   expect(errors[0]).toMatch(/^src\/server\/mail\.ts\(3,.*'nam' does not exist/)
-})
+}, 30_000) // a tsc process: slow on Windows runners
 
 test('#161: components from packages are type-checked where they are used (their own imports resolve too)', () => {
   const root = project({
