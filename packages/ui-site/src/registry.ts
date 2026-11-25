@@ -4,6 +4,8 @@
 export type Entry = {
   /** A component (the default), or a block: a whole page built from components, in src/registry/blocks/<name>/. */
   kind?: 'component' | 'block'
+  /** A block's category on /blocks ('Authentication'), to group and filter by. */
+  category?: string
   /** Page name, and the usage example's: 'button' (button-demo.tscl). */
   name: string
   title: string
@@ -452,6 +454,7 @@ export const registry: Entry[] = [
   {
     kind: 'block',
     name: 'login',
+    category: 'Authentication',
     title: 'Login',
     description: 'Sign in with email and password, with errors on their fields and a handler you replace.',
     files: ['blocks/login/login.tscl', 'blocks/login/login-form.tscl', 'blocks/login/data.ts'],
@@ -463,6 +466,7 @@ export const registry: Entry[] = [
   {
     kind: 'block',
     name: 'checkout',
+    category: 'Commerce',
     title: 'Checkout',
     description: 'A cart with live totals beside three steps, contact, shipping and payment, checked by Zod, with a handler you replace.',
     files: ['blocks/checkout/checkout.tscl', 'blocks/checkout/checkout-form.tscl', 'blocks/checkout/data.ts'],

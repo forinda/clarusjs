@@ -1,0 +1,86 @@
+{{-- /blocks' search box and categories: shows the rows ([data-block], in the slot) whose name, line or category has
+     the words typed, in the category picked. --}}
+@import { blocks } from '~/registry.ts'
+@import uiInput from '~/registry/input.tscl'
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  const categories = [...new Set(blocks.map((b) => b.category ?? ''))].filter(Boolean)
+  let query = state('')
+  let category = state('')
+  let shown = state(blocks.length)
+  const search = (event) => (query = event.target.value)
+  function wire(el) {
+    return effect(() => {
+      const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+      let count = 0
+      for (const row of el.querySelectorAll('[data-block]')) {
+        const text = row.textContent.toLowerCase()
+        const show =
+          (!category || row.getAttribute('data-category') === category) && words.every((w) => text.includes(w))
+        row.hidden = !show
+        if (show) count++
+      }
+      shown = count
+    })
+  }
+</script>
+
+<div class="block-filter" [use]="wire">
+  <div class="block-filter-bar">
+    <uiInput
+      type="search"
+      aria-label="Search blocks"
+      placeholder="Search blocks"
+      [value]="query"
+      (input)="search($event)"
+    />
+    <div class="block-filter-cats" role="group" aria-label="Categories">
+      <button type="button" [aria-pressed]="category === '' ? 'true' : 'false'" (click)="category = ''">All</button>
+      @for (c of categories; track c) {
+        <button type="button" [aria-pressed]="category === c ? 'true' : 'false'" (click)="category = c">{{ c }}</button>
+      }
+    </div>
+  </div>
+  <p class="block-filter-status" role="status">{{ shown ? '' : 'No blocks match "' + query.trim() + '".' }}</p>
+  <slot />
+</div>
+
+<style scoped>
+  .block-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin: 24px 0;
+  }
+  [data-part='text-input'] {
+    flex: 1;
+    min-width: 12em;
+    max-width: 24rem;
+  }
+  .block-filter-cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .block-filter-cats button {
+    padding: 4px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .block-filter-cats button[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .block-filter-status {
+    margin: 0;
+  }
+  .block-filter-status:empty {
+    display: none;
+  }
+</style>
