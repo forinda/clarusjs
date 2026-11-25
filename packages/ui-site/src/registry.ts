@@ -162,6 +162,16 @@ export const registry: Entry[] = [
     island: false,
   },
   {
+    name: 'typography',
+    group: 'Misc',
+    title: 'Typography',
+    description: 'Plain HTML, Markdown\'s or a CMS\'s, set from the theme: headings, lists, quotes, code and tables. CSS only.',
+    files: ['typography.css'],
+    parts: [],
+    uses: [],
+    island: false,
+  },
+  {
     name: 'label',
     group: 'Form',
     title: 'Label',
