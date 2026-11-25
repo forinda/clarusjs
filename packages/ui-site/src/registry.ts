@@ -103,6 +103,17 @@ export const registry: Entry[] = [
     island: true,
   },
   {
+    name: 'otp-input',
+    group: 'Form',
+    title: 'OTP input',
+    description: 'A one-time code shown as a box per digit; one native field, so paste and SMS autofill just work.',
+    files: ['otp-input.tscl'],
+    tailwind: ['otp-input.tw.tscl'],
+    parts: [],
+    uses: [],
+    island: true,
+  },
+  {
     name: 'calendar',
     group: 'Form',
     title: 'Calendar',
