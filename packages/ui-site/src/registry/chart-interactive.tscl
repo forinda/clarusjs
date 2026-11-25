@@ -65,7 +65,11 @@
     (keydown)="key($event)"
   >
     <uiChart [label]="label" [labels]="shownLabels()" [series]="shownSeries()" [type]="type" [height]="height" />
-    <div data-part="chart-guide" [hidden]="active < 0" [style]="'left: ' + at(active) + '%'"></div>
+    <div
+      data-part="chart-guide"
+      [hidden]="active < 0"
+      [style]="'left: ' + at(active) + '%; height: ' + height + 'px'"
+    ></div>
     <div
       data-part="chart-tooltip"
       role="status"
@@ -126,7 +130,6 @@
     :where([data-part='chart-guide']) {
       position: absolute;
       top: 0;
-      bottom: 40px;
       width: 1px;
       background: var(--ui-border);
       pointer-events: none;

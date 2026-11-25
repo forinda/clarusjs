@@ -13,45 +13,62 @@
 
 <figure data-part="chart" [data-type]="type">
   {{-- One layout, computed once. --}}
+  {{-- One layout, computed once. Shapes are SVG stretched to the width (lines keep their stroke); text is HTML placed
+       by percent, so it stays the page's size however wide the chart is. --}}
   @for (c of [chartLayout(labels, series, type, height)]; track c.width) {
-    <svg role="img" [aria-label]="label" [viewBox]="'0 0 ' + c.width + ' ' + (c.height + 24)" data-part="chart-plot">
-      @for (t of c.ticks; track t.value) {
-        <line x1="0" [x2]="c.width" [y1]="t.y" [y2]="t.y" data-part="chart-grid" />
-        <text x="0" [y]="t.y - 4" data-part="chart-tick">{{ t.value }}</text>
-      }
-      @for (p of c.paths; track $index) {
-        @if (p.area) {
+    <div data-part="chart-frame">
+      <svg
+        role="img"
+        [aria-label]="label"
+        [viewBox]="'0 0 ' + c.width + ' ' + c.height"
+        preserveAspectRatio="none"
+        [style]="'height: ' + c.height + 'px'"
+        data-part="chart-plot"
+      >
+        @for (t of c.ticks; track t.value) {
+          <line x1="0" [x2]="c.width" [y1]="t.y" [y2]="t.y" data-part="chart-grid" />
+        }
+        @for (p of c.paths; track $index) {
+          @if (p.area) {
+            <path
+              [d]="p.area"
+              [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'"
+              data-part="chart-area"
+            />
+          }
           <path
-            [d]="p.area"
+            [d]="p.line"
             [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'"
-            data-part="chart-area"
+            data-part="chart-line"
           />
         }
-        <path [d]="p.line" [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'" data-part="chart-line" />
+        @for (b of c.bars; track $index) {
+          <rect
+            [x]="b.x"
+            [y]="b.y"
+            [width]="b.w"
+            [height]="b.h"
+            [style]="'--ui-series: var(--ui-chart-' + ((b.series % 5) + 1) + ')'"
+            data-part="chart-bar"
+          />
+        }
+      </svg>
+      @for (t of c.ticks; track t.value) {
+        <span data-part="chart-tick" aria-hidden="true" [style]="'top: ' + t.y + 'px'">{{ t.value }}</span>
       }
-      @for (b of c.bars; track $index) {
-        <rect
-          [x]="b.x"
-          [y]="b.y"
-          [width]="b.w"
-          [height]="b.h"
-          [style]="'--ui-series: var(--ui-chart-' + ((b.series % 5) + 1) + ')'"
-          data-part="chart-bar"
-        />
-      }
+    </div>
+    <div data-part="chart-labels" aria-hidden="true">
       @for (l of c.labels; track l.i) {
-        <text
-          [x]="l.x"
-          [y]="c.height + 18"
-          [text-anchor]="
+        <span
+          data-part="chart-label"
+          [data-align]="
             type !== 'bar' && l.i === 0 ? 'start' : type !== 'bar' && l.i === labels.length - 1 ? 'end' : 'middle'
           "
-          data-part="chart-label"
+          [style]="'left: ' + (l.x / c.width) * 100 + '%'"
+          >{{ l.text }}</span
         >
-          {{ l.text }}
-        </text>
       }
-    </svg>
+    </div>
   }
   @if (series.length > 1) {
     <ul data-part="chart-legend" aria-hidden="true">
@@ -100,11 +117,37 @@
       color: var(--ui-fg);
       font: var(--ui-font-size) var(--ui-font);
     }
+    :where([data-part='chart-frame']) {
+      position: relative;
+    }
     :where([data-part='chart-plot']) {
       display: block;
       width: 100%;
-      height: auto;
       overflow: visible;
+    }
+    /* A tick's value sits just above its line, at the left. */
+    :where([data-part='chart-tick']) {
+      position: absolute;
+      left: 0;
+      transform: translateY(-100%);
+      padding-bottom: calc(var(--ui-space) / 2);
+      line-height: 1;
+    }
+    :where([data-part='chart-labels']) {
+      position: relative;
+      height: 1.5em;
+    }
+    :where([data-part='chart-label']) {
+      position: absolute;
+      top: 4px;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+    :where([data-part='chart-label'][data-align='start']) {
+      transform: none;
+    }
+    :where([data-part='chart-label'][data-align='end']) {
+      transform: translateX(-100%);
     }
     :where([data-part='chart-grid']) {
       stroke: var(--ui-border);
@@ -112,7 +155,7 @@
     }
     :where([data-part='chart-tick']),
     :where([data-part='chart-label']) {
-      fill: var(--ui-muted);
+      color: var(--ui-muted);
       font-size: calc(var(--ui-font-size) - 2px);
     }
     :where([data-part='chart-area']) {

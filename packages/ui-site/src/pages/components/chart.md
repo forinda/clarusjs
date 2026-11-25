@@ -26,7 +26,7 @@ Copy both files into `src/components/ui/`: `chart.tscl`, and `chart-geometry.ts`
 ## Styling
 
 - **On the root:** `class`, `style`, `id`, `aria-*` and `data-*` written on the tag land on its root element; `class` and `style` merge with its own.
-- **Selectors:** `data-part` names `chart`, `chart-plot`, `chart-grid`, `chart-tick`, `chart-label`, `chart-area`, `chart-line`, `chart-bar`, `chart-legend`, `chart-data` and `chart-table` (the data, visually hidden); state attributes `data-type`.
+- **Selectors:** `data-part` names `chart`, `chart-frame`, `chart-plot`, `chart-grid`, `chart-tick`, `chart-labels`, `chart-label`, `chart-area`, `chart-line`, `chart-bar`, `chart-legend`, `chart-data` and `chart-table` (the data, visually hidden); state attributes `data-type`, and `data-align` on each label (`start`, `middle`, `end`).
 - **Colours:** each series takes `--ui-chart-1` to `--ui-chart-5` in turn (set as `--ui-series` on its shapes).
 - **Your rules win:** every rule here has zero specificity (`:where()`) and sits in `@layer components`, so your own CSS and Tailwind utilities override it.
 

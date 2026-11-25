@@ -89,7 +89,7 @@ test('chart.tscl: an image of the data, named, with a path per series (area), co
   expect(html.match(/<path [^>]*data-part="chart-line"/g)).toHaveLength(2)
   expect(html).toContain('--ui-chart-1')
   expect(html).toContain('--ui-chart-2')
-  expect(html).toContain('>Wed</text>')
+  expect(html).toMatch(/<span data-part="chart-label"[^>]*>Wed<\/span>/)
 })
 
 test('chart.tscl: bars as rects; line without the area', async () => {
