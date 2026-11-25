@@ -214,6 +214,7 @@
     }
     :where([data-part='calendar-month']),
     :where([data-part='calendar-year']) {
+      min-width: 0; /* short of room, the lists give way, never the arrows */
       min-height: var(--ui-control-sm);
       padding: 0 var(--ui-space-1);
       border: 1px solid var(--ui-border);
@@ -257,6 +258,7 @@
     :where([data-part='calendar-next-year']) {
       display: grid;
       place-items: center;
+      flex-shrink: 0; /* a target no smaller than its size */
       width: var(--ui-control-sm);
       height: var(--ui-control-sm);
       padding: 0;

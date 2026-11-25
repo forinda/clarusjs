@@ -155,3 +155,12 @@ test('calendar: its header fits a narrow phone (the lists take a row of their ow
   const grid = page.locator('.demo:not(.example) [data-part="calendar-grid"]')
   expect((await head.boundingBox())!.width).toBeLessThanOrEqual((await grid.boundingBox())!.width + 1)
 })
+
+test('calendar: squeezed, its arrows keep a 24px target and the lists give way', async ({ page }) => {
+  await ready(page, '/components/calendar', 'calendar-demo')
+  const cal = page.locator('.demo:not(.example) [data-part="calendar"]')
+  // Wider fonts (CI's) make the lists wider than the row: here, the row is made narrower than them instead.
+  await cal.locator('[data-part="calendar-head"]').evaluate((el: HTMLElement) => (el.style.width = '200px'))
+  for (const part of ['calendar-prev-year', 'calendar-prev', 'calendar-next', 'calendar-next-year'])
+    expect((await cal.locator(`[data-part="${part}"]`).boundingBox())!.width).toBeGreaterThanOrEqual(24)
+})
