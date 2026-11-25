@@ -1,0 +1,61 @@
+{{--
+  Scroll area: a box that scrolls, with thin scrollbars in the theme's colours and soft shadows at an edge while
+  there's more to see (CSS only: no JavaScript). It's a region named by label, and focusable, so the keyboard can
+  scroll it. Give it a height (or a width, for horizontal) with class or style; orientation picks the direction.
+--}}
+@input label: string
+@input orientation: 'vertical' | 'horizontal' | 'both' = 'vertical'
+
+<div data-part="scroll-area" role="region" [aria-label]="label" tabindex="0" [data-orientation]="orientation">
+  <slot />
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    /* The shadows: two covers in the background's colour scroll with the content (local) and hide the two shadows
+       (scroll) at an end; away from it they move off and the shadow shows. */
+    :where(:scope) {
+      --ui-scroll-cover: var(--ui-bg);
+      --ui-scroll-shade: color-mix(in srgb, var(--ui-fg) 18%, transparent);
+      overflow: hidden auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: var(--ui-border) transparent;
+      background:
+        linear-gradient(var(--ui-scroll-cover) 30%, transparent) top / 100% calc(var(--ui-space) * 10),
+        linear-gradient(transparent, var(--ui-scroll-cover) 70%) bottom / 100% calc(var(--ui-space) * 10),
+        radial-gradient(farthest-side at 50% 0, var(--ui-scroll-shade), transparent) top / 100%
+          calc(var(--ui-space) * 3),
+        radial-gradient(farthest-side at 50% 100%, var(--ui-scroll-shade), transparent) bottom / 100%
+          calc(var(--ui-space) * 3),
+        var(--ui-scroll-cover);
+      background-repeat: no-repeat;
+      background-attachment: local, local, scroll, scroll;
+      color: var(--ui-fg);
+    }
+    :where(:scope[data-orientation='horizontal']) {
+      overflow: auto hidden;
+      background:
+        linear-gradient(to right, var(--ui-scroll-cover) 30%, transparent) left / calc(var(--ui-space) * 10) 100%,
+        linear-gradient(to left, var(--ui-scroll-cover) 30%, transparent) right / calc(var(--ui-space) * 10) 100%,
+        radial-gradient(farthest-side at 0 50%, var(--ui-scroll-shade), transparent) left / calc(var(--ui-space) * 3)
+          100%,
+        radial-gradient(farthest-side at 100% 50%, var(--ui-scroll-shade), transparent) right /
+          calc(var(--ui-space) * 3) 100%,
+        var(--ui-scroll-cover);
+      background-repeat: no-repeat;
+      background-attachment: local, local, scroll, scroll;
+    }
+    :where(:scope[data-orientation='both']) {
+      overflow: auto;
+    }
+    :where(:scope:hover) {
+      scrollbar-color: var(--ui-muted) transparent;
+    }
+    :where(:scope:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+  }
+</style>

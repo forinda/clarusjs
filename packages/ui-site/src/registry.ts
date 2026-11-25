@@ -139,6 +139,18 @@ export const registry: Entry[] = [
     island: true,
   },
   {
+    name: 'scroll-area',
+    group: 'Panel',
+    title: 'Scroll area',
+    description: 'A box that scrolls, with thin themed scrollbars and shadows at an edge with more to see. CSS only.',
+    files: ['scroll-area.tscl'],
+    tailwind: ['scroll-area.tw.tscl'],
+    parts: [],
+    uses: [],
+    examples: ['horizontal'],
+    island: false,
+  },
+  {
     name: 'label',
     group: 'Form',
     title: 'Label',

@@ -63,6 +63,8 @@
 @import twDatePicker from '~/registry/date-picker.tw.tscl'
 @import uiResizable from '~/registry/resizable.tscl'
 @import twResizable from '~/registry/resizable.tw.tscl'
+@import uiScrollArea from '~/registry/scroll-area.tscl'
+@import twScrollArea from '~/registry/scroll-area.tw.tscl'
 @import { ALERT_VARIANTS, BADGE_VARIANTS, BUTTON_VARIANTS, CHART_TYPES, INPUT_VARIANTS, SIZES } from './tailwind-parity.ts'
 
 <cl-head>
@@ -313,6 +315,11 @@
   <div data-pair="resizable"><uiResizable id="pr1" /><twResizable id="pr2" /></div>
   <div data-pair="resizable-vertical">
     <uiResizable id="pr3" orientation="vertical" /><twResizable id="pr4" orientation="vertical" />
+  </div>
+  <div data-pair="scroll-area"><uiScrollArea label="a">x</uiScrollArea><twScrollArea label="a">x</twScrollArea></div>
+  <div data-pair="scroll-area-horizontal">
+    <uiScrollArea label="a" orientation="horizontal">x</uiScrollArea
+    ><twScrollArea label="a" orientation="horizontal">x</twScrollArea>
   </div>
 </main>
 
