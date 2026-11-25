@@ -42,4 +42,9 @@
   .content [data-part='calendar-grid'] :is(th, td) {
     all: revert-layer;
   }
+  /* Typography's prose sets its own headings, lists, code and tables: the docs theme's step aside there too. */
+  .content [data-part='prose'],
+  .content [data-part='prose'] * {
+    all: revert-layer;
+  }
 </style>
