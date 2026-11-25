@@ -686,6 +686,17 @@ export const registry: Entry[] = [
     island: true,
     since: '0.2.0',
   },
+  {
+    kind: 'block',
+    name: 'calendar-app',
+    category: 'Application',
+    title: 'Calendar',
+    description: 'Month, week and day views of your events, with a mini calendar, category filters, and a dialog to add, edit and delete them.',
+    files: ['blocks/calendar-app/calendar-app.tscl', 'blocks/calendar-app/calendar-board.tscl', 'blocks/calendar-app/data.ts'],
+    parts: [],
+    uses: ['calendar', 'dialog'],
+    island: true,
+  },
 ]
 
 /** The components (the component pages and lists). */
