@@ -31,12 +31,12 @@ const page = (root: string) => unscoped(readFileSync(resolve(root, 'dist/client/
 
 test("a part replaced by the site's own file: it gets the layout's inputs; the other parts stay the theme's", async () => {
   const s = site({
-    'src/theme/header.tscl': "@import type { ThemeConfig } from '@clarusjs/theme-docs/nav.ts'\n@input config: ThemeConfig\n@input path: string = '/'\n@input app: boolean = false\n<header class=\"my-header\">{{ config.brand.text }} at {{ path }}</header>\n",
+    'src/theme/header.tscl': "@import type { ThemeConfig } from '@clarusjs/theme-docs/nav.ts'\n@input config: ThemeConfig\n@input path: string = '/'\n@input app: boolean = false\n<header class=\"my-header\">{{ config.brand.text }} at {{ path }}<slot name=\"end\"></slot></header>\n",
     'src/theme/sidebar.tscl': "@import type { ThemeConfig } from '@clarusjs/theme-docs/nav.ts'\n@input config: ThemeConfig\n@input path: string = '/'\n<nav id=\"sidebar\" class=\"my-sidebar\"><slot name=\"top\"></slot><slot name=\"bottom\"></slot></nav>\n",
   })
   await s.build({ header: '/src/theme/header.tscl', sidebar: 'src/theme/sidebar.tscl' })
   const html = page(s.root)
-  expect(html).toContain('<header class="my-header">acme at /guide/start</header>')
+  expect(html).toMatch(/<header class="my-header">acme at \/guide\/start\s*<\/header>/)
   expect(html).not.toContain('class="site-header"')
   expect(html).toMatch(/<nav id="sidebar" class="my-sidebar"><p class="promo">Promo<\/p><\/nav>/) // the layout's slot, forwarded
   expect(html).toContain('<footer class="page-footer">') // not replaced: the theme's

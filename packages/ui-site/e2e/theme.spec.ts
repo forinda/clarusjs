@@ -27,9 +27,15 @@ for (const mode of modes) {
 }
 
 const previewButton = '[data-ui-preview] [data-part="button"][data-variant="default"]'
+/** The builder: in the sheet the header's Theme button opens, on every page. */
+async function openSheet(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Theme', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Theme' })).toBeVisible()
+  await page.locator('.theme-builder[data-ready]').waitFor()
+}
 async function openBuilder(page: import('@playwright/test').Page) {
   await page.goto('/theme')
-  await page.locator('.theme-builder[data-ready]').waitFor()
+  await openSheet(page)
   await openColours(page)
 }
 /** The per-colour editor: a section of the panel, closed until opened. */
@@ -44,7 +50,10 @@ async function pickPreset(page: import('@playwright/test').Page, name: string) {
 }
 /** Light or dark comes from the header's switch (system → light → dark); the builder edits the set it shows. */
 async function scheme(page: import('@playwright/test').Page, want: 'light' | 'dark') {
+  // The sheet is modal (the header behind it is inert): close it, switch, open it again.
+  if (await page.getByRole('dialog', { name: 'Theme' }).isVisible()) await page.keyboard.press('Escape')
   for (let i = 0; i < 3 && (await page.locator('html').getAttribute('data-theme')) !== want; i++) await page.locator('.theme-toggle').first().click()
+  await openSheet(page)
   await expect(page.locator('.theme-builder')).toHaveAttribute('data-mode', want)
 }
 const token = (page: import('@playwright/test').Page, name: string) => page.locator('[data-ui-preview]').evaluate((el, n) => getComputedStyle(el).getPropertyValue(`--ui-${n}`).trim(), name)
@@ -112,19 +121,25 @@ test('theme builder: Shuffle changes the accent; Reset returns to the preset', a
   expect(await token(page, 'accent')).toBe('#0b6e70')
 })
 
-test('theme builder: the phone toggle narrows the preview to 390px', async ({ page }) => {
-  await openBuilder(page)
-  await page.getByRole('button', { name: 'Phone width' }).click()
-  expect(await page.locator('[data-ui-preview]').evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(390)
-  await page.getByRole('button', { name: 'Desktop width' }).click()
-  expect(await page.locator('[data-ui-preview]').evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThan(390)
+test('theme builder: an edit restyles the page it is made on at once, and is saved for the others', async ({ page }) => {
+  await page.goto('/components/button')
+  await openSheet(page)
+  await openColours(page)
+  await page.getByLabel('Accent', { exact: true }).fill('#123456')
+  const demo = page.locator('.demo [data-part="button"][data-variant="default"]').first()
+  await expect(demo).toHaveCSS('background-color', 'rgb(18, 52, 86)')
+  await page.goto('/components/input')
+  await page.goto('/components/button')
+  await expect(demo).toHaveCSS('background-color', 'rgb(18, 52, 86)')
 })
 
-test('theme builder: an edit is saved and shows on component pages', async ({ page }) => {
-  await openBuilder(page)
-  await page.getByLabel('Accent', { exact: true }).fill('#123456')
-  await page.goto('/components/button')
-  await expect(page.locator('.demo [data-part="button"][data-variant="default"]').first()).toHaveCSS('background-color', 'rgb(18, 52, 86)')
+test('theme builder: an edit restyles the block frames on the page too', async ({ page }) => {
+  await page.goto('/blocks/login')
+  const button = page.frameLocator('iframe[src="/view/login"]').locator('[data-part="button"][data-variant="default"]').first()
+  await expect(button).toBeVisible()
+  await openSheet(page)
+  await page.getByLabel('Brand', { exact: true }).fill('#123456')
+  await expect(button).toHaveCSS('background-color', 'rgb(18, 52, 86)')
 })
 
 test('theme builder: Share copies a /theme?t= link that opens the same theme without saving it', async ({ page, context, browser }) => {
@@ -137,7 +152,7 @@ test('theme builder: Share copies a /theme?t= link that opens the same theme wit
   expect(link).toMatch(/\/theme\?t=indigo/)
   const fresh = await (await browser.newContext()).newPage()
   await fresh.goto(new URL(link).pathname + new URL(link).search)
-  await fresh.locator('.theme-builder[data-ready]').waitFor()
+  await openSheet(fresh)
   expect(await token(fresh, 'accent')).toBe('#123456')
   expect(await fresh.evaluate(() => localStorage.getItem('ui-theme'))).toBeNull()
   await fresh.context().close()
@@ -147,7 +162,7 @@ test('theme builder: a malformed t= opens the default preset with no error', asy
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
   await page.goto('/theme?t=%7Bbad')
-  await page.locator('.theme-builder[data-ready]').waitFor()
+  await openSheet(page)
   expect(await token(page, 'accent')).toBe('#0b6e70')
   expect(errors).toEqual([])
 })
@@ -166,26 +181,29 @@ test('theme builder: a failing pair shows a warning next to its control, in the 
   await expect(warning).toBeVisible()
 })
 
-test('theme builder: on a phone the controls open in a drawer; no sideways scroll', async ({ browser }) => {
+test('theme builder: on a phone the sheet rises from the bottom; Escape closes it and focus returns; no sideways scroll', async ({ browser }) => {
   const page = await (await browser.newContext({ viewport: { width: 390, height: 800 } })).newPage()
-  await page.goto('/theme')
-  await page.locator('.theme-builder[data-ready]').waitFor({ state: 'attached' })
-  await expect(page.getByLabel('Brand', { exact: true })).toBeHidden()
-  const open = page.getByRole('button', { name: 'Customize' })
-  await open.click()
+  await page.goto('/components/button')
+  const open = page.getByRole('button', { name: 'Theme', exact: true })
+  expect((await open.boundingBox())!.width).toBeLessThan(44) // the icon alone; the name stays
+  expect((await page.locator('.theme-toggle').first().boundingBox())!.x + 30).toBeLessThan(390)
+  await openSheet(page)
+  const sheet = (await page.getByRole('dialog', { name: 'Theme' }).boundingBox())!
+  expect(sheet.y + sheet.height).toBeGreaterThan(799)
+  expect(sheet.y).toBeGreaterThan(80)
+  expect(sheet.width).toBeGreaterThan(389)
   await expect(page.getByLabel('Brand', { exact: true })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(page.getByLabel('Brand', { exact: true })).toBeHidden()
-  await expect(open).toBeFocused()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  await open.click()
   expect(await axeViolations(page)).toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog', { name: 'Theme' })).toBeHidden()
+  await expect(open).toBeFocused()
   await page.context().close()
 })
 
 test('#review: a shared link with a font, a shadow and a dark override restores all three', async ({ page }) => {
   await page.goto("/theme?t=teal~l!font!'Lora'%2C%20Georgia%2C%20serif~l!shadow!none~d!shadow!none~d!accent!%23abcdef")
-  await page.locator('.theme-builder[data-ready]').waitFor()
+  await openSheet(page)
   await openColours(page)
   await expect(page.locator('head link[href*="fonts.googleapis.com"][href*="Lora"]')).toHaveCount(1)
   await expect(page.getByLabel('Shadow')).toHaveValue('none')
@@ -213,19 +231,24 @@ test('theme builder: density changes the spacing unit, and every step of the sca
     return value
   })
   expect(await step4()).toBe('16px')
+  await openSheet(page)
   await page.getByLabel('Density').selectOption('Comfortable')
   expect(await token(page, 'space')).toBe('5px')
   await expect.poll(step4).toBe('20px')
 })
 
-test('theme builder: a slim panel of rows beside a full-width preview; no light/dark buttons of its own', async ({ page }) => {
+test('theme builder: on a desktop a sheet at the right edge, of slim rows; /theme is all preview; no light/dark buttons of its own', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/theme')
-  await page.locator('.theme-builder[data-ready]').waitFor()
-  const panel = (await page.locator('.theme-builder').boundingBox())!
+  await expect(page.locator('.theme-builder')).toHaveCount(1) // one builder: the sheet's
   const preview = (await page.locator('[data-ui-preview]').first().boundingBox())!
-  expect(panel.width).toBeLessThanOrEqual(300)
-  expect(preview.width).toBeGreaterThan(900)
+  expect(preview.width).toBeGreaterThan(1100)
+  await page.getByRole('button', { name: 'Customize' }).click() // the page's own button opens the same sheet
+  await expect(page.getByRole('dialog', { name: 'Theme' })).toBeVisible()
+  await page.locator('.theme-builder[data-ready]').waitFor()
+  const sheet = (await page.getByRole('dialog', { name: 'Theme' }).boundingBox())!
+  expect(sheet.x + sheet.width).toBeGreaterThan(1439)
+  expect(sheet.width).toBeLessThanOrEqual(400)
   await expect(page.locator('.theme-builder details.tb-colours')).not.toHaveAttribute('open')
   await expect(page.getByRole('button', { name: /^Preset Teal/ })).toBeVisible()
   for (const label of ['Brand', 'Heading font', 'Body font', 'Radius', 'Density', 'Shadow']) await expect(page.getByLabel(label, { exact: true })).toBeVisible()
@@ -235,7 +258,7 @@ test('theme builder: a slim panel of rows beside a full-width preview; no light/
 
 test('theme builder: Brand sets the accent in the set the header shows', async ({ page }) => {
   await page.goto('/theme')
-  await page.locator('.theme-builder[data-ready]').waitFor()
+  await openSheet(page)
   await scheme(page, 'light')
   await page.getByLabel('Brand', { exact: true }).fill('#123456')
   expect(await token(page, 'accent')).toBe('#123456')
@@ -245,7 +268,7 @@ test('theme builder: Brand sets the accent in the set the header shows', async (
 
 test('theme builder: Preset opens a list of named presets', async ({ page }) => {
   await page.goto('/theme')
-  await page.locator('.theme-builder[data-ready]').waitFor()
+  await openSheet(page)
   await pickPreset(page, 'Indigo')
   await expect(page.getByRole('button', { name: /^Preset/ })).toContainText('Indigo')
   await expect(page.getByRole('button', { name: 'Indigo preset' })).toBeHidden() // the list closes

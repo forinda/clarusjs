@@ -32,7 +32,7 @@ beforeAll(async () => {
 }
 `)
   const page = (title: string, path: string, body: string) => `@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../../config.ts'\n<layout [config]="config" [title]="'${title}'" [path]="'${path}'" [headings]="[{ id: 'one', text: 'One', level: 2 }, { id: 'two', text: 'Two', level: 3 }]">${body}</layout>\n`
-  w('src/pages/guide/start.tscl', page('Start', '/guide/start', "<h1>Start</h1><h2 id=\"one\">One</h2>@slot('sidebar-top') {<p class=\"promo\">Promo</p>}@slot('footer') {<p>Custom footer</p>}"))
+  w('src/pages/guide/start.tscl', page('Start', '/guide/start', "<h1>Start</h1><h2 id=\"one\">One</h2>@slot('sidebar-top') {<p class=\"promo\">Promo</p>}@slot('footer') {<p>Custom footer</p>}@slot('header-end') {<button class=\"tune\">Tune</button>}"))
   w('src/pages/guide/next.tscl', page('Next', '/guide/next', '<h1>Next</h1>'))
   w('src/pages/guide/extra.tscl', page('Extra', '/guide/extra', '<h1>Extra</h1>'))
   w('src/pages/index.tscl', "@import layout from '@clarusjs/theme-docs/layout.tscl'\n@import { config } from '../config.ts'\n<layout [config]=\"config\" [title]=\"'Home'\"><h1>Home</h1></layout>\n")
@@ -68,6 +68,10 @@ test('header: brand, section links with the current one marked, social icon link
   expect(html).toMatch(/<a href="https:\/\/github\.com\/acme\/x" aria-label="GitHub" title="GitHub">\s*<svg/)
   expect(html).toContain('popovertarget="more"')
   expect(html).toContain('<button type="button" class="menu-button" popovertarget="sidebar" aria-label="Open menu">')
+})
+
+test('header-end slot: what a site adds to the header, before the theme toggle, kept across navigations', () => {
+  expect(html).toMatch(/<span class="persist" data-cl-persist="header-end"><button class="tune">Tune<\/button><\/span>\s*<span class="persist" data-cl-persist="theme">/)
 })
 
 test('sidebar: a popover nav with the current page, slots, and the header links for phones', () => {

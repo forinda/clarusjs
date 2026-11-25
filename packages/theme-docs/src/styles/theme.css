@@ -226,7 +226,8 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rul
 .search-dialog::backdrop { background: rgba(15, 23, 25, 0.45); }
 .search-box { @apply flex flex-col; max-height: inherit; }
 .search-box input { @apply border-0 border-b border-rule bg-transparent text-inherit; height: 52px; padding: 0 16px; font: inherit; font-size: 17px; }
-.search-box input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* One indicator: the bottom line turns accent (a ring would square off inside the dialog's rounded border). */
+.search-box input:focus { outline: none; box-shadow: inset 0 -2px 0 var(--accent); }
 .search-status { @apply m-0 text-muted; padding: 8px 16px 0; font-size: 13px; }
 .search-status:empty { display: none; }
 #search-results { @apply list-none m-0 overflow-y-auto; padding: 8px; }

@@ -4,6 +4,7 @@
 @import type { Heading } from '@clarusjs/theme-docs/nav.ts'
 @import '~/theme.css'
 @import themeReset from '~/components/theme-reset.tscl'
+@import themeSheet from '~/components/theme-sheet.tscl'
 @import toastRegion from '@clarusjs/ui-primitives/toast-region.tscl'
 @import '~/registry/toast.css'
 @input title: string
@@ -23,5 +24,5 @@
   [description]="description"
   [headings]="headings"
   [app]="app"
-  >@if (!app) {<themeReset />}<slot /><toastRegion
+  >@slot('header-end') {<themeSheet />}@if (!app) {<themeReset />}<slot /><toastRegion
 /></docsTheme>

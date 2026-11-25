@@ -689,6 +689,35 @@ test('search: Ctrl+K opens a modal, results load from small index files, arrows 
   expect((await (await axe(page)).include('dialog.search-dialog').analyze()).violations).toEqual([])
 })
 
+test('search: the focused input draws one indicator, its accent bottom line, not a square ring inside the rounded dialog', async ({ page }) => {
+  await page.goto('/guide/holes')
+  await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')
+  await page.keyboard.press('Control+k')
+  const input = page.locator('dialog.search-dialog').getByRole('combobox', { name: 'Search the docs' })
+  await input.click()
+  await expect(input).toBeFocused()
+  const style = await input.evaluate((el) => {
+    const s = getComputedStyle(el)
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()
+    return { outline: s.outlineStyle, shadow: s.boxShadow, accent: (() => { const p = document.createElement('p'); p.style.color = accent; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c })() }
+  })
+  expect(style.outline).toBe('none')
+  expect(style.shadow).toContain(style.accent)
+})
+
+test('attach="visible": an island attaches once it scrolls into view, in a real browser (its <cl-island> has no box)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 400 })
+  await page.goto('/guide/lazy-attach')
+  const island = page.locator('#visible-demo cl-island')
+  await expect(island).toHaveAttribute('a', 'visible')
+  expect((await page.locator('#visible-demo').boundingBox())!.y).toBeGreaterThan(400) // below the fold
+  await expect(island).not.toHaveAttribute('data-cl-ready', '')
+  await page.locator('#visible-demo').scrollIntoViewIfNeeded()
+  await expect(island).toHaveAttribute('data-cl-ready', '')
+  await page.locator('#visible-demo button').click()
+  await expect(page.locator('#visible-demo button')).toContainText('Clicked 1 times')
+})
+
 test('history.pushState and replaceState belong to the page: the router never turns them into a page load', async ({ page }) => {
   await page.goto('/guide/holes')
   await expect(page.locator('cl-island[c="search"]')).toHaveAttribute('data-cl-ready', '')

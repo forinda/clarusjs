@@ -220,7 +220,7 @@ Add your own content in place, without copying the layout:
 </theme>
 ```
 
-The slots are `sidebar-top`, `sidebar-bottom`, `content-top`, `content-bottom` and `footer` (it replaces `config.footer`).
+The slots are `header-end` (in the header, before the theme toggle: a site's own button or menu, kept across navigations), `sidebar-top`, `sidebar-bottom`, `content-top`, `content-bottom` and `footer` (it replaces `config.footer`).
 
 ## Parts
 
@@ -228,7 +228,7 @@ The layout is made of parts, each a component in `@clarusjs/theme-docs/parts/`. 
 
 | Part | What | Inputs | Slots |
 |---|---|---|---|
-| `header.tscl` | the menu button, brand, section links, Learn status, search, social links, theme toggle | `config`, `path`, `app` | |
+| `header.tscl` | the menu button, brand, section links, Learn status, search, social links, theme toggle | `config`, `path`, `app` | `end` |
 | `sidebar.tscl` | the page list: a drawer below 1024px, beside the content from 1024px | `config`, `path` | `top`, `bottom` |
 | `contents.tscl` | "On this page": a column, or with `inline` a box above the content | `headings`, `inline` | |
 | `page-footer.tscl` | the edit link, last updated, and the previous and next pages | `config`, `path`, `source` | |
