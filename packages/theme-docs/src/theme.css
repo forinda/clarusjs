@@ -884,8 +884,8 @@ th, td {
   font-size: 17px;
 }
 .search-box input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 .search-status {
   margin: 0px;
