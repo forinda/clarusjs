@@ -1,0 +1,27 @@
+@import uiBadge from './badge.tscl'
+@import uiButton from './button.tscl'
+{{-- A count says what it counts in the button's name, for screen readers; past 99 it shows 99+. --}}
+
+<div class="demo">
+  <uiButton variant="outline">Inbox <uiBadge>12</uiBadge></uiButton>
+  <uiButton variant="outline" aria-label="Notifications, 3 unread"
+    ><icon name="lucide:bell" /> <uiBadge variant="destructive">3</uiBadge></uiButton
+  >
+  <uiButton variant="outline" aria-label="Messages, more than 99 unread"
+    ><icon name="lucide:mail" /> <uiBadge variant="destructive">99+</uiBadge></uiButton
+  >
+</div>
+
+<style scoped>
+  :scope {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

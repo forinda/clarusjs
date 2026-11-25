@@ -15,6 +15,24 @@ description: "A message box with a title, plain or destructive."
 
 <<< ../../registry/alert-demo.tscl
 
+## Examples
+
+### Variants
+
+Four tones for four kinds of news.
+
+<alertVariantsDemo />
+
+<<< ../../registry/alert-variants-demo.tscl
+
+### With icons and an action
+
+An icon in the title for the eye, and what to do next under the text.
+
+<alertIconsDemo />
+
+<<< ../../registry/alert-icons-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `alert.tscl`.

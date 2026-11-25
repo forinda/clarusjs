@@ -15,6 +15,24 @@ description: "An on/off switch on a native checkbox."
 
 <<< ../../registry/switch-demo.tscl
 
+## Examples
+
+### States
+
+Off, on, and disabled either way.
+
+<switchStatesDemo />
+
+<<< ../../registry/switch-states-demo.tscl
+
+### A settings list
+
+Each switch with a line saying what it does.
+
+<switchSettingsDemo />
+
+<<< ../../registry/switch-settings-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `switch.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.

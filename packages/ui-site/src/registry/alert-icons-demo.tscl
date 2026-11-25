@@ -1,0 +1,35 @@
+@import uiAlert from './alert.tscl'
+@import uiButton from './button.tscl'
+
+<div class="demo">
+  <uiAlert variant="success">
+    @slot('title') {
+      <icon name="lucide:circle-check" /> Payment received
+    }
+    We've emailed your receipt.
+  </uiAlert>
+  <uiAlert variant="destructive">
+    @slot('title') {
+      <icon name="lucide:triangle-alert" /> Card declined
+    }
+    Try another card, or contact your bank.
+    <div class="actions"><uiButton size="sm" variant="outline">Update card</uiButton></div>
+  </uiAlert>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
+<style global>
+  .actions {
+    margin-top: var(--ui-space-2);
+  }
+</style>

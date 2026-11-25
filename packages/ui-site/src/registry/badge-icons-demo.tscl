@@ -1,0 +1,22 @@
+@import uiBadge from './badge.tscl'
+
+<div class="demo">
+  <uiBadge variant="success"><icon name="lucide:circle-check" /> Paid</uiBadge>
+  <uiBadge variant="warning"><icon name="lucide:clock" /> Pending</uiBadge>
+  <uiBadge variant="destructive"><icon name="lucide:circle-x" /> Failed</uiBadge>
+  <uiBadge variant="outline"><icon name="lucide:git-branch" /> main</uiBadge>
+</div>
+
+<style scoped>
+  :scope {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

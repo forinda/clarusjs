@@ -107,3 +107,19 @@ test('/components/input: inside an input group the input has no box of its own (
   await expect(inGroup).toHaveCSS('border-top-width', '0px')
   await expect(inGroup).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
 })
+
+for (const entry of registry.filter((e) => e.examples?.length)) {
+  test(`${entry.name}: every example is on its page, rendered`, async ({ page }) => {
+    await page.goto(`/components/${entry.name}`)
+    for (const x of entry.examples!) await expect(page.locator(`[class*="${entry.name}-${x}-demo"]`).first(), x).toBeVisible()
+    expect(await page.locator('.content h3').count()).toBeGreaterThanOrEqual(entry.examples!.length)
+  })
+}
+
+test('badge: an icon and its word have room between them', async ({ page }) => {
+  await page.goto('/components/badge')
+  const badge = page.locator('[class*="badge-icons-demo"] [data-part="badge"]').first()
+  const gap = await badge.evaluate((b) => b.querySelector('svg')!.getBoundingClientRect().right)
+  const text = await badge.evaluate((b) => { const r = document.createRange(); r.selectNodeContents(b.lastChild!); return r.getBoundingClientRect().left })
+  expect(text - gap).toBeGreaterThanOrEqual(3)
+})
