@@ -48,6 +48,15 @@ test('/view/login: the block alone, no site chrome, kept out of search, the site
   expect(await (await request.get('/llms.txt')).text()).not.toContain('/view/')
 })
 
+for (const name of ['login']) {
+  test(`/view/${name}: styled by theme.css (its tokens are set)`, async ({ page }) => {
+    await page.goto(`/view/${name}`)
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ui-accent').trim())).not.toBe('')
+    await expect(page.locator('[data-part="control"]').first()).not.toHaveCSS('border-top-width', '0px')
+    expect(await page.evaluate(() => getComputedStyle(document.body).margin)).toBe('0px')
+  })
+}
+
 test('/view/login: a theme saved on /theme applies to the block', async ({ page }) => {
   const red = toCss({ light: { ...presets.teal.light, accent: '#ff0000' }, dark: { ...presets.teal.dark, accent: '#ff0000' } }, SCOPE)
   await page.addInitScript(([key, css]) => localStorage.setItem(key, css), [STORAGE_KEY, red] as const)
@@ -111,4 +120,14 @@ test.describe('login block', () => {
     await page.goto('/view/login')
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   })
+})
+
+test('/theme: a full-width tool page, the builder beside its preview on a desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/theme')
+  await expect(page.locator('nav[aria-label="Sidebar"], .sidebar')).toHaveCount(0)
+  const panel = await page.locator('.theme-builder').boundingBox()
+  const preview = await page.locator('[data-ui-preview]').first().boundingBox()
+  expect(preview!.x).toBeGreaterThan(panel!.x + panel!.width - 1)
+  expect(panel!.x).toBeGreaterThanOrEqual(16)
 })

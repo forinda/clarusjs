@@ -5,19 +5,31 @@
 <site
   [title]="'Theme'"
   [path]="'/theme'"
+  [app]="true"
   [description]="'Tune the --ui- tokens over a live dashboard of the components, then copy your theme.css.'"
 >
-  <h1>Theme</h1>
-  <p class="lead">
-    Every component styles itself with the <code>--ui-</code> tokens. Change them here and see the whole set at once.
-  </p>
-  <div class="workbench">
-    <themeBuilder />
-    <themePreview />
+  <div class="theme-page">
+    <h1>Theme</h1>
+    <p class="lead">
+      Every component styles itself with the <code>--ui-</code> tokens. Change them here and see the whole set at once.
+    </p>
+    <div class="workbench">
+      <themeBuilder />
+      <themePreview />
+    </div>
   </div>
 </site>
 
 <style scoped>
+  /* A full-width tool page (no sidebar): its own padding and scrolling, as wide as the builder wants. */
+  :scope {
+    flex: 1;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px 24px 56px;
+  }
   .workbench {
     display: grid;
     gap: 16px;

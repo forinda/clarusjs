@@ -33,10 +33,10 @@
 <main class="login" aria-labelledby="login-title">
   <uiCard>
     @slot('header') {
-      <h1 id="login-title">Sign in to your account</h1>
-      <p>Enter your email and password.</p>
+      <h1 id="login-title" class="login-title">Sign in to your account</h1>
+      <p class="login-lead">Enter your email and password.</p>
     }
-    <form novalidate (submit)="submit($event)">
+    <form class="login-form" novalidate (submit)="submit($event)">
       <uiField
         id="login-email"
         label="Email"
@@ -66,7 +66,7 @@
       </p>
     </form>
     @slot('footer') {
-      <p>Don't have an account? <a href="#">Sign up</a></p>
+      <p class="login-footer">Don't have an account? <a href="#">Sign up</a></p>
     }
   </uiCard>
 </main>
@@ -87,36 +87,54 @@
       width: 100%;
       max-width: 400px;
     }
-    :where(:scope h1) {
+  }
+</style>
+
+<style global>
+  /* What sits inside the card: global (a block's scoped rules stop at the card), on login- classes, zero specificity. */
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(.login-title) {
       margin: 0;
       font-size: calc(var(--ui-font-size) * 1.5);
     }
-    :where(:scope p) {
+    :where(.login-lead),
+    :where(.login-footer) {
       margin: 0;
       color: var(--ui-muted);
     }
-    :where(:scope form) {
+    :where(.login-footer) {
+      text-align: center;
+      width: 100%;
+    }
+    :where(.login-form) {
       display: grid;
       gap: 16px;
     }
-    :where(:scope [data-part='field']) {
+    :where(.login-form [data-part='field']) {
       max-width: none;
     }
-    :where(:scope [data-part='button']) {
+    :where(.login-form [data-part='button']) {
       width: 100%;
     }
-    :where(:scope a) {
+    :where(.login-form a),
+    :where(.login-footer a) {
       color: var(--ui-fg);
+      text-underline-offset: 2px;
     }
     :where(.login-forgot) {
       justify-self: end;
       margin-top: -8px;
       font-size: calc(var(--ui-font-size) - 1px);
     }
+    :where(.login-status) {
+      margin: 0;
+    }
     :where(.login-status:empty) {
       display: none;
     }
     :where(.login-alert) {
+      margin: 0;
       color: var(--ui-danger);
     }
   }
