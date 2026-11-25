@@ -41,7 +41,8 @@ test('/blocks/login: the frame shows /view/login at desktop, tablet and phone wi
 test('/view/login: the block alone, no site chrome, kept out of search, the sitemap and llms.txt', async ({ page, request }) => {
   await page.goto('/view/login')
   await expect(page.locator('form')).toBeVisible()
-  await expect(page.locator('header, nav[aria-label="Sidebar"], aside')).toHaveCount(0)
+  await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0)
+  await expect(page.locator('.sidebar, [data-pagefind-body]')).toHaveCount(0)
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex')
   expect(await (await request.get('/sitemap.xml')).text()).not.toContain('/view/')
   expect(await (await request.get('/llms.txt')).text()).not.toContain('/view/')
@@ -62,3 +63,52 @@ for (const mode of modes) {
     expect(await axeViolations(page)).toEqual([])
   })
 }
+
+test.describe('login block', () => {
+  test('an empty submit shows an error on each field and focuses the first', async ({ page }) => {
+    await page.goto('/view/login')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByText('Enter your email address.')).toBeVisible()
+    await expect(page.getByText('Use at least 8 characters.')).toBeVisible()
+    await expect(page.getByLabel('Email')).toBeFocused()
+  })
+
+  test('valid details sign in: the button waits, then a status says who', async ({ page }) => {
+    await page.clock.install() // the stub waits 300ms: time moves only when the test says
+    await page.goto('/view/login')
+    await page.getByLabel('Email').fill('ada@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('correct horse')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    const button = page.getByRole('button', { name: 'Signing in…' })
+    await expect(button).toBeDisabled()
+    await page.clock.runFor(400)
+    await expect(page.getByRole('status')).toHaveText('Signed in as ada@example.com.')
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled()
+  })
+
+  test('an error from the handler lands on its field', async ({ page }) => {
+    await page.goto('/view/login')
+    await page.getByLabel('Email').fill('taken@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('12345678')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByText('Wrong email or password.')).toBeVisible()
+    await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  test('a failed call shows an alert, and the form can be sent again', async ({ page }) => {
+    await page.goto('/view/login')
+    await page.getByLabel('Email').fill('offline@example.com')
+    await page.getByLabel('Password', { exact: true }).fill('12345678')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('alert').filter({ hasText: "Couldn't sign in" })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled()
+  })
+
+  test('at phone width nothing scrolls sideways', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await page.goto('/view/login')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  })
+})

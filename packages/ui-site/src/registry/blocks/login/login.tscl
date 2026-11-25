@@ -1,0 +1,123 @@
+{{--
+  Login: a page that signs people in with email and password. The rules and the handler are in data.ts beside it:
+  replace signIn with your own. Errors show on their fields after a submit, the first one focused; signIn runs as an
+  action() (clarusjs/fetch): the button waits while it runs, and a failed call shows an alert. Copy it into
+  src/pages/ (as login.tscl) and the components it imports into src/components/ui/.
+--}}
+@import uiCard from '~/components/ui/card.tscl'
+@import uiField from '~/components/ui/field.tscl'
+@import uiButton from '~/components/ui/button.tscl'
+
+<script>
+  import { action } from 'clarusjs/fetch'
+  import { signIn, validateLogin } from './data.ts'
+  let email = state('')
+  let password = state('')
+  let tried = state(false)
+  // The call: pending while it runs, one at a time, its answer in .result and a thrown error in .error.
+  const login = action((_, { signal }) => signIn({ email, password }, { signal }))
+  const errors = () => ({ ...validateLogin({ email, password }), ...(login.result?.errors ?? {}) })
+  function submit(event) {
+    event.preventDefault()
+    tried = true
+    const found = validateLogin({ email, password })
+    if (Object.keys(found).length) return document.getElementById('login-' + Object.keys(found)[0])?.focus()
+    login.run()
+  }
+</script>
+
+<cl-head>
+  <title>Sign in</title>
+</cl-head>
+
+<main class="login" aria-labelledby="login-title">
+  <uiCard>
+    @slot('header') {
+      <h1 id="login-title">Sign in to your account</h1>
+      <p>Enter your email and password.</p>
+    }
+    <form novalidate (submit)="submit($event)">
+      <uiField
+        id="login-email"
+        label="Email"
+        type="email"
+        name="email"
+        placeholder="you@example.com"
+        [error]="errors().email ?? ''"
+        [show]="tried"
+        [(value)]="email"
+      />
+      <uiField
+        id="login-password"
+        label="Password"
+        type="password"
+        name="password"
+        [error]="errors().password ?? ''"
+        [show]="tried"
+        [(value)]="password"
+      />
+      <a class="login-forgot" href="#">Forgot password?</a>
+      @if (login.error) {
+        <p class="login-alert" role="alert">Couldn't sign in. Check your connection and try again.</p>
+      }
+      <uiButton type="submit" [disabled]="login.pending">{{ login.pending ? 'Signing in…' : 'Sign in' }}</uiButton>
+      <p class="login-status" role="status">
+        {{ login.result?.user ? 'Signed in as ' + login.result.user + '.' : '' }}
+      </p>
+    </form>
+    @slot('footer') {
+      <p>Don't have an account? <a href="#">Sign up</a></p>
+    }
+  </uiCard>
+</main>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 24px 16px;
+      background: var(--ui-muted-bg);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where(:scope [data-part='card']) {
+      width: 100%;
+      max-width: 400px;
+    }
+    :where(:scope h1) {
+      margin: 0;
+      font-size: calc(var(--ui-font-size) * 1.5);
+    }
+    :where(:scope p) {
+      margin: 0;
+      color: var(--ui-muted);
+    }
+    :where(:scope form) {
+      display: grid;
+      gap: 16px;
+    }
+    :where(:scope [data-part='field']) {
+      max-width: none;
+    }
+    :where(:scope [data-part='button']) {
+      width: 100%;
+    }
+    :where(:scope a) {
+      color: var(--ui-fg);
+    }
+    :where(.login-forgot) {
+      justify-self: end;
+      margin-top: -8px;
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where(.login-status:empty) {
+      display: none;
+    }
+    :where(.login-alert) {
+      color: var(--ui-danger);
+    }
+  }
+</style>

@@ -1,25 +1,23 @@
 {{-- A block in a frame of its own page (/view/<name>), at desktop, tablet or phone width: the block's CSS answers
-     the frame's width, as it will the window's once copied. --}}
-@import { blocks } from '~/registry.ts'
+     the frame's width, as it will the window's once copied. The page writes the <iframe> itself (a frame's src is
+     never data); this sizes it. --}}
 @input name: string
-@input height: number = 640
 
 <script>
-  const WIDTHS = { Desktop: '100%', Tablet: '768px', Phone: '390px' }
-  const title = (blocks.find((b) => b.name === name)?.title ?? name) + ' preview'
+  const SIZES = ['Desktop', 'Tablet', 'Phone']
   let size = state('Desktop')
 </script>
 
-<div class="block-preview">
+<div class="block-preview" [data-size]="size.toLowerCase()">
   <div class="block-preview-bar">
     <div role="group" aria-label="Preview width" class="block-preview-sizes">
-      @for (s of Object.keys(WIDTHS); track s) {
+      @for (s of SIZES; track s) {
         <button type="button" [aria-pressed]="size === s ? 'true' : 'false'" (click)="size = s">{{ s }}</button>
       }
     </div>
     <a [href]="'/view/' + name" target="_blank" rel="noopener">Open in new tab</a>
   </div>
-  <iframe [src]="'/view/' + name" [title]="title" [style]="'width: ' + WIDTHS[size] + '; height: ' + height + 'px'" loading="lazy"></iframe>
+  <slot />
 </div>
 
 <style scoped>
@@ -51,8 +49,15 @@
   button[aria-pressed='true'] {
     background: var(--accent-soft);
   }
+  :scope[data-size='tablet'] iframe {
+    width: 768px;
+  }
+  :scope[data-size='phone'] iframe {
+    width: 390px;
+  }
   iframe {
     display: block;
+    width: 100%;
     max-width: 100%;
     margin-inline: auto;
     border: 1px solid var(--rule);

@@ -429,6 +429,17 @@ export const registry: Entry[] = [
     since: '0.2.0',
     sections: ['focus', 'sidebar', 'motion'],
   },
+  {
+    kind: 'block',
+    name: 'login',
+    title: 'Login',
+    description: 'Sign in with email and password, with errors on their fields and a handler you replace.',
+    files: ['blocks/login/login.tscl', 'blocks/login/data.ts'],
+    parts: ['field.tscl'],
+    uses: ['card', 'field', 'button'],
+    island: true,
+    since: '0.1.0',
+  },
 ]
 
 /** The components (the component pages and lists). */

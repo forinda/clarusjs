@@ -11,6 +11,7 @@ const page = (name: string) => resolve(pages, 'components', `${name}.md`)
 const files = registry.flatMap((e) => e.files.map((f) => ({ entry: e, file: f })))
 
 test('blocks: registry entries of their own kind, apart from the components', () => {
+  expect(blocks.map((b) => b.name)).toContain('login')
   expect(components.every((e) => e.kind !== 'block')).toBe(true)
   expect(blocks.every((e) => e.kind === 'block')).toBe(true)
   expect(components.length + blocks.length).toBe(registry.length)
