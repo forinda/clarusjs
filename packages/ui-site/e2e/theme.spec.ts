@@ -286,3 +286,15 @@ test('theme builder: its controls are this library\'s parts (Select, Slider, Pop
   await expect(b.locator('details.tb-colours input[type="color"]').first()).toBeAttached()
   for (const name of ['Copy CSS', 'Shuffle', 'Share link', 'Reset']) await expect(b.getByRole('button', { name, exact: true })).toHaveAttribute('data-part', 'button')
 })
+
+test('/theme previews the dashboard block (a frame that follows each edit), then the other components', async ({ page }) => {
+  await page.goto('/theme')
+  const dash = page.frameLocator('iframe[src="/view/dashboard"]')
+  await expect(dash.locator('.dash-stats [data-part="card"]')).toHaveCount(4)
+  await expect(dash.locator('[data-part="chart-interactive"]')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Components' })).toBeVisible()
+  await expect(page.locator('[data-ui-preview]')).toHaveCount(1)
+  await openSheet(page)
+  await page.getByLabel('Brand', { exact: true }).fill('#123456')
+  await expect.poll(() => dash.locator('.dash').evaluate((el) => getComputedStyle(el).getPropertyValue('--ui-accent').trim())).toBe('#123456')
+})

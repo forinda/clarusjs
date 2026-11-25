@@ -19,7 +19,13 @@
       {{-- The same sheet as the header's button. --}}
       <uiDialogTrigger target="theme-sheet"><icon name="lucide:sliders-horizontal" /> Customize</uiDialogTrigger>
     </div>
-    <themePreview />
+    {{-- The dashboard block in a frame (a page of its own, with its own <main>): it follows each edit, which the
+         builder saves as it goes. Then the rest of the components. --}}
+    <div class="theme-canvas">
+      <iframe src="/view/dashboard" title="Dashboard preview" class="theme-dash"></iframe>
+      <h2 class="theme-more">Components</h2>
+      <themePreview />
+    </div>
   </div>
 </wide>
 
@@ -34,6 +40,20 @@
   }
   .theme-head .lead {
     margin-bottom: 0;
+  }
+  .theme-canvas {
+    display: grid;
+    gap: 16px;
+  }
+  .theme-dash {
+    display: block;
+    width: 100%;
+    height: 900px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  .theme-more {
+    margin: 24px 0 0;
   }
   [data-part='trigger'] {
     display: inline-flex;

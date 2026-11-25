@@ -396,6 +396,13 @@ test.describe('dashboard block', () => {
     await gotoDashboard(page)
     await expect(page.locator('[data-part="card"]').filter({ hasText: 'Total revenue' })).toBeVisible()
     await expect(page.locator('.dash-stats [data-part="card"]')).toHaveCount(4)
+    // Never three and one: the rows hold 4, 2 or 1 cards.
+    for (const width of [1280, 1180, 900, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      const tops = await page.locator('.dash-stats [data-part="card"]').evaluateAll((cards) => cards.map((c) => Math.round(c.getBoundingClientRect().top)))
+      const perRow = [...new Set(tops)].map((t) => tops.filter((x) => x === t).length)
+      expect(perRow.every((n) => n === perRow[0]), `${width}: ${perRow}`).toBe(true)
+    }
     const points = () => page.locator('[data-part="chart-line"]').first().evaluate((p) => (p.getAttribute('d')!.match(/[ML]/g) ?? []).length)
     expect(await points()).toBe(90)
     await page.getByRole('button', { name: 'Last 7 days' }).click()
