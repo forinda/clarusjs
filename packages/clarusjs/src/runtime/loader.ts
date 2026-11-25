@@ -76,7 +76,9 @@ function schedule(el: Element, go: () => void): void {
     const io = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) { io.disconnect(); go() }
     })
-    io.observe(el)
+    // <cl-island> is display: contents (no box: it never intersects), so watch what it holds.
+    const targets = el.children.length ? [...el.children] : [el.parentElement ?? el]
+    for (const target of targets) io.observe(target)
   } else if (mode === 'interaction') {
     const start = () => { for (const type of INTERACTION) el.removeEventListener(type, start, true); go() }
     for (const type of INTERACTION) el.addEventListener(type, start, true)
