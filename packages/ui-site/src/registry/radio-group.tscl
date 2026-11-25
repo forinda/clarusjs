@@ -27,7 +27,7 @@
     /* Radio group: a fieldset with its legend; radios like checkboxes, round. */
     :where([data-part='radio-group']) {
       display: grid;
-      gap: 8px;
+      gap: var(--ui-space-2);
       margin: 0;
       padding: 0;
       border: 0;
@@ -36,13 +36,13 @@
     }
     :where([data-part='radio-group']) > :where([data-part='legend']) {
       padding: 0;
-      margin-bottom: 4px;
+      margin-bottom: var(--ui-space-1);
       font-weight: 600;
     }
     :where([data-part='radio']) {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--ui-space-2);
       cursor: pointer;
     }
     :where([data-part='radio']) input {

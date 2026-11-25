@@ -4,9 +4,20 @@
 <script>
   import { effect } from 'clarusjs/runtime'
   import { presets } from '~/theme/presets.ts'
-  import { MODELESS, PAIRS, contrast, darkFrom, decode, encode, fromOklch, restore, toCss } from '~/theme/model.ts'
+  import {
+    MODELESS,
+    PAIRS,
+    SPACE_STEPS,
+    contrast,
+    darkFrom,
+    decode,
+    encode,
+    fromOklch,
+    restore,
+    toCss,
+  } from '~/theme/model.ts'
   import { SCOPE, SOURCE_KEY, STORAGE_KEY, loadFonts } from '~/theme/apply.ts'
-  import { FONTS, HEADINGS, MONOS, SHADOWS, SIZES } from '~/theme/options.ts'
+  import { DENSITIES, FONTS, HEADINGS, MONOS, SHADOWS, SIZES } from '~/theme/options.ts'
 
   const PRESETS = ['teal', 'indigo', 'rose', 'amber', 'green', 'neutral'].map((name) => ({
     name,
@@ -181,6 +192,8 @@
       if (!(preview instanceof HTMLElement)) return
       const values = { ...theme.light, ...(mode === 'dark' ? theme.dark : {}) }
       for (const [key, value] of Object.entries(values)) preview.style.setProperty(`--ui-${key}`, String(value))
+      // The scale is computed where it's declared: declare it here too, so it follows this unit, not the page's.
+      for (const n of SPACE_STEPS) preview.style.setProperty(`--ui-space-${n}`, `calc(var(--ui-space) * ${n})`)
       preview.style.maxWidth = narrow ? '390px' : ''
     })
     const save = effect(() => {
@@ -292,6 +305,12 @@
         [value]="parseInt(theme.light.radius)"
         (input)="set('radius', $event.target.value + 'px')"
       />
+      <label for="tb-density">Density</label>
+      <select id="tb-density" (change)="set('space', $event.target.value)">
+        @for (d of DENSITIES; track d.value) {
+          <option [value]="d.value" [selected]="theme.light.space === d.value">{{ d.label }}</option>
+        }
+      </select>
       <label for="tb-shadow">Shadow</label>
       <select id="tb-shadow" (change)="setShadow($event.target.value)">
         <option value="none" [selected]="shadow === 'none'">None</option>

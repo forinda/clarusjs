@@ -187,3 +187,20 @@ test('#review: the contrast warning describes its colour input', async ({ page }
   await input.fill('#0b6e70')
   await expect(input).toHaveAttribute('aria-describedby', 'tb-accent-fg-warn')
 })
+
+test('theme builder: density changes the spacing unit, and every step of the scale follows in the preview', async ({ page }) => {
+  await page.goto('/theme')
+  await page.getByText('Shape').click()
+  // A step of the scale, measured inside the preview: 4 × the unit.
+  const step4 = () => page.locator('[data-ui-preview]').first().evaluate((el) => {
+    const probe = el.appendChild(document.createElement('div'))
+    probe.style.padding = 'var(--ui-space-4)'
+    const value = getComputedStyle(probe).paddingTop
+    probe.remove()
+    return value
+  })
+  expect(await step4()).toBe('16px')
+  await page.getByLabel('Density').selectOption('Comfortable')
+  expect(await token(page, 'space')).toBe('5px')
+  await expect.poll(step4).toBe('20px')
+})

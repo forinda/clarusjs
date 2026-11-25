@@ -21,9 +21,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: calc(var(--ui-space) * 1.5);
       min-height: 36px;
-      padding: 0 14px;
+      padding: 0 calc(var(--ui-space) * 3.5);
       border: 1px solid transparent;
       border-radius: var(--ui-radius);
       background: var(--ui-accent);
@@ -74,12 +74,12 @@
     }
     :where(:scope[data-size='sm']) {
       min-height: 30px;
-      padding: 0 10px;
+      padding: 0 calc(var(--ui-space) * 2.5);
       font-size: calc(var(--ui-font-size) - 1px);
     }
     :where(:scope[data-size='lg']) {
       min-height: 44px;
-      padding: 0 20px;
+      padding: 0 var(--ui-space-5);
       font-size: calc(var(--ui-font-size) + 2px);
     }
   }

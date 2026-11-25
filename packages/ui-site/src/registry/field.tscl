@@ -40,7 +40,7 @@
     /* Field and select: label, control, description, error. */
     :where([data-part='field'], [data-part='select']) {
       display: grid;
-      gap: 4px;
+      gap: var(--ui-space-1);
       max-width: 360px;
       font: var(--ui-font-size) var(--ui-font);
       color: var(--ui-fg);
@@ -52,7 +52,7 @@
     }
     :where([data-part='control']) {
       min-height: 34px;
-      padding: 4px 10px;
+      padding: var(--ui-space-1) calc(var(--ui-space) * 2.5);
       border: 1px solid var(--ui-input);
       border-radius: var(--ui-radius);
       background: var(--ui-bg);
@@ -73,11 +73,11 @@
       font-size: calc(var(--ui-font-size) - 1px);
     }
     :where([data-part='option']) {
-      padding: 6px 10px;
+      padding: calc(var(--ui-space) * 1.5) calc(var(--ui-space) * 2.5);
       border-radius: calc(var(--ui-radius) - 2px);
     }
     :where([data-part='select']) ::picker(select) {
-      padding: 4px;
+      padding: var(--ui-space-1);
       border: 1px solid var(--ui-border);
       border-radius: var(--ui-radius);
       background: var(--ui-popover);

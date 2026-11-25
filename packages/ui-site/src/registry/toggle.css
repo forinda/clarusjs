@@ -18,10 +18,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: calc(var(--ui-space) * 1.5);
     min-height: 36px;
     min-width: 36px;
-    padding: 0 10px;
+    padding: 0 calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
@@ -47,7 +47,7 @@
     display: inline-flex;
   }
   :where([data-part='toggle-group']) > :where([data-part='toggle-item']):not(:first-child) {
-    margin-left: -1px;
+    margin-left: calc(var(--ui-space) * -0.25);
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
   }

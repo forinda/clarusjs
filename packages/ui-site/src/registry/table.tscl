@@ -44,13 +44,13 @@
       font: var(--ui-font-size)/1.5 var(--ui-font);
     }
     :where(caption) {
-      padding: 8px 12px;
+      padding: var(--ui-space-2) var(--ui-space-3);
       color: var(--ui-muted);
       text-align: start;
     }
     :where(th),
     :where(td) {
-      padding: 8px 12px;
+      padding: var(--ui-space-2) var(--ui-space-3);
       border-bottom: 1px solid var(--ui-border);
       text-align: start;
       white-space: nowrap;

@@ -23,7 +23,7 @@
     :where([data-part='breadcrumb-list']) {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: calc(var(--ui-space) * 1.5);
       margin: 0;
       padding: 0;
       list-style: none;
@@ -32,7 +32,7 @@
     }
     :where([data-part='breadcrumb-item']:not(:last-child))::after {
       content: '/' / '';
-      margin-left: 6px;
+      margin-left: calc(var(--ui-space) * 1.5);
       color: var(--ui-muted);
     }
     :where([data-part='breadcrumb-item'] a) {

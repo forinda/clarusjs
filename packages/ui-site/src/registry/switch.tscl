@@ -22,7 +22,7 @@
     :where([data-part='switch'], [data-part='checkbox']) {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--ui-space-2);
       font: var(--ui-font-size) var(--ui-font);
       color: var(--ui-fg);
       cursor: pointer;

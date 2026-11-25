@@ -21,8 +21,8 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: flex-end;
-      gap: 8px;
-      margin-top: 16px;
+      gap: var(--ui-space-2);
+      margin-top: var(--ui-space-4);
     }
   }
 </style>
