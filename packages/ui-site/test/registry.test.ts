@@ -480,7 +480,7 @@ test('file upload: without JavaScript, a real file input in a labelled drop zone
 test('tailwind: each component\'s Tailwind twin (<name>.tw.tscl) takes the same inputs, models and events, has no <style>, and its page shows it under the CSS / Tailwind switch', () => {
   const decls = (text: string) => [...text.matchAll(/^@(input|model|event) ([\w]+)[^\n]*$/gm)].map((m) => m[0].replace(/\s+/g, ' ')).sort()
   const twins = components.filter((e) => e.tailwind?.length)
-  expect(twins.map((e) => e.name).sort()).toEqual(['alert', 'aspect-ratio', 'avatar', 'badge', 'breadcrumb', 'button', 'button-group', 'card', 'collapsible', 'empty', 'input', 'input-group', 'kbd', 'label', 'meter', 'pagination', 'progress', 'separator', 'skeleton', 'slider', 'spinner', 'table', 'textarea'])
+  expect(twins.map((e) => e.name).sort()).toEqual(components.filter((e) => /<style scoped>/.test(source(e.files[0]!)) && !/@clarusjs\/ui-primitives\//.test(source(e.files[0]!))).map((e) => e.name).sort()) // every component that owns its markup
   for (const e of twins) {
     const tw = e.tailwind![0]!
     expect(tw, e.name).toBe(e.files[0]!.replace(/\.tscl$/, '.tw.tscl'))

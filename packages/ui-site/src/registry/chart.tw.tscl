@@ -1,0 +1,122 @@
+{{-- Chart, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as chart.tscl.
+     Copy it into src/components/ui/ as chart.tscl. --}}
+@import { chartLayout } from './chart-geometry.ts'
+@import type { Series } from './chart-geometry.ts'
+@input label: string
+@input labels: string[]
+@input series: Series[]
+@input type: 'area' | 'line' | 'bar' = 'area'
+@input height: number = 240
+
+<figure
+  data-part="chart"
+  [data-type]="type"
+  class="
+    grid gap-2 m-0 text-foreground font-sans text-(length:--ui-font-size) leading-[normal]
+    [&_[data-part=chart-frame]]:relative [&_[data-part=chart-plot]]:block [&_[data-part=chart-plot]]:w-full [&_[data-part=chart-plot]]:overflow-visible
+    [&_[data-part=chart-tick]]:absolute [&_[data-part=chart-tick]]:left-0 [&_[data-part=chart-tick]]:-translate-y-full [&_[data-part=chart-tick]]:pb-[calc(var(--ui-space)/2)] [&_[data-part=chart-tick]]:leading-none [&_[data-part=chart-tick]]:text-muted-foreground [&_[data-part=chart-tick]]:text-[length:calc(var(--ui-font-size)-2px)]
+    [&_[data-part=chart-labels]]:relative [&_[data-part=chart-labels]]:h-[1.5em]
+    [&_[data-part=chart-label]]:absolute [&_[data-part=chart-label]]:top-[4px] [&_[data-part=chart-label]]:whitespace-nowrap [&_[data-part=chart-label]]:-translate-x-1/2 [&_[data-part=chart-label]]:text-muted-foreground [&_[data-part=chart-label]]:text-[length:calc(var(--ui-font-size)-2px)]
+    [&_[data-part=chart-label][data-align=start]]:translate-x-0 [&_[data-part=chart-label][data-align=end]]:-translate-x-full
+    [&_[data-part=chart-grid]]:stroke-border [&_[data-part=chart-grid]]:[stroke-dasharray:3_3]
+    [&_[data-part=chart-area]]:fill-[color-mix(in_srgb,var(--ui-series)_22%,transparent)] [&_[data-part=chart-bar]]:fill-(--ui-series)
+    [&_[data-part=chart-line]]:fill-none [&_[data-part=chart-line]]:stroke-(--ui-series) [&_[data-part=chart-line]]:stroke-2 [&_[data-part=chart-line]]:[stroke-linejoin:round] [&_[data-part=chart-line]]:[vector-effect:non-scaling-stroke]
+    [&_[data-part=chart-legend]]:flex [&_[data-part=chart-legend]]:flex-wrap [&_[data-part=chart-legend]]:gap-4 [&_[data-part=chart-legend]]:m-0 [&_[data-part=chart-legend]]:p-0 [&_[data-part=chart-legend]]:list-none [&_[data-part=chart-legend]]:text-muted-foreground [&_[data-part=chart-legend]]:text-[length:calc(var(--ui-font-size)-1px)]
+    [&_[data-part=chart-legend]_li]:before:content-[''] [&_[data-part=chart-legend]_li]:before:inline-block [&_[data-part=chart-legend]_li]:before:size-[10px] [&_[data-part=chart-legend]_li]:before:mr-2 [&_[data-part=chart-legend]_li]:before:rounded-[2px] [&_[data-part=chart-legend]_li]:before:bg-(--ui-series)
+    [&_[data-part=chart-data]]:absolute [&_[data-part=chart-data]]:w-px [&_[data-part=chart-data]]:h-px [&_[data-part=chart-data]]:overflow-clip [&_[data-part=chart-data]]:[clip-path:inset(50%)] [&_[data-part=chart-data]]:whitespace-nowrap
+  "
+>
+  {{-- One layout, computed once. --}}
+  {{-- One layout, computed once. Shapes are SVG stretched to the width (lines keep their stroke); text is HTML placed
+       by percent, so it stays the page's size however wide the chart is. --}}
+  @for (c of [chartLayout(labels, series, type, height)]; track c.width) {
+    <div data-part="chart-frame">
+      <svg
+        role="img"
+        [aria-label]="label"
+        [viewBox]="'0 0 ' + c.width + ' ' + c.height"
+        preserveAspectRatio="none"
+        [style]="'height: ' + c.height + 'px'"
+        data-part="chart-plot"
+      >
+        @for (t of c.ticks; track t.value) {
+          <line x1="0" [x2]="c.width" [y1]="t.y" [y2]="t.y" data-part="chart-grid" />
+        }
+        @for (p of c.paths; track $index) {
+          @if (p.area) {
+            <path
+              [d]="p.area"
+              [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'"
+              data-part="chart-area"
+            />
+          }
+          <path
+            [d]="p.line"
+            [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'"
+            data-part="chart-line"
+          />
+        }
+        @for (b of c.bars; track $index) {
+          <rect
+            [x]="b.x"
+            [y]="b.y"
+            [width]="b.w"
+            [height]="b.h"
+            [style]="'--ui-series: var(--ui-chart-' + ((b.series % 5) + 1) + ')'"
+            data-part="chart-bar"
+          />
+        }
+      </svg>
+      @for (t of c.ticks; track t.value) {
+        <span data-part="chart-tick" aria-hidden="true" [style]="'top: ' + t.y + 'px'">{{ t.value }}</span>
+      }
+    </div>
+    <div data-part="chart-labels" aria-hidden="true">
+      @for (l of c.labels; track l.i) {
+        <span
+          data-part="chart-label"
+          [data-align]="
+            type !== 'bar' && l.i === 0 ? 'start' : type !== 'bar' && l.i === labels.length - 1 ? 'end' : 'middle'
+          "
+          [style]="'left: ' + (l.x / c.width) * 100 + '%'"
+          >{{ l.text }}</span
+        >
+      }
+    </div>
+  }
+  @if (series.length > 1) {
+    <ul data-part="chart-legend" aria-hidden="true">
+      @for (s of series; track s.name) {
+        <li [style]="'--ui-series: var(--ui-chart-' + (($index % 5) + 1) + ')'">{{ s.name }}</li>
+      }
+    </ul>
+  }
+  <div data-part="chart-data">
+    <table data-part="chart-table">
+      <caption>
+        {{
+          label
+        }}
+      </caption>
+      <thead>
+        <tr>
+          <td></td>
+          @for (s of series; track s.name) {
+            <th scope="col">{{ s.name }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        {{-- Each row keeps its index (an inner @for has its own $index). --}}
+        @for (row of labels.map((text, i) => ({ text, i })); track row.i) {
+          <tr>
+            <th scope="row">{{ row.text }}</th>
+            @for (s of series; track s.name) {
+              <td>{{ s.values[row.i] ?? '' }}</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</figure>

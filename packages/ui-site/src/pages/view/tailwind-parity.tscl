@@ -49,7 +49,13 @@
 @import twSlider from '~/registry/slider.tw.tscl'
 @import uiCollapsible from '~/registry/collapsible.tscl'
 @import twCollapsible from '~/registry/collapsible.tw.tscl'
-@import { ALERT_VARIANTS, BADGE_VARIANTS, BUTTON_VARIANTS, INPUT_VARIANTS, SIZES } from './tailwind-parity.ts'
+@import uiChart from '~/registry/chart.tscl'
+@import twChart from '~/registry/chart.tw.tscl'
+@import uiChartInteractive from '~/registry/chart-interactive.tscl'
+@import twChartInteractive from '~/registry/chart-interactive.tw.tscl'
+@import uiFileUpload from '~/registry/file-upload.tscl'
+@import twFileUpload from '~/registry/file-upload.tw.tscl'
+@import { ALERT_VARIANTS, BADGE_VARIANTS, BUTTON_VARIANTS, CHART_TYPES, INPUT_VARIANTS, SIZES } from './tailwind-parity.ts'
 
 <cl-head>
   <meta name="sitemap" content="false" />
@@ -225,6 +231,56 @@
   <div data-pair="collapsible">
     <uiCollapsible [open]="true">@slot('trigger') {More}Hidden text.</uiCollapsible
     ><twCollapsible [open]="true">@slot('trigger') {More}Hidden text.</twCollapsible>
+  </div>
+  @for (t of CHART_TYPES; track t) {
+    <div [data-pair]="'chart-' + t">
+      <uiChart
+        label="c"
+        [type]="t"
+        [labels]="['A', 'B', 'C']"
+        [series]="[
+          { name: 'X', values: [1, 4, 2] },
+          { name: 'Y', values: [3, 1, 2] },
+        ]"
+      />
+      <twChart
+        label="c"
+        [type]="t"
+        [labels]="['A', 'B', 'C']"
+        [series]="[
+          { name: 'X', values: [1, 4, 2] },
+          { name: 'Y', values: [3, 1, 2] },
+        ]"
+      />
+    </div>
+  }
+  <div data-pair="chart-interactive">
+    <uiChartInteractive
+      label="c"
+      [labels]="['A', 'B', 'C']"
+      [series]="[{ name: 'X', values: [1, 4, 2] }]"
+      [ranges]="[
+        { label: 'All', last: 3 },
+        { label: 'Last 2', last: 2 },
+      ]"
+    />
+    <twChartInteractive
+      label="c"
+      [labels]="['A', 'B', 'C']"
+      [series]="[{ name: 'X', values: [1, 4, 2] }]"
+      [ranges]="[
+        { label: 'All', last: 3 },
+        { label: 'Last 2', last: 2 },
+      ]"
+    />
+  </div>
+  <div data-pair="file-upload"><uiFileUpload id="pu1" label="Files" /><twFileUpload id="pu2" label="Files" /></div>
+  <div data-pair="file-upload-described">
+    <uiFileUpload id="pu3" label="Photos" description="Up to 5 MB." /><twFileUpload
+      id="pu4"
+      label="Photos"
+      description="Up to 5 MB."
+    />
   </div>
 </main>
 
