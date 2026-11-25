@@ -10,7 +10,6 @@ export const theme: ThemeConfig = {
   siteUrl: 'https://ui.clarusjs.com',
   sections,
   menuLinks: [
-    { label: 'Theme', href: '/theme' },
     { label: 'Docs', href: 'https://clarusjs.com' },
   ],
   social: [{ label: 'GitHub', href: 'https://github.com/forinda/clarusjs', icon: 'github' }],

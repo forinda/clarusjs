@@ -1,0 +1,62 @@
+{{-- A block in a frame of its own page (/view/<name>), at desktop, tablet or phone width: the block's CSS answers
+     the frame's width, as it will the window's once copied. --}}
+@import { blocks } from '~/registry.ts'
+@input name: string
+@input height: number = 640
+
+<script>
+  const WIDTHS = { Desktop: '100%', Tablet: '768px', Phone: '390px' }
+  const title = (blocks.find((b) => b.name === name)?.title ?? name) + ' preview'
+  let size = state('Desktop')
+</script>
+
+<div class="block-preview">
+  <div class="block-preview-bar">
+    <div role="group" aria-label="Preview width" class="block-preview-sizes">
+      @for (s of Object.keys(WIDTHS); track s) {
+        <button type="button" [aria-pressed]="size === s ? 'true' : 'false'" (click)="size = s">{{ s }}</button>
+      }
+    </div>
+    <a [href]="'/view/' + name" target="_blank" rel="noopener">Open in new tab</a>
+  </div>
+  <iframe [src]="'/view/' + name" [title]="title" [style]="'width: ' + WIDTHS[size] + '; height: ' + height + 'px'" loading="lazy"></iframe>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .block-preview-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .block-preview-sizes {
+    display: flex;
+    gap: 4px;
+  }
+  button {
+    padding: 4px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  button[aria-pressed='true'] {
+    background: var(--accent-soft);
+  }
+  iframe {
+    display: block;
+    max-width: 100%;
+    margin-inline: auto;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+</style>

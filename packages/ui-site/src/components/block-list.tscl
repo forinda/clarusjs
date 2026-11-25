@@ -1,0 +1,11 @@
+{{-- Every block, linked, with its one line. --}}
+@import { blocks } from '~/registry.ts'
+
+<ul class="component-list">
+  @for (b of blocks; track b.name) {
+    <li>
+      <a [href]="'/blocks/' + b.name">{{ b.title }}</a
+      >: {{ b.description }}
+    </li>
+  }
+</ul>
