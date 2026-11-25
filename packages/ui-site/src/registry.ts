@@ -127,6 +127,18 @@ export const registry: Entry[] = [
     island: true,
   },
   {
+    name: 'resizable',
+    group: 'Panel',
+    title: 'Resizable',
+    description: 'Two panels and a handle between them, dragged with a pointer or moved with the keyboard.',
+    files: ['resizable.tscl'],
+    tailwind: ['resizable.tw.tscl'],
+    parts: [],
+    uses: [],
+    examples: ['vertical'],
+    island: true,
+  },
+  {
     name: 'label',
     group: 'Form',
     title: 'Label',
