@@ -146,3 +146,12 @@ test('date picker: Clear empties the date (and the form value), closes, and goes
   await expect(picker.locator('input[name="stay"]')).toHaveValue('')
   await expect(picker.locator('input[name="stay-end"]')).toHaveValue('')
 })
+
+test('calendar: its header fits a narrow phone (the lists take a row of their own)', async ({ page }) => {
+  await page.setViewportSize({ width: 340, height: 800 })
+  await ready(page, '/components/calendar', 'calendar-demo')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  const head = page.locator('.demo:not(.example) [data-part="calendar-head"]')
+  const grid = page.locator('.demo:not(.example) [data-part="calendar-grid"]')
+  expect((await head.boundingBox())!.width).toBeLessThanOrEqual((await grid.boundingBox())!.width + 1)
+})
