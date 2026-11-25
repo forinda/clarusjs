@@ -1,0 +1,148 @@
+/*
+  Typography: plain HTML (Markdown's output, a CMS's, your own) set from the theme's tokens, inside
+  data-part="prose": headings, paragraphs, links, lists, quotes, code, tables, rules and images.
+  Copy it into src/components/ui/, @import it once, and put the HTML in <article data-part="prose">.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* A comfortable measure, and a vertical rhythm from the font size. */
+  :where([data-part='prose']) {
+    max-width: 68ch;
+    color: var(--ui-fg);
+    font: var(--ui-font-size) / 1.7 var(--ui-font);
+  }
+  :where([data-part='prose']) :where(p, ul, ol, blockquote, pre, table, figure, hr) {
+    margin: 0 0 1.25em;
+  }
+
+  :where([data-part='prose']) :where(h1, h2, h3, h4) {
+    margin: 1.8em 0 0.6em;
+    font-family: var(--ui-font-heading, var(--ui-font));
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  :where([data-part='prose']) :where(h1) {
+    font-size: 2.25em;
+    letter-spacing: -0.02em;
+  }
+  :where([data-part='prose']) :where(h2) {
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--ui-border);
+    font-size: 1.6em;
+  }
+  :where([data-part='prose']) :where(h3) {
+    font-size: 1.25em;
+  }
+  :where([data-part='prose']) :where(h4) {
+    font-size: 1.05em;
+  }
+  :where([data-part='prose']) :where(p) {
+    text-wrap: pretty;
+  }
+  :where([data-part='prose']) :where(strong) {
+    font-weight: 650;
+  }
+
+  :where([data-part='prose']) :where(a) {
+    color: var(--ui-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+  :where([data-part='prose']) :where(a:hover) {
+    text-decoration-thickness: 2px;
+  }
+
+  :where([data-part='prose']) :where(ul, ol) {
+    padding-left: 1.5em;
+  }
+  :where([data-part='prose']) :where(ul) {
+    list-style: disc;
+  }
+  :where([data-part='prose']) :where(ol) {
+    list-style: decimal;
+  }
+  :where([data-part='prose']) :where(li) {
+    margin: 0.35em 0;
+  }
+  :where([data-part='prose']) :where(li) > :where(ul, ol) {
+    margin: 0.35em 0 0;
+  }
+  :where([data-part='prose']) :where(li)::marker {
+    color: var(--ui-muted);
+  }
+
+  :where([data-part='prose']) :where(blockquote) {
+    padding-left: 1em;
+    border-left: 3px solid var(--ui-border);
+    color: var(--ui-muted);
+    font-style: italic;
+  }
+
+  :where([data-part='prose']) :where(code) {
+    padding: 0.15em 0.35em;
+    border-radius: calc(var(--ui-radius) / 2);
+    background: var(--ui-accent-soft);
+    font: 0.9em var(--ui-font-mono, ui-monospace, monospace);
+  }
+  :where([data-part='prose']) :where(pre) {
+    overflow-x: auto;
+    padding: 1em 1.25em;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-accent-soft);
+    line-height: 1.55;
+  }
+  :where([data-part='prose']) :where(pre code) {
+    padding: 0;
+    background: none;
+  }
+  :where([data-part='prose']) :where(kbd) {
+    padding: 0.1em 0.4em;
+    border: 1px solid var(--ui-border);
+    border-bottom-width: 2px;
+    border-radius: calc(var(--ui-radius) / 2);
+    font: 0.85em var(--ui-font-mono, ui-monospace, monospace);
+  }
+
+  :where([data-part='prose']) :where(table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+  }
+  :where([data-part='prose']) :where(th, td) {
+    padding: 0.5em 0.75em;
+    border-bottom: 1px solid var(--ui-border);
+    text-align: left;
+  }
+  :where([data-part='prose']) :where(th) {
+    font-weight: 600;
+  }
+
+  :where([data-part='prose']) :where(hr) {
+    margin: 2em 0;
+    border: 0;
+    border-top: 1px solid var(--ui-border);
+  }
+  :where([data-part='prose']) :where(img, video) {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--ui-radius);
+  }
+  :where([data-part='prose']) :where(figcaption) {
+    margin-top: 0.5em;
+    color: var(--ui-muted);
+    font-size: 0.9em;
+  }
+
+  /* Last, so they win over every margin above: nothing hangs outside the prose box. */
+  :where([data-part='prose']) > :where(:first-child) {
+    margin-top: 0;
+  }
+  :where([data-part='prose']) > :where(:last-child) {
+    margin-bottom: 0;
+  }
+}
