@@ -1,0 +1,46 @@
+@import uiScrollArea from './scroll-area.tscl'
+
+<script server>
+  const tags = Array.from({ length: 40 }, (_, i) => `v1.${40 - i}.0`)
+</script>
+
+<div class="demo">
+  <uiScrollArea label="Tags" class="scroll-tags">
+    <p class="scroll-head">Tags</p>
+    @for (tag of tags; track tag) {
+      <p>{{ tag }}</p>
+    }
+  </uiScrollArea>
+</div>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
+
+{{-- Global: slot content sits inside the Scroll area's own markup, out of this demo's scope. --}}
+<style global>
+  .scroll-tags {
+    width: 12rem;
+    height: 16rem;
+    padding: 0 var(--ui-space-4);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+  }
+  .scroll-tags p {
+    margin: 0;
+    padding: var(--ui-space-2) 0;
+    border-top: 1px solid var(--ui-border);
+    font-variant-numeric: tabular-nums;
+  }
+  .scroll-tags .scroll-head {
+    margin-top: var(--ui-space-2);
+    border-top: 0;
+    font-weight: 600;
+  }
+</style>

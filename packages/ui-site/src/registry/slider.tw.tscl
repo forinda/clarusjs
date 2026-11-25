@@ -1,0 +1,26 @@
+{{-- Slider, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as slider.tscl.
+     Copy it into src/components/ui/ as slider.tscl. --}}
+@input value: number = 50
+@input min: number = 0
+@input max: number = 100
+@input step: number = 1
+@input name: string = ''
+@input disabled: boolean = false
+
+@extends input
+
+<input
+  type="range"
+  [value]="value"
+  [min]="min"
+  [max]="max"
+  [step]="step"
+  [name]="name || null"
+  [disabled]="disabled"
+  data-part="slider"
+  class="
+    w-full accent-primary
+    focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2
+    disabled:opacity-50
+  "
+/>

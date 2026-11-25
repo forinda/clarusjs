@@ -35,9 +35,15 @@ An `<output>` beside the label, kept in step as it moves.
 
 ## Source
 
-Copy it into `src/components/ui/` as `slider.tscl`.
+Copy it into `src/components/ui/` as `slider.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="slider">
 
 <<< ../../registry/slider.tscl
+
+<<< ../../registry/slider.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

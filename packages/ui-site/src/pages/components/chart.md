@@ -19,7 +19,13 @@ description: "An area, line or bar chart drawn as SVG on the server, coloured by
 
 Copy both files into `src/components/ui/`: `chart.tscl`, and `chart-geometry.ts` beside it (the maths: scale, paths, bars). It ships no JavaScript. Pass `label` (what the chart shows, for screen readers), `labels` (the x axis), `series` (`{ name, values }`, values below 0 drawn at 0), `type` (`area`, `line` or `bar`) and `height`.
 
+<sourceFlavor name="chart">
+
 <<< ../../registry/chart.tscl
+
+<<< ../../registry/chart.tw.tscl
+
+</sourceFlavor>
 
 <<< ../../registry/chart-geometry.ts
 

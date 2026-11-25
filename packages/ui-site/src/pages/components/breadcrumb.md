@@ -17,9 +17,15 @@ description: "Where a page sits in the site, as links back up."
 
 ## Source
 
-Copy it into `src/components/ui/` as `breadcrumb.tscl`.
+Copy it into `src/components/ui/` as `breadcrumb.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="breadcrumb">
 
 <<< ../../registry/breadcrumb.tscl
+
+<<< ../../registry/breadcrumb.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

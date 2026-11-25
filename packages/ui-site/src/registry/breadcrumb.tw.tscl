@@ -1,0 +1,26 @@
+{{-- Breadcrumb, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as breadcrumb.tscl.
+     Copy it into src/components/ui/ as breadcrumb.tscl. --}}
+@input items: { label: string; href?: string }[]
+
+<script server>
+  const list =
+    'flex flex-wrap gap-1.5 m-0 p-0 list-none text-muted-foreground font-sans text-(length:--ui-font-size) leading-[normal]'
+  // A slash after each but the last, read as nothing by screen readers.
+  const crumb = "not-last:after:ml-1.5 not-last:after:text-muted-foreground not-last:after:[content:'/'_/_'']"
+</script>
+
+<nav aria-label="Breadcrumb" data-part="breadcrumb">
+  <ol data-part="breadcrumb-list" [class]="list">
+    @for (item of items; track $index) {
+      <li data-part="breadcrumb-item" [class]="crumb">
+        @if ($last) {
+          <span aria-current="page" data-part="breadcrumb-page" class="text-foreground">{{ item.label }}</span>
+        } @else if (item.href) {
+          <a [href]="item.href" class="text-inherit hover:text-foreground">{{ item.label }}</a>
+        } @else {
+          <span>{{ item.label }}</span>
+        }
+      </li>
+    }
+  </ol>
+</nav>
