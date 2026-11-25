@@ -22,6 +22,16 @@ async function gotoInteractive(page: import('@playwright/test').Page) {
 }
 const points = (chart: import('@playwright/test').Locator) => chart.locator('[data-part="chart-line"]').first().evaluate((p) => (p.getAttribute('d')!.match(/[ML]/g) ?? []).length)
 
+test('/components/chart: labels stay at the page\'s text size however wide the chart is', async ({ page }) => {
+  await page.goto('/components/chart')
+  const figure = page.locator('.demo [data-part="chart"]').first()
+  const size = () => figure.evaluate((f) => [...f.querySelectorAll('[data-part="chart-label"], [data-part="chart-tick"]')].map((e) => Math.round(e.getBoundingClientRect().height)))
+  const before = await size()
+  await figure.evaluate((f) => (f.style.width = '1800px'))
+  expect(await size()).toEqual(before)
+  for (const h of before) expect(h).toBeLessThan(20)
+})
+
 test('chart-interactive: the range switch changes how many points are drawn', async ({ page }) => {
   const chart = await gotoInteractive(page)
   expect(await points(chart)).toBe(90)
