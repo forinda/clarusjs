@@ -20,4 +20,8 @@ layout: "/src/layouts/wide.tscl"
   <iframe src="/view/checkout" title="Checkout preview" loading="lazy" style="width: 100%; height: 760px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
 </blockRow>
 
+<blockRow name="dashboard">
+  <iframe src="/view/dashboard" title="Dashboard preview" loading="lazy" style="width: 100%; height: 820px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
 </blockFilter>

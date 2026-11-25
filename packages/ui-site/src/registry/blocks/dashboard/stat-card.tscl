@@ -1,0 +1,18 @@
+{{-- A stat on the dashboard: its label, value and change (up or down), and a note. --}}
+@import uiCard from '~/components/ui/card.tscl'
+@import uiBadge from '~/components/ui/badge.tscl'
+@input stat: { label: string; value: string; change: number; note: string }
+
+<uiCard>
+  @slot('header') {
+    <p class="dash-stat-label">{{ stat.label }}</p>
+    <p class="dash-stat-value">{{ stat.value }}</p>
+  }
+  <uiBadge variant="outline">
+    @if (stat.change >= 0) {<icon name="lucide:trending-up" />} @else {<icon name="lucide:trending-down" />}
+    {{ (stat.change >= 0 ? '+' : '') + stat.change + '%' }}
+  </uiBadge>
+  @slot('footer') {
+    <p class="dash-stat-note">{{ stat.note }}</p>
+  }
+</uiCard>

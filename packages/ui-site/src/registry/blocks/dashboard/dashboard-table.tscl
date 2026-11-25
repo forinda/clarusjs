@@ -1,0 +1,126 @@
+{{--
+  The dashboard's table: a status switch and a search over the sections, headers that sort (aria-sort, both ways), and
+  pages of 10. Its own island; the rows are in data.ts (filterRows, sortRows, pageRows).
+--}}
+@import uiTable from '~/components/ui/table.tscl'
+@import uiBadge from '~/components/ui/badge.tscl'
+@import uiButton from '~/components/ui/button.tscl'
+@import uiInput from '~/components/ui/input.tscl'
+
+<script>
+  import { filterRows, pageRows, rows, sortRows } from './data.ts'
+  const COLUMNS = [
+    { key: 'header', label: 'Header' },
+    { key: 'type', label: 'Type' },
+    { key: 'status', label: 'Status' },
+    { key: 'target', label: 'Target', number: true },
+    { key: 'limit', label: 'Limit', number: true },
+    { key: 'reviewer', label: 'Reviewer' },
+  ]
+  const STATUSES = [
+    { value: 'all', label: 'All' },
+    { value: 'In progress', label: 'In progress' },
+    { value: 'Done', label: 'Done' },
+  ]
+  let status = state('all')
+  let query = state('')
+  let sort = state({ key: '', dir: 'ascending' })
+  let page = state(0)
+  const view = () => {
+    const found = filterRows(rows, status, query)
+    return pageRows(sort.key ? sortRows(found, sort.key, sort.dir) : found, page, 10)
+  }
+  const ariaSort = (key) => (sort.key === key ? sort.dir : 'none')
+  function sortBy(key) {
+    sort = { key, dir: sort.key === key && sort.dir === 'ascending' ? 'descending' : 'ascending' }
+    page = 0
+    // The table's rows render again (with its headers): give the focus back to this one in the next frame.
+    requestAnimationFrame(() => document.getElementById('dash-sort-' + key)?.focus())
+  }
+  function show(next) {
+    status = next
+    page = 0
+  }
+  function search(event) {
+    query = event.target.value
+    page = 0
+  }
+</script>
+
+<div class="dash-table">
+  <div class="dash-table-bar">
+    <h2 id="dash-table-title">Sections</h2>
+    <div class="dash-table-status" role="group" aria-label="Status">
+      @for (s of STATUSES; track s.value) {
+        <button type="button" [aria-pressed]="status === s.value ? 'true' : 'false'" (click)="show(s.value)">
+          {{ s.label }}
+        </button>
+      }
+    </div>
+    <uiInput
+      type="search"
+      aria-label="Search sections"
+      placeholder="Search sections"
+      [value]="query"
+      (input)="search($event)"
+    />
+  </div>
+  {{-- The table region is named by the heading's word: one landmark, not two. --}}
+  <uiTable label="Sections">
+    <thead>
+      <tr>
+        @for (c of COLUMNS; track c.key) {
+          <th scope="col" [aria-sort]="ariaSort(c.key)" [data-number]="c.number ? 'true' : false">
+            <button type="button" [id]="'dash-sort-' + c.key" (click)="sortBy(c.key)">
+              {{ c.label }}
+              @if (sort.key === c.key) {
+                @if (sort.dir === 'ascending') {<icon name="lucide:arrow-up" />} @else {<icon name="lucide:arrow-down" />}
+              } @else {
+                <icon name="lucide:arrow-up-down" />
+              }
+            </button>
+          </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (r of view().rows; track r.id) {
+        <tr>
+          <td data-col="header">{{ r.header }}</td>
+          <td data-col="type">{{ r.type }}</td>
+          <td data-col="status">
+            <uiBadge [variant]="r.status === 'Done' ? 'success' : 'outline'">{{ r.status }}</uiBadge>
+          </td>
+          <td data-col="target" data-number="true">{{ r.target }}</td>
+          <td data-col="limit" data-number="true">{{ r.limit }}</td>
+          <td data-col="reviewer">{{ r.reviewer }}</td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="6" class="dash-table-empty">No sections match.</td>
+        </tr>
+      }
+    </tbody>
+  </uiTable>
+  <div class="dash-table-pages">
+    <p>Page {{ view().page + 1 }} of {{ view().pages }}</p>
+    <uiButton
+      variant="outline"
+      size="sm"
+      aria-label="Previous page"
+      [disabled]="view().page === 0"
+      (click)="page = view().page - 1"
+    >
+      <icon name="lucide:chevron-left" />
+    </uiButton>
+    <uiButton
+      variant="outline"
+      size="sm"
+      aria-label="Next page"
+      [disabled]="view().page >= view().pages - 1"
+      (click)="page = view().page + 1"
+    >
+      <icon name="lucide:chevron-right" />
+    </uiButton>
+  </div>
+</div>

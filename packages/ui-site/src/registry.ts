@@ -476,6 +476,18 @@ export const registry: Entry[] = [
     island: true,
     since: '0.2.0',
   },
+  {
+    kind: 'block',
+    name: 'dashboard',
+    category: 'Application',
+    title: 'Dashboard',
+    description: 'A sidebar, four stat cards, a chart with a range switch, and a table that filters, sorts and pages.',
+    files: ['blocks/dashboard/dashboard.tscl', 'blocks/dashboard/dashboard-table.tscl', 'blocks/dashboard/stat-card.tscl', 'blocks/dashboard/data.ts'],
+    parts: ['sidebar.tscl', 'sidebar-trigger.tscl'],
+    uses: ['sidebar', 'card', 'badge', 'chart', 'chart-interactive', 'table', 'button', 'input'],
+    island: true,
+    since: '0.2.0',
+  },
 ]
 
 /** The components (the component pages and lists). */
