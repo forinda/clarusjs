@@ -53,6 +53,20 @@ A `{{-- clarusjs-ignore --}}` comment skips its own line and the next one: for t
 <img src="/spacer.gif" />
 ```
 
+## Fixes {since=0.16.0}
+
+Some findings come with a fix. `clarusjs check --fix` writes them to your `.tscl` files, then checks as usual; ESLint's `--fix` applies the same ones, and editors offer each as a quick fix.
+
+```sh
+npx clarusjs check --fix
+```
+
+| Rule | Fix |
+|---|---|
+| `one-root` | wraps the component's top level in `<fragment>`: the same HTML, and the warning goes. Replace it with an element when you want what a parent passes to land on one. A `<script>`, `<style>` or declaration (`@input`, `@import`…) between the roots moves above them first, in order |
+
+A fix doesn't re-indent (that would change the text of a `<pre>` inside); run the [formatter](/guide/formatting) afterwards. From code, `applyFixes(source, lint(source, file))` from `clarusjs/compiler` returns the fixed source.
+
 ## Writing a rule
 
 A rule is an object with a `name` and a `check` function. `check` gets the file's syntax tree and calls `report(offset, message)` for each finding. Levels, `--strict` and ignore comments work for it as they do for the built-in rules. This site has one: it keeps styles in each component's `<style>` block, where they are scoped and minified.
@@ -85,7 +99,7 @@ What `check` gets:
 | `parsed` | the whole file as [`parse`](/reference/compiler#parse) returns it: inputs, imports, script, styles, template |
 | `components` | the names of the components the file imports, which are also their tags |
 | `reads(name)` | whether the template, the script or an input's type or default reads `name` |
-| `report(start, message)` | a finding at `start`, an offset in the file: an element's, an attribute's or an `@input`'s `start` |
+| `report(start, message, fix?)` | a finding at `start`, an offset in the file: an element's, an attribute's or an `@input`'s `start`. `fix`, `{ start, end, text }`, replaces that part of the file with `text` under `--fix` |
 | `file`, `source` | the file's path and text |
 
 Test a rule with `lint(source, file, levels, rules)` from `clarusjs/compiler`, which returns the findings with their line and column. A rule that throws is reported as an error at the top of the file, so a bug in it doesn't stop the other rules.

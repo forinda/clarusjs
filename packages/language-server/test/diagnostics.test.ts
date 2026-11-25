@@ -55,3 +55,15 @@ test('#304: a template that does not compile has its error only (no lint on top)
   const { project, file } = await setup()
   expect(diagnosticsFor(project, file, '<form [engine]="f"></form>\n<img src="/a.png" />\n')).toHaveLength(1)
 })
+
+test('a lint finding with a fix is a quick fix: one-root wraps the top level in <fragment>', async () => {
+  const { quickFixes } = await import('../src/plugin/diagnostics.ts')
+  const { project, file } = await setup()
+  const text = '<h1>a</h1>\n<p>b</p>\n'
+  const [action, ...rest] = quickFixes(project, file, text, { start: { line: 1, character: 0 }, end: { line: 1, character: 0 } })
+  expect(rest).toEqual([])
+  expect(action).toMatchObject({ title: 'Fix one-root (clarusjs)', kind: 'quickfix' })
+  const [edit] = Object.values(action!.edit!.changes!)[0]!
+  expect(edit).toEqual({ range: { start: { line: 0, character: 0 }, end: { line: 1, character: 8 } }, newText: '<fragment>\n<h1>a</h1>\n<p>b</p>\n</fragment>' })
+  expect(quickFixes(project, file, '<p>a</p>\n', { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } })).toEqual([])
+})

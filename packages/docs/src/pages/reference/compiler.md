@@ -92,7 +92,7 @@ console.log(inputs.map((i) => `${i.name}: ${i.type}`))
 lint(source: string, file: string, levels?: LintConfig, rules?: LintRuleDef[]): LintMessage[]
 ```
 
-Runs the [lint rules](/guide/lint) on one `.tscl` file: the built-in ones and `rules`, at their `levels` (`'warn'` by default, `'error'` or `'off'`). Each finding has its `rule`, `severity` (`'warning'` or `'error'`), `message`, `file`, `line`, `column` and `start` offset. A `{{-- clarusjs-ignore --}}` comment skips its line and the next. Like `parse`, it throws a located `ClarusError` for a syntax error.
+Runs the [lint rules](/guide/lint) on one `.tscl` file: the built-in ones and `rules`, at their `levels` (`'warn'` by default, `'error'` or `'off'`). Each finding has its `rule`, `severity` (`'warning'` or `'error'`), `message`, `file`, `line`, `column` and `start` offset, and a `fix` when it has one. A `{{-- clarusjs-ignore --}}` comment skips its line and the next. Like `parse`, it throws a located `ClarusError` for a syntax error.
 
 ```ts
 import { lint } from 'clarusjs/compiler'
@@ -101,6 +101,20 @@ for (const m of lint(source, 'src/components/card.tscl')) console.log(`${m.line}
 ```
 
 `lintRules` is the list of built-in rules, and `LintRuleDef` the type of one. See [Writing a rule](/guide/lint#writing-a-rule).
+
+## applyFixes() {since=0.16.0}
+
+```ts
+applyFixes(source: string, messages: readonly LintMessage[]): string
+```
+
+The source with the [fixes](/guide/lint#fixes) of `messages` applied (a finding's `fix` is a `LintFix`: `{ start, end, text }`). Findings without one are skipped; of overlapping fixes, the first by position wins, so lint again for the rest.
+
+```ts
+import { applyFixes, lint } from 'clarusjs/compiler'
+
+const fixed = applyFixes(source, lint(source, 'src/components/card.tscl'))
+```
 
 ## ClarusError
 

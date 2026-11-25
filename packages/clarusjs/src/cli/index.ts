@@ -14,9 +14,12 @@ program
   .argument('[dir]', 'project folder', '.')
   .option('--json', 'print diagnostics as JSON')
   .option('--strict', 'fail on lint warnings too')
-  .action(async (dir: string, options: { json?: boolean; strict?: boolean }) => {
+  .option('--fix', 'apply lint fixes to the .tscl files (wrapping a component\'s several roots in <fragment>, …) before checking')
+  .action(async (dir: string, options: { json?: boolean; strict?: boolean; fix?: boolean }) => {
     // The page sources (Markdown, …), Vite aliases and lint settings from the app's Vite config, as the build sees them.
-    const result = check({ root: dir, ...(await loadProject(dir)), strict: options.strict })
+    const result = check({ root: dir, ...(await loadProject(dir)), strict: options.strict, fix: options.fix })
+    // With --json, stdout is the diagnostics only: the files it rewrote go to stderr.
+    for (const file of result.fixed ?? []) (options.json ? console.error : console.log)(`fixed ${file}`)
     if (options.json) console.log(result.json)
     else if (result.diagnostics.length) {
       const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`

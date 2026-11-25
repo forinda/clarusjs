@@ -1,8 +1,9 @@
 // Template errors: the compiler's, for the open file, at their place. A syntax error is left to the TypeScript 7.1
 // content mapper when the project runs it (it reports them too, also for `tsc`), so one mistake isn't two errors.
-import type { Diagnostic } from '@volar/language-service'
+import type { CodeAction, Diagnostic, Range } from '@volar/language-service'
+import { URI } from 'vscode-uri'
 import { resolveIcon } from 'clarusjs/icons'
-import { fromLineColumn } from '../positions.ts'
+import { fromLineColumn, positionAt } from '../positions.ts'
 import type { Project } from '../project.ts'
 
 export function diagnosticsFor(project: Project, path: string, text: string): Diagnostic[] {
@@ -25,6 +26,18 @@ export function diagnosticsFor(project: Project, path: string, text: string): Di
     }
     return [diagnostic(err, 1)]
   }
+}
+
+/** The lint findings on the lines of `range` that have a fix, as quick fixes. */
+export function quickFixes(project: Project, path: string, text: string, range: Range): CodeAction[] {
+  let found
+  try { found = project.compiler.lint?.(text, path) ?? [] } catch { return [] }
+  return found.flatMap((m) => {
+    const fix = (m as { fix?: { start: number; end: number; text: string } }).fix
+    if (!fix || m.line - 1 < range.start.line || m.line - 1 > range.end.line) return []
+    const edit = { range: { start: positionAt(text, fix.start), end: positionAt(text, fix.end) }, newText: fix.text }
+    return [{ title: `Fix ${m.rule} (clarusjs)`, kind: 'quickfix', diagnostics: [{ ...lintDiagnostic(m), code: m.rule }], edit: { changes: { [URI.file(path).toString()]: [edit] } } }]
+  })
 }
 
 /** A lint finding: message and place are already separate. */
