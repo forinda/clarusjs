@@ -1,0 +1,18 @@
+{{-- Textarea, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as textarea.tscl.
+     Copy it into src/components/ui/ as textarea.tscl. --}}
+@input rows: number = 3
+@input value: string = ''
+
+@extends textarea
+
+<textarea
+  [rows]="rows"
+  data-part="textarea"
+  class="
+    box-border w-full py-2 px-3 border border-input rounded-lg bg-background text-foreground font-sans text-(length:--ui-font-size) leading-[1.5] resize-y
+    placeholder:text-muted-foreground
+    focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1
+    aria-invalid:border-destructive
+    disabled:opacity-50 disabled:cursor-not-allowed
+  "
+  >{{ value }}</textarea>

@@ -1,0 +1,53 @@
+@import uiScrollArea from './scroll-area.tscl'
+
+<script server>
+  const works = ['Dawn', 'Harbour', 'Ridge', 'Meadow', 'Dune', 'Fjord', 'Canyon', 'Glacier']
+</script>
+
+{{-- orientation="horizontal": a row wider than its box scrolls sideways; shadows show at the ends with more. --}}
+<div class="demo example">
+  <uiScrollArea label="Photos" orientation="horizontal" class="scroll-row">
+    @for (work of works; track work) {
+      <figure>
+        <div></div>
+        <figcaption>{{ work }}</figcaption>
+      </figure>
+    }
+  </uiScrollArea>
+</div>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
+
+{{-- Global: slot content sits inside the Scroll area's own markup, out of this demo's scope. --}}
+<style global>
+  .scroll-row {
+    display: flex;
+    gap: var(--ui-space-4);
+    max-width: 100%;
+    padding: var(--ui-space-4);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+  }
+  .scroll-row figure {
+    flex: none;
+    margin: 0;
+  }
+  .scroll-row figure div {
+    width: 10rem;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--ui-radius);
+    background: linear-gradient(135deg, var(--ui-accent-soft), var(--ui-accent));
+  }
+  .scroll-row figcaption {
+    padding-top: var(--ui-space-2);
+    color: var(--ui-muted);
+  }
+</style>

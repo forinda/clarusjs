@@ -27,9 +27,15 @@ description: "A box that keeps its shape as its width changes."
 
 ## Source
 
-Copy it into `src/components/ui/` as `aspect-ratio.tscl`.
+Copy it into `src/components/ui/` as `aspect-ratio.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="aspect-ratio">
 
 <<< ../../registry/aspect-ratio.tscl
+
+<<< ../../registry/aspect-ratio.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

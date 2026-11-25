@@ -1,0 +1,16 @@
+{{-- Separator, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as separator.tscl.
+     Copy it into src/components/ui/ as separator.tscl. --}}
+@input orientation: 'horizontal' | 'vertical' = 'horizontal'
+@input decorative: boolean = false
+
+<div
+  [role]="decorative ? 'none' : 'separator'"
+  [aria-orientation]="decorative ? null : orientation"
+  data-part="separator"
+  [data-orientation]="orientation"
+  class="
+    shrink-0 bg-border
+    data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full
+    data-[orientation=vertical]:w-px data-[orientation=vertical]:self-stretch
+  "
+></div>

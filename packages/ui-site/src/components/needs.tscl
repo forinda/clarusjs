@@ -13,6 +13,12 @@
 
 <ul class="needs">
   <li><a href="/components">theme.css</a>, once per project</li>
+  @if (entry.tailwind?.length) {
+    <li data-flavor-only="tailwind">
+      <a href="/components#using-tailwind-css">tailwind.css</a>, after theme.css: Tailwind (v4) with the --ui- tokens,
+      for the Tailwind version
+    </li>
+  }
   @if (entry.parts.length) {
     <li>
       <code>@clarusjs/ui-primitives</code> {{ entry.since ? '≥ ' + entry.since : '' }}: {{ entry.parts.join(', ') }}

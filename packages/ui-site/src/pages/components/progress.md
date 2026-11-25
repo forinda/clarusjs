@@ -17,9 +17,15 @@ description: "A native progress bar; without a value, it shows work in progress.
 
 ## Source
 
-Copy it into `src/components/ui/` as `progress.tscl`.
+Copy it into `src/components/ui/` as `progress.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="progress">
 
 <<< ../../registry/progress.tscl
+
+<<< ../../registry/progress.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

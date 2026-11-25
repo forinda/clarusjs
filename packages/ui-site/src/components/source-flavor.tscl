@@ -1,0 +1,66 @@
+{{--
+  The CSS / Tailwind switch over a component's source: its slot holds the two code blocks (the CSS file, then the
+  Tailwind one). Which shows follows <html data-flavor>, set before the first paint from the saved choice
+  (FLAVOR_SCRIPT), so the switch only flips that and saves it; every page follows.
+--}}
+@input name: string
+
+<script>
+  import { FLAVOR_KEY } from '~/theme/apply.ts'
+  let flavor = state('css')
+  function wire() {
+    flavor = document.documentElement.dataset.flavor === 'tailwind' ? 'tailwind' : 'css'
+  }
+  function pick(next) {
+    flavor = next
+    if (next === 'tailwind') document.documentElement.dataset.flavor = 'tailwind'
+    else delete document.documentElement.dataset.flavor
+    try {
+      localStorage.setItem(FLAVOR_KEY, next)
+    } catch {}
+  }
+</script>
+
+<div class="source-flavor" [data-name]="name" [use]="wire">
+  <div class="source-flavor-switch" role="group" aria-label="Styles">
+    <button type="button" [aria-pressed]="flavor === 'css' ? 'true' : 'false'" (click)="pick('css')">CSS</button>
+    <button type="button" [aria-pressed]="flavor === 'tailwind' ? 'true' : 'false'" (click)="pick('tailwind')">
+      Tailwind
+    </button>
+  </div>
+  <div data-flavor-code><slot /></div>
+</div>
+
+<style scoped>
+  .source-flavor-switch {
+    display: inline-flex;
+    gap: 2px;
+    margin-bottom: 8px;
+    padding: 2px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .source-flavor-switch button {
+    padding: 4px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .source-flavor-switch button[aria-pressed='true'] {
+    background: var(--accent-soft);
+    font-weight: 600;
+  }
+</style>
+<style global>
+  /* The code shown follows <html data-flavor>: the CSS file by default, the Tailwind one when chosen. */
+  html:not([data-flavor='tailwind']) [data-flavor-code] > .code-block:nth-of-type(2),
+  html[data-flavor='tailwind'] [data-flavor-code] > .code-block:nth-of-type(1) {
+    display: none;
+  }
+  html:not([data-flavor='tailwind']) [data-flavor-only='tailwind'] {
+    display: none;
+  }
+</style>

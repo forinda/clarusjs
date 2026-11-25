@@ -1,0 +1,17 @@
+{{-- Badge, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as badge.tscl. Copy it
+     into src/components/ui/ as badge.tscl. --}}
+@input variant: 'default' | 'secondary' | 'outline' | 'destructive' | 'success' | 'warning' = 'default'
+
+<span
+  data-part="badge"
+  [data-variant]="variant"
+  class="
+    inline-flex items-center gap-1 py-[calc(var(--ui-space)*0.5)] px-2 border border-transparent rounded-[999px] bg-primary text-primary-foreground font-sans font-semibold text-[length:calc(var(--ui-font-size)-2px)] leading-[1.4]
+    data-[variant=secondary]:bg-secondary data-[variant=secondary]:text-secondary-foreground
+    data-[variant=outline]:bg-transparent data-[variant=outline]:text-foreground data-[variant=outline]:border-border
+    data-[variant=destructive]:bg-destructive data-[variant=destructive]:text-destructive-foreground
+    data-[variant=success]:bg-success data-[variant=success]:text-success-foreground
+    data-[variant=warning]:bg-warning data-[variant=warning]:text-warning-foreground
+  "
+  ><slot
+/></span>

@@ -39,7 +39,13 @@ A real `<input type="file">` sits behind the drop zone, so without JavaScript it
 
 Copy it into `src/components/ui/` as `file-upload.tscl`.
 
+<sourceFlavor name="file-upload">
+
 <<< ../../registry/file-upload.tscl
+
+<<< ../../registry/file-upload.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

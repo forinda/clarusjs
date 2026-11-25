@@ -1,0 +1,87 @@
+{{-- Button, in Tailwind classes (needs tailwind.css after theme.css): the same inputs, markup and look as button.tscl.
+     Copy it into src/components/ui/ as button.tscl. --}}
+@input variant: 'default' | 'secondary' | 'outline' | 'dashed' | 'ghost' | 'destructive' | 'link' = 'default'
+@input size: 'sm' | 'md' | 'lg' = 'md'
+@input type: 'button' | 'submit' | 'reset' = 'button'
+@input disabled: boolean = false
+@input href: string = ''
+@input loading: boolean = false
+@input block: boolean = false
+@input shape: 'default' | 'round' | 'circle' = 'default'
+
+@if (href) {
+  <a
+    [href]="href"
+    data-part="button"
+    [data-variant]="variant"
+    [data-size]="size"
+    [data-block]="block ? 'true' : false"
+    [data-shape]="shape === 'default' ? false : shape"
+    class="
+      inline-flex items-center justify-center gap-1.5 min-h-(--ui-control-md) px-3.5 border border-transparent rounded-[var(--ui-group-radius-start,var(--ui-radius))_var(--ui-group-radius-end,var(--ui-radius))_var(--ui-group-radius-end,var(--ui-radius))_var(--ui-group-radius-start,var(--ui-radius))] bg-primary text-primary-foreground font-sans font-semibold text-(length:--ui-font-size) leading-none cursor-pointer
+      hover:brightness-[1.08]
+      focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2
+      disabled:opacity-50 disabled:cursor-not-allowed
+      aria-busy:cursor-progress
+      data-[variant=secondary]:bg-secondary data-[variant=secondary]:text-secondary-foreground
+      data-[variant=outline]:bg-background data-[variant=outline]:text-foreground data-[variant=outline]:border-border
+      data-[variant=outline]:hover:bg-accent data-[variant=outline]:hover:filter-none
+      data-[variant=dashed]:bg-background data-[variant=dashed]:text-foreground data-[variant=dashed]:border-border data-[variant=dashed]:border-dashed
+      data-[variant=dashed]:hover:border-primary data-[variant=dashed]:hover:text-primary data-[variant=dashed]:hover:filter-none
+      data-[variant=ghost]:bg-transparent data-[variant=ghost]:text-foreground
+      data-[variant=ghost]:hover:bg-accent data-[variant=ghost]:hover:filter-none
+      data-[variant=destructive]:bg-destructive data-[variant=destructive]:text-destructive-foreground
+      data-[variant=link]:bg-transparent data-[variant=link]:text-primary data-[variant=link]:underline data-[variant=link]:underline-offset-3 data-[variant=link]:p-0 data-[variant=link]:min-h-0
+      data-[size=sm]:min-h-(--ui-control-sm) data-[size=sm]:px-2.5 data-[size=sm]:text-[length:calc(var(--ui-font-size)-1px)]
+      data-[size=lg]:min-h-(--ui-control-lg) data-[size=lg]:px-5 data-[size=lg]:text-[length:calc(var(--ui-font-size)+2px)]
+      data-[block=true]:flex data-[block=true]:w-full
+      data-[shape=round]:rounded-[999px]
+      data-[shape=circle]:w-(--ui-control-md) data-[shape=circle]:p-0 data-[shape=circle]:rounded-[50%]
+      data-[shape=circle]:data-[size=sm]:w-(--ui-control-sm) data-[shape=circle]:data-[size=sm]:px-0
+      data-[shape=circle]:data-[size=lg]:w-(--ui-control-lg) data-[shape=circle]:data-[size=lg]:px-0
+    "
+    ><slot
+  /></a>
+} @else {
+  <button
+    [type]="type"
+    data-part="button"
+    [data-variant]="variant"
+    [data-size]="size"
+    [data-block]="block ? 'true' : false"
+    [data-shape]="shape === 'default' ? false : shape"
+    [aria-busy]="loading ? 'true' : false"
+    [disabled]="disabled || loading"
+    class="
+      inline-flex items-center justify-center gap-1.5 min-h-(--ui-control-md) px-3.5 border border-transparent rounded-[var(--ui-group-radius-start,var(--ui-radius))_var(--ui-group-radius-end,var(--ui-radius))_var(--ui-group-radius-end,var(--ui-radius))_var(--ui-group-radius-start,var(--ui-radius))] bg-primary text-primary-foreground font-sans font-semibold text-(length:--ui-font-size) leading-none cursor-pointer
+      hover:brightness-[1.08]
+      focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2
+      disabled:opacity-50 disabled:cursor-not-allowed
+      aria-busy:cursor-progress
+      data-[variant=secondary]:bg-secondary data-[variant=secondary]:text-secondary-foreground
+      data-[variant=outline]:bg-background data-[variant=outline]:text-foreground data-[variant=outline]:border-border
+      data-[variant=outline]:hover:bg-accent data-[variant=outline]:hover:filter-none
+      data-[variant=dashed]:bg-background data-[variant=dashed]:text-foreground data-[variant=dashed]:border-border data-[variant=dashed]:border-dashed
+      data-[variant=dashed]:hover:border-primary data-[variant=dashed]:hover:text-primary data-[variant=dashed]:hover:filter-none
+      data-[variant=ghost]:bg-transparent data-[variant=ghost]:text-foreground
+      data-[variant=ghost]:hover:bg-accent data-[variant=ghost]:hover:filter-none
+      data-[variant=destructive]:bg-destructive data-[variant=destructive]:text-destructive-foreground
+      data-[variant=link]:bg-transparent data-[variant=link]:text-primary data-[variant=link]:underline data-[variant=link]:underline-offset-3 data-[variant=link]:p-0 data-[variant=link]:min-h-0
+      data-[size=sm]:min-h-(--ui-control-sm) data-[size=sm]:px-2.5 data-[size=sm]:text-[length:calc(var(--ui-font-size)-1px)]
+      data-[size=lg]:min-h-(--ui-control-lg) data-[size=lg]:px-5 data-[size=lg]:text-[length:calc(var(--ui-font-size)+2px)]
+      data-[block=true]:flex data-[block=true]:w-full
+      data-[shape=round]:rounded-[999px]
+      data-[shape=circle]:w-(--ui-control-md) data-[shape=circle]:p-0 data-[shape=circle]:rounded-[50%]
+      data-[shape=circle]:data-[size=sm]:w-(--ui-control-sm) data-[shape=circle]:data-[size=sm]:px-0
+      data-[shape=circle]:data-[size=lg]:w-(--ui-control-lg) data-[shape=circle]:data-[size=lg]:px-0
+    "
+  >
+    @if (loading) {
+      <span
+        data-part="button-spinner"
+        aria-hidden="true"
+        class="size-[1em] border-2 border-current border-r-transparent rounded-[50%] animate-[ui-button-spin_0.7s_linear_infinite] motion-reduce:[animation-duration:2s]"
+      ></span>
+    }<slot />
+  </button>
+}

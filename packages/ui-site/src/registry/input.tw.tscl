@@ -1,0 +1,32 @@
+{{-- Input, in Tailwind classes (needs tailwind.css after theme.css, which also holds the size rules): the same inputs
+     and look as input.tscl. Copy it into src/components/ui/ as input.tscl. --}}
+@input type: string = 'text'
+@input size: '' | 'sm' | 'md' | 'lg' = ''
+@input variant: 'outline' | 'filled' | 'borderless' | 'underlined' = 'outline'
+@input status: '' | 'warning' = ''
+
+@extends input
+
+<input
+  [type]="type"
+  data-part="text-input"
+  [data-size]="size || false"
+  [data-variant]="variant === 'outline' ? false : variant"
+  [data-status]="status || false"
+  class="
+    box-border w-full min-h-[var(--ui-control-h,var(--ui-control-md))] px-3 border border-input rounded-lg bg-background text-foreground font-sans text-[length:var(--ui-control-font,var(--ui-font-size))] leading-[normal]
+    placeholder:text-muted-foreground
+    focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1
+    data-[variant=filled]:not-data-[status=warning]:not-aria-invalid:border-transparent
+    data-[variant=filled]:bg-muted
+    data-[variant=borderless]:border-0 data-[variant=borderless]:bg-transparent
+    data-[variant=underlined]:border-0 data-[variant=underlined]:border-b data-[variant=underlined]:rounded-none data-[variant=underlined]:bg-transparent data-[variant=underlined]:px-0
+    data-[status=warning]:not-aria-invalid:border-warning
+    aria-invalid:border-destructive
+    read-only:not-disabled:bg-muted
+    disabled:opacity-50 disabled:cursor-not-allowed
+    [[data-part=input-group]>&]:flex-1 [[data-part=input-group]>&]:min-w-0 [[data-part=input-group]>&]:border-0
+    [[data-part=input-group]>&]:rounded-none [[data-part=input-group]>&]:bg-transparent
+    [[data-part=input-group]>&]:focus-visible:outline-none
+  "
+/>

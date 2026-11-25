@@ -1,0 +1,17 @@
+{{-- Button group, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as button-group.tscl.
+     Copy it into src/components/ui/ as button-group.tscl. --}}
+@input label: string
+
+<div
+  role="group"
+  [aria-label]="label"
+  data-part="button-group"
+  class="
+    inline-flex
+    [&>*:not(:first-child)]:[--ui-group-radius-start:0] [&>*:not(:first-child)]:-ml-[calc(var(--ui-space)*0.25)]
+    [&>*:not(:last-child)]:[--ui-group-radius-end:0]
+    [&>*:focus-visible]:relative [&>*:focus-visible]:z-1
+  "
+>
+  <slot />
+</div>

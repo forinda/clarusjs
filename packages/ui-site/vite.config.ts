@@ -2,11 +2,14 @@ import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
 import markdown from '@clarusjs/content'
 import { themeDocs } from '@clarusjs/theme-docs/vite.js'
-import { APPLY_SCRIPT, SCHEME_SCRIPT } from './src/theme/apply.ts'
+import { APPLY_SCRIPT, FLAVOR_SCRIPT, SCHEME_SCRIPT } from './src/theme/apply.ts'
+import tailwindcss from '@tailwindcss/vite'
 import { SIDEBAR_SCRIPT } from '@clarusjs/ui-primitives/sidebar.js'
 
 export default defineConfig({
   plugins: [
+    // Only the Tailwind parity page imports tailwind.css; nothing else on the site uses Tailwind.
+    tailwindcss(),
     // The sidebar from src/pages, search, and llms.txt for AI tools.
     themeDocs({
       llms: {
@@ -29,6 +32,8 @@ export default defineConfig({
           ['script', { id: 'ui-scheme' }, SCHEME_SCRIPT],
           // A collapsed sidebar, remembered, applied before the first paint (@clarusjs/ui-primitives).
           ['script', { id: 'ui-sidebar-apply' }, SIDEBAR_SCRIPT],
+          // CSS or Tailwind code on the component pages, as last chosen (src/theme/apply.ts).
+          ['script', { id: 'ui-flavor' }, FLAVOR_SCRIPT],
         ],
       },
       // Pages are Markdown in the site's layout; usage examples (src/registry/*-demo.tscl) and the site's own parts (src/components) by tag.
