@@ -43,12 +43,12 @@
   const picked = (iso) => (range ? iso === value || iso === end : iso === value)
   // Between a start and an end (or, while choosing the end, the day under the pointer).
   const between = (iso) => range && value !== '' && inRange(iso, value, end || hovered || value) && !picked(iso)
-  // The month and year lists: months by name in the locale; years within min and max, else a century back and
+  // The month and year lists: months by short name in the locale (the title, read out, has the whole name); years within min and max, else a century back and
   // twenty years on (from this year, or the shown one if it's outside that).
   const months = () =>
     Array.from({ length: 12 }, (_, i) => ({
       value: i + 1,
-      label: date(`2026-${String(i + 1).padStart(2, '0')}-01`, { month: 'long' }),
+      label: date(`2026-${String(i + 1).padStart(2, '0')}-01`, { month: 'short' }),
     }))
   const years = () => {
     const shown = Number(focus.slice(0, 4))
@@ -225,7 +225,6 @@
     }
     :where([data-part='calendar-month']),
     :where([data-part='calendar-year']) {
-      min-width: 0; /* short of room, the lists give way, never the arrows */
       min-height: var(--ui-control-sm);
       padding: 0 var(--ui-space-1);
       border: 1px solid var(--ui-border);
@@ -236,11 +235,14 @@
       font-weight: 600;
       cursor: pointer;
     }
+    /* The month takes the room that's left (width 0: its names don't widen the calendar); the year keeps its size. */
     :where([data-part='calendar-month']) {
-      flex: 1;
+      flex: 1 1 auto;
+      width: 0;
       margin-left: var(--ui-space-1);
     }
     :where([data-part='calendar-year']) {
+      flex: none;
       margin-right: var(--ui-space-1);
     }
     /* A narrow screen: the lists take the first row, the arrows the second (‹ « left, › » right), so the header is

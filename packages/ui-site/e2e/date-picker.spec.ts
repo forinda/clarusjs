@@ -116,7 +116,7 @@ test('calendar: double arrows move a year, single arrows a month; the month and 
   await expect(title).toHaveText('October 2027')
   await cal.getByRole('button', { name: 'Previous year' }).click()
   await expect(title).toHaveText('October 2026')
-  await cal.getByRole('combobox', { name: 'Month' }).selectOption({ label: 'March' })
+  await cal.getByRole('combobox', { name: 'Month' }).selectOption({ label: 'Mar' })
   await expect(title).toHaveText('March 2026')
   await cal.getByRole('combobox', { name: 'Year' }).selectOption('1990')
   await expect(title).toHaveText('March 1990')
@@ -163,4 +163,12 @@ test('calendar: squeezed, its arrows keep a 24px target and the lists give way',
   await cal.locator('[data-part="calendar-head"]').evaluate((el: HTMLElement) => (el.style.width = '200px'))
   for (const part of ['calendar-prev-year', 'calendar-prev', 'calendar-next', 'calendar-next-year'])
     expect((await cal.locator(`[data-part="${part}"]`).boundingBox())!.width).toBeGreaterThanOrEqual(24)
+})
+
+test("calendar: wider month names (another platform's fonts) don't make it wider than its days", async ({ page }) => {
+  await ready(page, '/components/calendar', 'calendar-demo')
+  const cal = page.locator('.demo:not(.example) [data-part="calendar"]')
+  const before = (await cal.boundingBox())!.width
+  await cal.locator('select').evaluateAll((els) => els.forEach((el) => ((el as HTMLElement).style.fontSize = '1.3em')))
+  expect((await cal.boundingBox())!.width).toBeLessThanOrEqual(before + 1)
 })
