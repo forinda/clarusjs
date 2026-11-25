@@ -235,3 +235,8 @@ test('toast region: each slot renders into a <template> the region clones per to
   expect(html).toContain('<template data-type="error"><div class="err">e</div></template>')
   expect(html).toContain('<template data-type="success"></template>')
 })
+
+test('toast-region: named "Notifications", or by [label] (two regions on one page need different names)', async () => {
+  expect(await render('toast-region', {})).toContain('aria-label="Notifications"')
+  expect(await render('toast-region', { label: 'Sign-in messages' })).toContain('aria-label="Sign-in messages"')
+})

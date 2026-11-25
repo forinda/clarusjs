@@ -1,0 +1,68 @@
+{{--
+  The login form: errors show on their fields after a submit, the first one focused; signIn (data.ts) runs as an
+  action() (clarusjs/fetch): the button waits while it runs, and a toast says when it worked, or why not. Its own
+  island, so typing never re-renders the page around it.
+--}}
+@import uiField from '~/components/ui/field.tscl'
+@import uiButton from '~/components/ui/button.tscl'
+
+<script>
+  import { action } from 'clarusjs/fetch'
+  import { toast } from '@clarusjs/ui-primitives'
+  import { signIn, validateLogin } from './data.ts'
+  let email = state('')
+  let password = state('')
+  let tried = state(false)
+  // The call: pending while it runs, one at a time, its answer in .result and a thrown error in .error. The
+  // credentials it sent are kept, so its errors stand only while those are unchanged; the first one is focused.
+  let sent = state({ email: '', password: '' })
+  const login = action(
+    async (_, { signal }) => {
+      sent = { email, password }
+      const answer = await signIn({ email, password }, { signal })
+      const found = answer.errors ?? {}
+      const first = Object.keys(found)[0]
+      if (first) {
+        toast(found[first], { type: 'error' })
+        // After the answer is shown (showing it renders the fields again): the next frame.
+        requestAnimationFrame(() => document.getElementById('login-' + first)?.focus())
+      } else toast('Signed in as ' + answer.user + '.', { type: 'success' })
+      return answer
+    },
+    { onError: () => toast("Couldn't sign in. Check your connection and try again.", { type: 'error' }) },
+  )
+  const server = () => (email === sent.email && password === sent.password ? (login.result?.errors ?? {}) : {})
+  // This page's own rules first: an old answer never hides what's wrong now.
+  const errors = () => ({ ...server(), ...validateLogin({ email, password }) })
+  function submit(event) {
+    event.preventDefault()
+    tried = true
+    const found = validateLogin({ email, password })
+    if (Object.keys(found).length) return document.getElementById('login-' + Object.keys(found)[0])?.focus()
+    login.run()
+  }
+</script>
+
+<form class="login-form" novalidate (submit)="submit($event)">
+  <uiField
+    id="login-email"
+    label="Email"
+    type="email"
+    name="email"
+    placeholder="you@example.com"
+    [error]="errors().email ?? ''"
+    [show]="tried"
+    [(value)]="email"
+  />
+  <uiField
+    id="login-password"
+    label="Password"
+    type="password"
+    name="password"
+    [error]="errors().password ?? ''"
+    [show]="tried"
+    [(value)]="password"
+  />
+  <a class="login-forgot" href="#">Forgot password?</a>
+  <uiButton type="submit" [disabled]="login.pending">{{ login.pending ? 'Signing in…' : 'Sign in' }}</uiButton>
+</form>

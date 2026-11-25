@@ -115,9 +115,24 @@ for (const mode of modes) {
   })
 }
 
+/** The login page, once its island has attached (a click before that submits the form natively). */
+async function gotoLogin(page: import('@playwright/test').Page) {
+  await page.goto('/view/login')
+  await page.locator('cl-island[c="login-form"][data-cl-ready]').waitFor({ state: 'attached' })
+}
+
 test.describe('login block', () => {
+  test('typing key by key keeps every key and the focus (fields aren\'t rebuilt while typed in)', async ({ page }) => {
+    await gotoLogin(page)
+    await page.getByLabel('Email').pressSequentially('ada@example.com')
+    await expect(page.getByLabel('Email')).toHaveValue('ada@example.com')
+    await expect(page.getByLabel('Email')).toBeFocused()
+    await page.getByLabel('Password', { exact: true }).pressSequentially('correct horse')
+    await expect(page.getByLabel('Password', { exact: true })).toHaveValue('correct horse')
+  })
+
   test('an empty submit shows an error on each field and focuses the first', async ({ page }) => {
-    await page.goto('/view/login')
+    await gotoLogin(page)
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true')
     await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('aria-invalid', 'true')
@@ -128,7 +143,7 @@ test.describe('login block', () => {
 
   test('valid details sign in: the button waits, then a status says who', async ({ page }) => {
     await page.clock.install() // the stub waits 300ms: time moves only when the test says
-    await page.goto('/view/login')
+    await gotoLogin(page)
     await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000)
     await page.getByLabel('Email').fill('ada@example.com')
     await page.getByLabel('Password', { exact: true }).fill('correct horse')
@@ -136,44 +151,45 @@ test.describe('login block', () => {
     const button = page.getByRole('button', { name: 'Signing in…' })
     await expect(button).toBeDisabled()
     await page.clock.runFor(400)
-    await expect(page.getByRole('status')).toHaveText('Signed in as ada@example.com.')
+    await expect(page.locator('[data-part="toast"][data-type="success"]')).toContainText('Signed in as ada@example.com.')
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled()
   })
 
   test('an error from the handler lands on its field', async ({ page }) => {
-    await page.goto('/view/login')
+    await gotoLogin(page)
     await page.getByLabel('Email').fill('taken@example.com')
     await page.getByLabel('Password', { exact: true }).fill('12345678')
     await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page.getByText('Wrong email or password.')).toBeVisible()
+    await expect(page.locator('[data-part="field"]').getByText('Wrong email or password.')).toBeVisible()
     await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('aria-invalid', 'true')
+    await expect(page.locator('[data-part="toast"][data-type="error"]')).toContainText('Wrong email or password.')
   })
 
   test('an error from signIn is focused; changing what was rejected lets this page\'s own rules speak again', async ({ page }) => {
-    await page.goto('/view/login')
+    await gotoLogin(page)
     await page.getByLabel('Email').fill('taken@example.com')
     await page.getByLabel('Password', { exact: true }).fill('12345678')
     await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page.getByText('Wrong email or password.')).toBeVisible()
+    await expect(page.locator('[data-part="field"]').getByText('Wrong email or password.')).toBeVisible()
     await expect(page.getByLabel('Password', { exact: true })).toBeFocused()
     await page.getByLabel('Password', { exact: true }).fill('x')
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByText('Use at least 8 characters.')).toBeVisible()
-    await expect(page.getByText('Wrong email or password.')).toBeHidden()
+    await expect(page.locator('[data-part="field"]').getByText('Wrong email or password.')).toBeHidden()
   })
 
   test('a failed call shows an alert, and the form can be sent again', async ({ page }) => {
-    await page.goto('/view/login')
+    await gotoLogin(page)
     await page.getByLabel('Email').fill('offline@example.com')
     await page.getByLabel('Password', { exact: true }).fill('12345678')
     await page.getByRole('button', { name: 'Sign in' }).click()
-    await expect(page.getByRole('alert').filter({ hasText: "Couldn't sign in" })).toBeVisible()
+    await expect(page.locator('[data-part="toast"][data-type="error"]')).toContainText("Couldn't sign in")
     await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled()
   })
 
   test('at phone width nothing scrolls sideways', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 })
-    await page.goto('/view/login')
+    await gotoLogin(page)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   })
 })

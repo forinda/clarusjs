@@ -1,41 +1,13 @@
 {{--
-  Login: a page that signs people in with email and password. The rules and the handler are in data.ts beside it:
-  replace signIn with your own. Errors show on their fields after a submit, the first one focused; signIn runs as an
-  action() (clarusjs/fetch): the button waits while it runs, and a failed call shows an alert. Copy it into
-  src/pages/ (as login.tscl) and the components it imports into src/components/ui/.
+  Login: a page that signs people in with email and password. The form is login-form.tscl beside it, its rules and
+  the call it makes in data.ts: replace signIn with your own. Copy the page into src/pages/ (as login.tscl), the
+  other two beside it, and the components they import into src/components/ui/. The page brings its own
+  <toastRegion />: drop it if your layout has one.
 --}}
 @import uiCard from '~/components/ui/card.tscl'
-@import uiField from '~/components/ui/field.tscl'
-@import uiButton from '~/components/ui/button.tscl'
-
-<script>
-  import { action } from 'clarusjs/fetch'
-  import { signIn, validateLogin } from './data.ts'
-  let email = state('')
-  let password = state('')
-  let tried = state(false)
-  // The call: pending while it runs, one at a time, its answer in .result and a thrown error in .error. The
-  // credentials it sent are kept, so its errors stand only while those are unchanged; the first one is focused.
-  let sent = state({ email: '', password: '' })
-  const login = action(async (_, { signal }) => {
-    sent = { email, password }
-    const answer = await signIn({ email, password }, { signal })
-    const first = Object.keys(answer.errors ?? {})[0]
-    // After the answer is shown (showing it renders the fields again): the next frame.
-    if (first) requestAnimationFrame(() => document.getElementById('login-' + first)?.focus())
-    return answer
-  })
-  const server = () => (email === sent.email && password === sent.password ? (login.result?.errors ?? {}) : {})
-  // This page's own rules first: an old answer never hides what's wrong now.
-  const errors = () => ({ ...server(), ...validateLogin({ email, password }) })
-  function submit(event) {
-    event.preventDefault()
-    tried = true
-    const found = validateLogin({ email, password })
-    if (Object.keys(found).length) return document.getElementById('login-' + Object.keys(found)[0])?.focus()
-    login.run()
-  }
-</script>
+@import loginForm from './login-form.tscl'
+@import '~/components/ui/toast.css'
+@import toastRegion from '@clarusjs/ui-primitives/toast-region.tscl'
 
 <cl-head>
   <title>Sign in</title>
@@ -47,39 +19,12 @@
       <h1 id="login-title" class="login-title">Sign in to your account</h1>
       <p class="login-lead">Enter your email and password.</p>
     }
-    <form class="login-form" novalidate (submit)="submit($event)">
-      <uiField
-        id="login-email"
-        label="Email"
-        type="email"
-        name="email"
-        placeholder="you@example.com"
-        [error]="errors().email ?? ''"
-        [show]="tried"
-        [(value)]="email"
-      />
-      <uiField
-        id="login-password"
-        label="Password"
-        type="password"
-        name="password"
-        [error]="errors().password ?? ''"
-        [show]="tried"
-        [(value)]="password"
-      />
-      <a class="login-forgot" href="#">Forgot password?</a>
-      @if (login.error) {
-        <p class="login-alert" role="alert">Couldn't sign in. Check your connection and try again.</p>
-      }
-      <uiButton type="submit" [disabled]="login.pending">{{ login.pending ? 'Signing in…' : 'Sign in' }}</uiButton>
-      <p class="login-status" role="status">
-        {{ login.result?.user ? 'Signed in as ' + login.result.user + '.' : '' }}
-      </p>
-    </form>
+    <loginForm />
     @slot('footer') {
       <p class="login-footer">Don't have an account? <a href="#">Sign up</a></p>
     }
   </uiCard>
+  <toastRegion label="Sign-in messages" />
 </main>
 
 <style scoped>
@@ -137,16 +82,6 @@
       justify-self: end;
       margin-top: calc(var(--ui-space-2) * -1);
       font-size: calc(var(--ui-font-size) - 1px);
-    }
-    :where(.login-status) {
-      margin: 0;
-    }
-    :where(.login-status:empty) {
-      display: none;
-    }
-    :where(.login-alert) {
-      margin: 0;
-      color: var(--ui-danger);
     }
   }
 </style>
