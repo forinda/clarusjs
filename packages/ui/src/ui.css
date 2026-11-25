@@ -58,6 +58,10 @@
   --ui-space-8: calc(var(--ui-space) * 8);
   --ui-space-10: calc(var(--ui-space) * 10);
   --ui-space-12: calc(var(--ui-space) * 12);
+  /* Control heights (buttons, inputs, selects): sm, md and lg, from the same unit. */
+  --ui-control-sm: calc(var(--ui-space) * 7.5);
+  --ui-control-md: calc(var(--ui-space) * 9);
+  --ui-control-lg: calc(var(--ui-space) * 11);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
@@ -353,8 +357,8 @@
     align-items: center;
     justify-content: center;
     gap: calc(var(--ui-space) * 1.5);
-    min-height: 36px;
-    min-width: 36px;
+    min-height: var(--ui-control-md);
+    min-width: var(--ui-control-md);
     padding: 0 calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
@@ -362,6 +366,25 @@
     color: var(--ui-fg);
     font: 500 var(--ui-font-size) var(--ui-font);
     cursor: pointer;
+  }
+  /* Sizes: data-size on the toggle (or item) or on anything around it. */
+  :where([data-size='sm'] [data-part='toggle']),
+  :where([data-part='toggle'][data-size='sm']) {
+    min-height: var(--ui-control-sm);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  :where([data-size='lg'] [data-part='toggle']),
+  :where([data-part='toggle'][data-size='lg']) {
+    min-height: var(--ui-control-lg);
+    font-size: calc(var(--ui-font-size) + 2px);
+  }
+  :where([data-size='sm'] [data-part='toggle-item']),
+  :where([data-part='toggle-item'][data-size='sm']) {
+    min-height: var(--ui-control-sm);
+  }
+  :where([data-size='lg'] [data-part='toggle-item']),
+  :where([data-part='toggle-item'][data-size='lg']) {
+    min-height: var(--ui-control-lg);
   }
   :where([data-part='toggle']):hover,
   :where([data-part='toggle-item']):hover {
@@ -492,13 +515,24 @@
     color: var(--ui-fg);
   }
   :where([data-part='control']) {
-    min-height: 34px;
+    min-height: var(--ui-control-md);
     padding: var(--ui-space-1) calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
     background: var(--ui-bg);
     color: var(--ui-fg);
     font: var(--ui-font-size) var(--ui-font);
+  }
+  /* Sizes: data-size on the control or on anything around it. */
+  :where([data-size='sm'] [data-part='control']),
+  :where([data-part='control'][data-size='sm']) {
+    min-height: var(--ui-control-sm);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  :where([data-size='lg'] [data-part='control']),
+  :where([data-part='control'][data-size='lg']) {
+    min-height: var(--ui-control-lg);
+    font-size: calc(var(--ui-font-size) + 2px);
   }
   :where([data-part='control'])[aria-invalid='true'] {
     border: 1px solid var(--ui-danger);

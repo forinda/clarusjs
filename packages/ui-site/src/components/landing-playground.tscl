@@ -16,7 +16,7 @@
 <script>
   import { presets } from '~/theme/presets.ts'
   import { DENSITIES } from '~/theme/options.ts'
-  import { SPACE_STEPS } from '~/theme/model.ts'
+  import { SCALE } from '~/theme/model.ts'
   const PRESETS = ['teal', 'indigo', 'rose', 'amber', 'green'].map((name) => ({
     name,
     label: name[0].toUpperCase() + name.slice(1),
@@ -37,7 +37,7 @@
     }
     return [
       ...Object.entries(set).map(([k, v]) => `--ui-${k}: ${v}`),
-      ...SPACE_STEPS.map((n) => `--ui-space-${n}: calc(var(--ui-space) * ${n})`),
+      ...SCALE.map(([k, v]) => `--ui-${k}: ${v}`),
     ].join('; ')
   }
   const setRadius = (event) => (radius = Number(event.target.value))

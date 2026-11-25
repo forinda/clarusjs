@@ -61,3 +61,13 @@ test('/components/button: eight examples, each with its code; loading blocks a s
   const container = (await page.getByRole('button', { name: 'Create account' }).locator('xpath=..').boundingBox())!
   expect(block.width).toBeGreaterThan(container.width * 0.8)
 })
+
+test('/components/input: one size scale: an input, a select and a button in a row share its height (30, 36, 44px)', async ({ page }) => {
+  await page.goto('/components/input')
+  const demo = page.locator('[class*="input-sizes-demo"]')
+  for (const [size, px] of [['sm', 30], ['md', 36], ['lg', 44]] as const) {
+    const row = demo.locator(`[data-size="${size}"]`).first()
+    const heights = await Promise.all(['[data-part="text-input"]', '[data-part="control"]', '[data-part="button"]'].map((sel) => row.locator(sel).first().evaluate((el) => Math.round(el.getBoundingClientRect().height))))
+    expect(heights, size).toEqual([px, px, px])
+  }
+})

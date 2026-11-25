@@ -19,8 +19,8 @@
     align-items: center;
     justify-content: center;
     gap: calc(var(--ui-space) * 1.5);
-    min-height: 36px;
-    min-width: 36px;
+    min-height: var(--ui-control-md);
+    min-width: var(--ui-control-md);
     padding: 0 calc(var(--ui-space) * 2.5);
     border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
@@ -28,6 +28,25 @@
     color: var(--ui-fg);
     font: 500 var(--ui-font-size) var(--ui-font);
     cursor: pointer;
+  }
+  /* Sizes: data-size on the toggle (or item) or on anything around it. */
+  :where([data-size='sm'] [data-part='toggle']),
+  :where([data-part='toggle'][data-size='sm']) {
+    min-height: var(--ui-control-sm);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+  :where([data-size='lg'] [data-part='toggle']),
+  :where([data-part='toggle'][data-size='lg']) {
+    min-height: var(--ui-control-lg);
+    font-size: calc(var(--ui-font-size) + 2px);
+  }
+  :where([data-size='sm'] [data-part='toggle-item']),
+  :where([data-part='toggle-item'][data-size='sm']) {
+    min-height: var(--ui-control-sm);
+  }
+  :where([data-size='lg'] [data-part='toggle-item']),
+  :where([data-part='toggle-item'][data-size='lg']) {
+    min-height: var(--ui-control-lg);
   }
   :where([data-part='toggle']):hover,
   :where([data-part='toggle-item']):hover {

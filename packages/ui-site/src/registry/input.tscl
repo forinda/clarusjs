@@ -1,10 +1,11 @@
 {{-- Input: a native <input>. Every <input> attribute you pass (name, value, placeholder, required, disabled…),
-     and id, class, style, aria-* and data-*, land on it. --}}
+     and id, class, style, aria-* and data-*, land on it. size sm or lg, or a data-size around it, sets its height. --}}
 @input type: string = 'text'
+@input size: '' | 'sm' | 'md' | 'lg' = ''
 
 @extends input
 
-<input [type]="type" data-part="text-input" />
+<input [type]="type" data-part="text-input" [data-size]="size || false" />
 
 <style scoped>
   @layer theme, base, components, utilities;
@@ -12,7 +13,7 @@
     :where(:scope) {
       box-sizing: border-box;
       width: 100%;
-      min-height: 36px;
+      min-height: var(--ui-control-md);
       padding: 0 var(--ui-space-3);
       border: 1px solid var(--ui-input);
       border-radius: var(--ui-radius);
@@ -33,6 +34,16 @@
     :where(:scope:disabled) {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+    :where([data-size='sm'] :scope),
+    :where(:scope[data-size='sm']) {
+      min-height: var(--ui-control-sm);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where([data-size='lg'] :scope),
+    :where(:scope[data-size='lg']) {
+      min-height: var(--ui-control-lg);
+      font-size: calc(var(--ui-font-size) + 2px);
     }
   }
 </style>

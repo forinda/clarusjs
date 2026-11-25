@@ -1,0 +1,48 @@
+@import './select.css'
+@import uiInput from './input.tscl'
+@import uiButton from './button.tscl'
+@import uiSelect from '@clarusjs/ui-primitives/select.tscl'
+
+<script server>
+  const options = [
+    { value: 'all', label: 'All' },
+    { value: 'open', label: 'Open' },
+  ]
+</script>
+
+{{-- One size for a row of controls: data-size on what holds them (a Select is an island, so it takes the size from
+     around it); a Button takes its own size. --}}
+<div class="demo">
+  <div class="row" data-size="sm">
+    <uiInput aria-label="Small search" placeholder="Search" />
+    <uiSelect id="size-demo-sm" label="Small status" [options]="options" value="all" />
+    <uiButton size="sm">Small</uiButton>
+  </div>
+  <div class="row" data-size="md">
+    <uiInput aria-label="Medium search" placeholder="Search" />
+    <uiSelect id="size-demo-md" label="Medium status" [options]="options" value="all" />
+    <uiButton size="md">Medium</uiButton>
+  </div>
+  <div class="row" data-size="lg">
+    <uiInput aria-label="Large search" placeholder="Search" />
+    <uiSelect id="size-demo-lg" label="Large status" [options]="options" value="all" />
+    <uiButton size="lg">Large</uiButton>
+  </div>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+  }
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 10rem) auto;
+    gap: var(--ui-space-3);
+    align-items: end;
+  }
+</style>

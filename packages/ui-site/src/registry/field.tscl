@@ -51,13 +51,24 @@
       color: var(--ui-fg);
     }
     :where([data-part='control']) {
-      min-height: 34px;
+      min-height: var(--ui-control-md);
       padding: var(--ui-space-1) calc(var(--ui-space) * 2.5);
       border: 1px solid var(--ui-input);
       border-radius: var(--ui-radius);
       background: var(--ui-bg);
       color: var(--ui-fg);
       font: var(--ui-font-size) var(--ui-font);
+    }
+    /* Sizes: data-size on the control or on anything around it. */
+    :where([data-size='sm'] [data-part='control']),
+    :where([data-part='control'][data-size='sm']) {
+      min-height: var(--ui-control-sm);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where([data-size='lg'] [data-part='control']),
+    :where([data-part='control'][data-size='lg']) {
+      min-height: var(--ui-control-lg);
+      font-size: calc(var(--ui-font-size) + 2px);
     }
     :where([data-part='control'])[aria-invalid='true'] {
       border: 1px solid var(--ui-danger);

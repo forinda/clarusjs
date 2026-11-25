@@ -11,6 +11,13 @@ export type Theme = { light: Record<string, string>; dark: Record<string, string
 export const MODELESS = ['font', 'font-heading', 'font-mono', 'font-size', 'radius', 'space']
 /** The spacing scale: --ui-space-N = N × --ui-space, written in the same rule as the unit. */
 export const SPACE_STEPS = [1, 2, 3, 4, 5, 6, 8, 10, 12]
+/** Control heights (buttons, inputs, selects) as multiples of --ui-space: 30, 36 and 44px at 4px. */
+export const CONTROL_SIZES: [size: 'sm' | 'md' | 'lg', steps: number][] = [['sm', 7.5], ['md', 9], ['lg', 11]]
+/** What --ui-space scales, as [token, value]: computed where it's declared, so wherever the unit changes, declare these too. */
+export const SCALE: [name: string, value: string][] = [
+  ...SPACE_STEPS.map((n): [string, string] => [`space-${n}`, `calc(var(--ui-space) * ${n})`]),
+  ...CONTROL_SIZES.map(([size, n]): [string, string] => [`control-${size}`, `calc(var(--ui-space) * ${n})`]),
+]
 
 /** Text/background pairs the builder checks for contrast (WCAG AA, 4.5:1). */
 export const PAIRS: [fg: string, bg: string][] = [
@@ -27,7 +34,7 @@ export function toCss(theme: Theme, scope = ':root'): string {
   const root = scope === ':root'
   const osDark = root ? ":root:not([data-theme='light'])" : under(":root:not([data-theme='light'])", scope)
   const toggleDark = root ? ":root[data-theme='dark']" : under(":root[data-theme='dark']", scope)
-  const scale = `\n  /* Spacing: steps of --ui-space (4px), set in the same rule so changing the unit rescales them. */\n${SPACE_STEPS.map((n) => `  --ui-space-${n}: calc(var(--ui-space) * ${n});\n`).join('')}`
+  const scale = `\n  /* Spacing: steps of --ui-space (4px), set in the same rule so changing the unit rescales them. */\n${SCALE.map(([k, v]) => `  --ui-${k}: ${v};\n`).join('')}`
   return `${scope} {\n${decl(theme.light, '  ')}${scale}}\n@media (prefers-color-scheme: dark) {\n  ${osDark} {\n${decl(theme.dark, '    ')}  }\n}\n${toggleDark} {\n${decl(theme.dark, '  ')}}\n`
 }
 

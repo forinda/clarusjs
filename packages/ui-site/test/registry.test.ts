@@ -121,6 +121,20 @@ test('input: a native <input> with data-part="text-input", type defaults to text
   expect(await render('input.tscl', { type: 'email', 'aria-invalid': 'true' })).toMatch(/^<input [^>]*type="email"[^>]*aria-invalid="true"|^<input [^>]*aria-invalid="true"[^>]*type="email"/)
 })
 
+test('input: size sm or lg sets data-size; without it, none (a [data-size] around it decides)', async () => {
+  expect(await render('input.tscl', { size: 'sm' })).toContain('data-size="sm"')
+  expect(await render('input.tscl', { size: 'lg' })).toContain('data-size="lg"')
+  expect(await render('input.tscl', {})).not.toContain('data-size')
+})
+
+test('sizes: every control takes its height from --ui-control-sm|md|lg, under [data-size] on itself or around it', () => {
+  for (const f of ['input.tscl', 'field.tscl', 'select.css', 'combobox.css', 'toggle.css', 'button.tscl']) {
+    const css = source(f)
+    expect(css, f).not.toMatch(/min-height: (30|34|36|44)px/)
+    for (const size of ['sm', 'lg']) expect(css, `${f} ${size}`).toContain(`var(--ui-control-${size})`)
+  }
+})
+
 test('textarea: a native <textarea>, rows defaults to 3', async () => {
   expect(await render('textarea.tscl', { id: 'bio' })).toBe('<textarea rows="3" data-part="textarea" id="bio"></textarea>')
   expect(await render('textarea.tscl', { rows: 6 })).toContain('rows="6"')

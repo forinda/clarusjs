@@ -56,6 +56,10 @@
   --ui-space-8: calc(var(--ui-space) * 8);
   --ui-space-10: calc(var(--ui-space) * 10);
   --ui-space-12: calc(var(--ui-space) * 12);
+  /* Control heights (buttons, inputs, selects): sm, md and lg, from the same unit. */
+  --ui-control-sm: calc(var(--ui-space) * 7.5);
+  --ui-control-md: calc(var(--ui-space) * 9);
+  --ui-control-lg: calc(var(--ui-space) * 11);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {

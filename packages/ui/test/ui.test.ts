@@ -51,7 +51,7 @@ const toggleDark = tokenRule(/^:root\[data-theme='dark'\] \{([^}]*)\}/m)
 const EXISTING = ['font', 'radius', 'bg', 'fg', 'muted', 'border', 'accent', 'accent-fg', 'accent-soft', 'danger', 'shadow']
 const NEW = ['card', 'card-fg', 'popover', 'popover-fg', 'secondary', 'secondary-fg', 'muted-bg', 'accent-soft-fg', 'danger-fg', 'input', 'ring', 'sidebar', 'sidebar-fg', 'sidebar-accent', 'sidebar-accent-fg', 'sidebar-border', 'font-heading', 'font-mono', 'font-size', 'success', 'success-fg', 'warning', 'warning-fg']
 const CHART = [1, 2, 3, 4, 5].map((n) => `chart-${n}`)
-const SPACE = ['space', ...[1, 2, 3, 4, 5, 6, 8, 10, 12].map((n) => `space-${n}`)]
+const SPACE = ['space', ...[1, 2, 3, 4, 5, 6, 8, 10, 12].map((n) => `space-${n}`), 'control-sm', 'control-md', 'control-lg']
 const MODELESS = ['font', 'font-heading', 'font-mono', 'font-size', 'radius', ...SPACE]
 
 test('theme builder: the :root rule defines 40 tokens (5 of them chart colours) and the spacing scale, and both dark rules define every colour token', () => {
