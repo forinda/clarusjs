@@ -1,0 +1,18 @@
+{{-- Progress, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as progress.tscl.
+     Copy it into src/components/ui/ as progress.tscl. --}}
+@input value: number | null = null
+@input max: number = 100
+@input label: string = ''
+
+<progress
+  [max]="max"
+  [value]="value"
+  [aria-label]="label || null"
+  data-part="progress"
+  class="
+    w-full h-[8px] border-0 border-none rounded-[999px] overflow-hidden bg-muted accent-primary appearance-none
+    [&::-webkit-progress-bar]:bg-muted
+    [&::-webkit-progress-value]:bg-primary [&::-webkit-progress-value]:rounded-[999px]
+    [&::-moz-progress-bar]:bg-primary [&::-moz-progress-bar]:rounded-[999px]
+  "
+></progress>

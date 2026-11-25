@@ -1,0 +1,21 @@
+{{-- Meter, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as meter.tscl.
+     Copy it into src/components/ui/ as meter.tscl. --}}
+@input value: number
+@input min: number = 0
+@input max: number = 1
+@input low: number | null = null
+@input high: number | null = null
+@input optimum: number | null = null
+@input label: string = ''
+
+<meter
+  [value]="value"
+  [min]="min"
+  [max]="max"
+  [low]="low"
+  [high]="high"
+  [optimum]="optimum"
+  [aria-label]="label || null"
+  data-part="meter"
+  class="w-full h-[8px]"
+></meter>

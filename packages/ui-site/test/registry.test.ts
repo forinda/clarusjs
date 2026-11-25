@@ -19,7 +19,7 @@ test('blocks: registry entries of their own kind, apart from the components', ()
 
 test('every entry\'s files exist, and every file in src/registry is an entry\'s file or usage example', () => {
   for (const { file } of files) expect(existsSync(resolve(registryDir, file)), file).toBe(true)
-  const known = [...files.map((f) => f.file), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`)])].sort()
+  const known = [...files.map((f) => f.file), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`), ...(e.tailwind ?? [])])].sort()
   const found = (readdirSync(registryDir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => statSync(resolve(registryDir, f)).isFile())
   expect(found.sort()).toEqual(known)
 })
@@ -467,4 +467,26 @@ test('every component sits in one of the groups (PrimeVue\'s), and its page\'s f
   }
   const used = new Set(components.map((c) => c.group))
   for (const g of COMPONENT_GROUPS) expect(used.has(g), g).toBe(true)
+})
+
+test('file upload: without JavaScript, a real file input in a labelled drop zone, sent with its form', async () => {
+  const html = await render('file-upload.tscl', { id: 'docs', label: 'Attachments', name: 'attachments', accept: 'image/*,.pdf', multiple: true })
+  expect(html).toMatch(/<label for="docs" data-part="file-drop"/)
+  expect(html).toMatch(/<input type="file" id="docs" name="attachments" accept="image\/\*,\.pdf" multiple/)
+  expect(html).toContain('Attachments')
+  expect(html).not.toContain('data-part="file-list"')
+})
+
+test('tailwind: each component\'s Tailwind twin (<name>.tw.tscl) takes the same inputs, models and events, has no <style>, and its page shows it under the CSS / Tailwind switch', () => {
+  const decls = (text: string) => [...text.matchAll(/^@(input|model|event) ([\w]+)[^\n]*$/gm)].map((m) => m[0].replace(/\s+/g, ' ')).sort()
+  const twins = components.filter((e) => e.tailwind?.length)
+  expect(twins.map((e) => e.name).sort()).toEqual(components.filter((e) => /<style scoped>/.test(source(e.files[0]!)) && !/@clarusjs\/ui-primitives\//.test(source(e.files[0]!))).map((e) => e.name).sort()) // every component that owns its markup
+  for (const e of twins) {
+    const tw = e.tailwind![0]!
+    expect(tw, e.name).toBe(e.files[0]!.replace(/\.tscl$/, '.tw.tscl'))
+    expect(decls(source(tw)), e.name).toEqual(decls(source(e.files[0]!)))
+    expect(source(tw), e.name).not.toMatch(/<style/)
+    const md = readFileSync(page(e.name), 'utf8')
+    expect(md, e.name).toMatch(new RegExp(`<sourceFlavor name="${e.name}">\\s*<<< \\.\\./\\.\\./registry/${e.files[0]!.replace('.', '\\.')}\\s*<<< \\.\\./\\.\\./registry/${tw.replace(/\./g, '\\.')}\\s*</sourceFlavor>`))
+  }
 })

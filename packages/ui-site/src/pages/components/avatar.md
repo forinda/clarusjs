@@ -17,9 +17,15 @@ description: "A round picture of someone, or their initials."
 
 ## Source
 
-Copy it into `src/components/ui/` as `avatar.tscl`.
+Copy it into `src/components/ui/` as `avatar.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="avatar">
 
 <<< ../../registry/avatar.tscl
+
+<<< ../../registry/avatar.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

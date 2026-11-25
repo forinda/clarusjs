@@ -1,0 +1,38 @@
+@import uiResizable from './resizable.tscl'
+{{-- orientation="vertical": the panels stack; Up and Down move the handle. --}}
+
+<div class="demo example">
+  <uiResizable id="demo-stack" label="Resize the editor" orientation="vertical" [size]="65">
+    @slot('start') {
+      <div class="resizable-pane">Editor</div>
+    }
+    @slot('end') {
+      <div class="resizable-pane">Console</div>
+    }
+  </uiResizable>
+</div>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  [data-part='resizable'] {
+    height: 16rem;
+  }
+</style>
+
+{{-- Global: slot content sits inside the Resizable's own markup, out of this demo's scope. --}}
+<style global>
+  .resizable-pane {
+    display: grid;
+    place-content: center;
+    height: 100%;
+    padding: var(--ui-space-4);
+    color: var(--ui-muted);
+    text-align: center;
+  }
+</style>

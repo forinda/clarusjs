@@ -1,0 +1,112 @@
+{{--
+  OTP input: a one-time code, shown as a box per digit. It's one native input (autocomplete="one-time-code",
+  a numeric keyboard), laid over the boxes, so pasting a code, a phone's SMS autofill, Backspace and screen readers
+  all work as they do in any field. Letters are dropped. (complete) sends the code once every box is filled; the
+  form gets it by name. Bind it with [(value)].
+--}}
+@input id: string
+@input label: string
+@input name: string = 'code'
+@input length: number = 6
+@model value: string = ''
+@event complete: string
+
+<script>
+  let focused = state(false)
+  const cells = () => Array.from({ length }, (_, i) => i)
+  function type(event) {
+    const field = event.target
+    const digits = field.value.replace(/\D/g, '').slice(0, length)
+    if (field.value !== digits) field.value = digits
+    value = digits
+    if (digits.length === length) emit('complete', digits)
+  }
+  // The caret stays at the end: the boxes fill and empty in order.
+  function end(event) {
+    const field = event.target
+    field.setSelectionRange(field.value.length, field.value.length)
+  }
+</script>
+
+<div data-part="otp">
+  <label [for]="id" data-part="otp-label">{{ label }}</label>
+  <div data-part="otp-field">
+    <div data-part="otp-cells" aria-hidden="true">
+      @for (i of cells(); track i) {
+        <span
+          data-part="otp-cell"
+          [data-filled]="i < value.length ? 'true' : false"
+          [data-active]="focused && i === Math.min(value.length, length - 1) ? 'true' : false"
+        >
+          {{ value[i] ?? '' }}
+        </span>
+      }
+    </div>
+    <input
+      [id]="id"
+      [name]="name"
+      data-part="otp-input"
+      type="text"
+      autocomplete="one-time-code"
+      inputmode="numeric"
+      pattern="[0-9]*"
+      [maxlength]="length"
+      [value]="value"
+      spellcheck="false"
+      (input)="type($event)"
+      (focus)="focused = true"
+      (blur)="focused = false"
+      (click)="end($event)"
+      (keyup)="end($event)"
+    />
+  </div>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: inline-grid;
+      gap: var(--ui-space-2);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where([data-part='otp-label']) {
+      font-weight: 500;
+    }
+    :where([data-part='otp-field']) {
+      position: relative;
+    }
+    :where([data-part='otp-cells']) {
+      display: flex;
+      gap: var(--ui-space-2);
+    }
+    :where([data-part='otp-cell']) {
+      display: grid;
+      place-items: center;
+      width: var(--ui-control-lg);
+      height: var(--ui-control-lg);
+      border: 1px solid var(--ui-input);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      font-size: calc(var(--ui-font-size) + 6px);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    :where([data-part='otp-cell'][data-active='true']) {
+      border-color: var(--ui-ring);
+      box-shadow: 0 0 0 1px var(--ui-ring);
+    }
+    /* The real input covers the boxes, unseen (its focus ring too: the active box shows the focus): clicks, taps and
+       long-press paste land on it. */
+    :where([data-part='otp-input']) {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      font: inherit;
+      opacity: 0;
+    }
+  }
+</style>

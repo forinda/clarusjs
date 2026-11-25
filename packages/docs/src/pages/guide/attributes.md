@@ -94,7 +94,7 @@ On a component tag, `[...]="props"` passes every key as a prop, and props writte
 
 ## Safety
 
-URL attributes such as `href` and `src` only accept relative URLs and `http:`, `https:`, `mailto:` and `tel:` (plus raster `data:` images for image attributes); anything else becomes `about:invalid#unsafe`. A bound `style` is escaped but not checked, so don't put untrusted data in it.
+URL attributes such as `href` and `src` only accept relative URLs and `http:`, `https:`, `mailto:` and `tel:` (plus, for image attributes such as `<img src>`, raster `data:` images and object URLs, `blob:`, as for a preview of a picked file); anything else becomes `about:invalid#unsafe`. A bound `style` is escaped but not checked, so don't put untrusted data in it.
 
 Some attributes load a whole page, plugin, stylesheet or base URL into yours, so a URL from data there could embed anyone's page or restyle your site. These take static values only, and binding them is a build error naming the place:
 

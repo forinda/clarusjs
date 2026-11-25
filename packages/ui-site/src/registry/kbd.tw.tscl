@@ -1,0 +1,11 @@
+{{-- Kbd, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as kbd.tscl.
+     Copy it into src/components/ui/ as kbd.tscl. --}}
+
+<kbd
+  data-part="kbd"
+  class="
+    inline-block min-w-[1.6em] py-[calc(var(--ui-space)*0.25)] px-1.5 border border-border border-b-2 rounded-[4px] bg-background text-foreground
+    font-mono text-[length:calc(var(--ui-font-size)-2px)] leading-[1.5] text-center
+  "
+  ><slot
+/></kbd>

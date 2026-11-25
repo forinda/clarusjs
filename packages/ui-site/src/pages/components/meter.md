@@ -17,9 +17,15 @@ description: "A native meter for a value in a known range."
 
 ## Source
 
-Copy it into `src/components/ui/` as `meter.tscl`.
+Copy it into `src/components/ui/` as `meter.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="meter">
 
 <<< ../../registry/meter.tscl
+
+<<< ../../registry/meter.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

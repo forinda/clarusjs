@@ -110,6 +110,13 @@ test('raster data: images are allowed for image attributes only', async () => {
   expect(await render('@input u: string\n<a [href]="u">x</a>', { u: png })).toContain('href="about:invalid#unsafe"')
 })
 
+test('object URLs (blob:) are allowed for image attributes, a preview of a picked file; never for href', async () => {
+  const blob = 'blob:https://example.com/0f7a1c2e-5b9d-4c1a-9e2f-3a4b5c6d7e8f'
+  expect(await render('@input u: string\n<img [src]="u">', { u: blob })).toContain(`src="${blob}"`)
+  expect(await render('@input u: string\n<video [poster]="u"></video>', { u: blob })).toContain(`poster="${blob}"`)
+  expect(await render('@input u: string\n<a [href]="u">x</a>', { u: blob })).toContain('href="about:invalid#unsafe"')
+})
+
 test('more URL-bearing attributes are checked', async () => {
   for (const name of ['data', 'codebase', 'ping', 'manifest', 'longdesc']) {
     expect(await render(`@input u: string\n<x-el [${name}]="u"></x-el>`, { u: 'javascript:alert(1)' }), name).toContain(`${name}="about:invalid#unsafe"`)

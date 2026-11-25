@@ -15,11 +15,27 @@ description: "A box that keeps its shape as its width changes."
 
 <<< ../../registry/aspect-ratio-demo.tscl
 
+## Examples
+
+### Any ratio
+
+`ratio` takes any CSS ratio: `"1/1"`, `"4/3"`, `"16/9"`, `"21/9"`, or `"3/4"` for portrait. Bind it to change the shape.
+
+<aspectRatioRatiosDemo />
+
+<<< ../../registry/aspect-ratio-ratios-demo.tscl
+
 ## Source
 
-Copy it into `src/components/ui/` as `aspect-ratio.tscl`.
+Copy it into `src/components/ui/` as `aspect-ratio.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="aspect-ratio">
 
 <<< ../../registry/aspect-ratio.tscl
+
+<<< ../../registry/aspect-ratio.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 

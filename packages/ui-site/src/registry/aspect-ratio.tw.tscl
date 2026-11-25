@@ -1,0 +1,14 @@
+{{-- Aspect ratio, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as aspect-ratio.tscl.
+     Copy it into src/components/ui/ as aspect-ratio.tscl. --}}
+@input ratio: string = '16/9'
+
+<div
+  data-part="aspect-ratio"
+  [style]="'aspect-ratio: ' + ratio"
+  class="
+    relative w-full overflow-hidden rounded-lg
+    [&>:is(img,video,iframe)]:size-full [&>:is(img,video,iframe)]:object-cover
+  "
+>
+  <slot />
+</div>

@@ -25,3 +25,8 @@ export const APPLY_SCRIPT = `(function(){var k=${JSON.stringify(STORAGE_KEY)};fu
  * around a frame changes it.
  */
 export const SCHEME_SCRIPT = `(function(){function a(){try{var t=localStorage.getItem("clarusjs-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);else document.documentElement.removeAttribute("data-theme")}catch(e){}}a();addEventListener("storage",function(e){if(!e.key||e.key==="clarusjs-theme")a()})})()`
+
+/** Which styles the component pages show: 'css' (the default) or 'tailwind', remembered. */
+export const FLAVOR_KEY = 'ui-flavor'
+/** Sets <html data-flavor> from the saved choice before the first paint, so the right code shows at once. */
+export const FLAVOR_SCRIPT = `try{var f=localStorage.getItem(${JSON.stringify(FLAVOR_KEY)});if(f==="tailwind")document.documentElement.setAttribute("data-flavor","tailwind")}catch(e){}`

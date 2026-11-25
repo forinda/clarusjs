@@ -17,9 +17,15 @@ description: "What to show when there is nothing yet, with a way to start."
 
 ## Source
 
-Copy it into `src/components/ui/` as `empty.tscl`.
+Copy it into `src/components/ui/` as `empty.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
+
+<sourceFlavor name="empty">
 
 <<< ../../registry/empty.tscl
+
+<<< ../../registry/empty.tw.tscl
+
+</sourceFlavor>
 
 ## Styling
 
