@@ -703,6 +703,8 @@ test('search: the focused input draws one indicator, its accent bottom line, not
   })
   expect(style.outline).toBe('none')
   expect(style.shadow).toContain(style.accent)
+})
+
 test('attach="visible": an island attaches once it scrolls into view, in a real browser (its <cl-island> has no box)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 400 })
   await page.goto('/guide/lazy-attach')
