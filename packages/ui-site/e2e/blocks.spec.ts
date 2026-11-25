@@ -13,29 +13,71 @@ test('the header links Components, Blocks and Theme on a desktop', async ({ page
   for (const [name, href] of [['Components', '/'], ['Blocks', '/blocks'], ['Theme', '/theme']]) await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('href', href!)
 })
 
-test('/blocks lists every block, linked', async ({ page }) => {
+test('/blocks shows every block, full width, each linked to its page', async ({ page }) => {
   await page.goto('/blocks')
-  for (const b of blocks) await expect(page.locator(`main a[href="/blocks/${b.name}"]`).first()).toBeVisible()
+  await expect(page.locator('nav[aria-label="Sidebar"], .sidebar')).toHaveCount(0)
+  for (const b of blocks) {
+    await expect(page.locator(`main a[href="/blocks/${b.name}"]`).first()).toBeVisible()
+    await expect(page.locator(`iframe[src="/view/${b.name}"]`)).toBeAttached()
+  }
 })
 
-test('/blocks/login: the frame shows /view/login at desktop, tablet and phone widths', async ({ page }) => {
+test('/blocks/login: a full-width page, no docs sidebar; the frame at desktop, tablet and phone widths', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 })
   await page.goto('/blocks/login')
+  await expect(page.locator('nav[aria-label="Sidebar"], .sidebar')).toHaveCount(0)
   const frame = page.locator('iframe[src="/view/login"]')
   await expect(frame).toHaveAttribute('title', 'Login preview')
+  expect((await frame.boundingBox())!.width).toBeGreaterThan(1100)
   await expect(page.frameLocator('iframe[src="/view/login"]').locator('form')).toBeVisible()
   const width = () => frame.evaluate((f) => f.getBoundingClientRect().width)
   const full = await width()
-  await page.getByRole('button', { name: 'Phone' }).click()
-  await expect(page.getByRole('button', { name: 'Phone' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Phone width' }).click()
+  await expect(page.getByRole('button', { name: 'Phone width' })).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(width).toBe(390)
-  await page.getByRole('button', { name: 'Tablet' }).click()
-  await expect.poll(width).toBe(Math.min(768, full))
-  await page.getByRole('button', { name: 'Desktop' }).click()
-  await expect(page.getByRole('button', { name: 'Phone' })).toHaveAttribute('aria-pressed', 'false')
+  await page.getByRole('button', { name: 'Tablet width' }).click()
+  await expect.poll(width).toBe(768)
+  await page.getByRole('button', { name: 'Desktop width' }).click()
+  await expect(page.getByRole('button', { name: 'Phone width' })).toHaveAttribute('aria-pressed', 'false')
   await expect.poll(width).toBe(full)
   const open = page.getByRole('link', { name: 'Open in new tab' })
   await expect(open).toHaveAttribute('href', '/view/login')
   await expect(open).toHaveAttribute('target', '_blank')
+})
+
+test('/blocks/login: Code shows a tree of every file to copy, the block\'s and its components\', one at a time', async ({ page }) => {
+  await page.goto('/blocks/login')
+  await page.getByRole('button', { name: 'Code', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Code', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('iframe[src="/view/login"]')).toBeHidden()
+  const tree = page.getByRole('navigation', { name: 'Files' })
+  for (const f of ['login.tscl', 'data.ts', 'card.tscl', 'field.tscl', 'button.tscl']) await expect(tree.getByRole('button', { name: f })).toBeVisible()
+  await expect(page.locator('.code-block:visible')).toHaveCount(1)
+  await expect(page.locator('.code-block:visible')).toContainText('<uiCard>')
+  await tree.getByRole('button', { name: 'data.ts' }).click()
+  await expect(page.locator('.code-block:visible')).toHaveCount(1)
+  await expect(page.locator('.code-block:visible')).toContainText('export function validateLogin')
+  await expect(tree.getByRole('button', { name: 'data.ts' })).toHaveAttribute('aria-current', 'true')
+  await page.getByRole('button', { name: 'Preview', exact: true }).click()
+  await expect(page.locator('iframe[src="/view/login"]')).toBeVisible()
+})
+
+test('/blocks/login: the toolbar stays under the header while the page scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 600 })
+  await page.goto('/blocks/login')
+  await page.mouse.move(640, 400)
+  await page.mouse.wheel(0, 500)
+  await expect.poll(async () => (await page.getByRole('toolbar', { name: 'Login' }).boundingBox())!.y).toBeLessThan(120)
+})
+
+test('/blocks/login: the frame follows the header\'s light/dark switch at once', async ({ page }) => {
+  await page.goto('/blocks/login')
+  const scheme = () => page.frameLocator('iframe[src="/view/login"]').locator('html').getAttribute('data-theme')
+  const toggle = page.locator('.theme-toggle')
+  for (let i = 0; i < 3 && (await page.locator('html').getAttribute('data-theme')) !== 'dark'; i++) await toggle.click()
+  await expect.poll(scheme).toBe('dark')
+  for (let i = 0; i < 3 && (await page.locator('html').getAttribute('data-theme')) !== 'light'; i++) await toggle.click()
+  await expect.poll(scheme).toBe('light')
 })
 
 test('/view/login: the block alone, no site chrome, kept out of search, the sitemap and llms.txt', async ({ page, request }) => {

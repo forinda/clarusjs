@@ -1,11 +1,10 @@
-@import site from '~/layouts/site.tscl'
+@import wide from '~/layouts/wide.tscl'
 @import themePreview from '~/components/theme-preview.tscl'
 @import themeBuilder from '~/components/theme-builder.tscl'
 
-<site
+<wide
   [title]="'Theme'"
   [path]="'/theme'"
-  [app]="true"
   [description]="'Tune the --ui- tokens over a live dashboard of the components, then copy your theme.css.'"
 >
   <div class="theme-page">
@@ -18,18 +17,9 @@
       <themePreview />
     </div>
   </div>
-</site>
+</wide>
 
 <style scoped>
-  /* A full-width tool page (no sidebar): its own padding and scrolling, as wide as the builder wants. */
-  :scope {
-    flex: 1;
-    overflow-y: auto;
-    width: 100%;
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 32px 24px 56px;
-  }
   .workbench {
     display: grid;
     gap: 16px;

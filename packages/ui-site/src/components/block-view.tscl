@@ -1,0 +1,214 @@
+{{--
+  A block on its page: a toolbar (Preview or Code, its line, the frame's width, reload, copy, open) that stays under
+  the header, then the frame or the code. The page passes the <iframe> (its src is never data) and the files' code
+  blocks, in codeFiles() order; this shows one at a time.
+--}}
+@import { blocks, codeFiles } from '~/registry.ts'
+@input name: string
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  const entry = blocks.find((b) => b.name === name)
+  const files = entry ? codeFiles(entry) : []
+  const SIZES = [
+    { key: 'desktop', label: 'Desktop width' },
+    { key: 'tablet', label: 'Tablet width' },
+    { key: 'phone', label: 'Phone width' },
+  ]
+  let mode = state('preview')
+  let size = state('desktop')
+  let file = state(0)
+  let copied = state(false)
+  let body = typeof document === 'undefined' ? null : document.body // the block's body once wired
+  function wire(el) {
+    body = el
+    return effect(() => {
+      const code = mode === 'code'
+      const frame = el.querySelector('iframe')
+      if (frame) frame.hidden = code
+      el.querySelectorAll('.code-block').forEach((block, i) => (block.hidden = !code || i !== file))
+    })
+  }
+  function reload() {
+    try {
+      body?.querySelector('iframe')?.contentWindow?.location.reload()
+    } catch {}
+  }
+  async function copy() {
+    const text = body?.querySelectorAll('.code-block')[0]?.querySelector('pre')?.innerText ?? ''
+    try {
+      await navigator.clipboard.writeText(text)
+      copied = true
+      setTimeout(() => (copied = false), 1500)
+    } catch {}
+  }
+</script>
+
+<section class="block-view" [data-mode]="mode" [data-size]="size">
+  <div class="block-toolbar" role="toolbar" [aria-label]="entry?.title ?? name">
+    <div class="block-switch" role="group" aria-label="View">
+      <button type="button" [aria-pressed]="mode === 'preview' ? 'true' : 'false'" (click)="mode = 'preview'">
+        Preview
+      </button>
+      <button type="button" [aria-pressed]="mode === 'code' ? 'true' : 'false'" (click)="mode = 'code'">Code</button>
+    </div>
+    <p class="block-line">{{ entry?.description }}</p>
+    <div class="block-tools" role="group" aria-label="Preview width">
+      @for (s of SIZES; track s.key) {
+        <button
+          type="button"
+          class="block-icon"
+          [aria-label]="s.label"
+          [title]="s.label"
+          [aria-pressed]="size === s.key ? 'true' : 'false'"
+          (click)="size = s.key; mode = 'preview'"
+        >
+          @if (s.key === 'desktop') {
+            <icon name="lucide:monitor" />
+          } @else if (s.key === 'tablet') {
+            <icon name="lucide:tablet" />
+          } @else {
+            <icon name="lucide:smartphone" />
+          }
+        </button>
+      }
+      <button type="button" class="block-icon" aria-label="Reload preview" title="Reload preview" (click)="reload()">
+        <icon name="lucide:rotate-cw" />
+      </button>
+    </div>
+    <button type="button" class="block-copy" (click)="copy()">
+      @if (copied) {<icon name="lucide:check" />} @else {<icon name="lucide:copy" />} {{ copied ? 'Copied' : 'Copy page' }}
+    </button>
+    <a class="block-open" [href]="'/view/' + name" target="_blank" rel="noopener"
+      ><icon name="lucide:external-link" /> Open in new tab</a
+    >
+  </div>
+  <div class="block-body" [use]="wire">
+    <nav class="block-files" aria-label="Files" [hidden]="mode !== 'code'">
+      @for (f of files; track f.path) {
+        <button type="button" [aria-current]="$index === file ? 'true' : false" (click)="file = $index">
+          {{ f.path }}
+        </button>
+      }
+    </nav>
+    <div class="block-main"><slot /></div>
+  </div>
+</section>
+
+<style scoped>
+  :scope {
+    margin: 24px 0 48px;
+  }
+  .block-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 0;
+    background: var(--bg);
+  }
+  .block-switch,
+  .block-tools {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .block-line {
+    flex: 1;
+    min-width: 12em;
+    margin: 0;
+    color: var(--muted);
+  }
+  button,
+  .block-open {
+    padding: 4px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .block-icon {
+    display: grid;
+    place-items: center;
+    padding: 6px;
+  }
+  button[aria-pressed='true'] {
+    background: var(--accent-soft);
+  }
+  .block-copy,
+  .block-open {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid var(--rule);
+    text-decoration: none;
+  }
+  .block-body {
+    display: grid;
+    gap: 16px;
+  }
+  :scope[data-mode='code'] .block-body {
+    grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+    align-items: start;
+  }
+  .block-files {
+    display: grid;
+    gap: 2px;
+    position: sticky;
+    top: 64px;
+  }
+  .block-files button {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .block-files button[aria-current='true'] {
+    background: var(--accent-soft);
+  }
+  .block-main {
+    min-width: 0;
+  }
+  iframe {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin-inline: auto;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--bg);
+  }
+  .block-files[hidden],
+  iframe[hidden] {
+    display: none;
+  }
+  :scope[data-size='tablet'] iframe {
+    width: 768px;
+  }
+  :scope[data-size='phone'] iframe {
+    width: 390px;
+  }
+  /* Narrow screens scroll the page itself, under the fixed header. */
+  @media (max-width: 899px) {
+    .block-toolbar {
+      top: var(--header-height);
+    }
+  }
+  @media (max-width: 700px) {
+    :scope[data-mode='code'] .block-body {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .block-files {
+      position: static;
+    }
+  }
+</style>

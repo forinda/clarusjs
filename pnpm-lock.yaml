@@ -505,6 +505,9 @@ importers:
       '@clarusjs/content':
         specifier: workspace:*
         version: link:../content
+      '@iconify-json/lucide':
+        specifier: ^1.2.158
+        version: 1.2.158
       '@playwright/test':
         specifier: 1.65.1
         version: 1.65.1
