@@ -13,6 +13,8 @@ description: "Links to the pages of a long list, shortened with ellipses."
 
 ## Usage
 
+Plain links, no JavaScript: `href` is a pattern with `{page}` (`/posts?page={page}`), and your server renders the page asked for, with `page` and `pages` from your data. This page is static, so the demo's links stay on it (`#page-2`).
+
 <<< ../../registry/pagination-demo.tscl
 
 ## Source
