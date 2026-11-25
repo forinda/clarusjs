@@ -103,3 +103,72 @@ for (const mode of modes)
       expect(await axeViolations(page)).toEqual([])
     })
   }
+
+test('calendar: double arrows move a year, single arrows a month; the month and year lists jump straight there', async ({
+  page,
+}) => {
+  await ready(page, '/components/calendar', 'calendar-demo')
+  const cal = page.locator('.demo:not(.example)')
+  const title = cal.locator('[data-part="calendar-title"]')
+  await cal.getByRole('button', { name: 'Next year' }).click()
+  await expect(title).toHaveText('November 2027')
+  await cal.getByRole('button', { name: 'Previous month' }).click()
+  await expect(title).toHaveText('October 2027')
+  await cal.getByRole('button', { name: 'Previous year' }).click()
+  await expect(title).toHaveText('October 2026')
+  await cal.getByRole('combobox', { name: 'Month' }).selectOption({ label: 'Mar' })
+  await expect(title).toHaveText('March 2026')
+  await cal.getByRole('combobox', { name: 'Year' }).selectOption('1990')
+  await expect(title).toHaveText('March 1990')
+  await expect(cal.getByRole('combobox', { name: 'Month' })).toHaveValue('3')
+})
+
+test('calendar: with limits, the year list holds only the years within them', async ({ page }) => {
+  await ready(page, '/components/calendar', 'calendar-limits-demo')
+  const years = page
+    .locator('[class*="calendar-limits-demo"]')
+    .getByRole('combobox', { name: 'Year' })
+    .locator('option')
+  await expect(years).toHaveText(['2026'])
+})
+
+test('date picker: Clear empties the date (and the form value), closes, and goes back to the button', async ({
+  page,
+}) => {
+  await ready(page, '/components/date-picker', 'date-picker')
+  const picker = page.locator('[class*="date-picker-range-demo"] [data-part="date-picker"]')
+  const trigger = picker.getByRole('button', { name: /Stay/ })
+  await trigger.click()
+  await page.getByRole('dialog', { name: 'Stay' }).getByRole('button', { name: 'Clear' }).click()
+  await expect(page.getByRole('dialog', { name: 'Stay' })).toBeHidden()
+  await expect(trigger).toBeFocused()
+  await expect(trigger).toContainText('Pick a date')
+  await expect(picker.locator('input[name="stay"]')).toHaveValue('')
+  await expect(picker.locator('input[name="stay-end"]')).toHaveValue('')
+})
+
+test('calendar: its header fits a narrow phone (the lists take a row of their own)', async ({ page }) => {
+  await page.setViewportSize({ width: 340, height: 800 })
+  await ready(page, '/components/calendar', 'calendar-demo')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  const head = page.locator('.demo:not(.example) [data-part="calendar-head"]')
+  const grid = page.locator('.demo:not(.example) [data-part="calendar-grid"]')
+  expect((await head.boundingBox())!.width).toBeLessThanOrEqual((await grid.boundingBox())!.width + 1)
+})
+
+test('calendar: squeezed, its arrows keep a 24px target and the lists give way', async ({ page }) => {
+  await ready(page, '/components/calendar', 'calendar-demo')
+  const cal = page.locator('.demo:not(.example) [data-part="calendar"]')
+  // Wider fonts (CI's) make the lists wider than the row: here, the row is made narrower than them instead.
+  await cal.locator('[data-part="calendar-head"]').evaluate((el: HTMLElement) => (el.style.width = '200px'))
+  for (const part of ['calendar-prev-year', 'calendar-prev', 'calendar-next', 'calendar-next-year'])
+    expect((await cal.locator(`[data-part="${part}"]`).boundingBox())!.width).toBeGreaterThanOrEqual(24)
+})
+
+test("calendar: wider month names (another platform's fonts) don't make it wider than its days", async ({ page }) => {
+  await ready(page, '/components/calendar', 'calendar-demo')
+  const cal = page.locator('.demo:not(.example) [data-part="calendar"]')
+  const before = (await cal.boundingBox())!.width
+  await cal.locator('select').evaluateAll((els) => els.forEach((el) => ((el as HTMLElement).style.fontSize = '1.3em')))
+  expect((await cal.boundingBox())!.width).toBeLessThanOrEqual(before + 1)
+})

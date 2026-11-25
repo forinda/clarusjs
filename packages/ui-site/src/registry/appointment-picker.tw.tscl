@@ -1,0 +1,151 @@
+{{-- Appointment picker, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as appointment-picker.tscl.
+     Copy it into src/components/ui/ as appointment-picker.tscl. --}}
+@import uiCalendar from './calendar.tscl'
+@input id: string
+@input label: string
+@input name: string = 'appointment'
+@input placeholder: string = 'Pick a date and time'
+@input min: string = ''
+@input max: string = ''
+@input from: string = '09:00'
+@input to: string = '17:00'
+@input interval: number = 30
+@input locale: string = 'en-US'
+@input firstDay: number = 0
+@model value: string = ''
+
+<script>
+  import { addDays, parseIso, today } from './calendar-dates.ts'
+  let day = state(value.slice(0, 10))
+  let time = state(value.slice(11, 16))
+  const SHORTCUTS = [
+    { label: 'Yesterday', days: -1 },
+    { label: 'Today', days: 0 },
+    { label: 'Tomorrow', days: 1 },
+    { label: 'Next week', days: 7 },
+  ]
+  const lo = () => (min === 'today' ? today() : min)
+  const hi = () => (max === 'today' ? today() : max)
+  const off = (iso) => (lo() !== '' && iso < lo()) || (hi() !== '' && iso > hi())
+  const target = (days) => addDays(today(), days)
+  const minutes = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+  const hhmm = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')
+  const slots = () =>
+    Array.from({ length: Math.floor((minutes(to) - minutes(from)) / interval) + 1 }, (_, i) =>
+      hhmm(minutes(from) + i * interval),
+    )
+  const clock = (t) =>
+    new Intl.DateTimeFormat(locale, { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).format(
+      new Date(Date.UTC(2000, 0, 1, Number(t.slice(0, 2)), Number(t.slice(3, 5)))),
+    )
+  const dayText = (iso) =>
+    new Intl.DateTimeFormat(locale, {
+      timeZone: 'UTC',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(parseIso(iso) ?? undefined)
+  const text = () =>
+    day && time ? dayText(day) + ' at ' + clock(time) : day ? dayText(day) + ', pick a time' : placeholder
+  const popover = () => document.getElementById(`${id}-popover`)
+  function close() {
+    popover()?.hidePopover()
+    document.getElementById(`${id}-trigger`)?.focus()
+  }
+  function commit() {
+    value = day && time ? `${day}T${time}` : ''
+  }
+  function shortcut(days) {
+    day = target(days)
+    commit()
+  }
+  function chooseTime(t) {
+    time = t
+    commit()
+    if (day) close()
+  }
+  function clear() {
+    day = ''
+    time = ''
+    commit()
+    close()
+  }
+</script>
+
+<div
+  data-part="appointment"
+  [data-empty]="value ? false : 'true'"
+  class="
+    inline-grid gap-1 text-foreground font-sans text-(length:--ui-font-size) leading-[normal]
+    [&_[data-part=appointment-label]]:font-medium
+    [&_[data-part=appointment-trigger]]:inline-flex [&_[data-part=appointment-trigger]]:gap-2 [&_[data-part=appointment-trigger]]:items-center [&_[data-part=appointment-trigger]]:min-w-[16rem] [&_[data-part=appointment-trigger]]:min-h-[var(--ui-control-h,var(--ui-control-md))] [&_[data-part=appointment-trigger]]:px-3 [&_[data-part=appointment-trigger]]:border [&_[data-part=appointment-trigger]]:border-input [&_[data-part=appointment-trigger]]:rounded-lg [&_[data-part=appointment-trigger]]:bg-background [&_[data-part=appointment-trigger]]:text-foreground [&_[data-part=appointment-trigger]]:font-[inherit] [&_[data-part=appointment-trigger]]:text-start [&_[data-part=appointment-trigger]]:cursor-pointer
+    [&[data-empty=true]_[data-part=appointment-trigger]]:text-muted-foreground
+    [&_[data-part=appointment-popover]]:[position-area:bottom_span-right] [&_[data-part=appointment-popover]]:[position-try-fallbacks:flip-block] [&_[data-part=appointment-popover]]:my-1 [&_[data-part=appointment-popover]]:mx-0 [&_[data-part=appointment-popover]]:p-0 [&_[data-part=appointment-popover]]:border [&_[data-part=appointment-popover]]:border-border [&_[data-part=appointment-popover]]:rounded-lg [&_[data-part=appointment-popover]]:bg-popover [&_[data-part=appointment-popover]]:text-popover-foreground [&_[data-part=appointment-popover]]:[box-shadow:var(--ui-shadow)]
+    [&_[data-part=appointment-popover]:popover-open]:grid [&_[data-part=appointment-popover]:popover-open]:grid-cols-[auto_auto_8rem] [&_[data-part=appointment-popover]:popover-open]:grid-rows-[1fr_auto] [&_[data-part=appointment-popover]:popover-open]:max-[40rem]:grid-cols-[auto]
+    [&_[data-part=appointment-shortcuts]]:grid [&_[data-part=appointment-shortcuts]]:content-start [&_[data-part=appointment-shortcuts]]:gap-1 [&_[data-part=appointment-shortcuts]]:p-3 [&_[data-part=appointment-shortcuts]]:border-r [&_[data-part=appointment-shortcuts]]:border-r-border [&_[data-part=appointment-shortcuts]]:max-[40rem]:grid-flow-col [&_[data-part=appointment-shortcuts]]:max-[40rem]:border-r-0 [&_[data-part=appointment-shortcuts]]:max-[40rem]:border-b [&_[data-part=appointment-shortcuts]]:max-[40rem]:border-b-border
+    [&_[data-part=appointment-times]]:grid [&_[data-part=appointment-times]]:content-start [&_[data-part=appointment-times]]:gap-1 [&_[data-part=appointment-times]]:max-h-[20rem] [&_[data-part=appointment-times]]:p-3 [&_[data-part=appointment-times]]:overflow-y-auto [&_[data-part=appointment-times]]:border-l [&_[data-part=appointment-times]]:border-l-border [&_[data-part=appointment-times]]:[scrollbar-width:thin] [&_[data-part=appointment-times]]:max-[40rem]:grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] [&_[data-part=appointment-times]]:max-[40rem]:max-h-[10rem] [&_[data-part=appointment-times]]:max-[40rem]:border-l-0 [&_[data-part=appointment-times]]:max-[40rem]:border-t [&_[data-part=appointment-times]]:max-[40rem]:border-t-border
+    [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:min-h-(--ui-control-sm) [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:px-3 [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:border [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:border-border [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:rounded-lg [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:bg-background [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:text-foreground [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:font-[inherit] [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:tabular-nums [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:text-start [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:whitespace-nowrap [&_:is([data-part=appointment-shortcuts]_button,[data-part=appointment-times]_button,[data-part=appointment-clear])]:cursor-pointer
+    [&_:is([data-part=appointment-shortcuts]_button:hover:not(:disabled),[data-part=appointment-times]_button:hover)]:bg-accent
+    [&_:is([data-part=appointment-shortcuts],[data-part=appointment-times])_button[aria-pressed=true]]:border-primary [&_:is([data-part=appointment-shortcuts],[data-part=appointment-times])_button[aria-pressed=true]]:bg-primary [&_:is([data-part=appointment-shortcuts],[data-part=appointment-times])_button[aria-pressed=true]]:text-primary-foreground
+    [&_[data-part=appointment-popover]_button:disabled]:opacity-50 [&_[data-part=appointment-popover]_button:disabled]:cursor-not-allowed
+    [&_[data-part=appointment-footer]]:flex [&_[data-part=appointment-footer]]:col-span-full [&_[data-part=appointment-footer]]:justify-end [&_[data-part=appointment-footer]]:py-2 [&_[data-part=appointment-footer]]:px-3 [&_[data-part=appointment-footer]]:border-t [&_[data-part=appointment-footer]]:border-t-border
+    [&_:is([data-part=appointment-trigger],[data-part=appointment-popover]_button):focus-visible]:outline-2 [&_:is([data-part=appointment-trigger],[data-part=appointment-popover]_button):focus-visible]:outline-ring [&_:is([data-part=appointment-trigger],[data-part=appointment-popover]_button):focus-visible]:outline-offset-1
+  "
+>
+  <span [id]="id + '-label'" data-part="appointment-label">{{ label }}</span>
+  <button
+    type="button"
+    [id]="id + '-trigger'"
+    [popovertarget]="id + '-popover'"
+    aria-haspopup="dialog"
+    [aria-labelledby]="id + '-label ' + id + '-text'"
+    [style]="'anchor-name: --' + id"
+    data-part="appointment-trigger"
+  >
+    <icon name="lucide:calendar-clock" />
+    <span [id]="id + '-text'">{{ text() }}</span>
+  </button>
+  <div
+    [id]="id + '-popover'"
+    popover="auto"
+    role="dialog"
+    [aria-label]="label"
+    [style]="'position-anchor: --' + id"
+    data-part="appointment-popover"
+  >
+    <div data-part="appointment-shortcuts" role="group" aria-label="Shortcuts">
+      @for (s of SHORTCUTS; track s.label) {
+        <button
+          type="button"
+          [disabled]="off(target(s.days))"
+          [aria-pressed]="day !== '' && day === target(s.days) ? 'true' : 'false'"
+          (click)="shortcut(s.days)"
+        >
+          {{ s.label }}
+        </button>
+      }
+    </div>
+    <uiCalendar
+      [id]="id + '-calendar'"
+      [label]="label"
+      [min]="min"
+      [max]="max"
+      [locale]="locale"
+      [firstDay]="firstDay"
+      [(value)]="day"
+      (select)="commit()"
+    />
+    <div data-part="appointment-times" role="group" aria-label="Time">
+      @for (t of slots(); track t) {
+        <button type="button" [aria-pressed]="t === time ? 'true' : 'false'" (click)="chooseTime(t)">
+          {{ clock(t) }}
+        </button>
+      }
+    </div>
+    <div data-part="appointment-footer">
+      <button type="button" data-part="appointment-clear" [disabled]="!day && !time" (click)="clear()">Clear</button>
+    </div>
+  </div>
+  <input type="hidden" [name]="name" [value]="value" />
+</div>

@@ -1,0 +1,15 @@
+{{--
+  Calendar: month, week and day views of your events, with a mini calendar, category filters, and a dialog to add,
+  edit and delete them. The board is its own island (calendar-board.tscl); the events and the rules are in data.ts:
+  replace sampleEvents with yours. Copy the page into src/pages/ (as calendar.tscl), the other files beside it, and
+  the components they import into src/components/ui/.
+--}}
+@import calendarBoard from './calendar-board.tscl'
+
+<cl-head>
+  <title>Calendar</title>
+</cl-head>
+
+<main aria-label="Calendar">
+  <calendarBoard />
+</main>

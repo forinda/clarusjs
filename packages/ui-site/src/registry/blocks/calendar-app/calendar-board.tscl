@@ -1,0 +1,844 @@
+{{--
+  The calendar's board: month, week and day views of the events (data.ts), a mini calendar and category filters
+  beside them, and a dialog to add, edit and delete an event. Its own island. Today is the visitor's, known in the
+  browser: the board moves there (and the sample events with it) once it's live.
+--}}
+@import uiCalendar from '~/components/ui/calendar.tscl'
+
+<script>
+  import { addDays, addMonths, monthGrid, today } from '~/components/ui/calendar-dates.ts'
+  import {
+    CATEGORIES,
+    eventsOn,
+    layoutDay,
+    rangeTitle,
+    sampleEvents,
+    toMinutes,
+    validateEvent,
+    weekDays,
+  } from './data.ts'
+  const FIRST_DAY = 0 // weeks start on Sunday
+  const HOUR = 48 // the time grid's pixels per hour
+  const MAX = 3 // events a month cell shows before "+N more"
+  const HOURS = Array.from({ length: 24 }, (_, i) => i)
+  const VIEWS = [
+    { id: 'month', label: 'Month' },
+    { id: 'week', label: 'Week' },
+    { id: 'day', label: 'Day' },
+  ]
+  let cursor = state(today())
+  let now = state('')
+  let view = state('month')
+  let events = state(sampleEvents(today()))
+  let hidden = state([''].slice(0, 0))
+  let editing = state('') // the event in the dialog, '' for a new one
+  let allDay = state(false)
+  let errors = state({ title: '', date: '', start: '', end: '', category: '' })
+  let seq = state(1)
+
+  const shown = () => events.filter((e) => !hidden.includes(e.category))
+  const color = (category) => CATEGORIES.find((c) => c.id === category)?.color ?? 'var(--ui-accent)'
+  const weeks = () => monthGrid(cursor, FIRST_DAY)
+  const columns = () => (view === 'week' ? weekDays(cursor, FIRST_DAY) : [cursor])
+  const title = () => rangeTitle(view === 'week' || view === 'day' ? view : 'month', cursor, FIRST_DAY)
+  const date = (iso, options) =>
+    new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...options }).format(new Date(iso + 'T00:00:00Z'))
+  const clock = (t) =>
+    new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).format(
+      new Date('2000-01-01T' + t + ':00Z'),
+    )
+  const hourLabel = (h) =>
+    new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', hour: 'numeric' }).format(new Date(Date.UTC(2000, 0, 1, h)))
+  const hhmm = (minutes) =>
+    String(Math.floor(minutes / 60) % 24).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0')
+  const when = (e) => (e.start ? clock(e.start) : 'All day')
+
+  function move(step) {
+    cursor = view === 'month' ? addMonths(cursor, step) : addDays(cursor, step * (view === 'week' ? 7 : 1))
+  }
+  // The time grid opens on the morning.
+  function show(next) {
+    view = next
+    if (next !== 'month')
+      requestAnimationFrame(() => {
+        const grid = document.getElementById('cal-scroll')
+        if (grid) grid.scrollTop = 7 * HOUR - 12
+      })
+  }
+  function more(iso) {
+    cursor = iso
+    show('day')
+  }
+  function toggle(category, event) {
+    hidden = event.target.checked ? hidden.filter((c) => c !== category) : [...hidden, category]
+  }
+
+  // The dialog: its form is plain HTML, filled when it opens and read when it's sent.
+  const dialog = () => document.getElementById('cal-dialog')
+  const field = (name) => document.querySelector(`#cal-form [name="${name}"]`)
+  function fill(values) {
+    for (const [name, value] of Object.entries(values)) {
+      const el = field(name)
+      if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = !!value
+      else if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = String(value)
+    }
+    allDay = !!values.allDay
+    errors = { title: '', date: '', start: '', end: '', category: '' }
+    const box = dialog()
+    if (box instanceof HTMLDialogElement) box.showModal()
+    requestAnimationFrame(() => {
+      const first = field('title')
+      if (first instanceof HTMLElement) first.focus()
+    })
+  }
+  function create(iso, start = '09:00') {
+    editing = ''
+    fill({ title: '', date: iso, allDay: false, start, end: hhmm(toMinutes(start) + 60), category: 'work' })
+  }
+  function edit(id) {
+    const e = events.find((x) => x.id === id)
+    if (!e) return
+    editing = id
+    fill({
+      title: e.title,
+      date: e.date,
+      allDay: !e.start,
+      start: e.start || '09:00',
+      end: e.end || '10:00',
+      category: e.category,
+    })
+  }
+  // A click on a day's empty time: an event at that hour.
+  function slot(iso, event) {
+    if (event.target !== event.currentTarget) return
+    create(iso, hhmm(Math.floor(event.offsetY / HOUR) * 60))
+  }
+  function close() {
+    const box = dialog()
+    if (box instanceof HTMLDialogElement) box.close()
+  }
+  function save(event) {
+    event.preventDefault()
+    const data = new FormData(event.target)
+    const form = {
+      title: String(data.get('title') ?? ''),
+      date: String(data.get('date') ?? ''),
+      allDay: data.get('allDay') === 'on',
+      start: String(data.get('start') ?? ''),
+      end: String(data.get('end') ?? ''),
+      category: String(data.get('category') ?? ''),
+    }
+    const found = validateEvent(form)
+    errors = {
+      title: found.title ?? '',
+      date: found.date ?? '',
+      start: found.start ?? '',
+      end: found.end ?? '',
+      category: found.category ?? '',
+    }
+    const first = Object.keys(found)[0]
+    if (first) {
+      const el = field(first)
+      if (el instanceof HTMLElement) el.focus()
+      return
+    }
+    const next = {
+      id: editing || 'new-' + seq,
+      title: form.title.trim(),
+      date: form.date,
+      start: form.allDay ? '' : form.start,
+      end: form.allDay ? '' : form.end,
+      category: CATEGORIES.find((c) => c.id === form.category)?.id ?? 'work',
+    }
+    if (editing) events = events.map((e) => (e.id === editing ? next : e))
+    else {
+      events = [...events, next]
+      seq = seq + 1
+    }
+    cursor = next.date
+    close()
+  }
+  function remove() {
+    events = events.filter((e) => e.id !== editing)
+    close()
+  }
+  // Live: today is the visitor's. ponytail: applied just after attach, since changing the rows while the island
+  // attaches breaks its @for (#550); apply it directly once that's fixed.
+  function wire() {
+    setTimeout(() => {
+      now = today()
+      cursor = now
+      events = sampleEvents(now)
+    })
+  }
+</script>
+
+<div class="cal" [use]="wire">
+  <aside class="cal-side" aria-label="Calendar tools">
+    <button type="button" class="cal-new" (click)="create(cursor)"><icon name="lucide:plus" /> New event</button>
+    <uiCalendar id="cal-mini" label="Go to a day" [(value)]="cursor" />
+    <fieldset class="cal-categories">
+      <legend>Categories</legend>
+      @for (c of CATEGORIES; track c.id) {
+        <label [style]="'--ui-cal-color: ' + c.color">
+          <input type="checkbox" [checked]="!hidden.includes(c.id)" (change)="toggle(c.id, $event)" />
+          {{ c.label }}
+        </label>
+      }
+    </fieldset>
+  </aside>
+
+  <section class="cal-main" aria-labelledby="cal-title">
+    <header class="cal-bar">
+      <button type="button" class="cal-today" (click)="cursor = today()">Today</button>
+      <button type="button" class="cal-step" aria-label="Previous" (click)="move(-1)">
+        <icon name="lucide:chevron-left" />
+      </button>
+      <button type="button" class="cal-step" aria-label="Next" (click)="move(1)">
+        <icon name="lucide:chevron-right" />
+      </button>
+      <h1 id="cal-title" aria-live="polite">{{ title() }}</h1>
+      <div class="cal-views" role="group" aria-label="View">
+        @for (v of VIEWS; track v.id) {
+          <button type="button" [aria-pressed]="view === v.id ? 'true' : 'false'" (click)="show(v.id)">
+            {{ v.label }}
+          </button>
+        }
+      </div>
+    </header>
+
+    @if (view === 'month') {
+      <div class="cal-month">
+        @for (d of weeks()[0]; track d.iso) {
+          <p class="cal-weekday">{{ date(d.iso, { weekday: 'short' }) }}</p>
+        }
+        @for (week of weeks(); track week[0].iso) {
+          @for (d of week; track d.iso) {
+            <div
+              class="cal-cell"
+              [data-date]="d.iso"
+              [data-outside]="d.outside ? 'true' : false"
+              [data-today]="d.iso === now ? 'true' : false"
+            >
+              <button
+                type="button"
+                class="cal-add"
+                [aria-label]="'Add an event on ' + date(d.iso, { weekday: 'long', month: 'long', day: 'numeric' })"
+                (click)="create(d.iso)"
+              ></button>
+              <span class="cal-num">{{ Number(d.iso.slice(8)) }}</span>
+              @for (e of eventsOn(shown(), d.iso).slice(0, MAX); track e.id) {
+                <button
+                  type="button"
+                  data-part="cal-event"
+                  [data-all-day]="e.start ? false : 'true'"
+                  [style]="'--ui-cal-color: ' + color(e.category)"
+                  (click)="edit(e.id)"
+                >
+                  @if (e.start) {
+                    <span class="cal-time">{{ clock(e.start) }}</span>
+                  }
+                  {{ e.title }}
+                </button>
+              }
+              @if (eventsOn(shown(), d.iso).length > MAX) {
+                <button type="button" class="cal-more" (click)="more(d.iso)">
+                  +{{ eventsOn(shown(), d.iso).length - MAX }} more
+                </button>
+              }
+            </div>
+          }
+        }
+      </div>
+    } @else {
+      <div class="cal-week-wrap">
+        <div class="cal-week" [style]="'--ui-cal-cols: ' + columns().length + '; --ui-cal-hour: ' + HOUR + 'px'">
+          <div class="cal-row cal-heads">
+            <span class="cal-gutter"></span>
+            @for (d of columns(); track d) {
+              <p data-part="cal-day-head" [data-today]="d === now ? 'true' : false">
+                <span>{{ date(d, { weekday: 'short' }) }}</span>
+                <strong>{{ Number(d.slice(8)) }}</strong>
+              </p>
+            }
+          </div>
+          <div class="cal-row cal-all-day">
+            <span class="cal-gutter">All day</span>
+            @for (d of columns(); track d) {
+              <div class="cal-all-day-cell">
+                @for (e of eventsOn(shown(), d).filter((x) => !x.start); track e.id) {
+                  <button
+                    type="button"
+                    data-part="cal-event"
+                    data-all-day="true"
+                    [style]="'--ui-cal-color: ' + color(e.category)"
+                    (click)="edit(e.id)"
+                  >
+                    {{ e.title }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+          <div id="cal-scroll" class="cal-scroll">
+            <div class="cal-row cal-grid">
+              <div class="cal-hours" aria-hidden="true">
+                @for (h of HOURS; track h) {
+                  <span>{{ h ? hourLabel(h) : '' }}</span>
+                }
+              </div>
+              @for (d of columns(); track d) {
+                <div class="cal-column" [data-date]="d" (click)="slot(d, $event)">
+                  @for (p of layoutDay(eventsOn(shown(), d)); track p.event.id) {
+                    <button
+                      type="button"
+                      data-part="cal-event"
+                      [style]="
+                        '--ui-cal-color: ' +
+                        color(p.event.category) +
+                        '; top: ' +
+                        (p.top / 60) * HOUR +
+                        'px; height: ' +
+                        (p.height / 60) * HOUR +
+                        'px; left: calc(' +
+                        (p.lane / p.lanes) * 100 +
+                        '% + 2px); width: calc(' +
+                        100 / p.lanes +
+                        '% - 4px)'
+                      "
+                      (click)="edit(p.event.id)"
+                    >
+                      <span class="cal-time">{{ when(p.event) }}</span>
+                      {{ p.event.title }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </section>
+
+  <dialog id="cal-dialog" class="cal-dialog" aria-labelledby="cal-dialog-title" closedby="any">
+    <h2 id="cal-dialog-title">{{ editing ? 'Edit event' : 'New event' }}</h2>
+    <form id="cal-form" class="cal-form" novalidate (submit)="save($event)">
+      <label>
+        Title
+        <input
+          name="title"
+          type="text"
+          placeholder="Team lunch"
+          autocomplete="off"
+          [aria-invalid]="errors.title ? 'true' : false"
+        />
+      </label>
+      <p class="cal-error" role="alert" [hidden]="!errors.title">{{ errors.title }}</p>
+      <div class="cal-form-row">
+        <label>
+          Date
+          <input name="date" type="date" [aria-invalid]="errors.date ? 'true' : false" />
+        </label>
+        <label class="cal-check">
+          <input name="allDay" type="checkbox" (change)="allDay = $event.target.checked" />
+          All day
+        </label>
+      </div>
+      <p class="cal-error" role="alert" [hidden]="!errors.date">{{ errors.date }}</p>
+      <div class="cal-form-row">
+        <label>
+          Starts
+          <input
+            name="start"
+            type="time"
+            step="900"
+            [disabled]="allDay"
+            [aria-invalid]="errors.start ? 'true' : false"
+          />
+        </label>
+        <label>
+          Ends
+          <input name="end" type="time" step="900" [disabled]="allDay" [aria-invalid]="errors.end ? 'true' : false" />
+        </label>
+      </div>
+      <p class="cal-error" role="alert" [hidden]="!errors.start && !errors.end">{{ errors.start || errors.end }}</p>
+      <label>
+        Category
+        <select name="category">
+          @for (c of CATEGORIES; track c.id) {
+            <option [value]="c.id">{{ c.label }}</option>
+          }
+        </select>
+      </label>
+      <div class="cal-form-actions">
+        @if (editing) {
+          <button type="button" class="cal-delete" (click)="remove()">Delete</button>
+        }
+        <button type="button" class="cal-cancel" (click)="close()">Cancel</button>
+        <button type="submit" class="cal-save">Save</button>
+      </div>
+    </form>
+  </dialog>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      --ui-cal-line: var(--ui-border);
+      display: grid;
+      background: var(--ui-bg);
+      grid-template-columns: 19rem minmax(0, 1fr);
+      gap: var(--ui-space-6);
+      max-width: 80rem;
+      margin: 0 auto;
+      padding: var(--ui-space-6);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where(button) {
+      font: inherit;
+      cursor: pointer;
+    }
+    :where(button:focus-visible),
+    :where(input:focus-visible),
+    :where(select:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 2px;
+    }
+    /* The side: New event, the month to jump around in, the categories. */
+    /* The mini calendar sizes its days and arrows from the control sizes: smaller here, to fit beside the board. */
+    :where(.cal-side) {
+      --ui-control-md: calc(var(--ui-space) * 8);
+      --ui-control-sm: calc(var(--ui-space) * 7);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr); /* the mini calendar fits the column, not the other way round */
+      align-content: start;
+      gap: var(--ui-space-4);
+    }
+    :where(.cal-new),
+    :where(.cal-save) {
+      display: inline-flex;
+      gap: var(--ui-space-2);
+      align-items: center;
+      justify-content: center;
+      min-height: var(--ui-control-md);
+      padding: 0 var(--ui-space-4);
+      border: 0;
+      border-radius: var(--ui-radius);
+      background: var(--ui-accent);
+      color: var(--ui-accent-fg);
+      font-weight: 600;
+    }
+    :where(.cal-new) {
+      justify-self: start;
+      border-radius: 999px;
+      box-shadow: var(--ui-shadow);
+    }
+    :where(.cal-categories) {
+      display: grid;
+      gap: var(--ui-space-2);
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    :where(.cal-categories legend) {
+      margin-bottom: var(--ui-space-2);
+      padding: 0;
+      font-weight: 600;
+    }
+    :where(.cal-categories label) {
+      display: flex;
+      gap: var(--ui-space-2);
+      align-items: center;
+      cursor: pointer;
+    }
+    :where(.cal-categories input) {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+      accent-color: var(--ui-cal-color);
+    }
+
+    /* The bar: Today, the arrows, what's shown, the view. */
+    :where(.cal-main) {
+      display: grid;
+      align-content: start;
+      gap: var(--ui-space-4);
+      min-width: 0;
+    }
+    :where(.cal-bar) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--ui-space-2);
+      align-items: center;
+    }
+    :where(.cal-bar h1) {
+      flex: 1;
+      min-width: 10rem;
+      margin: 0 0 0 var(--ui-space-2);
+      font-size: calc(var(--ui-font-size) * 1.5);
+    }
+    :where(.cal-today),
+    :where(.cal-step),
+    :where(.cal-cancel),
+    :where(.cal-delete) {
+      display: inline-grid;
+      place-items: center;
+      min-width: var(--ui-control-md);
+      min-height: var(--ui-control-md);
+      padding: 0 var(--ui-space-3);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+    }
+    :where(.cal-step) {
+      padding: 0;
+      border-radius: 999px;
+    }
+    :where(.cal-views) {
+      display: flex;
+      gap: var(--ui-space-1);
+      padding: var(--ui-space-1);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+    }
+    :where(.cal-views button) {
+      padding: var(--ui-space-1) var(--ui-space-3);
+      border: 0;
+      border-radius: calc(var(--ui-radius) / 1.5);
+      background: transparent;
+      color: var(--ui-muted);
+      font-weight: 600;
+    }
+    :where(.cal-views button[aria-pressed='true']) {
+      background: var(--ui-accent-soft);
+      color: var(--ui-fg);
+    }
+
+    /* Events: a chip in the colour of their category. */
+    :where([data-part='cal-event']) {
+      display: block;
+      min-height: 1.5rem; /* a target big enough to hit */
+      overflow: hidden;
+      width: 100%;
+      padding: calc(var(--ui-space) / 4) var(--ui-space-1);
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--ui-fg);
+      font-size: calc(var(--ui-font-size) - 2px);
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    :where([data-part='cal-event'])::before {
+      content: '';
+      display: inline-block;
+      width: 0.5rem;
+      height: 0.5rem;
+      margin-right: var(--ui-space-1);
+      border-radius: 50%;
+      background: var(--ui-cal-color);
+      vertical-align: 0.05em;
+    }
+    :where([data-part='cal-event'][data-all-day='true']) {
+      border-left: 3px solid var(--ui-cal-color);
+      background: color-mix(in srgb, var(--ui-cal-color) 22%, var(--ui-bg));
+      font-weight: 600;
+    }
+    :where([data-part='cal-event'][data-all-day='true'])::before {
+      display: none;
+    }
+    :where([data-part='cal-event']:hover) {
+      background: color-mix(in srgb, var(--ui-cal-color) 15%, transparent);
+    }
+    :where([data-part='cal-event'][data-all-day='true']:hover) {
+      background: color-mix(in srgb, var(--ui-cal-color) 35%, var(--ui-bg));
+    }
+    :where(.cal-time) {
+      margin-right: var(--ui-space-1);
+      color: var(--ui-muted);
+    }
+
+    /* Month: six weeks, each day a cell; its empty space adds an event there. */
+    :where(.cal-month) {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      border-top: 1px solid var(--ui-cal-line);
+      border-left: 1px solid var(--ui-cal-line);
+    }
+    :where(.cal-weekday) {
+      margin: 0;
+      padding: var(--ui-space-1) var(--ui-space-2);
+      border-right: 1px solid var(--ui-cal-line);
+      border-bottom: 1px solid var(--ui-cal-line);
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 2px);
+      font-weight: 600;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    :where(.cal-cell) {
+      position: relative;
+      display: grid;
+      align-content: start;
+      gap: calc(var(--ui-space) / 2);
+      min-height: 7rem;
+      padding: var(--ui-space-1);
+      border-right: 1px solid var(--ui-cal-line);
+      border-bottom: 1px solid var(--ui-cal-line);
+    }
+    :where(.cal-cell[data-outside='true']) {
+      background: color-mix(in srgb, var(--ui-muted-bg) 50%, transparent);
+    }
+    :where(.cal-cell[data-outside='true'] .cal-num) {
+      color: var(--ui-muted);
+    }
+    :where(.cal-add) {
+      position: absolute;
+      inset: 0;
+      border: 0;
+      background: transparent;
+    }
+    :where(.cal-add:hover) {
+      background: color-mix(in srgb, var(--ui-accent-soft) 50%, transparent);
+    }
+    :where(.cal-add:focus-visible) {
+      outline-offset: -2px;
+    }
+    :where(.cal-num),
+    :where(.cal-cell [data-part='cal-event']),
+    :where(.cal-more) {
+      position: relative; /* above the cell's add button */
+    }
+    :where(.cal-num) {
+      justify-self: center;
+      display: grid;
+      place-items: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 50%;
+      font-size: calc(var(--ui-font-size) - 1px);
+      font-weight: 600;
+      pointer-events: none;
+    }
+    :where(.cal-cell[data-today='true'] .cal-num) {
+      background: var(--ui-accent);
+      color: var(--ui-accent-fg);
+    }
+    :where(.cal-more) {
+      justify-self: start;
+      min-height: 1.5rem;
+      padding: 0 var(--ui-space-1);
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 2px);
+      font-weight: 600;
+    }
+    :where(.cal-more:hover) {
+      background: var(--ui-accent-soft);
+      color: var(--ui-fg);
+    }
+
+    /* Week and day: a column per day on a 24-hour grid that scrolls, all-day events above it. */
+    :where(.cal-week-wrap) {
+      overflow-x: auto;
+    }
+    :where(.cal-week) {
+      min-width: calc(4rem + var(--ui-cal-cols) * 6rem);
+      border: 1px solid var(--ui-cal-line);
+      border-radius: var(--ui-radius);
+    }
+    :where(.cal-row) {
+      display: grid;
+      grid-template-columns: 4rem repeat(var(--ui-cal-cols), minmax(0, 1fr));
+    }
+    :where(.cal-heads) {
+      border-bottom: 1px solid var(--ui-cal-line);
+    }
+    :where(.cal-gutter) {
+      padding: var(--ui-space-1);
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 3px);
+      text-align: right;
+    }
+    :where([data-part='cal-day-head']) {
+      display: grid;
+      justify-items: center;
+      margin: 0;
+      padding: var(--ui-space-2) 0;
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 2px);
+      text-transform: uppercase;
+    }
+    :where([data-part='cal-day-head'] strong) {
+      display: grid;
+      place-items: center;
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 50%;
+      color: var(--ui-fg);
+      font-size: calc(var(--ui-font-size) + 6px);
+      text-transform: none;
+    }
+    :where([data-part='cal-day-head'][data-today='true'] strong) {
+      background: var(--ui-accent);
+      color: var(--ui-accent-fg);
+    }
+    :where(.cal-all-day) {
+      border-bottom: 1px solid var(--ui-cal-line);
+    }
+    :where(.cal-all-day-cell) {
+      display: grid;
+      gap: calc(var(--ui-space) / 2);
+      min-height: 1.75rem;
+      padding: calc(var(--ui-space) / 2);
+      border-left: 1px solid var(--ui-cal-line);
+    }
+    :where(.cal-scroll) {
+      max-height: 34rem;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+    :where(.cal-hours) {
+      display: grid;
+      grid-auto-rows: var(--ui-cal-hour);
+    }
+    :where(.cal-hours span) {
+      padding-right: var(--ui-space-2);
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 3px);
+      text-align: right;
+      transform: translateY(-0.6em);
+    }
+    :where(.cal-column) {
+      position: relative;
+      height: calc(24 * var(--ui-cal-hour));
+      border-left: 1px solid var(--ui-cal-line);
+      background: repeating-linear-gradient(
+        to bottom,
+        var(--ui-cal-line) 0,
+        var(--ui-cal-line) 1px,
+        transparent 1px,
+        transparent var(--ui-cal-hour)
+      );
+      cursor: cell;
+    }
+    :where(.cal-column [data-part='cal-event']) {
+      position: absolute;
+      display: block;
+      padding: calc(var(--ui-space) / 2) var(--ui-space-1);
+      border-left: 3px solid var(--ui-cal-color);
+      background: color-mix(in srgb, var(--ui-cal-color) 18%, var(--ui-bg));
+      white-space: normal;
+    }
+    :where(.cal-column [data-part='cal-event'])::before {
+      display: none;
+    }
+    :where(.cal-column [data-part='cal-event']:hover) {
+      background: color-mix(in srgb, var(--ui-cal-color) 30%, var(--ui-bg));
+    }
+    :where(.cal-column .cal-time) {
+      font-size: calc(var(--ui-font-size) - 3px);
+    }
+
+    /* The dialog: a native modal, centred over a dimmed page. */
+    :where(.cal-dialog) {
+      width: min(30rem, calc(100vw - 2rem));
+      padding: var(--ui-space-6);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-popover);
+      color: var(--ui-popover-fg);
+      box-shadow: var(--ui-shadow);
+    }
+    :where(.cal-dialog)::backdrop {
+      background: rgb(0 0 0 / 0.4);
+    }
+    :where(.cal-dialog h2) {
+      margin: 0 0 var(--ui-space-4);
+      font-size: calc(var(--ui-font-size) * 1.25);
+    }
+    /* The dialog's form. */
+    :where(.cal-form) {
+      display: grid;
+      gap: var(--ui-space-3);
+      min-width: min(26rem, 80vw);
+    }
+    :where(.cal-form label) {
+      display: grid;
+      gap: var(--ui-space-1);
+      font-weight: 600;
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where(.cal-form input:not([type='checkbox'])),
+    :where(.cal-form select) {
+      min-height: var(--ui-control-md);
+      padding: 0 var(--ui-space-3);
+      border: 1px solid var(--ui-input);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: inherit;
+      font-weight: 400;
+    }
+    :where(.cal-form input:disabled) {
+      opacity: 0.5;
+    }
+    :where(.cal-form [aria-invalid='true']) {
+      border-color: var(--ui-danger);
+    }
+    :where(.cal-form-row) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--ui-space-3);
+      align-items: end;
+    }
+    :where(.cal-check) {
+      display: flex;
+      gap: var(--ui-space-2);
+      align-items: center;
+      min-height: var(--ui-control-md);
+    }
+    :where(.cal-error) {
+      margin: calc(var(--ui-space-2) * -1) 0 0;
+      color: var(--ui-danger);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where(.cal-error[hidden]) {
+      display: none;
+    }
+    :where(.cal-form-actions) {
+      display: flex;
+      gap: var(--ui-space-2);
+      justify-content: flex-end;
+      margin-top: var(--ui-space-2);
+    }
+    :where(.cal-delete) {
+      margin-right: auto;
+      border-color: var(--ui-danger);
+      color: var(--ui-danger);
+    }
+
+    @media (max-width: 52rem) {
+      :where(:scope) {
+        grid-template-columns: minmax(0, 1fr);
+        padding: var(--ui-space-3);
+      }
+      :where(.cal-side) {
+        order: 2;
+      }
+      :where(.cal-cell) {
+        min-height: 4.5rem;
+      }
+      :where(.cal-cell [data-part='cal-event'] .cal-time) {
+        display: none;
+      }
+    }
+  }
+</style>

@@ -1,8 +1,10 @@
 @import uiPagination from './pagination.tscl'
 
+{{-- On your site, href points at your list's pages ("/posts?page={page}") and the server renders the page asked for.
+     This page is static, so the demo's links stay on it (#page-2): loading it again would change nothing. --}}
 <div class="demo">
-  <uiPagination [page]="1" [pages]="5" href="/components/pagination?page={page}" />
-  <uiPagination [page]="50" [pages]="100" href="/components/pagination?page={page}" label="Archive pages" />
+  <uiPagination [page]="1" [pages]="5" href="#page-{page}" />
+  <uiPagination [page]="50" [pages]="100" href="#page-{page}" label="Archive pages" />
 </div>
 
 <style scoped>

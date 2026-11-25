@@ -138,6 +138,18 @@ export const registry: Entry[] = [
     island: true,
   },
   {
+    name: 'appointment-picker',
+    group: 'Form',
+    title: 'Appointment picker',
+    description: 'A date and a time in one popover, with shortcuts (Today, Tomorrow, Next week) and time slots.',
+    files: ['appointment-picker.tscl'],
+    tailwind: ['appointment-picker.tw.tscl'],
+    parts: [],
+    uses: ['calendar'],
+    examples: ['min'],
+    island: true,
+  },
+  {
     name: 'resizable',
     group: 'Panel',
     title: 'Resizable',
@@ -685,6 +697,17 @@ export const registry: Entry[] = [
     uses: ['sidebar', 'card', 'badge', 'chart', 'chart-interactive', 'table', 'button', 'input'],
     island: true,
     since: '0.2.0',
+  },
+  {
+    kind: 'block',
+    name: 'calendar-app',
+    category: 'Application',
+    title: 'Calendar',
+    description: 'Month, week and day views of your events, with a mini calendar, category filters, and a dialog to add, edit and delete them.',
+    files: ['blocks/calendar-app/calendar-app.tscl', 'blocks/calendar-app/calendar-board.tscl', 'blocks/calendar-app/data.ts'],
+    parts: [],
+    uses: ['calendar', 'dialog'],
+    island: true,
   },
 ]
 

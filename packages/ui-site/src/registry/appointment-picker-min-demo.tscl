@@ -1,0 +1,16 @@
+@import uiAppointmentPicker from './appointment-picker.tscl'
+{{-- From today on (min="today", the visitor's day), and slots every hour from 8:00 to 18:00. --}}
+
+<form class="demo example" method="post" action="#">
+  <uiAppointmentPicker id="demo-visit" label="Visit" name="visit" min="today" from="08:00" to="18:00" [interval]="60" />
+</form>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
