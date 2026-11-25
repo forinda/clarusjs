@@ -203,4 +203,4 @@ Say where the components are and their prefix in the library's `package.json`, a
 
 Every `.tscl` file under `src/` is then a component: `src/dialog.tscl` is `<acme-dialog>`, imported as `@acme/ui/dialog.tscl`.
 
-The prefix is kebab-case (lowercase letters, digits, hyphens). It may be empty, but then only files whose names have a hyphen are components, since a tag without one could be an HTML element. If `exports` doesn't map a component's path to its file, the build says so.
+The prefix is kebab-case (lowercase letters, digits, hyphens). It may be empty, but then only files whose names have a hyphen are components, since a tag without one could be an HTML element. If `exports` doesn't map a component's path to its file, the build says so. Map it with a plain path or a `"default"` condition: the build follows it as Node resolves it, so an `"import"`-only target isn't found.

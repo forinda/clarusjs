@@ -117,3 +117,14 @@ test('#review: a components.json without names reads as nothing; an odd entry is
   const root = app({ '.clarusjs/components.json': '{"dirs":[5],"names":{"a-b":5,"c-d":[],"ui-tabs":"@acme/ui/tabs.tscl","e-f":["/a.tscl","/b.tscl"]}}' })
   expect(readComponents(root)).toEqual({ names: { 'ui-tabs': '@acme/ui/tabs.tscl', 'e-f': ['/a.tscl', '/b.tscl'] } })
 })
+
+test('#review: an exports target only for "import" is an error asking for a plain or "default" one (the build follows what Node\'s resolver finds)', () => {
+  const root = app({
+    'node_modules/@acme/esm/package.json': JSON.stringify({ name: '@acme/esm', exports: { './*': { import: './src/*' } }, clarusjs: { components: './src', prefix: 'esm' } }),
+    'node_modules/@acme/esm/src/dialog.tscl': '<dialog />\n',
+    'node_modules/@acme/both/package.json': JSON.stringify({ name: '@acme/both', exports: { './*': { import: './src/*', default: './src/*' } }, clarusjs: { components: './src', prefix: 'both' } }),
+    'node_modules/@acme/both/src/dialog.tscl': '<dialog />\n',
+  })
+  expect(() => resolveLibraries(root, ['@acme/esm'])).toThrow(/"@acme\/esm\/dialog\.tscl" doesn't resolve.*a plain path or a "default" condition, not "import" alone/)
+  expect(resolveLibraries(root, ['@acme/both'])[0]!.files).toEqual(['dialog.tscl'])
+})

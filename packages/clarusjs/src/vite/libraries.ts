@@ -39,14 +39,16 @@ export function resolveLibraries(root: string, list: LibraryOption[]): Library[]
     const files = findClarusFiles(base, ['.tscl']).map((f) => posix(relative(base, f))).sort()
     const prefix = typeof option === 'object' && option.prefix !== undefined ? option.prefix : (meta.prefix ?? '')
     if (prefix && !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(prefix)) throw new Error(`[clarusjs] the prefix "${prefix}" of "${name}" isn't kebab-case (lowercase letters, digits and hyphens): its tags couldn't be named`)
-    // Each is imported as <package>/<file>: the package's exports must map that to the file found here.
+    // Each is imported as <package>/<file>: the package's exports must map that to the file found here. The build,
+    // the dev server and check follow it with Node's resolver (its "require", "node" and "default" conditions), so
+    // this checks it the same way: an "import"-only target isn't followed.
     const require = createRequire(resolve(root, 'package.json'))
     for (const file of files) {
       const spec = `${name}/${file}`
       let found: string | undefined
       try { found = realpathSync(require.resolve(spec)) } catch {}
       if (found !== realpathSync(resolve(base, file))) {
-        throw new Error(`[clarusjs] "${spec}" doesn't resolve to ${posix(relative(root, resolve(base, file)))}: the library's package.json exports must map its components, for example "exports": { "./*": "${meta.components.replace(/\/?$/, '/')}*" }`)
+        throw new Error(`[clarusjs] "${spec}" doesn't resolve to ${posix(relative(root, resolve(base, file)))}: the library's package.json exports must map its components with a plain path or a "default" condition, not "import" alone, for example "exports": { "./*": "${meta.components.replace(/\/?$/, '/')}*" }`)
       }
     }
     return { name, prefix, files }
