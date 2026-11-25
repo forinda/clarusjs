@@ -1,0 +1,248 @@
+{{--
+  The landing page's playground: real components on a canvas that takes a preset, a radius and a density, set as
+  --ui- tokens on the canvas alone (light or dark, as the site shows). The Theme sheet does the same for the whole site.
+--}}
+@import uiButton from '~/registry/button.tscl'
+@import uiCard from '~/registry/card.tscl'
+@import uiBadge from '~/registry/badge.tscl'
+@import uiInput from '~/registry/input.tscl'
+@import uiLabel from '~/registry/label.tscl'
+@import uiSwitch from '~/registry/switch.tscl'
+@import uiAlert from '~/registry/alert.tscl'
+@import uiProgress from '~/registry/progress.tscl'
+@import uiSlider from '~/registry/slider.tscl'
+@import uiChart from '~/registry/chart.tscl'
+
+<script>
+  import { presets } from '~/theme/presets.ts'
+  import { DENSITIES } from '~/theme/options.ts'
+  import { SPACE_STEPS } from '~/theme/model.ts'
+  const PRESETS = ['teal', 'indigo', 'rose', 'amber', 'green'].map((name) => ({
+    name,
+    label: name[0].toUpperCase() + name.slice(1),
+    swatch: presets[name].light.accent,
+  }))
+  let preset = state('teal')
+  let radius = state(8)
+  let space = state('4px')
+  let mode = state('light')
+  // The canvas's tokens: the preset's set for the mode the site shows, then the radius and the spacing unit (with its
+  // scale, which is computed where it's declared).
+  const tokens = () => {
+    const set = {
+      ...presets[preset].light,
+      ...(mode === 'dark' ? presets[preset].dark : {}),
+      radius: radius + 'px',
+      space,
+    }
+    return [
+      ...Object.entries(set).map(([k, v]) => `--ui-${k}: ${v}`),
+      ...SPACE_STEPS.map((n) => `--ui-space-${n}: calc(var(--ui-space) * ${n})`),
+    ].join('; ')
+  }
+  const setRadius = (event) => (radius = Number(event.target.value))
+  function follow() {
+    const dark = matchMedia('(prefers-color-scheme: dark)')
+    const read = () => {
+      const root = document.documentElement.dataset.theme
+      mode = root === 'dark' || (root !== 'light' && dark.matches) ? 'dark' : 'light'
+    }
+    read()
+    const watch = new MutationObserver(read)
+    watch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    dark.addEventListener('change', read)
+    return () => {
+      watch.disconnect()
+      dark.removeEventListener('change', read)
+    }
+  }
+</script>
+
+<section class="landing-playground" aria-labelledby="landing-play-title" [use]="follow">
+  <div class="landing-play-head">
+    <h2 id="landing-play-title">Try the tokens</h2>
+    <p>These are the components you copy. Pick a preset, a radius and a density: they follow.</p>
+  </div>
+  <div class="landing-controls">
+    <div class="landing-group" role="group" aria-label="Preset">
+      @for (p of PRESETS; track p.name) {
+        <button type="button" [aria-pressed]="preset === p.name ? 'true' : 'false'" (click)="preset = p.name">
+          <span class="landing-swatch" [style]="'background: ' + p.swatch"></span>{{ p.label }}
+        </button>
+      }
+    </div>
+    <div class="landing-radius">
+      <span id="landing-radius-label">Radius</span>
+      <uiSlider aria-label="Radius" [min]="0" [max]="20" [value]="radius" (input)="setRadius($event)" />
+      <span class="landing-value">{{ radius }}px</span>
+    </div>
+    <div class="landing-group" role="group" aria-label="Density">
+      @for (d of DENSITIES; track d.value) {
+        <button type="button" [aria-pressed]="space === d.value ? 'true' : 'false'" (click)="space = d.value">
+          {{ d.label }}
+        </button>
+      }
+    </div>
+  </div>
+  <div class="landing-canvas" [style]="tokens()">
+    <uiCard>
+      @slot('header') {
+        <h3 class="landing-card-title">Create an account</h3>
+      }
+      <div class="landing-form">
+        <uiLabel control="landing-email">Email</uiLabel>
+        <uiInput id="landing-email" type="email" placeholder="you@example.com" />
+        <uiSwitch label="Send me the newsletter" />
+        <uiButton>Create account</uiButton>
+      </div>
+    </uiCard>
+    <uiCard>
+      @slot('header') {
+        <h3 class="landing-card-title">Visitors</h3>
+      }
+      <uiChart
+        label="Visitors this week"
+        [height]="140"
+        [labels]="['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']"
+        [series]="[
+          { name: 'Desktop', values: [186, 305, 237, 273, 209, 214, 160] },
+          { name: 'Mobile', values: [80, 200, 120, 190, 130, 140, 110] },
+        ]"
+      />
+    </uiCard>
+    <uiCard>
+      @slot('header') {
+        <h3 class="landing-card-title">Release 0.2</h3>
+      }
+      <div class="landing-stack">
+        <div class="landing-row">
+          <uiBadge>New</uiBadge>
+          <uiBadge variant="secondary">Docs</uiBadge>
+          <uiBadge variant="success">Shipped</uiBadge>
+          <uiBadge variant="outline">v0.2.0</uiBadge>
+        </div>
+        <uiProgress [value]="72" label="Release progress" />
+        <uiAlert>
+          @slot('title') {
+            Heads up
+          }
+          Tokens restyle every component at once.
+        </uiAlert>
+        <div class="landing-row">
+          <uiButton variant="outline">Preview</uiButton>
+          <uiButton variant="secondary">Draft</uiButton>
+          <uiButton variant="ghost">Cancel</uiButton>
+        </div>
+      </div>
+    </uiCard>
+  </div>
+</section>
+
+<style global>
+  /* Global, on landing- classes: much of it sits inside components (cards), where scoped rules stop. */
+  .landing-playground {
+    display: grid;
+    gap: 20px;
+    padding: 48px 0;
+  }
+  .landing-play-head h2 {
+    margin: 0;
+    font-size: 32px;
+    letter-spacing: -0.02em;
+  }
+  .landing-play-head p {
+    margin: 4px 0 0;
+    color: var(--muted);
+  }
+  .landing-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    align-items: center;
+  }
+  .landing-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+  .landing-group button {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .landing-group button[aria-pressed='true'] {
+    background: var(--accent-soft);
+    font-weight: 600;
+  }
+  .landing-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .landing-radius {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .landing-radius [data-part='slider'] {
+    width: 140px;
+  }
+  .landing-value {
+    min-width: 3.5em;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .landing-canvas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: var(--ui-space-4);
+    align-items: start;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: calc(var(--ui-radius) * 1.5);
+    background: var(--ui-muted-bg);
+    color: var(--ui-fg);
+    font: var(--ui-font-size) var(--ui-font);
+  }
+  .landing-canvas [data-part='card'] {
+    max-width: none;
+  }
+  .landing-card-title {
+    margin: 0;
+    font-size: calc(var(--ui-font-size) * 1.15);
+  }
+  .landing-form,
+  .landing-stack {
+    display: grid;
+    gap: var(--ui-space-3);
+  }
+  .landing-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-2);
+  }
+  /* The landing page's code beside its result (in index.md). */
+  .landing-pair {
+    display: grid;
+    gap: 16px;
+    align-items: center;
+  }
+  .landing-pair > * {
+    min-width: 0;
+  }
+  @media (min-width: 900px) {
+    .landing-pair {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+</style>

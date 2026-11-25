@@ -12,7 +12,7 @@
 </script>
 
 <ul class="needs">
-  <li><a href="/">theme.css</a>, once per project</li>
+  <li><a href="/components">theme.css</a>, once per project</li>
   @if (entry.parts.length) {
     <li>
       <code>@clarusjs/ui-primitives</code> {{ entry.since ? '≥ ' + entry.since : '' }}: {{ entry.parts.join(', ') }}

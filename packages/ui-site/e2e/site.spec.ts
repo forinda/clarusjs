@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { axeViolations, modes, pageIn } from './helpers.ts'
 
-test('home: renders, offers theme.css to copy', async ({ page }) => {
-  const response = await page.goto('/')
+test('introduction (/components): renders, offers theme.css to copy', async ({ page }) => {
+  const response = await page.goto('/components')
   expect(response?.status()).toBe(200)
   await expect(page).toHaveTitle(/clarusjs ui/)
   const theme = page.locator('pre', { hasText: '--ui-accent:' })
@@ -11,9 +11,9 @@ test('home: renders, offers theme.css to copy', async ({ page }) => {
 })
 
 for (const mode of modes) {
-  test(`home: passes axe (${mode.label})`, async ({ browser }) => {
+  test(`introduction: passes axe (${mode.label})`, async ({ browser }) => {
     const page = await pageIn(browser, mode)
-    await page.goto('/')
+    await page.goto('/components')
     expect(await axeViolations(page)).toEqual([])
     await page.context().close()
   })

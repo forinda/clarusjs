@@ -6,8 +6,8 @@ export const sidebar: Section[] = [
   {
     key: 'components',
     title: 'Components',
-    href: '/',
-    groups: [{ title: 'Get started', icon: 'rocket', items: [{ title: 'Introduction', href: '/', order: 1 }] }, { title: 'Components', icon: 'box', items: [] }],
+    href: '/components',
+    groups: [{ title: 'Get started', icon: 'rocket', items: [{ title: 'Introduction', href: '/components', order: 1 }] }, { title: 'Components', icon: 'box', items: [] }],
   },
   { key: 'blocks', title: 'Blocks', href: '/blocks', groups: [{ title: 'Blocks', icon: 'layers', items: [] }] },
 ]

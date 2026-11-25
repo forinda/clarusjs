@@ -1,0 +1,107 @@
+{{-- The landing page's opening: what the library is, and the ways in (components, blocks, the theme sheet). --}}
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+
+<section class="landing-hero" aria-labelledby="landing-title">
+  <p class="landing-eyebrow">clarusjs ui</p>
+  <h1 id="landing-title">Components you <em>copy</em>, styled by <code>--ui-</code> tokens.</h1>
+  <p class="landing-lead">
+    Accessible, server-rendered parts for clarusjs. Most ship no JavaScript at all. Paste a file into your project, it's
+    yours; change one token and every component follows.
+  </p>
+  <div class="landing-cta">
+    <a class="landing-primary" href="/components">Browse components</a>
+    <a href="/blocks">See blocks</a>
+    <uiDialogTrigger target="theme-sheet">Customize the theme</uiDialogTrigger>
+  </div>
+  <ul class="landing-tokens" aria-label="Some of the tokens">
+    <li><code>--ui-accent</code></li>
+    <li><code>--ui-radius</code></li>
+    <li><code>--ui-space</code></li>
+    <li><code>--ui-font</code></li>
+    <li><code>--ui-chart-1</code></li>
+  </ul>
+</section>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 20px;
+    justify-items: center;
+    padding: 72px 0 56px;
+    text-align: center;
+  }
+  .landing-eyebrow {
+    margin: 0;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 13px;
+  }
+  h1 {
+    max-width: 18ch;
+    margin: 0;
+    font-size: clamp(36px, 6vw, 64px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  h1 em {
+    color: var(--accent);
+    font-style: normal;
+  }
+  h1 code {
+    font-size: 0.85em;
+    background: none;
+  }
+  .landing-lead {
+    max-width: 60ch;
+    margin: 0;
+    color: var(--muted);
+    font-size: 18px;
+  }
+  .landing-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+  .landing-cta a,
+  [data-part='trigger'] {
+    padding: 10px 18px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--fg);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .landing-cta .landing-primary {
+    border-color: var(--fg);
+    background: var(--fg);
+    color: var(--bg);
+  }
+  .landing-tokens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .landing-tokens code {
+    padding: 4px 10px;
+    border: 1px dashed var(--rule);
+    border-radius: 999px;
+    font-size: 13px;
+  }
+</style>
+
+<style global>
+  /* The page holding the landing hero gets a wider column than a docs page's 760px. */
+  .content.home:has(.landing-hero) {
+    max-width: 1200px;
+  }
+</style>

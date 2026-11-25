@@ -10,7 +10,7 @@ test('the header links Components and Blocks, and its Theme button opens the the
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: 'Main' })
-  for (const [name, href] of [['Components', '/'], ['Blocks', '/blocks']]) await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('href', href!)
+  for (const [name, href] of [['Components', '/components'], ['Blocks', '/blocks']]) await expect(nav.getByRole('link', { name, exact: true })).toHaveAttribute('href', href!)
   await page.getByRole('button', { name: 'Theme', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Theme' })).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Theme' }).getByRole('link', { name: /full preview/ })).toHaveAttribute('href', '/theme')
