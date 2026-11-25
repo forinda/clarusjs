@@ -1,0 +1,30 @@
+@import './toggle.css'
+@import uiToggleGroup from '@clarusjs/ui-primitives/toggle-group.tscl'
+@import uiToggleItem from '@clarusjs/ui-primitives/toggle-item.tscl'
+{{-- An icon alone needs a name: aria-label on each item. --}}
+
+<div class="demo example">
+  <uiToggleGroup label="Text style" type="multiple">
+    <uiToggleItem value="bold" aria-label="Bold"><icon name="lucide:bold" /></uiToggleItem>
+    <uiToggleItem value="italic" aria-label="Italic"><icon name="lucide:italic" /></uiToggleItem>
+    <uiToggleItem value="underline" aria-label="Underline"><icon name="lucide:underline" /></uiToggleItem>
+  </uiToggleGroup>
+  <uiToggleGroup label="Alignment" value="left">
+    <uiToggleItem value="left" aria-label="Align left"><icon name="lucide:align-left" /></uiToggleItem>
+    <uiToggleItem value="center" aria-label="Align center"><icon name="lucide:align-center" /></uiToggleItem>
+    <uiToggleItem value="right" aria-label="Align right"><icon name="lucide:align-right" /></uiToggleItem>
+  </uiToggleGroup>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

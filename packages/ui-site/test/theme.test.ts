@@ -18,10 +18,14 @@ test('theme builder: names.ts lists the 40 tokens theme.css defines (the spacing
   const { TOKEN_NAMES } = await import('../src/theme/names.ts')
   const root = read('../src/theme.css').match(/:root \{([^}]*)\}/)![1]!
   const defined = [...root.matchAll(/--ui-([\w-]+):/g)].map((m) => m[1]!)
-  expect([...TOKEN_NAMES].sort()).toEqual(defined.filter((n) => !/^space-\d+$/.test(n)).sort())
+  expect([...TOKEN_NAMES].sort()).toEqual(defined.filter((n) => !/^space-\d+$|^control-(sm|md|lg)$/.test(n)).sort())
   expect(TOKEN_NAMES).toHaveLength(40)
   expect(root).toContain('--ui-space: 4px;')
   expect(root).toContain('--ui-space-4: calc(var(--ui-space) * 4);')
+  // Control heights follow the spacing unit too (30, 36 and 44px at 4px).
+  expect(root).toContain('--ui-control-sm: calc(var(--ui-space) * 7.5);')
+  expect(root).toContain('--ui-control-md: calc(var(--ui-space) * 9);')
+  expect(root).toContain('--ui-control-lg: calc(var(--ui-space) * 11);')
 })
 
 test('theme builder: tailwind.css maps every colour token, the radius and the fonts into @theme inline', () => {

@@ -15,6 +15,24 @@ description: "A box with a header, a body and a footer."
 
 <<< ../../registry/card-demo.tscl
 
+## Examples
+
+### With actions
+
+The footer holds what the card lets you do.
+
+<cardActionsDemo />
+
+<<< ../../registry/card-actions-demo.tscl
+
+### Stat
+
+A number and its trend: the building block of a dashboard.
+
+<cardStatDemo />
+
+<<< ../../registry/card-stat-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `card.tscl`.

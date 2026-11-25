@@ -1,6 +1,6 @@
 @import uiButton from './button.tscl'
 
-<div class="demo">
+<div class="demo example">
   <uiButton>Default</uiButton>
   <uiButton variant="secondary">Secondary</uiButton>
   <uiButton variant="outline">Outline</uiButton>

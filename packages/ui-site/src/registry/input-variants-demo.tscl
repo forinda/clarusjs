@@ -1,0 +1,21 @@
+@import uiInput from './input.tscl'
+
+<div class="demo example">
+  <uiInput aria-label="Outline" placeholder="Outline (the default)" />
+  <uiInput variant="filled" aria-label="Filled" placeholder="Filled" />
+  <uiInput variant="borderless" aria-label="Borderless" placeholder="Borderless" />
+  <uiInput variant="underlined" aria-label="Underlined" placeholder="Underlined" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

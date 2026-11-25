@@ -1,0 +1,44 @@
+@import uiInputGroup from './input-group.tscl'
+@import uiInput from './input.tscl'
+@import uiButton from './button.tscl'
+{{-- Text before and after, and a field joined to its button. --}}
+
+<div class="demo example">
+  <uiInputGroup>
+    @slot('start') {
+      https://
+    }
+    <uiInput aria-label="Website" placeholder="example" />
+    @slot('end') {
+      .com
+    }
+  </uiInputGroup>
+  <div class="joined">
+    <uiInput type="email" aria-label="Email" placeholder="you@example.com" />
+    <uiButton>Subscribe</uiButton>
+  </div>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  .joined {
+    display: flex;
+  }
+  .joined [data-part='text-input'] {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+  .joined [data-part='button'] {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+  }
+</style>

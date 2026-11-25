@@ -1,0 +1,45 @@
+@import uiCard from './card.tscl'
+@import uiBadge from './badge.tscl'
+
+<div class="demo example">
+  <uiCard>
+    @slot('header') {
+      <p class="stat-label">Revenue</p>
+      <p class="stat-value">$12,480</p>
+    }
+    <uiBadge variant="success"><icon name="lucide:trending-up" /> +8.2%</uiBadge>
+  </uiCard>
+  <uiCard>
+    @slot('header') {
+      <p class="stat-label">Churn</p>
+      <p class="stat-value">2.4%</p>
+    }
+    <uiBadge variant="destructive"><icon name="lucide:trending-down" /> +0.6%</uiBadge>
+  </uiCard>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    align-items: start;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
+<style global>
+  .stat-label {
+    margin: 0;
+    color: var(--ui-muted);
+  }
+  /* The card's header text has its own size: this class beats it. */
+  :where(.demo) .stat-value {
+    margin: var(--ui-space-1) 0 0;
+    font-size: calc(var(--ui-font-size) * 1.8);
+    font-weight: 700;
+  }
+</style>

@@ -17,6 +17,24 @@ The parts come from `@clarusjs/ui-primitives`; the look is `toggle.css`, importe
 
 <<< ../../registry/toggle-demo.tscl
 
+## Examples
+
+### With icons
+
+Icons alone, each named with `aria-label`: several on (Text style) or one (Alignment).
+
+<toggleIconsDemo />
+
+<<< ../../registry/toggle-icons-demo.tscl
+
+### Sizes
+
+`data-size` around them, as for every control.
+
+<toggleSizesDemo />
+
+<<< ../../registry/toggle-sizes-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `toggle.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.

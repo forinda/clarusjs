@@ -1,0 +1,40 @@
+@import uiSwitch from './switch.tscl'
+
+<ul class="demo example" aria-label="Notifications">
+  <li>
+    <uiSwitch label="Email" [checked]="true" />
+    <p>A summary of the day, at 6pm.</p>
+  </li>
+  <li>
+    <uiSwitch label="Push" />
+    <p>Mentions and replies, as they happen.</p>
+  </li>
+  <li>
+    <uiSwitch label="Product news" />
+    <p>A few times a year.</p>
+  </li>
+</ul>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    margin: 0;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    list-style: none;
+  }
+  li {
+    display: grid;
+    gap: var(--ui-space-1);
+  }
+  p {
+    margin: 0;
+    padding-inline-start: calc(var(--ui-space) * 11);
+    color: var(--ui-muted);
+    font-size: calc(var(--ui-font-size) - 1px);
+  }
+</style>

@@ -16,7 +16,7 @@
   import {
     MODELESS,
     PAIRS,
-    SPACE_STEPS,
+    SCALE,
     contrast,
     darkFrom,
     decode,
@@ -211,7 +211,7 @@
       const values = { ...theme.light, ...(mode === 'dark' ? theme.dark : {}) }
       for (const [key, value] of Object.entries(values)) preview.style.setProperty(`--ui-${key}`, String(value))
       // The scale is computed where it's declared: declare it here too, so it follows this unit, not the page's.
-      for (const n of SPACE_STEPS) preview.style.setProperty(`--ui-space-${n}`, `calc(var(--ui-space) * ${n})`)
+      for (const [k, v] of SCALE) preview.style.setProperty(`--ui-${k}`, v)
     })
     // Saved, and set on this page at once: the stylesheet every demo and block reads. Other tabs and the block
     // frames hear the save (a storage event) and set it too (APPLY_SCRIPT).

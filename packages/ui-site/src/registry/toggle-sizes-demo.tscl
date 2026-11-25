@@ -1,0 +1,36 @@
+@import './toggle.css'
+@import uiToggleGroup from '@clarusjs/ui-primitives/toggle-group.tscl'
+@import uiToggleItem from '@clarusjs/ui-primitives/toggle-item.tscl'
+{{-- data-size around them, as for every control. --}}
+
+<div class="demo example">
+  <div data-size="sm">
+    <uiToggleGroup label="View, small" value="list">
+      <uiToggleItem value="list">List</uiToggleItem>
+      <uiToggleItem value="grid">Grid</uiToggleItem>
+    </uiToggleGroup>
+  </div>
+  <uiToggleGroup label="View" value="list">
+    <uiToggleItem value="list">List</uiToggleItem>
+    <uiToggleItem value="grid">Grid</uiToggleItem>
+  </uiToggleGroup>
+  <div data-size="lg">
+    <uiToggleGroup label="View, large" value="list">
+      <uiToggleItem value="list">List</uiToggleItem>
+      <uiToggleItem value="grid">Grid</uiToggleItem>
+    </uiToggleGroup>
+  </div>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

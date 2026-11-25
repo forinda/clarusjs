@@ -1,0 +1,35 @@
+@import uiInput from './input.tscl'
+@import uiLabel from './label.tscl'
+
+<script>
+  const MAX = 80
+  let bio = state('')
+  const typed = (event) => (bio = event.target.value) // listened to, not bound: a bound value would render the input again
+</script>
+
+{{-- The count is tied to the field (aria-describedby), and polite, so it's read after a pause, not per key. --}}
+<div class="demo example">
+  <uiLabel control="count-demo-bio">Short bio</uiLabel>
+  <uiInput id="count-demo-bio" [maxlength]="MAX" aria-describedby="count-demo-left" (input)="typed($event)" />
+  <p id="count-demo-left" class="count" aria-live="polite">{{ bio.length }} / {{ MAX }}</p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-1);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  .count {
+    justify-self: end;
+    margin: 0;
+    color: var(--ui-muted);
+    font-size: calc(var(--ui-font-size) - 1px);
+    font-variant-numeric: tabular-nums;
+  }
+</style>

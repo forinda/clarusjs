@@ -61,3 +61,130 @@ test('/components/button: eight examples, each with its code; loading blocks a s
   const container = (await page.getByRole('button', { name: 'Create account' }).locator('xpath=..').boundingBox())!
   expect(block.width).toBeGreaterThan(container.width * 0.8)
 })
+
+test('/components/input: one size scale: an input, a select and a button in a row share its height (30, 36, 44px)', async ({ page }) => {
+  await page.goto('/components/input')
+  const demo = page.locator('[class*="input-sizes-demo"]')
+  for (const [size, px] of [['sm', 30], ['md', 36], ['lg', 44]] as const) {
+    const row = demo.locator(`[data-size="${size}"]`).first()
+    const heights = await Promise.all(['[data-part="text-input"]', '[data-part="control"]', '[data-part="button"]'].map((sel) => row.locator(sel).first().evaluate((el) => Math.round(el.getBoundingClientRect().height))))
+    expect(heights, size).toEqual([px, px, px])
+  }
+})
+
+test('/components/input: the interactive examples: password shows and hides, clear empties and keeps the focus, the count follows', async ({ page }) => {
+  await page.goto('/components/input')
+  for (const c of ['input-password-demo', 'input-clear-demo', 'input-count-demo']) await page.locator(`cl-island[c="${c}"][data-cl-ready]`).waitFor({ state: 'attached' })
+  const password = page.getByLabel('Password', { exact: true })
+  await password.fill('hunter2')
+  await expect(password).toHaveAttribute('type', 'password')
+  await page.getByRole('button', { name: 'Show password' }).click()
+  await expect(password).toHaveAttribute('type', 'text')
+  await expect(password).toHaveValue('hunter2') // the same input: what was typed stays
+  await expect(page.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true')
+  const query = page.getByLabel('Filter', { exact: true })
+  await query.fill('invoices')
+  await page.getByRole('button', { name: 'Clear' }).click()
+  await expect(query).toHaveValue('')
+  await expect(query).toBeFocused()
+  const bio = page.getByLabel('Short bio')
+  await bio.fill('Hello')
+  await expect(page.getByText('5 / 80')).toBeVisible()
+})
+
+test('/components/input: the four variants look different; warning and invalid colour the border', async ({ page }) => {
+  await page.goto('/components/input')
+  const v = (name: string) => page.locator(`[data-part="text-input"][data-variant="${name}"]`).first()
+  await expect(v('filled')).not.toHaveCSS('background-color', await v('borderless').evaluate((e) => getComputedStyle(e).backgroundColor))
+  await expect(v('borderless')).toHaveCSS('border-top-width', '0px')
+  await expect(v('underlined')).toHaveCSS('border-top-width', '0px')
+  await expect(v('underlined')).not.toHaveCSS('border-bottom-width', '0px')
+})
+
+test('/components/input: inside an input group the input has no box of its own (the group is the box)', async ({ page }) => {
+  await page.goto('/components/input')
+  const inGroup = page.locator('[data-part="input-group"] > [data-part="text-input"]').first()
+  await expect(inGroup).toHaveCSS('border-top-width', '0px')
+  await expect(inGroup).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+})
+
+for (const entry of registry.filter((e) => e.examples?.length)) {
+  test(`${entry.name}: every example is on its page, rendered`, async ({ page }) => {
+    await page.goto(`/components/${entry.name}`)
+    for (const x of entry.examples!) await expect(page.locator(`[class*="${entry.name}-${x}-demo"]`).first(), x).toBeVisible()
+    expect(await page.locator('.content h3').count()).toBeGreaterThanOrEqual(entry.examples!.length)
+  })
+}
+
+test('badge: an icon and its word have room between them', async ({ page }) => {
+  await page.goto('/components/badge')
+  const badge = page.locator('[class*="badge-icons-demo"] [data-part="badge"]').first()
+  const gap = await badge.evaluate((b) => b.querySelector('svg')!.getBoundingClientRect().right)
+  const text = await badge.evaluate((b) => { const r = document.createRange(); r.selectNodeContents(b.lastChild!); return r.getBoundingClientRect().left })
+  expect(text - gap).toBeGreaterThanOrEqual(3)
+})
+
+test('select: a disabled one looks disabled', async ({ page }) => {
+  await page.goto('/components/select')
+  const locked = page.getByLabel('Plan (locked)')
+  await expect(locked).toBeDisabled()
+  expect(Number(await locked.evaluate((e) => getComputedStyle(e).opacity))).toBeLessThan(1)
+})
+
+test('combobox: an option already picked shows a check in the list, not only a chip', async ({ page }) => {
+  await page.goto('/components/combobox')
+  const demo = page.locator('[class*="combobox-multiple-demo"]')
+  await demo.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  const input = demo.getByRole('combobox')
+  await input.fill('Ru')
+  await input.press('ArrowDown')
+  await input.press('Enter')
+  await input.fill('')
+  await input.press('ArrowDown')
+  const rust = demo.getByRole('option', { name: 'Rust' })
+  await expect(rust).toHaveAttribute('aria-selected', 'true')
+  expect(await rust.evaluate((o) => getComputedStyle(o, '::after').content)).not.toBe('none')
+  expect(await demo.getByRole('option', { name: 'Go' }).evaluate((o) => getComputedStyle(o, '::after').content)).toBe('none')
+  // The open list is on top of what follows it on the page (the code block), not under it.
+  const kotlin = demo.getByRole('option', { name: 'Kotlin' })
+  await kotlin.scrollIntoViewIfNeeded()
+  expect(await kotlin.evaluate((o) => { const r = o.getBoundingClientRect(); return o.contains(document.elementFromPoint(r.right - 8, r.top + r.height / 2)) })).toBe(true)
+})
+
+test('sizes: the nearest size wins: a small control inside a large row is small, and md resets it', async ({ page }) => {
+  await page.goto('/components/input')
+  const heights = await page.evaluate(() => {
+    const input = document.querySelector('[data-part="text-input"]')!
+    const control = document.querySelector('[data-part="control"]')!
+    const box = document.createElement('div')
+    box.dataset.size = 'lg'
+    const make = (el: Element, size?: string) => { const c = el.cloneNode(true) as HTMLElement; if (size) c.dataset.size = size; else delete c.dataset.size; box.append(c); return c }
+    const cases = [make(input, 'sm'), make(input, 'md'), make(input), make(control, 'sm'), make(control)]
+    document.querySelector('.content')!.append(box)
+    return cases.map((c) => Math.round(c.getBoundingClientRect().height))
+  })
+  expect(heights).toEqual([30, 36, 44, 30, 44])
+})
+
+test('input: a filled input keeps its warning and error borders; a filled group keeps its error border', async ({ page }) => {
+  await page.goto('/components/input')
+  const colors = await page.evaluate(() => {
+    const input = document.querySelector('[data-part="text-input"]')!
+    const group = document.querySelector('[data-part="input-group"]')!
+    const root = document.querySelector('.content')!
+    const warn = input.cloneNode() as HTMLElement
+    Object.assign(warn.dataset, { variant: 'filled', status: 'warning' })
+    const bad = input.cloneNode() as HTMLElement
+    bad.dataset.variant = 'filled'
+    bad.setAttribute('aria-invalid', 'true')
+    const g = group.cloneNode(true) as HTMLElement
+    g.dataset.variant = 'filled'
+    g.querySelector('input')!.setAttribute('aria-invalid', 'true')
+    root.append(warn, bad, g)
+    const probe = (v: string) => { const p = document.createElement('p'); p.style.color = `var(${v})`; root.append(p); const c = getComputedStyle(p).color; p.remove(); return c }
+    return { warn: getComputedStyle(warn).borderTopColor, bad: getComputedStyle(bad).borderTopColor, group: getComputedStyle(g).borderTopColor, warning: probe('--ui-warning'), danger: probe('--ui-danger') }
+  })
+  expect(colors.warn).toBe(colors.warning)
+  expect(colors.bad).toBe(colors.danger)
+  expect(colors.group).toBe(colors.danger)
+})

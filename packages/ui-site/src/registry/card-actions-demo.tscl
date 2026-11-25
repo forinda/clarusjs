@@ -1,0 +1,49 @@
+@import uiCard from './card.tscl'
+@import uiButton from './button.tscl'
+
+<div class="demo example">
+  <uiCard>
+    @slot('header') {
+      <h3 class="card-title">Invite your team</h3>
+      <p class="card-muted">They'll get an email with a link.</p>
+    }
+    <p class="card-muted">3 seats left on your plan.</p>
+    @slot('footer') {
+      <uiButton variant="outline">Later</uiButton>
+      <uiButton>Invite</uiButton>
+    }
+  </uiCard>
+  <uiCard>
+    @slot('header') {
+      <h3 class="card-title">Delete project</h3>
+      <p class="card-muted">This removes its files for everyone.</p>
+    }
+    @slot('footer') {
+      <uiButton variant="destructive">Delete</uiButton>
+    }
+  </uiCard>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    align-items: start;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
+<style global>
+  .card-title {
+    margin: 0;
+    font-size: calc(var(--ui-font-size) * 1.15);
+  }
+  .card-muted {
+    margin: 0;
+    color: var(--ui-muted);
+  }
+</style>

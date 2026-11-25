@@ -44,7 +44,7 @@
       align-items: center;
       justify-content: center;
       gap: calc(var(--ui-space) * 1.5);
-      min-height: 36px;
+      min-height: var(--ui-control-md);
       padding: 0 calc(var(--ui-space) * 3.5);
       border: 1px solid transparent;
       border-radius: var(--ui-radius);
@@ -106,12 +106,12 @@
       min-height: 0;
     }
     :where(:scope[data-size='sm']) {
-      min-height: 30px;
+      min-height: var(--ui-control-sm);
       padding: 0 calc(var(--ui-space) * 2.5);
       font-size: calc(var(--ui-font-size) - 1px);
     }
     :where(:scope[data-size='lg']) {
-      min-height: 44px;
+      min-height: var(--ui-control-lg);
       padding: 0 var(--ui-space-5);
       font-size: calc(var(--ui-font-size) + 2px);
     }
@@ -124,15 +124,15 @@
     }
     /* An icon alone: as wide as it is tall. */
     :where(:scope[data-shape='circle']) {
-      width: 36px;
+      width: var(--ui-control-md);
       padding: 0;
       border-radius: 50%;
     }
     :where(:scope[data-shape='circle'][data-size='sm']) {
-      width: 30px;
+      width: var(--ui-control-sm);
     }
     :where(:scope[data-shape='circle'][data-size='lg']) {
-      width: 44px;
+      width: var(--ui-control-lg);
     }
     :where(:scope[aria-busy='true']) {
       cursor: progress;

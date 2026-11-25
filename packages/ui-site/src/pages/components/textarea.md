@@ -15,6 +15,24 @@ description: "A native multi-line text field that grows with resize."
 
 <<< ../../registry/textarea-demo.tscl
 
+## Examples
+
+### States
+
+Enabled, disabled, read-only, and an error with its message linked by `aria-describedby`.
+
+<textareaStatesDemo />
+
+<<< ../../registry/textarea-states-demo.tscl
+
+### Characters left
+
+A limit (`maxlength`) and what's left, read politely rather than on every key.
+
+<textareaCountDemo />
+
+<<< ../../registry/textarea-count-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `textarea.tscl`.

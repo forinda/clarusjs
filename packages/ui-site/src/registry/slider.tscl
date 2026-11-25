@@ -1,10 +1,13 @@
-{{-- Slider: a native range input, styled. Name it with aria-label or a Label (id + control). --}}
+{{-- Slider: a native range input, styled. Name it with aria-label or a Label (id + control). Every <input>
+     attribute you pass (list for tick marks, form…) lands on it. --}}
 @input value: number = 50
 @input min: number = 0
 @input max: number = 100
 @input step: number = 1
 @input name: string = ''
 @input disabled: boolean = false
+
+@extends input
 
 <input
   type="range"

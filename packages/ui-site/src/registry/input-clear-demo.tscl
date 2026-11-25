@@ -1,0 +1,64 @@
+@import uiInputGroup from './input-group.tscl'
+@import uiInput from './input.tscl'
+
+<script>
+  let query = state('')
+  // Nothing inside the group is bound: a binding there would render the group again, input and all (and lose the
+  // focus), so the input and the button are changed in place.
+  const button = () => document.getElementById('clear-demo-button')
+  function typed(event) {
+    query = event.target.value
+    button()?.toggleAttribute('hidden', !query)
+  }
+  function clear() {
+    const input = document.getElementById('clear-demo-query')
+    if (input instanceof HTMLInputElement) input.value = ''
+    query = ''
+    button()?.toggleAttribute('hidden', true)
+    input?.focus()
+  }
+</script>
+
+<div class="demo example">
+  <uiInputGroup>
+    @slot('start') {
+      <icon name="lucide:filter" />
+    }
+    <uiInput id="clear-demo-query" aria-label="Filter" placeholder="Filter…" (input)="typed($event)" />
+    @slot('end') {
+      <button type="button" id="clear-demo-button" class="clear" aria-label="Clear" hidden (click)="clear()">
+        <icon name="lucide:x" />
+      </button>
+    }
+  </uiInputGroup>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
+<style global>
+  .clear {
+    display: grid;
+    place-items: center;
+    padding: var(--ui-space-1);
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+  .clear[hidden] {
+    display: none;
+  }
+  .clear:focus-visible {
+    outline: 2px solid var(--ui-ring);
+  }
+</style>

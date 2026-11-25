@@ -1,0 +1,37 @@
+@import uiTextarea from './textarea.tscl'
+@import uiLabel from './label.tscl'
+
+<script>
+  const MAX = 280
+  let text = state('')
+  const typed = (event) => (text = event.target.value) // listened to, not bound: a bound value renders it again
+</script>
+
+<div class="demo example">
+  <uiLabel control="count-post">Post</uiLabel>
+  <uiTextarea id="count-post" [rows]="4" [maxlength]="MAX" aria-describedby="count-post-left" (input)="typed($event)" />
+  <p id="count-post-left" class="count" aria-live="polite">{{ MAX - text.length }} characters left</p>
+</div>
+
+<style global>
+  .count {
+    justify-self: end;
+    margin: 0;
+    color: var(--ui-muted);
+    font-size: calc(var(--ui-font-size) - 1px);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

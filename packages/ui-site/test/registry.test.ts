@@ -101,6 +101,7 @@ test('a component page shows each of its examples (examples: [...]) under Exampl
     expect(md, `${e.name}: ${x}`).toContain(`<<< ../../registry/${e.name}-${x}-demo.tscl`)
     expect(md, `${e.name}: ${x}`).toMatch(new RegExp(`^## Examples$`, 'm'))
   }
+  expect(components.find((e) => e.name === 'input')!.examples).toEqual(['variants', 'sizes', 'icons', 'addons', 'states', 'password', 'clear', 'count', 'search'])
   expect(components.find((e) => e.name === 'button')!.examples).toEqual(['variants', 'sizes', 'icons', 'loading', 'shapes', 'block', 'disabled', 'actions'])
 })
 
@@ -119,6 +120,28 @@ test('button: variants default, secondary, outline, ghost, destructive, link; si
 test('input: a native <input> with data-part="text-input", type defaults to text, aria-invalid passes through', async () => {
   expect(await render('input.tscl', { id: 'email' })).toBe('<input type="text" data-part="text-input" id="email">')
   expect(await render('input.tscl', { type: 'email', 'aria-invalid': 'true' })).toMatch(/^<input [^>]*type="email"[^>]*aria-invalid="true"|^<input [^>]*aria-invalid="true"[^>]*type="email"/)
+})
+
+test('input: size sm or lg sets data-size; without it, none (a [data-size] around it decides)', async () => {
+  expect(await render('input.tscl', { size: 'sm' })).toContain('data-size="sm"')
+  expect(await render('input.tscl', { size: 'lg' })).toContain('data-size="lg"')
+  expect(await render('input.tscl', {})).not.toContain('data-size')
+})
+
+test('input: variant filled, borderless or underlined and status warning are data attributes; outline adds none', async () => {
+  for (const variant of ['filled', 'borderless', 'underlined']) expect(await render('input.tscl', { variant })).toContain(`data-variant="${variant}"`)
+  expect(await render('input.tscl', { variant: 'outline' })).not.toContain('data-variant')
+  expect(await render('input.tscl', { status: 'warning' })).toContain('data-status="warning"')
+  expect(await render('input-group.tscl', { variant: 'filled' }, { default: '' })).toContain('data-variant="filled"')
+  expect(source('input-group.tscl')).toMatch(/:has\(\[aria-invalid='true'\]\)/)
+})
+
+test('sizes: every control takes its height from --ui-control-sm|md|lg, under [data-size] on itself or around it', () => {
+  for (const f of ['input.tscl', 'field.tscl', 'select.css', 'combobox.css', 'toggle.css', 'button.tscl']) {
+    const css = source(f)
+    expect(css, f).not.toMatch(/min-height: (30|34|36|44)px/)
+    for (const size of ['sm', 'lg']) expect(css, `${f} ${size}`).toContain(`var(--ui-control-${size})`)
+  }
 })
 
 test('textarea: a native <textarea>, rows defaults to 3', async () => {

@@ -1,0 +1,30 @@
+@import uiInput from './input.tscl'
+@import uiButton from './button.tscl'
+
+<script>
+  let searching = state(false)
+  // Your search goes here: the button waits while it runs.
+  function search(event) {
+    event.preventDefault()
+    searching = true
+    setTimeout(() => (searching = false), 1200)
+  }
+</script>
+
+<form class="demo example" role="search" (submit)="search($event)">
+  <uiInput type="search" name="q" aria-label="Search the docs" placeholder="Search the docs" />
+  <uiButton type="submit" [loading]="searching"><icon name="lucide:search" /> Search</uiButton>
+</form>
+
+<style scoped>
+  :scope {
+    display: flex;
+    gap: var(--ui-space-2);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

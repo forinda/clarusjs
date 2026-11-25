@@ -1,0 +1,33 @@
+@import './combobox.css'
+@import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
+
+<script server>
+  const languages = ['TypeScript', 'JavaScript', 'Rust', 'Go', 'Python', 'Kotlin', 'Swift'].map((l) => ({
+    value: l,
+    label: l,
+  }))
+</script>
+
+{{-- [multiple]: each pick becomes a chip; Backspace in the empty input removes the last one. --}}
+<div class="demo example">
+  <uiCombobox
+    id="multi-langs"
+    label="Languages"
+    placeholder="Add a language…"
+    [multiple]="true"
+    [options]="languages"
+  />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
