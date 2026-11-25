@@ -138,6 +138,18 @@ export const registry: Entry[] = [
     island: true,
   },
   {
+    name: 'appointment-picker',
+    group: 'Form',
+    title: 'Appointment picker',
+    description: 'A date and a time in one popover, with shortcuts (Today, Tomorrow, Next week) and time slots.',
+    files: ['appointment-picker.tscl'],
+    tailwind: ['appointment-picker.tw.tscl'],
+    parts: [],
+    uses: ['calendar'],
+    examples: ['min'],
+    island: true,
+  },
+  {
     name: 'resizable',
     group: 'Panel',
     title: 'Resizable',
