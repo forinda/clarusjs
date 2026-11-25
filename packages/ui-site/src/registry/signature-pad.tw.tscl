@@ -1,0 +1,169 @@
+{{-- Signature pad, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as signature-pad.tscl.
+     Copy it into src/components/ui/ as signature-pad.tscl. --}}
+@input name: string = 'signature'
+@input label: string = 'Signature'
+@input height: number = 160
+@event change: string
+
+<script>
+  // Strokes as lists of points (CSS pixels), kept to redraw sharply at any size and to undo.
+  let strokes = state([[{ x: 0, y: 0 }]].slice(0, 0))
+  let typing = state(false)
+  let typed = state('')
+  let value = state('')
+  const INK = '#111827' // the saved image's ink: readable on paper in any theme
+  const FACE = "italic 40px 'Segoe Script', 'Brush Script MT', 'Snell Roundhand', cursive"
+  const surface = () => {
+    const el = document.getElementById(`${name}-canvas`)
+    return el instanceof HTMLCanvasElement ? el : null
+  }
+  let current = [{ x: 0, y: 0 }].slice(0, 0)
+
+  function paint(ctx, scale, color) {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+    ctx.strokeStyle = color
+    ctx.fillStyle = color
+    ctx.lineWidth = 2.2 * scale
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    for (const stroke of current.length ? [...strokes, current] : strokes) {
+      ctx.beginPath()
+      stroke.forEach((p, i) => (i ? ctx.lineTo(p.x * scale, p.y * scale) : ctx.moveTo(p.x * scale, p.y * scale)))
+      if (stroke.length === 1) ctx.lineTo(stroke[0].x * scale + 0.1, stroke[0].y * scale)
+      ctx.stroke()
+    }
+    if (typing && typed.trim()) {
+      ctx.font = FACE.replace('40px', `${40 * scale}px`)
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(typed, 16 * scale, ctx.canvas.height * 0.68, ctx.canvas.width - 32 * scale)
+    }
+  }
+  function redraw() {
+    const canvas = surface()
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (ctx) paint(ctx, devicePixelRatio || 1, getComputedStyle(canvas).color)
+  }
+  // The value: an image of the signature in dark ink, or '' when there's nothing.
+  function commit() {
+    let next = ''
+    const canvas = surface()
+    if (canvas && (strokes.length || (typing && typed.trim()))) {
+      const out = document.createElement('canvas')
+      out.width = canvas.width
+      out.height = canvas.height
+      const ctx = out.getContext('2d')
+      if (ctx) {
+        paint(ctx, devicePixelRatio || 1, INK)
+        next = out.toDataURL('image/png')
+      }
+    }
+    value = next
+    emit('change', next)
+  }
+  // Events reach the island (they're delegated): the canvas is the target.
+  const target = (event) => event.target.closest('canvas')
+  function point(event) {
+    const box = target(event).getBoundingClientRect()
+    return { x: event.clientX - box.left, y: event.clientY - box.top }
+  }
+  function down(event) {
+    if (typing) return
+    target(event).setPointerCapture(event.pointerId)
+    current = [point(event)]
+    redraw()
+  }
+  function move(event) {
+    if (!current.length) return
+    current = [...current, point(event)]
+    redraw()
+  }
+  function up() {
+    if (!current.length) return
+    strokes = [...strokes, current]
+    current = []
+    redraw()
+    commit()
+  }
+  function undo() {
+    strokes = strokes.slice(0, -1)
+    redraw()
+    commit()
+  }
+  function clear() {
+    strokes = []
+    typed = ''
+    const field = document.getElementById(`${name}-typed`)
+    if (field instanceof HTMLInputElement) field.value = ''
+    redraw()
+    commit()
+  }
+  function mode(next) {
+    clear()
+    typing = next
+    if (next) requestAnimationFrame(() => document.getElementById(`${name}-typed`)?.focus())
+    redraw()
+  }
+  function type(event) {
+    typed = event.target.value
+    redraw()
+    commit()
+  }
+  function wire() {
+    const canvas = surface()
+    // The canvas's pixels follow its size and the screen's density; the strokes are redrawn to match.
+    const fit = () => {
+      if (!canvas) return
+      const box = canvas.getBoundingClientRect()
+      canvas.width = Math.round(box.width * (devicePixelRatio || 1))
+      canvas.height = Math.round(box.height * (devicePixelRatio || 1))
+      redraw()
+    }
+    const watch = new ResizeObserver(fit)
+    if (canvas) watch.observe(canvas)
+    fit()
+    return () => watch.disconnect()
+  }
+</script>
+
+<div
+  data-part="signature-pad"
+  [data-typing]="typing ? 'true' : false"
+  [use]="wire"
+  class="
+    grid gap-2 text-foreground font-sans text-(length:--ui-font-size) leading-[normal]
+    [&_[data-part=signature-canvas]]:block [&_[data-part=signature-canvas]]:w-full [&_[data-part=signature-canvas]]:border [&_[data-part=signature-canvas]]:border-input [&_[data-part=signature-canvas]]:rounded-lg [&_[data-part=signature-canvas]]:text-foreground [&_[data-part=signature-canvas]]:cursor-crosshair [&_[data-part=signature-canvas]]:touch-none
+    [&_[data-part=signature-canvas]]:[background:linear-gradient(to_top,transparent_28%,var(--ui-border)_28%,var(--ui-border)_calc(28%+1px),transparent_calc(28%+1px)),var(--ui-bg)]
+    [&[data-typing=true]_[data-part=signature-canvas]]:cursor-default
+    [&_[data-part=signature-typed]]:grid [&_[data-part=signature-typed]]:gap-1 [&_[data-part=signature-typed][hidden]]:hidden [&_[data-part=signature-typed]_label]:font-medium
+    [&_[data-part=signature-typed]_input]:min-h-(--ui-control-md) [&_[data-part=signature-typed]_input]:px-3 [&_[data-part=signature-typed]_input]:border [&_[data-part=signature-typed]_input]:border-input [&_[data-part=signature-typed]_input]:rounded-lg [&_[data-part=signature-typed]_input]:bg-background [&_[data-part=signature-typed]_input]:text-foreground [&_[data-part=signature-typed]_input]:font-[inherit]
+    [&_[data-part=signature-actions]]:flex [&_[data-part=signature-actions]]:flex-wrap [&_[data-part=signature-actions]]:gap-2 [&_[data-part=signature-mode]]:mr-auto
+    [&_[data-part=signature-actions]_button]:min-h-(--ui-control-sm) [&_[data-part=signature-actions]_button]:px-3 [&_[data-part=signature-actions]_button]:border [&_[data-part=signature-actions]_button]:border-border [&_[data-part=signature-actions]_button]:rounded-lg [&_[data-part=signature-actions]_button]:bg-background [&_[data-part=signature-actions]_button]:text-foreground [&_[data-part=signature-actions]_button]:font-[inherit] [&_[data-part=signature-actions]_button]:cursor-pointer
+    [&_[data-part=signature-actions]_button:hover:not(:disabled)]:bg-accent [&_[data-part=signature-actions]_button:disabled]:opacity-50 [&_[data-part=signature-actions]_button:disabled]:cursor-not-allowed
+    [&_:is([data-part=signature-actions]_button,[data-part=signature-typed]_input,[data-part=signature-canvas]):focus-visible]:outline-2 [&_:is([data-part=signature-actions]_button,[data-part=signature-typed]_input,[data-part=signature-canvas]):focus-visible]:outline-ring [&_:is([data-part=signature-actions]_button,[data-part=signature-typed]_input,[data-part=signature-canvas]):focus-visible]:outline-offset-2
+  "
+>
+  <canvas
+    [id]="name + '-canvas'"
+    data-part="signature-canvas"
+    role="img"
+    [aria-label]="label + (value ? ': signed.' : ': empty. Draw with a mouse, finger or pen, or choose Type instead.')"
+    [style]="'height: ' + height + 'px'"
+    (pointerdown)="down($event)"
+    (pointermove)="move($event)"
+    (pointerup)="up()"
+    (pointercancel)="up()"
+  ></canvas>
+  <div data-part="signature-typed" [hidden]="!typing">
+    <label [for]="name + '-typed'">Type your name</label>
+    <input [id]="name + '-typed'" type="text" autocomplete="name" (input)="type($event)" />
+  </div>
+  <div data-part="signature-actions">
+    <button type="button" data-part="signature-mode" (click)="mode(!typing)">
+      {{ typing ? 'Draw instead' : 'Type instead' }}
+    </button>
+    <button type="button" data-part="signature-undo" [disabled]="!strokes.length" (click)="undo()">Undo</button>
+    <button type="button" data-part="signature-clear" [disabled]="!value" (click)="clear()">Clear</button>
+  </div>
+  <input type="hidden" [name]="name" [value]="value" />
+</div>

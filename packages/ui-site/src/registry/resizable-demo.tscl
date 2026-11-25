@@ -1,0 +1,37 @@
+@import uiResizable from './resizable.tscl'
+
+<div class="demo">
+  <uiResizable id="demo-split" label="Resize the sidebar" [size]="30" [min]="20" [max]="60">
+    @slot('start') {
+      <div class="resizable-pane">Sidebar</div>
+    }
+    @slot('end') {
+      <div class="resizable-pane">Content</div>
+    }
+  </uiResizable>
+</div>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  [data-part='resizable'] {
+    height: 16rem;
+  }
+</style>
+
+{{-- Global: slot content sits inside the Resizable's own markup, out of this demo's scope. --}}
+<style global>
+  .resizable-pane {
+    display: grid;
+    place-content: center;
+    height: 100%;
+    padding: var(--ui-space-4);
+    color: var(--ui-muted);
+    text-align: center;
+  }
+</style>
