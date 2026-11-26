@@ -1,8 +1,8 @@
 @import uiField from './field.tscl'
 
 <div class="demo example">
-  <uiField id="desc-username" label="Username" description="Letters, numbers and dashes; shown on your profile." />
-  <uiField id="desc-email" label="Email" type="email" description="We'll only use it to sign you in." />
+  <uiField id="desc-username" label="Username" placeholder="ada-lovelace" description="Letters, numbers and dashes; shown on your profile." />
+  <uiField id="desc-email" label="Email" type="email" placeholder="you@example.com" description="We'll only use it to sign you in." />
 </div>
 
 <style scoped>

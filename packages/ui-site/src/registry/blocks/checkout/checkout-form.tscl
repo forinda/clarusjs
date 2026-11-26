@@ -124,6 +124,7 @@
               min="0"
               max="99"
               inputmode="numeric"
+              placeholder="1"
               [value]="String(l.quantity)"
               [aria-label]="'Quantity of ' + l.name"
               (input)="setQuantity(l.id, $event)"

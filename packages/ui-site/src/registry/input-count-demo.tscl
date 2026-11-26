@@ -10,7 +10,7 @@
 {{-- The count is tied to the field (aria-describedby), and polite, so it's read after a pause, not per key. --}}
 <div class="demo example">
   <uiLabel control="count-demo-bio">Short bio</uiLabel>
-  <uiInput id="count-demo-bio" [maxlength]="MAX" aria-describedby="count-demo-left" (input)="typed($event)" />
+  <uiInput id="count-demo-bio" placeholder="A line about you" [maxlength]="MAX" aria-describedby="count-demo-left" (input)="typed($event)" />
   <p id="count-demo-left" class="count" aria-live="polite">{{ bio.length }} / {{ MAX }}</p>
 </div>
 

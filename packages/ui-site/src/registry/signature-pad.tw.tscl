@@ -156,7 +156,7 @@
   ></canvas>
   <div data-part="signature-typed" [hidden]="!typing">
     <label [for]="name + '-typed'">Type your name</label>
-    <input [id]="name + '-typed'" type="text" autocomplete="name" (input)="type($event)" />
+    <input [id]="name + '-typed'" type="text" autocomplete="name" placeholder="Your name" (input)="type($event)" />
   </div>
   <div data-part="signature-actions">
     <button type="button" data-part="signature-mode" (click)="mode(!typing)">
