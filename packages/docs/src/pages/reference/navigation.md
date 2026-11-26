@@ -2,7 +2,7 @@
 title: "clarusjs/navigation"
 group: "APIs"
 order: 5
-description: "currentUrl, navigate, the navigation hooks, navigating, view transitions and href: the exact contract of each, with usage."
+description: "currentUrl, searchParams, navigate, setSearch, navigationState, the navigation hooks, navigating, view transitions and href: the exact contract of each, with usage."
 ---
 
 # clarusjs/navigation
@@ -10,7 +10,7 @@ description: "currentUrl, navigate, the navigation hooks, navigating, view trans
 <p class="lead">Moving between pages from code, and hooking into it. For the how-to, see <a href="/guide/navigation">Navigation</a>, <a href="/guide/fragment-navigation">Fragment navigation</a> and <a href="/guide/client-routes">Client routes</a>.</p>
 
 ```ts
-import { currentUrl, navigate, beforeNavigate, navigating, href } from 'clarusjs/navigation'
+import { currentUrl, searchParams, navigate, setSearch, beforeNavigate, navigating, href } from 'clarusjs/navigation'
 ```
 
 The hooks (`beforeNavigate`, `afterNavigate`, `onNavigateError`, `beforeSwap`, `afterSwap`) belong to the island that registers them: they stop when it leaves the page.
@@ -40,7 +40,7 @@ The current page's URL, as a store. It follows links, back and forward, and the 
 ## navigate()
 
 ```ts
-navigate(to: string | URL, options?: { replace?: boolean; state?: unknown }): Promise<void>
+navigate(to: string | URL, options?: { replace?: boolean; state?: unknown; scroll?: boolean }): Promise<void>
 ```
 
 Goes to `to`, as a link click would: the page's navigator swaps or renders the new page.
@@ -49,7 +49,8 @@ Goes to `to`, as a link click would: the page's navigator swaps or renders the n
 
 - **`to`**: the address.
 - **`options.replace`**: replace the current history entry instead of adding one.
-- **`options.state`**: history state for the new entry.
+- **`options.state`**: history state for the new entry, read back with `navigationState()`.
+- **`options.scroll`**: `false` keeps the scroll position; by default the new page starts at the top (or at its `#hash`), and Back and Forward restore where the visitor was.
 
 ### Returns
 
@@ -66,6 +67,76 @@ async function save() {
   await post(form)
   await navigate('/account', { replace: true })
 }
+```
+
+## searchParams {since=0.17.0}
+
+```ts
+const searchParams: Signal<URLSearchParams | null>
+```
+
+The current page's query, as a store kept in step with `currentUrl`.
+
+### Caveats
+
+- **It's `null` on the server**, like `currentUrl`.
+- **Read it, don't write it.** Change the query with `setSearch()`: writing the store doesn't move the page.
+
+### Usage
+
+```tscl
+<script>
+  import { searchParams } from 'clarusjs/navigation'
+  let query = shared(searchParams)
+</script>
+<p>Results for {{ query?.get('q') ?? 'everything' }}</p>
+```
+
+## setSearch() {since=0.17.0}
+
+```ts
+setSearch(changes: Record<string, string | number | null | readonly (string | number)[]>, options?: { replace?: boolean; state?: unknown; scroll?: boolean }): Promise<void>
+```
+
+Changes the current URL's query and goes there, as `navigate()` does. The path, the hash and other params stay.
+
+### Parameters
+
+- **`changes`**: per key, a value sets it (in place, if it was there), an array repeats it (`?tag=a&tag=b`), `null` removes it.
+- **`options.replace`**: `true` by default, so a search box or filter doesn't fill Back with every change; `false` adds an entry (pagination).
+- **`options.state`**: history state for the entry.
+- **`options.scroll`**: `false` by default (the visitor stays where they are); `true` goes to the top.
+
+### Returns
+
+The same promise as `navigate()`. On the server it resolves at once and does nothing.
+
+### Usage
+
+```ts
+setSearch({ q: input.value, page: null }) // a new search starts at page 1
+setSearch({ page: 3 }, { replace: false }) // worth a Back step
+```
+
+## navigationState() {since=0.17.0}
+
+```ts
+navigationState<T = unknown>(): T | undefined
+```
+
+What `navigate(url, { state })` (or `setSearch(…, { state })`) stored with the current history entry. The browser keeps it for Back and Forward; it isn't in the URL, so a shared link doesn't carry it.
+
+### Caveats
+
+- **`undefined` on the server**, and when the entry has none.
+- **Keep it small and serializable**: the browser stores it with the history entry.
+
+### Usage
+
+```ts
+await navigate('/results', { state: { from: 'search' } })
+// on /results
+const from = navigationState<{ from?: string }>()?.from
 ```
 
 ## abort()

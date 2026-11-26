@@ -1,0 +1,101 @@
+{{-- Query strings, live: the search box and the tag filter live in the URL (?q=…&tag=…), read with searchParams and
+     written with setSearch, so a reload or a shared link shows the same results. Replacing the entry keeps Back for
+     leaving the page. --}}
+
+<script>
+  import { searchParams, setSearch } from 'clarusjs/navigation'
+  const TOPICS = [
+    { title: 'Lists', tag: 'templates' },
+    { title: 'Conditionals', tag: 'templates' },
+    { title: 'Slots', tag: 'templates' },
+    { title: 'State', tag: 'interactivity' },
+    { title: 'Forms', tag: 'interactivity' },
+    { title: 'Navigation', tag: 'interactivity' },
+    { title: 'Routing', tag: 'pages' },
+    { title: 'Layouts', tag: 'pages' },
+  ]
+  let query = shared(searchParams)
+  const q = () => query?.get('q') ?? ''
+  const tag = () => query?.get('tag') ?? ''
+  const found = () => TOPICS.filter((t) => (!tag() || t.tag === tag()) && t.title.toLowerCase().includes(q().toLowerCase()))
+  function search(event) {
+    event.preventDefault()
+    const data = new FormData(event.target)
+    setSearch({ q: String(data.get('q') ?? '').trim() || null, tag: String(data.get('tag') ?? '') || null })
+  }
+</script>
+
+<div class="query-demo">
+  <form role="search" aria-label="Topics" (submit)="search($event)">
+    <label>Search <input name="q" type="search" [value]="q()" placeholder="Try “s”" /></label>
+    <label>
+      Tag
+      <select name="tag">
+        <option value="" [selected]="tag() === ''">Any</option>
+        @for (t of ['templates', 'interactivity', 'pages']; track t) {
+          <option [value]="t" [selected]="tag() === t">{{ t }}</option>
+        }
+      </select>
+    </label>
+    <button type="submit">Search</button>
+    <button type="button" (click)="setSearch({ q: null, tag: null })">Clear</button>
+  </form>
+  <p class="query-count" role="status">{{ found().length }} of {{ TOPICS.length }} topics{{ q() || tag() ? ' match' : '' }}</p>
+  <ul>
+    @for (t of found(); track t.title) {
+      <li>{{ t.title }} <small>{{ t.tag }}</small></li>
+    }
+  </ul>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: end;
+  }
+  label {
+    display: grid;
+    gap: 4px;
+    font-size: 14px;
+  }
+  input,
+  select,
+  button {
+    padding: 6px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+  }
+  .query-count {
+    margin: 0;
+    color: var(--muted);
+  }
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    padding: 4px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+  }
+  small {
+    color: var(--muted);
+  }
+</style>

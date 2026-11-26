@@ -26,7 +26,8 @@ type NavigateEvent = {
   destination: { url: string; sameDocument: boolean }
   navigationType: string
   signal: AbortSignal
-  intercept(options: { handler(): Promise<void>; precommitHandler?(): Promise<void> }): void
+  intercept(options: { handler(): Promise<void>; precommitHandler?(): Promise<void>; scroll?: 'after-transition' | 'manual' }): void
+  info?: unknown
 }
 
 /** The number of the latest navigation taken over (0 before any): only that one may change the document. */
@@ -61,6 +62,9 @@ export function onNavigate(e: NavigateEvent, pick: Pick): void {
   const render = url.href != fallback && pick(url)
   if (!render) return
   const id = ++latest
+  // scroll: false (navigate()'s option): where the visitor is, put back after the swap (replacing the content can
+  // briefly shorten the page, and the browser then clamps the position).
+  const keep = (e.info as { scroll?: boolean } | undefined)?.scroll === false && [scrollX, scrollY] as const
   const isCurrent = () => latest == id && !e.signal.aborted
   const t: Transition = { from: new URL(location.href), to: url, type: e.navigationType, phase: 'loading', signal: e.signal }
   const data = document.documentElement.dataset
@@ -92,7 +96,7 @@ export function onNavigate(e: NavigateEvent, pick: Pick): void {
     await onCommit
     await step('swapping')
     return isCurrent()
-  }, e.signal).then((): unknown => isCurrent() && step('swapped')).catch((err: unknown) => {
+  }, e.signal).then((): unknown => isCurrent() && (keep && scrollTo(...keep), step('swapped'))).catch((err: unknown) => {
     if (!isCurrent()) return
     fallback = url.href
     // Loaded normally: a reload once the URL changed (assign() would only move within the page with a #hash), else
@@ -101,6 +105,9 @@ export function onNavigate(e: NavigateEvent, pick: Pick): void {
     throw err // reported as navigateerror (onNavigateError)
   }).finally(end) as Promise<void>)
   e.intercept({
+    // Scroll: the browser's (Back/Forward restore the position, a new page starts at the top, a #hash scrolls to it),
+    // unless navigate(…, { scroll: false }) asked to stay where the visitor is.
+    scroll: keep ? 'manual' : undefined, // undefined: the browser's own ('after-transition')
     // Resolves when the page is ready to swap in; rejects with a failure before that (reported, URL unchanged).
     precommitHandler: hold ? () => Promise.race([atGate, work()]) : undefined,
     handler: () => (commit(), running ?? work()),
