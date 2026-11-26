@@ -2893,3 +2893,27 @@ test('animations guide: what @if and @for insert animates in with @starting-styl
   expect(await page.locator('.enter-rows li').last().evaluate((el) => getComputedStyle(el).translate)).toBe('none')
   expect(await running('.enter-rows li')).not.toContain('translate')
 })
+
+test('animations guide: the flip clock shows the time and flips only the digits that change', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 26, 10, 59, 58) })
+  await page.goto('/guide/animations')
+  const clock = page.getByRole('timer')
+  await expect(page.locator('cl-island[c="flip-clock"]')).toHaveAttribute('data-cl-ready', '')
+  await expect(clock).toHaveAttribute('aria-label', 'The time is 10:59:58')
+  // What turns when the time moves on: watched as it starts (transitions end on their own).
+  await page.evaluate(() => {
+    const w = window as unknown as { __flipped: string[] }
+    w.__flipped = []
+    const seen = new WeakSet<Node>() // a new row is inserted, then moved into place: count each once
+    new MutationObserver((records) => {
+      for (const r of records) for (const n of r.addedNodes) if (n instanceof HTMLElement && n.matches('.digit') && !seen.has(n)) {
+        seen.add(n)
+        if (n.querySelector('.fold')!.getAnimations().length) w.__flipped.push(n.querySelector('.top')!.textContent!)
+      }
+    }).observe(document.querySelector('.flip-clock')!, { childList: true, subtree: true })
+  })
+  await page.clock.runFor(2000)
+  await expect(clock).toHaveAttribute('aria-label', 'The time is 11:00:00')
+  // 10:59:58 → 10:59:59 → 11:00:00: the last digit twice, then 1·0 → 1·1 (hour's second digit), 5 → 0, 9 → 0, 5 → 0.
+  expect((await page.evaluate(() => (window as unknown as { __flipped: string[] }).__flipped)).sort()).toEqual(['0', '0', '0', '0', '1', '9'].sort())
+})

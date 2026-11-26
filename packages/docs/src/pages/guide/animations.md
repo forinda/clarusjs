@@ -42,6 +42,23 @@ Try it:
 - **Each element animates on its own**: give rows a `transition-delay` from a custom property (`style="--i: {{ $index }}"`, `transition-delay: calc(var(--i) * 40ms)`) to stagger them.
 - **Browsers without `@starting-style`** show the element at once, in its final style: nothing breaks.
 
+### A flip clock
+
+The same technique, taken further: each digit is a row of a `@for` keyed by its place and its value (`track cell.key`, a key like `` `${i}:${ch}` ``). When a digit changes, its key changes, so it's a new row, and a new row animates in. Its two leaves start from where a split-flap card would be: the old top half upright, the new bottom half folded up. Then the browser turns them into place, one after the other (`transition-delay`).
+
+<flipClock />
+
+```css
+.fold { rotate: x -90deg; transition: rotate 0.25s ease-in; }       /* the old top, folded away */
+.fall { rotate: x 0deg; transition: rotate 0.25s 0.25s ease-out; } /* the new bottom, in place */
+@starting-style {
+  .fold { rotate: x 0deg; }   /* starts upright */
+  .fall { rotate: x 90deg; }  /* starts folded up */
+}
+```
+
+The whole clock is in `src/components/flip-clock.tscl` on this site: about 30 lines of script and markup, no animation code.
+
 ## Leaving
 
 Leaving is instant for now: `@if` and `@for` remove the elements at once, so there's nothing to animate. An `@transition` block that waits for a leave (and moves list rows into place) is coming, with Vue's class names: `fade-enter-from`, `fade-leave-to` and the rest.
