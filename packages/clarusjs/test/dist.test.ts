@@ -103,10 +103,12 @@ test('the clarusjs command is built, with a shebang', () => {
 // (#465); the next framework changes (attributes on an @if root for ui.clarusjs.com's Button) no longer fit.
 // 170 KB tarball: main is at 163,501 B (339 B of room); event modifiers and $values (#444) add ~1.8 KB, and the layout
 // follow-ups (#472) more. Unpacked stays 580 KB (583,235 B on main).
-test('size budget: the published package stays small (tarball 170 KB, unpacked 580 KB)', () => {
+// 600 KB unpacked: main is at 593,843 B (77 B of room) after the #472 layouts and #444 modifiers; the forms engine's
+// nested-sections fixes and touched/dirty/shown (#443) no longer fit. The tarball stays 170 KB (166,570 B on main).
+test('size budget: the published package stays small (tarball 170 KB, unpacked 600 KB)', () => {
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
   expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(170 * 1024)
-  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(580 * 1024)
+  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(600 * 1024)
 }, 30_000) // npm pack takes over 5 s when every package's tests run at once
 
 test('#197: sideEffects lists only the browser scripts that start work when loaded (bundlers drop the rest when unused)', () => {
