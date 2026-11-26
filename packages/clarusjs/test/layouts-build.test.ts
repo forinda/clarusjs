@@ -24,6 +24,8 @@ beforeAll(async () => {
   w('src/pages/embed/widget.tscl', '<p>widget</p>\n')
   // #472: page sources (Markdown, say) get the folder layouts too.
   w('src/pages/admin/notes.note', 'hello')
+  // #472: an island page: its layouts go around the island.
+  w('src/pages/admin/count.tscl', '<script>\n  let n = state(2)\n</script>\n<button (click)="n++">{{ n }}</button>\n')
   w('src/pages/+guard.ts', 'export function guard() {}\n')
   // #472: a folder layout's own data, from +layout.load.ts, with the route's params.
   w('src/pages/teams/team.css', '.team { color: teal; }\n')
@@ -63,7 +65,7 @@ test('@layout none: no folder or config layout', () => {
 
 test('+layout.tscl files are never routes', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
-  expect(Object.keys(manifest.routes).sort()).toEqual(['/', '/admin/notes', '/admin/sign-in', '/admin/users', '/embed/widget', '/teams/red'])
+  expect(Object.keys(manifest.routes).sort()).toEqual(['/', '/admin/count', '/admin/notes', '/admin/sign-in', '/admin/users', '/embed/widget', '/teams/red'])
 })
 
 test('#472: a page source (a Markdown page) is wrapped in its folder and config layouts like a .tscl page', () => {
@@ -89,4 +91,12 @@ test('#472: a folder layout\'s imported stylesheet is linked on the pages it wra
   expect(href).toBeDefined()
   expect(readFileSync(resolve(root, 'dist/client', href!.slice(1)), 'utf8')).toContain('teal')
   expect(page('/')).not.toContain(href!)
+})
+
+test('#472: an island page gets its layouts around the island, which ships its own code only', () => {
+  const html = page('/admin/count')
+  expect(html).toMatch(/<div class="admin"><aside>admin menu<\/aside><main><cl-island c="count" src="([^"]+)"[^>]*><button[^>]*>.*2.*<\/button><\/cl-island><\/main><\/div>/)
+  const src = /<cl-island c="count" src="([^"]+)"/.exec(html)![1]!
+  const js = readFileSync(resolve(root, 'dist/client', src.slice(1)), 'utf8')
+  expect(js).not.toContain('admin menu') // the layouts aren't in the island's code
 })
