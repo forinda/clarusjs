@@ -11,6 +11,10 @@
     outline: 2px solid var(--ui-ring);
     outline-offset: 2px;
   }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    outline: none;
+  }
 
   /* Sidebar: inline beside the page on wide screens (hidden when collapsed: its data-state, or data-sidebar on <html>
      from the remembered choice); on phones a popover panel from the left. */

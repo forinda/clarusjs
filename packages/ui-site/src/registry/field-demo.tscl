@@ -11,6 +11,7 @@
     id="demo-email"
     label="Email"
     type="email"
+    placeholder="you@example.com"
     description="We never share it."
     [error]="email.includes('@') ? '' : 'Enter an email address.'"
     [show]="tried"

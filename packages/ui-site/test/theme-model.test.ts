@@ -115,3 +115,14 @@ test('siteCss: the site\'s own components (the Theme sheet\'s buttons, slider, f
   const css = siteCss({ light: { ...presets.teal.light, accent: '#c2185b' }, dark: presets.teal.dark })
   for (const token of ['--ui-accent: #c2185b', '--ui-accent-fg:', '--ui-accent-soft:', '--ui-accent-soft-fg:', '--ui-ring:']) expect(css).toContain(token)
 })
+
+test('brandTokens: a custom brand colour brings its ring, its readable text and its soft tint (in the brand\'s hue)', async () => {
+  const { brandTokens, contrast } = await import('../src/theme/model.ts')
+  const t = brandTokens('#c2185b')
+  expect(t.accent).toBe('#c2185b')
+  expect(t.ring).toBe('#c2185b')
+  expect(contrast(t['accent-fg'], '#c2185b')).toBeGreaterThanOrEqual(4.5)
+  expect(contrast(t['accent-soft-fg'], t['accent-soft'])).toBeGreaterThanOrEqual(4.5)
+  expect(t['accent-soft']).not.toBe('#c2185b')
+  expect(brandTokens('#ffe066')['accent-fg']).not.toBe('#ffffff') // a light brand takes dark text
+})

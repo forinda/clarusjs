@@ -5,7 +5,7 @@
   <uiLabel control="demo-email">Email</uiLabel>
   <uiInput id="demo-email" type="email" placeholder="you@example.com" autocomplete="email" />
   <uiLabel control="demo-code">Invite code</uiLabel>
-  <uiInput id="demo-code" value="ABC" aria-invalid="true" aria-describedby="demo-code-error" />
+  <uiInput id="demo-code" placeholder="6-digit code" value="ABC" aria-invalid="true" aria-describedby="demo-code-error" />
   <p id="demo-code-error" class="error">That code has expired.</p>
 </div>
 

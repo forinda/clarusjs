@@ -53,6 +53,7 @@
       data-part="otp-input"
       type="text"
       autocomplete="one-time-code"
+      [placeholder]="'•'.repeat(length)"
       inputmode="numeric"
       pattern="[0-9]*"
       [maxlength]="length"

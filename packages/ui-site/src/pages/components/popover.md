@@ -19,9 +19,15 @@ The parts come from `@clarusjs/ui-primitives`; the look is `popover.css`, import
 
 ## Source
 
-Copy it into `src/components/ui/` as `popover.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `popover.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `popover.tw.css`, imported where Tailwind runs.
+
+<sourceFlavor name="popover">
 
 <<< ../../registry/popover.css
+
+<<< ../../registry/popover.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

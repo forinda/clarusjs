@@ -216,3 +216,33 @@ test('toast kinds: each kind is tinted, has its icon, and says its kind to scree
   await expect(item).toContainText('Upload failed')
   await expect(item.locator('[data-part="toast-icon"] svg')).toHaveCount(1)
 })
+
+test('#tokens: combobox: one focus ring, on its box, not a second outline on the input inside', async ({ page }) => {
+  await page.goto('/components/combobox')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  const input = page.locator('.demo [data-part="combobox"] [role="combobox"]').first()
+  await input.focus()
+  await page.keyboard.press('a') // keyboard focus (focus-visible)
+  expect(await input.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none')
+  expect(await input.evaluate((el) => getComputedStyle(el.closest('[data-part="control"]')!).boxShadow)).not.toBe('none')
+})
+
+test('#tokens: input sizes: each row\'s input, select and button line up at the bottom', async ({ page }) => {
+  await page.goto('/components/input')
+  for (const size of ['Small', 'Medium', 'Large']) {
+    const input = (await page.getByRole('textbox', { name: `${size} search` }).boundingBox())!
+    const select = (await page.getByRole('combobox', { name: `${size} status` }).boundingBox())!
+    const button = (await page.getByRole('button', { name: size, exact: true }).boundingBox())!
+    expect(Math.abs(input.y + input.height - (select.y + select.height)), size).toBeLessThanOrEqual(1)
+    expect(Math.abs(input.y + input.height - (button.y + button.height)), size).toBeLessThanOrEqual(1)
+  }
+})
+
+test('#tokens: input sizes: the selects\' labels are read, not shown, so each row is one line of controls', async ({ page }) => {
+  await page.goto('/components/input')
+  for (const size of ['Small', 'Medium', 'Large']) {
+    const input = (await page.getByRole('textbox', { name: `${size} search` }).boundingBox())!
+    const select = (await page.getByRole('combobox', { name: `${size} status` }).boundingBox())!
+    expect(Math.abs(input.y - select.y), size).toBeLessThanOrEqual(1) // tops line up too: no label above the select
+  }
+})

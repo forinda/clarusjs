@@ -164,3 +164,10 @@ test('spacing: every padding, margin and gap is a step of --ui-space, never raw 
     expect(value!.replace(/var\(--ui-space[\w-]*\)/g, '').match(/\d*\.?\d+px/g), `${prop}: ${value}`).toBeNull()
   }
 })
+
+test('the token blocks set color-scheme, so native controls (select popups, date pickers, scrollbars) follow light and dark', () => {
+  const tokens = css.slice(0, css.indexOf('@layer components'))
+  expect(tokens).toMatch(/:root \{[^}]*color-scheme: light;/)
+  expect(tokens).toMatch(/@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme='light'\]\) \{[^}]*color-scheme: dark;/)
+  expect(tokens).toMatch(/:root\[data-theme='dark'\] \{[^}]*color-scheme: dark;/)
+})

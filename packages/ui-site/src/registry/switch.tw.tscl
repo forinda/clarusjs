@@ -1,0 +1,10 @@
+{{-- Tailwind version: its look is switch.tw.css (Tailwind utilities), imported here.
+ Switch: a native checkbox with role="switch" and its label, bound two ways with [(checked)]. --}}
+@import './switch.tw.css'
+@import uiSwitch from '@clarusjs/ui-primitives/switch.tscl'
+@input label: string
+@input name: string = ''
+@input disabled: boolean = false
+@model checked: boolean = false
+
+<uiSwitch [label]="label" [name]="name" [disabled]="disabled" [(checked)]="checked" />

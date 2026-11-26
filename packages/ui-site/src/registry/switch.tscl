@@ -17,6 +17,10 @@
       outline: 2px solid var(--ui-ring);
       outline-offset: 2px;
     }
+    /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+    :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+      outline: none;
+    }
 
     /* Switch and checkbox: the native input, tinted; the label next to it. */
     :where([data-part='switch'], [data-part='checkbox']) {

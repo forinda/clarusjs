@@ -1,0 +1,54 @@
+/*
+  The Tailwind version of menu's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Menu: the same rules as @clarusjs/ui's ui.css for menu.tscl, menu-trigger.tscl, menu-list.tscl, menu-item.tscl from @clarusjs/ui-primitives.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Buttons: triggers and closes. */
+  :where([data-part='trigger'], [data-part='close']) {
+    @apply font-semibold text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) py-(--ui-space-2) px-[calc(var(--ui-space)_*_3.5)] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-bg) text-(color:--ui-fg) cursor-pointer;
+  }
+  :where([data-part='trigger'], [data-part='close']):hover {
+    @apply border-(color:--ui-accent);
+  }
+
+  /* Menu: the list below its trigger, items as full-width rows; the focused one is tinted. */
+  :where([data-part='menu']) {
+    @apply inline-block;
+  }
+  :where([data-part='menu-list']) {
+    @apply my-(--ui-space-1) mx-0 p-(--ui-space-1) min-w-[160px] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-popover) text-(color:--ui-popover-fg) text-(color:--ui-fg) shadow-(--ui-shadow);
+  }
+  :where([data-part='menu-item']) {
+    @apply block w-full py-[calc(var(--ui-space)_*_1.5)] px-[calc(var(--ui-space)_*_2.5)] border-0 border-none rounded-[calc(var(--ui-radius)_-_2px)] bg-transparent text-inherit font-normal text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) text-start cursor-pointer;
+  }
+  :where([data-part='menu-item']):is(:hover, :focus-visible) {
+    @apply bg-(color:--ui-accent-soft);
+  }
+  :where([data-part='menu-item'])[aria-disabled='true'] {
+    @apply opacity-[0.55] cursor-not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}
