@@ -1,9 +1,9 @@
 // Regressions from the slice-1 branch review: non-ESM apps, base paths, a missing client manifest.
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { createBuilder, preview } from 'vite'
-import { expect, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
 import clarusjs from '../src/vite/plugin.ts'
 import { unscoped } from './helpers.ts'
 
@@ -124,6 +124,7 @@ test('#54: a project reached through a symlink (or a Windows short name) builds:
   writeFileSync(resolve(real, 'src/pages/styled.tscl'), "@import '../styles/base.css'\n<h1>Styled</h1>\n")
   const link = resolve(tmpdir(), `clarusjs-link-${Date.now()}`)
   symlinkSync(real, link, 'junction')
+  onTestFinished(() => rmSync(link, { force: true })) // the link only: the setup removes the temp app (#436)
   await (await createBuilder({ root: link, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp()
   const home = readFileSync(resolve(real, 'dist/client/index.html'), 'utf8')
   const src = /<cl-island c="counter" src="([^"]+)"/.exec(home)![1]!

@@ -1,9 +1,9 @@
 // The lexical layer as the compiler reads templates: tags, quotes, holes, comments, directives and bodies, so
 // completion, tokens, references and renames act only on real template syntax. (Review findings on #271.)
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
-import { expect, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
 import { URI } from 'vscode-uri'
 import { htmlView } from '../src/blank.ts'
 import { loadCompiler } from '../src/compiler.ts'
@@ -106,6 +106,7 @@ test('moving a file: importers in every workspace project are updated', async ()
   const a = await setup({ 'card.tscl': '<i></i>\n' })
   const b = new Project(resolve(a.root, '../', `${a.root.split('/').pop()}-b`), a.project.compiler)
   mkdirSync(b.root, { recursive: true })
+  onTestFinished(() => rmSync(b.root, { recursive: true, force: true })) // beside the temp root, not made by mkdtemp (#436)
   const page = resolve(b.root, 'page.tscl')
   writeFileSync(page, `@import card from '${a.at('card.tscl')}'\n<card />\n`.replace(`'${a.at('card.tscl')}'`, `'../${a.root.split('/').pop()}/card.tscl'`))
   await b.load()
