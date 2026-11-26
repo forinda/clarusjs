@@ -9,6 +9,8 @@ test('makes temp directories, static and dynamic imports alike', async () => {
   writeFileSync(join(a, 'file.txt'), 'x')
   const fs = await import('node:fs')
   const b = fs.mkdtempSync(join(tmpdir(), 'clarus-leak-'))
-  expect(existsSync(a) && existsSync(b)).toBe(true) // there while the test runs
-  writeFileSync(process.env.TEMP_DIRS_OUT!, JSON.stringify([a, b])) // where they were, for the test that runs this
+  // In another encoding the caller gets it encoded; the directory itself must still go.
+  const c = Buffer.from(fs.mkdtempSync(join(tmpdir(), 'clarus-leak-'), { encoding: 'hex' }), 'hex').toString()
+  expect(existsSync(a) && existsSync(b) && existsSync(c)).toBe(true) // there while the test runs
+  writeFileSync(process.env.TEMP_DIRS_OUT!, JSON.stringify([a, b, c])) // where they were, for the test that runs this
 })

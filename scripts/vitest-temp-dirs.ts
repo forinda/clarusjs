@@ -8,9 +8,12 @@ const made = vi.hoisted(() => new Set<string>())
 vi.mock('node:fs', async (importOriginal) => {
   const fs = await importOriginal<typeof import('node:fs')>()
   const mkdtempSync = ((prefix: string, options?: Parameters<typeof fs.mkdtempSync>[1]) => {
-    const dir = fs.mkdtempSync(prefix, options)
-    made.add(String(dir))
-    return dir
+    // Made with the default encoding, so the real path is what's kept; returned in the one asked for.
+    const dir = fs.mkdtempSync(prefix)
+    made.add(dir)
+    const encoding = typeof options === 'string' ? options : options?.encoding
+    if (!encoding || encoding === 'utf8' || encoding === 'utf-8') return dir
+    return encoding === 'buffer' ? Buffer.from(dir) : Buffer.from(dir).toString(encoding)
   }) as typeof fs.mkdtempSync
   return { ...fs, mkdtempSync, default: { ...fs, mkdtempSync } }
 })
