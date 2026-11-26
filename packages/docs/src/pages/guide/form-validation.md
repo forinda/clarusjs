@@ -73,7 +73,7 @@ Submit checks everything. With errors it goes to the step holding the first one 
 @if (f.errors.length) {
   <div role="alert">
     @for (e of f.errors; track e.path) {
-      <a [href]="'#' + e.id" (click)="$event.preventDefault(); f.focus(e.path)">{{ e.message }}</a>
+      <a [href]="'#' + e.id" (click.prevent)="f.focus(e.path)">{{ e.message }}</a>
     }
   </div>
 }

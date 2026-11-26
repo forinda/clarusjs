@@ -7,7 +7,6 @@
   import { browser } from 'clarusjs/runtime'
 
   let user = state({ name: '' }) // signed out: no name
-  let draft = state('')
   let message = state('')
 
   // body: JSON text, or '' for none.
@@ -22,10 +21,8 @@
     if (!data.error) user = data.user ?? { name: '' }
   }
 
-  async function signIn() {
-    await call('POST', JSON.stringify({ name: draft }))
-    draft = ''
-  }
+  // name: the form's field, from $values.
+  const signIn = (name) => call('POST', JSON.stringify({ name }))
 
   if (browser) call('GET')
 </script>
@@ -38,8 +35,8 @@
     </p>
     <button type="button" (click)="call('DELETE')">Sign out</button>
   } @else {
-    <form (submit)="$event.preventDefault(); signIn()">
-      <label>Name <input [(value)]="draft" autocomplete="off" /></label>
+    <form (submit.prevent)="signIn($values.name)">
+      <label>Name <input name="name" autocomplete="off" /></label>
       <button type="submit">Sign in</button>
     </form>
   }
