@@ -156,3 +156,15 @@ export function decode(text: string): { base: PresetName; theme: Theme } | null 
   }
   return { base: base as PresetName, theme }
 }
+
+/**
+ * What a custom brand colour brings with it, so a theme built from one colour stays whole: the focus ring, text that
+ * reads on it (white or near-black, whichever passes 4.5:1), and a soft tint in its hue for hovers and selections, with
+ * text that reads on that.
+ */
+export function brandTokens(accent: string): Record<'accent' | 'ring' | 'accent-fg' | 'accent-soft' | 'accent-soft-fg', string> {
+  const [, , h] = toOklch(accent)
+  const on = (bg: string) => (contrast('#ffffff', bg) >= 4.5 ? '#ffffff' : '#111827')
+  const soft = fromOklch([0.95, 0.035, h])
+  return { accent, ring: accent, 'accent-fg': on(accent), 'accent-soft': soft, 'accent-soft-fg': fromOklch([0.35, 0.09, h]) }
+}

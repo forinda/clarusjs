@@ -366,3 +366,11 @@ test('#rework: after a custom Brand colour, the Preset row says Custom', async (
   await page.getByLabel('Brand', { exact: true }).fill('#c2185b')
   await expect(page.getByRole('button', { name: /^Preset/ })).toContainText('Custom')
 })
+
+test('#tokens: a custom Brand colour also moves the focus ring and the hover tint, not only the accent', async ({ page }) => {
+  await page.goto('/theme')
+  await openSheet(page)
+  await page.getByLabel('Brand', { exact: true }).fill('#c2185b')
+  expect(await token(page, 'ring')).toBe('#c2185b')
+  expect(await token(page, 'accent-soft')).not.toBe('#e3f2f2') // the teal preset's tint
+})

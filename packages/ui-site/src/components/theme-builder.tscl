@@ -23,6 +23,7 @@
     encode,
     fromOklch,
     restore,
+    brandTokens,
     siteCss,
     toCss,
   } from '~/theme/model.ts'
@@ -128,6 +129,10 @@
       const light = { ...theme.light, [key]: value }
       theme = { light, dark: edited.includes(key) ? theme.dark : { ...theme.dark, [key]: darkFrom(light)[key] } }
     }
+  }
+  // A custom brand colour: the accent, and the ring, text and tint that go with it (else focus rings stay the preset's).
+  function brand(value) {
+    for (const [key, v] of Object.entries(brandTokens(value))) set(key, v)
   }
   const radius = (event) => set('radius', event.target.value + 'px')
   function font(key, value) {
@@ -286,7 +291,7 @@
             id="tb-brand"
             aria-label="Brand"
             [value]="theme[mode].accent"
-            (input)="set('accent', $event.target.value)"
+            (input)="brand($event.target.value)"
           />
         </span>
       </label>
