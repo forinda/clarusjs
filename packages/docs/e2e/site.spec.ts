@@ -457,7 +457,7 @@ test('the generated Netlify function serves only the server routes', async () =>
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
   // The pages and endpoints, each with its fragment path (endpoints have none: a 404).
-  expect(fn).toContain('export const config = {"path":["/api/demo-auth","/api/demo-auth/","/api/demo-auth/index.frag.html","/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-clock","/api/demo-clock/","/api/demo-clock/index.frag.html","/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-likes","/api/demo-likes/","/api/demo-likes/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/api/demo-upload","/api/demo-upload/","/api/demo-upload/index.frag.html","/api/demo-vendor","/api/demo-vendor/","/api/demo-vendor/index.frag.html","/api/demo-weather","/api/demo-weather/","/api/demo-weather/index.frag.html","/members","/members/","/members/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
+  expect(fn).toContain('export const config = {"path":["/api/demo-auth","/api/demo-auth/","/api/demo-auth/index.frag.html","/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-clock","/api/demo-clock/","/api/demo-clock/index.frag.html","/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-likes","/api/demo-likes/","/api/demo-likes/index.frag.html","/api/demo-posts","/api/demo-posts/","/api/demo-posts/index.frag.html","/api/demo-profile","/api/demo-profile/","/api/demo-profile/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/api/demo-upload","/api/demo-upload/","/api/demo-upload/index.frag.html","/api/demo-vendor","/api/demo-vendor/","/api/demo-vendor/index.frag.html","/api/demo-weather","/api/demo-weather/","/api/demo-weather/index.frag.html","/members","/members/","/members/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -2317,6 +2317,67 @@ test('#454 recipes: an optimistic like shows at once, and rolls back when the se
   await expect(button).toHaveText(`♥ ${before + 2}`)
   await expect(box.getByRole('alert')).toContainText('The count went back.')
   await expect(button).toHaveText(`♥ ${before + 1}`)
+})
+
+test('recipes: a feed shows a post and a like at once; the server\'s answer replaces them, a failure takes them back', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#a-feed-posts-and-likes-optimistic')
+  const box = await recipe(page, 'recipe-feed')
+  await expect(box.getByRole('listitem').first()).toBeVisible()
+  const text = `Hello ${Date.now()}`
+  await box.getByLabel('New post').fill(text)
+  await box.getByRole('button', { name: 'Post' }).click()
+  const mine = box.getByRole('listitem').filter({ hasText: text })
+  await expect(mine).toContainText('Posting…') // at once, before the server answers
+  await expect(box.getByLabel('New post')).toHaveValue('')
+  const like = mine.getByRole('button', { name: `Like: ${text}` })
+  await expect(like).toHaveText('♥ 0') // published: the server's copy
+  await expect(mine).not.toContainText('Posting…')
+  await like.click()
+  await expect(like).toHaveAttribute('aria-pressed', 'true')
+  await expect(like).toHaveText('♥ 1')
+  await box.getByLabel('Make the server fail').check()
+  await like.click() // unlike, which fails
+  await expect(like).toHaveText('♥ 0') // at once
+  await expect(box.getByRole('alert')).toHaveText('The like wasn’t saved. It was taken back.')
+  await expect(like).toHaveText('♥ 1')
+  await expect(like).toHaveAttribute('aria-pressed', 'true')
+  const lost = `Lost ${Date.now()}`
+  await box.getByLabel('New post').fill(lost)
+  await box.getByRole('button', { name: 'Post' }).click()
+  await expect(box.getByRole('listitem').filter({ hasText: lost })).toContainText('Posting…')
+  await expect(box.getByRole('alert')).toHaveText('The post wasn’t published. It was taken back.')
+  await expect(box.getByRole('listitem').filter({ hasText: lost })).toHaveCount(0)
+  await expect(box.getByLabel('New post')).toHaveValue(lost) // to try again
+})
+
+test('recipes: editing a profile shows the save at once; saved, it is the new start; failed, the page goes back', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#editing-a-profile-save-or-roll-back')
+  const box = await recipe(page, 'recipe-profile')
+  const card = box.getByRole('article', { name: 'Profile' })
+  const name = box.getByLabel('Name')
+  const save = box.getByRole('button', { name: /Save|Saving…/ })
+  await expect(name).not.toHaveValue('') // loaded: the form starts from the profile
+  await expect(save).toBeDisabled() // nothing changed yet
+  const saved = `Grace ${Date.now() % 100000}`
+  await name.fill(saved)
+  await save.click()
+  await expect(card.locator('strong')).toHaveText(saved) // at once
+  await expect(box.getByRole('status')).toHaveText('Saved.')
+  await expect(save).toBeDisabled() // the saved profile is the new starting point
+  await box.getByLabel('Make the server fail').check()
+  await name.fill('Not saved')
+  await save.click()
+  await expect(box.getByRole('status')).toContainText('The profile wasn’t saved. The card went back')
+  await expect(card.locator('strong')).toHaveText(saved) // rolled back
+  await expect(name).toHaveValue('Not saved') // the edits stay, to try again
+  await box.getByRole('button', { name: 'Undo changes' }).click()
+  await expect(name).toHaveValue(saved)
+  await box.getByLabel('Make the server fail').uncheck()
+  await name.fill('x'.repeat(41))
+  await save.click()
+  await expect(name).toHaveAttribute('aria-invalid', 'true') // the server's error, on its field
+  await expect(box.locator('[data-cl-message]')).toHaveText('Use 40 characters or fewer.')
+  await expect(card.locator('strong')).toHaveText(saved)
 })
 
 test('#454 recipes: a chain and parallel requests to an external API (answered here, not by the network)', async ({ page }) => {

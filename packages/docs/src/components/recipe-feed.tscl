@@ -1,0 +1,130 @@
+{{-- Fetching recipes: a feed, optimistic. A post shows at once (Posting…) and a like flips at once; the server's
+     answer replaces them, and a failure takes them back with the reason. --}}
+
+<script>
+  import { json, request, resource } from 'clarusjs/fetch'
+  let fail = state(false)
+  let draft = state('')
+  let problem = state('')
+  let temp = 0
+  const feed = resource(({ signal }) => json('/api/demo-posts', { signal }))
+  const url = () => '/api/demo-posts' + (fail ? '?fail=1' : '')
+  const why = (e) => e?.data?.error ?? 'It failed.' // the server's message, from a non-2xx answer
+  // Swap the post with this id for another, or for nothing.
+  const replace = (id, post) => feed.mutate({ posts: feed.value.posts.flatMap((p) => (p.id === id ? (post ? [post] : []) : [p])) })
+  // Each post and each like is its own call, several at once: plain async functions. (One action() would make a
+  // second post, sent while the first is on its way, join the first.)
+  async function post() {
+    const text = draft.trim()
+    if (!text) return
+    const pending = { id: 'new-' + ++temp, text, likes: 0, liked: false, pending: true }
+    feed.mutate({ posts: [pending, ...feed.value.posts] }) // shown now
+    draft = ''
+    problem = ''
+    try {
+      replace(pending.id, await request(url(), { method: 'POST', body: { text } })) // the server's copy, with its id
+    } catch (e) {
+      replace(pending.id, null) // taken back
+      draft = text // to try again
+      problem = why(e)
+    }
+  }
+  async function toggle(post) {
+    const on = !post.liked
+    replace(post.id, { ...post, liked: on, likes: post.likes + (on ? 1 : -1) }) // shown now
+    problem = ''
+    try {
+      replace(post.id, await request(url(), { method: 'POST', body: { like: post.id, on } }))
+    } catch (e) {
+      replace(post.id, post) // back to how it was
+      problem = why(e)
+    }
+  }
+</script>
+
+<div id="recipe-feed">
+  <form class="compose" (submit.prevent)="post()">
+    <input aria-label="New post" placeholder="Write a post" maxlength="280" [(value)]="draft" />
+    <button class="primary" [disabled]="!feed.value || !draft.trim()">Post</button>
+  </form>
+  <label class="muted"><input type="checkbox" [(checked)]="fail" /> Make the server fail</label>
+  @if (problem) {
+    <p class="muted" role="alert">{{ problem }} It was taken back.</p>
+  }
+  @if (feed.value) {
+    <ul>
+      @for (p of feed.value.posts; track p.id) {
+        <li [class]="p.pending ? 'pending' : ''">
+          <span>{{ p.text }}</span>
+          @if (p.pending) {
+            <small class="muted">Posting…</small>
+          } @else {
+            <button
+              type="button"
+              [aria-pressed]="p.liked ? 'true' : 'false'"
+              [aria-label]="'Like: ' + p.text"
+              (click)="toggle(p)"
+            >
+              ♥ {{ p.likes }}
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="muted">Loading…</p>
+  }
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .compose {
+    display: flex;
+    gap: 8px;
+  }
+  .compose input {
+    flex: 1;
+    min-width: 0;
+    min-height: 32px;
+    padding: 0 10px;
+    font: 14px var(--sans);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  ul {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-top: 1px solid var(--rule);
+  }
+  li.pending span {
+    opacity: 0.6;
+  }
+  button[aria-pressed='true'] {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+</style>

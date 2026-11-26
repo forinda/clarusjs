@@ -1,0 +1,114 @@
+{{-- Fetching recipes: editing a profile. The form starts from the saved profile, and Save shows the new one on the
+     card at once. Saved, it becomes the form's new starting point; failed, the card goes back to what was saved and
+     the form keeps your edits, to try again or undo. A server error about a field lands on that field. --}}
+
+<script>
+  import { form } from 'clarusjs/forms'
+  import { json, request, resource } from 'clarusjs/fetch'
+  let fail = state(false)
+  let note = state('')
+  let edit = state({ name: '', bio: '' })
+  const answer = (e) => e?.data ?? {} // a non-2xx answer's body
+  const f = form(edit, {
+    async submit(values) {
+      const before = profile.value
+      profile.mutate(values) // the card shows it now
+      note = ''
+      try {
+        const saved = await request('/api/demo-profile' + (fail ? '?fail=1' : ''), { method: 'PUT', body: values })
+        profile.mutate(saved)
+        f.reset(saved) // the saved profile is the new starting point
+        note = 'Saved.'
+      } catch (e) {
+        profile.mutate(before) // roll back what the card shows
+        const { error, errors } = answer(e)
+        if (errors) return { errors } // on their fields
+        note = (error ?? 'It failed.') + ' The card went back; your edits are still here.'
+      }
+    },
+  })
+  // Loaded, the profile is the form's values and its starting point.
+  const profile = resource(({ signal }) => json('/api/demo-profile', { signal }), { onSuccess: (p) => f.reset(p) })
+</script>
+
+<div id="recipe-profile">
+  <article class="card" aria-label="Profile">
+    @if (profile.value) {
+      <strong>{{ profile.value.name }}</strong>
+      <p>{{ profile.value.bio }}</p>
+    } @else {
+      <p class="muted">Loading…</p>
+    }
+  </article>
+  <form [engine]="f">
+    <label>Name <input required [(value)]="edit.name" /> <small data-cl-message></small></label>
+    <label>Bio <textarea rows="2" [(value)]="edit.bio"></textarea></label>
+    <p class="actions">
+      <button class="primary" [disabled]="!profile.value || f.submitting || !f.dirty">
+        {{ f.submitting ? 'Saving…' : 'Save' }}
+      </button>
+      <button type="button" [disabled]="!f.dirty" (click)="f.reset(); note = ''">Undo changes</button>
+    </p>
+  </form>
+  <label class="muted"><input type="checkbox" [(checked)]="fail" /> Make the server fail</label>
+  @if (note) {
+    <p class="muted" role="status">{{ note }}</p>
+  }
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 12px 16px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .card {
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--accent-soft);
+  }
+  .card p {
+    margin: 4px 0 0;
+  }
+  form {
+    display: grid;
+    gap: 8px;
+  }
+  label {
+    display: grid;
+    gap: 4px;
+    font-size: 14px;
+  }
+  input:not([type='checkbox']),
+  textarea {
+    min-height: 32px;
+    padding: 4px 10px;
+    font: 14px var(--sans);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  [aria-invalid='true'] {
+    border-color: var(--bad);
+  }
+  small {
+    color: var(--bad);
+  }
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin: 0;
+  }
+  .muted {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  label.muted {
+    display: block;
+  }
+</style>
