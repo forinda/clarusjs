@@ -100,16 +100,17 @@ test('#33: the manifest marks client routes and leaves data files out', () => {
   expect(manifest.routes['/app/one'].js.files.some((f: string) => f.includes('render/'))).toBe(true)
 })
 
-// 1.45 KB: review fixes on #186 (cleanup when a navigation is cancelled, failures reported before the fallback load,
+// 1.5 KB: keeping the scroll position when asked (navigate(…, { scroll: false }), setSearch() by default) adds ~45 B;
+// main left ~5 B. 1.45 KB: review fixes on #186 (cleanup when a navigation is cancelled, failures reported before the fallback load,
 // islands attached before afterSwap). 1.4 KB until then: a client route that fails its first render shows the site's
 // 404 or 500 page (#196). 1.35 KB before, for
 // aborting a navigation (#193); 1.2 KB for the transitions of #182; 1.1 KB before; 1 KB before #167.
-test('size budget: the client router stays within 1.45 KB gzip', async () => {
+test('size budget: the client router stays within 1.5 KB gzip', async () => {
   const { gzipSync } = await import('node:zlib')
   const shell = readFileSync(resolve(root, 'dist/client/app/index.html'), 'utf8')
   const router = /<script type="module" src="([^"]+)"><\/script><\/head>/.exec(shell)![1]!
   const size = gzipSync(readFileSync(resolve(root, 'dist/client', router.slice(1))), { level: 9 }).length
-  expect(size).toBeLessThanOrEqual(1485)
+  expect(size).toBeLessThanOrEqual(1536)
 })
 
 test('review: Netlify parameter names never collide', async () => {
@@ -173,14 +174,14 @@ test('#180: clarusjs/navigation ships only with islands that import it', async (
   expect(js.some((code) => code.includes('currententrychange'))).toBe(false) // this site never imports it
 })
 
-// 1.2 KB: review fixes on #186 (see the router's budget). 1.15 KB before: aborting a navigation (#193) stops its fragment request and can hold the URL until the page is ready (1 KB
+// 1.25 KB: keeping the scroll position when asked (see the router's budget). 1.2 KB: review fixes on #186 (see the router's budget). 1.15 KB before: aborting a navigation (#193) stops its fragment request and can hold the URL until the page is ready (1 KB
 // until then).
-test('#36: with fragments on, static pages load the navigation script, which stays within 1.2 KB gzip', async () => {
+test('#36: with fragments on, static pages load the navigation script, which stays within 1.25 KB gzip', async () => {
   const { gzipSync } = await import('node:zlib')
   const html = readFileSync(resolve(root, 'dist/client/index.html'), 'utf8')
   const nav = /<script type="module" src="(\/assets\/cl-nav-[^"]+)"><\/script>/.exec(html)?.[1]
   expect(nav).toBeDefined()
-  expect(gzipSync(readFileSync(resolve(root, 'dist/client', nav!.slice(1))), { level: 9 }).length).toBeLessThanOrEqual(1229)
+  expect(gzipSync(readFileSync(resolve(root, 'dist/client', nav!.slice(1))), { level: 9 }).length).toBeLessThanOrEqual(1280)
 })
 
 test('#307: collapseWhitespace: false keeps template text as written at build', () => {
