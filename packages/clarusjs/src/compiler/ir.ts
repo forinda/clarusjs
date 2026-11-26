@@ -248,7 +248,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         children.forEach((child) => visit(child, rawText))
         return list
       }
-      if (node.track !== null && referencesNames(node.track, new Set(FOR_IMPLICIT.filter((x) => x !== '$index')))) fail('track can use the item and $index, not $count, $first, $last, $even or $odd (a key must not change when the list grows)', node.trackStart)
+      if (node.track !== null && referencesNames(node.track, new Set([...FOR_IMPLICIT.filter((x) => x !== '$index'), ...node.aliases.filter((a) => a.of !== '$index').map((a) => a.name)]))) fail('track can use the item and $index, not $count, $first, $last, $even or $odd (a key must not change when the list grows)', node.trackStart)
       if (block >= 0 && node.track === null) warnings.push(new ClarusError('@for without track: rows are matched by position, so a row\'s state moves to another item when the list changes order; add track item.id (or another unique key)', file, source, node.start))
       const nodes = lowerInto(node.children, `f${block}`, new Set([...parentLoop, node.item, ...FOR_IMPLICIT, ...node.aliases.map((a) => a.name)]))
       const empty = node.empty ? lowerInto(node.empty, `f${block}e`, parentLoop) : null

@@ -324,3 +324,9 @@ test('#443 review: dirty compares arrays by length too (a sparse array and an em
   v.set({ customer: { email: '' }, rows: { length: 1 } } as any) // an object is not an array
   expect(f.dirty).toBe(true)
 })
+
+test('#443 review: dirty tells an array from an object with a length (both one key, length 1)', () => {
+  const { f, v } = mount(emailForm, { customer: { email: '' }, rows: [7] } as any)
+  v.set({ customer: { email: '' }, rows: { length: 1 } } as any)
+  expect(f.dirty).toBe(true)
+})

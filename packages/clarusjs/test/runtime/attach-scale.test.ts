@@ -28,7 +28,7 @@ async function work(fn: () => Promise<void>): Promise<number> {
   }
   let n = 0
   const undo: (() => void)[] = []
-  for (const name of ['nextSibling', 'firstChild', 'compareDocumentPosition']) {
+  for (const name of ['nextSibling', 'previousSibling', 'firstChild', 'compareDocumentPosition']) {
     const o = definer(name)
     const d = Object.getOwnPropertyDescriptor(o, name)!
     Object.defineProperty(o, name, d.get
@@ -45,7 +45,12 @@ async function attachCost(rows: number, name: string) {
   const s = await importCode(compile(code, { file: 'x.tscl', target: 'server', clientUrl: '/x.js' }).code, name + '-s')
   const c = await importCode(compile(code, { file: 'x.tscl', target: 'client' }).code, name + '-c')
   document.body.innerHTML = s.render({})
-  return work(() => attachAll(document, async () => c))
+  const cost = await work(() => attachAll(document, async () => c))
+  // A failed attach would look cheap: it must have attached.
+  const island = document.querySelector('cl-island')!
+  expect(island.hasAttribute('data-cl-ready')).toBe(true)
+  expect(island.hasAttribute('data-cl-error')).toBe(false)
+  return cost
 }
 
 test('attaching 4 times the rows costs about 4 times the DOM work, not 16', async () => {
@@ -55,3 +60,20 @@ test('attaching 4 times the rows costs about 4 times the DOM work, not 16', asyn
   expect(document.querySelectorAll('li[data-cl-a], li').length).toBe(200)
   expect(big / small).toBeLessThan(6)
 }, 60_000)
+
+test('openSlots: counted from the left inside a batch, the same as from the right outside one', async () => {
+  const { keepSlots, openSlots } = await import('../../src/runtime/dom.ts')
+  let seed = 7
+  const random = () => (seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31
+  for (let round = 0; round < 50; round++) {
+    const parent = document.createElement('div')
+    for (let i = 0; i < 30; i++) {
+      const r = random()
+      parent.append(r < 0.25 ? document.createComment('[s') : r < 0.45 ? document.createComment(']s') : r < 0.55 ? document.createComment('[1') : document.createElement('i'))
+    }
+    const nodes = [...parent.childNodes]
+    const outside = nodes.map((n) => openSlots(n))
+    expect(keepSlots(() => nodes.map((n) => openSlots(n)))).toEqual(outside)
+    expect(keepSlots(() => [...nodes].reverse().map((n) => openSlots(n)).reverse())).toEqual(outside) // in any order
+  }
+})

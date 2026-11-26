@@ -184,7 +184,9 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
       const empty = n.empty
         ? `{\n    html: () => ${htmlExpr(n.empty, rw)},\n    wire: ${fn(rowCtx, wiring(ir, n.empty, `f${n.block}e`, rowCtx, signals, depth + 1))},\n  }`
         : 'null'
-      lines.push(`__cl_for(${ctx}, ${n.block}, () => ${wrapExpr(rw.expr(n.list))}, (${n.item}, $index) => ${key}, ${row}, ${empty})`)
+      // track may name $index by an alias (let at = $index): bound in the key's parameters too.
+      const keyParams = [n.item, '$index', ...n.aliases.filter((a) => a.of === '$index').map((a) => `${a.name} = $index`)].join(', ')
+      lines.push(`__cl_for(${ctx}, ${n.block}, () => ${wrapExpr(rw.expr(n.list))}, (${keyParams}) => ${key}, ${row}, ${empty})`)
     }
   }
   return lines
