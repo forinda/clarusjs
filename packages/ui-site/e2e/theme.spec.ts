@@ -358,3 +358,11 @@ test('#rework: the Preset list opens under its row, inside the sheet, not off to
   expect(list.x).toBeGreaterThanOrEqual(sheet.x) // inside the sheet
   expect(list.x + list.width).toBeLessThanOrEqual(trigger.x + trigger.width + 1) // right-aligned with the row
 })
+
+test('#rework: after a custom Brand colour, the Preset row says Custom', async ({ page }) => {
+  await page.goto('/theme')
+  await openSheet(page)
+  await expect(page.getByRole('button', { name: /^Preset/ })).toContainText('Teal')
+  await page.getByLabel('Brand', { exact: true }).fill('#c2185b')
+  await expect(page.getByRole('button', { name: /^Preset/ })).toContainText('Custom')
+})

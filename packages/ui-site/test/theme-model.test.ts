@@ -99,3 +99,19 @@ test('chart colours: five distinct, each at least 3:1 against the background in 
   }
   for (const n of [1, 2, 3, 4, 5]) expect(contrast(darkFrom(presets.teal.light)[`chart-${n}`]!, presets.teal.dark.bg!)).toBeGreaterThanOrEqual(3)
 })
+
+test('siteCss: the site around the demos takes the theme\'s accent too, light and dark', async () => {
+  const { siteCss } = await import('../src/theme/model.ts')
+  const { presets } = await import('../src/theme/presets.ts')
+  const css = siteCss({ light: { ...presets.teal.light, accent: '#c2185b', 'accent-soft': '#fde7ef' }, dark: { ...presets.teal.dark, accent: '#f48fb1', 'accent-soft': '#3a1422' } })
+  expect(css).toContain('html:root {\n  --accent: #c2185b;\n  --accent-soft: #fde7ef;\n')
+  expect(css).toContain("html:root[data-theme='dark'] {\n  --accent: #f48fb1;\n  --accent-soft: #3a1422;\n")
+  expect(css).toContain("@media (prefers-color-scheme: dark) {\n  html:root:not([data-theme='light']) {\n    --accent: #f48fb1;")
+})
+
+test('siteCss: the site\'s own components (the Theme sheet\'s buttons, slider, focus rings) take the accent too', async () => {
+  const { siteCss } = await import('../src/theme/model.ts')
+  const { presets } = await import('../src/theme/presets.ts')
+  const css = siteCss({ light: { ...presets.teal.light, accent: '#c2185b' }, dark: presets.teal.dark })
+  for (const token of ['--ui-accent: #c2185b', '--ui-accent-fg:', '--ui-accent-soft:', '--ui-accent-soft-fg:', '--ui-ring:']) expect(css).toContain(token)
+})

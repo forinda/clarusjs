@@ -38,6 +38,20 @@ export function toCss(theme: Theme, scope = ':root'): string {
   return `${scope} {\n${decl(theme.light, '  ')}${scale}}\n@media (prefers-color-scheme: dark) {\n  ${osDark} {\n${decl(theme.dark, '    ')}  }\n}\n${toggleDark} {\n${decl(theme.dark, '  ')}}\n`
 }
 
+/**
+ * The site around the demos in the theme's accent, light and dark: the docs theme's --accent and --accent-soft (header,
+ * sidebar, links) and the accent --ui- tokens (the site's own components). Saved with toCss(theme, SCOPE).
+ */
+export function siteCss(theme: Theme): string {
+  // The docs theme's two, and this library's accent tokens for the site's own components (the Theme sheet's controls).
+  const keys = ['accent', 'accent-fg', 'accent-soft', 'accent-soft-fg', 'ring'] as const
+  const decls = (t: Theme['light'], pad: string) =>
+    `${pad}--accent: ${t.accent};\n${pad}--accent-soft: ${t['accent-soft']};\n` + keys.map((k) => `${pad}--ui-${k}: ${t[k]};\n`).join('')
+  // html:root, one step more specific than the docs theme's :root rules: the saved theme's <style> is set early in
+  // <head>, before the stylesheets, and must still win.
+  return `html:root {\n${decls(theme.light, '  ')}}\n@media (prefers-color-scheme: dark) {\n  html:root:not([data-theme='light']) {\n${decls(theme.dark, '    ')}  }\n}\nhtml:root[data-theme='dark'] {\n${decls(theme.dark, '  ')}}\n`
+}
+
 // sRGB hex ⇄ OKLCH (Björn Ottosson's OKLab), enough to flip lightness and keep hue.
 const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
 const gam = (v: number) => (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055)

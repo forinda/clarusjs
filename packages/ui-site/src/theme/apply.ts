@@ -1,7 +1,7 @@
 // A theme saved by /theme, applied to component demos (and the builder's preview) before the first paint, from an
 // inline script in every page's <head> (vite.config.ts). Storage holds the CSS text toCss(theme, SCOPE) wrote.
 export const STORAGE_KEY = 'ui-theme'
-/** What a saved theme styles: demos and the builder's preview, never the site around them. */
+/** What a saved theme's tokens style: demos and the builder's preview. The site around them takes only its accent (siteCss). */
 export const SCOPE = '.demo, [data-ui-preview]'
 /** The builder's own copy of the theme (encode()), so /theme reopens what was saved. */
 export const SOURCE_KEY = 'ui-theme-source'

@@ -23,6 +23,7 @@
     encode,
     fromOklch,
     restore,
+    siteCss,
     toCss,
   } from '~/theme/model.ts'
   import { SCOPE, SOURCE_KEY, STORAGE_KEY, loadFonts } from '~/theme/apply.ts'
@@ -222,7 +223,7 @@
     // frames hear the save (a storage event) and set it too (APPLY_SCRIPT).
     const save = effect(() => {
       if (!dirty) return
-      const css = toCss(theme, SCOPE)
+      const css = toCss(theme, SCOPE) + siteCss(theme) // the demos' tokens, and the site's accent
       let sheet = document.getElementById('ui-theme')
       if (!sheet) {
         sheet = document.createElement('style')
@@ -259,7 +260,7 @@
       <p class="tb-group-title" id="tb-g-colours">Colours</p>
       <uiPopoverTrigger target="tb-presets">
         <span class="row-label">Preset</span>
-        <span class="row-end"><span class="row-value">{{ PRESETS.find((p) => p.name === base)?.label ?? 'Custom' }}</span><span class="dot" [style]="'--sw: ' + theme[mode].accent"></span><icon name="lucide:chevron-right" /></span>
+        <span class="row-end"><span class="row-value">{{ theme.light.accent === presets[base]?.light.accent ? PRESETS.find((p) => p.name === base)?.label ?? 'Custom' : 'Custom' }}</span><span class="dot" [style]="'--sw: ' + theme[mode].accent"></span><icon name="lucide:chevron-right" /></span>
       </uiPopoverTrigger>
       <uiPopover id="tb-presets" side="bottom" align="end">
         <div class="presets" role="group" aria-label="Presets">

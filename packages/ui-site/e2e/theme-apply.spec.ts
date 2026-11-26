@@ -1,19 +1,27 @@
 import { expect, test } from '@playwright/test'
-import { toCss } from '../src/theme/model.ts'
+import { siteCss, toCss } from '../src/theme/model.ts'
 import { presets } from '../src/theme/presets.ts'
 import { SCOPE, STORAGE_KEY } from '../src/theme/apply.ts'
 
 const red = toCss({ light: { ...presets.teal.light, accent: '#ff0000' }, dark: { ...presets.teal.dark, accent: '#ff0000' } }, SCOPE)
 const demoButton = '.demo [data-part="button"][data-variant="default"]'
 
-test('saved theme: shows in demos from the first paint, not in the site chrome', async ({ page }) => {
-  await page.goto('/components/button')
-  const chrome = await page.locator('header a').first().evaluate((a) => getComputedStyle(a).color)
-  await page.addInitScript(([key, css]) => localStorage.setItem(key, css), [STORAGE_KEY, red] as const)
+test('saved theme: shows in demos from the first paint, and the site around them takes its accent', async ({ page }) => {
+  await page.addInitScript(([key, css]) => localStorage.setItem(key, css), [STORAGE_KEY, red + siteCss({ light: { ...presets.teal.light, accent: '#ff0000' }, dark: { ...presets.teal.dark, accent: '#ff0000' } })] as const)
   await page.goto('/components/button')
   expect(await page.evaluate(() => document.head.contains(document.getElementById('ui-theme')))).toBe(true)
   await expect(page.locator(demoButton).first()).toHaveCSS('background-color', 'rgb(255, 0, 0)')
-  expect(await page.locator('header a').first().evaluate((a) => getComputedStyle(a).color)).toBe(chrome)
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())).toBe('#ff0000')
+})
+
+test('theme builder: a custom Brand colour reaches the site\'s own accent at once, and is saved for other pages', async ({ page }) => {
+  await page.goto('/components/button')
+  await page.getByRole('button', { name: 'Theme', exact: true }).click()
+  await page.locator('.theme-builder[data-ready]').waitFor()
+  await page.getByLabel('Brand', { exact: true }).fill('#c2185b')
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())).toBe('#c2185b')
+  await page.goto('/components/card')
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())).toBe('#c2185b')
 })
 
 test('saved theme: no reset banner on pages; the Theme sheet\'s Reset removes the saved theme', async ({ page }) => {
