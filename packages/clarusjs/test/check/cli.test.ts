@@ -1,8 +1,8 @@
 // #21: `clarusjs check` type-checks a project's .tscl files and reports file.tscl:line:col.
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
-import { expect, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
 import { check } from '../../src/cli/check.ts'
 import type { LintContext } from '../../src/compiler/lint.ts'
 
@@ -360,6 +360,7 @@ test('review: a symlinked root; a converted page importing a package component i
   })
   const link = `${real}-link`
   symlinkSync(real, link, 'junction')
+  onTestFinished(() => rmSync(link, { force: true })) // the link only: the setup removes the temp project (#436)
   const addsImport = { extension: '.page', toTscl: (code: string) => `@import card from 'ui/card.tscl'\n${code.split('\n').slice(1).join('\n')}` }
   expect(check({ root: link, typescript, sources: [addsImport] }).diagnostics.map((d) => `${d.file} ${d.code}`)).toEqual(['src/pages/a.page TS2322'])
 })

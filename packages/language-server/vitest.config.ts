@@ -1,4 +1,7 @@
 import { defineConfig } from 'vitest/config'
 
 // The end-to-end test runs the built server: build it once first.
-export default defineConfig({ test: { globalSetup: ['test/build.setup.ts'] } })
+// The setup file removes the temp directories each test file makes (#436).
+export default defineConfig({
+  test: { globalSetup: ['test/build.setup.ts'], setupFiles: ['../../scripts/vitest-temp-dirs.ts'] },
+})

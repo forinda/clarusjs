@@ -4,8 +4,13 @@ import { fileURLToPath } from 'node:url'
 export default defineConfig({
   resolve: {
     alias: [
-      { find: 'clarusjs/runtime/server', replacement: fileURLToPath(new URL('./src/runtime/server.ts', import.meta.url)) },
+      {
+        find: 'clarusjs/runtime/server',
+        replacement: fileURLToPath(new URL('./src/runtime/server.ts', import.meta.url)),
+      },
       { find: 'clarusjs/runtime', replacement: fileURLToPath(new URL('./src/runtime/index.ts', import.meta.url)) },
     ],
   },
+  // Removes the temp directories each test file makes (#436).
+  test: { setupFiles: ['../../scripts/vitest-temp-dirs.ts'] },
 })
