@@ -9,7 +9,17 @@
   let order = state({ customer: { name: '', email: '' }, lines: [{ item: 'Notebook', qty: '1', price: '4' }] })
   const total = derived(() => order.lines.reduce((sum, line) => sum + Number(line.qty) * Number(line.price), 0))
   let sent = state('')
-  const f = form(order, { schema: orderSchema, submit: (values) => { sent = JSON.stringify(values) } })
+  const f = form(order, {
+    schema: orderSchema,
+    // The numbers' own rules (step, min): the browser's messages are off, so the form says them.
+    messages: { stepMismatch: 'use a whole number.', rangeUnderflow: 'use 0 or more.', badInput: 'use a number.' },
+    submit: (values) => { sent = JSON.stringify(values) },
+  })
+  // A line's message, under it: its quantity's, else its price's (f.errors: the errors shown, in document order).
+  const lineError = (i) => {
+    const e = f.errors.find((x) => x.path === 'lines.' + i + '.qty' || x.path === 'lines.' + i + '.price')
+    return e ? (e.path.endsWith('.qty') ? 'Quantity: ' : 'Price: ') + e.message : ''
+  }
   function addLine() {
     order = { ...order, lines: [...order.lines, { item: '', qty: '1', price: '0' }] }
   }
@@ -51,6 +61,9 @@
           [(value)]="order.lines[$index].price"
         />
         <button type="button" [aria-label]="'Remove line ' + ($index + 1)" (click)="removeLine($index)">×</button>
+        @if (lineError($index)) {
+          <p class="order-error" role="alert">{{ lineError($index) }}</p>
+        }
       </div>
     }
     <button type="button" class="order-add" (click)="addLine()">Add a line</button>
@@ -92,6 +105,9 @@
   }
   .order-line input {
     min-width: 0;
+  }
+  .order-line .order-error {
+    grid-column: 1 / -1;
   }
   input:not([type='checkbox']),
   select {

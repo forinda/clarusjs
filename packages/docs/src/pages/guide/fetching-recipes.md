@@ -108,10 +108,12 @@ A new post shows at once, marked as on its way, and a like flips at once. The se
 <script>
   import { json, request, resource } from 'clarusjs/fetch'
   const feed = resource(({ signal }) => json('/api/posts', { signal }))
+  let temp = 0 // ids for posts on their way: unique, even for two in the same millisecond
+  let liking = state([]) // posts with a like on its way
   // Swap the post with this id for another, or for nothing.
   const replace = (id, post) => feed.mutate({ posts: feed.value.posts.flatMap((p) => (p.id === id ? (post ? [post] : []) : [p])) })
   async function post(text) {
-    const pending = { id: 'new-' + Date.now(), text, likes: 0, liked: false, pending: true }
+    const pending = { id: 'new-' + ++temp, text, likes: 0, liked: false, pending: true }
     feed.mutate({ posts: [pending, ...feed.value.posts] }) // shown now
     try {
       replace(pending.id, await request('/api/posts', { method: 'POST', body: { text } })) // the server's copy, with its id
@@ -120,24 +122,28 @@ A new post shows at once, marked as on its way, and a like flips at once. The se
     }
   }
   async function toggle(post) {
+    if (liking.includes(post.id)) return // one at a time per post
     const on = !post.liked
     replace(post.id, { ...post, liked: on, likes: post.likes + (on ? 1 : -1) }) // shown now
+    liking = [...liking, post.id]
     try {
       replace(post.id, await request('/api/posts', { method: 'POST', body: { like: post.id, on } }))
     } catch (e) {
       replace(post.id, post) // back to how it was
+    } finally {
+      liking = liking.filter((id) => id !== post.id)
     }
   }
 </script>
 ```
 
-The roll back puts back the post as it was when the call started (`post`), not "one less": a like that fails can't undo a different change that landed meanwhile. Try it, then make the server fail and post or like again:
+The roll back puts back the post as it was when the call started (`post`), not "one less". That holds only if nothing else changed the post meanwhile, so a post takes one like at a time (`liking`, and its button is `[disabled]` while one is on its way); different posts' likes still run at once. A failed post's text goes back into the box only if the box is still empty, so a newer draft isn't lost. Try it, then make the server fail and post or like again:
 
 <recipeFeed />
 
 ## Editing a profile: save, or roll back
 
-The form starts from the saved profile, and the page shows the new values as soon as you save. Saved, they become the form's new starting point (`f.reset(saved)`), so `f.dirty` is false again. Failed, what the page shows goes back to what was saved, and the form keeps your edits to try again, or to undo with `f.reset()`. An error the server returns for a field lands on that field ([Form validation](/guide/form-validation#submit)).
+The form starts from the saved profile, and the page shows the new values as soon as you save. Saved, they become the form's values and new starting point (`f.reset(saved)`), so `f.dirty` is false again; the fields are disabled while it saves, since that would overwrite edits typed meanwhile. Failed, what the page shows goes back to what was saved, and the form keeps your edits to try again, or to undo with `f.reset()`. An error the server returns for a field lands on that field ([Form validation](/guide/form-validation#submit)).
 
 ```tscl
 <script>
@@ -163,7 +169,9 @@ The form starts from the saved profile, and the page shows the new values as soo
 </script>
 
 <form [engine]="f">
-  <label>Name <input required [(value)]="edit.name"> <small data-cl-message></small></label>
+  <fieldset [disabled]="f.submitting">{{-- no edits while it saves: the answer would overwrite them --}}
+    <label>Name <input required [(value)]="edit.name"> <small data-cl-message></small></label>
+  </fieldset>
   <button [disabled]="f.submitting || !f.dirty">Save</button>
   <button type="button" [disabled]="!f.dirty" (click)="f.reset()">Undo changes</button>
 </form>

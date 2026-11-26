@@ -41,8 +41,11 @@
     }
   </article>
   <form [engine]="f">
-    <label>Name <input required [(value)]="edit.name" /> <small data-cl-message></small></label>
-    <label>Bio <textarea rows="2" [(value)]="edit.bio"></textarea></label>
+    {{-- No edits while it saves: the answer becomes the form's values, and would overwrite them. --}}
+    <fieldset [disabled]="f.submitting">
+      <label>Name <input required [(value)]="edit.name" /> <small data-cl-message></small></label>
+      <label>Bio <textarea rows="2" [(value)]="edit.bio"></textarea></label>
+    </fieldset>
     <p class="actions">
       <button class="primary" [disabled]="!profile.value || f.submitting || !f.dirty">
         {{ f.submitting ? 'Saving…' : 'Save' }}
@@ -73,9 +76,15 @@
   .card p {
     margin: 4px 0 0;
   }
-  form {
+  form,
+  fieldset {
     display: grid;
     gap: 8px;
+  }
+  fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
   }
   label {
     display: grid;

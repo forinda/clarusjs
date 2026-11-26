@@ -6,6 +6,7 @@
   let fail = state(false)
   let draft = state('')
   let problem = state('')
+  let liking = state([]) // posts with a like on its way: one at a time per post, so a rollback can't race another
   let temp = 0
   const feed = resource(({ signal }) => json('/api/demo-posts', { signal }))
   const url = () => '/api/demo-posts' + (fail ? '?fail=1' : '')
@@ -25,19 +26,23 @@
       replace(pending.id, await request(url(), { method: 'POST', body: { text } })) // the server's copy, with its id
     } catch (e) {
       replace(pending.id, null) // taken back
-      draft = text // to try again
+      if (!draft) draft = text // to try again, unless a newer draft was typed meanwhile
       problem = why(e)
     }
   }
   async function toggle(post) {
+    if (liking.includes(post.id)) return
     const on = !post.liked
     replace(post.id, { ...post, liked: on, likes: post.likes + (on ? 1 : -1) }) // shown now
+    liking = [...liking, post.id]
     problem = ''
     try {
       replace(post.id, await request(url(), { method: 'POST', body: { like: post.id, on } }))
     } catch (e) {
       replace(post.id, post) // back to how it was
       problem = why(e)
+    } finally {
+      liking = liking.filter((id) => id !== post.id)
     }
   }
 </script>
@@ -62,6 +67,7 @@
             <button
               type="button"
               [aria-pressed]="p.liked ? 'true' : 'false'"
+              [disabled]="liking.includes(p.id)"
               [aria-label]="'♥ ' + p.likes + ', Like: ' + p.text"
               (click)="toggle(p)"
             >

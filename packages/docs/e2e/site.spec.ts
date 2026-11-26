@@ -976,7 +976,11 @@ test('large forms: a section, lines bound by index, derived total and validation
   await expect(nameField.getByRole('alert')).toHaveText('Enter a name.')
   await order.getByLabel('Name').fill('Ada')
   await expect(nameField.getByRole('alert')).toHaveCount(0)
+  await order.getByLabel('Quantity 1').fill('1.5') // not a whole number: the field's own rule (step)
+  await order.getByLabel('Price 1').focus()
+  await expect(order.locator('.order-line').first().getByRole('alert')).toHaveText('Quantity: use a whole number.')
   await order.getByLabel('Quantity 1').fill('3')
+  await expect(order.locator('.order-line').first().getByRole('alert')).toHaveCount(0)
   await expect(order.locator('.order-total')).toHaveText('Total: 12')
   await order.getByRole('button', { name: 'Add a line' }).click()
   await expect(order.locator('.order-lines-error')).toHaveText('Every line needs an item.')
@@ -2337,35 +2341,66 @@ test('#454 recipes: an optimistic like shows at once, and rolls back when the se
   await expect(button).toHaveText(`♥ ${before + 1}`)
 })
 
+/** Holds the next write (POST, PUT) to `url` until `release()`: to see what shows before the server answers. */
+async function hold(page: import('@playwright/test').Page, url: string) {
+  let release!: () => void
+  const gate = new Promise<void>((done) => { release = done })
+  await page.route(url, async (route) => {
+    if (route.request().method() === 'GET') return route.continue()
+    await gate
+    await route.continue()
+  }, { times: 1 })
+  return release
+}
+
 test('recipes: a feed shows a post and a like at once; the server\'s answer replaces them, a failure takes them back', async ({ page }) => {
   await page.goto('/guide/fetching-recipes#a-feed-posts-and-likes-optimistic')
   const box = await recipe(page, 'recipe-feed')
   await expect(box.getByRole('listitem').first()).toBeVisible()
   const text = `Hello ${Date.now()}`
+  let release = await hold(page, '**/api/demo-posts**')
   await box.getByLabel('New post').fill(text)
   await box.getByRole('button', { name: 'Post' }).click()
   const mine = box.getByRole('listitem').filter({ hasText: text })
-  await expect(mine).toContainText('Posting…') // at once, before the server answers
+  await expect(mine).toContainText('Posting…') // before the server answers
   await expect(box.getByLabel('New post')).toHaveValue('')
+  release()
   const like = mine.getByRole('button', { name: `Like: ${text}` })
   await expect(like).toHaveText('♥ 0') // published: the server's copy
   await expect(mine).not.toContainText('Posting…')
   await like.click()
   await expect(like).toHaveAttribute('aria-pressed', 'true')
   await expect(like).toHaveText('♥ 1')
+  await expect(like).toBeEnabled() // the server answered
+  // A failing unlike: shown at once, and while it's on its way the same post can't be toggled again (the rollback
+  // would otherwise race another one); then it goes back.
   await box.getByLabel('Make the server fail').check()
-  await like.click() // unlike, which fails
-  await expect(like).toHaveText('♥ 0') // at once
+  release = await hold(page, '**/api/demo-posts**')
+  await like.click()
+  await expect(like).toHaveText('♥ 0')
+  await expect(like).toBeDisabled()
+  release()
   await expect(box.getByRole('alert')).toHaveText('The like wasn’t saved. It was taken back.')
   await expect(like).toHaveText('♥ 1')
   await expect(like).toHaveAttribute('aria-pressed', 'true')
+  // A failing post: taken back, its text back in the box to try again...
   const lost = `Lost ${Date.now()}`
+  release = await hold(page, '**/api/demo-posts**')
   await box.getByLabel('New post').fill(lost)
   await box.getByRole('button', { name: 'Post' }).click()
   await expect(box.getByRole('listitem').filter({ hasText: lost })).toContainText('Posting…')
+  release()
   await expect(box.getByRole('alert')).toHaveText('The post wasn’t published. It was taken back.')
   await expect(box.getByRole('listitem').filter({ hasText: lost })).toHaveCount(0)
-  await expect(box.getByLabel('New post')).toHaveValue(lost) // to try again
+  await expect(box.getByLabel('New post')).toHaveValue(lost)
+  // ...unless a newer draft was typed meanwhile: that one stays.
+  release = await hold(page, '**/api/demo-posts**')
+  await box.getByRole('button', { name: 'Post' }).click()
+  await expect(box.getByRole('listitem').filter({ hasText: lost })).toContainText('Posting…')
+  await box.getByLabel('New post').fill('Newer draft')
+  release()
+  await expect(box.getByRole('listitem').filter({ hasText: lost })).toHaveCount(0)
+  await expect(box.getByLabel('New post')).toHaveValue('Newer draft')
 })
 
 test('recipes: editing a profile shows the save at once; saved, it is the new start; failed, the page goes back', async ({ page }) => {
@@ -2377,10 +2412,14 @@ test('recipes: editing a profile shows the save at once; saved, it is the new st
   await expect(name).not.toHaveValue('') // loaded: the form starts from the profile
   await expect(save).toBeDisabled() // nothing changed yet
   const saved = `Grace ${Date.now() % 100000}`
+  const release = await hold(page, '**/api/demo-profile**')
   await name.fill(saved)
   await save.click()
-  await expect(card.locator('strong')).toHaveText(saved) // at once
+  await expect(card.locator('strong')).toHaveText(saved) // before the server answers
+  await expect(name).toBeDisabled() // no edits while it saves: the answer would overwrite them
+  release()
   await expect(box.getByRole('status')).toHaveText('Saved.')
+  await expect(name).toBeEnabled()
   await expect(save).toBeDisabled() // the saved profile is the new starting point
   await box.getByLabel('Make the server fail').check()
   await name.fill('Not saved')

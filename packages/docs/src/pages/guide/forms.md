@@ -113,8 +113,9 @@ The same pieces scale: one state object for the whole form, sections as nested o
 <textField [label]="'Name'" [error]="f.error('customer.name')" [show]="f.shown('customer.name')" [(value)]="order.customer.name" />
 @for (line of order.lines; track $index) {
   <input [(value)]="order.lines[$index].item">
-  <button (click)="removeLine($index)">×</button>
+  <button type="button" (click)="removeLine($index)">×</button>
 }
+<button>Send</button>
 </form>
 ```
 
