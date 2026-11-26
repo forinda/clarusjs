@@ -1,5 +1,13 @@
 # @clarusjs/language-server
 
+## 0.7.0
+
+### Minor Changes
+
+- [#513](https://github.com/forinda/clarusjs/pull/513) [`2cb2c58`](https://github.com/forinda/clarusjs/commit/2cb2c5812318916cd72a5da13668f684418f83fa) Thanks [@forinda](https://github.com/forinda)! - Components from libraries. List installed component libraries, `clarusjs({ components: { libraries: ['@clarusjs/ui-primitives'] } })` (or `{ from, prefix }` for your own prefix), and their components work by name without `@import`: `<ui-tabs>`, `<ui-tab-list>`. A library describes itself in its package.json, `"clarusjs": { "components": "./src", "prefix": "ui" }`, and each component is imported as `<package>/<file>`. An `@import` wins, then your own components, then libraries; a name two libraries share is an error naming both. The dev server, builds and `clarusjs check` write the names and the configured `components.dirs` to `.clarusjs/components.json`, which the language server and the TypeScript content mapper read. `@clarusjs/ui-primitives` describes itself with the `ui` prefix.
+
+- [#512](https://github.com/forinda/clarusjs/pull/512) [`3b770b3`](https://github.com/forinda/clarusjs/commit/3b770b3a142b5067ab8aa04d028aff6e750ce894) Thanks [@forinda](https://github.com/forinda)! - Lint fixes. A finding may carry a `fix` (`{ start, end, text }`); `one-root`'s wraps the component's top level in `<fragment>`, which renders the same HTML (a root `<fragment>` now renders like its children written at the top level: whitespace-only text between them is dropped, and so is the line break right after `<fragment>`). A `<script>`, `<style>` or declaration (`@input`, any `@import`, `@event`…) between the roots moves above them first, in order: wrapped, it would no longer be the component's, and at the top level its place doesn't matter. `clarusjs check --fix` writes fixes to the `.tscl` files before checking (with `--json`, the files it rewrote are listed on stderr), `applyFixes(source, messages)` from `clarusjs/compiler` applies them in code, ESLint's `--fix` applies them through `clarusjs/template`, and the language server offers each as a quick fix. A project's own rules can pass a fix as `report(start, message, fix)`.
+
 ## 0.6.0
 
 ### Minor Changes

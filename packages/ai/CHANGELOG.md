@@ -1,5 +1,20 @@
 # @clarusjs/ai
 
+## 0.1.3
+
+### Patch Changes
+
+- [#510](https://github.com/forinda/clarusjs/pull/510) [`2181938`](https://github.com/forinda/clarusjs/commit/21819387c6ea835e43e9c97258228c0aa92c773a) Thanks [@forinda](https://github.com/forinda)! - One root per component, `<fragment>`, and `@extends`.
+
+  - `<fragment>` groups elements without rendering one, anywhere in a template (a component's root, an `@if` branch, a `@for` row, slot content). It takes no attributes, and a component whose root is one takes none from its parent: `clarusjs check` reports any `class`, attribute or `(event)` written on its tag.
+  - The `one-root` lint rule warns about a component without one root element (files under a `pages` or `layouts` folder, and whole documents, are exempt; a layout kept elsewhere is warned about), so what a parent passes always has one place to land. It becomes an error in a later minor.
+  - `@extends button` (or `input`, `textarea`, `select`, `option`, `a`, `img`, `form`, `label`, `details`, `dialog`): the component takes every attribute of that element, typed by `clarusjs check`, onto its root, which must be that element.
+  - A stateful `@extends` island kept in place when its parent re-renders takes the new passed attributes (a parent's `[disabled]` changing reaches its root).
+  - theme-docs: the page head and the contents part render a `<fragment>` (same HTML). The agent guidance teaches one root.
+
+- Updated dependencies [[`0086d3b`](https://github.com/forinda/clarusjs/commit/0086d3bdfa34c966d143f4f008226f8547ad6023), [`e32325f`](https://github.com/forinda/clarusjs/commit/e32325fcc70f6fad75e184e60abc7aa2ad105b16), [`98d3f38`](https://github.com/forinda/clarusjs/commit/98d3f38b2e1e098b1b98ba8ae6681610a599a1b3), [`2cb2c58`](https://github.com/forinda/clarusjs/commit/2cb2c5812318916cd72a5da13668f684418f83fa), [`3b770b3`](https://github.com/forinda/clarusjs/commit/3b770b3a142b5067ab8aa04d028aff6e750ce894), [`2181938`](https://github.com/forinda/clarusjs/commit/21819387c6ea835e43e9c97258228c0aa92c773a), [`6641e73`](https://github.com/forinda/clarusjs/commit/6641e7352eff45c97d419cc8c8a676669f95506c)]:
+  - clarusjs@0.16.0
+
 ## 0.1.2
 
 ### Patch Changes

@@ -1,5 +1,37 @@
 # @clarusjs/ui
 
+## 0.2.0
+
+### Minor Changes
+
+- [#526](https://github.com/forinda/clarusjs/pull/526) [`fd89123`](https://github.com/forinda/clarusjs/commit/fd8912385cd5b6616545fb24076b6a088a51c44b) Thanks [@forinda](https://github.com/forinda)! - Chart colour tokens: `--ui-chart-1` to `--ui-chart-5`, five distinct series colours in light and dark, each at least 3:1 against `--ui-bg`.
+
+- [#533](https://github.com/forinda/clarusjs/pull/533) [`6f6d757`](https://github.com/forinda/clarusjs/commit/6f6d757d5d58128be7d96579174ed4a7ad95c5e5) Thanks [@forinda](https://github.com/forinda)! - One size scale for controls: `--ui-control-sm`, `--ui-control-md` and `--ui-control-lg` (30, 36 and 44px at the default `--ui-space`, so Density scales them). Fields, selects, comboboxes and toggles take their height from it, and `data-size="sm"` or `"lg"` on a control or anything around it picks the size.
+
+- [#515](https://github.com/forinda/clarusjs/pull/515) [`a232d46`](https://github.com/forinda/clarusjs/commit/a232d462ee4f1410040386b07a3967d01b11aaba) Thanks [@forinda](https://github.com/forinda)! - A spacing scale: `--ui-space` (4px) and its steps `--ui-space-1` to `--ui-space-12`. Every padding, margin and gap in `ui.css` is now a step of it (the same sizes as before at 4px), so one token makes the parts compact or roomy.
+
+- [#509](https://github.com/forinda/clarusjs/pull/509) [`f0ecd5e`](https://github.com/forinda/clarusjs/commit/f0ecd5e364a0350610e4d32756b017dbeacd1326) Thanks [@forinda](https://github.com/forinda)! - Toasts have kinds and your own look. `toast(message, { type: 'success' | 'error' | 'info' | 'warning', icon: false })`: each toast carries `data-type`, a default icon for its kind (hidden from screen readers) and the kind in words for them ("Error:"). `<toast-region>` takes templates: `@slot('toast')` is the markup of every toast (one root element, which becomes the toast), `@slot('success')` and the other kinds override it for that kind; the region copies it per toast and fills `data-part="toast-message"` (as text), `toast-action`, `toast-close` and `toast-icon`. `@clarusjs/ui` tints each kind from `--ui-success`, `--ui-danger`, `--ui-warning` and `--ui-accent`.
+
+- [#503](https://github.com/forinda/clarusjs/pull/503) [`312d157`](https://github.com/forinda/clarusjs/commit/312d157e3f9c9360a33b95d13e96c9a9ead11fd9) Thanks [@forinda](https://github.com/forinda)! - A `toggle` section styling `toggle`, `toggle-group` and `toggle-item` (pressed is tinted; a group joins its items into one row). A `toast` section: messages stacked at the bottom-right, each a card with its action and a close. A `sidebar` section: inline with its own surface on wide screens, hidden when collapsed (its `data-state` or `data-sidebar` on `<html>`), a panel from the left on phones.
+
+- [#503](https://github.com/forinda/clarusjs/pull/503) [`05270e1`](https://github.com/forinda/clarusjs/commit/05270e1ddadf4bd1e52feebd0839457e4a2c9b5e) Thanks [@forinda](https://github.com/forinda)! - A `sheet` section: a dialog with `data-side="left|right|top|bottom"` sits against that side of the screen and slides in (no motion under reduced motion). The dialog now takes its text colour from `--ui-card-fg` (a duplicate `color` overrode it).
+
+- [#493](https://github.com/forinda/clarusjs/pull/493) [`1a79aa8`](https://github.com/forinda/clarusjs/commit/1a79aa8fd2a8a54881d01789074229f8501cd5b9) Thanks [@forinda](https://github.com/forinda)! - 23 more `--ui-` tokens, matching shadcn's roles (34 in all): `--ui-card`/`-fg`, `--ui-popover`/`-fg`, `--ui-secondary`/`-fg`, `--ui-muted-bg`, `--ui-accent-soft-fg`, `--ui-danger-fg`, `--ui-input`, `--ui-ring`, `--ui-sidebar` (with `-fg`, `-accent`, `-accent-fg`, `-border`), `--ui-success`/`-fg`, `--ui-warning`/`-fg`, `--ui-font-heading`, `--ui-font-mono` and `--ui-font-size`, each with light and dark values. Their defaults equal what the parts look like today, so nothing changes until you set them.
+
+  `ui.css`'s rules now sit in `@layer components` (the tokens stay unlayered), so Tailwind's utilities and any CSS you write outside a layer override them; they were already zero-specificity (`:where()`). It starts with `@layer theme, base, components, utilities;` (Tailwind's order), so its components rank above a Tailwind preflight whichever stylesheet loads first; without Tailwind the statement changes nothing.
+
+### Patch Changes
+
+- [#536](https://github.com/forinda/clarusjs/pull/536) [`0e53db9`](https://github.com/forinda/clarusjs/commit/0e53db9907a52c896809f9bbd90cba13adf37b4b) Thanks [@forinda](https://github.com/forinda)! - A combobox option that's already picked shows a check at its end in the list, as well as being bold (screen readers already heard `aria-selected`).
+
+- [#536](https://github.com/forinda/clarusjs/pull/536) [`0e53db9`](https://github.com/forinda/clarusjs/commit/0e53db9907a52c896809f9bbd90cba13adf37b4b) Thanks [@forinda](https://github.com/forinda)! - A disabled field, select or combobox control looks disabled (dimmed, with a not-allowed cursor).
+
+- [#556](https://github.com/forinda/clarusjs/pull/556) [`73bf92d`](https://github.com/forinda/clarusjs/commit/73bf92d6cd771c1ee51c8be459f7a5d234567fd1) Thanks [@forinda](https://github.com/forinda)! - Toasts: the icon and buttons line up on the message's first line, so a long message wraps under them (long words too) instead of the toast centring everything on it; the default info icon is a circled "i" (it was a dot and a stroke).
+
+- [#493](https://github.com/forinda/clarusjs/pull/493) [`88f46d5`](https://github.com/forinda/clarusjs/commit/88f46d5c50055a80fa9d61780cc08261027adcf6) Thanks [@forinda](https://github.com/forinda)! - `ui.css` marks each part's rules with `/* part: name */` … `/* end part */` comments (no rule changes), so ui.clarusjs.com's copyable components can carry exactly the same rules, checked by a test.
+- Updated dependencies [[`2ba72a9`](https://github.com/forinda/clarusjs/commit/2ba72a9a1800abf3e10cab399c0feeda14b45d12), [`2cb2c58`](https://github.com/forinda/clarusjs/commit/2cb2c5812318916cd72a5da13668f684418f83fa), [`312d157`](https://github.com/forinda/clarusjs/commit/312d157e3f9c9360a33b95d13e96c9a9ead11fd9), [`2aebdca`](https://github.com/forinda/clarusjs/commit/2aebdcab809fa03210bd6e1bcb3e12fcbc91a771), [`73bf92d`](https://github.com/forinda/clarusjs/commit/73bf92d6cd771c1ee51c8be459f7a5d234567fd1), [`8af4554`](https://github.com/forinda/clarusjs/commit/8af455488dece63dddddfdee29435b14856880eb), [`f0ecd5e`](https://github.com/forinda/clarusjs/commit/f0ecd5e364a0350610e4d32756b017dbeacd1326)]:
+  - @clarusjs/ui-primitives@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes
