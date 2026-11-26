@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { compile } from 'clarusjs/compiler'
 import { expect, test } from 'vitest'
-import { COMPONENT_GROUPS, blocks, codeFiles, components, registry } from '../src/registry.ts'
+import { COMPONENT_GROUPS, SECTION_KINDS, blocks, codeFiles, components, registry, sections } from '../src/registry.ts'
 import { registryDir, render, source } from './render.ts'
 import { globalStyle, uiSection } from './css.ts'
 
@@ -14,7 +14,13 @@ test('blocks: registry entries of their own kind, apart from the components', ()
   expect(blocks.map((b) => b.name)).toContain('login')
   expect(components.every((e) => e.kind !== 'block')).toBe(true)
   expect(blocks.every((e) => e.kind === 'block')).toBe(true)
-  expect(components.length + blocks.length).toBe(registry.length)
+  expect(components.length + blocks.length + sections.length).toBe(registry.length)
+})
+
+test('sections: their own kind, each with a section kind and category Marketing', () => {
+  expect(components.every((e) => e.kind !== 'section')).toBe(true)
+  expect(sections.every((e) => e.kind === 'section' && !!e.section && e.section in SECTION_KINDS && e.category === 'Marketing')).toBe(true)
+  expect(Object.keys(SECTION_KINDS)).toEqual(['hero', 'features', 'pricing', 'cta', 'testimonials', 'faq', 'footer', 'header', 'logo-cloud', 'stats', 'newsletter'])
 })
 
 test('every entry\'s files exist, and every file in src/registry is an entry\'s file or usage example', () => {
@@ -45,7 +51,7 @@ const shared = (s: string) => /^@clarusjs\/ui-primitives(\/|$)/.test(s) || /^cla
 
 test('copied files import only ui-primitives, clarusjs, their own files and those of the entries they list in uses', () => {
   for (const { entry, file } of files) {
-    if (entry.kind === 'block') continue
+    if (entry.kind === 'block' || entry.kind === 'section') continue
     for (const s of specifiers(file)) {
       // ./x: one of its own files, or of an entry it uses (chart-interactive takes chart-geometry.ts's types).
       const local = /^\.\/([\w.-]+)$/.exec(s)?.[1]
@@ -58,7 +64,7 @@ test('copied files import only ui-primitives, clarusjs, their own files and thos
 
 test('a block imports what works once pasted: components as the ~/components/ui/ files they copy, its own files as ./, npm packages listed in packages', () => {
   for (const { entry, file } of files) {
-    if (entry.kind !== 'block') continue
+    if (entry.kind !== 'block' && entry.kind !== 'section') continue
     const dir = file.slice(0, file.lastIndexOf('/') + 1)
     for (const s of specifiers(file)) {
       // A component's file only if it is one that gets copied (card has card.tscl, no card.css).

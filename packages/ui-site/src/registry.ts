@@ -4,9 +4,28 @@
 /** The component groups, as PrimeVue groups its own, in sidebar order. */
 export const COMPONENT_GROUPS = ['Form', 'Button', 'Data', 'Panel', 'Overlay', 'Menu', 'Chart', 'Messages', 'Media', 'Misc'] as const
 
+/** Marketing section kinds (/blocks/marketing/<kind>), in /blocks order: each holds several versions. */
+export const SECTION_KINDS = {
+  hero: { title: 'Hero', description: 'The top of a landing page: a headline, a line and the first buttons.' },
+  features: { title: 'Features', description: 'What the product does, in columns, ruled cells or a bento grid.' },
+  pricing: { title: 'Pricing', description: 'Plans side by side, or a table comparing what each includes.' },
+  cta: { title: 'Call to action', description: 'One more push to start, near the end of a page.' },
+  testimonials: { title: 'Testimonials', description: 'What people who use it say, as one quote or a grid of them.' },
+  faq: { title: 'FAQ', description: 'Questions people ask, with their answers.' },
+  footer: { title: 'Footer', description: 'Links, status and the small print at the bottom of every page.' },
+  header: { title: 'Header', description: 'The bar at the top: logo, links, menus and actions.' },
+  'logo-cloud': { title: 'Logo cloud', description: 'The names that use it, in a row of logos.' },
+  stats: { title: 'Stats', description: 'A few numbers that say it works.' },
+  newsletter: { title: 'Newsletter', description: 'An email field to hear about what comes next.' },
+} as const
+export type SectionKind = keyof typeof SECTION_KINDS
+
 export type Entry = {
-  /** A component (the default), or a block: a whole page built from components, in src/registry/blocks/<name>/. */
-  kind?: 'component' | 'block'
+  /** A component (the default); a block: a whole page built from components, in src/registry/blocks/<name>/; or a
+   *  section: one version of a landing-page section, in src/registry/sections/<kind>/. */
+  kind?: 'component' | 'block' | 'section'
+  /** A section's kind ('hero'): versions of one kind share a page, /blocks/marketing/<kind>. */
+  section?: SectionKind
   /** A component's group in the sidebar and lists (one of COMPONENT_GROUPS). */
   group?: (typeof COMPONENT_GROUPS)[number]
   /** A block's category on /blocks ('Authentication'), to group and filter by. */
@@ -725,9 +744,13 @@ export const registry: Entry[] = [
 ]
 
 /** The components (the component pages and lists). */
-export const components: Entry[] = registry.filter((e) => e.kind !== 'block')
+export const components: Entry[] = registry.filter((e) => e.kind === undefined || e.kind === 'component')
 /** The blocks (/blocks): pages built from components, copied into an app's src/pages/. */
 export const blocks: Entry[] = registry.filter((e) => e.kind === 'block')
+/** The marketing sections, by kind in SECTION_KINDS order, each kind's versions in registry order. */
+export const sections: Entry[] = Object.keys(SECTION_KINDS).flatMap((k) => registry.filter((e) => e.kind === 'section' && e.section === k))
+/** One kind's versions. */
+export const sectionsOf = (kind: SectionKind): Entry[] => sections.filter((e) => e.section === kind)
 
 /**
  * Every file the Code view of a block shows, as it's copied: the block's own (page first), then each component it
