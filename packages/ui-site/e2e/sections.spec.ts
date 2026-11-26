@@ -5,8 +5,8 @@ import { SECTION_KINDS, sectionsOf, type SectionKind } from '../src/registry.ts'
 import { axeViolations, modes } from './helpers.ts'
 
 /** Moves a real pointer across the middle of a frame's section, then reports what its effect layer holds. */
-async function hover(page: Page, view: string) {
-  await page.goto(`/view/${view}`)
+async function hover(page: Page, view: string, go = true) {
+  if (go) await page.goto(`/view/${view}`)
   if (await page.locator('cl-island').count()) await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
   const box = (await page.locator('section').first().boundingBox())!
   await page.mouse.move(box.x + 4, box.y + 4)
@@ -93,17 +93,30 @@ for (const kind of kinds) {
   })
 }
 
+/** Records the trail's lit cells as they light (the mark lasts two frames; the fade is CSS), on window.__lit. */
+async function watchTrail(page: Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __lit: DOMRect[] }
+    w.__lit = []
+    new MutationObserver((records) => {
+      for (const r of records) if ((r.target as Element).hasAttribute('data-on')) w.__lit.push((r.target as Element).getBoundingClientRect())
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-on'] })
+  })
+}
 /** What an effect shows after a pointer crosses its section: spotlight's position, trail's lit cells, lean's paths. */
 async function effectState(page: Page) {
-  return page.locator('[data-part="grid-effect"]').first().evaluate((el) => ({
+  const lit = await page.evaluate(() => (window as unknown as { __lit?: DOMRect[] }).__lit?.length ?? 0)
+  return page.locator('[data-part="grid-effect"]').first().evaluate((el, lit) => ({
     x: el.style.getPropertyValue('--ui-grid-x'),
-    lit: el.querySelectorAll('[data-on]').length + el.querySelectorAll('[data-cell]').length,
+    lit,
     paths: el.querySelectorAll('path').length,
-  }))
+  }), lit)
 }
 for (const e of (Object.keys(SECTION_KINDS) as SectionKind[]).flatMap(sectionsOf).filter((x) => x.uses.includes('grid-effect'))) {
   test(`${e.name}: its grid effect reacts to a pointer`, async ({ page }) => {
-    await hover(page, e.name)
+    await page.goto(`/view/${e.name}`)
+    await watchTrail(page)
+    await hover(page, e.name, false)
     const s = await effectState(page)
     expect(s.x !== '' || s.lit > 0 || s.paths > 0, JSON.stringify(s)).toBe(true)
   })
@@ -159,4 +172,44 @@ test('two effects on one page react independently: moving over one leaves the ot
   await expect(sections.nth(0)).toHaveAttribute('data-grid-lean', '')
   await expect(sections.nth(1)).not.toHaveAttribute('data-grid-lean', '')
   expect(await sections.nth(1).locator('[data-part="grid-effect"] path').count()).toBe(0)
+})
+
+test('footer-columns: four labelled link columns; the theme switch changes the frame\'s theme', async ({ page }) => {
+  await page.goto('/view/footer-columns')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  const footer = page.getByRole('contentinfo', { name: 'Site footer' })
+  for (const name of ['Product', 'Resources', 'Company', 'Legal']) await expect(footer.getByRole('navigation', { name })).toBeVisible()
+  await expect(footer).toContainText('All systems normal')
+  await footer.getByRole('radio', { name: 'Dark' }).check()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await footer.getByRole('radio', { name: 'System' }).check()
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./)
+})
+
+test('#review: the trail lights the cell under the pointer, in a frame whose width isn\'t a multiple of the cell', async ({ page }) => {
+  await page.setViewportSize({ width: 1003, height: 800 })
+  await page.goto('/view/stats')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  const box = (await page.locator('section').first().boundingBox())!
+  const at = { x: box.x + box.width - 70, y: box.y + box.height - 40 } // far right, bottom rows: where a wrong count drifts most
+  await watchTrail(page)
+  await page.mouse.move(box.x + 2, box.y + 2)
+  await page.mouse.move(at.x, at.y)
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __lit: DOMRect[] }).__lit.length)).toBeGreaterThan(1)
+  const cell = await page.evaluate(() => { const l = (window as unknown as { __lit: DOMRect[] }).__lit; const r = l[l.length - 1]!; return { x: r.x, y: r.y, width: r.width, height: r.height } })
+  expect(at.x >= cell.x && at.x <= cell.x + cell.width && at.y >= cell.y && at.y <= cell.y + cell.height, JSON.stringify({ at, cell })).toBe(true)
+})
+
+test('#review: newsletter: the status region holds only the thank-you, and focus goes to it', async ({ page }) => {
+  await page.goto('/view/newsletter')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  await expect(page.getByRole('status').getByRole('textbox')).toHaveCount(0)
+  await page.getByRole('textbox', { name: 'Email' }).fill('you@company.com')
+  await page.getByRole('button', { name: 'Subscribe' }).click()
+  await expect(page.getByRole('status')).toBeFocused()
+})
+
+test('#review: pricing-compare says "Not included" as an image name, not a label on a plain span', async ({ page }) => {
+  await page.goto('/view/pricing-compare')
+  await expect(page.getByRole('table').getByRole('img', { name: 'Not included' }).first()).toBeVisible()
 })

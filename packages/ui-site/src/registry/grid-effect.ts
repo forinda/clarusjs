@@ -17,11 +17,12 @@ export function gridEffect(el: HTMLElement, { effect }: { effect: GridEffect }):
   let host = el.parentElement
   while (host?.localName === 'cl-island') host = host.parentElement
   if (!host || matchMedia('(prefers-reduced-motion: reduce)').matches) return () => {}
-  host.style.touchAction ||= 'pan-y' // a finger's drag moves it, and still scrolls the page
+  host.style.touchAction ||= 'pan-y pinch-zoom' // a finger's drag moves it, and still scrolls and zooms the page
   const cell = () => parseFloat(getComputedStyle(el).getPropertyValue('--ui-grid-cell')) || 48
   let at: [number, number] | null = null
   let frame = 0
   let cols = 0
+  let rows = 0
   let last = -1
 
   const draw = () => {
@@ -64,12 +65,16 @@ export function gridEffect(el: HTMLElement, { effect }: { effect: GridEffect }):
   const mark = (x: number, y: number) => {
     const step = cell()
     const n = Math.ceil(el.clientWidth / step)
-    if (n !== cols) {
-      // (Re)lay the cells for this width: one per square, in rows of n.
+    const m = Math.ceil(el.clientHeight / step)
+    if (n !== cols || m !== rows) {
+      // (Re)lay the cells for this size: one per square, in rows of n, the columns set here so the layout and the
+      // count agree at any width (the last column is cut off).
       cols = n
+      rows = m
       last = -1
       el.textContent = ''
-      for (let i = 0; i < n * Math.ceil(el.clientHeight / step); i++) {
+      el.style.gridTemplateColumns = `repeat(${n}, ${step}px)`
+      for (let i = 0; i < n * m; i++) {
         const c = document.createElement('i')
         c.setAttribute('data-cell', '')
         el.append(c)

@@ -68,4 +68,8 @@ layout: "/src/layouts/wide.tscl"
   <iframe src="/view/newsletter" title="Newsletter preview" loading="lazy" style="width: 100%; height: 300px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
 </blockRow>
 
+<blockRow name="footer-columns">
+  <iframe src="/view/footer-columns" title="Footer preview" loading="lazy" style="width: 100%; height: 380px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
 </blockFilter>
