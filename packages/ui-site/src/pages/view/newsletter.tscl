@@ -1,0 +1,13 @@
+{{-- The newsletter section alone (the frame on /blocks/marketing/newsletter shows it). Out of the nav, search and the sitemap. --}}
+@import '~/theme.css'
+@import '~/view.css'
+@import newsletter from '~/registry/sections/newsletter/newsletter.tscl'
+
+<cl-head>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+</cl-head>
+
+<div data-ui-preview>
+  <newsletter />
+</div>

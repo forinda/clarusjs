@@ -70,6 +70,8 @@ test('the section versions the spec lists, each with its grid effect where it ha
     'features-columns': 'none', 'features-grid': 'spotlight', 'features-bento': 'trail',
     'logo-cloud': 'trail', stats: 'trail',
     'pricing-plans': 'spotlight', 'pricing-compare': 'spotlight',
+    'cta-centred': 'lean', 'cta-split': 'lean', 'testimonials-quote': 'none', 'testimonials-grid': 'none',
+    'faq-accordion': 'spotlight', 'faq-columns': 'spotlight', newsletter: 'none',
   }
   for (const [name, fx] of Object.entries(want)) {
     expect(sections.some((e) => e.name === name), name).toBe(true)

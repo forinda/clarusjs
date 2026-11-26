@@ -127,3 +127,36 @@ test('pricing-compare: a table with a column header per plan and a check per inc
   for (const plan of ['Hobby', 'Pro', 'Enterprise']) await expect(table.getByRole('columnheader', { name: new RegExp(plan) })).toBeVisible()
   await expect(table.getByRole('img', { name: 'Included' }).first()).toBeVisible()
 })
+
+test('faq-accordion opens an answer by keyboard', async ({ page }) => {
+  await page.goto('/view/faq-accordion')
+  const first = page.locator('summary').first()
+  await first.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('details').first()).toHaveAttribute('open', '')
+})
+
+test('newsletter shows subscribe()\'s error on the field, and a thank-you when it works', async ({ page }) => {
+  await page.goto('/view/newsletter')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  const email = page.getByRole('textbox', { name: 'Email' })
+  await email.fill('not-an-address')
+  await page.getByRole('button', { name: 'Subscribe' }).click()
+  await expect(email).toHaveAttribute('aria-invalid', 'true')
+  await expect(page.getByText(/like you@company\.com/)).toBeVisible()
+  await email.fill('you@company.com')
+  await page.getByRole('button', { name: 'Subscribe' }).click()
+  await expect(page.getByRole('status')).toContainText('Thanks')
+})
+
+test('two effects on one page react independently: moving over one leaves the other still', async ({ page }) => {
+  await page.goto('/view/test/two-effects')
+  await page.locator('cl-island[data-cl-ready]').nth(1).waitFor({ state: 'attached' })
+  const sections = page.locator('section')
+  const box = (await sections.nth(0).boundingBox())!
+  await page.mouse.move(box.x + 4, box.y + 4)
+  for (let i = 0; i < 6; i++) await page.mouse.move(box.x + box.width / 2 + i * 6, box.y + box.height / 2)
+  await expect(sections.nth(0)).toHaveAttribute('data-grid-lean', '')
+  await expect(sections.nth(1)).not.toHaveAttribute('data-grid-lean', '')
+  expect(await sections.nth(1).locator('[data-part="grid-effect"] path').count()).toBe(0)
+})

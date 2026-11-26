@@ -1,0 +1,79 @@
+{{-- Newsletter: a title and line beside an email field and a button. subscribe() in data.ts beside it decides: its
+     error shows on the field, and a thank-you replaces the form when it works. --}}
+@import uiButton from '~/components/ui/button.tscl'
+@import uiField from '~/components/ui/field.tscl'
+@import { newsletter, subscribe } from './data.ts'
+
+<script>
+  let email = state('')
+  let error = state('')
+  let busy = state(false)
+  let done = state(false)
+  async function send(event) {
+    event.preventDefault()
+    busy = true
+    const result = await subscribe(email.trim())
+    busy = false
+    error = result.error ?? ''
+    done = !error
+  }
+</script>
+
+<section class="newsletter">
+  <div>
+    <h2>{{ newsletter.title }}</h2>
+    <p>{{ newsletter.line }}</p>
+  </div>
+  <div role="status">
+    @if (done) {
+      <p class="thanks">{{ newsletter.thanks }}</p>
+    } @else {
+      <form novalidate (submit)="send($event)">
+        <uiField id="newsletter-email" [label]="newsletter.label" type="email" autocomplete="email" [error]="error" [show]="!!error" [(value)]="email" />
+        <uiButton type="submit" [loading]="busy">{{ newsletter.button }}</uiButton>
+      </form>
+    }
+  </div>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: var(--ui-space-6);
+      align-items: center;
+      padding: var(--ui-space-12) var(--ui-space-6);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    @media (min-width: 900px) {
+      :where(:scope) {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    :where(h2) {
+      margin: 0 0 var(--ui-space-2);
+      font: 700 calc(var(--ui-font-size) * 1.75) / 1.15 var(--ui-font-heading);
+      letter-spacing: -0.02em;
+    }
+    :where(p) {
+      margin: 0;
+      color: var(--ui-muted);
+    }
+    :where(form) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: var(--ui-space-3);
+    }
+    :where(form > :first-child) {
+      flex: 1 1 14rem;
+    }
+    :where(.thanks) {
+      color: var(--ui-fg);
+      font-weight: 600;
+    }
+  }
+</style>

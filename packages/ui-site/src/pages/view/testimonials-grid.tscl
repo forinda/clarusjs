@@ -1,0 +1,13 @@
+{{-- The testimonials-grid section alone (the frame on /blocks/marketing/testimonials shows it). Out of the nav, search and the sitemap. --}}
+@import '~/theme.css'
+@import '~/view.css'
+@import testimonialsGrid from '~/registry/sections/testimonials/testimonials-grid.tscl'
+
+<cl-head>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+</cl-head>
+
+<div data-ui-preview>
+  <testimonialsGrid />
+</div>
