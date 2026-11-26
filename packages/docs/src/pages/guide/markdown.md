@@ -38,7 +38,7 @@ description: Install clarusjs and write your first page.
 Write **Markdown** as usual.
 ```
 
-`title` (or the first `#` heading) and `description` go to the layout, with the page's route as `path`. Set `layout:` in the frontmatter to use another layout, or `layout: false` for none.
+`title` (or the first `#` heading) and `description` go to the layout, with the page's route as `path`. Set `layout:` in the frontmatter to use another layout, or `layout: false` for none at all (not even the [folder layouts](/guide/layouts#folder-layouts) that otherwise wrap it).
 
 `steps: true` (for lessons) wraps each `##` heading and what follows it, up to the next one, in a `<section class="step" aria-labelledby="…">`. The page is still a plain page; a layout can show one step at a time (see [Docs theme](/guide/docs-theme#lessons)).
 

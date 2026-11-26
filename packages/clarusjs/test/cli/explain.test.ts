@@ -22,10 +22,10 @@ const manifest: Manifest = {
     '/about': { mode: 'static', html: 'about/index.html', loader: null, islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] },
   },
 }
-function project(): string {
+function project(m: Manifest = manifest): string {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-explain-'))
   mkdirSync(resolve(root, 'dist'))
-  writeFileSync(resolve(root, 'dist/clarusjs-manifest.json'), JSON.stringify(manifest))
+  writeFileSync(resolve(root, 'dist/clarusjs-manifest.json'), JSON.stringify(m))
   return root
 }
 
@@ -112,4 +112,23 @@ test('#33: a client route is explained as rendered in the browser', () => {
   const text = explain({ root, route: '/app' }).text
   expect(text).toContain('  Rendered    in the browser, by the router (shell: dist/client/app/index.html)')
   expect(text).toContain('  Data        load() ran once, at build time; fetched as __data.json')
+})
+
+test('#472: a route\'s layouts (outermost first) and guards (outer first) are listed', () => {
+  const routes: Manifest['routes'] = {
+    '/admin/users': {
+      mode: 'server', html: null, loader: 'request', islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [],
+      layouts: ['src/layouts/site.tscl', 'src/pages/admin/+layout.tscl'], guards: ['src/pages/admin/+guard.ts'],
+    },
+  }
+  const result = explain({ root: project({ version: 1, routes }), route: '/admin/users' })
+  expect(result.text).toBe([
+    '/admin/users',
+    '  Rendered    on every request, by dist/server/index.mjs',
+    '  Data        load() runs on every request',
+    '  Islands     decided per request',
+    '  Layouts     src/layouts/site.tscl',
+    '              src/pages/admin/+layout.tscl',
+    '  Guards      src/pages/admin/+guard.ts',
+  ].join('\n'))
 })
