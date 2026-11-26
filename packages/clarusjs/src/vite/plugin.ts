@@ -105,6 +105,8 @@ function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<strin
   for (const file of files.pages(root)) {
     const css: string[] = []
     const seen = new Set<string>()
+    // Its folder and config layouts (#472) wrap it: their stylesheets, components and loaders are the page's too.
+    for (const layout of pageLayouts(root, file, files)) collect(resolve(root, `.${layout}`), css, seen)
     collect(file, css, seen)
     seen.delete(file)
     pages.set(routeFromFile(`/${relative(root, file).split(sep).join('/')}`), { css, components: [...seen] })
@@ -112,18 +114,23 @@ function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<strin
   return pages
 }
 
+/** A page's folder and config layouts as root paths, outermost first; none with `@layout none`. */
+function pageLayouts(root: string, file: string, files: Files): string[] {
+  const layouts = files.layouts(file, root) ?? []
+  return layouts.length && !/^@layout none\s*$/m.test(files.read(file, root)) ? layouts : []
+}
+
 /** Each page's layouts and guards (#472), for the route manifest: what `clarusjs explain` lists. Paths from the root. */
 function routeParts(root: string, files: Files): RouteParts[] {
   return files.pages(root).map((file) => {
     const rel = relative(root, file).split(sep).join('/')
-    const none = /^@layout none\s*$/m.test(files.read(file, root))
     const folders = rel.replace(/^src\/pages\//, '').split('/').slice(0, -1)
     const guards: string[] = []
     for (let i = 0; i <= folders.length; i++) {
       const guard = ['src/pages', ...folders.slice(0, i), '+guard.ts'].join('/')
       if (existsSync(resolve(root, guard))) guards.push(guard)
     }
-    return { route: routeFromFile(`/${rel}`), layouts: none ? [] : (files.layouts(file, root) ?? []).map((l) => l.replace(/^\//, '')), guards }
+    return { route: routeFromFile(`/${rel}`), layouts: pageLayouts(root, file, files).map((l) => l.replace(/^\//, '')), guards }
   })
 }
 
@@ -139,8 +146,7 @@ function layoutsFor(root: string, file: string, config: { layout: string; includ
   const out = config
     .filter((l) => (l.include ?? ['/*']).some((p) => routeMatches(route, p)) && !(l.exclude ?? []).some((p) => routeMatches(route, p)))
     .map((l) => l.layout)
-  // ponytail: in dev, adding or removing a +layout.tscl reaches pages already compiled only on restart; watch the
-  // folders' + files and invalidate the pages under them if that bites.
+  // In dev, adding or removing a +layout.tscl compiles the pages under it again (configureServer: relayout).
   const folders = dirname(rel) === '.' ? [] : dirname(rel).split(sep)
   for (let i = 0; i <= folders.length; i++) {
     const layout = resolve(pages, ...folders.slice(0, i), '+layout.tscl')
@@ -149,9 +155,13 @@ function layoutsFor(root: string, file: string, config: { layout: string; includ
   return out
 }
 
-/** A component's loader (#97): a .load.ts next to a .tscl outside src/pages (there it's the page's data), or none. */
+/**
+ * A component's loader (#97): a .load.ts next to a .tscl outside src/pages (there it's the page's data), or none. A
+ * folder layout's is its +layout.load.ts (#472).
+ */
 function componentLoaderOf(root: string, file: string): string | undefined {
-  if (!file.endsWith('.tscl') || real(file).startsWith(real(resolve(root, 'src/pages')) + sep)) return undefined
+  if (!file.endsWith('.tscl')) return undefined
+  if (real(file).startsWith(real(resolve(root, 'src/pages')) + sep) && !file.endsWith(`${sep}+layout.tscl`) && !file.endsWith('/+layout.tscl')) return undefined
   const loader = file.replace(/\.tscl$/, '.load.ts')
   return existsSync(loader) ? loader : undefined
 }
@@ -737,7 +747,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         `  data: import.meta.glob('/src/pages/**/*.load.ts'),\n` +
         // Component loaders (#97): a .load.ts next to a component outside src/pages, run for the pages that use it.
         `  componentLoaders: ${JSON.stringify(componentLoaders)},\n` +
-        `  componentData: import.meta.glob(['/src/**/*.load.ts', '!/src/pages/**']),\n` +
+        // A folder layout's +layout.load.ts too (#472): a glob of its own, since the ! above would drop it.
+        `  componentData: { ...import.meta.glob(['/src/**/*.load.ts', '!/src/pages/**']), ...import.meta.glob('/src/pages/**/+layout.load.ts') },\n` +
         // Endpoints: the other .ts files under src/pages, exporting GET, POST, … (see the server reference).
         `  guards: import.meta.glob('/src/pages/**/+guard.ts'),\n` +
         `  endpoints: import.meta.glob(['/src/pages/**/*.ts', '!/src/pages/**/*.load.ts', '!/src/pages/**/*.d.ts', '!/src/pages/**/+*']),\n` +
@@ -880,6 +891,22 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       server.watcher.on('change', restyle)
       server.watcher.on('add', restyle)
       server.watcher.on('unlink', restyle)
+      // A +layout.tscl added or removed (#472): the pages under its folder compiled without it (or with it); compile
+      // them again, and reload. A change to one is an ordinary module update.
+      const relayout = (file: string) => {
+        const folder = dirname(normalizePath(file))
+        if (!/\/\+layout\.tscl$/.test(normalizePath(file)) || !(folder + '/').startsWith(normalizePath(resolve(server.config.root, 'src/pages')) + '/')) return
+        const pages = files.pages(server.config.root).filter((p) => normalizePath(p).startsWith(folder + '/'))
+        for (const env of Object.values(server.environments)) {
+          for (const page of pages) {
+            for (const mod of env.moduleGraph.getModulesByFile(normalizePath(page)) ?? []) env.moduleGraph.invalidateModule(mod)
+            if (isRunnableDevEnvironment(env)) for (const mod of env.runner.evaluatedModules.getModulesByFile(normalizePath(page)) ?? []) env.runner.evaluatedModules.invalidateModule(mod)
+          }
+        }
+        server.environments.client.hot.send({ type: 'full-reload' })
+      }
+      server.watcher.on('add', relayout)
+      server.watcher.on('unlink', relayout)
       return () => {
         server.middlewares.use(async (req, res, next) => {
           try {

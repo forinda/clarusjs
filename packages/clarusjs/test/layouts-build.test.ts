@@ -24,7 +24,15 @@ beforeAll(async () => {
   w('src/pages/embed/widget.tscl', '<p>widget</p>\n')
   // #472: page sources (Markdown, say) get the folder layouts too.
   w('src/pages/admin/notes.note', 'hello')
+  // #472: an island page: its layouts go around the island.
+  w('src/pages/admin/count.tscl', '<script>\n  let n = state(2)\n</script>\n<button (click)="n++">{{ n }}</button>\n')
   w('src/pages/+guard.ts', 'export function guard() {}\n')
+  // #472: a folder layout's own data, from +layout.load.ts, with the route's params.
+  w('src/pages/teams/team.css', '.team { color: teal; }\n')
+  w('src/pages/teams/+layout.tscl', "@import './team.css'\n@input team: string = '?'\n@input members: number = 0\n<section class=\"team\" data-team=\"{{ team }}\" data-members=\"{{ members }}\"><slot /></section>\n")
+  w('src/pages/teams/+layout.load.ts', "export function load({ params }: { params: Record<string, string> }) { return { team: params.id ?? 'all', members: 3 } }\n")
+  w('src/pages/teams/[id].tscl', '<h1>Team</h1>\n')
+  w('src/pages/teams/[id].load.ts', "export function entries() { return [{ id: 'red' }] }\nexport function load() { return {} }\n")
   w('src/pages/admin/+guard.ts', 'export function guard() {}\n')
   mkdirSync(resolve(root, 'node_modules'))
   symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
@@ -57,7 +65,7 @@ test('@layout none: no folder or config layout', () => {
 
 test('+layout.tscl files are never routes', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
-  expect(Object.keys(manifest.routes).sort()).toEqual(['/', '/admin/notes', '/admin/sign-in', '/admin/users', '/embed/widget'])
+  expect(Object.keys(manifest.routes).sort()).toEqual(['/', '/admin/count', '/admin/notes', '/admin/sign-in', '/admin/users', '/embed/widget', '/teams/red'])
 })
 
 test('#472: a page source (a Markdown page) is wrapped in its folder and config layouts like a .tscl page', () => {
@@ -72,4 +80,23 @@ test('#472: the route manifest (clarusjs explain) lists each route\'s layouts, o
   expect(routes['/embed/widget'].guards).toEqual(['src/pages/+guard.ts'])
   expect(routes['/admin/sign-in'].layouts).toBeUndefined() // @layout none
   expect(routes['/admin/sign-in'].guards).toEqual(['src/pages/+guard.ts', 'src/pages/admin/+guard.ts']) // guards still apply
+})
+
+test('#472: +layout.load.ts gives a folder layout its inputs, with the route\'s params; it is never a route itself', () => {
+  expect(page('/teams/red')).toMatch(/<section class="team" data-team="red" data-members="3"><h1>Team<\/h1><\/section>/)
+})
+
+test('#472: a folder layout\'s imported stylesheet is linked on the pages it wraps', () => {
+  const href = /<link rel="stylesheet" href="([^"]*team[^"]*\.css)">/.exec(page('/teams/red'))?.[1]
+  expect(href).toBeDefined()
+  expect(readFileSync(resolve(root, 'dist/client', href!.slice(1)), 'utf8')).toContain('teal')
+  expect(page('/')).not.toContain(href!)
+})
+
+test('#472: an island page gets its layouts around the island, which ships its own code only', () => {
+  const html = page('/admin/count')
+  expect(html).toMatch(/<div class="admin"><aside>admin menu<\/aside><main><cl-island c="count" src="([^"]+)"[^>]*><button[^>]*>.*2.*<\/button><\/cl-island><\/main><\/div>/)
+  const src = /<cl-island c="count" src="([^"]+)"/.exec(html)![1]!
+  const js = readFileSync(resolve(root, 'dist/client', src.slice(1)), 'utf8')
+  expect(js).not.toContain('admin menu') // the layouts aren't in the island's code
 })
