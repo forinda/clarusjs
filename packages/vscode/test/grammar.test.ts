@@ -14,9 +14,12 @@ beforeAll(async () => {
   highlighter = await createHighlighter({ themes: ['github-dark'], langs: ['html', 'typescript', 'css', main, bindings] })
 })
 
-/** Each token's text and its innermost scopes (all scopes joined). */
+/**
+ * Each token's text and its innermost scopes (all scopes joined). No time limit: Shiki tokenizes each line twice (scopes,
+ * then colours), and a slow CI machine that stops one pass early (500 ms by default) crashes it on mismatched tokens.
+ */
 function tokens(code: string): { text: string; scopes: string }[] {
-  return highlighter.codeToTokens(code, { lang: 'tscl' as never /* loaded above, not one Shiki bundles */, theme: 'github-dark', includeExplanation: true }).tokens.flat().flatMap((t) =>
+  return highlighter.codeToTokens(code, { lang: 'tscl' as never /* loaded above, not one Shiki bundles */, theme: 'github-dark', includeExplanation: true, tokenizeTimeLimit: 0 }).tokens.flat().flatMap((t) =>
     (t.explanation ?? []).map((e) => ({ text: e.content, scopes: e.scopes.map((s) => s.scopeName).join(' ') })))
 }
 /** The scopes of the first token whose text is `text` (after `after`, when given). */
