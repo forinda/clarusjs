@@ -1,0 +1,14 @@
+{{-- #523: content an island puts in a component's slots (the default one and a named fill) is read untracked in the
+     browser: its holes, attributes and events are wired in place, so typing in the field doesn't render the card
+     again. The card's own input (title) still does. --}}
+<script>
+  let email = state('')
+</script>
+
+<info-card [title]="email ? 'Hi' : 'Sign in'">
+  <input [(value)]="email" />
+  <p>{{ email.length }} characters</p>
+  @slot('footer') {
+    <small>{{ email }}</small>
+  }
+</info-card>
