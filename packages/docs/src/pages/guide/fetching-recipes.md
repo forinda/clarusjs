@@ -143,17 +143,19 @@ The roll back puts back the post as it was when the call started (`post`), not "
 
 ## Editing a profile: save, or roll back
 
-The form starts from the saved profile, and the page shows the new values as soon as you save. Saved, they become the form's values and new starting point (`f.reset(saved)`), so `f.dirty` is false again; the fields are disabled while it saves, since that would overwrite edits typed meanwhile. Failed, what the page shows goes back to what was saved, and the form keeps your edits to try again, or to undo with `f.reset()`. An error the server returns for a field lands on that field ([Form validation](/guide/form-validation#submit)).
+The form starts from the saved profile, and the page shows the new values as soon as you save. Saved, they become the form's values and new starting point (`f.reset(saved)`), so `f.dirty` is false again; the fields are disabled while the request is on its way (`saving`, set in `submit`), since the answer would overwrite edits typed meanwhile. Not `f.submitting`: that starts before the checks, and a disabled field isn't checked. Failed, what the page shows goes back to what was saved, and the form keeps your edits to try again, or to undo with `f.reset()`. An error the server returns for a field lands on that field ([Form validation](/guide/form-validation#submit)).
 
 ```tscl
 <script>
   import { form } from 'clarusjs/forms'
   import { json, request, resource } from 'clarusjs/fetch'
   let edit = state({ name: '', bio: '' })
+  let saving = state(false)
   const f = form(edit, {
     async submit(values) {
       const before = profile.value
       profile.mutate(values) // shown now
+      saving = true
       try {
         const saved = await request('/api/profile', { method: 'PUT', body: values })
         profile.mutate(saved)
@@ -161,6 +163,8 @@ The form starts from the saved profile, and the page shows the new values as soo
       } catch (e) {
         profile.mutate(before) // roll back
         if (e.data?.errors) return { errors: e.data.errors } // on their fields
+      } finally {
+        saving = false
       }
     },
   })
@@ -169,7 +173,7 @@ The form starts from the saved profile, and the page shows the new values as soo
 </script>
 
 <form [engine]="f">
-  <fieldset [disabled]="f.submitting">{{-- no edits while it saves: the answer would overwrite them --}}
+  <fieldset [disabled]="saving">{{-- no edits while it saves: the answer would overwrite them --}}
     <label>Name <input required [(value)]="edit.name"> <small data-cl-message></small></label>
   </fieldset>
   <button [disabled]="f.submitting || !f.dirty">Save</button>

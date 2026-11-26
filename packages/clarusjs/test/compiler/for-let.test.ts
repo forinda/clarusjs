@@ -88,3 +88,43 @@ test('an inner loop\'s $index indexing an outer loop\'s list is an error that na
 test('a nested loop over the same list may index it with its own $index', () => {
   expect(error(`<script>\n  let rows = state([1, 2])\n</script>\n@for (a of rows; track $index) {\n  @for (b of rows; track $index) {<i>{{ rows[$index] }}</i>}\n}\n`)).toBe('')
 })
+
+test('#588 review: track may use an alias of $index (the key is the same); an alias of $count and the like may not', async () => {
+  await mount(`<script>
+  let rows = state(['a', 'b'])
+</script>
+<ul>@for (row of rows; track at; let at = $index) {<li>{{ at }}{{ row }}</li>}</ul>
+<button (click)="rows = [...rows, 'c']">add</button>
+`, 'track-alias')
+  document.querySelector('button')!.click()
+  expect([...document.querySelectorAll('li')].map((l) => l.textContent)).toEqual(['0a', '1b', '2c'])
+  expect(error(`<script>\n  let rows = state([1])\n</script>\n@for (row of rows; track n; let n = $count) {<i>{{ row }}</i>}\n`)).toMatch(/track can use the item and \$index/)
+})
+
+test('#588 review: the guard ignores text in strings, and checks an inner loop’s track', () => {
+  const src = (inner: string, track = '$index') => `<script>
+  let order = state({ sections: [{ items: [{ id: 1 }] }] })
+</script>
+@for (section of order.sections; track $index) {
+  @for (item of section.items; track ${track}) {
+    ${inner}
+  }
+}
+`
+  expect(error(src(`<b>{{ 'order.sections[$index]' }}</b>`))).toBe('')
+  expect(error(src('<b>{{ item.id }}</b>', 'order.sections[$index].items.length'))).toMatch(/\$index here is the inner @for's/)
+})
+
+test('#589 review: rows of a table (the parser puts a <tbody> between a row’s markers) bind and show their own values', async () => {
+  await mount(`<script>
+  let rows = state(['a', 'b', 'c'])
+</script>
+<table>@for (row of rows; track $index) {<tr><td class="v">{{ row }}</td><td><input [(value)]="rows[$index]"></td></tr>}</table>
+<output>{{ rows.join(',') }}</output>
+`, 'table')
+  const inputs = [...document.querySelectorAll('input')] as HTMLInputElement[]
+  type(inputs[0]!, 'A')
+  type(inputs[2]!, 'C')
+  expect(document.querySelector('output')!.textContent).toBe('A,b,C')
+  expect([...document.querySelectorAll('.v')].map((c) => c.textContent)).toEqual(['A', 'b', 'C'])
+})

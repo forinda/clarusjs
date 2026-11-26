@@ -2411,6 +2411,11 @@ test('recipes: editing a profile shows the save at once; saved, it is the new st
   const save = box.getByRole('button', { name: /Save|Saving…/ })
   await expect(name).not.toHaveValue('') // loaded: the form starts from the profile
   await expect(save).toBeDisabled() // nothing changed yet
+  await name.fill('') // required: Save is refused, the field says why, nothing is sent
+  await save.click()
+  await expect(box.locator('[data-cl-message]')).not.toHaveText('')
+  await expect(name).toBeEnabled()
+  await expect(box.getByRole('status')).toHaveCount(0)
   const saved = `Grace ${Date.now() % 100000}`
   const release = await hold(page, '**/api/demo-profile**')
   await name.fill(saved)
