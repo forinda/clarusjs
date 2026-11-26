@@ -17,9 +17,17 @@ description: "A dialog that asks before something can't be undone."
 
 ## Source
 
-Copy it into `src/components/ui/` as `alert-dialog.tscl`.
+Copy it into `src/components/ui/` as `alert-dialog.tscl`. Or the Tailwind version (switch below): the same look in Tailwind utilities, `alert-dialog.tw.tscl` copied as `alert-dialog.tscl` with `alert-dialog.tw.css` beside it.
+
+<sourceFlavor name="alert-dialog">
 
 <<< ../../registry/alert-dialog.tscl
+
+<<< ../../registry/alert-dialog.tw.tscl
+
+<<< ../../registry/alert-dialog.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

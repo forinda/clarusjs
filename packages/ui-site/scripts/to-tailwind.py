@@ -48,9 +48,14 @@ WEIGHTS = {'400': 'font-normal', '500': 'font-medium', '600': 'font-semibold', '
 def font(v):
     v = v.strip()
     if v == 'inherit': return ['[font:inherit]']
-    m = re.fullmatch(r'(?:(\d00)\s+)?(calc\([^/]*?\)|var\((?:[^()]|\([^()]*\))*\)|[\d.]+px)(?:\s*/\s*([\d.]+))?\s+(.+)', v)
-    if not m: return [f'[font:{v.replace(" ", "_")}]']
-    w, sz, lh, fam = m.groups()
+    parts = split(v)  # [weight] size[/line-height] family, with calc()/var() kept whole
+    w = parts.pop(0) if parts and re.fullmatch(r'\d00', parts[0]) else None
+    if len(parts) < 2: return [f'[font:{v.replace(" ", "_")}]']
+    sz, fam = parts[0], ' '.join(parts[1:])
+    lh = None
+    if sz.endswith(')') is False and '/' in sz.rsplit(')', 1)[-1]:
+        head, _, lh = sz.rpartition('/')
+        sz = head
     out = [WEIGHTS.get(w, f'font-[{w}]') if w else 'font-normal', f'text-{typed("length", sz)}', f'leading-[{lh}]' if lh else 'leading-[normal]']  # Tailwind's leading-normal is 1.5, not CSS normal
     fm = re.fullmatch(r'var\((--[\w-]+)\)', fam.strip())
     out.append(f'font-(family-name:{fm.group(1)})' if fm else f'font-[{fam.replace(" ", "_")}]')
@@ -116,6 +121,22 @@ def utils(prop, v):
     elif prop == 'content': out = [f"content-[{v}]" if v not in ("''", '""') else "content-['']"]
     elif prop == 'accent-color': out = [f'accent-{typed("color", v)}']
     elif prop == 'appearance': out = [f'appearance-{v}']
+    elif prop == 'overflow' and v in ('hidden', 'auto', 'visible', 'scroll', 'clip'): out = [f'overflow-{v}']
+    elif prop == 'white-space' and v in ('nowrap', 'normal', 'pre', 'pre-wrap'): out = [f'whitespace-{v}']
+    elif prop == 'text-align': out = [f'text-{v}']
+    elif prop == 'list-style' and v == 'none': out = ['list-none']
+    elif prop == 'box-sizing': out = [f'box-{v.replace("-box", "")}']
+    elif prop == 'flex-shrink': out = [f'shrink-{v}' if v != '1' else 'shrink']
+    elif prop == 'max-height': out = ['max-h-none' if v == 'none' else size('max-h', v)]
+    elif prop == 'overflow-wrap' and v == 'anywhere': out = ['wrap-anywhere']
+    elif prop == 'background' and re.fullmatch(r'rgb\([^)]*\)', v): out = [f'bg-[{v.replace(" ", "_")}]']
+    elif prop == 'animation' and v == 'none': out = ['animate-none']
+    elif prop == 'animation': out = [f'animate-[{v.replace(" ", "_")}]']
+    elif prop == 'inset' and len(split(v)) == 4:
+        t, r, b, l = split(v)
+        out = [f'{side}-{x if x in ("0", "auto") else arg(x)}' for side, x in zip(('top', 'right', 'bottom', 'left'), (t, r, b, l))]
+    elif prop == 'border-left' and (m := re.fullmatch(r'(\d+)px\s+(solid)\s+(.+)', v)):
+        out = [f'border-l-{m.group(1)}', 'border-solid', f'border-l-{typed("color", m.group(3))}']
     else: out = [f'[{prop}:{v.replace(" ", "_")}]']
     return [u + '!' for u in out] if imp else out
 
@@ -132,7 +153,11 @@ src, out = sys.argv[1], sys.argv[2]
 text = open(src).read()
 if src.endswith('.tscl'): text = re.sub(r'(?m)^  ', '', re.search(r'<style global>\n([\s\S]*?)</style>', text).group(1))  # dedented
 text = re.sub(r'/\* The same rules as @clarusjs/ui.*?\*/\n', '', text)
+# @keyframes stay as they are (@apply isn't allowed in them): set aside, converted around, put back.
+frames = []
+text = re.sub(r'@keyframes [\w-]+\s*\{(?:[^{}]|\{[^{}]*\})*\}', lambda m: frames.append(m.group(0)) or f'@@frames{len(frames) - 1}@@', text)
 body = re.sub(r'([^{};]*?)\{([^{}]*)\}', rule, text)
+body = re.sub(r'@@frames(\d+)@@', lambda m: frames[int(m.group(1))], body)
 name = re.sub(r'\.(tw\.)?css$', '', out.split('/')[-1])
 head = f"""/*
   The Tailwind version of {name}'s styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.

@@ -62,7 +62,7 @@ const PARTS_PROPS = [...PROPS, 'outline-style', 'outline-color', 'outline-width'
 
 // A part's two stylesheets, each alone: the site bundles every component's <style global> on every page, so the parts'
 // markup is rendered in an empty page, once with their CSS rules, once with their Tailwind stylesheets compiled.
-const PARTS = ['checkbox', 'switch', 'radio-group', 'field', 'select', 'combobox', 'toggle']
+const PARTS = ['checkbox', 'switch', 'radio-group', 'field', 'select', 'combobox', 'toggle', 'dialog', 'sheet', 'alert-dialog', 'popover', 'tooltip', 'menu', 'toast']
 const registry = resolve(import.meta.dirname, '../src/registry')
 const cssOf = (name: string) => {
   const tscl = resolve(registry, `${name}.tscl`)
@@ -82,12 +82,17 @@ test('every part\'s Tailwind stylesheet computes the same styles as its CSS (eac
   const theme = readFileSync(resolve(import.meta.dirname, '../src/theme.css'), 'utf8')
   const styles = async (css: string) => {
     await page.setContent(`<!doctype html><html><head><style>${theme}</style><style>${css}</style></head><body>${markup}</body></html>`)
+    // Open every overlay: dialogs as modals (stacked), popovers as manual ones so opening one doesn't close another.
+    await page.evaluate(() => {
+      for (const d of document.querySelectorAll('dialog')) d.showModal()
+      for (const p of document.querySelectorAll<HTMLElement>('[popover]')) { p.popover = 'manual'; p.showPopover() }
+    })
     return page.locator('[data-sample]').evaluateAll((samples, props) => samples.flatMap((sample) => {
       const out: string[] = []
       const walk = (el: Element, path: string) => {
-        for (const pseudo of [null, '::after', '::before'] as const) {
+        for (const pseudo of [null, '::after', '::before', ...(el.matches('dialog, [popover]') ? ['::backdrop'] : [])]) {
           const s = getComputedStyle(el, pseudo)
-          if (pseudo && s.content === 'none') continue
+          if (pseudo && pseudo !== '::backdrop' && s.content === 'none') continue
           // The same look, written differently: Tailwind turns with rotate/translate (CSS here with transform), rounds
           // "full" with an infinite radius, puts four transparent rings before a shadow; no border has no colour.
           const v = (p: string) => s.getPropertyValue(p)
@@ -106,15 +111,20 @@ test('every part\'s Tailwind stylesheet computes the same styles as its CSS (eac
       return out
     }), PARTS_PROPS)
   }
-  const css = await styles(PARTS.map(cssOf).join('\n'))
-  const tw = await styles((await Promise.all(PARTS.map(tailwindOf))).join('\n'))
-  expect(tw.length).toBe(css.length)
-  const diffs = css.flatMap((line, i) => {
-    const [path, ...a] = line.split(' ')
-    const [, ...b] = tw[i]!.split(' ')
-    const av = a.join(' ').split(' | '), bv = b.join(' ').split(' | ')
-    return PARTS_PROPS.flatMap((p, k) => (av[k] === bv[k] ? [] : [`${path} ${p}: ${av[k]} ≠ ${bv[k]}`]))
-  })
+  // One part at a time: stylesheets repeat shared rules (sheet.css carries dialog's), so together a later copy would
+  // hide a difference in an earlier one.
+  const diffs: string[] = []
+  for (const part of PARTS) {
+    const css = await styles(cssOf(part))
+    const tw = await styles(await tailwindOf(part))
+    expect(tw.length, part).toBe(css.length)
+    diffs.push(...css.flatMap((line, i) => {
+      const [path, ...a] = line.split(' ')
+      const [, ...b] = tw[i]!.split(' ')
+      const av = a.join(' ').split(' | '), bv = b.join(' ').split(' | ')
+      return PARTS_PROPS.flatMap((p, k) => (av[k] === bv[k] ? [] : [`${part}.tw.css: ${path} ${p}: ${av[k]} ≠ ${bv[k]}`]))
+    }))
+  }
   expect(diffs).toEqual([])
 })
 
