@@ -9,7 +9,7 @@ description: "Use other components inside an island: nested islands get new prop
 
 <p class="lead">An island can use other components, including inside <code>@if</code> branches and <code>@for</code> rows.</p>
 
-- A component **without** a script is re-rendered in the browser when the props or content it gets from the island change.
+- A component **without** a script is re-rendered in the browser when the props it gets from the island change. The content the island puts in its slots is wired in place: a field being typed in there keeps its focus, and what reads the same state updates beside it.
 - A component **with** a script becomes its own island. When the island passes it new props, they reach it in place: its inputs update (and whatever reads them), while its own state stays. That holds when the island is used directly, as here; an island inside another component's markup (a script-less wrapper around it) is re-rendered with that component, and starts over.
 
 Inputs belong to the parent, so a component reads them and never writes them: assigning to one is a compile error, and `clarusjs check` reports changing anything inside one. To change a value locally, copy it: `let local = state(count)`.

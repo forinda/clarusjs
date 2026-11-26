@@ -1,0 +1,6 @@
+@input title: string = ''
+<section>
+  <h3>{{ title }}</h3>
+  <slot />
+  <footer><slot name="footer" /></footer>
+</section>

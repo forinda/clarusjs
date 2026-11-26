@@ -24,6 +24,7 @@ const parts: Record<string, string> = {
   wrapper: "<div class=\"wrap\"><slot /></div>\n",
   onlyEmitter: "@import emitter from './emitter.tscl'\n<emitter />\n",
   xbtn: "@extends button\n<script>\n  let c = state(0)\n</script>\n<button class=\"xb\" type=\"button\" [data-c]=\"c\" (click)=\"c++\">{{ c }}</button>\n",
+  titled: "@input title: string = ''\n<section><h3 class=\"t\">{{ title }}</h3><slot /></section>\n",
   emitter: "@event click: string\n<script>\n  function go(event) { emit('click', 'from-child', { event }) }\n</script>\n<button class=\"em\" (click)=\"go($event)\">e</button>\n",
 }
 let n = 0
@@ -253,3 +254,43 @@ test('#review: an @extends island kept in place takes the new passed attributes;
   expect($('.xb').hasAttribute('disabled')).toBe(false)
   expect($('.xb').getAttribute('title')).toBe('on')
 })
+
+// #523: content an island puts in a (script-less) component's slot is wired in place: typing in a field there keeps
+// the field (and its focus), and what reads the same state updates beside it. Only the component's own inputs
+// changing render it again.
+const type = (el: HTMLInputElement, text: string) => {
+  for (const ch of text) {
+    el.value += ch
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+}
+
+test('#523: typing in a field in a component\'s slot keeps that field; the text reading it updates in place', async () => {
+  await mount("<script>\n  let email = state('')\n</script>\n<wrapper><input class=\"em\" [(value)]=\"email\" /><p class=\"len\">{{ email.length }}</p></wrapper>\n")
+  const input = $('.em') as HTMLInputElement
+  input.focus()
+  type(input, 'ada')
+  expect($('.em')).toBe(input) // the same element, not a new one
+  expect(document.activeElement).toBe(input)
+  expect(input.value).toBe('ada')
+  expect($('.len').textContent).toBe('3')
+})
+
+test('#523: … and @if and @for in the slot follow the state in place too', async () => {
+  await mount("<script>\n  let items = state(['a'])\n  let on = state(false)\n</script>\n<wrapper><input class=\"keep\" /><button class=\"add\" (click)=\"items = [...items, 'b']; on = true\">+</button>@if (on) { <i class=\"on\">on</i> }<ul>@for (i of items; track i) { <li>{{ i }}</li> }</ul></wrapper>\n")
+  const kept = $('.keep')
+  click('.add')
+  expect($('.keep')).toBe(kept)
+  expect(document.querySelector('.on')).not.toBe(null)
+  expect([...document.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['a', 'b'])
+})
+
+test('#523: the component\'s own input changing still renders it again (its slot content wired anew)', async () => {
+  await mount("<script>\n  let name = state('x')\n</script>\n<titled [title]=\"name\"><button class=\"nm\" (click)=\"name = name + 'y'\">{{ name }}</button></titled>\n")
+  click('.nm')
+  expect($('.t').textContent).toBe('xy')
+  expect($('.nm').textContent).toBe('xy')
+  click('.nm') // wired again after the re-render
+  expect($('.t').textContent).toBe('xyy')
+})
+
