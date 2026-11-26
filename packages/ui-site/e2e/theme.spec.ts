@@ -298,3 +298,50 @@ test('/theme previews the dashboard block (a frame that follows each edit), then
   await page.getByLabel('Brand', { exact: true }).fill('#123456')
   await expect.poll(() => dash.locator('.dash').evaluate((el) => getComputedStyle(el).getPropertyValue('--ui-accent').trim())).toBe('#123456')
 })
+
+for (const [label, size] of [['desktop', { width: 1440, height: 700 }], ['phone', { width: 390, height: 700 }]] as const) {
+  test(`#rework: the Theme sheet keeps its header and footer in view while its controls scroll (${label})`, async ({ page }) => {
+    await page.setViewportSize(size)
+    await page.goto('/components/button')
+    await openSheet(page)
+    await openColours(page) // the longest the panel gets
+    const sheet = page.getByRole('dialog', { name: 'Theme' })
+    await sheet.locator('.tb-body').evaluate((el) => el.scrollTo(0, el.scrollHeight))
+    const inView = async (name: string, role: 'button' | 'heading') => {
+      const box = (await sheet.getByRole(role, { name, exact: true }).boundingBox())!
+      return box.y >= 0 && box.y + box.height <= size.height
+    }
+    expect(await inView('Theme', 'heading')).toBe(true)
+    expect(await inView('Close', 'button')).toBe(true)
+    for (const name of ['Copy CSS', 'Shuffle', 'Share link', 'Reset']) expect(await inView(name, 'button'), name).toBe(true)
+  })
+}
+
+test('#rework: the controls come in three labelled groups, Colours, Type and Shape; Close closes the sheet', async ({ page }) => {
+  await page.goto('/components/button')
+  await openSheet(page)
+  const sheet = page.getByRole('dialog', { name: 'Theme' })
+  for (const [group, has] of [['Colours', 'Brand'], ['Type', 'Body font'], ['Shape', 'Density']] as const) {
+    await expect(sheet.getByRole('group', { name: group, exact: true }).getByLabel(has, { exact: true })).toBeVisible()
+  }
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(sheet).toBeHidden()
+})
+
+test('#rework: Reset puts the default theme back from any preset, and forgets the saved one', async ({ page }) => {
+  await page.goto('/theme')
+  await openSheet(page)
+  await pickPreset(page, 'Indigo')
+  await page.getByRole('button', { name: 'Reset', exact: true }).click()
+  await expect(page.getByRole('button', { name: /^Preset/ })).toContainText('Teal')
+  expect(await page.evaluate(() => localStorage.getItem('ui-theme-source'))).toBeNull()
+})
+
+test('#rework: /theme puts Customize in its heading row, beside the title', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/theme')
+  const h1 = (await page.getByRole('heading', { level: 1, name: 'Theme' }).boundingBox())!
+  const button = (await page.getByRole('button', { name: 'Customize' }).boundingBox())!
+  expect(Math.abs(button.y + button.height / 2 - (h1.y + h1.height / 2))).toBeLessThan(24)
+  expect(button.x).toBeGreaterThan(h1.x + h1.width)
+})

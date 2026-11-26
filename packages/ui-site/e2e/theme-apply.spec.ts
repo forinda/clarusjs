@@ -16,14 +16,17 @@ test('saved theme: shows in demos from the first paint, not in the site chrome',
   expect(await page.locator('header a').first().evaluate((a) => getComputedStyle(a).color)).toBe(chrome)
 })
 
-test('saved theme: Reset to default theme removes it', async ({ page }) => {
+test('saved theme: no reset banner on pages; the Theme sheet\'s Reset removes the saved theme', async ({ page }) => {
   await page.addInitScript(([key, css]) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem(key, css); localStorage.setItem('ui-theme-source', 'teal~l!accent!%23ff0000'); sessionStorage.setItem('seeded', '1') } }, [STORAGE_KEY, red] as const)
   await page.goto('/components/button')
-  await page.getByRole('button', { name: 'Reset to default theme' }).click()
+  await expect(page.locator(demoButton).first()).toHaveCSS('background-color', 'rgb(255, 0, 0)')
+  await expect(page.getByRole('button', { name: 'Reset to default theme' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Theme', exact: true }).click()
+  await page.locator('.theme-builder[data-ready]').waitFor()
+  await page.getByRole('dialog', { name: 'Theme' }).getByRole('button', { name: 'Reset', exact: true }).click()
   await expect(page.locator(demoButton).first()).not.toHaveCSS('background-color', 'rgb(255, 0, 0)')
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBeNull()
   expect(await page.evaluate(() => localStorage.getItem('ui-theme-source'))).toBeNull()
-  await expect(page.getByRole('button', { name: 'Reset to default theme' })).toBeHidden()
 })
 
 test('saved theme: with storage blocked, pages render with no error', async ({ page }) => {

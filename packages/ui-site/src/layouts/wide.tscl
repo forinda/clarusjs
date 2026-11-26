@@ -1,6 +1,5 @@
 {{-- The site's layout without the sidebar, as wide as the screen allows: tool pages (/theme) and blocks. --}}
 @import site from '~/layouts/site.tscl'
-@import themeReset from '~/components/theme-reset.tscl'
 @import type { Heading } from '@clarusjs/theme-docs/nav.ts'
 @input title: string
 @input path: string = '/'
@@ -9,7 +8,7 @@
 
 <site [title]="title" [path]="path" [description]="description" [headings]="headings" [app]="true">
   <div class="wide-page">
-    <div class="wide-inner"><themeReset /><slot /></div>
+    <div class="wide-inner"><slot /></div>
   </div>
 </site>
 

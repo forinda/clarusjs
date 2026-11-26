@@ -18,11 +18,8 @@
       Theme
     }
     <p class="ts-lead">Every demo and block takes these at once. Saved in this browser.</p>
+    <span class="ts-close"><uiDialogClose target="theme-sheet"><icon name="lucide:x" /><span class="ts-hidden">Close</span></uiDialogClose></span>
     <themeBuilder attach="visible" />
-    <div class="ts-end">
-      <a href="/theme">Open the full preview</a>
-      <uiDialogClose target="theme-sheet">Done</uiDialogClose>
-    </div>
   </uiDialog>
 </span>
 
@@ -46,26 +43,19 @@
     border-color: var(--accent);
     color: var(--fg);
   }
+  /* Header (title, lead, close) and the builder's footer stay put; only the controls between them scroll. */
   #theme-sheet {
     width: min(360px, 100%);
-    padding: 16px;
+    max-height: 100dvh;
+    padding: 0;
+    overflow: hidden;
     background: var(--bg);
     color: var(--fg);
     font: 14px/1.5 var(--sans, system-ui);
   }
-  .ts-lead {
-    margin: 0 0 12px;
-    color: var(--muted);
-  }
-  .ts-end {
+  #theme-sheet[open] {
     display: flex;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 12px;
-  }
-  .ts-end a {
-    color: inherit;
+    flex-direction: column;
   }
   /* Edits show on the page at once: keep it in view, undimmed. */
   #theme-sheet::backdrop {
@@ -91,8 +81,47 @@
 <style global>
   /* Inside the trigger's and the dialog's own markup, which scoped rules don't reach. */
   #theme-sheet [data-part='title'] {
-    margin: 0 0 8px;
+    margin: 0;
+    padding: 16px 56px 6px 16px;
     font-size: 18px;
+  }
+  #theme-sheet .ts-lead {
+    margin: 0;
+    padding: 0 16px 12px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--muted);
+  }
+  #theme-sheet .ts-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+  #theme-sheet .ts-close [data-part='close'] {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+  }
+  #theme-sheet .ts-close [data-part='close']:hover {
+    border-color: var(--rule);
+  }
+  #theme-sheet .ts-close svg {
+    width: 18px;
+    height: 18px;
+  }
+  .ts-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   @media (max-width: 767px) {
     .ts-label {
