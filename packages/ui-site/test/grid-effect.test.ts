@@ -75,7 +75,7 @@ test('lean draws nothing until the pointer enters; redraws once per frame while 
 test('a touch pointer moves it the same way; the section gets touch-action: pan-y', () => {
   const { host, el } = setup()
   gridEffect(el, { effect: 'spotlight' })
-  expect(host.style.touchAction).toBe('pan-y')
+  expect(host.style.touchAction).toBe('pan-y pinch-zoom')
   fire(host, 'pointerenter', 10, 20, 'touch')
   fire(host, 'pointermove', 10, 20, 'touch')
   expect(el.style.getPropertyValue('--ui-grid-x')).toBe('10px')
@@ -107,5 +107,24 @@ test('inside its <cl-island> wrapper (display: contents) it listens on the secti
   gridEffect(el, { effect: 'spotlight' })
   fire(host, 'pointermove', 12, 34)
   expect(el.style.getPropertyValue('--ui-grid-x')).toBe('12px')
-  expect(host.style.touchAction).toBe('pan-y')
+  expect(host.style.touchAction).toBe('pan-y pinch-zoom')
+})
+
+test('#review: trail lays its cells in exactly the columns it counts, at any width (not only multiples of the cell)', () => {
+  const { host, el } = setup(500, 240) // 500 / 48: 11 columns, the last cut off
+  gridEffect(el, { effect: 'trail' })
+  fire(host, 'pointermove', 100, 60)
+  expect(el.style.gridTemplateColumns).toBe('repeat(11, 48px)')
+  const on = [...el.querySelectorAll('[data-cell]')].findIndex((c) => c.hasAttribute('data-on'))
+  expect(on).toBe(1 * 11 + 2)
+})
+
+test('#review: trail rebuilds its cells when the section gets taller at the same width', () => {
+  const { host, el } = setup(480, 96) // 2 rows
+  gridEffect(el, { effect: 'trail' })
+  fire(host, 'pointermove', 10, 10)
+  Object.defineProperty(el, 'clientHeight', { value: 480, configurable: true }) // 10 rows
+  fire(host, 'pointermove', 100, 300) // row 6
+  const on = [...el.querySelectorAll('[data-cell]')].findIndex((c) => c.hasAttribute('data-on'))
+  expect(on).toBe(6 * 10 + 2)
 })

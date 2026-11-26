@@ -20,6 +20,10 @@ export async function render(file: string, props: Record<string, unknown> = {}, 
   const { code } = compile(source(file), { file, target: 'server', clientUrl: '/x.js', collapseWhitespace: true, icon: (name) => resolveIcon(name, path) })
   // A component's own imports ('./chart-geometry.ts') resolve beside it: a data: URL has no folder of its own.
   const local = code.replace(/(from\s+)'\.\/([\w.-]+)'/g, (_, from, name) => `${from}'${pathToFileURL(resolve(registryDir, name)).href}'`)
+    // A ui-primitives part renders as a stand-in tag holding its slots (title first): enough to see what a component
+    // puts around and inside it. The parts' own markup is tested in @clarusjs/ui-primitives.
+    .replace(/(from\s+)'@clarusjs\/ui-primitives\/([\w-]+)\.tscl'/g, (_, from, name) => `${from}'data:text/javascript,${encodeURIComponent(
+      `export const render = (p, s) => "<${name}>" + (s?.title?.() ?? "") + (s?.default?.() ?? "") + "</${name}>"`)}'`) // no ' inside: encodeURIComponent keeps it
   const mod = await import(`data:text/javascript,${encodeURIComponent(local.replaceAll("'clarusjs/runtime/server'", `'${clarus('runtime/server.ts')}'`))}`)
   return unscoped(await mod.render(props, slots, opts))
 }

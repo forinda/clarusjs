@@ -1,0 +1,13 @@
+{{-- The cta-split section alone (the frame on /blocks/marketing/cta shows it). Out of the nav, search and the sitemap. --}}
+@import '~/theme.css'
+@import '~/view.css'
+@import ctaSplit from '~/registry/sections/cta/cta-split.tscl'
+
+<cl-head>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+</cl-head>
+
+<div data-ui-preview>
+  <ctaSplit />
+</div>

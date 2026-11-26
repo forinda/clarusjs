@@ -1,0 +1,64 @@
+{{-- Call to action, split: the headline and line on the left, the buttons on the right, in a framed band on grid
+     lines that bow toward the pointer (lean). Stacks on phones. Delete the <gridEffect> tag for no JavaScript. Its
+     words and links are in data.ts beside it. --}}
+@import uiButton from '~/components/ui/button.tscl'
+@import gridBackdrop from '~/components/ui/grid-backdrop.tscl'
+@import gridEffect from '~/components/ui/grid-effect.tscl'
+@import { cta } from './data.ts'
+
+<section class="cta">
+  <gridBackdrop />
+  <gridEffect effect="lean" />
+  <div class="band">
+    <div>
+      <h2>{{ cta.title }}</h2>
+      <p>{{ cta.line }}</p>
+    </div>
+    <div class="actions">
+      <uiButton size="lg" [href]="cta.primary.href">{{ cta.primary.label }}</uiButton>
+      <uiButton size="lg" variant="outline" [href]="cta.secondary.href">{{ cta.secondary.label }}</uiButton>
+    </div>
+  </div>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      padding: var(--ui-space-12) var(--ui-space-6);
+      overflow: hidden;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(.band) {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--ui-space-6);
+      padding: var(--ui-space-8);
+      border: 1px solid var(--ui-border);
+      border-radius: calc(var(--ui-radius) * 1.5);
+      background: color-mix(in oklab, var(--ui-card) 90%, transparent);
+    }
+    :where(h2) {
+      margin: 0 0 var(--ui-space-2);
+      font: 700 calc(var(--ui-font-size) * 1.75) / 1.15 var(--ui-font-heading);
+      letter-spacing: -0.02em;
+    }
+    :where(p) {
+      max-width: 48ch;
+      margin: 0;
+      color: var(--ui-muted);
+    }
+    :where(.actions) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--ui-space-3);
+    }
+  }
+</style>

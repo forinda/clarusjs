@@ -1,0 +1,61 @@
+{{-- FAQ in columns: every question with its answer showing, in two columns over ruled grid lines under a soft light
+     that follows the pointer (spotlight). Delete the <gridEffect> tag for no JavaScript. Its questions are in data.ts
+     beside it. --}}
+@import gridBackdrop from '~/components/ui/grid-backdrop.tscl'
+@import gridEffect from '~/components/ui/grid-effect.tscl'
+@import { faq, questions } from './data.ts'
+
+<section class="faq">
+  <gridBackdrop />
+  <gridEffect effect="spotlight" />
+  <h2>{{ faq.title }}</h2>
+  <dl>
+    @for (item of questions; track item.q) {
+      <div>
+        <dt>{{ item.q }}</dt>
+        <dd>{{ item.a }}</dd>
+      </div>
+    }
+  </dl>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      display: grid;
+      gap: var(--ui-space-8);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      overflow: hidden;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(h2), :where(dl) {
+      position: relative;
+      z-index: 1;
+    }
+    :where(h2) {
+      margin: 0;
+      text-align: center;
+      font: 700 calc(var(--ui-font-size) * 2) / 1.15 var(--ui-font-heading);
+      letter-spacing: -0.02em;
+    }
+    :where(dl) {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+      gap: var(--ui-space-8) var(--ui-space-10);
+      margin: 0;
+    }
+    :where(dt) {
+      margin-bottom: var(--ui-space-2);
+      font-weight: 600;
+    }
+    :where(dd) {
+      margin: 0;
+      line-height: 1.6;
+      color: var(--ui-muted);
+    }
+  }
+</style>

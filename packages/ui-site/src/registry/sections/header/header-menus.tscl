@@ -1,0 +1,54 @@
+{{--
+  Header with menus: the logo, a Products menu and links, Log in and Sign up; on phones a Menu button opens every
+  link in a sheet. Choosing a product goes to its href. Its brand, links and actions are in data.ts beside it.
+--}}
+@import uiButton from '~/components/ui/button.tscl'
+@import uiNavbar from '~/components/ui/navbar.tscl'
+@import '~/components/ui/menu.css'
+@import uiMenu from '@clarusjs/ui-primitives/menu.tscl'
+@import uiMenuTrigger from '@clarusjs/ui-primitives/menu-trigger.tscl'
+@import uiMenuList from '@clarusjs/ui-primitives/menu-list.tscl'
+@import uiMenuItem from '@clarusjs/ui-primitives/menu-item.tscl'
+@import { actions, brand, links, products } from './data.ts'
+
+<script>
+  const go = (href) => location.assign(href)
+</script>
+
+<uiNavbar menuId="header-menus-menu" aria-label="Site header" label="Site">
+  @slot('logo') {
+    <a class="brand" [href]="brand.href">{{ brand.name }}</a>
+  }
+  <uiMenu id="header-products" (select)="go($event)">
+    <uiMenuTrigger>Products</uiMenuTrigger>
+    <uiMenuList>
+      @for (p of products; track p.href) {
+        <uiMenuItem [value]="p.href">{{ p.label }}</uiMenuItem>
+      }
+    </uiMenuList>
+  </uiMenu>
+  @for (l of links; track l.href) {
+    <a [href]="l.href">{{ l.label }}</a>
+  }
+  @slot('actions') {
+    <uiButton variant="ghost" size="sm" [href]="actions.login.href">{{ actions.login.label }}</uiButton>
+    <uiButton size="sm" [href]="actions.signup.href">{{ actions.signup.label }}</uiButton>
+  }
+  @slot('mobile') {
+    @for (l of [...products, ...links, actions.login, actions.signup]; track l.href) {
+      <a [href]="l.href">{{ l.label }}</a>
+    }
+  }
+</uiNavbar>
+
+<style global>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where([data-part='navbar'] .brand) {
+      margin-inline-end: var(--ui-space-4);
+      font: 700 calc(var(--ui-font-size) * 1.15) var(--ui-font-heading);
+      color: var(--ui-fg);
+      text-decoration: none;
+    }
+  }
+</style>

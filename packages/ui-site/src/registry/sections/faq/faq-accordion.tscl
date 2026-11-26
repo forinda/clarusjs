@@ -1,0 +1,72 @@
+{{-- FAQ, accordion: a heading beside questions that open one at a time (native details, no JavaScript for them), under
+     a soft light that follows the pointer (spotlight). Delete the <gridEffect> tag for no JavaScript at all. Its
+     questions are in data.ts beside it. --}}
+@import uiAccordion from '~/components/ui/accordion.tscl'
+@import gridBackdrop from '~/components/ui/grid-backdrop.tscl'
+@import gridEffect from '~/components/ui/grid-effect.tscl'
+@import { faq, questions } from './data.ts'
+
+<section class="faq">
+  <gridBackdrop />
+  <gridEffect effect="spotlight" />
+  <header>
+    <h2>{{ faq.title }}</h2>
+    <p>{{ faq.line }}</p>
+  </header>
+  <div class="list">
+    @for (item of questions; track item.q) {
+      <uiAccordion group="faq-accordion">
+        @slot('trigger') {
+          {{ item.q }}
+        }
+        {{ item.a }}
+      </uiAccordion>
+    }
+  </div>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      display: grid;
+      gap: var(--ui-space-8);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      overflow: hidden;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    @media (min-width: 900px) {
+      :where(:scope) {
+        grid-template-columns: 1fr 2fr;
+        align-items: start;
+      }
+    }
+    :where(header), :where(.list) {
+      position: relative;
+      z-index: 1;
+    }
+    :where(header) {
+      display: grid;
+      gap: var(--ui-space-3);
+    }
+    :where(h2) {
+      margin: 0;
+      font: 700 calc(var(--ui-font-size) * 2) / 1.15 var(--ui-font-heading);
+      letter-spacing: -0.02em;
+    }
+    :where(header p) {
+      margin: 0;
+      color: var(--ui-muted);
+    }
+    :where(.list) {
+      display: grid;
+      gap: var(--ui-space-2);
+      padding: var(--ui-space-2);
+      border-radius: calc(var(--ui-radius) * 1.5);
+      background: color-mix(in oklab, var(--ui-bg) 85%, transparent);
+    }
+  }
+</style>

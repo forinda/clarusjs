@@ -62,6 +62,31 @@ test('copied files import only ui-primitives, clarusjs, their own files and thos
   }
 })
 
+test('the section versions the spec lists, each with its grid effect where it has one', () => {
+  const effect = (name: string) => /<gridEffect effect="(\w+)"/.exec(source(sections.find((e) => e.name === name)!.files[0]!))?.[1] ?? 'none'
+  const want: Record<string, string> = {
+    'hero-centred': 'none', 'hero-split': 'none', 'hero-grid': 'lean',
+    'header-menus': 'none', 'header-centred': 'none',
+    'features-columns': 'none', 'features-grid': 'spotlight', 'features-bento': 'trail',
+    'logo-cloud': 'trail', stats: 'trail',
+    'pricing-plans': 'spotlight', 'pricing-compare': 'spotlight',
+    'cta-centred': 'lean', 'cta-split': 'lean', 'testimonials-quote': 'none', 'testimonials-grid': 'none',
+    'faq-accordion': 'spotlight', 'faq-columns': 'spotlight', newsletter: 'none',
+    'footer-columns': 'none', 'footer-simple': 'none',
+  }
+  for (const [name, fx] of Object.entries(want)) {
+    expect(sections.some((e) => e.name === name), name).toBe(true)
+    expect(effect(name), name).toBe(fx)
+  }
+})
+
+test('pricing data: three plans, exactly one popular, each comparison row with a value per plan', async () => {
+  const { plans, comparison } = await import('../src/registry/sections/pricing/data.ts')
+  expect(plans).toHaveLength(3)
+  expect(plans.filter((p) => p.popular)).toHaveLength(1)
+  for (const g of comparison) for (const r of g.rows) expect(r.values, r.label).toHaveLength(plans.length)
+})
+
 test('every section kind with versions has src/pages/blocks/marketing/<kind>.md showing each version\'s files in Code order, and each version a view', () => {
   expect(sections.length).toBeGreaterThan(0)
   for (const kind of Object.keys(SECTION_KINDS) as SectionKind[]) {
@@ -348,6 +373,17 @@ test('every Styling section lists the component\'s state attributes', () => {
     const markup = source(f).replace(/<style[\s\S]*$/, '')
     for (const [, a] of markup.matchAll(/\[?(data-(?!part\b|cl-)[\w-]+)\]?=/g)) expect(styling(e.name), `${e.name}: ${a}`).toContain(`\`${a}\``)
   }
+})
+
+test('navbar: a header with the logo, a labelled <nav> of links and the actions, in that order; on phones a Menu button opens a sheet with the mobile links', async () => {
+  const html = await render('navbar.tscl', { label: 'Main' }, { logo: '<a href="/">Lumen</a>', default: '<a href="/docs">Docs</a>', actions: '<a href="/signup">Sign up</a>', mobile: '<a href="/docs">Docs (phone)</a>' })
+  expect(html).toMatch(/^<header data-part="navbar">/)
+  const at = (s: string) => html.indexOf(s)
+  expect(at('Lumen')).toBeLessThan(at('<nav aria-label="Main" data-part="navbar-links">'))
+  expect(at('<nav aria-label="Main" data-part="navbar-links">')).toBeLessThan(at('Sign up'))
+  expect(html).toContain('Menu')
+  expect(html).toContain('<nav aria-label="Main, menu">')
+  expect(html).toContain('Docs (phone)')
 })
 
 test('button: with href it renders <a> with the same data attributes', async () => {
