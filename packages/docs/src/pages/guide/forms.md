@@ -122,7 +122,8 @@ The same pieces scale: one state object for the whole form, sections as nested o
 - **Derived values** such as totals, errors or "has anything changed" are `derived()`. They recompute when the parts they read change, and nothing else does. Keep validation in a `.ts` module so the server can run the same rules.
 - **Text in, numbers out.** `[(value)]` writes the field's text, as the browser gives it. Convert where you compute (`Number(line.qty)`), or keep a number in state with `(input)="qty = $event.target.valueAsNumber"`.
 - **Sections as components.** A section with many fields can be its own component with an object `@model`: `<addressFields [(value)]="order.shipping" />`, where its fields bind `[(value)]="value.street"`. Each write replaces the section, which writes it back to the order.
-- **Submitting.** `(submit)="$event.preventDefault(); send(order)"` posts the one object as JSON. Server validation can return errors by field path, to show next to each field.
+- **Submitting.** `(submit.prevent)="send(order)"` posts the one object as JSON, and keeps the page where it is (`.prevent`: [Events](/guide/events#modifiers)). Without JavaScript the form still posts the usual way. Server validation can return errors by field path, to show next to each field.
+- **Unbound fields.** A form whose fields aren't bound one by one reads them on submit with `$values`: `(submit.prevent)="send($values)"` gets `{ email: '…', tags: ['a', 'b'] }`, by each field's `name`. A name used more than once gives a list, and the button that submitted counts, as when the form posts.
 
 A copy per keystroke is cheap: only the changed path is new, and the rest is shared. Even a form with hundreds of fields stays quick.
 

@@ -33,7 +33,7 @@ export const starters: Starter[] = [
   }
 </script>
 
-<form (submit)="$event.preventDefault(); add()">
+<form (submit.prevent)="add()">
   <input aria-label="New item" [(value)]="draft" placeholder="Add an item" />
   <button type="submit">Add</button>
 </form>

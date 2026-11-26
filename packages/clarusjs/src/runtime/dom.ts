@@ -364,7 +364,7 @@ export function text(hole: Hole, fn: () => unknown): void {
   })
 }
 
-type Handler = { fn: (e: Event) => void; ctx: Ctx }
+type Handler = { fn: (e: Event, el: Element) => void; ctx: Ctx }
 const registry = new WeakMap<Element, Map<string, Map<number, Handler[]>>>()
 // These don't bubble, so they are caught on the way down instead.
 const CAPTURE = new Set([
@@ -379,7 +379,7 @@ const CAPTURE = new Set([
  * for elements in that row.
  * @internal Compiled components call this; apps don't.
  */
-export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void): void {
+export function on(ctx: Ctx, index: number, type: string, fn: (e: Event, el: Element) => void): void {
   const root = rootOf(ctx)
   let types = registry.get(root)
   if (!types) registry.set(root, (types = new Map()))
@@ -392,7 +392,7 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void
       for (let el = e.target as Element | null; el && el !== root.parentElement; el = e.bubbles ? el.parentElement : null) {
         const i = el.getAttribute?.('data-cl-e')
         if (i === null || i === undefined || owner(el) !== root) continue
-        for (const h of [...(own.get(Number(i)) ?? [])]) if (inside(h.ctx, el)) h.fn(e)
+        for (const h of [...(own.get(Number(i)) ?? [])]) if (inside(h.ctx, el)) h.fn(e, el)
         if (e.cancelBubble) break
       }
     }, CAPTURE.has(type))
@@ -402,6 +402,23 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void
   const handler = { fn, ctx }
   list.push(handler)
   onDispose(() => { const at = list.indexOf(handler); if (at !== -1) list.splice(at, 1) }) // a removed branch or row stops listening
+}
+
+/**
+ * $values (#444): the fields of el's form (el itself, or the form it's in) as an object; a name used more than once
+ * (checkboxes) gives a list. A submit's button counts, as it does when the form posts.
+ * @internal Compiled handlers call this.
+ */
+export function values(el: Element, e?: Event): Record<string, unknown> {
+  const form = el instanceof HTMLFormElement ? el : (el as HTMLInputElement).form ?? el.closest('form')
+  const out: Record<string, unknown> = {}
+  if (!form) return out
+  const data = new FormData(form, (e as SubmitEvent | undefined)?.submitter)
+  for (const k of new Set(data.keys())) {
+    const all = data.getAll(k)
+    out[k] = all.length > 1 ? all : all[0]
+  }
+  return out
 }
 
 /**

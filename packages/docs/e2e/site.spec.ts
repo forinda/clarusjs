@@ -132,7 +132,7 @@ test('every sidebar link lands on a page, and the edit link points at its source
   await page.goto('/guide/what-is-clarusjs')
   for (const section of docSections) {
     await page.goto(section.href)
-    const hrefs = await page.locator('.sidebar ul a').evaluateAll((links) => links.map((a) => a.getAttribute('href')!))
+    const hrefs = await page.locator('.sidebar details[data-group] ul a').evaluateAll((links) => links.map((a) => a.getAttribute('href')!))
     expect(hrefs).toEqual(section.groups.flatMap((g) => g.items.map((i) => i.href)))
   }
   await page.goto('/guide/lists')
@@ -2710,4 +2710,33 @@ test('version badges: a feature says when it came; the heading id and contents l
   await expect(heading.locator('.version[data-version="since"]')).toHaveText('Since 0.16.0')
   const toc = page.locator('aside.toc a[href="#a-component-that-stands-for-an-element-extends"]')
   await expect(toc).toHaveText('A component that stands for an element: @extends')
+})
+
+test('#373: the version menu (a slot of the theme): the current version, release notes; no JavaScript needed', async ({ browser }) => {
+  const version = JSON.parse(readFileSync(new URL('../../clarusjs/package.json', import.meta.url), 'utf8')).version
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, javaScriptEnabled: false })
+  const page = await context.newPage()
+  await page.goto('/guide/lists')
+  const menu = page.locator('.sidebar .version-menu')
+  await expect(menu.locator('summary')).toHaveText(`v${version}`)
+  await expect(menu.getByRole('link', { name: 'Release notes' })).toBeHidden()
+  await menu.locator('summary').click()
+  await expect(menu.getByRole('link', { name: `v${version} (latest)` })).toHaveAttribute('aria-current', 'true')
+  await menu.getByRole('link', { name: 'Release notes' }).click()
+  await expect(page).toHaveURL(/\/releases$/)
+  await context.close()
+})
+
+test('#373: the phone drawer ends with the site\'s own links, those its links row doesn\'t have; not on a wide screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 })
+  await page.goto('/guide/lists')
+  await page.getByRole('button', { name: 'Open menu' }).click()
+  const drawer = page.locator('.sidebar')
+  await expect(drawer.locator('.version-menu summary')).toBeVisible()
+  const own = drawer.locator('.drawer-footer')
+  await expect(own.getByRole('link', { name: 'For AI agents' })).toBeVisible()
+  await expect(own.getByRole('link', { name: 'GitHub' })).toHaveCount(0) // already in the links row
+  await expect(own).toContainText('MIT licensed')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect(own).toBeHidden()
 })

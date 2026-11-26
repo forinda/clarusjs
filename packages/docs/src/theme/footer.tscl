@@ -3,15 +3,15 @@
   footer line from the config, and links for the project.
 --}}
 @import type { ThemeConfig } from '@clarusjs/theme-docs/nav.ts'
+@import { projectLinks } from './links.ts'
 @input config: ThemeConfig
 
 <footer class="site-footer site-footer-links">
   <slot>@if (config.footer) {<p>{{ config.footer }}</p>}</slot>
   <nav aria-label="Project">
-    <a href="https://github.com/forinda/clarusjs">GitHub</a>
-    <a href="https://www.npmjs.com/package/clarusjs">npm</a>
-    <a href="/releases">Releases</a>
-    <a href="/guide/ai-coding">For AI agents</a>
+    @for (link of projectLinks; track link.href) {
+      <a [href]="link.href">{{ link.label }}</a>
+    }
   </nav>
 </footer>
 

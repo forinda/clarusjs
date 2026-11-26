@@ -1,4 +1,4 @@
-{{-- Events, live: a custom event from a child island, keys, focus, and preventDefault on submit. --}}
+{{-- Events, live: a custom event from a child island, keys (.esc), focus, and a submit kept in the page (.prevent). --}}
 @import starRating from './star-rating.tscl'
 
 <script>
@@ -12,11 +12,11 @@
 
 <div class="event-demo">
   <starRating (rate)="rating = $event; add('rate: ' + $event + ' (' + $info.reason + ')')" />
-  <form (submit)="$event.preventDefault(); add('submit: ' + (note || '(empty)'))">
+  <form (submit.prevent)="add('submit: ' + (note || '(empty)'))">
     <input
       aria-label="Note"
       [(value)]="note"
-      (keydown)="$event.key === 'Escape' && (note = '')"
+      (keydown.esc)="note = ''"
       (focus)="add('focus')"
       (blur)="add('blur')"
       placeholder="Type, press Escape or Enter"
