@@ -1,0 +1,68 @@
+{{--
+  Grid effect: makes a <grid-backdrop> react to a pointer (mouse, pen or finger) over its section.
+    spotlight: a soft circle of stronger lines follows it; trail: the cells it crosses fill faintly and fade;
+    lean: lines near it bow toward it and their crossings swell into dots.
+  Put it beside <grid-backdrop>, inside the same positioned section. It listens on that section and ignores the pointer
+  itself, so what's on top still works. With prefers-reduced-motion, or before its script loads, the grid stays still.
+  The behaviour is grid-effect.ts beside it.
+--}}
+@input effect: 'spotlight' | 'trail' | 'lean' = 'spotlight'
+
+<script>
+  import { gridEffect } from './grid-effect.ts'
+  const wire = (el) => gridEffect(el, { effect })
+</script>
+
+<div data-part="grid-effect" [data-effect]="effect" aria-hidden="true" [use]="wire"></div>
+
+<style global>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where([data-part='grid-effect']) {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    :where([data-part='grid-effect'][data-effect='spotlight']) {
+      --ui-grid-line: color-mix(in oklab, var(--ui-fg) 55%, transparent);
+      background-image: linear-gradient(var(--ui-grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--ui-grid-line) 1px, transparent 1px);
+      background-size: var(--ui-grid-cell, 48px) var(--ui-grid-cell, 48px);
+      background-position: -1px -1px;
+      mask-image: radial-gradient(140px circle at var(--ui-grid-x, -999px) var(--ui-grid-y, -999px), #000, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    :where([data-part='grid-effect'][data-effect='spotlight'][data-active]) {
+      opacity: 1;
+    }
+    :where([data-part='grid-effect'][data-effect='trail']) {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, var(--ui-grid-cell, 48px));
+      grid-auto-rows: var(--ui-grid-cell, 48px);
+    }
+    :where([data-part='grid-effect'] [data-cell]) {
+      transition: background-color 1.1s ease-out;
+    }
+    :where([data-part='grid-effect'] [data-cell][data-on]) {
+      background-color: color-mix(in oklab, var(--ui-fg) 7%, transparent);
+      transition: none;
+    }
+    :where([data-part='grid-effect'][data-effect='lean']) {
+      mask-image: radial-gradient(ellipse at center, #000 55%, transparent 100%); /* fades at the edges, as the grid does */
+    }
+    :where([data-part='grid-effect'] svg) {
+      width: 100%;
+      height: 100%;
+    }
+    :where([data-part='grid-effect'] path) {
+      fill: none;
+      stroke: color-mix(in oklab, var(--ui-border) 70%, transparent);
+      stroke-width: 1;
+    }
+    :where([data-part='grid-effect'] circle) {
+      fill: var(--ui-muted);
+    }
+  }
+</style>

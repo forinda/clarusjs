@@ -83,6 +83,14 @@ test('entries with island: false compile to no client code', () => {
   }
 })
 
+test('grid-effect.ts: stripped and minified, at most 1536 bytes gzipped', async () => {
+  const { transformWithOxc, minify } = await import('vite')
+  const { gzipSync } = await import('node:zlib')
+  const js = (await transformWithOxc(source('grid-effect.ts'), 'grid-effect.ts')).code
+  const min = (await minify('grid-effect.js', js)).code
+  expect(gzipSync(min).length).toBeLessThanOrEqual(1536)
+})
+
 test('styles use only --ui-* custom properties', () => {
   for (const { file } of files) {
     for (const [, name] of source(file).matchAll(/var\(--([\w-]+)/g)) expect(name, file).toMatch(/^ui-/)
