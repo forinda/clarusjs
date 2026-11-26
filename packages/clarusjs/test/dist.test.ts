@@ -101,9 +101,11 @@ test('the clarusjs command is built, with a shebang', () => {
 // 3,788 / 15,104 B, and <script server> with @await (#430) 4,741 / 20,588 B: about 142,100 / 505,500 B together.
 // 160 / 580 KB: main is at 153,549 / 549,113 B (51 B and 3.8 KB of room) after the islands-in-islands and context work
 // (#465); the next framework changes (attributes on an @if root for ui.clarusjs.com's Button) no longer fit.
-test('size budget: the published package stays small (tarball 160 KB, unpacked 580 KB)', () => {
+// 170 KB tarball: main is at 163,501 B (339 B of room); event modifiers and $values (#444) add ~1.8 KB, and the layout
+// follow-ups (#472) more. Unpacked stays 580 KB (583,235 B on main).
+test('size budget: the published package stays small (tarball 170 KB, unpacked 580 KB)', () => {
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
-  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(160 * 1024)
+  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(170 * 1024)
   expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(580 * 1024)
 }, 30_000) // npm pack takes over 5 s when every package's tests run at once
 

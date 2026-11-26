@@ -15,13 +15,38 @@ description: "Handle DOM events in islands with (event), use $event, send events
   let note = state('')
 </script>
 <button (click)="count++">{{ count }}</button>
-<input (keydown)="$event.key === 'Enter' && save(note)" (input)="note = $event.target.value">
-<form (submit)="$event.preventDefault(); save(note)">…</form>
+<input (keydown.enter)="save(note)" (input)="note = $event.target.value">
+<form (submit.prevent)="save(note)">…</form>
 ```
 
 - **Any event:** `(click)`, `(input)`, `(keydown)`, `(submit)`, `(focus)`, `(mouseenter)`, `(toggle)` and custom names like `(rate)`.
 - **Typed:** `clarusjs check` types `$event` from the event name, a `KeyboardEvent` for `(keydown)` and a `SubmitEvent` for `(submit)`. `$event.target` is left loose, so `$event.target.value` reads without a cast.
-- **No modifiers:** call `$event.preventDefault()` or `$event.stopPropagation()` in the handler, and test keys with `$event.key`.
+- **Modifiers** after the name, like `(submit.prevent)` and `(keydown.enter)`: see [below](#modifiers).
+
+## Modifiers {since=0.17.0}
+
+A dot after the event's name adds a modifier. They run before the handler, in this order, whatever order you write them:
+
+| Modifier | What it does |
+|---|---|
+| a key: `.enter`, `.esc`, `.space`, `.tab`, `.up`, `.down`, `.left`, `.right`, `.delete`, `.backspace`, `.home`, `.end`, `.pageup`, `.pagedown`, or a letter or digit (`.s`) | Runs only for that key (any of them, when there are several). For `(keydown)` and `(keyup)` |
+| `.ctrl`, `.shift`, `.alt`, `.meta` | Runs only while that key is held: `(keydown.ctrl.s)` |
+| `.self` | Runs only when the event started on this element, not in a child |
+| `.once` | Runs the first time only |
+| `.prevent` | `$event.preventDefault()`: a form doesn't post, a link doesn't go |
+| `.stop` | `$event.stopPropagation()`: handlers further out don't hear it |
+
+```tscl
+<form (submit.prevent)="send($values)">…</form>
+<input (keydown.esc)="query = ''" (keydown.ctrl.enter.prevent)="search()">
+<div class="backdrop" (click.self)="close()">…</div>
+```
+
+An event a key or `.self` skips isn't prevented or stopped either. Modifiers are the island's: before its code has loaded, or without JavaScript, a form posts the usual way. A misspelled modifier, or a key on `(click)`, is an error where you wrote it.
+
+## $values {since=0.17.0}
+
+In a handler on a form, or on a field in one, `$values` is the form's fields as an object, by `name`: `{ email: 'a@b.c', tags: ['a', 'b'] }`. A name used more than once (checkboxes) gives a list, and for `(submit)` the button that submitted counts, as when the form posts. Use it for forms whose fields aren't bound one by one; `clarusjs check` types it as `Record<string, any>`.
 
 ## How it works
 
@@ -58,6 +83,7 @@ Inputs go down; events go up. A component declares what it sends with `@event`, 
 - An event goes to the parent island and stops there. It isn't a DOM event the page sees: a child's `(change)` is never confused with an `<input>`'s inside it.
 - `clarusjs check` checks both sides: the value `emit()` gets, and what the parent does with `$event`. A misspelled `(chnage)` is an error.
 - The parent must be an island (its handler runs in the browser), and the child too (it emits from its script).
+- Modifiers are for DOM events on elements: `(rate.prevent)` is an error. Use `$info.cancel()` to say no.
 
 The [forms demo](/guide/forms) uses both: the text fields send `(blur)`, and the languages combobox sends `(change)`, which the form cancels past three languages.
 

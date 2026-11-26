@@ -18,7 +18,7 @@
 </script>
 
 <div class="todo">
-  <form (submit)="$event.preventDefault(); add(); $event.target.reset()">
+  <form (submit.prevent)="add(); $event.target.reset()">
     <input
       name="item"
       (input)="draft = $event.target.value"

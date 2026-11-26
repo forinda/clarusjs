@@ -7,6 +7,7 @@ import { autoImport, type ComponentNames } from '../compiler/components.ts'
 import { parseExpressionAt } from 'acorn'
 import { routeFromFile } from '../server/handler.ts'
 import { ClarusError } from '../compiler/errors.ts'
+import { modifierError, splitEvent } from '../compiler/events.ts'
 import { FOR_IMPLICIT, parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
 import { providesIn, referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
@@ -430,7 +431,11 @@ export function generateTs(source: string, file: string, options: { loader?: str
           else if (a.kind === 'interp') {
             for (const p of a.parts) if (typeof p !== 'string') use(p.expr, p.start + 2)
           } else if (a.kind === 'event') {
-            emit(`  ;(($event: __cl_Event<${JSON.stringify(a.name)}, __cl_El<${JSON.stringify(node.tag.toLowerCase())}>>) => { `)
+            // (type.mods) (#444): $event is the type's; $values, the form's fields.
+            const { type, mods } = splitEvent(a.name)
+            const wrong = modifierError(type, mods)
+            if (wrong) throw new ClarusError(wrong, file, source, a.start)
+            emit(`  ;(($event: __cl_Event<${JSON.stringify(type)}, __cl_El<${JSON.stringify(node.tag.toLowerCase())}>>, $values: Record<string, any>) => { `)
             guarded()
             emit('{ ')
             copy(a.expr, at(a.expr, attrValueStart(a)))

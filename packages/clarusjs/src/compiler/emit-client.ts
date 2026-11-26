@@ -1,4 +1,5 @@
 // IR → client module: `attach(root, props)`. Runs in the browser, only for stateful components.
+import { guardCode } from './events.ts'
 import type { ComponentIR, IRNode } from './ir.ts'
 import { FOR_IMPLICIT } from './parse.ts'
 import { attrValueExpr, componentCall, htmlExpr, tagArg, walk, whichExpr, type Rewriter, rowNames, rowParams, rowDerived } from './html-expr.ts'
@@ -22,6 +23,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     hasHoles && 'holes as __cl_holes',
     hasHoles && 'text as __cl_text',
     ir.events.length > 0 && 'on as __cl_on',
+    ir.events.some((e) => /\$values\b/.test(e.handler)) && 'values as __cl_values',
     all.some((n) => n.kind === 'attr' && n.reactive && n.name !== '...') && 'attr as __cl_attr',
     all.some((n) => n.kind === 'attr' && n.reactive && n.name === '...') && 'spread as __cl_spread',
     hasBlocks && 'block as __cl_block',
@@ -122,9 +124,13 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
     if (a.kind === 'use') lines.push(`__cl_useOn(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)
   }
   for (const e of ir.events.filter((ev) => ev.scope === scope)) {
-    const body = rewriteClient(e.handler, signals).trim()
+    let body = rewriteClient(e.handler, signals).trim()
+    // $values (#444): values() in runtime/dom.ts, unless the handler declares its own.
+    if (/\$values\b/.test(e.handler) && !/\b(?:const|let|var)\s+\$values\b/.test(e.handler)) body = `const $values = __cl_values(__cl_el, $event); ${body}`
+    const guard = guardCode(e.mods ?? [])
     const end = body.includes('//') ? '\n  ' : ' ' // a trailing line comment must not swallow the closing `})`
-    lines.push(`__cl_on(${ctx}, ${e.index}, ${JSON.stringify(e.type)}, ($event) => { ${body}${end}})`)
+    const fn = `(${/__cl_el\b/.test(guard + body) ? '$event, __cl_el' : '$event'}) => { ${guard}${body}${end}}`
+    lines.push(`__cl_on(${ctx}, ${e.index}, ${JSON.stringify(e.type)}, ${e.mods?.some((m) => m.toLowerCase() === 'once') ? `((__cl_done) => ${fn})(false)` : fn})`)
   }
   const fn = (args: string, inner: string[]) =>
     inner.length ? `(${args}) => {\n${inner.map((l) => `      ${l}`).join('\n')}\n    }` : `(${args}) => {}`

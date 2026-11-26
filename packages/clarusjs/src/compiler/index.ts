@@ -68,10 +68,17 @@ export type CompileResult = { code: string; stateful: boolean; css: string; warn
  */
 export function compile(source: string, options: CompileOptions): CompileResult {
   const parsed = parse(source, options.file)
+  // An island page (#472): its layouts go around the island, not inside it.
+  if (options.layouts?.length && parsed.layout !== 'none' && (parsed.script || parsed.inputs.some((i) => i.model))) return compileIslandPage(parsed, source, options)
+  return compileParsed(parsed, source, options)
+}
+
+/** compile(), from the parsed template. */
+function compileParsed(parsed: ReturnType<typeof parse>, source: string, options: CompileOptions): CompileResult {
   checkExtends(parsed, options.file, source)
   const fragmentRoot = unwrapFragments(parsed, options.file, source)
   if (options.components) autoImport(parsed, options.components, options.file, source)
-  if (options.layouts?.length && parsed.layout !== 'none') wrapInLayouts(parsed, options.layouts, options.file, source)
+  if (options.layouts?.length && parsed.layout !== 'none') wrapInLayouts(parsed, options.layouts)
   const warnings: ClarusError[] = []
   // Every component's top-level elements carry its scope class, styled or not: a parent's scope then takes in a
   // child's top-level element and stops inside it.
@@ -293,12 +300,7 @@ function markRoots(nodes: TemplateNode[], cls: string, components: Set<string>, 
  * next, the page's own nodes innermost, so they keep their places and a top-level @slot fill goes to the innermost
  * layout. Each layout gets the route's path and params from the render options.
  */
-function wrapInLayouts(parsed: ReturnType<typeof parse>, layouts: string[], file: string, source: string): void {
-  // ponytail: not around an island page: the layout would be inside the island (re-rendered in the browser, with its
-  // <html>). Lift it by rendering layouts around the island's output instead.
-  if (parsed.script || parsed.inputs.some((i) => i.model)) {
-    throw new ClarusError('this page is an island (it has a <script> or a @model input), and folder or config layouts can\'t wrap an island yet: move the script into a component the page uses, or add @layout none', file, source, 0)
-  }
+function wrapInLayouts(parsed: ReturnType<typeof parse>, layouts: string[]): void {
   let nodes = parsed.nodes
   for (let k = layouts.length - 1; k >= 0; k--) {
     const name = `__cl_layout_${k}`
@@ -310,4 +312,34 @@ function wrapInLayouts(parsed: ReturnType<typeof parse>, layouts: string[], file
     nodes = [{ type: 'element', tag: name, attrs, children: nodes, start: 0 }]
   }
   parsed.nodes = nodes
+}
+
+const SELF = '\0clarusjs-page'
+
+/**
+ * An island page with layouts (#472): the page compiles as it is (the island; the browser's module is just that), and
+ * its server module renders the layouts around it, passing it the page's props. The layouts stay server HTML, outside
+ * the island. Its fills for the layouts' slots would be inside the island, so it can't have any.
+ */
+function compileIslandPage(parsed: ReturnType<typeof parse>, source: string, options: CompileOptions): CompileResult {
+  const fill = parsed.nodes.find((n) => n.type === 'fill')
+  if (fill) throw new ClarusError("this island page can't fill its layouts' slots: its content is inside the island (put it in the layout, or move the script into a component the page uses)", options.file, source, fill.start)
+  if (options.renderImports) throw new ClarusError('this page is an island (it has a <script> or a @model input), and its layouts are rendered in the browser here (a client route): make the route static or server, move the script into a component the page uses, or add @layout none', options.file, source, 0)
+  const page = compileParsed(parsed, source, { ...options, layouts: undefined })
+  if (options.target === 'client') return page
+  const outer = parse('', options.file)
+  outer.imports.push({ name: '__cl_page', from: SELF, start: 0 })
+  outer.nodes = [{ type: 'element', tag: '__cl_page', attrs: [{ kind: 'prop', name: '...', expr: '__cl_props', start: 0 }], children: [], start: 0 }]
+  wrapInLayouts(outer, options.layouts!)
+  const wrapper = compileParsed(outer, '', { ...options, layouts: undefined, loader: undefined })
+  // One module: the page's render under another name, and the wrapper's as the module's render.
+  const inner = page.code.replace(/^export (async )?function render\(/m, '$1function __cl_page_render(')
+  const [innerHead, ...innerRest] = inner.split('\n')
+  const [outerHead, ...outerRest] = wrapper.code.split('\n')
+  const names = (line: string) => /\{(.*)\}/.exec(line)![1]!.split(',').map((x) => x.trim()).filter(Boolean)
+  const runtime = `import { ${[...new Set([...names(innerHead!), ...names(outerHead!)])].join(', ')} } from 'clarusjs/runtime/server'`
+  const selfImport = outerRest.findIndex((l) => l.endsWith(` from '${SELF}'`))
+  const self = /render as (\w+)/.exec(outerRest[selfImport]!)![1]
+  outerRest.splice(selfImport, 1, `const ${self} = __cl_page_render`)
+  return { code: [runtime, ...innerRest, ...outerRest].join('\n'), stateful: page.stateful, css: page.css, warnings: [...page.warnings, ...wrapper.warnings] }
 }

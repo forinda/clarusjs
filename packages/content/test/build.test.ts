@@ -26,3 +26,23 @@ test('Markdown pages build to static HTML in their layout, with components, styl
   // The layout's imported stylesheet and the component styles are linked.
   expect(html).toMatch(/<link rel="stylesheet" href="\/assets\/[^"]*base-[\w-]+\.css"><link rel="stylesheet" href="\/assets\/cl-styles-/)
 }, 120_000)
+
+// #472: a Markdown page with no layout of its own gets its folder layouts (+layout.tscl), like a .tscl page; frontmatter
+// layout: false renders it with no layout at all.
+test('Markdown pages without a layout of their own get their folder layouts; layout: false, none', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'clarusjs-content-'))
+  const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
+  w('src/pages/+layout.tscl', '<div class="site"><slot /></div>\n')
+  w('src/pages/notes/+layout.tscl', '<article class="notes"><slot /></article>\n')
+  w('src/pages/notes/one.md', '# One\n')
+  w('src/pages/notes/bare.md', '---\nlayout: false\n---\n# Bare\n')
+  mkdirSync(resolve(root, 'node_modules'))
+  symlinkSync(resolve(import.meta.dirname, '../../clarusjs'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ sources: [markdown()] })] })).buildApp()
+  const read = (route: string) => readFileSync(resolve(root, `dist/client/${route}/index.html`), 'utf8').replace(/ ?cl-c-[\w-]+/g, '').replace(/ class=""/g, '')
+  expect(read('notes/one')).toContain('<div class="site"><article class="notes"><h1 id="one" tabindex="-1">One</h1>')
+  const bare = read('notes/bare')
+  expect(bare).toContain('<h1 id="bare" tabindex="-1">Bare</h1>')
+  expect(bare).not.toContain('class="site"')
+  expect(bare).not.toContain('class="notes"')
+}, 120_000)
