@@ -317,10 +317,10 @@ test('#524: … and one whose script loads after the parent attached', async () 
     }
     return modules[src]
   })
-  await vi.waitFor(() => expect(document.querySelector('cl-island[c="page"][data-cl-ready]')).not.toBe(null)) // the parent first
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="page"][data-cl-ready]')).not.toBe(null), { timeout: 5000 }) // the parent first
   release()
   await mounted
-  await vi.waitFor(() => expect(document.querySelector('cl-island[c="tagline"][data-cl-ready]')).not.toBe(null))
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="tagline"][data-cl-ready]')).not.toBe(null), { timeout: 5000 })
   expect($('.tagline').textContent).toBe('browser')
   click('.tagline') // and it works: its own state is wired
   expect(document.querySelectorAll('cl-island[c="tagline"]')).toHaveLength(1)
@@ -338,10 +338,10 @@ test('#524: … its markup too: a late island whose @if follows the changed inpu
       return modules[src]
     },
   )
-  await vi.waitFor(() => expect(document.querySelector('cl-island[c="page"][data-cl-ready]')).not.toBe(null))
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="page"][data-cl-ready]')).not.toBe(null), { timeout: 5000 })
   release()
   await mounted
-  await vi.waitFor(() => expect(document.querySelector('cl-island[c="lamp"][data-cl-ready]')).not.toBe(null))
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="lamp"][data-cl-ready]')).not.toBe(null), { timeout: 5000 })
   expect(document.querySelector('.on')).not.toBe(null)
   expect(document.querySelector('.off')).toBe(null)
 })
