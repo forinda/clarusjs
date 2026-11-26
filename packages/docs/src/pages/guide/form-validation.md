@@ -100,6 +100,8 @@ To edit a record, start the form from it. From a page's `.load.ts`, the island g
 
 `f.changed(path)` then compares with the record, and `f.reset()` goes back to it. When the record arrives later (fetched in the browser) or is saved and reloaded, `f.reset(record)` sets it as the values and the new starting point, with touched and errors cleared.
 
+Saving it with the page showing the new values at once, and going back if the save fails, is a recipe: [Editing a profile: save, or roll back](/guide/fetching-recipes#editing-a-profile-save-or-roll-back).
+
 ## Type checking
 
 `clarusjs check` (and the editor) checks the paths you give the form: `f.error('customer.emial')` is an error that lists the paths there are. `[engine]` must be given a form.
