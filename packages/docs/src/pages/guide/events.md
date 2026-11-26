@@ -48,6 +48,16 @@ An event a key or `.self` skips isn't prevented or stopped either. Modifiers are
 
 In a handler on a form, or on a field in one, `$values` is the form's fields as an object, by `name`: `{ email: 'a@b.c', tags: ['a', 'b'] }`. A name used more than once (checkboxes) gives a list, and for `(submit)` the button that submitted counts, as when the form posts. Use it for forms whose fields aren't bound one by one; `clarusjs check` types it as `Record<string, any>`.
 
+## Async handlers
+
+A handler may call an `async` function, but nothing waits for it: the island doesn't know it's running, and if it fails, the browser reports an unhandled rejection. For a call from a button (save, delete, like), use [`action()`](/guide/fetching#actions-save-delete-like): `pending` while it runs, `error` when it fails (its `run()` never rejects), and a second click joins the first instead of sending it twice.
+
+```tscl
+<button (click)="remove.run(post.id)" [disabled]="remove.pending">Delete</button>
+```
+
+For several calls at once, one per row, and a change shown before the server answers, see [optimistic updates](/guide/fetching-recipes#a-feed-posts-and-likes-optimistic).
+
 ## How it works
 
 Handlers are delegated: an island listens once per event type on its own element, and finds the handler for the element the event came from. Events that don't bubble, like `focus`, `blur`, `mouseenter` and `toggle`, are caught on the way down. So handlers inside `@if` branches and `@for` rows work as they appear and disappear, at no cost per row.

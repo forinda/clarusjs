@@ -26,6 +26,11 @@ const dotted = (path: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
  * `@name…` is a component's @model `name`: its path is the island's data-cl-path-name (set by the parent binding it),
  * and the walk goes on from that island.
  */
+/** Equal plain values, compared through objects and arrays: a form typed into and back is not dirty. */
+const same = (a: unknown, b: unknown): boolean =>
+  a === b || (!!a && !!b && typeof a === 'object' && typeof b === 'object' && Object.keys(a).length === Object.keys(b).length &&
+    Object.keys(a).every((k) => same((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])))
+
 function pathOf(field: Element, root: Element): string {
   const parts: string[] = []
   // Inside an island's slot range (#465), the elements up to and including that island are its own, not the path's:
@@ -296,6 +301,8 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     },
     touched(path) { version.get(); return touchedPaths.has(path) },
     changed(path) { return read(signal.get(), path) !== read(initial, path) },
+    get dirty() { return !same(signal.get(), initial) },
+    shown(path) { version.get(); return shown(path) },
     get valid() { version.get(); return !Object.keys(errorsNow).length },
     get pending() { return pending.get() },
     setErrors(errors) { server = { ...errors }; for (const path of Object.keys(errors)) forced.add(path); refresh() },
@@ -404,7 +411,7 @@ export function connect(ctx: Ctx, index: number, get: () => Form<any>): void {
 /** A form while rendering on the server: nothing to show yet. */
 function inert<T>(): Form<T> {
   return {
-    error: () => '', errors: [], touched: () => false, changed: () => false, valid: true, pending: false,
+    error: () => '', errors: [], touched: () => false, changed: () => false, dirty: false, shown: () => false, valid: true, pending: false,
     setErrors() {}, focus() {}, reset() {}, step: '', steps: [], next: async () => false, back() {}, go() {},
     submitting: false, submit: async () => false,
   }

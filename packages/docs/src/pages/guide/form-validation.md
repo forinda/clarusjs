@@ -46,7 +46,9 @@ Give the message element its space even when it's empty, so a message appearing 
 
 By default a field's error appears once the field has been left (`show: 'blur'`), and then updates as it's typed in, not on the first keystroke. `show: 'input'` shows them while typing; `show: 'submit'` waits for the first submit. "Next" and submit show the errors they check regardless.
 
-`f.touched(path)` (left once) and `f.changed(path)` (differs from the starting value) are there for your own styling.
+`f.touched(path)` (left once) and `f.changed(path)` (differs from the starting value) are there for your own styling. `f.dirty` is the whole form differing from its start, compared by value, so a field typed into and back is clean again: for an "unsaved changes" note, or a confirm before leaving.
+
+A field that shows its own error (a component, a custom control) asks `f.shown(path)`: whether that field's error shows now, by the same rule. `f.error(path)` already returns `''` until then; `shown` is for the field's other states, such as a red border only once the error is shown.
 
 ## Steps
 
@@ -97,6 +99,8 @@ To edit a record, start the form from it. From a page's `.load.ts`, the island g
 ```
 
 `f.changed(path)` then compares with the record, and `f.reset()` goes back to it. When the record arrives later (fetched in the browser) or is saved and reloaded, `f.reset(record)` sets it as the values and the new starting point, with touched and errors cleared.
+
+Saving it with the page showing the new values at once, and going back if the save fails, is a recipe: [Editing a profile: save, or roll back](/guide/fetching-recipes#editing-a-profile-save-or-roll-back).
 
 ## Type checking
 
