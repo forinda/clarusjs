@@ -472,3 +472,11 @@ test('#review: check agrees with compile on fragment roots: beside <cl-head>, in
     expect.stringMatching(/^src\/pages\/index\.tscl:5:7 .*'class' does not exist/),
   ])
 })
+
+test('#594 review: a script error that mentions @input doesn\'t make tolerant recovery blank a valid @input', async () => {
+  const { generateTolerant } = await import('../../src/check/generate.ts')
+  const src = '@input n: number\n<script>\n  let x: number = n\n</script>\n<p>{{ x }}</p>\n'
+  const { result, errors } = generateTolerant(src, 'x.tscl')
+  expect(errors).toEqual([expect.objectContaining({ message: expect.stringMatching(/^TypeScript syntax in a <script>.*a type annotation/) })])
+  expect(result!.code).toMatch(/\bn: number/) // the input is still there
+})

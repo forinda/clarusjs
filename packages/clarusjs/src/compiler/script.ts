@@ -1,5 +1,5 @@
 // <script> analysis and signal rewrites. Reads `count` → `count.get()`, writes `count++` → `count.set(count.get() + 1)`.
-import { parse as acornParse, parseExpressionAt } from 'acorn'
+import { tokenizer, parse as acornParse, parseExpressionAt } from 'acorn'
 import { FOR_IMPLICIT } from './parse.ts'
 import { ClarusError } from './errors.ts'
 
@@ -52,13 +52,85 @@ function print(node: N, code: string, hook: Hook, parent: N | null = null, key =
   return out + code.slice(pos, node.end)
 }
 
+// #432: a <script> is JavaScript (acorn), while clarusjs check reads it with TypeScript: TypeScript-only syntax is an
+// error here, named, so the build, dev and check agree. Types come from @input, inference, and the .ts modules it imports.
+const TS = 'TypeScript syntax in a <script> (scripts are JavaScript): '
+const TS_WHERE = '. Types come from @input, inference, and the .ts modules a script imports'
+
+/** What TypeScript construct starts where acorn stopped (`pos`), if it looks like one. */
+function typescriptAt(code: string, pos: number): string | null {
+  const before = code.slice(0, pos).trimEnd()
+  const at = code.slice(pos)
+  if (/^as\s/.test(at) && /[\w$)\]]$/.test(before)) return 'an as cast'
+  if (/^satisfies\s/.test(at)) return 'a satisfies check'
+  if (/^!(?!=)/.test(at) && /[\w$)\]]$/.test(before)) return 'a non-null assertion (!)'
+  if (/^:/.test(at) && /[\w$)\]]$/.test(before)) return 'a type annotation'
+  if (/(^|[\n;{}])\s*(interface|enum)\s*$/.test(before) || /(^|[\n;{}])\s*(interface|enum|type\s+[\w$]+\s*[=<])/.test(code.slice(code.lastIndexOf('\n', pos - 1) + 1, pos + 40))) return 'a type declaration'
+  if (/^</.test(at) && /\bfunction\s+[\w$]+$|[\w$]$/.test(before)) return 'type parameters (<T>)'
+  if (/<[^<>]*>\s*\(?$/.test(before)) return 'a type argument (<…>)'
+  return null
+}
+
+// Tokens that may stand between a type argument's < and >: names, literals and type punctuation, not operators.
+const TYPE_TOKENS = new Set(['name', 'string', 'num', ',', '.', '[', ']', '{', '}', ':', '?', '|', '&', '=>', '(', ')', 'true', 'false', 'null', 'void', 'typeof', 'new', '...'])
+
+/**
+ * A type argument written in JavaScript (#432): a name touching a `<`, type tokens, the matching `>` (a `>>` closes
+ * two), then `(`. f<T>(x) is f < T > (x) here; spaced comparisons (a < b), and strings and regexes (tokens of their
+ * own), never match. Where it starts and how it reads, or null.
+ */
+function typeArgumentIn(code: string): { start: number; text: string; what: string; comparison: string } | null {
+  let tokens: { type: { label: string }; value?: unknown; start: number; end: number }[]
+  try { tokens = [...tokenizer(code, OPTS)] as typeof tokens } catch { return null } // not even tokens: acorn says why
+  for (let i = 1; i < tokens.length; i++) {
+    const lt = tokens[i]!
+    const name = tokens[i - 1]!
+    if (lt.value !== '<' || name.type.label !== 'name' || name.end !== lt.start) continue
+    let depth = 1
+    let j = i + 1
+    for (; j < tokens.length && depth > 0; j++) {
+      const t = tokens[j]!
+      if (t.value === '<') depth++
+      else if (t.value === '>') depth--
+      else if (t.value === '>>') depth -= 2
+      else if (t.value === '>>>') depth -= 3
+      else if (!TYPE_TOKENS.has(t.type.label) && t.type.label !== 'keyof') break
+      if (depth < 0) break
+    }
+    if (depth !== 0 || tokens[j]?.type.label !== '(') continue
+    let k = i - 1 // back over a member chain: api.get<T>(…)
+    while (k >= 2 && tokens[k - 1]!.type.label === '.' && tokens[k - 2]!.type.label === 'name') k -= 2
+    // function f<T>(x) declares type parameters; anything else passes a type argument.
+    const what = tokens[k - 1]?.type.label === 'function' ? 'type parameters' : 'a type argument'
+    // a<b>(c) is valid JavaScript too (two comparisons), so say how to write the comparison both read alike. Only for
+    // a plain name between the brackets: a<Map<K, V>>(c) is no comparison anyone meant.
+    const between = code.slice(lt.end, tokens[j - 1]!.start).trim()
+    let p = j + 1
+    for (let open = 1; p < tokens.length && open; p++) open += tokens[p]!.type.label === '(' ? 1 : tokens[p]!.type.label === ')' ? -1 : 0
+    const inside = code.slice(tokens[j]!.end, tokens[p - 1]!.start).trim()
+    const comparison = /^[\w$.]+$/.test(between) && tokens[j - 1]!.value === '>' ? `(${code.slice(tokens[k]!.start, lt.start)} < ${between}) > ${inside.includes(',') ? `(${inside})` : inside}` : ''
+    return { start: tokens[k]!.start, text: `${code.slice(tokens[k]!.start, tokens[j - 1]!.end)}(…)`, what, comparison }
+  }
+  return null
+}
+
 function parseScript(code: string, file = '<script>', source = code, offset = 0): N {
+  // Valid JavaScript or not (f<A, B>(x) in an arrow's body, new Map<K, V>()), a type argument is named first.
+  const arg = typeArgumentIn(code)
+  if (arg) throw new ClarusError(`${TS}${arg.what}, ${arg.text}${TS_WHERE}${arg.comparison ? ` (for a comparison, add parentheses: ${arg.comparison})` : ''}`, file, source, offset + arg.start)
   try {
     return acornParse(code, OPTS) as unknown as N
   } catch (e) {
     const pos = (e as { pos?: number }).pos ?? 0
+    const ts = typescriptAt(code, pos)
+    if (ts) throw new ClarusError(TS + ts + TS_WHERE, file, source, offset + pos)
     throw new ClarusError(`script: ${(e as Error).message.replace(/ \(\d+:\d+\)$/, '')}`, file, source, offset + pos)
   }
+}
+
+/** Throw a located ClarusError for a script that isn't JavaScript (#432): what clarusjs check runs before reading it. */
+export function checkScript(code: string, file: string, source: string, offset: number): void {
+  parseScript(code, file, source, offset)
 }
 
 function parseExpr(expr: string): N {

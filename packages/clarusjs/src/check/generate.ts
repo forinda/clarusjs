@@ -10,7 +10,7 @@ import { ClarusError } from '../compiler/errors.ts'
 import { modifierError, splitEvent } from '../compiler/events.ts'
 import { outerIndexIn } from '../compiler/loops.ts'
 import { FOR_IMPLICIT, parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
-import { providesIn, referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
+import { checkScript, providesIn, referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
  * [virtual offset, length, source offset, exact, source length]. Exact spans are verbatim copies (offsets map one to
@@ -51,6 +51,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
   const parsed = parse(source, file)
   const outer = outerIndexIn(parsed.nodes) // an inner @for's $index on an outer list (#585), as the compiler reports it
   if (outer) throw new ClarusError(outer.message, file, source, outer.start)
+  // A script is JavaScript (#432): TypeScript-only syntax is the compiler's error here too, not TypeScript's to accept.
+  for (const s of [parsed.script, parsed.serverScript]) if (s) checkScript(s.code, file, source, s.start)
   // Components used by name (#458), imported as the build imports them.
   if (options.components) autoImport(parsed, options.components, file, source)
   const mappings: Mapping[] = []
@@ -576,7 +578,9 @@ export function generateTolerant(source: string, file: string, options: Paramete
         continue
       }
       // A broken @-construct (@if, @for, @slot, a block) goes from its @, which may be on an earlier line than the error.
-      const from = /@|block|\( after|\(\s*$/.test(message) && text.lastIndexOf('@', offset) !== -1 ? text.lastIndexOf('@', offset) : offset
+      // (A script's error isn't about a directive, even if its text names one: #594 review.)
+      const directive = !/^(script:|TypeScript syntax)/.test(message) && /@|block|\( after|\(\s*$/.test(message)
+      const from = directive && text.lastIndexOf('@', offset) !== -1 ? text.lastIndexOf('@', offset) : offset
       const lineStart = text.lastIndexOf('\n', from - 1) + 1
       const lineEnd = text.indexOf('\n', from) === -1 ? text.length : text.indexOf('\n', from)
       const blank = (from: number) => text.slice(0, from) + text.slice(from, lineEnd).replace(/[^\n]/g, ' ') + text.slice(lineEnd)
