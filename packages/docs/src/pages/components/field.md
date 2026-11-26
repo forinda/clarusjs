@@ -9,6 +9,8 @@ description: "A labelled text input with a description and an error, wired by id
 
 <p class="lead">A labelled text input with a description and an error, wired by id, showing the error once you leave it.</p>
 
+**Styled:** [Field on ui.clarusjs.com](https://ui.clarusjs.com/components/field), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="field" />
 
 ```tscl

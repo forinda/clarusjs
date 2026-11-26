@@ -9,6 +9,8 @@ description: "A native <select>: the customizable select where the browser has i
 
 <p class="lead">A native &lt;select&gt;: the customizable select where the browser has it, the usual one elsewhere.</p>
 
+**Styled:** [Select on ui.clarusjs.com](https://ui.clarusjs.com/components/select), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="select" />
 
 ```tscl

@@ -3,6 +3,9 @@
 Thin, accessible styles for the parts in [`@clarusjs/ui-primitives`](https://clarusjs.com/guide/ui-primitives#parts):
 one stylesheet over their `data-part` names and state attributes, light and dark.
 
+For components you copy and own (cards, tables, charts, date pickers, blocks…), in plain CSS or Tailwind, see
+[ui.clarusjs.com](https://ui.clarusjs.com).
+
 ```sh
 pnpm add @clarusjs/ui @clarusjs/ui-primitives
 ```

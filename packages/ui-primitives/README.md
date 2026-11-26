@@ -3,6 +3,8 @@
 Accessible behaviours for [clarusjs](https://clarusjs.com) components, as small DOM functions. Each takes an element
 (and options) and returns how to stop it; a template hands it the element with `[use]`.
 
+Styled components built on them, ready to copy into your project: [ui.clarusjs.com](https://ui.clarusjs.com).
+
 ```sh
 pnpm add @clarusjs/ui-primitives
 ```

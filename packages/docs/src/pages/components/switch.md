@@ -9,6 +9,8 @@ description: "On or off: a native checkbox in its label (role='switch' for the s
 
 <p class="lead">On or off: a native checkbox in its label (role="switch" for the switch), bound two ways.</p>
 
+**Styled:** [Switch and checkbox on ui.clarusjs.com](https://ui.clarusjs.com/components/switch), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="switch" />
 
 ```tscl

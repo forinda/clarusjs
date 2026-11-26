@@ -9,6 +9,8 @@ description: "A modal dialog on the native <dialog>, opened and closed by comman
 
 <p class="lead">A modal dialog on the native &lt;dialog&gt;, opened and closed by command invokers: focus kept in it, the page inert, Escape and a click outside close it. No JavaScript.</p>
 
+**Styled:** [Dialog on ui.clarusjs.com](https://ui.clarusjs.com/components/dialog), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="dialog" />
 
 ```tscl

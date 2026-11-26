@@ -9,6 +9,8 @@ description: "Content that pops up by its trigger: the popover attribute (light 
 
 <p class="lead">Content that pops up by its trigger: the popover attribute (light dismiss, the top layer) placed with CSS anchor positioning. No JavaScript.</p>
 
+**Styled:** [Popover on ui.clarusjs.com](https://ui.clarusjs.com/components/popover), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="popover" />
 
 ```tscl
