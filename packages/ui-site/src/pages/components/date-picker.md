@@ -13,7 +13,7 @@ description: "A button that opens a calendar to pick a date or a range; the date
 
 ## Usage
 
-The button names the field and shows the date; it opens the [Calendar](/components/calendar) in a popover, on the chosen day (or today), where the keyboard works as the calendar's. Picking a day closes it and puts the focus back on the button; so do Escape and a click outside. The date is `'YYYY-MM-DD'` in a hidden input named `name`, so a form sends it; bind it with `[(value)]`.
+The button names the field and shows the date; it opens the [Calendar](/components/calendar) in a popover, on the chosen day (or today), where the keyboard works as the calendar's. Picking a day closes it and puts the focus back on the button; so do Escape and a click outside. **Clear** empties the date (both, for a range). The date is `'YYYY-MM-DD'` in a hidden input named `name`, so a form sends it; bind it with `[(value)]`.
 
 <<< ../../registry/date-picker-demo.tscl
 
@@ -42,7 +42,7 @@ Copy it into `src/components/ui/` as `date-picker.tscl`, beside the calendar: in
 ## Styling
 
 - **On the root:** `class`, `style`, `id`, `aria-*` and `data-*` written on the tag land on its root element; `class` and `style` merge with its own.
-- **Selectors:** `data-part` names `date-picker`, `date-picker-label`, `date-picker-trigger` and `date-picker-popover`, around the calendar's (`calendar`, `calendar-head`, `calendar-title`, `calendar-prev`, `calendar-next`, `calendar-grid`, `calendar-day`); state attribute `data-empty` until a date is picked.
+- **Selectors:** `data-part` names `date-picker`, `date-picker-label`, `date-picker-trigger`, `date-picker-popover`, `date-picker-footer` and `date-picker-clear`, around the calendar's (`calendar`, `calendar-head`, `calendar-title`, `calendar-prev`, `calendar-next`, `calendar-grid`, `calendar-day`); state attribute `data-empty` until a date is picked.
 - **Your rules win:** every rule here has zero specificity (`:where()`) and sits in `@layer components`, so your own CSS and Tailwind utilities override it.
 
 ## Needs

@@ -1,0 +1,260 @@
+{{--
+  Appointment picker: a date and a time in one popover, for booking. Shortcuts pick a day (Yesterday, Today,
+  Tomorrow, Next week; those outside min and max, which may be 'today', are unavailable), the Calendar picks any other, and the times run
+  from `from` to `to` every `interval` minutes. Picking a time once there's a day sets it and closes. The value is
+  'YYYY-MM-DDTHH:MM' (as <input type="datetime-local"> has it), in a hidden input named name; bind it with [(value)].
+--}}
+@import uiCalendar from './calendar.tscl'
+@input id: string
+@input label: string
+@input name: string = 'appointment'
+@input placeholder: string = 'Pick a date and time'
+@input min: string = ''
+@input max: string = ''
+@input from: string = '09:00'
+@input to: string = '17:00'
+@input interval: number = 30
+@input locale: string = 'en-US'
+@input firstDay: number = 0
+@model value: string = ''
+
+<script>
+  import { addDays, parseIso, today } from './calendar-dates.ts'
+  let day = state(value.slice(0, 10))
+  let time = state(value.slice(11, 16))
+  const SHORTCUTS = [
+    { label: 'Yesterday', days: -1 },
+    { label: 'Today', days: 0 },
+    { label: 'Tomorrow', days: 1 },
+    { label: 'Next week', days: 7 },
+  ]
+  const lo = () => (min === 'today' ? today() : min)
+  const hi = () => (max === 'today' ? today() : max)
+  const off = (iso) => (lo() !== '' && iso < lo()) || (hi() !== '' && iso > hi())
+  const target = (days) => addDays(today(), days)
+  const minutes = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+  const hhmm = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')
+  const slots = () =>
+    Array.from({ length: Math.floor((minutes(to) - minutes(from)) / interval) + 1 }, (_, i) =>
+      hhmm(minutes(from) + i * interval),
+    )
+  const clock = (t) =>
+    new Intl.DateTimeFormat(locale, { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' }).format(
+      new Date(Date.UTC(2000, 0, 1, Number(t.slice(0, 2)), Number(t.slice(3, 5)))),
+    )
+  const dayText = (iso) =>
+    new Intl.DateTimeFormat(locale, {
+      timeZone: 'UTC',
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(parseIso(iso) ?? undefined)
+  const text = () =>
+    day && time ? dayText(day) + ' at ' + clock(time) : day ? dayText(day) + ', pick a time' : placeholder
+  const popover = () => document.getElementById(`${id}-popover`)
+  function close() {
+    popover()?.hidePopover()
+    document.getElementById(`${id}-trigger`)?.focus()
+  }
+  function commit() {
+    value = day && time ? `${day}T${time}` : ''
+  }
+  function shortcut(days) {
+    day = target(days)
+    commit()
+  }
+  function chooseTime(t) {
+    time = t
+    commit()
+    if (day) close()
+  }
+  function clear() {
+    day = ''
+    time = ''
+    commit()
+    close()
+  }
+</script>
+
+<div data-part="appointment" [data-empty]="value ? false : 'true'">
+  <span [id]="id + '-label'" data-part="appointment-label">{{ label }}</span>
+  <button
+    type="button"
+    [id]="id + '-trigger'"
+    [popovertarget]="id + '-popover'"
+    aria-haspopup="dialog"
+    [aria-labelledby]="id + '-label ' + id + '-text'"
+    [style]="'anchor-name: --' + id"
+    data-part="appointment-trigger"
+  >
+    <icon name="lucide:calendar-clock" />
+    <span [id]="id + '-text'">{{ text() }}</span>
+  </button>
+  <div
+    [id]="id + '-popover'"
+    popover="auto"
+    role="dialog"
+    [aria-label]="label"
+    [style]="'position-anchor: --' + id"
+    data-part="appointment-popover"
+  >
+    <div data-part="appointment-shortcuts" role="group" aria-label="Shortcuts">
+      @for (s of SHORTCUTS; track s.label) {
+        <button
+          type="button"
+          [disabled]="off(target(s.days))"
+          [aria-pressed]="day !== '' && day === target(s.days) ? 'true' : 'false'"
+          (click)="shortcut(s.days)"
+        >
+          {{ s.label }}
+        </button>
+      }
+    </div>
+    <uiCalendar
+      [id]="id + '-calendar'"
+      [label]="label"
+      [min]="min"
+      [max]="max"
+      [locale]="locale"
+      [firstDay]="firstDay"
+      [(value)]="day"
+      (select)="commit()"
+    />
+    <div data-part="appointment-times" role="group" aria-label="Time">
+      @for (t of slots(); track t) {
+        <button type="button" [aria-pressed]="t === time ? 'true' : 'false'" (click)="chooseTime(t)">
+          {{ clock(t) }}
+        </button>
+      }
+    </div>
+    <div data-part="appointment-footer">
+      <button type="button" data-part="appointment-clear" [disabled]="!day && !time" (click)="clear()">Clear</button>
+    </div>
+  </div>
+  <input type="hidden" [name]="name" [value]="value" />
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: inline-grid;
+      gap: var(--ui-space-1);
+      color: var(--ui-fg);
+      font: var(--ui-font-size) var(--ui-font);
+    }
+    :where([data-part='appointment-label']) {
+      font-weight: 500;
+    }
+    :where([data-part='appointment-trigger']) {
+      display: inline-flex;
+      gap: var(--ui-space-2);
+      align-items: center;
+      min-width: 16rem;
+      min-height: var(--ui-control-h, var(--ui-control-md));
+      padding: 0 var(--ui-space-3);
+      border: 1px solid var(--ui-input);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: inherit;
+      text-align: start;
+      cursor: pointer;
+    }
+    :where(:scope[data-empty='true'] [data-part='appointment-trigger']) {
+      color: var(--ui-muted);
+    }
+    /* Shortcuts, the calendar and the times side by side; the times scroll beside the month. */
+    :where([data-part='appointment-popover']) {
+      position-area: bottom span-right;
+      position-try-fallbacks: flip-block;
+      margin: var(--ui-space-1) 0;
+      padding: 0;
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-popover);
+      color: var(--ui-popover-fg);
+      box-shadow: var(--ui-shadow);
+    }
+    :where([data-part='appointment-popover']:popover-open) {
+      display: grid;
+      grid-template-columns: auto auto 8rem;
+      grid-template-rows: 1fr auto;
+    }
+    :where([data-part='appointment-shortcuts']) {
+      display: grid;
+      align-content: start;
+      gap: var(--ui-space-1);
+      padding: var(--ui-space-3);
+      border-right: 1px solid var(--ui-border);
+    }
+    :where([data-part='appointment-times']) {
+      display: grid;
+      align-content: start;
+      gap: var(--ui-space-1);
+      max-height: 20rem;
+      padding: var(--ui-space-3);
+      overflow-y: auto;
+      border-left: 1px solid var(--ui-border);
+      scrollbar-width: thin;
+    }
+    :where([data-part='appointment-shortcuts'] button),
+    :where([data-part='appointment-times'] button),
+    :where([data-part='appointment-clear']) {
+      min-height: var(--ui-control-sm);
+      padding: 0 var(--ui-space-3);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: inherit;
+      font-variant-numeric: tabular-nums;
+      text-align: start;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    :where([data-part='appointment-shortcuts'] button:hover:not(:disabled)),
+    :where([data-part='appointment-times'] button:hover) {
+      background: var(--ui-accent-soft);
+    }
+    :where([data-part='appointment-shortcuts'] button[aria-pressed='true']),
+    :where([data-part='appointment-times'] button[aria-pressed='true']) {
+      border-color: var(--ui-accent);
+      background: var(--ui-accent);
+      color: var(--ui-accent-fg);
+    }
+    :where([data-part='appointment-popover'] button:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    :where([data-part='appointment-footer']) {
+      display: flex;
+      grid-column: 1 / -1;
+      justify-content: flex-end;
+      padding: var(--ui-space-2) var(--ui-space-3);
+      border-top: 1px solid var(--ui-border);
+    }
+    :where([data-part='appointment-trigger']:focus-visible),
+    :where([data-part='appointment-popover'] button:focus-visible) {
+      outline: 2px solid var(--ui-ring);
+      outline-offset: 1px;
+    }
+    @media (max-width: 40rem) {
+      :where([data-part='appointment-popover']:popover-open) {
+        grid-template-columns: auto;
+      }
+      :where([data-part='appointment-shortcuts']) {
+        grid-auto-flow: column;
+        border-right: 0;
+        border-bottom: 1px solid var(--ui-border);
+      }
+      :where([data-part='appointment-times']) {
+        grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+        max-height: 10rem;
+        border-left: 0;
+        border-top: 1px solid var(--ui-border);
+      }
+    }
+  }
+</style>

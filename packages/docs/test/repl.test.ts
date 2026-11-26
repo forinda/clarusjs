@@ -40,8 +40,11 @@ describe('highlightTscl', () => {
       }
       return best
     }
-    expect(time(160_000) / time(20_000)).toBeLessThan(24)
-  })
+    // Three rounds, short and long line side by side, and the lowest ratio: a busy moment inflates a round, but a
+    // quadratic highlighter is ~64x in every one of them.
+    const ratios = [0, 1, 2].map(() => time(160_000) / time(20_000))
+    expect(Math.min(...ratios), `ratios: ${ratios.map((r) => r.toFixed(1)).join(', ')}`).toBeLessThan(24)
+  }, 60_000) // long lines on purpose: seconds on a CI runner, past the 5 s default (CI timed out at 5.3 s)
 
   test('escapes <, & and quotes', () => {
     const html = highlightTscl('<p title="a">a & b</p>')

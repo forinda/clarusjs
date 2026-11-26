@@ -8,7 +8,7 @@ layout: "/src/layouts/wide.tscl"
 
 # Blocks
 
-<p class="lead">Whole pages built from the components: a login, a checkout, a dashboard. Copy one into <code>src/pages/</code>, the components it lists into <code>src/components/ui/</code>, and it looks done and works. Then swap in your data and your submit. They style themselves with your <code>theme.css</code>, so a theme from the header's Theme button restyles them too.</p>
+<p class="lead">Whole pages built from the components: a login, a checkout, a dashboard, a calendar. Copy one into <code>src/pages/</code>, the components it lists into <code>src/components/ui/</code>, and it looks done and works. Then swap in your data and your submit. They style themselves with your <code>theme.css</code>, so a theme from the header's Theme button restyles them too.</p>
 
 <blockFilter>
 
@@ -22,6 +22,10 @@ layout: "/src/layouts/wide.tscl"
 
 <blockRow name="dashboard">
   <iframe src="/view/dashboard" title="Dashboard preview" loading="lazy" style="width: 100%; height: 820px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
+<blockRow name="calendar-app">
+  <iframe src="/view/calendar-app" title="Calendar preview" loading="lazy" style="width: 100%; height: 900px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
 </blockRow>
 
 </blockFilter>

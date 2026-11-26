@@ -1,0 +1,13 @@
+{{-- The calendar block alone (the frame on /blocks/calendar-app shows it). Out of the nav, search and the sitemap. --}}
+@import '~/theme.css'
+@import '~/view.css'
+@import calendarApp from '~/registry/blocks/calendar-app/calendar-app.tscl'
+
+<cl-head>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+</cl-head>
+
+<div data-ui-preview>
+  <calendarApp />
+</div>

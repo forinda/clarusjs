@@ -1,0 +1,90 @@
+@import uiMasonry from './masonry.tscl'
+
+<script server>
+  // Photos from picsum.photos (free to use), by seed so they're the same on every build; heights vary.
+  const PHOTOS = [
+    ['harbour', 400, 520, 'Boats in a harbour at dawn'],
+    ['ridge', 400, 300, 'A mountain ridge above the clouds'],
+    ['meadow', 400, 600, 'A meadow of tall grass'],
+    ['dune', 400, 280, 'Sand dunes in the wind'],
+    ['fjord', 400, 460, 'A fjord between steep cliffs'],
+    ['canyon', 400, 340, 'A canyon at noon'],
+    ['glacier', 400, 540, 'Blue ice on a glacier'],
+    ['forest', 400, 320, 'Light through a pine forest'],
+    ['coast', 400, 480, 'Waves on a rocky coast'],
+    ['lake', 400, 300, 'A still lake at dusk'],
+    ['city', 400, 560, 'City lights from a hill'],
+    ['field', 400, 360, 'A field of sunflowers'],
+  ].map(([seed, width, height, alt]) => ({
+    seed: String(seed),
+    width: Number(width),
+    height: Number(height),
+    alt: String(alt),
+  }))
+</script>
+
+<div class="demo">
+  <uiMasonry width="13rem">
+    @for (p of PHOTOS; track p.seed) {
+      <figure class="photo">
+        <img
+          [src]="'https://picsum.photos/seed/' + p.seed + '/' + p.width + '/' + p.height"
+          [width]="p.width"
+          [height]="p.height"
+          [alt]="p.alt"
+          loading="lazy"
+          decoding="async"
+        />
+        <figcaption>{{ p.alt }}</figcaption>
+      </figure>
+    }
+  </uiMasonry>
+</div>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
+
+{{-- Global: the photos sit inside the Masonry's own markup, out of this demo's scope. --}}
+<style global>
+  .photo {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--ui-radius);
+    background: var(--ui-muted-bg);
+  }
+  .photo img {
+    display: block;
+    width: 100%;
+    height: auto;
+    transition: transform 300ms ease;
+  }
+  .photo figcaption {
+    position: absolute;
+    inset: auto 0 0;
+    padding: var(--ui-space-6) var(--ui-space-3) var(--ui-space-2);
+    background: linear-gradient(transparent, rgb(0 0 0 / 0.65));
+    color: #fff;
+    font-size: calc(var(--ui-font-size) - 1px);
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+  .photo:hover img {
+    transform: scale(1.04);
+  }
+  .photo:hover figcaption,
+  .photo:focus-within figcaption {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .photo img {
+      transition: none;
+    }
+  }
+</style>
