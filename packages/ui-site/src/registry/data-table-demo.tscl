@@ -66,18 +66,15 @@
     page = next
     save()
   }
-  // Opened from a link: start from the state in its URL. ponytail: applied just after attach, since changing the
-  // rows while the island attaches breaks its @for (#550); apply it directly once that's fixed.
+  // Opened from a link: start from the state in its URL.
   function wire(el) {
     const from = parseTable(new URLSearchParams(location.search), ['team'])
     const field = el.querySelector('input[type="search"]')
     if (field instanceof HTMLInputElement) field.value = from.query
-    setTimeout(() => {
-      sort = from.sort
-      query = from.query
-      teams = from.filters.team ?? []
-      page = from.page
-    })
+    sort = from.sort
+    query = from.query
+    teams = from.filters.team ?? []
+    page = from.page
   }
 </script>
 

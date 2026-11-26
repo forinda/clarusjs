@@ -1,7 +1,7 @@
 // Attach helpers: find markers in server HTML and keep them updated. Browser only. Never re-renders existing HTML;
 // only @if branches and @for rows that did not exist on the server are rendered here.
 import { attrValue, spreadAttrs } from './attrs.ts'
-import { batch, effect, onDispose, scope, state, untrack, type Signal } from './signals.ts'
+import { afterWiring, batch, effect, onDispose, scope, state, untrack, type Signal } from './signals.ts'
 
 /** @internal Compiled components call this; apps don't. */
 export type Hole = { start: Comment; end: Comment }
@@ -412,11 +412,16 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void
 export function use(ctx: Ctx, index: number, get: () => unknown): void {
   const el = marked(ctx, `[data-cl-u="${index}"]`)
   if (!el) return
-  for (const fn of [untrack(get)].flat()) {
-    if (typeof fn !== 'function') continue
-    const dispose = fn(el)
-    if (typeof dispose === 'function') onDispose(dispose)
-  }
+  // Once the island (or row, or branch) around it is wired (#550): a behaviour that changes state then updates
+  // the @for and @if blocks as any later change does. Not if its element went meanwhile.
+  afterWiring(() => {
+    if (!el.isConnected) return
+    for (const fn of [untrack(get)].flat()) {
+      if (typeof fn !== 'function') continue
+      const dispose = fn(el)
+      if (typeof dispose === 'function') onDispose(dispose)
+    }
+  })
 }
 
 /** The element matching `selector` in `ctx`: this island's (not a nested island's), and in a row, that row's. */

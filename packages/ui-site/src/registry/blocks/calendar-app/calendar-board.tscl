@@ -162,14 +162,11 @@
     events = events.filter((e) => e.id !== editing)
     close()
   }
-  // Live: today is the visitor's. ponytail: applied just after attach, since changing the rows while the island
-  // attaches breaks its @for (#550); apply it directly once that's fixed.
+  // Live: today is the visitor's.
   function wire() {
-    setTimeout(() => {
-      now = today()
-      cursor = now
-      events = sampleEvents(now)
-    })
+    now = today()
+    cursor = now
+    events = sampleEvents(now)
   }
 </script>
 

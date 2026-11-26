@@ -33,6 +33,7 @@ Tab into the toolbar, then use the arrow keys; Underline is disabled, so it's sk
 
 - The server renders the element as written, with a `data-cl-u` marker. Nothing runs there.
 - `fn` runs once, not again when state it reads changes.
+- `fn` runs once the island (or the `@if` branch, or the `@for` row) around it is wired, so it can set state there: read a saved choice or the URL, and the island's lists, branches and nested islands show it.
 - `clarusjs check` types the element by its tag: `(el) => el.rows` on a `<p>` is an error.
 
 `[use]` takes any function, not only these: `[use]="(el) => el.focus()"`.
