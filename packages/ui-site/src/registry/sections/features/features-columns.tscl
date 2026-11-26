@@ -1,0 +1,83 @@
+{{-- Features in columns: a heading, then three features side by side (icon, title, text); stacked on phones. No
+     JavaScript. Its words and icons are in data.ts beside it. --}}
+@import { features, items } from './data.ts'
+
+<section class="features">
+  <header>
+    <p class="eyebrow">{{ features.eyebrow }}</p>
+    <h2>{{ features.title }}</h2>
+  </header>
+  <ul>
+    @for (item of items.slice(0, 3); track item.title) {
+      <li>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [d]="item.icon" /></svg>
+        <h3>{{ item.title }}</h3>
+        <p>{{ item.text }}</p>
+      </li>
+    }
+  </ul>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: var(--ui-space-10);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(header) {
+      display: grid;
+      gap: var(--ui-space-3);
+      max-width: 40rem;
+    }
+    :where(.eyebrow) {
+      margin: 0;
+      font-size: calc(var(--ui-font-size) * 0.85);
+      font-weight: 600;
+      color: var(--ui-accent);
+    }
+    :where(h2) {
+      margin: 0;
+      font: 700 calc(var(--ui-font-size) * 2) / 1.15 var(--ui-font-heading);
+      letter-spacing: -0.02em;
+    }
+    :where(ul) {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+      gap: var(--ui-space-8);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    :where(li) {
+      display: grid;
+      gap: var(--ui-space-2);
+      align-content: start;
+    }
+    :where(svg) {
+      width: 36px;
+      height: 36px;
+      padding: var(--ui-space-2);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    :where(h3) {
+      margin: var(--ui-space-2) 0 0;
+      font: 600 calc(var(--ui-font-size) * 1.05) var(--ui-font-heading);
+    }
+    :where(li p) {
+      margin: 0;
+      line-height: 1.6;
+      color: var(--ui-muted);
+    }
+  }
+</style>

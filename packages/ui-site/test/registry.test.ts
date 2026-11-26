@@ -62,6 +62,20 @@ test('copied files import only ui-primitives, clarusjs, their own files and thos
   }
 })
 
+test('the section versions the spec lists, each with its grid effect where it has one', () => {
+  const effect = (name: string) => /<gridEffect effect="(\w+)"/.exec(source(sections.find((e) => e.name === name)!.files[0]!))?.[1] ?? 'none'
+  const want: Record<string, string> = {
+    'hero-centred': 'none', 'hero-split': 'none', 'hero-grid': 'lean',
+    'header-menus': 'none', 'header-centred': 'none',
+    'features-columns': 'none', 'features-grid': 'spotlight', 'features-bento': 'trail',
+    'logo-cloud': 'trail', stats: 'trail',
+  }
+  for (const [name, fx] of Object.entries(want)) {
+    expect(sections.some((e) => e.name === name), name).toBe(true)
+    expect(effect(name), name).toBe(fx)
+  }
+})
+
 test('every section kind with versions has src/pages/blocks/marketing/<kind>.md showing each version\'s files in Code order, and each version a view', () => {
   expect(sections.length).toBeGreaterThan(0)
   for (const kind of Object.keys(SECTION_KINDS) as SectionKind[]) {

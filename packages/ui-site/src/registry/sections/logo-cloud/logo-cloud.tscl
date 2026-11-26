@@ -1,0 +1,63 @@
+{{-- Logo cloud: a line, then logos in ruled cells over a grid whose cells light up behind the pointer (trail). Delete
+     the <gridEffect> tag for no JavaScript. Its logos are placeholders in data.ts beside it. --}}
+@import gridBackdrop from '~/components/ui/grid-backdrop.tscl'
+@import gridEffect from '~/components/ui/grid-effect.tscl'
+@import { cloud, logos } from './data.ts'
+
+<section class="cloud">
+  <gridBackdrop />
+  <gridEffect effect="trail" />
+  <h2>{{ cloud.title }}</h2>
+  <ul>
+    @for (logo of logos; track logo.name) {
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [d]="logo.mark" /></svg>{{ logo.name }}</li>
+    }
+  </ul>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      display: grid;
+      gap: var(--ui-space-8);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      overflow: hidden;
+      text-align: center;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(h2), :where(ul) {
+      position: relative;
+      z-index: 1;
+    }
+    :where(h2) {
+      margin: 0;
+      font: 500 calc(var(--ui-font-size) * 1.05) var(--ui-font);
+      color: var(--ui-muted);
+    }
+    :where(ul) {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    :where(li) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--ui-space-2);
+      padding: var(--ui-space-6) var(--ui-space-4);
+      font: 700 calc(var(--ui-font-size) * 1.2) var(--ui-font-heading);
+      color: var(--ui-muted);
+    }
+    :where(svg) {
+      width: 22px;
+      height: 22px;
+      fill: currentColor;
+    }
+  }
+</style>

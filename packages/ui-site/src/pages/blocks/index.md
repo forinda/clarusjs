@@ -36,4 +36,16 @@ layout: "/src/layouts/wide.tscl"
   <iframe src="/view/header-menus" title="Header preview" loading="lazy" style="width: 100%; height: 420px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
 </blockRow>
 
+<blockRow name="features-bento">
+  <iframe src="/view/features-bento" title="Features preview" loading="lazy" style="width: 100%; height: 620px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
+<blockRow name="logo-cloud">
+  <iframe src="/view/logo-cloud" title="Logo cloud preview" loading="lazy" style="width: 100%; height: 320px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
+<blockRow name="stats">
+  <iframe src="/view/stats" title="Stats preview" loading="lazy" style="width: 100%; height: 340px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
 </blockFilter>

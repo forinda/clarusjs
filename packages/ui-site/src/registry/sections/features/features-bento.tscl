@@ -1,0 +1,111 @@
+{{-- Features in a bento grid: one large card with a week of visits as bars, and smaller cards around it, over a grid
+     whose cells light up behind the pointer (trail). Delete the <gridEffect> tag for no JavaScript. Its words, icons
+     and numbers are in data.ts beside it. --}}
+@import gridBackdrop from '~/components/ui/grid-backdrop.tscl'
+@import gridEffect from '~/components/ui/grid-effect.tscl'
+@import { features, items, week } from './data.ts'
+
+<section class="features">
+  <gridBackdrop />
+  <gridEffect effect="trail" />
+  <h2>{{ features.title }}</h2>
+  <div class="bento">
+    <article class="big">
+      <h3>{{ items[3].title }}</h3>
+      <p>{{ items[3].text }}</p>
+      <ol class="bars" aria-label="Visits this week">
+        @for (n of week; track $index) {
+          <li [style]="'--ui-bar: ' + n / Math.max(...week)" [aria-label]="n + ' thousand'"></li>
+        }
+      </ol>
+    </article>
+    @for (item of [items[0], items[1], items[2]]; track item.title) {
+      <article>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [d]="item.icon" /></svg>
+        <h3>{{ item.title }}</h3>
+        <p>{{ item.text }}</p>
+      </article>
+    }
+  </div>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      display: grid;
+      gap: var(--ui-space-8);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      overflow: hidden;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(h2), :where(.bento) {
+      position: relative;
+      z-index: 1;
+    }
+    :where(h2) {
+      max-width: 22ch;
+      margin: 0;
+      font: 700 calc(var(--ui-font-size) * 2) / 1.15 var(--ui-font-heading);
+      letter-spacing: -0.02em;
+    }
+    :where(.bento) {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+      gap: var(--ui-space-4);
+    }
+    @media (min-width: 900px) {
+      :where(.bento) {
+        grid-template-columns: 2fr 1fr 1fr;
+      }
+      :where(.big) {
+        grid-row: span 2;
+      }
+    }
+    :where(article) {
+      display: grid;
+      gap: var(--ui-space-2);
+      align-content: start;
+      padding: var(--ui-space-5);
+      border: 1px solid var(--ui-border);
+      border-radius: calc(var(--ui-radius) * 1.5);
+      background: color-mix(in oklab, var(--ui-card) 92%, transparent);
+    }
+    :where(h3) {
+      margin: 0;
+      font: 600 calc(var(--ui-font-size) * 1.05) var(--ui-font-heading);
+    }
+    :where(article p) {
+      margin: 0;
+      line-height: 1.6;
+      color: var(--ui-muted);
+    }
+    :where(svg) {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    :where(.bars) {
+      display: flex;
+      align-items: end;
+      gap: var(--ui-space-2);
+      height: 160px;
+      margin: var(--ui-space-4) 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    :where(.bars li) {
+      flex: 1;
+      height: calc(var(--ui-bar) * 100%);
+      border-radius: var(--ui-radius) var(--ui-radius) 0 0;
+      background: var(--ui-accent);
+    }
+  }
+</style>

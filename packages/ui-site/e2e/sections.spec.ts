@@ -81,3 +81,30 @@ test('navbar: keyboard reaches every link and the menu; on a 390 px viewport the
 test('the header page: no axe violations, light and dark', async ({ page }) => {
   await kindPageAxe(page, 'header')
 })
+
+// Every kind with versions: its page shows each version framed, has no axe violations, and every version with a grid
+// effect reacts to a pointer in its own frame.
+const kinds = (Object.keys(SECTION_KINDS) as SectionKind[]).filter((k) => sectionsOf(k).length && k !== 'hero' && k !== 'header')
+for (const kind of kinds) {
+  test(`the ${kind} page shows its versions, each framed, with no axe violations`, async ({ page }) => {
+    await page.goto(`/blocks/marketing/${kind}`)
+    for (const e of sectionsOf(kind)) await expect(page.locator(`iframe[src="/view/${e.name}"]`)).toBeAttached()
+    await kindPageAxe(page, kind)
+  })
+}
+
+/** What an effect shows after a pointer crosses its section: spotlight's position, trail's lit cells, lean's paths. */
+async function effectState(page: Page) {
+  return page.locator('[data-part="grid-effect"]').first().evaluate((el) => ({
+    x: el.style.getPropertyValue('--ui-grid-x'),
+    lit: el.querySelectorAll('[data-on]').length + el.querySelectorAll('[data-cell]').length,
+    paths: el.querySelectorAll('path').length,
+  }))
+}
+for (const e of (Object.keys(SECTION_KINDS) as SectionKind[]).flatMap(sectionsOf).filter((x) => x.uses.includes('grid-effect'))) {
+  test(`${e.name}: its grid effect reacts to a pointer`, async ({ page }) => {
+    await hover(page, e.name)
+    const s = await effectState(page)
+    expect(s.x !== '' || s.lit > 0 || s.paths > 0, JSON.stringify(s)).toBe(true)
+  })
+}
