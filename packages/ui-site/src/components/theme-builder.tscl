@@ -192,9 +192,7 @@
     }
   }
   const wire = (el) => {
-    // ponytail: on the next tick, once this island is wired. A change made while it attaches never reaches the
-    // nested selects (they keep the server's value); fix that in the runtime if another island needs it.
-    setTimeout(load)
+    load()
     // Light or dark: the one the site shows (the header's switch, else the system setting), followed as it changes.
     const dark = matchMedia('(prefers-color-scheme: dark)')
     const follow = () => {
