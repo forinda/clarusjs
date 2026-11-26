@@ -22,13 +22,15 @@ beforeAll(async () => {
   w('src/pages/admin/users.tscl', "@slot('aside') {<em>users menu</em>}\n<h1>Users</h1>\n")
   w('src/pages/admin/sign-in.tscl', '@layout none\n<h1>Sign in</h1>\n')
   w('src/pages/embed/widget.tscl', '<p>widget</p>\n')
+  // #472: page sources (Markdown, say) get the folder layouts too.
+  w('src/pages/admin/notes.note', 'hello')
   mkdirSync(resolve(root, 'node_modules'))
   symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const layouts = [
     { layout: '/src/layouts/shell.tscl', exclude: ['/embed/*'] },
     { layout: '/src/layouts/banner.tscl', include: ['/admin/*'] },
   ]
-  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ layouts })] })).buildApp()
+  await (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs({ layouts, sources: [{ extension: '.note', toTscl: (code) => `<p class="note">${code}</p>\n` }] })] })).buildApp()
 }, 120_000)
 
 test('config layouts wrap outermost (in order), then folder layouts from the root down, then the page', () => {
@@ -53,5 +55,9 @@ test('@layout none: no folder or config layout', () => {
 
 test('+layout.tscl files are never routes', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
-  expect(Object.keys(manifest.routes).sort()).toEqual(['/', '/admin/sign-in', '/admin/users', '/embed/widget'])
+  expect(Object.keys(manifest.routes).sort()).toEqual(['/', '/admin/notes', '/admin/sign-in', '/admin/users', '/embed/widget'])
+})
+
+test('#472: a page source (a Markdown page) is wrapped in its folder and config layouts like a .tscl page', () => {
+  expect(page('/admin/notes')).toMatch(/<body data-path="\/admin\/notes"><div class="banner"><div class="site"><nav>site<\/nav><div class="admin"><aside>admin menu<\/aside><main><p class="note">hello<\/p><\/main><\/div><\/div><\/div><\/body>/)
 })

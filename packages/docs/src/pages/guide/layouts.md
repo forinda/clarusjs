@@ -174,7 +174,7 @@ src/pages/
 
 This site's [client tour](/tour/1) is a folder layout: `src/pages/tour/+layout.tscl` renders the docs layout with each step's title, and the step pages only write their content. It works for [client routes](/guide/client-routes) too: the router renders the layout in the browser with the route's params.
 
-A page with a `<script>` of its own (an island page) can't have folder or config layouts yet: the compiler says so at the top of the page. Move its script into a component it uses, or add `@layout none`. A layout's own data (`+layout.load.ts`) and Markdown pages taking folder layouts are coming next.
+A page with a `<script>` of its own (an island page) can't have folder or config layouts yet: the compiler says so at the top of the page. Move its script into a component it uses, or add `@layout none`. A layout's own data (`+layout.load.ts`) is coming next.
 
 ## Layouts in the config
 
@@ -212,7 +212,7 @@ layout: /src/layouts/plain.tscl
 ---
 ```
 
-The page's `title`, `description` and route (`path`) are passed to the layout as inputs. See [Markdown pages](/guide/markdown).
+The page's `title`, `description` and route (`path`) are passed to the layout as inputs. Folder and config layouts wrap Markdown pages too, as they do `.tscl` pages: a Markdown page's own layout goes inside them, and a page with none gets only them. Frontmatter `layout: false` renders the page with no layout at all, like `@layout none`. See [Markdown pages](/guide/markdown).
 
 ## A theme
 
