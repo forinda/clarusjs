@@ -1,0 +1,120 @@
+{{--
+  Hero, split: the headline, line and buttons on the left; a framed product shot on the right (drawn in CSS: put
+  your own screenshot in .shot). Stacks on phones. No JavaScript. Its words and links are in data.ts beside it.
+--}}
+@import uiButton from '~/components/ui/button.tscl'
+@import { hero } from './data.ts'
+
+<section class="hero">
+  <div class="copy">
+    <h1>{{ hero.title }}</h1>
+    <p class="line">{{ hero.line }}</p>
+    <div class="actions">
+      <uiButton size="lg" [href]="hero.primary.href">{{ hero.primary.label }}</uiButton>
+      <uiButton size="lg" variant="outline" [href]="hero.secondary.href">{{ hero.secondary.label }}</uiButton>
+    </div>
+  </div>
+  <figure class="frame" aria-label="Product preview">
+    <div class="bar"><i></i><i></i><i></i><span>lumen.app/preview</span></div>
+    <div class="shot">
+      <div class="side"></div>
+      <div class="main"><b></b><b></b><b class="wide"></b><b></b></div>
+    </div>
+  </figure>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: center;
+      gap: var(--ui-space-10);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    @media (min-width: 900px) {
+      :where(:scope) {
+        grid-template-columns: 1fr 1.1fr;
+        padding-inline: var(--ui-space-12);
+      }
+    }
+    :where(.copy) {
+      display: grid;
+      gap: var(--ui-space-5);
+    }
+    :where(h1) {
+      margin: 0;
+      font: 700 clamp(calc(var(--ui-font-size) * 2.25), 5vw, calc(var(--ui-font-size) * 3.5)) / 1.05 var(--ui-font-heading);
+      letter-spacing: -0.03em;
+      text-wrap: balance;
+    }
+    :where(.line) {
+      max-width: 48ch;
+      margin: 0;
+      font-size: calc(var(--ui-font-size) * 1.1);
+      line-height: 1.6;
+      color: var(--ui-muted);
+    }
+    :where(.actions) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--ui-space-3);
+    }
+    :where(.frame) {
+      margin: 0;
+      border: 1px solid var(--ui-border);
+      border-radius: calc(var(--ui-radius) * 1.5);
+      background: var(--ui-card);
+      box-shadow: var(--ui-shadow);
+      overflow: hidden;
+    }
+    :where(.bar) {
+      display: flex;
+      align-items: center;
+      gap: var(--ui-space-2);
+      padding: var(--ui-space-2) var(--ui-space-3);
+      border-bottom: 1px solid var(--ui-border);
+      font: calc(var(--ui-font-size) * 0.8) var(--ui-font-mono);
+      color: var(--ui-muted);
+    }
+    :where(.bar i) {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--ui-border);
+    }
+    :where(.bar span) {
+      margin-inline: auto;
+    }
+    :where(.shot) {
+      display: grid;
+      grid-template-columns: 22% 1fr;
+      min-height: 260px;
+    }
+    :where(.side) {
+      border-right: 1px solid var(--ui-border);
+      background: var(--ui-muted-bg);
+    }
+    :where(.main) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-content: start;
+      gap: var(--ui-space-3);
+      padding: var(--ui-space-4);
+    }
+    :where(.main b) {
+      height: 72px;
+      border-radius: var(--ui-radius);
+      background: var(--ui-muted-bg);
+    }
+    :where(.main .wide) {
+      grid-column: span 2;
+      height: 96px;
+      background: var(--ui-accent-soft);
+    }
+  }
+</style>

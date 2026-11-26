@@ -1,0 +1,25 @@
+@import gridBackdrop from './grid-backdrop.tscl'
+
+<div class="demo">
+  <gridBackdrop corners />
+  <p>Ruled lines behind the content, fading at the edges.</p>
+</div>
+
+<style scoped>
+  /* The root itself: under @scope, a plain .demo would only match inside it. */
+  :where(:scope) {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 240px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    overflow: hidden;
+  }
+  p {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    color: var(--ui-fg);
+  }
+</style>

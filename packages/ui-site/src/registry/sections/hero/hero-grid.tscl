@@ -1,0 +1,103 @@
+{{--
+  Hero, grid: the headline centred on ruled grid lines with "+" marks, the lines bowing toward the pointer (lean), and
+  a row of logos under it. Change the effect (spotlight, trail) or delete the <gridEffect> tag for a still grid with no
+  JavaScript. Its words, links and logos are in data.ts beside it.
+--}}
+@import uiButton from '~/components/ui/button.tscl'
+@import gridBackdrop from '~/components/ui/grid-backdrop.tscl'
+@import gridEffect from '~/components/ui/grid-effect.tscl'
+@import { hero, logos } from './data.ts'
+
+<section class="hero">
+  <gridBackdrop corners />
+  <gridEffect effect="lean" />
+  <div class="content">
+    <h1>{{ hero.title }}</h1>
+    <p class="line">{{ hero.line }}</p>
+    <div class="actions">
+      <uiButton size="lg" [href]="hero.primary.href">{{ hero.primary.label }}</uiButton>
+      <uiButton size="lg" variant="outline" [href]="hero.secondary.href">{{ hero.secondary.label }}</uiButton>
+    </div>
+  </div>
+  <div class="logos">
+    <p>{{ hero.trusted }}</p>
+    <ul>
+      @for (logo of logos; track logo.name) {
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [d]="logo.mark" /></svg>{{ logo.name }}</li>
+      }
+    </ul>
+  </div>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      display: grid;
+      justify-items: center;
+      gap: var(--ui-space-12);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      overflow: hidden;
+      text-align: center;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(.content), :where(.logos) {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: var(--ui-space-5);
+    }
+    :where(h1) {
+      max-width: 18ch;
+      margin: 0;
+      font: 700 clamp(calc(var(--ui-font-size) * 2.25), 6vw, calc(var(--ui-font-size) * 4)) / 1.05 var(--ui-font-heading);
+      letter-spacing: -0.03em;
+      text-wrap: balance;
+    }
+    :where(.line) {
+      max-width: 56ch;
+      margin: 0;
+      font-size: calc(var(--ui-font-size) * 1.15);
+      line-height: 1.6;
+      color: var(--ui-muted);
+    }
+    :where(.actions) {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: var(--ui-space-3);
+    }
+    :where(.logos p) {
+      margin: 0;
+      font-size: calc(var(--ui-font-size) * 0.8);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ui-muted);
+    }
+    :where(.logos ul) {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: var(--ui-space-8);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    :where(.logos li) {
+      display: flex;
+      align-items: center;
+      gap: var(--ui-space-2);
+      font: 700 calc(var(--ui-font-size) * 1.2) var(--ui-font-heading);
+      color: var(--ui-muted);
+    }
+    :where(.logos svg) {
+      width: 22px;
+      height: 22px;
+      fill: currentColor;
+    }
+  }
+</style>

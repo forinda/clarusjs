@@ -1,0 +1,60 @@
+{{--
+  Hero, centred: a short label, the headline, a line under it and two buttons, in the middle of the page. No
+  JavaScript. Its words and links are in data.ts beside it.
+--}}
+@import uiButton from '~/components/ui/button.tscl'
+@import { hero } from './data.ts'
+
+<section class="hero">
+  <p class="eyebrow">{{ hero.eyebrow }}</p>
+  <h1>{{ hero.title }}</h1>
+  <p class="line">{{ hero.line }}</p>
+  <div class="actions">
+    <uiButton size="lg" [href]="hero.primary.href">{{ hero.primary.label }}</uiButton>
+    <uiButton size="lg" variant="outline" [href]="hero.secondary.href">{{ hero.secondary.label }}</uiButton>
+  </div>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      justify-items: center;
+      gap: var(--ui-space-5);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      text-align: center;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(.eyebrow) {
+      margin: 0;
+      padding: var(--ui-space-1) var(--ui-space-3);
+      border: 1px solid var(--ui-border);
+      border-radius: 999px;
+      font-size: calc(var(--ui-font-size) * 0.85);
+      color: var(--ui-muted);
+    }
+    :where(h1) {
+      max-width: 18ch;
+      margin: 0;
+      font: 700 clamp(calc(var(--ui-font-size) * 2.25), 6vw, calc(var(--ui-font-size) * 4)) / 1.05 var(--ui-font-heading);
+      letter-spacing: -0.03em;
+      text-wrap: balance;
+    }
+    :where(.line) {
+      max-width: 56ch;
+      margin: 0;
+      font-size: calc(var(--ui-font-size) * 1.15);
+      line-height: 1.6;
+      color: var(--ui-muted);
+    }
+    :where(.actions) {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: var(--ui-space-3);
+    }
+  }
+</style>

@@ -1,0 +1,51 @@
+{{--
+  Grid backdrop: ruled lines behind a section's content, like a sheet of graph paper, fading at the edges. Put it first
+  inside a positioned section; it fills it and ignores the pointer. [corners]="true" adds "+" marks at two crossings.
+  No JavaScript: for lines that react to the pointer, add <grid-effect> beside it. The cell is --ui-grid-cell (48px).
+--}}
+@input corners: boolean = false
+
+<div data-part="grid-backdrop" aria-hidden="true">
+  @if (corners) {
+    <span data-corner="start">+</span>
+    <span data-corner="end">+</span>
+  }
+</div>
+
+<style global>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where([data-part='grid-backdrop']) {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(color-mix(in oklab, var(--ui-border) 70%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in oklab, var(--ui-border) 70%, transparent) 1px, transparent 1px);
+      background-size: var(--ui-grid-cell, 48px) var(--ui-grid-cell, 48px);
+      background-position: -1px -1px;
+      mask-image: radial-gradient(ellipse at center, #000 55%, transparent 100%);
+      transition: opacity 0.3s;
+    }
+    /* While <grid-effect effect="lean"> draws its bent lines, the straight ones step aside. */
+    :where([data-grid-lean] > [data-part='grid-backdrop']) {
+      opacity: 0;
+    }
+    :where([data-part='grid-backdrop'] [data-corner]) {
+      position: absolute;
+      translate: -50% -50%;
+      color: var(--ui-muted);
+      font: 300 calc(var(--ui-font-size) * 1.25) / 1 var(--ui-font);
+    }
+    :where([data-part='grid-backdrop'] [data-corner='start']) {
+      left: var(--ui-grid-cell, 48px);
+      top: var(--ui-grid-cell, 48px);
+    }
+    :where([data-part='grid-backdrop'] [data-corner='end']) {
+      right: var(--ui-grid-cell, 48px);
+      bottom: var(--ui-grid-cell, 48px);
+      translate: 50% 50%;
+    }
+  }
+</style>

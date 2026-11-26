@@ -1,0 +1,90 @@
+{{--
+  Navbar: the bar at the top of a site. The logo (slot logo), a labelled <nav> of links (the default slot: links, or a
+  menu for a dropdown) and actions (slot actions). Below 768px the links give way to a Menu button that opens a sheet
+  with the mobile slot's links (flat: a phone has room for every link, and no dropdown to open). [menuId] names the
+  sheet; give each navbar on a page its own. A link in the sheet closes it. Styled by sheet.css for the sheet, and its own rules below.
+--}}
+@import './sheet.css'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+@input label: string = 'Main'
+@input menuId: string = 'navbar-menu'
+
+<script>
+  // A link in the sheet closes it: an in-page link (#pricing) changes no page, so the sheet would stay over it.
+  const closeOnLink = (el) => {
+    const close = (e) => e.target.closest('a') && el.closest('dialog')?.close()
+    el.addEventListener('click', close)
+    return () => el.removeEventListener('click', close)
+  }
+</script>
+
+<header data-part="navbar">
+  <div data-part="navbar-logo"><slot name="logo" /></div>
+  <nav [aria-label]="label" data-part="navbar-links"><slot /></nav>
+  <div data-part="navbar-actions"><slot name="actions" /></div>
+  <span data-part="navbar-toggle"><uiDialogTrigger [target]="menuId">Menu</uiDialogTrigger></span>
+  {{-- The dialog primitive's markup, written here: in an island, a slot can't go inside another component. --}}
+  <dialog [id]="menuId" [aria-labelledby]="menuId + '-title'" closedby="any" data-part="dialog" data-side="right">
+    <h2 [id]="menuId + '-title'" data-part="title">Menu</h2>
+    <nav [aria-label]="label + ', menu'" [use]="closeOnLink"><slot name="mobile" /></nav>
+  </dialog>
+</header>
+
+<style global>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where([data-part='navbar']) {
+      display: flex;
+      align-items: center;
+      gap: var(--ui-space-6);
+      padding: var(--ui-space-3) var(--ui-space-6);
+      border-bottom: 1px solid var(--ui-border);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where([data-part='navbar-links']) {
+      display: flex;
+      align-items: center;
+      gap: var(--ui-space-1);
+      flex: 1;
+    }
+    :where([data-part='navbar-links'] a, [data-part='navbar-links'] [data-part='menu-trigger']) {
+      padding: var(--ui-space-2) var(--ui-space-3);
+      border-radius: var(--ui-radius);
+      color: var(--ui-muted);
+      font-size: var(--ui-font-size);
+      text-decoration: none;
+    }
+    :where([data-part='navbar-links'] a:hover, [data-part='navbar-links'] [data-part='menu-trigger']:hover) {
+      background: var(--ui-muted-bg);
+      color: var(--ui-fg);
+    }
+    :where([data-part='navbar-actions']) {
+      display: flex;
+      align-items: center;
+      gap: var(--ui-space-2);
+    }
+    :where([data-part='navbar-toggle']) {
+      display: none;
+      margin-inline-start: auto;
+    }
+    :where([data-part='navbar'] dialog nav) {
+      display: grid;
+      gap: var(--ui-space-1);
+    }
+    :where([data-part='navbar'] dialog nav a) {
+      padding: var(--ui-space-2) 0;
+      color: var(--ui-fg);
+      text-decoration: none;
+    }
+    @media (max-width: 767px) {
+      :where([data-part='navbar-links'], [data-part='navbar-actions']) {
+        display: none;
+      }
+      :where([data-part='navbar-toggle']) {
+        display: block;
+      }
+    }
+  }
+</style>

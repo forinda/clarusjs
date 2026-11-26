@@ -1,0 +1,53 @@
+{{-- Testimonial, one quote: a large quote in a card with who said it, their role and their company. No JavaScript.
+     The quote is the first in data.ts beside it. --}}
+@import { quotes } from './data.ts'
+
+<section class="testimonial">
+  <figure>
+    <blockquote><p>“{{ quotes[0].text }}”</p></blockquote>
+    <figcaption>
+      <strong>{{ quotes[0].name }}</strong>
+      <span>{{ quotes[0].role }}, {{ quotes[0].company }}</span>
+    </figcaption>
+  </figure>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      padding: var(--ui-space-12) var(--ui-space-6);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(figure) {
+      display: grid;
+      justify-items: center;
+      gap: var(--ui-space-6);
+      max-width: 48rem;
+      margin: 0 auto;
+      padding: var(--ui-space-10) var(--ui-space-8);
+      border: 1px solid var(--ui-border);
+      border-radius: calc(var(--ui-radius) * 1.5);
+      background: var(--ui-card);
+      text-align: center;
+    }
+    :where(blockquote) {
+      margin: 0;
+    }
+    :where(blockquote p) {
+      margin: 0;
+      font: 600 calc(var(--ui-font-size) * 1.5) / 1.4 var(--ui-font-heading);
+      letter-spacing: -0.01em;
+      text-wrap: balance;
+    }
+    :where(figcaption) {
+      display: grid;
+      gap: var(--ui-space-1);
+    }
+    :where(figcaption span) {
+      color: var(--ui-muted);
+    }
+  }
+</style>

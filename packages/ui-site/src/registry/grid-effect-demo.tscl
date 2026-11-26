@@ -1,0 +1,43 @@
+@import gridBackdrop from './grid-backdrop.tscl'
+@import gridEffect from './grid-effect.tscl'
+
+<div class="demos">
+  <div class="demo">
+    <gridBackdrop />
+    <gridEffect effect="spotlight" />
+    <p>Spotlight</p>
+  </div>
+  <div class="demo">
+    <gridBackdrop />
+    <gridEffect effect="trail" />
+    <p>Trail</p>
+  </div>
+  <div class="demo">
+    <gridBackdrop />
+    <gridEffect effect="lean" />
+    <p>Lean</p>
+  </div>
+</div>
+
+<style scoped>
+  .demos {
+    display: grid;
+    gap: 12px;
+  }
+  .demo {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 200px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    overflow: hidden;
+  }
+  p {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    font-weight: 600;
+    color: var(--ui-fg);
+  }
+</style>

@@ -1,11 +1,16 @@
 {{-- A block on /blocks: its name (linked), category and line from the registry, and its preview (the slot: an
      <iframe> written in the page, since its src is never data). --}}
-@import { blocks } from '~/registry.ts'
+@import { SECTION_KINDS, blocks, sections } from '~/registry.ts'
 @input name: string
 
 <script server>
-  const entry = blocks.find((b) => b.name === name)
-  if (!entry) throw new Error(`blockRow: no block "${name}" in the registry`)
+  // A block, or a section kind shown by its first version: it links to the kind's page and says the kind.
+  const entry = blocks.concat(sections).find((b) => b.name === name)
+  if (!entry) throw new Error(`blockRow: no block or section "${name}" in the registry`)
+  const kind = entry.section ? SECTION_KINDS[entry.section] : undefined
+  const href = entry.section ? `/blocks/marketing/${entry.section}` : `/blocks/${name}`
+  const title = kind?.title ?? entry.title
+  const line = kind?.description ?? entry.description
 </script>
 
 <section
@@ -16,11 +21,11 @@
 >
   <div class="block-row-head">
     <h2 [id]="'block-' + name">
-      <a [href]="'/blocks/' + name">{{ entry.title }}</a>
+      <a [href]="href">{{ title }}</a>
     </h2>
     <span class="block-row-category">{{ entry.category }}</span>
   </div>
-  <p>{{ entry.description }}</p>
+  <p>{{ line }}</p>
   <slot />
 </section>
 

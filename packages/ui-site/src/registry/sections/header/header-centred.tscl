@@ -1,0 +1,49 @@
+{{--
+  Header, centred: the logo on the left, the links in the middle, Sign up on the right; on phones a Menu button opens
+  the links in a sheet. No menus. Its brand, links and actions are in data.ts beside it.
+--}}
+@import uiButton from '~/components/ui/button.tscl'
+@import uiNavbar from '~/components/ui/navbar.tscl'
+@import { actions, brand, links } from './data.ts'
+
+<div class="header-centred">
+  <uiNavbar menuId="header-centred-menu" aria-label="Site header, centred" label="Site, centred">
+    @slot('logo') {
+      <a class="brand" [href]="brand.href">{{ brand.name }}</a>
+    }
+    @for (l of links; track l.href) {
+      <a [href]="l.href">{{ l.label }}</a>
+    }
+    @slot('actions') {
+      <uiButton size="sm" [href]="actions.signup.href">{{ actions.signup.label }}</uiButton>
+    }
+    @slot('mobile') {
+      @for (l of [...links, actions.login, actions.signup]; track l.href) {
+        <a [href]="l.href">{{ l.label }}</a>
+      }
+    }
+  </uiNavbar>
+</div>
+
+<style global>
+  @layer theme, base, components, utilities;
+  @layer components {
+    /* Global: a scoped rule stops at the navbar's own root. The logo and actions share the sides; the links sit in the middle. */
+    :where(.header-centred [data-part='navbar-logo']),
+    :where(.header-centred [data-part='navbar-actions']) {
+      flex: 1;
+    }
+    :where(.header-centred [data-part='navbar-links']) {
+      flex: 0 1 auto;
+      justify-content: center;
+    }
+    :where(.header-centred [data-part='navbar-actions']) {
+      justify-content: flex-end;
+    }
+    :where(.header-centred .brand) {
+      font: 700 calc(var(--ui-font-size) * 1.15) var(--ui-font-heading);
+      color: var(--ui-fg);
+      text-decoration: none;
+    }
+  }
+</style>

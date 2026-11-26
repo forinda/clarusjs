@@ -1,0 +1,65 @@
+{{-- Stats: a short title over four numbers and what they count, in ruled cells over a grid whose cells light up behind
+     the pointer (trail). Delete the <gridEffect> tag for no JavaScript. Its numbers are in data.ts beside it. --}}
+@import gridBackdrop from '~/components/ui/grid-backdrop.tscl'
+@import gridEffect from '~/components/ui/grid-effect.tscl'
+@import { stats } from './data.ts'
+
+<section class="stats">
+  <gridBackdrop />
+  <gridEffect effect="trail" />
+  <h2>{{ stats.title }}</h2>
+  <dl>
+    @for (s of stats.items; track s.label) {
+      <div>
+        <dt>{{ s.label }}</dt>
+        <dd>{{ s.value }}</dd>
+      </div>
+    }
+  </dl>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      display: grid;
+      gap: var(--ui-space-8);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      overflow: hidden;
+      text-align: center;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(h2), :where(dl) {
+      position: relative;
+      z-index: 1;
+    }
+    :where(h2) {
+      margin: 0;
+      font: 700 calc(var(--ui-font-size) * 1.75) / 1.2 var(--ui-font-heading);
+      letter-spacing: -0.02em;
+    }
+    :where(dl) {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+      gap: var(--ui-space-4);
+      margin: 0;
+    }
+    :where(dl div) {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: var(--ui-space-1);
+      padding: var(--ui-space-5);
+    }
+    :where(dt) {
+      color: var(--ui-muted);
+    }
+    :where(dd) {
+      margin: 0;
+      font: 700 calc(var(--ui-font-size) * 2.5) / 1 var(--ui-font-heading);
+      letter-spacing: -0.03em;
+    }
+  }
+</style>

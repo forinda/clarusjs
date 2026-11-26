@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { compile } from 'clarusjs/compiler'
 import { expect, test } from 'vitest'
-import { COMPONENT_GROUPS, blocks, codeFiles, components, registry } from '../src/registry.ts'
+import { COMPONENT_GROUPS, SECTION_KINDS, blocks, codeFiles, components, registry, sections, sectionsOf, type SectionKind } from '../src/registry.ts'
 import { registryDir, render, source } from './render.ts'
 import { globalStyle, uiSection } from './css.ts'
 
@@ -14,12 +14,18 @@ test('blocks: registry entries of their own kind, apart from the components', ()
   expect(blocks.map((b) => b.name)).toContain('login')
   expect(components.every((e) => e.kind !== 'block')).toBe(true)
   expect(blocks.every((e) => e.kind === 'block')).toBe(true)
-  expect(components.length + blocks.length).toBe(registry.length)
+  expect(components.length + blocks.length + sections.length).toBe(registry.length)
+})
+
+test('sections: their own kind, each with a section kind and category Marketing', () => {
+  expect(components.every((e) => e.kind !== 'section')).toBe(true)
+  expect(sections.every((e) => e.kind === 'section' && !!e.section && e.section in SECTION_KINDS && e.category === 'Marketing')).toBe(true)
+  expect(Object.keys(SECTION_KINDS)).toEqual(['hero', 'features', 'pricing', 'cta', 'testimonials', 'faq', 'footer', 'header', 'logo-cloud', 'stats', 'newsletter'])
 })
 
 test('every entry\'s files exist, and every file in src/registry is an entry\'s file or usage example', () => {
   for (const { file } of files) expect(existsSync(resolve(registryDir, file)), file).toBe(true)
-  const known = [...files.map((f) => f.file), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`), ...(e.tailwind ?? [])])].sort()
+  const known = [...new Set(files.map((f) => f.file)), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`), ...(e.tailwind ?? [])])].sort()
   const found = (readdirSync(registryDir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => statSync(resolve(registryDir, f)).isFile())
   expect(found.sort()).toEqual(known)
 })
@@ -45,7 +51,7 @@ const shared = (s: string) => /^@clarusjs\/ui-primitives(\/|$)/.test(s) || /^cla
 
 test('copied files import only ui-primitives, clarusjs, their own files and those of the entries they list in uses', () => {
   for (const { entry, file } of files) {
-    if (entry.kind === 'block') continue
+    if (entry.kind === 'block' || entry.kind === 'section') continue
     for (const s of specifiers(file)) {
       // ./x: one of its own files, or of an entry it uses (chart-interactive takes chart-geometry.ts's types).
       const local = /^\.\/([\w.-]+)$/.exec(s)?.[1]
@@ -56,9 +62,50 @@ test('copied files import only ui-primitives, clarusjs, their own files and thos
   }
 })
 
+test('the section versions the spec lists, each with its grid effect where it has one', () => {
+  const effect = (name: string) => /<gridEffect effect="(\w+)"/.exec(source(sections.find((e) => e.name === name)!.files[0]!))?.[1] ?? 'none'
+  const want: Record<string, string> = {
+    'hero-centred': 'none', 'hero-split': 'none', 'hero-grid': 'lean',
+    'header-menus': 'none', 'header-centred': 'none',
+    'features-columns': 'none', 'features-grid': 'spotlight', 'features-bento': 'trail',
+    'logo-cloud': 'trail', stats: 'trail',
+    'pricing-plans': 'spotlight', 'pricing-compare': 'spotlight',
+    'cta-centred': 'lean', 'cta-split': 'lean', 'testimonials-quote': 'none', 'testimonials-grid': 'none',
+    'faq-accordion': 'spotlight', 'faq-columns': 'spotlight', newsletter: 'none',
+    'footer-columns': 'none', 'footer-simple': 'none',
+  }
+  for (const [name, fx] of Object.entries(want)) {
+    expect(sections.some((e) => e.name === name), name).toBe(true)
+    expect(effect(name), name).toBe(fx)
+  }
+})
+
+test('pricing data: three plans, exactly one popular, each comparison row with a value per plan', async () => {
+  const { plans, comparison } = await import('../src/registry/sections/pricing/data.ts')
+  expect(plans).toHaveLength(3)
+  expect(plans.filter((p) => p.popular)).toHaveLength(1)
+  for (const g of comparison) for (const r of g.rows) expect(r.values, r.label).toHaveLength(plans.length)
+})
+
+test('every section kind with versions has src/pages/blocks/marketing/<kind>.md showing each version\'s files in Code order, and each version a view', () => {
+  expect(sections.length).toBeGreaterThan(0)
+  for (const kind of Object.keys(SECTION_KINDS) as SectionKind[]) {
+    const versions = sectionsOf(kind)
+    if (!versions.length) continue
+    const md = readFileSync(resolve(pages, 'blocks', 'marketing', `${kind}.md`), 'utf8')
+    for (const e of versions) {
+      const view = new RegExp(`<blockView name="${e.name}">([\\s\\S]*?)</blockView>`).exec(md)?.[1]
+      expect(view, e.name).toBeDefined()
+      expect(view, e.name).toContain(`<iframe src="/view/${e.name}"`)
+      expect([...view!.matchAll(/^<<< \.\.\/\.\.\/\.\.\/registry\/(\S+)/gm)].map((m) => m[1]), e.name).toEqual(codeFiles(e).map((f) => f.file))
+      expect(existsSync(resolve(pages, 'view', `${e.name}.tscl`)), e.name).toBe(true)
+    }
+  }
+})
+
 test('a block imports what works once pasted: components as the ~/components/ui/ files they copy, its own files as ./, npm packages listed in packages', () => {
   for (const { entry, file } of files) {
-    if (entry.kind !== 'block') continue
+    if (entry.kind !== 'block' && entry.kind !== 'section') continue
     const dir = file.slice(0, file.lastIndexOf('/') + 1)
     for (const s of specifiers(file)) {
       // A component's file only if it is one that gets copied (card has card.tscl, no card.css).
@@ -75,6 +122,14 @@ test('entries with island: false compile to no client code', () => {
     if (entry.island || !file.endsWith('.tscl')) continue
     expect(compile(source(file), { file, target: 'client' }).code.trim(), file).toBe('export {}')
   }
+})
+
+test('grid-effect.ts: stripped and minified, at most 1536 bytes gzipped', async () => {
+  const { transformWithOxc, minify } = await import('vite')
+  const { gzipSync } = await import('node:zlib')
+  const js = (await transformWithOxc(source('grid-effect.ts'), 'grid-effect.ts')).code
+  const min = (await minify('grid-effect.js', js)).code
+  expect(gzipSync(min).length).toBeLessThanOrEqual(1536)
 })
 
 test('styles use only --ui-* custom properties', () => {
@@ -205,9 +260,14 @@ test('a styled part\'s <style global> equals ui.css\'s sections for it, in order
 
 test('#review: a no-JavaScript component\'s data-part names are its own, never ones ui.css styles globally', () => {
   const styled = new Set([...readFileSync(resolve(import.meta.dirname, '../../ui/src/ui.css'), 'utf8').matchAll(/data-part='([\w-]+)'/g)].map((m) => m[1]!))
+  // Written on purpose: navbar writes the dialog primitive's own markup (so its island can wire the links in it).
+  const primitiveMarkup: Record<string, string[]> = { 'navbar.tscl': ['dialog', 'title'] }
   for (const { entry, file } of files) {
     if (entry.sections || !file.endsWith('.tscl')) continue
-    for (const [, part] of source(file).matchAll(/data-part="([\w-]+)"/g)) expect(styled.has(part!), `${file}: data-part="${part}"`).toBe(false)
+    for (const [, part] of source(file).matchAll(/data-part="([\w-]+)"/g)) {
+      if (primitiveMarkup[file]?.includes(part!)) continue
+      expect(styled.has(part!), `${file}: data-part="${part}"`).toBe(false)
+    }
   }
 })
 
@@ -318,6 +378,17 @@ test('every Styling section lists the component\'s state attributes', () => {
     const markup = source(f).replace(/<style[\s\S]*$/, '')
     for (const [, a] of markup.matchAll(/\[?(data-(?!part\b|cl-)[\w-]+)\]?=/g)) expect(styling(e.name), `${e.name}: ${a}`).toContain(`\`${a}\``)
   }
+})
+
+test('navbar: a header with the logo, a labelled <nav> of links and the actions, in that order; on phones a Menu button opens a sheet with the mobile links', async () => {
+  const html = await render('navbar.tscl', { label: 'Main' }, { logo: '<a href="/">Lumen</a>', default: '<a href="/docs">Docs</a>', actions: '<a href="/signup">Sign up</a>', mobile: '<a href="/docs">Docs (phone)</a>' })
+  expect(html).toMatch(/^<header data-part="navbar">/)
+  const at = (s: string) => html.indexOf(s)
+  expect(at('Lumen')).toBeLessThan(at('<nav aria-label="Main" data-part="navbar-links">'))
+  expect(at('<nav aria-label="Main" data-part="navbar-links">')).toBeLessThan(at('Sign up'))
+  expect(html).toContain('Menu')
+  expect(html).toContain('<nav aria-label="Main, menu">')
+  expect(html).toContain('Docs (phone)')
 })
 
 test('button: with href it renders <a> with the same data attributes', async () => {

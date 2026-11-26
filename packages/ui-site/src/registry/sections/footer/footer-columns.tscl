@@ -1,0 +1,160 @@
+{{--
+  Footer with columns: the logo and a status line on the left, four columns of links, then the copyright and a
+  light / dark / system switch. The switch calls setTheme in data.ts beside it, and watchTheme keeps it showing the page's theme: replace both with your site's own.
+--}}
+@import { brand, columns, setTheme, status, watchTheme } from './data.ts'
+
+<script>
+  let mode = state('system')
+  function choose(next) {
+    mode = next
+    setTheme(next)
+  }
+  // Shows the theme the page already has (set before this attached, or changed elsewhere), as it changes.
+  const follow = () => watchTheme((m) => (mode = m))
+</script>
+
+<footer class="footer" aria-label="Site footer">
+  <div class="top">
+    <div class="brand">
+      <a [href]="brand.href">{{ brand.name }}</a>
+      <a class="status" [href]="status.href"><span class="dot" aria-hidden="true"></span>{{ status.label }}</a>
+    </div>
+    @for (col of columns; track col.title) {
+      <nav [aria-label]="col.title">
+        <h2>{{ col.title }}</h2>
+        <ul>
+          @for (l of col.links; track l.href) {
+            <li><a [href]="l.href">{{ l.label }}</a></li>
+          }
+        </ul>
+      </nav>
+    }
+  </div>
+  <div class="bottom">
+    <p>{{ brand.copyright }}</p>
+    <fieldset class="theme" [use]="follow">
+      <legend>Theme</legend>
+      @for (m of ['light', 'dark', 'system']; track m) {
+        <label>
+          <input type="radio" name="footer-theme" [value]="m" [checked]="mode === m" (change)="choose(m)" />
+          {{ m[0].toUpperCase() + m.slice(1) }}
+        </label>
+      }
+    </fieldset>
+  </div>
+</footer>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: var(--ui-space-10);
+      padding: var(--ui-space-12) var(--ui-space-6) var(--ui-space-6);
+      border-top: 1px solid var(--ui-border);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+      font-size: calc(var(--ui-font-size) * 0.9);
+    }
+    :where(.top) {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+      gap: var(--ui-space-8);
+    }
+    :where(.brand) {
+      display: grid;
+      align-content: start;
+      gap: var(--ui-space-3);
+    }
+    :where(.brand > a:first-child) {
+      font: 700 calc(var(--ui-font-size) * 1.2) var(--ui-font-heading);
+      color: var(--ui-fg);
+      text-decoration: none;
+    }
+    :where(.status) {
+      display: flex;
+      align-items: center;
+      gap: var(--ui-space-2);
+      color: var(--ui-muted);
+      text-decoration: none;
+    }
+    :where(.dot) {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--ui-success);
+    }
+    :where(h2) {
+      margin: 0 0 var(--ui-space-3);
+      font-size: var(--ui-font-size);
+      font-weight: 600;
+    }
+    :where(ul) {
+      display: grid;
+      gap: var(--ui-space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    /* A 24px touch target for every link however small the font (WCAG 2.5.8): a list's sit close together. */
+    :where(a) {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+    }
+    :where(nav a) {
+      color: var(--ui-muted);
+      text-decoration: none;
+    }
+    :where(nav a:hover) {
+      color: var(--ui-fg);
+    }
+    :where(.bottom) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--ui-space-4);
+      padding-top: var(--ui-space-6);
+      border-top: 1px solid var(--ui-border);
+    }
+    :where(.bottom p) {
+      margin: 0;
+      color: var(--ui-muted);
+    }
+    :where(.theme) {
+      display: flex;
+      gap: var(--ui-space-1);
+      margin: 0;
+      padding: var(--ui-space-1);
+      border: 1px solid var(--ui-border);
+      border-radius: 999px;
+    }
+    :where(legend) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    :where(.theme label) {
+      padding: var(--ui-space-1) var(--ui-space-3);
+      border-radius: 999px;
+      color: var(--ui-muted);
+      cursor: pointer;
+    }
+    :where(.theme label:has(:checked)) {
+      background: var(--ui-muted-bg);
+      color: var(--ui-fg);
+    }
+    :where(.theme label:has(:focus-visible)) {
+      outline: 2px solid var(--ui-ring);
+    }
+    :where(.theme input) {
+      position: absolute;
+      opacity: 0;
+    }
+  }
+</style>
