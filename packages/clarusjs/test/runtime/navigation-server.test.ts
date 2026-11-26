@@ -13,3 +13,10 @@ test('on the server: abort() does nothing', async () => {
   const { abort } = await import('../../src/runtime/navigation.ts')
   expect(() => abort()).not.toThrow()
 })
+
+test('on the server: searchParams is null, setSearch() does nothing, navigationState() is undefined', async () => {
+  const { searchParams, setSearch, navigationState } = await import('../../src/runtime/navigation.ts')
+  expect(searchParams.get()).toBeNull()
+  await expect(setSearch({ q: 'x' })).resolves.toBeUndefined()
+  expect(navigationState()).toBeUndefined()
+})

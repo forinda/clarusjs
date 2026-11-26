@@ -19,8 +19,8 @@ test('navigate() goes through the Navigation API (so fragments or the router tak
   await navigate('/guide/lists')
   await navigate(new URL('http://localhost:3000/guide/holes'), { replace: true, state: { from: 'search' } })
   expect(navigation.calls).toEqual([
-    ['/guide/lists', { history: 'auto', state: undefined }],
-    ['http://localhost:3000/guide/holes', { history: 'replace', state: { from: 'search' } }],
+    ['/guide/lists', { history: 'auto', state: undefined, info: { scroll: true } }],
+    ['http://localhost:3000/guide/holes', { history: 'replace', state: { from: 'search' }, info: { scroll: true } }],
   ])
 })
 
@@ -220,4 +220,39 @@ test('without viewTransitions(), or without the browser API, swaps are instant a
   const { viewTransitions } = await import('../../src/runtime/navigation.ts')
   viewTransitions()
   await expect(step()('swapping', { phase: 'swapping' })).resolves.toBeUndefined()
+})
+
+class EntryNavigation extends FakeNavigation {
+  currentEntry = { getState: () => ({ from: 'search' }) as unknown }
+}
+
+test('searchParams: the current query, as a store; it follows the URL', async () => {
+  vi.stubGlobal('location', new URL('http://localhost:3000/search?q=lists&page=2'))
+  vi.stubGlobal('navigation', new FakeNavigation())
+  const { searchParams, currentUrl } = await import('../../src/runtime/navigation.ts')
+  expect(searchParams.get()?.get('q')).toBe('lists')
+  currentUrl.set(new URL('http://localhost:3000/search?q=forms'))
+  expect(searchParams.get()?.get('q')).toBe('forms')
+})
+
+test('setSearch: sets and removes query params on the current URL; replaces the entry unless told otherwise', async () => {
+  vi.stubGlobal('location', new URL('http://localhost:3000/search?q=lists&page=2&tag=a#top'))
+  const navigation = new FakeNavigation()
+  vi.stubGlobal('navigation', navigation)
+  const { setSearch } = await import('../../src/runtime/navigation.ts')
+  await setSearch({ q: 'forms', page: null, tag: ['a', 'b'], n: 3 })
+  await setSearch({ q: 'x' }, { replace: false, state: { k: 1 } })
+  expect(navigation.calls).toEqual([
+    ['http://localhost:3000/search?q=forms&tag=a&tag=b&n=3#top', { history: 'replace', state: undefined, info: { scroll: false } }],
+    ['http://localhost:3000/search?q=x&page=2&tag=a#top', { history: 'auto', state: { k: 1 }, info: { scroll: false } }],
+  ])
+  // A filter keeps the visitor where they are; scroll: true goes to the top as a new page would.
+  await setSearch({ q: 'y' }, { scroll: true })
+  expect(navigation.calls.at(-1)![1]).toMatchObject({ info: { scroll: true } })
+})
+
+test('navigationState: what navigate(url, { state }) stored, for this entry', async () => {
+  vi.stubGlobal('navigation', new EntryNavigation())
+  const { navigationState } = await import('../../src/runtime/navigation.ts')
+  expect(navigationState()).toEqual({ from: 'search' })
 })

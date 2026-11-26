@@ -245,3 +245,26 @@ test('review (#186): a navigation cancelled before its handlers run (beforeNavig
   await new Promise((r) => setTimeout(r))
   expect(navigate).not.toHaveBeenCalled() // not sent to the cancelled URL
 })
+
+test('scroll: the browser handles it (restores on back/forward, top on a new page) unless navigate() asked to keep it', () => {
+  const seen: string[] = []
+  const withScroll = (info?: unknown) => {
+    const e = event('http://x/a', { info } as Partial<Fake>)
+    e.intercept = (options: { scroll?: string }) => { seen.push(options.scroll ?? 'unset') }
+    onNavigate(e, () => render)
+  }
+  withScroll()
+  withScroll({ scroll: false })
+  expect(seen).toEqual(['unset', 'manual']) // unset: the browser's own, 'after-transition'
+})
+
+test('scroll: false puts the position back after the swap, even if swapping the content moved it', async () => {
+  vi.stubGlobal('scrollX', 0)
+  vi.stubGlobal('scrollY', 900)
+  const to: [number, number][] = []
+  vi.stubGlobal('scrollTo', (x: number, y: number) => { to.push([x, y]) })
+  const e = event('http://x/list?q=a', { info: { scroll: false } } as Partial<Fake>)
+  onNavigate(e, () => async () => { vi.stubGlobal('scrollY', 0) }) // the swap left the page at the top
+  await e.handler!()
+  expect(to.at(-1)).toEqual([0, 900])
+})
