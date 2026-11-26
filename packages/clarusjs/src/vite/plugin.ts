@@ -139,8 +139,7 @@ function layoutsFor(root: string, file: string, config: { layout: string; includ
   const out = config
     .filter((l) => (l.include ?? ['/*']).some((p) => routeMatches(route, p)) && !(l.exclude ?? []).some((p) => routeMatches(route, p)))
     .map((l) => l.layout)
-  // ponytail: in dev, adding or removing a +layout.tscl reaches pages already compiled only on restart; watch the
-  // folders' + files and invalidate the pages under them if that bites.
+  // In dev, adding or removing a +layout.tscl compiles the pages under it again (configureServer: relayout).
   const folders = dirname(rel) === '.' ? [] : dirname(rel).split(sep)
   for (let i = 0; i <= folders.length; i++) {
     const layout = resolve(pages, ...folders.slice(0, i), '+layout.tscl')
@@ -880,6 +879,22 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       server.watcher.on('change', restyle)
       server.watcher.on('add', restyle)
       server.watcher.on('unlink', restyle)
+      // A +layout.tscl added or removed (#472): the pages under its folder compiled without it (or with it); compile
+      // them again, and reload. A change to one is an ordinary module update.
+      const relayout = (file: string) => {
+        const folder = dirname(normalizePath(file))
+        if (!/\/\+layout\.tscl$/.test(normalizePath(file)) || !(folder + '/').startsWith(normalizePath(resolve(server.config.root, 'src/pages')) + '/')) return
+        const pages = files.pages(server.config.root).filter((p) => normalizePath(p).startsWith(folder + '/'))
+        for (const env of Object.values(server.environments)) {
+          for (const page of pages) {
+            for (const mod of env.moduleGraph.getModulesByFile(normalizePath(page)) ?? []) env.moduleGraph.invalidateModule(mod)
+            if (isRunnableDevEnvironment(env)) for (const mod of env.runner.evaluatedModules.getModulesByFile(normalizePath(page)) ?? []) env.runner.evaluatedModules.invalidateModule(mod)
+          }
+        }
+        server.environments.client.hot.send({ type: 'full-reload' })
+      }
+      server.watcher.on('add', relayout)
+      server.watcher.on('unlink', relayout)
       return () => {
         server.middlewares.use(async (req, res, next) => {
           try {
