@@ -16,7 +16,13 @@ test('dev server: a +layout.tscl added wraps the pages under it already served; 
   const server = await createServer({ root, configFile: false, logLevel: 'silent', server: { port: 0 }, plugins: [clarusjs()] })
   await server.listen()
   const url = server.resolvedUrls!.local[0]!
-  const get = async (path: string) => (await fetch(new URL(path, url))).text()
+  // A page that fails to render isn't a page without its layout: anything but a 200 fails the test.
+  const get = async (path: string) => {
+    const res = await fetch(new URL(path, url))
+    const html = await res.text()
+    expect(res.status, html.slice(0, 300)).toBe(200)
+    return html
+  }
   // The watcher hears the file a moment later: ask until the page changes, or give up.
   const until = async (path: string, ok: (html: string) => boolean) => {
     for (let i = 0; i < 50; i++) {
@@ -32,7 +38,9 @@ test('dev server: a +layout.tscl added wraps the pages under it already served; 
     expect(await until('/admin/users', (h) => h.includes('class="admin'))).toMatch(/<div class="admin[^"]*"><h1[^>]*>Users<\/h1><\/div>/)
     expect(await get('/')).not.toContain('class="admin') // a page outside the folder
     rmSync(resolve(root, 'src/pages/admin/+layout.tscl'))
-    expect(await until('/admin/users', (h) => !h.includes('class="admin'))).not.toContain('class="admin')
+    const after = await until('/admin/users', (h) => !h.includes('class="admin'))
+    expect(after).not.toContain('class="admin')
+    expect(after).toMatch(/<h1[^>]*>Users<\/h1>/)
   } finally {
     await server.close()
   }

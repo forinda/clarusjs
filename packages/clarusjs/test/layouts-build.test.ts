@@ -33,6 +33,13 @@ beforeAll(async () => {
   w('src/pages/teams/+layout.load.ts', "export function load({ params }: { params: Record<string, string> }) { return { team: params.id ?? 'all', members: 3 } }\n")
   w('src/pages/teams/[id].tscl', '<h1>Team</h1>\n')
   w('src/pages/teams/[id].load.ts', "export function entries() { return [{ id: 'red' }] }\nexport function load() { return {} }\n")
+  // A route matches its own page before a broader pattern listed earlier (the server's order: fewer [params] first).
+  w('src/pages/[section]/[page].tscl', '<p>any</p>\n')
+  w('src/pages/[section]/[page].load.ts', "export function entries() { return [{ section: 'blog', page: 'one' }] }\nexport function load() { return {} }\n")
+  w('src/pages/admin/[id].tscl', '<p>item</p>\n')
+  w('src/pages/admin/[id].load.ts', "export function entries() { return [{ id: 'x' }] }\nexport function load() { return {} }\n")
+  // A line in a script that reads @layout none isn't the directive.
+  w('src/pages/admin/tricky.tscl', '<script>\n  const s = `\n@layout none\n`\n</script>\n<h1>Tricky</h1>\n')
   w('src/pages/admin/+guard.ts', 'export function guard() {}\n')
   mkdirSync(resolve(root, 'node_modules'))
   symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
@@ -65,7 +72,7 @@ test('@layout none: no folder or config layout', () => {
 
 test('+layout.tscl files are never routes', () => {
   const manifest = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8'))
-  expect(Object.keys(manifest.routes).sort()).toEqual(['/', '/admin/count', '/admin/notes', '/admin/sign-in', '/admin/users', '/embed/widget', '/teams/red'])
+  expect(Object.keys(manifest.routes).sort()).toEqual(['/', '/admin/count', '/admin/notes', '/admin/sign-in', '/admin/tricky', '/admin/users', '/admin/x', '/blog/one', '/embed/widget', '/teams/red'])
 })
 
 test('#472: a page source (a Markdown page) is wrapped in its folder and config layouts like a .tscl page', () => {
@@ -79,6 +86,10 @@ test('#472: the route manifest (clarusjs explain) lists each route\'s layouts, o
   expect(routes['/embed/widget'].layouts).toEqual(['src/pages/+layout.tscl'])
   expect(routes['/embed/widget'].guards).toEqual(['src/pages/+guard.ts'])
   expect(routes['/admin/sign-in'].layouts).toBeUndefined() // @layout none
+  const admin = ['src/layouts/shell.tscl', 'src/layouts/banner.tscl', 'src/pages/+layout.tscl', 'src/pages/admin/+layout.tscl']
+  expect(routes['/admin/x'].layouts).toEqual(admin) // /admin/[id], not /[section]/[page]
+  expect(routes['/blog/one'].layouts).toEqual(['src/layouts/shell.tscl', 'src/pages/+layout.tscl'])
+  expect(routes['/admin/tricky'].layouts).toEqual(admin) // @layout none inside its script isn't the directive
   expect(routes['/admin/sign-in'].guards).toEqual(['src/pages/+guard.ts', 'src/pages/admin/+guard.ts']) // guards still apply
 })
 

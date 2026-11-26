@@ -494,3 +494,16 @@ test('#444: (submit.prevent) types $event as the submit, and $values as the form
     expect.objectContaining({ line: 4, code: 'TS2339', message: expect.stringContaining("'key' does not exist on type '__cl_Event<\"submit\"") }),
   ])
 })
+
+test('#444: check reports a modifier that isn\'t one, where it is written, as the compiler does', () => {
+  const root = project({
+    'src/pages/index.tscl': `<script>
+  let n = state(0)
+</script>
+<form (submit.prevnt)="n++"></form>
+`,
+  })
+  expect(check({ root, typescript }).diagnostics).toEqual([
+    expect.objectContaining({ file: 'src/pages/index.tscl', line: 4, column: 7, code: 'clarus', message: expect.stringContaining('unknown modifier .prevnt') }),
+  ])
+})

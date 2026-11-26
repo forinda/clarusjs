@@ -1,5 +1,4 @@
-// Event modifiers (#444): (submit.prevent)="…", (keydown.enter)="…", (click.self.once)="…". The name before the
-// first dot is the DOM event; each modifier becomes a line of the handler, run before the code as written.
+// Event modifiers (#444): (type.mods)="…"; each modifier is a guard line run before the handler.
 
 const KEYS: Record<string, string> = {
   enter: 'Enter', esc: 'Escape', escape: 'Escape', space: ' ', tab: 'Tab',
@@ -30,10 +29,7 @@ export function modifierError(type: string, mods: string[]): string | null {
   return null
 }
 
-/**
- * The handler's guard: keys and .self first (an event they don't match does nothing), then .once, .prevent, .stop.
- * `__cl_el` is the element with the handler; `__cl_done` the handler's own .once flag.
- */
+/** The guard: keys and .self first (a miss does nothing), then .once (`__cl_done`), .prevent, .stop. */
 export function guardCode(mods: string[]): string {
   const keys = mods.map((m) => m.toLowerCase())
   const tests: string[] = []

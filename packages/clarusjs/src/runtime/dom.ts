@@ -405,20 +405,19 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event, el: Ele
 }
 
 /**
- * $values (#444): the fields of el's form (el itself, or the form it's in) as an object; a name used more than once
- * (checkboxes) gives a list. A submit's button counts, as it does when the form posts.
+ * $values (#444): el's form's fields (el's, or its form's) as an object; a repeated name gives a list, and a
+ * submit's button counts.
  * @internal Compiled handlers call this.
  */
 export function values(el: Element, e?: Event): Record<string, unknown> {
   const form = el instanceof HTMLFormElement ? el : (el as HTMLInputElement).form ?? el.closest('form')
-  const out: Record<string, unknown> = {}
-  if (!form) return out
+  if (!form) return {}
   const data = new FormData(form, (e as SubmitEvent | undefined)?.submitter)
-  for (const k of new Set(data.keys())) {
+  // own properties: a field named __proto__ stays a field
+  return Object.fromEntries([...new Set(data.keys())].map((k) => {
     const all = data.getAll(k)
-    out[k] = all.length > 1 ? all : all[0]
-  }
-  return out
+    return [k, all.length > 1 ? all : all[0]]
+  }))
 }
 
 /**

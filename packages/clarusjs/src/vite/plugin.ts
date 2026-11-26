@@ -117,7 +117,11 @@ function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<strin
 /** A page's folder and config layouts as root paths, outermost first; none with `@layout none`. */
 function pageLayouts(root: string, file: string, files: Files): string[] {
   const layouts = files.layouts(file, root) ?? []
-  return layouts.length && !/^@layout none\s*$/m.test(files.read(file, root)) ? layouts : []
+  try {
+    return layouts.length && parse(files.read(file, root), file).layout === 'none' ? [] : layouts
+  } catch {
+    return layouts // compile reports it
+  }
 }
 
 /** Each page's layouts and guards (#472), for the route manifest: what `clarusjs explain` lists. Paths from the root. */

@@ -125,8 +125,8 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
   }
   for (const e of ir.events.filter((ev) => ev.scope === scope)) {
     let body = rewriteClient(e.handler, signals).trim()
-    // $values (#444): the fields of the handler's form (the element's, or the form it's in) as an object.
-    if (/\$values\b/.test(e.handler)) body = `const $values = __cl_values(__cl_el, $event); ${body}`
+    // $values (#444): values() in runtime/dom.ts, unless the handler declares its own.
+    if (/\$values\b/.test(e.handler) && !/\b(?:const|let|var)\s+\$values\b/.test(e.handler)) body = `const $values = __cl_values(__cl_el, $event); ${body}`
     const guard = guardCode(e.mods ?? [])
     const end = body.includes('//') ? '\n  ' : ' ' // a trailing line comment must not swallow the closing `})`
     const fn = `(${/__cl_el\b/.test(guard + body) ? '$event, __cl_el' : '$event'}) => { ${guard}${body}${end}}`

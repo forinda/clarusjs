@@ -117,3 +117,27 @@ test('the modifiers stay out of the event type the server marks and the browser 
   expect(client).not.toContain('submit.prevent')
   function island(t: string) { return `<script>\n  let n = state(0)\n</script>\n${t}\n` }
 })
+
+test('a handler that declares its own $values keeps it', async () => {
+  const { log } = await mount(`<script>
+  let got = state('')
+</script>
+<button (click)="const $values = { n: 1 }; got = String($values.n)">b</button>
+<output>{{ got }}</output>
+`, 'own')
+  document.querySelector('button')!.click()
+  expect(log()).toBe('1')
+})
+
+test('$values keeps a field named __proto__ as a field, one value or several', async () => {
+  const { log } = await mount(`<script>
+  let got = state('')
+</script>
+<form (submit.prevent)="got = JSON.stringify($values) + Object.getPrototypeOf($values).constructor.name">
+  <input name="__proto__" value="x"><input name="__proto__" value="y"><input name="a" value="1">
+</form>
+<output>{{ got }}</output>
+`, 'proto')
+  submit(document.querySelector('form')!)
+  expect(log()).toBe('{"__proto__":["x","y"],"a":"1"}Object')
+})

@@ -120,10 +120,11 @@ export function writeManifest(distDir: string, routes: string[], base: string, l
   for (const { route, loader, cookies } of server) {
     manifest.routes[route] = { mode: 'server', html: null, loader: loader ? 'request' : null, ...(cookies ? { cookies: true } : {}), islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] }
   }
-  // Each route's layouts and guards (#472): its page's, found by pattern (a route without [params] first).
-  const table = [...parts].sort((a, b) => Number(a.route.includes('[')) - Number(b.route.includes('['))).map((p) => ({ p: p.route, r: p.route }))
+  // Each route's layouts and guards (#472): its own page's, else by pattern in the server's order.
+  const params = (route: string) => route.split('[').length
+  const table = [...parts].sort((a, b) => params(a.route) - params(b.route) || b.route.split('/').length - a.route.split('/').length).map((p) => ({ p: p.route, r: p.route }))
   for (const [route, info] of Object.entries(manifest.routes)) {
-    const found = parts.find((p) => p.route === matchRoute(table, route)?.r)
+    const found = parts.find((p) => p.route === route) ?? parts.find((p) => p.route === matchRoute(table, route)?.r)
     if (found?.layouts.length) info.layouts = found.layouts
     if (found?.guards.length) info.guards = found.guards
   }
