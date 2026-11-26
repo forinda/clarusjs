@@ -342,9 +342,16 @@ export function forBlock(
 
       if (first) {
         first = false
-        rows = f.rows.map((range, i) => wireRow(range, keys[i], items[i], i))
+        if (f.rows.length === items.length) {
+          rows = f.rows.map((range, i) => wireRow(range, keys[i], items[i], i))
+          if (f.empty) emptyRange = wireEmpty(f.empty)
+          return
+        }
+        // The browser's list isn't the one the server rendered (it read something the server couldn't: the URL,
+        // storage): drop the server's rows and render the browser's below, as for any change.
+        for (const range of f.rows) for (const node of rangeNodes(range.start, range.end)) node.parentNode?.removeChild(node)
         if (f.empty) emptyRange = wireEmpty(f.empty)
-        return
+        reshaped()
       }
 
       const old = new Map(rows.map((r) => [r.key, r]))

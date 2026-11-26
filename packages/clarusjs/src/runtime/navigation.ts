@@ -2,13 +2,14 @@
 // Navigations go through the Navigation API, so the page's navigator (fragments or the client router) takes them
 // over exactly like a link click; without it they are normal page loads. Island scripts also run on the server,
 // where this does nothing.
-import { onDispose, state, type Signal } from './signals.ts'
+import { effect, onDispose, state, type Signal } from './signals.ts'
 import type { Transition } from './navigate.ts'
 
 export type { Transition }
 
 type Navigation = EventTarget & {
-  navigate(url: string, options: { history: 'auto' | 'replace'; state?: unknown }): { finished: Promise<unknown> }
+  navigate(url: string, options: { history: 'auto' | 'replace'; state?: unknown; info?: unknown }): { finished: Promise<unknown> }
+  currentEntry?: { getState(): unknown } | null
 }
 const navigation = (globalThis as { navigation?: Navigation }).navigation
 const browser = typeof document !== 'undefined'
@@ -37,6 +38,68 @@ if (browser) {
 }
 
 /**
+ * The current page's query, as a store kept in step with `currentUrl`: `let query = shared(searchParams)`, then
+ * `query?.get('q')`. `null` on the server, like `currentUrl`. Change it with `setSearch()`.
+ * @example
+ * ```tscl
+ * <script>
+ *   import { searchParams } from 'clarusjs/navigation'
+ *   let query = shared(searchParams)
+ * </script>
+ * <p>Results for {{ query?.get('q') ?? 'everything' }}</p>
+ * ```
+ * @see https://clarusjs.com/guide/navigation#query-strings
+ */
+export const searchParams: Signal<URLSearchParams | null> = state(currentUrl.get() ? new URLSearchParams(currentUrl.get()!.search) : null)
+effect(() => {
+  const url = currentUrl.get()
+  searchParams.set(url ? new URLSearchParams(url.search) : null)
+})
+
+/**
+ * Change the current URL's query and go there: each key is set (a string or number), repeated (an array) or removed
+ * (`null`); the path, hash and other params stay. Replaces the history entry by default, as a search box or filter
+ * should (so Back leaves the page, not each keystroke); `{ replace: false }` adds one. Keeps the scroll position by
+ * default (`{ scroll: true }` goes to the top, as a new page does).
+ * @example
+ * ```ts
+ * setSearch({ q: input.value, page: null }) // a new search starts at page 1
+ * setSearch({ page: 3 }, { replace: false }) // pages are worth a Back step
+ * ```
+ * @see https://clarusjs.com/guide/navigation#query-strings
+ */
+export function setSearch(changes: Record<string, string | number | null | readonly (string | number)[]>, options: { replace?: boolean; state?: unknown; scroll?: boolean } = {}): Promise<void> {
+  if (!browser) return Promise.resolve()
+  const url = new URL(location.href)
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === null) url.searchParams.delete(key)
+    else if (!Array.isArray(value)) url.searchParams.set(key, String(value)) // keeps its place
+    else {
+      url.searchParams.delete(key)
+      for (const v of value) url.searchParams.append(key, String(v))
+    }
+  }
+  return navigate(url, { replace: options.replace ?? true, state: options.state, scroll: options.scroll ?? false })
+}
+
+/**
+ * What `navigate(url, { state })` stored with the current history entry (`undefined` if nothing, or on the server).
+ * Kept by the browser for Back and Forward, not in the URL: for things like where the visitor came from.
+ * @example
+ * ```ts
+ * await navigate('/results', { state: { from: 'search' } })
+ * // later, on /results:
+ * const from = (navigationState() as { from?: string } | undefined)?.from
+ * ```
+ * @see https://clarusjs.com/guide/navigation#history-state
+ */
+export function navigationState<T = unknown>(): T | undefined {
+  if (!browser) return undefined
+  const entry = navigation?.currentEntry
+  return (entry ? entry.getState() : history.state) as T | undefined
+}
+
+/**
  * Go to `to`, as a link click would: the page's navigator swaps or renders it. Resolves once the new page is shown,
  * and also when the navigation is cancelled or a newer one replaces it (so check `currentUrl` when it matters);
  * rejects when it fails.
@@ -50,11 +113,12 @@ if (browser) {
  * @see https://clarusjs.com/reference/navigation#navigate
  * @see https://clarusjs.com/guide/fragment-navigation
  */
-export async function navigate(to: string | URL, options: { replace?: boolean; state?: unknown } = {}): Promise<void> {
+export async function navigate(to: string | URL, options: { replace?: boolean; state?: unknown; scroll?: boolean } = {}): Promise<void> {
   if (!browser) return
   if (!navigation) return options.replace ? location.replace(String(to)) : location.assign(String(to))
   try {
-    await navigation.navigate(String(to), { history: options.replace ? 'replace' : 'auto', state: options.state }).finished
+    // scroll: false reaches the navigator (navigate.ts) as info: it keeps the scroll position for this navigation.
+    await navigation.navigate(String(to), { history: options.replace ? 'replace' : 'auto', state: options.state, info: { scroll: options.scroll ?? true } }).finished
   } catch (err) {
     if ((err as Error).name != 'AbortError') throw err
   }
@@ -161,9 +225,10 @@ if (browser) {
     // Each hook is awaited in turn; one whose island was released meanwhile (by an earlier hook) is skipped.
     for (const hook of [...hooks]) if (hooks.includes(hook)) await hook(t)
     // A view transition: the browser snapshots this page, then the swap (which waits for this) runs inside it.
-    const start = (document as { startViewTransition?(update: () => Promise<void>): unknown }).startViewTransition
+    const start = (document as { startViewTransition?(update: () => Promise<void>): { ready: Promise<void> } }).startViewTransition
     if (step == 'swapping' && transitions && start) {
-      await new Promise<void>((snapshot) => start.call(document, () => { snapshot(); return new Promise<void>((r) => (done = r)) }))
+      // A newer page change (Back before this one swapped) skips this transition: its ready rejects, as expected.
+      await new Promise<void>((snapshot) => start.call(document, () => { snapshot(); return new Promise<void>((r) => (done = r)) }).ready.catch(() => {}))
     }
   }
 }
