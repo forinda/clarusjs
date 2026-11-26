@@ -1,0 +1,47 @@
+{{-- The parts, for the Tailwind parity test (e2e/tailwind.spec.ts): it takes this markup and renders it alone, once with the parts' CSS and once with their Tailwind stylesheets compiled. Out of the nav, search and the sitemap. --}}
+@import '~/theme.css'
+@import '~/view.css'
+@import '~/registry/select.css'
+@import '~/registry/combobox.css'
+@import '~/registry/toggle.css'
+@import uiCheckbox from '~/registry/checkbox.tscl'
+@import uiSwitch from '~/registry/switch.tscl'
+@import uiRadioGroup from '~/registry/radio-group.tscl'
+@import uiField from '~/registry/field.tscl'
+@import uiSelect from '@clarusjs/ui-primitives/select.tscl'
+@import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
+@import uiToggle from '@clarusjs/ui-primitives/toggle.tscl'
+@import uiToggleGroup from '@clarusjs/ui-primitives/toggle-group.tscl'
+@import uiToggleItem from '@clarusjs/ui-primitives/toggle-item.tscl'
+
+<script server>
+  const sizes = [{ value: 's', label: 'Small' }, { value: 'm', label: 'Medium' }, { value: 'l', label: 'Large' }]
+  const fruits = [{ value: 'apple', label: 'Apple' }, { value: 'pear', label: 'Pear' }, { value: 'plum', label: 'Plum' }]
+</script>
+
+<cl-head>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+</cl-head>
+
+<div data-ui-preview>
+  <div data-sample="checkbox"><uiCheckbox label="Terms" /><uiCheckbox label="On" [checked]="true" /><uiCheckbox label="Off" [disabled]="true" /></div>
+  <div data-sample="switch"><uiSwitch label="Wi-Fi" /><uiSwitch label="On" [checked]="true" /><uiSwitch label="Off" [disabled]="true" /></div>
+  <div data-sample="radio-group"><uiRadioGroup name="size" label="Size" [options]="sizes" value="m" /></div>
+  <div data-sample="field">
+    <uiField id="p-email" label="Email" type="email" placeholder="you@example.com" description="We never share it." />
+    <uiField id="p-err" label="Name" placeholder="Ada" error="Enter your name." [show]="true" />
+  </div>
+  <div data-sample="select"><uiSelect id="p-size" label="Size" [options]="sizes" value="m" /></div>
+  <div data-sample="combobox">
+    <uiCombobox [id]="'p-fruit'" [label]="'Fruit'" [options]="fruits" />
+    <uiCombobox [id]="'p-many'" [label]="'Fruits'" [options]="fruits" [multiple]="true" [values]="['apple', 'pear']" />
+  </div>
+  <div data-sample="toggle">
+    <uiToggle aria-label="Bold"><b>B</b></uiToggle>
+    <uiToggleGroup label="Alignment" value="left">
+      <uiToggleItem value="left">Left</uiToggleItem>
+      <uiToggleItem value="right">Right</uiToggleItem>
+    </uiToggleGroup>
+  </div>
+</div>

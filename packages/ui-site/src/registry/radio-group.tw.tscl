@@ -1,0 +1,16 @@
+{{-- Tailwind version: its look is radio-group.tw.css (Tailwind utilities), imported here.
+ Radio group: native radios in a fieldset, one per option, bound two ways with [(value)]. For a cancellable
+     (change), use radio-group.tscl and radio.tscl from @clarusjs/ui-primitives directly: the styles apply the same. --}}
+@import './radio-group.tw.css'
+@import uiRadioGroup from '@clarusjs/ui-primitives/radio-group.tscl'
+@import uiRadio from '@clarusjs/ui-primitives/radio.tscl'
+@input name: string
+@input label: string
+@input options: { value: string; label: string; disabled?: boolean }[]
+@model value: string = ''
+
+<uiRadioGroup [name]="name" [label]="label" [(value)]="value">
+  @for (o of options; track o.value) {
+    <uiRadio [value]="o.value" [label]="o.label" [disabled]="!!o.disabled" />
+  }
+</uiRadioGroup>

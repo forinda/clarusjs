@@ -22,7 +22,8 @@ export type Entry = {
   parts: string[]
   /** Other entries it imports as ./<name>.tscl. */
   uses: string[]
-  /** Its Tailwind version (<name>.tw.tscl, the same inputs and look, classes instead of <style>), copied as <name>.tscl. */
+  /** Its Tailwind version: <name>.tw.tscl (the same inputs and look, classes instead of <style>), copied as <name>.tscl;
+   *  for a part's styles, <name>.tw.css (the same selectors, Tailwind utilities in @apply), and the .tw.tscl importing it. */
   tailwind?: string[]
   /** More examples for its page, each <name>-<example>-demo.tscl beside it, shown under Examples in this order. */
   examples?: string[]
@@ -320,6 +321,7 @@ export const registry: Entry[] = [
     title: 'Checkbox',
     description: 'A native checkbox with its label.',
     files: ['checkbox.tscl'],
+    tailwind: ['checkbox.tw.tscl', 'checkbox.tw.css'],
     parts: ['checkbox.tscl'],
     uses: [],
     examples: ['states'],
@@ -333,6 +335,7 @@ export const registry: Entry[] = [
     title: 'Switch',
     description: 'An on/off switch on a native checkbox.',
     files: ['switch.tscl'],
+    tailwind: ['switch.tw.tscl', 'switch.tw.css'],
     parts: ['switch.tscl'],
     uses: [],
     examples: ['states', 'settings'],
@@ -346,6 +349,7 @@ export const registry: Entry[] = [
     title: 'Radio group',
     description: 'Native radios in a fieldset: one choice from a few.',
     files: ['radio-group.tscl'],
+    tailwind: ['radio-group.tw.tscl', 'radio-group.tw.css'],
     parts: ['radio-group.tscl', 'radio.tscl'],
     uses: [],
     examples: ['disabled'],
@@ -359,6 +363,7 @@ export const registry: Entry[] = [
     title: 'Field',
     description: 'A label, an input, a description and an error, wired together.',
     files: ['field.tscl'],
+    tailwind: ['field.tw.tscl', 'field.tw.css'],
     parts: ['field.tscl'],
     uses: [],
     example: ['button'],
@@ -433,6 +438,7 @@ export const registry: Entry[] = [
     title: 'Select',
     description: 'A native select with its label, bound two ways.',
     files: ['select.css'],
+    tailwind: ['select.tw.css'],
     parts: ['select.tscl'],
     uses: [],
     examples: ['states'],
@@ -446,6 +452,7 @@ export const registry: Entry[] = [
     title: 'Combobox',
     description: 'A text field that filters a list of options as you type.',
     files: ['combobox.css'],
+    tailwind: ['combobox.tw.css'],
     parts: ['combobox.tscl'],
     uses: [],
     examples: ['multiple'],
@@ -643,6 +650,7 @@ export const registry: Entry[] = [
     title: 'Toggle',
     description: 'A button that is on or off, alone or in a group with one Tab stop.',
     files: ['toggle.css'],
+    tailwind: ['toggle.tw.css'],
     parts: ['toggle.tscl', 'toggle-group.tscl', 'toggle-item.tscl'],
     uses: [],
     examples: ['icons', 'sizes'],

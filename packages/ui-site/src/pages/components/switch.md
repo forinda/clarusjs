@@ -35,9 +35,17 @@ Each switch with a line saying what it does.
 
 ## Source
 
-Copy it into `src/components/ui/` as `switch.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+Copy it into `src/components/ui/` as `switch.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `switch.tw.tscl` copied as `switch.tscl` with `switch.tw.css` beside it.
+
+<sourceFlavor name="switch">
 
 <<< ../../registry/switch.tscl
+
+<<< ../../registry/switch.tw.tscl
+
+<<< ../../registry/switch.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

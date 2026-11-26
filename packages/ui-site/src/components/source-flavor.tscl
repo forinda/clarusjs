@@ -55,8 +55,9 @@
   }
 </style>
 <style global>
-  /* The code shown follows <html data-flavor>: the CSS file by default, the Tailwind one when chosen. */
-  html:not([data-flavor='tailwind']) [data-flavor-code] > .code-block:nth-of-type(2),
+  /* The code shown follows <html data-flavor>: the CSS file (the first) by default, the Tailwind ones (the rest) when
+     chosen: a part's Tailwind version is its .tw.tscl and the .tw.css it imports. */
+  html:not([data-flavor='tailwind']) [data-flavor-code] > .code-block:nth-of-type(n + 2),
   html[data-flavor='tailwind'] [data-flavor-code] > .code-block:nth-of-type(1) {
     display: none;
   }
