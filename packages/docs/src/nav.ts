@@ -13,6 +13,8 @@ export const theme: ThemeConfig = {
     { label: 'Components', href: '/components/dialog' },
     { label: 'Reference', href: '/reference/template-syntax' },
     { label: 'Releases', href: '/releases' },
+    // The styled components, ready to copy: their own site.
+    { label: 'UI', href: 'https://ui.clarusjs.com' },
   ],
   social: [
     { label: 'GitHub', href: 'https://github.com/forinda/clarusjs', icon: 'github' },

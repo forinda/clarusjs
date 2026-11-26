@@ -9,6 +9,8 @@ description: "Pick one: native radios in a fieldset, bound two ways. The radios 
 
 <p class="lead">Pick one of a few. Native radios in a fieldset, so the arrow keys, one Tab stop and form submission come from the browser; the server writes which one is checked.</p>
 
+**Styled:** [Radio group on ui.clarusjs.com](https://ui.clarusjs.com/components/radio-group), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="radio" />
 
 ```tscl

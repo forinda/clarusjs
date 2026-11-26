@@ -9,6 +9,8 @@ description: "Accessible behaviours and headless parts from @clarusjs/ui-primiti
 
 <p class="lead"><code>@clarusjs/ui-primitives</code> holds the behaviours accessible components share: arrow keys through a toolbar, typing to jump in a list, closing a popup on Escape. Each one is a function of an element that returns how to stop it, and a template hands it the element with <code>[use]</code>.</p>
 
+Want them styled? [ui.clarusjs.com](https://ui.clarusjs.com) has components built on these parts, in plain CSS or Tailwind, to copy into your project and make your own.
+
 ```sh
 pnpm add @clarusjs/ui-primitives
 ```

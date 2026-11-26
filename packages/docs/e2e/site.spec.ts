@@ -1844,7 +1844,7 @@ test('#370: the phone drawer as designed: Menu, a Learn / Guide switch, groups, 
   await expect(drawer.locator('.sidebar-switch a')).toHaveText(['Learn', 'Guide'])
   await expect(drawer.locator('.sidebar-switch a[aria-current="true"]')).toHaveText('Guide')
   await expect(drawer.locator('[data-search-open]')).toBeHidden() // the header's search button is there
-  await expect(drawer.locator('.sidebar-links a')).toHaveText(['Components', 'Reference', 'Releases', 'GitHub', 'npm'])
+  await expect(drawer.locator('.sidebar-links a')).toHaveText(['Components', 'Reference', 'Releases', 'UI', 'GitHub', 'npm'])
   await expect(drawer.locator('.sidebar-links')).toBeInViewport()
   // Nothing wider than the drawer.
   expect(await drawer.evaluate((d) => d.scrollWidth <= d.clientWidth)).toBe(true)

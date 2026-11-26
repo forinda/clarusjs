@@ -9,6 +9,8 @@ description: "Tabs over panels, Radix-shaped: the parts read the selection from 
 
 <p class="lead">Tabs over panels you write. Each part says only its own value; the server writes every ARIA attribute and <code>hidden</code>, so nothing jumps when the page loads. Only the root is a small island.</p>
 
+**Styled:** [Tabs on ui.clarusjs.com](https://ui.clarusjs.com/components/tabs), ready to copy, in plain CSS or Tailwind.
+
 <tabsDemo />
 
 ```tscl

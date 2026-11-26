@@ -9,6 +9,8 @@ description: "A menu button: a popover list of actions opened by its trigger, wi
 
 <p class="lead">A list of actions behind a button. The list is a popover, so opening, closing, Escape and a click outside come from the browser; the menu adds the keyboard.</p>
 
+**Styled:** [Menu on ui.clarusjs.com](https://ui.clarusjs.com/components/menu), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="menu" />
 
 ```tscl

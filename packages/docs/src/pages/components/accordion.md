@@ -9,6 +9,8 @@ description: "Sections that open and close: <details> and <summary>, one open at
 
 <p class="lead">Sections that open and close: &lt;details&gt; and &lt;summary&gt;, one open at a time in a group. No JavaScript.</p>
 
+**Styled:** [Accordion on ui.clarusjs.com](https://ui.clarusjs.com/components/accordion), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="accordion" />
 
 ```tscl

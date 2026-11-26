@@ -9,6 +9,8 @@ description: "An input that filters a list as you type: one pick or several, opt
 
 <p class="lead">An input that filters a list as you type: one pick or several, options from the server, and a change the parent can cancel.</p>
 
+**Styled:** [Combobox on ui.clarusjs.com](https://ui.clarusjs.com/components/combobox), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="combobox" />
 
 ```tscl

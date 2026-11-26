@@ -9,6 +9,8 @@ description: "A short hint on hover and focus: a hint popover anchored to its tr
 
 <p class="lead">A short hint for a button, shown on hover and on focus. The tooltip is a hint popover placed next to its trigger by CSS anchor positioning, and it's the trigger's accessible description.</p>
 
+**Styled:** [Tooltip on ui.clarusjs.com](https://ui.clarusjs.com/components/tooltip), ready to copy, in plain CSS or Tailwind.
+
 <uiGallery part="tooltip" />
 
 ```tscl
