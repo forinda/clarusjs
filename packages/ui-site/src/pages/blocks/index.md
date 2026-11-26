@@ -32,4 +32,8 @@ layout: "/src/layouts/wide.tscl"
   <iframe src="/view/hero-grid" title="Hero preview" loading="lazy" style="width: 100%; height: 640px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
 </blockRow>
 
+<blockRow name="header-menus">
+  <iframe src="/view/header-menus" title="Header preview" loading="lazy" style="width: 100%; height: 420px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
 </blockFilter>

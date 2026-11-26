@@ -1,0 +1,83 @@
+{{--
+  Navbar: the bar at the top of a site. The logo (slot logo), a labelled <nav> of links (the default slot: links, or a
+  menu for a dropdown) and actions (slot actions). Below 768px the links give way to a Menu button that opens a sheet
+  with the mobile slot's links (flat: a phone has room for every link, and no dropdown to open). [menuId] names the
+  sheet; give each navbar on a page its own. Styled by sheet.css for the sheet, and its own rules below.
+--}}
+@import './sheet.css'
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+@input label: string = 'Main'
+@input menuId: string = 'navbar-menu'
+
+<header data-part="navbar">
+  <div data-part="navbar-logo"><slot name="logo" /></div>
+  <nav [aria-label]="label" data-part="navbar-links"><slot /></nav>
+  <div data-part="navbar-actions"><slot name="actions" /></div>
+  <span data-part="navbar-toggle"><uiDialogTrigger [target]="menuId">Menu</uiDialogTrigger></span>
+  <uiDialog [id]="menuId" data-side="right">
+    @slot('title') {
+      Menu
+    }
+    <nav [aria-label]="label + ', menu'"><slot name="mobile" /></nav>
+  </uiDialog>
+</header>
+
+<style global>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where([data-part='navbar']) {
+      display: flex;
+      align-items: center;
+      gap: var(--ui-space-6);
+      padding: var(--ui-space-3) var(--ui-space-6);
+      border-bottom: 1px solid var(--ui-border);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where([data-part='navbar-links']) {
+      display: flex;
+      align-items: center;
+      gap: var(--ui-space-1);
+      flex: 1;
+    }
+    :where([data-part='navbar-links'] a, [data-part='navbar-links'] [data-part='menu-trigger']) {
+      padding: var(--ui-space-2) var(--ui-space-3);
+      border-radius: var(--ui-radius);
+      color: var(--ui-muted);
+      font-size: var(--ui-font-size);
+      text-decoration: none;
+    }
+    :where([data-part='navbar-links'] a:hover, [data-part='navbar-links'] [data-part='menu-trigger']:hover) {
+      background: var(--ui-muted-bg);
+      color: var(--ui-fg);
+    }
+    :where([data-part='navbar-actions']) {
+      display: flex;
+      align-items: center;
+      gap: var(--ui-space-2);
+    }
+    :where([data-part='navbar-toggle']) {
+      display: none;
+      margin-inline-start: auto;
+    }
+    :where([data-part='navbar'] dialog nav) {
+      display: grid;
+      gap: var(--ui-space-1);
+    }
+    :where([data-part='navbar'] dialog nav a) {
+      padding: var(--ui-space-2) 0;
+      color: var(--ui-fg);
+      text-decoration: none;
+    }
+    @media (max-width: 767px) {
+      :where([data-part='navbar-links'], [data-part='navbar-actions']) {
+        display: none;
+      }
+      :where([data-part='navbar-toggle']) {
+        display: block;
+      }
+    }
+  }
+</style>

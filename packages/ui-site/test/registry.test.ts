@@ -350,6 +350,17 @@ test('every Styling section lists the component\'s state attributes', () => {
   }
 })
 
+test('navbar: a header with the logo, a labelled <nav> of links and the actions, in that order; on phones a Menu button opens a sheet with the mobile links', async () => {
+  const html = await render('navbar.tscl', { label: 'Main' }, { logo: '<a href="/">Lumen</a>', default: '<a href="/docs">Docs</a>', actions: '<a href="/signup">Sign up</a>', mobile: '<a href="/docs">Docs (phone)</a>' })
+  expect(html).toMatch(/^<header data-part="navbar">/)
+  const at = (s: string) => html.indexOf(s)
+  expect(at('Lumen')).toBeLessThan(at('<nav aria-label="Main" data-part="navbar-links">'))
+  expect(at('<nav aria-label="Main" data-part="navbar-links">')).toBeLessThan(at('Sign up'))
+  expect(html).toContain('Menu')
+  expect(html).toContain('<nav aria-label="Main, menu">')
+  expect(html).toContain('Docs (phone)')
+})
+
 test('button: with href it renders <a> with the same data attributes', async () => {
   expect(await render('button.tscl', { href: '/docs', variant: 'outline' }, { default: 'Docs' })).toBe('<a href="/docs" data-part="button" data-variant="outline" data-size="md">Docs</a>')
   expect(await render('button.tscl', {}, { default: 'Go' })).toMatch(/^<button type="button"/)

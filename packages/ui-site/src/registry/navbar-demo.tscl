@@ -1,0 +1,37 @@
+@import uiNavbar from './navbar.tscl'
+
+<div class="demo">
+  <uiNavbar label="Demo" menuId="navbar-demo-menu">
+    @slot('logo') {
+      <a href="#" class="brand">Lumen</a>
+    }
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#docs">Docs</a>
+    @slot('actions') {
+      <a href="#login">Log in</a>
+    }
+    @slot('mobile') {
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#docs">Docs</a>
+      <a href="#login">Log in</a>
+    }
+  </uiNavbar>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      overflow: hidden;
+    }
+    :where(.brand) {
+      font-weight: 700;
+      color: var(--ui-fg);
+      text-decoration: none;
+    }
+  }
+</style>

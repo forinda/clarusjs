@@ -43,7 +43,7 @@ export async function kindPageAxe(page: Page, kind: SectionKind) {
     await page.setViewportSize(mode.viewport)
     await page.emulateMedia({ colorScheme: mode.colorScheme, reducedMotion: 'no-preference' })
     await page.goto(`/blocks/marketing/${kind}`)
-    for (const e of sectionsOf(kind)) await page.frameLocator(`iframe[src="/view/${e.name}"]`).locator('section').first().waitFor()
+    for (const e of sectionsOf(kind)) await page.frameLocator(`iframe[src="/view/${e.name}"]`).locator('[data-ui-preview] > *').first().waitFor()
     const framed = sectionsOf(kind).find((e) => e.uses.includes('grid-effect'))
     if (framed) {
       const box = (await page.locator(`iframe[src="/view/${framed.name}"]`).boundingBox())!
@@ -56,4 +56,28 @@ export async function kindPageAxe(page: Page, kind: SectionKind) {
 
 test('the hero page: no axe violations, light and dark, pointer over its effect', async ({ page }) => {
   await kindPageAxe(page, 'hero')
+})
+
+test('navbar: keyboard reaches every link and the menu; on a 390 px viewport the Menu button opens the sheet with the links', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/view/header-menus')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  const nav = page.getByRole('navigation', { name: 'Site', exact: true })
+  const names: string[] = []
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Tab')
+    names.push(await page.evaluate(() => (document.activeElement as HTMLElement).innerText.trim()))
+  }
+  for (const n of ['Products', 'Pricing', 'Docs', 'Sign up']) expect(names, n).toContain(n)
+  await nav.getByRole('button', { name: 'Products' }).click()
+  await expect(page.getByRole('menuitem').first()).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 800 })
+  await expect(nav).toBeHidden()
+  await page.getByRole('button', { name: 'Menu' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Menu' })
+  await expect(sheet.getByRole('link', { name: 'Pricing' })).toBeVisible()
+})
+
+test('the header page: no axe violations, light and dark', async ({ page }) => {
+  await kindPageAxe(page, 'header')
 })
