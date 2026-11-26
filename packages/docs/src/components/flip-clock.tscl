@@ -2,6 +2,7 @@
   A flip clock, from @starting-style alone: each digit is a @for row keyed by its place and value, so a digit that
   changes is a new row, and a new row animates in. Like a split-flap board: the old digit's top half folds down, then
   the new digit's bottom half falls into place. The server renders dashes; the browser's time flips in on attach.
+  Its colours are the theme's (--bg, --fg, --rule…), so it follows light and dark.
 --}}
 
 <script>
@@ -52,13 +53,14 @@
     margin: 16px 0;
     padding: 20px;
     border-radius: 16px;
-    background: #111418;
+    border: 1px solid var(--rule);
+    background: var(--code-bg, var(--surface));
     font: 700 calc(var(--h) * 0.8) / var(--h) ui-monospace, 'SFMono-Regular', Menlo, monospace;
-    color: #f4f4f5;
+    color: var(--fg);
   }
   .sep {
     padding: 0 2px;
-    color: #71717a;
+    color: var(--muted);
   }
   .digit {
     position: relative;
@@ -75,7 +77,8 @@
     width: 100%;
     height: 50%;
     overflow: hidden;
-    background: #27272a;
+    background: var(--bg);
+    box-shadow: inset 0 0 0 1px var(--rule);
     text-align: center;
     backface-visibility: hidden;
   }
@@ -90,7 +93,7 @@
     bottom: 0;
     border-radius: 0 0 8px 8px;
     transform-origin: 50% 0;
-    background: #2f2f33;
+    background: color-mix(in oklab, var(--bg) 94%, var(--fg));
   }
   .half > span,
   .leaf > span {
@@ -109,7 +112,7 @@
     right: 0;
     top: calc(50% - 1px);
     height: 2px;
-    background: #111418;
+    background: var(--code-bg, var(--surface));
   }
   /* At rest: the old top has folded away, the new bottom has fallen into place. A new digit starts from the other
      end, so the browser animates it: the fold first, then the fall. */

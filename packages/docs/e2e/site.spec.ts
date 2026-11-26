@@ -2917,3 +2917,17 @@ test('animations guide: the flip clock shows the time and flips only the digits 
   // 10:59:58 → 10:59:59 → 11:00:00: the last digit twice, then 1·0 → 1·1 (hour's second digit), 5 → 0, 9 → 0, 5 → 0.
   expect((await page.evaluate(() => (window as unknown as { __flipped: string[] }).__flipped)).sort()).toEqual(['0', '0', '0', '0', '1', '9'].sort())
 })
+
+test('animations guide: the flip clock takes the theme\'s colours, light and dark', async ({ page }) => {
+  await page.goto('/guide/animations')
+  const colours = () => page.locator('.flip-clock .digit .top').first().evaluate((el) => {
+    const s = getComputedStyle(el), root = getComputedStyle(document.documentElement)
+    return { card: s.backgroundColor, text: s.color, bg: root.getPropertyValue('--bg').trim(), scheme: document.documentElement.dataset.theme ?? '' }
+  })
+  await page.emulateMedia({ colorScheme: 'light' })
+  const light = await colours()
+  await page.emulateMedia({ colorScheme: 'dark' })
+  const dark = await colours()
+  expect(light.card).not.toBe(dark.card)
+  expect(light.text).not.toBe(dark.text)
+})
