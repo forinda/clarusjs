@@ -32,8 +32,22 @@
   :where([data-part='dialog']) {
     @apply max-w-[min(32rem,_calc(100vw_-_32px))] py-(--ui-space-5) px-(--ui-space-6) border border-solid border-(color:--ui-border) rounded-[calc(var(--ui-radius)_*_1.5)] bg-(color:--ui-card) text-(color:--ui-card-fg) shadow-(--ui-shadow) font-normal text-[calc(var(--ui-font-size)_+_1px)] leading-[1.5] font-(family-name:--ui-font);
   }
+  /* The backdrop: a black scrim, dimmed by --ui-backdrop-opacity and blurred by --ui-backdrop-blur (it reads them from
+     its dialog). data-backdrop on the dialog picks a variant; set the knobs on :root for a site-wide default. */
   :where([data-part='dialog'])::backdrop {
-    @apply [background:rgb(0_0_0_/_0.45)];
+    @apply [background:rgb(0_0_0_/_var(--ui-backdrop-opacity,_0.45))] [backdrop-filter:blur(var(--ui-backdrop-blur,_0px))];
+  }
+  :where([data-part='dialog'][data-backdrop='light']) {
+    @apply [--ui-backdrop-opacity:0.2];
+  }
+  :where([data-part='dialog'][data-backdrop='dark']) {
+    @apply [--ui-backdrop-opacity:0.7];
+  }
+  :where([data-part='dialog'][data-backdrop='blur']) {
+    @apply [--ui-backdrop-blur:6px];
+  }
+  :where([data-part='dialog'][data-backdrop='none']) {
+    @apply [--ui-backdrop-opacity:0];
   }
   :where([data-part='title']) {
     @apply mt-0 mx-0 mb-(--ui-space-2) text-[calc(var(--ui-font-size)_+_4px)];

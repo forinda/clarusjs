@@ -665,6 +665,11 @@ export function parse(source: string, file: string): ParsedFile {
   }
 
   out.nodes = children()
+  // An imported component also answers to its name in kebab case (uiButton or UiButton → <ui-button>): the tree names
+  // it by its import, so every later step sees the component. Only a hyphenated form: a one-word import (Button) never
+  // takes an HTML element's name.
+  const kebab = new Map(out.imports.map((imp): [string, string] => [kebabOf(imp.name), imp.name]).filter(([k, name]) => k !== name && k.includes('-')))
+  if (kebab.size) renameTags(out.nodes, kebab)
   return out
 }
 
@@ -673,4 +678,28 @@ export function importNames(clause: string): string[] {
   if (!clause.startsWith('{')) return [clause]
   return clause.slice(1, -1).split(',').map((p) => p.trim()).filter((p) => p && !p.startsWith('type '))
     .map((p) => p.split(/\s+as\s+/).pop()!.trim())
+}
+
+/** Renames element tags in place (kebab form → import name), through every kind of block. */
+function renameTags(nodes: TemplateNode[], names: Map<string, string>): void {
+  for (const n of nodes) {
+    if (n.type === 'element') {
+      n.tag = names.get(n.tag) ?? n.tag
+      renameTags(n.children, names)
+    } else if (n.type === 'fill') renameTags(n.children, names)
+    else if (n.type === 'if') for (const b of n.branches) renameTags(b.children, names)
+    else if (n.type === 'for') {
+      renameTags(n.children, names)
+      if (n.empty) renameTags(n.empty, names)
+    } else if (n.type === 'await') {
+      renameTags(n.pending, names)
+      if (n.then) renameTags(n.then.children, names)
+      if (n.catch) renameTags(n.catch.children, names)
+    }
+  }
+}
+
+/** A component name in kebab case, as a tag: uiButton and UiButton → ui-button, XMLViewer → xml-viewer. */
+export function kebabOf(name: string): string {
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').replace(/([A-Z])([A-Z][a-z])/g, '$1-$2').toLowerCase()
 }

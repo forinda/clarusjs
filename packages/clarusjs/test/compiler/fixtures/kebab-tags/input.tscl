@@ -1,0 +1,6 @@
+{{-- An @imported component answers to its name in kebab case too: UiBadge (or uiBadge) is <ui-badge>. --}}
+@import UiBadge from './ui-badge.tscl'
+
+<p>
+  Status: <ui-badge tone="success">live</ui-badge>, also written <UiBadge>as imported</UiBadge>.
+</p>

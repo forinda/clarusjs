@@ -46,7 +46,7 @@ Components in `src/components/` and `src/layouts/` can be used by name, without 
 - **The full name** is the folders and the file joined with hyphens: always there. **The short name** is the file alone, when no other component has it. When two do (`forms/date-field` and `admin/date-field`), `<date-field>` is an error naming both: write the full name.
 - **Only names with a hyphen**, as for custom elements, so a component never takes an HTML element's name. `src/components/card.tscl` is `<card>` to nobody: import it, or move it into a folder.
 - **Only what a template uses is imported**, exactly as if you had written the `@import`: nothing else is shipped.
-- **An explicit `@import` still works**, with any name (`<userCard>`), and wins for its own name.
+- **An explicit `@import` still works**, with any name (`<userCard>`), and wins for its own name. Since 0.17.0 a camelCase or PascalCase import name also works in kebab case: `@import userCard` or `@import UserCard` is `<user-card>` too. One-word names (`Button`) have no kebab form, so they never take an HTML element's place.
 - **A web component** (`<my-widget>` registered in the browser) is left alone when no file has its name. When one does, the component wins.
 - A file whose name isn't kebab-case (`TextArea.tscl`) isn't named: the build warns about it.
 

@@ -17,6 +17,16 @@ The parts come from `@clarusjs/ui-primitives`; the look is `sheet.css`, imported
 
 <<< ../../registry/sheet-demo.tscl
 
+## Examples
+
+### Backdrop
+
+The same `data-backdrop` as a dialog: here `blur`.
+
+<sheetBackdropDemo />
+
+<<< ../../registry/sheet-backdrop-demo.tscl
+
 ## Source
 
 Copy it into `src/components/ui/` as `sheet.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `sheet.tw.css`, imported where Tailwind runs.
@@ -32,7 +42,7 @@ Copy it into `src/components/ui/` as `sheet.css`. It's the same as `@clarusjs/ui
 ## Styling
 
 - **On the parts:** `class`, `style`, `id`, `aria-*` and `data-*` written on a part's tag (from `@clarusjs/ui-primitives`) land on its root element, merged with its own.
-- **Selectors:** `data-part` names `trigger`, `close`, `dialog`, `title`.
+- **Selectors:** `data-part` names `trigger`, `close`, `dialog`, `title`; `data-backdrop` (`light`, `dark`, `blur`, `none`) picks the backdrop.
 - **Your rules win:** every rule here has zero specificity (`:where()`) and sits in `@layer components`, so your own CSS and Tailwind utilities override it.
 
 ## Needs

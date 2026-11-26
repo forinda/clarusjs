@@ -4,8 +4,9 @@
 @import './alert-dialog.tw.css'
 @import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
 @input id: string
+@input backdrop: 'dim' | 'light' | 'dark' | 'blur' | 'none' = 'dim'
 
-<uiDialog [id]="id" role="alertdialog" [dismissible]="false" [aria-describedby]="id + '-description'">
+<uiDialog [id]="id" role="alertdialog" [dismissible]="false" [aria-describedby]="id + '-description'" [data-backdrop]="backdrop === 'dim' ? false : backdrop">
   @slot('title') {
     <slot name="title" />
   }

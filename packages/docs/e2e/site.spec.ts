@@ -2878,3 +2878,60 @@ test('#373: the phone drawer ends with the site\'s own links, those its links ro
   await page.setViewportSize({ width: 1440, height: 900 })
   await expect(own).toBeHidden()
 })
+
+test('animations guide: what @if and @for insert animates in with @starting-style; reduced motion drops the movement', async ({ page }) => {
+  await page.goto('/guide/animations')
+  await expect(page.locator('cl-island[c="enter-demo"]')).toHaveAttribute('data-cl-ready', '')
+  // Transitions started, as they start (transitionrun), so a slow runner can't miss one that has already ended.
+  const started = async (click: () => Promise<void>, sel: string) => {
+    await page.evaluate(() => { (window as { runs?: string[] }).runs = []; addEventListener('transitionrun', (e) => (window as { runs?: string[] }).runs!.push(`${(e.target as Element).matches(document.body.dataset.sel!) ? '' : 'other:'}${e.propertyName}`)) })
+    await page.evaluate((s) => (document.body.dataset.sel = s), sel)
+    await click()
+    await expect.poll(() => page.evaluate(() => (window as { runs?: string[] }).runs!.filter((r) => !r.startsWith('other:')).length)).toBeGreaterThan(0)
+    return page.evaluate(() => [...new Set((window as { runs?: string[] }).runs!.filter((r) => !r.startsWith('other:')))].sort())
+  }
+  expect(await started(() => page.getByRole('button', { name: 'Show the panel' }).click(), '.enter-panel')).toEqual(['opacity', 'translate'])
+  expect(await started(() => page.getByRole('button', { name: 'Add a row' }).click(), '.enter-rows li')).toEqual(['opacity', 'translate'])
+  // Reduced motion: no movement (this site's theme also shortens every transition to nothing).
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.getByRole('button', { name: 'Add a row' }).click()
+  expect(await page.locator('.enter-rows li').last().evaluate((el) => getComputedStyle(el).translate)).toBe('none')
+})
+
+test('animations guide: the flip clock shows the time and flips only the digits that change', async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 26, 10, 59, 58) })
+  await page.goto('/guide/animations')
+  const clock = page.getByRole('timer')
+  await expect(page.locator('cl-island[c="flip-clock"]')).toHaveAttribute('data-cl-ready', '')
+  await expect(clock).toHaveAttribute('aria-label', 'The time is 10:59:58')
+  // What turns when the time moves on: watched as it starts (transitions end on their own).
+  await page.evaluate(() => {
+    const w = window as unknown as { __flipped: string[] }
+    w.__flipped = []
+    const seen = new WeakSet<Node>() // a new row is inserted, then moved into place: count each once
+    new MutationObserver((records) => {
+      for (const r of records) for (const n of r.addedNodes) if (n instanceof HTMLElement && n.matches('.digit') && !seen.has(n)) {
+        seen.add(n)
+        if (n.querySelector('.fold')!.getAnimations().length) w.__flipped.push(n.querySelector('.top')!.textContent!)
+      }
+    }).observe(document.querySelector('.flip-clock')!, { childList: true, subtree: true })
+  })
+  await page.clock.runFor(2000)
+  await expect(clock).toHaveAttribute('aria-label', 'The time is 11:00:00')
+  // 10:59:58 → 10:59:59 → 11:00:00: the last digit twice, then 1·0 → 1·1 (hour's second digit), 5 → 0, 9 → 0, 5 → 0.
+  expect((await page.evaluate(() => (window as unknown as { __flipped: string[] }).__flipped)).sort()).toEqual(['0', '0', '0', '0', '1', '9'].sort())
+})
+
+test('animations guide: the flip clock takes the theme\'s colours, light and dark', async ({ page }) => {
+  await page.goto('/guide/animations')
+  const colours = () => page.locator('.flip-clock .digit .top').first().evaluate((el) => {
+    const s = getComputedStyle(el), root = getComputedStyle(document.documentElement)
+    return { card: s.backgroundColor, text: s.color, bg: root.getPropertyValue('--bg').trim(), scheme: document.documentElement.dataset.theme ?? '' }
+  })
+  await page.emulateMedia({ colorScheme: 'light' })
+  const light = await colours()
+  await page.emulateMedia({ colorScheme: 'dark' })
+  const dark = await colours()
+  expect(light.card).not.toBe(dark.card)
+  expect(light.text).not.toBe(dark.text)
+})
