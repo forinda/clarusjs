@@ -225,9 +225,10 @@ if (browser) {
     // Each hook is awaited in turn; one whose island was released meanwhile (by an earlier hook) is skipped.
     for (const hook of [...hooks]) if (hooks.includes(hook)) await hook(t)
     // A view transition: the browser snapshots this page, then the swap (which waits for this) runs inside it.
-    const start = (document as { startViewTransition?(update: () => Promise<void>): unknown }).startViewTransition
+    const start = (document as { startViewTransition?(update: () => Promise<void>): { ready: Promise<void> } }).startViewTransition
     if (step == 'swapping' && transitions && start) {
-      await new Promise<void>((snapshot) => start.call(document, () => { snapshot(); return new Promise<void>((r) => (done = r)) }))
+      // A newer page change (Back before this one swapped) skips this transition: its ready rejects, as expected.
+      await new Promise<void>((snapshot) => start.call(document, () => { snapshot(); return new Promise<void>((r) => (done = r)) }).ready.catch(() => {}))
     }
   }
 }

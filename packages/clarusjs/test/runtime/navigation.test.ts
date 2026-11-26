@@ -189,7 +189,7 @@ test('viewTransitions(): the swap runs inside document.startViewTransition, afte
   ;(document as { startViewTransition?: unknown }).startViewTransition = (update: () => Promise<unknown>) => {
     seen.push('snapshot')
     finished = Promise.resolve().then(update)
-    return { finished }
+    return { finished, ready: Promise.resolve() }
   }
   const { viewTransitions, beforeSwap } = await import('../../src/runtime/navigation.ts')
   viewTransitions()
@@ -207,6 +207,26 @@ test('viewTransitions(): the swap runs inside document.startViewTransition, afte
   await new Promise((r) => setTimeout(r))
   expect(ended).toBe(true)
   expect(seen).toEqual(['beforeSwap', 'snapshot', 'swap'])
+  delete (document as { startViewTransition?: unknown }).startViewTransition
+})
+
+// A newer page change (Back before this one swapped) skips the transition: ready rejects, and nobody is told.
+test('viewTransitions(): a skipped transition is no unhandled rejection', async () => {
+  const unhandled: unknown[] = []
+  const onUnhandled = (e: unknown) => unhandled.push(e)
+  process.on('unhandledRejection', onUnhandled)
+  ;(document as { startViewTransition?: unknown }).startViewTransition = (update: () => Promise<unknown>) => {
+    const finished = Promise.resolve().then(update)
+    return { finished, ready: Promise.reject(new DOMException('Transition was skipped. New ViewTransition started', 'AbortError')) }
+  }
+  const { viewTransitions } = await import('../../src/runtime/navigation.ts')
+  viewTransitions()
+  const t = { phase: 'loading' }
+  await step()('swapping', t)
+  await step()(undefined, t)
+  await new Promise((r) => setTimeout(r, 10))
+  process.off('unhandledRejection', onUnhandled)
+  expect(unhandled).toEqual([])
   delete (document as { startViewTransition?: unknown }).startViewTransition
 })
 

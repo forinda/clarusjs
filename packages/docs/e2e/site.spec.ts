@@ -2900,6 +2900,8 @@ test('navigation guide: the query demo keeps its search in the URL (setSearch re
 })
 
 test('navigation guide: a search from the query demo keeps the scroll position; Back after a link restores it', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
   await page.goto('/guide/navigation')
   await expect(page.locator('cl-island[c="query-demo"]')).toHaveAttribute('data-cl-ready', '')
   await page.locator('.query-demo').scrollIntoViewIfNeeded()
@@ -2910,9 +2912,15 @@ test('navigation guide: a search from the query demo keeps the scroll position; 
   await expect(page).toHaveURL(/\?/)
   await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(before - 40)
   const at = await page.evaluate(() => scrollY)
+  // A slow machine (CI): Back comes before the link's page change has swapped (its view transition still snapshots).
+  await page.evaluate(() => {
+    const start = document.startViewTransition.bind(document)
+    document.startViewTransition = ((update: () => Promise<void>) => start(() => new Promise((r) => setTimeout(r, 300)).then(update))) as typeof start
+  })
   await page.getByRole('link', { name: 'Fetching', exact: true }).first().click()
   await expect(page).toHaveURL(/\/guide\/fetching/)
   await page.goBack()
   await expect(page).toHaveURL(/\/guide\/navigation/)
   await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(at - 40)
+  expect(errors).toEqual([]) // Back while the last page change still animates skips its view transition, quietly
 })
