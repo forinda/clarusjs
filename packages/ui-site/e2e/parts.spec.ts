@@ -216,3 +216,13 @@ test('toast kinds: each kind is tinted, has its icon, and says its kind to scree
   await expect(item).toContainText('Upload failed')
   await expect(item.locator('[data-part="toast-icon"] svg')).toHaveCount(1)
 })
+
+test('dialog backdrop variants: the backdrop dims by data-backdrop (light, dark, none) and blurs with blur', async ({ page }) => {
+  await page.goto('/components/dialog')
+  const backdrop = (id: string) => page.evaluate((id) => { const d = document.getElementById(id) as HTMLDialogElement; d.showModal(); const s = getComputedStyle(d, '::backdrop'); const out = { bg: s.backgroundColor, filter: s.backdropFilter }; d.close(); return out }, id)
+  const alpha = (bg: string) => Number(/rgba?\([^)]*?,\s*([\d.]+)\)/.exec(bg)?.[1] ?? /\/\s*([\d.]+)\)/.exec(bg)?.[1] ?? 1)
+  expect(alpha((await backdrop('dialog-backdrop-light')).bg)).toBeCloseTo(0.2)
+  expect(alpha((await backdrop('dialog-backdrop-dark')).bg)).toBeCloseTo(0.7)
+  expect(alpha((await backdrop('dialog-backdrop-none')).bg)).toBeCloseTo(0)
+  expect((await backdrop('dialog-backdrop-blur')).filter).toContain('blur(6px)')
+})
