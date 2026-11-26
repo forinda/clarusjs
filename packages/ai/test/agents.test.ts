@@ -38,3 +38,9 @@ test('every tscl example in the guidance compiles and passes lint (it can not dr
     expect(lint(source, file)).toEqual([])
   }
 })
+
+test('the guidance names the features agents miss without it: enter animations, view transitions, URL state, kebab-case tags', () => {
+  const text = guidance()
+  for (const s of ['@starting-style', 'viewTransitions()', 'setSearch(', 'searchParams', "{ scroll: false }", 'navigationState()', '`<user-card>`'])
+    expect(text, s).toContain(s)
+})
