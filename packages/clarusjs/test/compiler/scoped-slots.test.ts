@@ -43,8 +43,9 @@ test('the fill reads the page\'s own names too, next to the slot\'s', async () =
   expect(html).toBe('<ul><li>*Ada</li><li>*Grace</li></ul>')
 })
 
-test('errors at their place: a fill with data inside an island (not yet), a pattern that isn\'t one', () => {
-  expect(error(`@import list from './list.tscl'\n<script>\n  let n = state(0)\n</script>\n<div><list>@slot('row', { item }) {{{ item.name }}}</list></div>\n`)).toMatch(/page\.tscl:5:12 .*receives data.*island/)
+test('errors at their place: a handler in a fill with data inside an island (#472: showing it is fine), a pattern that isn\'t one', () => {
+  expect(error(`@import list from './list.tscl'\n<script>\n  let n = state(0)\n</script>\n<div><list>@slot('row', { item }) {{{ item.name }}}</list></div>\n`)).toBe('')
+  expect(error(`@import list from './list.tscl'\n<script>\n  let n = state(0)\n</script>\n<div><list>@slot('row', { item }) {<b (click)="n++">{{ item.name }}</b>}</list></div>\n`)).toMatch(/page\.tscl:5:39 a fill that receives data inside an island shows the data it receives: \(click\)/)
   expect(error(`@import list from './list.tscl'\n<list>@slot('row', 1 + 2) { }</list>\n`)).toMatch(/page\.tscl:2:20 a fill names what its slot passes like a function parameter/)
 })
 

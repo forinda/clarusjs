@@ -2261,6 +2261,15 @@ test('#455 scoped slots: the page renders each row of the list with the data its
   expect(html).toMatch(/<strong[^>]*>1\.<\/strong>\s*Make a page/) // in the server's HTML: no JavaScript involved
 })
 
+test('#472 scoped slots in an island: the fill shows the data its slot passes, and follows the island\'s state', async ({ page }) => {
+  await page.goto('/guide/slots')
+  const demo = page.locator('#slots-island-demo')
+  await expect(demo.getByRole('listitem')).toHaveText(['1 of 2. Make a page', '2 of 2. Add an island'])
+  await expect(page.locator('cl-island[c="slots-island-demo"]')).toHaveAttribute('data-cl-ready', '')
+  await demo.getByRole('button', { name: 'Add a step' }).click()
+  await expect(demo.getByRole('listitem')).toHaveText(['1 of 3. Make a page', '2 of 3. Add an island', '3 of 3. Ship it'])
+})
+
 // #454: Fetching recipes, each live recipe doing what its code says.
 async function recipe(page: import('@playwright/test').Page, id: string) {
   const box = page.locator('#' + id)

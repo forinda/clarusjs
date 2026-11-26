@@ -82,7 +82,8 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
   const outer = outerIndexIn(parsed.nodes)
   if (outer) fail(outer.message, outer.start)
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
-  const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
+  // let: off while a fill that receives data inside an island is lowered, as plain server HTML (#472).
+  let stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
   // A component sends its events from its script (#442).
   if (parsed.events.length && !parsed.script) fail('@event needs a <script> that sends it with emit(\'name\', value)', parsed.events[0]!.start)
   // Context (#465): an island has no incoming context in the browser, so it can't read any yet.
@@ -352,13 +353,22 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       for (const child of node.children) {
         if (child.type !== 'fill') continue
         if (fills.some((f) => f.name === child.name)) fail(`slot "${child.name}" is filled twice`, child.start)
+        let nodes: IRNode[]
         if (child.params !== undefined) {
-          // ponytail: not in islands yet: the fill's handlers and bindings would need the slot's data in the browser.
-          // Lift it when a region can re-run a fill function there.
-          if (stateful) fail(`@slot('${child.name}', …) receives data from the slot, which isn't supported inside an island yet: render this component outside the island, or pass the data as props`, child.start)
           slotParamsCheck(child.params, file, source, child.paramsStart!)
-        }
-        fills.push({ name: child.name, ...(child.params !== undefined ? { params: child.params } : {}), nodes: lowerList(child.children) })
+          // In an island (#472) it shows what it receives: the region re-renders the component, fill included, when
+          // what they read changes, so its content is plain server HTML, no markers.
+          // ponytail: handlers and bindings would need the slot's data in the browser, per call of the fill; wire them
+          // when a region can re-run a fill function there.
+          if (stateful) {
+            const wired = wiredIn(child.children)
+            if (wired) fail(`a fill that receives data inside an island shows the data it receives: ${wired.what} would need that data in the browser, which isn't supported yet. Move it outside the @slot, or render this component outside the island`, wired.start)
+            stateful = false
+            nodes = lowerList(child.children)
+            stateful = true
+          } else nodes = lowerList(child.children)
+        } else nodes = lowerList(child.children)
+        fills.push({ name: child.name, ...(child.params !== undefined ? { params: child.params } : {}), nodes })
       }
       const rest = node.children.filter((c) => c.type !== 'fill')
       // Whitespace around @slot blocks is not content for the default slot.
@@ -587,6 +597,25 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     contexts: parsed.contexts,
     provides,
     warnings,
+  }
+}
+
+/** The first handler or binding in these nodes (an island wires those in the browser): its spelling and place. */
+function wiredIn(nodes: TemplateNode[]): { what: string; start: number } | undefined {
+  for (const n of nodes) {
+    if (n.type === 'element') {
+      for (const a of n.attrs) {
+        if (a.kind === 'event') return { what: `(${a.name})`, start: a.start }
+        if (a.kind === 'model') return { what: `[(${a.name})]`, start: a.start }
+        if (a.kind === 'prop' && (a.name === 'use' || a.name === 'engine')) return { what: `[${a.name}]`, start: a.start }
+      }
+    }
+    const inner = n.type === 'element' || n.type === 'fill' ? [n.children]
+      : n.type === 'if' ? n.branches.map((b) => b.children)
+      : n.type === 'for' ? [n.children, n.empty ?? []]
+      : n.type === 'await' ? [n.pending, n.then?.children ?? [], n.catch?.children ?? []]
+      : []
+    for (const list of inner) { const found = wiredIn(list); if (found) return found }
   }
 }
 
