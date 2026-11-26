@@ -60,7 +60,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, top?: Server
     }
     if (n.kind === 'for') {
       const list = wrapExpr(rw.expr(n.list))
-      const row = `(${rowParams(n)}) => ${htmlExpr(n.nodes, rw.without([n.item, ...FOR_IMPLICIT]), ctx)}`
+      const row = `(${rowParams(n)}) => ${htmlExpr(n.nodes, rw.without([n.item, ...FOR_IMPLICIT, ...n.aliases.map((a) => a.name)]), ctx)}`
       const empty = n.empty ? `() => ${htmlExpr(n.empty, rw, ctx)}` : 'null'
       if (n.block >= 0) return `__cl_forHtml(${n.block}, ${list}, ${row}, ${empty})`
       // Outside islands: a plain loop, no markers. Rows that may await are joined (a promise if one does).
@@ -144,7 +144,8 @@ export function rowNames(n: Extract<IRNode, { kind: 'for' }>, events: { handler:
   const rowEvents = events.filter((e) => e.scope === `f${n.block}` || e.scope?.startsWith(`f${n.block}.`)).map((e) => e.handler)
   const text = JSON.stringify(n.nodes) + JSON.stringify(rowEvents)
   // As names, not inside others ($lastName) or after a dot (user.$first).
-  const has = (name: string) => new RegExp(`(?<![\\w$.])\\${name}(?![\\w$])`).test(text)
+  // An alias (let s = $last) needs what it names.
+  const has = (name: string) => n.aliases.some((a) => a.of === name) || new RegExp(`(?<![\\w$.])\\${name}(?![\\w$])`).test(text)
   const used = Object.keys(DERIVED).filter(has)
   return has('$count') || used.includes('$last') ? ['$count', ...used] : used
 }
@@ -154,10 +155,14 @@ export function rowNames(n: Extract<IRNode, { kind: 'for' }>, events: { handler:
  */
 export function rowParams(n: Extract<IRNode, { kind: 'for' }>): string {
   const names = rowNames(n)
-  if (!names.length) return `${n.item}, $index`
-  return [n.item, '$index', '__cl_list', '$count = __cl_list.length', ...names.filter((x) => x !== '$count').map((x) => `${x} = ${DERIVED[x]}`)].join(', ')
+  const aliases = n.aliases.map((a) => `${a.name} = ${a.of}`) // let s = $index: defaults after what they name
+  if (!names.length) return [n.item, '$index', ...(aliases.length ? ['__cl_list', ...aliases] : [])].join(', ')
+  return [n.item, '$index', '__cl_list', '$count = __cl_list.length', ...names.filter((x) => x !== '$count').map((x) => `${x} = ${DERIVED[x]}`), ...aliases].join(', ')
 }
 /** In a row's wiring: the derived names, from the row's $index and the list's $count signals. */
 export function rowDerived(n: Extract<IRNode, { kind: 'for' }>, events: { handler: string; scope?: string }[] = []): string[] {
-  return rowNames(n, events).filter((x) => x !== '$count').map((x) => `const ${x} = __cl_derived(() => ${DERIVED[x]!.replace(/\$index/g, '$index.get()').replace(/\$count/g, '$count.get()')})`)
+  return [
+    ...rowNames(n, events).filter((x) => x !== '$count').map((x) => `const ${x} = __cl_derived(() => ${DERIVED[x]!.replace(/\$index/g, '$index.get()').replace(/\$count/g, '$count.get()')})`),
+    ...n.aliases.map((a) => `const ${a.name} = ${a.of}`), // the same signal, by another name
+  ]
 }

@@ -152,3 +152,8 @@ test('#465 @context is a directive with a TypeScript type', () => {
   expect(scopesOf(src, 'tone')).toContain('variable.parameter.tscl')
   expect(scopesOf(src, 'string', 'tone')).toContain('support.type.primitive')
 })
+
+test('#585: let in a @for header is a keyword like of and track', () => {
+  const src = '@for (row of rows; track $index; let r = $index) {<i>{{ r }}</i>}\n'
+  expect(scopesOf(src, 'let')).toContain('keyword.control.flow.tscl')
+})

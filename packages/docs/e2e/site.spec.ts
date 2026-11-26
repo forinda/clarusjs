@@ -112,15 +112,24 @@ test('code samples show template syntax literally (verbatim)', async ({ page }) 
   await expect(page.locator('pre').filter({ hasText: '<code verbatim>' })).toContainText('<p>Hello, {{ name }}!</p>')
 })
 
-test('the sidebar marks the current page, the header its section, and each page has its own description', async ({ page }) => {
+// One test per section (#585): ~90 pages in one test ran past the 30 s a test gets when the whole suite ran at once.
+for (const section of docSections) {
+  test(`the sidebar marks the current page and the header its section: ${section.key}`, async ({ page }) => {
+    for (const { path } of items([section])) {
+      await page.goto(path, { waitUntil: 'domcontentloaded' }) // what it checks is in the server's HTML
+      const current = page.locator('.sidebar a[aria-current="page"]')
+      await expect(current, path).toHaveCount(1)
+      await expect(current, path).toHaveAttribute('href', path)
+      await expect(page.locator('header nav a[aria-current]'), path).toHaveAttribute('href', section.href)
+    }
+  })
+}
+
+test('each docs page has its own description; the home page has no sidebar and no current section', async ({ page }) => {
   const descriptions = new Set<string>()
-  for (const { path, section } of docs) {
-    await page.goto(path)
-    const current = page.locator('.sidebar a[aria-current="page"]')
-    await expect(current, path).toHaveCount(1)
-    await expect(current, path).toHaveAttribute('href', path)
-    await expect(page.locator('header nav a[aria-current]'), path).toHaveAttribute('href', sections.find((s) => s.key === section)!.href)
-    descriptions.add((await page.locator('meta[name="description"]').getAttribute('content'))!)
+  for (const { path } of docs) {
+    const html = await (await page.request.get(path)).text() // the HTML only: nothing to render
+    descriptions.add(/<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? '')
   }
   expect(descriptions.size).toBe(docs.length)
   await page.goto('/')
@@ -457,7 +466,7 @@ test('the generated Netlify function serves only the server routes', async () =>
   const fn = readFileSync(new URL('../.netlify/v1/functions/clarusjs-server.mjs', import.meta.url), 'utf8')
   expect(fn).toContain('import handler from "../../../dist/server/index.mjs"')
   // The pages and endpoints, each with its fragment path (endpoints have none: a 404).
-  expect(fn).toContain('export const config = {"path":["/api/demo-auth","/api/demo-auth/","/api/demo-auth/index.frag.html","/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-clock","/api/demo-clock/","/api/demo-clock/index.frag.html","/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-likes","/api/demo-likes/","/api/demo-likes/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/api/demo-upload","/api/demo-upload/","/api/demo-upload/index.frag.html","/api/demo-vendor","/api/demo-vendor/","/api/demo-vendor/index.frag.html","/api/demo-weather","/api/demo-weather/","/api/demo-weather/index.frag.html","/members","/members/","/members/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
+  expect(fn).toContain('export const config = {"path":["/api/demo-auth","/api/demo-auth/","/api/demo-auth/index.frag.html","/api/demo-cities","/api/demo-cities/","/api/demo-cities/index.frag.html","/api/demo-clock","/api/demo-clock/","/api/demo-clock/index.frag.html","/api/demo-export","/api/demo-export/","/api/demo-export/index.frag.html","/api/demo-likes","/api/demo-likes/","/api/demo-likes/index.frag.html","/api/demo-posts","/api/demo-posts/","/api/demo-posts/index.frag.html","/api/demo-profile","/api/demo-profile/","/api/demo-profile/index.frag.html","/api/demo-records","/api/demo-records/","/api/demo-records/index.frag.html","/api/demo-session","/api/demo-session/","/api/demo-session/index.frag.html","/api/demo-stats","/api/demo-stats/","/api/demo-stats/index.frag.html","/api/demo-upload","/api/demo-upload/","/api/demo-upload/index.frag.html","/api/demo-vendor","/api/demo-vendor/","/api/demo-vendor/index.frag.html","/api/demo-weather","/api/demo-weather/","/api/demo-weather/index.frag.html","/members","/members/","/members/index.frag.html","/playground","/playground/","/playground/index.frag.html"],"preferStatic":true}')
 })
 
 test('client tour: rendered in the browser, navigated without reloads, islands attached', async ({ page }) => {
@@ -947,6 +956,7 @@ test('large forms: a section, lines bound by index, derived total and validation
   await expect(order.getByLabel('Name')).toHaveAttribute('placeholder', 'Ada Lovelace')
   await expect(order.getByLabel('Email')).toHaveAttribute('placeholder', 'ada@example.com')
   await expect(order.getByLabel('Item 1')).toHaveAttribute('placeholder', 'Item')
+  await expect(order.locator('.order-changed')).toHaveCount(0) // f.dirty: nothing changed yet
   // A field's error shows under that field once you leave it, then follows what you type.
   const nameField = order.locator('.text-field').filter({ has: page.getByLabel('Name') })
   const emailField = order.locator('.text-field').filter({ has: page.getByLabel('Email') })
@@ -955,6 +965,9 @@ test('large forms: a section, lines bound by index, derived total and validation
   await order.getByLabel('Name').focus() // left the email field
   await expect(emailField.getByRole('alert')).toHaveText('Enter an email like ada@example.com.')
   await expect(order.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true')
+  await expect(order.locator('.order-changed')).toHaveText('Unsaved changes')
+  await order.getByLabel('Email').fill('')
+  await expect(order.locator('.order-changed')).toHaveCount(0) // typed and taken back: compared by value
   await order.getByLabel('Email').fill('ada@example.com')
   await expect(emailField.getByRole('alert')).toHaveCount(0)
   await expect(nameField.getByRole('alert')).toHaveText('Enter a name.') // Name was left empty (focused, then Email): its own error, under it
@@ -963,7 +976,11 @@ test('large forms: a section, lines bound by index, derived total and validation
   await expect(nameField.getByRole('alert')).toHaveText('Enter a name.')
   await order.getByLabel('Name').fill('Ada')
   await expect(nameField.getByRole('alert')).toHaveCount(0)
+  await order.getByLabel('Quantity 1').fill('1.5') // not a whole number: the field's own rule (step)
+  await order.getByLabel('Price 1').focus()
+  await expect(order.locator('.order-line').first().getByRole('alert')).toHaveText('Quantity: use a whole number.')
   await order.getByLabel('Quantity 1').fill('3')
+  await expect(order.locator('.order-line').first().getByRole('alert')).toHaveCount(0)
   await expect(order.locator('.order-total')).toHaveText('Total: 12')
   await order.getByRole('button', { name: 'Add a line' }).click()
   await expect(order.locator('.order-lines-error')).toHaveText('Every line needs an item.')
@@ -980,6 +997,8 @@ test('large forms: a section, lines bound by index, derived total and validation
   await expect(order.locator('.order-total')).toHaveText('Total: 4')
   await expect(order.getByLabel('Item 1')).toHaveValue('Notebook')
   await expect(order.getByLabel('Name')).toHaveValue('')
+  await expect(order.locator('.order-changed')).toHaveCount(0)
+  await expect(order.getByRole('alert')).toHaveCount(0) // reset clears what was shown
 })
 
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {
@@ -1682,6 +1701,15 @@ test('#249 lists: $count, $first, $last, $even and $odd follow the list in an is
   await expect(demo.locator('li')).toHaveText(['1 of 3 · first · even', '2 of 3 · odd', '3 of 3 · last · even'])
 })
 
+test('#585 lists: a nested @for numbers its rows with the outer index (let s = $index), and renumbers when rows move', async ({ page }) => {
+  await page.goto('/guide/lists#nested-loops')
+  const demo = page.locator('#nested-rows')
+  await expect(demo.locator('.n')).toHaveText(['1.1', '1.2', '2.1']) // the server's render
+  await expect(page.locator('cl-island[c="nested-rows"]')).toHaveAttribute('data-cl-ready', '')
+  await demo.getByRole('button', { name: 'Add a section at the top' }).click()
+  await expect(demo.locator('.n')).toHaveText(['1.1', '2.1', '2.2', '3.1'])
+})
+
 test('#259 h(): the playground builds HTML in load() with h(), and the page shows it as HTML (text stays escaped)', async ({ page }) => {
   await page.goto('/playground?name=%3Cb%3EAda%3C%2Fb%3E')
   const built = page.locator('#h-built')
@@ -2311,6 +2339,107 @@ test('#454 recipes: an optimistic like shows at once, and rolls back when the se
   await expect(button).toHaveText(`♥ ${before + 2}`)
   await expect(box.getByRole('alert')).toContainText('The count went back.')
   await expect(button).toHaveText(`♥ ${before + 1}`)
+})
+
+/** Holds the next write (POST, PUT) to `url` until `release()`: to see what shows before the server answers. */
+async function hold(page: import('@playwright/test').Page, url: string) {
+  let release!: () => void
+  const gate = new Promise<void>((done) => { release = done })
+  await page.route(url, async (route) => {
+    if (route.request().method() === 'GET') return route.continue()
+    await gate
+    await route.continue()
+  }, { times: 1 })
+  return release
+}
+
+test('recipes: a feed shows a post and a like at once; the server\'s answer replaces them, a failure takes them back', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#a-feed-posts-and-likes-optimistic')
+  const box = await recipe(page, 'recipe-feed')
+  await expect(box.getByRole('listitem').first()).toBeVisible()
+  const text = `Hello ${Date.now()}`
+  let release = await hold(page, '**/api/demo-posts**')
+  await box.getByLabel('New post').fill(text)
+  await box.getByRole('button', { name: 'Post' }).click()
+  const mine = box.getByRole('listitem').filter({ hasText: text })
+  await expect(mine).toContainText('Posting…') // before the server answers
+  await expect(box.getByLabel('New post')).toHaveValue('')
+  release()
+  const like = mine.getByRole('button', { name: `Like: ${text}` })
+  await expect(like).toHaveText('♥ 0') // published: the server's copy
+  await expect(mine).not.toContainText('Posting…')
+  await like.click()
+  await expect(like).toHaveAttribute('aria-pressed', 'true')
+  await expect(like).toHaveText('♥ 1')
+  await expect(like).toBeEnabled() // the server answered
+  // A failing unlike: shown at once, and while it's on its way the same post can't be toggled again (the rollback
+  // would otherwise race another one); then it goes back.
+  await box.getByLabel('Make the server fail').check()
+  release = await hold(page, '**/api/demo-posts**')
+  await like.click()
+  await expect(like).toHaveText('♥ 0')
+  await expect(like).toBeDisabled()
+  release()
+  await expect(box.getByRole('alert')).toHaveText('The like wasn’t saved. It was taken back.')
+  await expect(like).toHaveText('♥ 1')
+  await expect(like).toHaveAttribute('aria-pressed', 'true')
+  // A failing post: taken back, its text back in the box to try again...
+  const lost = `Lost ${Date.now()}`
+  release = await hold(page, '**/api/demo-posts**')
+  await box.getByLabel('New post').fill(lost)
+  await box.getByRole('button', { name: 'Post' }).click()
+  await expect(box.getByRole('listitem').filter({ hasText: lost })).toContainText('Posting…')
+  release()
+  await expect(box.getByRole('alert')).toHaveText('The post wasn’t published. It was taken back.')
+  await expect(box.getByRole('listitem').filter({ hasText: lost })).toHaveCount(0)
+  await expect(box.getByLabel('New post')).toHaveValue(lost)
+  // ...unless a newer draft was typed meanwhile: that one stays.
+  release = await hold(page, '**/api/demo-posts**')
+  await box.getByRole('button', { name: 'Post' }).click()
+  await expect(box.getByRole('listitem').filter({ hasText: lost })).toContainText('Posting…')
+  await box.getByLabel('New post').fill('Newer draft')
+  release()
+  await expect(box.getByRole('listitem').filter({ hasText: lost })).toHaveCount(0)
+  await expect(box.getByLabel('New post')).toHaveValue('Newer draft')
+})
+
+test('recipes: editing a profile shows the save at once; saved, it is the new start; failed, the page goes back', async ({ page }) => {
+  await page.goto('/guide/fetching-recipes#editing-a-profile-save-or-roll-back')
+  const box = await recipe(page, 'recipe-profile')
+  const card = box.getByRole('article', { name: 'Profile' })
+  const name = box.getByLabel('Name')
+  const save = box.getByRole('button', { name: /Save|Saving…/ })
+  await expect(name).not.toHaveValue('') // loaded: the form starts from the profile
+  await expect(save).toBeDisabled() // nothing changed yet
+  await name.fill('') // required: Save is refused, the field says why, nothing is sent
+  await save.click()
+  await expect(box.locator('[data-cl-message]')).not.toHaveText('')
+  await expect(name).toBeEnabled()
+  await expect(box.getByRole('status')).toHaveCount(0)
+  const saved = `Grace ${Date.now() % 100000}`
+  const release = await hold(page, '**/api/demo-profile**')
+  await name.fill(saved)
+  await save.click()
+  await expect(card.locator('strong')).toHaveText(saved) // before the server answers
+  await expect(name).toBeDisabled() // no edits while it saves: the answer would overwrite them
+  release()
+  await expect(box.getByRole('status')).toHaveText('Saved.')
+  await expect(name).toBeEnabled()
+  await expect(save).toBeDisabled() // the saved profile is the new starting point
+  await box.getByLabel('Make the server fail').check()
+  await name.fill('Not saved')
+  await save.click()
+  await expect(box.getByRole('status')).toContainText('The profile wasn’t saved. The card went back')
+  await expect(card.locator('strong')).toHaveText(saved) // rolled back
+  await expect(name).toHaveValue('Not saved') // the edits stay, to try again
+  await box.getByRole('button', { name: 'Undo changes' }).click()
+  await expect(name).toHaveValue(saved)
+  await box.getByLabel('Make the server fail').uncheck()
+  await name.fill('x'.repeat(41))
+  await save.click()
+  await expect(name).toHaveAttribute('aria-invalid', 'true') // the server's error, on its field
+  await expect(box.locator('[data-cl-message]')).toHaveText('Use 40 characters or fewer.')
+  await expect(card.locator('strong')).toHaveText(saved)
 })
 
 test('#454 recipes: a chain and parallel requests to an external API (answered here, not by the network)', async ({ page }) => {

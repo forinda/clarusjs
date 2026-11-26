@@ -289,3 +289,44 @@ test('review #233 (2): a field bound to a component\'s model takes that model\'s
   expect(f.errors.map((e) => e.path)).toEqual(['name.first', 'name.last'])
   void el
 })
+
+test('#443: dirty is the whole form differing from its start, by value: typing then undoing is clean again', () => {
+  const { f, v } = mount(emailForm, { customer: { email: '' } })
+  expect(f.dirty).toBe(false)
+  v.set({ customer: { email: 'a' } })
+  expect(f.dirty).toBe(true)
+  v.set({ customer: { email: '' } }) // a new object, equal to the start
+  expect(f.dirty).toBe(false)
+  v.set({ customer: { email: 'b' } })
+  f.reset({ customer: { email: 'b' } }) // saved: the new starting point
+  expect(f.dirty).toBe(false)
+})
+
+test('#443: shown(path) applies the show rule, for a field that shows its own error (a component, a custom control)', async () => {
+  const { el, f } = mount(emailForm, { customer: { email: '' } })
+  expect(f.shown('customer.email')).toBe(false)
+  leave(el('input'))
+  expect(f.shown('customer.email')).toBe(true)
+  const late = mount(emailForm, { customer: { email: '' } }, { show: 'submit' })
+  leave(late.el('input'))
+  expect(late.f.shown('customer.email')).toBe(false)
+  await late.f.submit()
+  expect(late.f.shown('customer.email')).toBe(true) // after a submit, every field
+})
+
+test('#443 review: dirty compares arrays by length too (a sparse array and an empty one differ)', () => {
+  const { f, v } = mount(emailForm, { customer: { email: '' }, rows: new Array(1) } as any)
+  expect(f.dirty).toBe(false)
+  v.set({ customer: { email: '' }, rows: [] } as any)
+  expect(f.dirty).toBe(true)
+  v.set({ customer: { email: '' }, rows: new Array(1) } as any)
+  expect(f.dirty).toBe(false)
+  v.set({ customer: { email: '' }, rows: { length: 1 } } as any) // an object is not an array
+  expect(f.dirty).toBe(true)
+})
+
+test('#443 review: dirty tells an array from an object with a length (both one key, length 1)', () => {
+  const { f, v } = mount(emailForm, { customer: { email: '' }, rows: [7] } as any)
+  v.set({ customer: { email: '' }, rows: { length: 1 } } as any)
+  expect(f.dirty).toBe(true)
+})

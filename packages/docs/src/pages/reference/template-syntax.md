@@ -24,6 +24,7 @@ description: "Every directive and binding in .tscl templates, on one page."
 | `(event)="handler"` | handle an event (islands); on a component, its `@event` (`$event`, `$info`) | [Events](/guide/events) |
 | `@if (a) { } @else if (b) { } @else { }` | conditional branches | [Conditionals](/guide/conditionals) |
 | `@for (x of xs; track x.id) { } @empty { }` | repeat content | [Lists](/guide/lists) |
+| `@for (x of xs; track x.id; let i = $index) { }` | name a row's `$index` (or `$count`, `$first`…) for a nested loop | [Lists](/guide/lists#nested-loops) |
 | `@await (p) { } @then (v) { } @catch (e) { }` | show a promise's states: pending, its value, its error | [Fetching data](/guide/fetching#in-an-island-await) |
 | `<fragment> … </fragment>` {since=0.16.0} | group elements without rendering one; takes no attributes | [Components](/guide/components#several-elements-without-a-wrapper-fragment) |
 | `<slot />, <slot name="x">fallback</slot>` | where wrapped content goes | [Slots](/guide/slots) |

@@ -4,7 +4,7 @@
 // page it doesn't own. A form's values are any state: a component's or a store's.
 // @see https://clarusjs.com/guide/form-validation
 import { effect, onDispose, state, untrack, type Ctx, type Signal } from '../runtime/index.ts'
-import { marked, openSlots, owner } from '../runtime/dom.ts'
+import { keepSlots, marked, openSlots, owner } from '../runtime/dom.ts'
 import { browser } from '../runtime/env.ts'
 import type { Form, FormError, FormOptions, StandardSchema } from './types.ts'
 
@@ -26,6 +26,13 @@ const dotted = (path: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
  * `@name…` is a component's @model `name`: its path is the island's data-cl-path-name (set by the parent binding it),
  * and the walk goes on from that island.
  */
+/** Equal plain values, compared through objects and arrays: a form typed into and back is not dirty. */
+const same = (a: unknown, b: unknown): boolean =>
+  a === b || (!!a && !!b && typeof a === 'object' && typeof b === 'object' && Array.isArray(a) === Array.isArray(b) &&
+    // Arrays by length too: a sparse one has fewer keys.
+    Object.keys(a).length === Object.keys(b).length && (a as { length?: number }).length === (b as { length?: number }).length &&
+    Object.keys(a).every((k) => same((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])))
+
 function pathOf(field: Element, root: Element): string {
   const parts: string[] = []
   // Inside an island's slot range (#465), the elements up to and including that island are its own, not the path's:
@@ -89,12 +96,16 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   let server: Record<string, string> = {}
   let schemaIssues: Record<string, string> = {}
   let errorsNow: Record<string, string> = {} // path → message, every source, shown or not
+  // As of the last refresh (which follows every change of touched, dirty or checked): paths shown, paths left.
+  let shownPaths = new Set<string>()
+  let touchedPaths = new Set<string>()
   const roots = new Map<Element, number>() // covered element → how many connections
   let checkSeq = 0
   let latest: Promise<void> = Promise.resolve()
   let revision = 0 // advances with every change of the values
   let failed = false // the schema threw: nothing is submitted until a check passes
   let timer: ReturnType<typeof setTimeout> | undefined
+  let queued = false
   let last = initial
   const current = state('') // the step shown (multi-step forms)
   const submitting = state(false)
@@ -106,11 +117,11 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
    * [data-cl-field], fieldset, island) that has one, if that container holds no other field (a radio group's share
    * one path, so they share it). Beside the label is best: inside, it's read as the field's name.
    */
-  const boxOf = (el: Element, path: string, root: Element) => {
+  const boxOf = (el: Element, path: string, paths: Map<Element, string>) => {
     for (let c = el.closest(CONTAINERS); c; c = c.parentElement?.closest(CONTAINERS) ?? null) {
       const box = c.querySelector<HTMLElement>('[data-cl-message]')
       if (!box) continue
-      return [...c.querySelectorAll(FIELDS)].every((x) => x === el || pathOf(x, root) === path) ? box : undefined
+      return [...c.querySelectorAll(FIELDS)].every((x) => x === el || paths.get(x) === path) ? box : undefined
     }
   }
   /** The path of the field an event happened on, if it's one of this form's. */
@@ -122,12 +133,13 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   /** Is this field's error shown (by the show rule, or because a step check or a submit showed it)? */
   const shownField = (el: Element, path: string) =>
     shownAll.on || forced.has(path) || checked.has(el) || (show === 'input' ? touched.has(el) || dirty.has(el) : show === 'blur' && touched.has(el))
-  const shown = (path: string) => shownAll.on || forced.has(path) || fields().some((f) => f.path === path && shownField(f.el, path))
+  const shown = (path: string) => shownAll.on || forced.has(path) || shownPaths.has(path)
 
   /** Recompute every field's error (sources in order of precedence) and put each on its element. */
   function refresh(): void {
     const next: Record<string, string> = {}
-    for (const { el, path } of fields()) {
+    const list = keepSlots(fields) // every field's path: slot counts kept across them (a long list costs one pass)
+    for (const { el, path } of list) {
       el.setCustomValidity('')
       let native = ''
       if (!el.validity.valid) {
@@ -143,8 +155,10 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     for (const path of new Set([...Object.keys(schemaIssues), ...Object.keys(server)])) next[path] ??= server[path] || schemaIssues[path]!
     if (failed) next[''] ??= options.messages?.schema ?? "The form couldn't be checked. Try again."
     errorsNow = next
-    // ponytail: shown() scans the fields per field (quadratic); fine for forms, a per-refresh set if it ever isn't.
-    for (const { el, path, root } of fields()) paint(el, boxOf(el, path, root), shown(path) ? errorsNow[path] ?? '' : '')
+    shownPaths = new Set(list.filter((f) => shownField(f.el, f.path)).map((f) => f.path))
+    touchedPaths = new Set(list.filter((f) => touched.has(f.el)).map((f) => f.path))
+    const paths = new Map(list.map((f) => [f.el as Element, f.path]))
+    for (const { el, path } of list) paint(el, boxOf(el, path, paths), shown(path) ? errorsNow[path] ?? '' : '')
     version.set(untrack(() => version.get()) + 1)
   }
 
@@ -239,7 +253,9 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       for (const path of Object.keys(server)) if (read(value, path) !== read(last, path)) delete server[path]
       last = value
       revision++
-      if (roots.size) { refresh(); checkSoon() }
+      // After the DOM follows the values (rows, sections added or removed), once for writes in a row.
+      if (roots.size && !queued) { queued = true; queueMicrotask(() => { queued = false; if (roots.size) refresh() }) }
+      if (roots.size) checkSoon()
     })
   })
 
@@ -274,9 +290,10 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       version.get()
       const out: FormError[] = []
       const all = fields()
-      for (const { el, path, root } of all) {
+      const paths = new Map(all.map((f) => [f.el as Element, f.path]))
+      for (const { el, path } of all) {
         if (out.some((e) => e.path === path) || !shown(path) || !errorsNow[path]) continue
-        out.push({ path, message: errorsNow[path]!, id: boxOf(el, path, root)?.id || el.id, step: el.closest('[data-cl-step]')?.id ?? null })
+        out.push({ path, message: errorsNow[path]!, id: boxOf(el, path, paths)?.id || el.id, step: el.closest('[data-cl-step]')?.id ?? null })
       }
       // Errors no field shows, after the rest.
       for (const [path, message] of Object.entries(errorsNow)) {
@@ -284,8 +301,10 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       }
       return out as FormError<T>[]
     },
-    touched(path) { version.get(); return fields().some((f) => f.path === path && touched.has(f.el)) },
+    touched(path) { version.get(); return touchedPaths.has(path) },
     changed(path) { return read(signal.get(), path) !== read(initial, path) },
+    get dirty() { return !same(signal.get(), initial) },
+    shown(path) { version.get(); return shown(path) },
     get valid() { version.get(); return !Object.keys(errorsNow).length },
     get pending() { return pending.get() },
     setErrors(errors) { server = { ...errors }; for (const path of Object.keys(errors)) forced.add(path); refresh() },
@@ -394,7 +413,7 @@ export function connect(ctx: Ctx, index: number, get: () => Form<any>): void {
 /** A form while rendering on the server: nothing to show yet. */
 function inert<T>(): Form<T> {
   return {
-    error: () => '', errors: [], touched: () => false, changed: () => false, valid: true, pending: false,
+    error: () => '', errors: [], touched: () => false, changed: () => false, dirty: false, shown: () => false, valid: true, pending: false,
     setErrors() {}, focus() {}, reset() {}, step: '', steps: [], next: async () => false, back() {}, go() {},
     submitting: false, submit: async () => false,
   }

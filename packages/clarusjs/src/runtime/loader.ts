@@ -1,7 +1,7 @@
 // Island loader: finds <cl-island> elements, loads each one's chunk when its attach mode says so, calls attach(),
 // and replays what the visitor did before that. Browser only.
 
-import { owner } from './dom.ts'
+import { keepSlots, owner } from './dom.ts'
 import { parse } from './serialize.ts'
 import { scope } from './signals.ts'
 
@@ -115,7 +115,7 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
     rendered.set(el, rootAttrs(el))
     attached.set(el, scope(() => {
       // An island with inputs returns how to update them: kept for a parent island that passes new props.
-      const update = mod.attach(el, props, state)
+      const update = keepSlots(() => mod.attach(el, props, state)) // openSlots counts kept while it wires (dom.ts)
       if (typeof update === 'function') updates.set(el, update)
     }))
     el.setAttribute('data-cl-ready', '')

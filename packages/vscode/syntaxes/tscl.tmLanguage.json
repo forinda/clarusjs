@@ -211,7 +211,7 @@
           "contentName": "meta.embedded.expression.tscl",
           "patterns": [
             {
-              "match": "\\b(of|track)\\b",
+              "match": "\\b(of|track|let)\\b",
               "name": "keyword.control.flow.tscl"
             },
             {

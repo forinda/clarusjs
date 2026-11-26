@@ -103,26 +103,29 @@ The same pieces scale: one state object for the whole form, sections as nested o
     customer: { name: '', email: '' },
     lines: [{ item: 'Notebook', qty: '1', price: '4' }],
   })
-  const initial = order
   const total = derived(() => order.lines.reduce((sum, line) => sum + Number(line.qty) * Number(line.price), 0))
-  const errors = derived(() => ({ name: order.customer.name.trim() ? '' : 'Enter a name.' }))
+  const f = form(order, { schema: orderSchema, submit: (values) => send(values) })
   function addLine() { order = { ...order, lines: [...order.lines, { item: '', qty: '1', price: '0' }] } }
   function removeLine(index) { order = { ...order, lines: order.lines.filter((_, i) => i !== index) } }
 </script>
 
-<textField [label]="'Name'" [(value)]="order.customer.name" />
+<form [engine]="f">
+<textField [label]="'Name'" [error]="f.error('customer.name')" [show]="f.shown('customer.name')" [(value)]="order.customer.name" />
 @for (line of order.lines; track $index) {
   <input [(value)]="order.lines[$index].item">
-  <button (click)="removeLine($index)">×</button>
+  <button type="button" (click)="removeLine($index)">×</button>
 }
+<button>Send</button>
+</form>
 ```
 
-- **Repeating groups.** Bind a row's field through the list and its index: `[(value)]="order.lines[$index].item"`. A write replaces that one line and the list around it, copy-on-write. Binding the row variable itself (`line.item`) is an error, because it would only change the row's copy.
+- **Repeating groups.** Bind a row's field through the list and its index: `[(value)]="order.lines[$index].item"`. A write replaces that one line and the list around it, copy-on-write. Binding the row variable itself (`line.item`) is an error, because it would only change the row's copy. In a nested loop, name the outer row's index with `let s = $index` and bind through both indexes ([Nested loops](/guide/lists#nested-loops)).
 - **Adding and removing** replaces the list: `[...lines, next]`, `lines.filter(…)`.
-- **Derived values** such as totals, errors or "has anything changed" are `derived()`. They recompute when the parts they read change, and nothing else does. Keep validation in a `.ts` module so the server can run the same rules.
+- **Derived values** such as totals are `derived()`. They recompute when the parts they read change, and nothing else does.
+- **Validation** is the forms engine's: `form(order, { schema })` on `[engine]` puts each error on the field with its path, once the field was left or after a submit ([Form validation](/guide/form-validation)). Keep the schema in a `.ts` module so the server can run the same rules. A component that shows its own error, like `textField`, gets the message from `f.error(path)` and when to show it from `f.shown(path)`. `f.dirty` says whether anything differs from the start, for an "unsaved changes" note.
 - **Text in, numbers out.** `[(value)]` writes the field's text, as the browser gives it. Convert where you compute (`Number(line.qty)`), or keep a number in state with `(input)="qty = $event.target.valueAsNumber"`.
 - **Sections as components.** A section with many fields can be its own component with an object `@model`: `<addressFields [(value)]="order.shipping" />`, where its fields bind `[(value)]="value.street"`. Each write replaces the section, which writes it back to the order.
-- **Submitting.** `(submit.prevent)="send(order)"` posts the one object as JSON, and keeps the page where it is (`.prevent`: [Events](/guide/events#modifiers)). Without JavaScript the form still posts the usual way. Server validation can return errors by field path, to show next to each field.
+- **Submitting.** With the engine, its `submit` gets the one object once everything is valid, and server errors it returns land on their fields. Without it, `(submit.prevent)="send(order)"` posts the object as JSON and keeps the page where it is (`.prevent`: [Events](/guide/events#modifiers)). Without JavaScript the form still posts the usual way.
 - **Unbound fields.** A form whose fields aren't bound one by one reads them on submit with `$values`: `(submit.prevent)="send($values)"` gets `{ email: '…', tags: ['a', 'b'] }`, by each field's `name`. A name used more than once gives a list, and the button that submitted counts, as when the form posts.
 
 A copy per keystroke is cheap: only the changed path is new, and the rest is shared. Even a form with hundreds of fields stays quick.

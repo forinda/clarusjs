@@ -100,6 +100,91 @@ Show the change at once, send it, and put it back if the server says no. `mutate
 
 <recipeOptimistic />
 
+## A feed: posts and likes, optimistic
+
+A new post shows at once, marked as on its way, and a like flips at once. The server's answer replaces them; a failure takes them back and says why. Each post and each like is its own call and several can be on their way at once, so they're plain `async` functions with `try`/`catch` rather than an `action()` (a second call to one action joins the first).
+
+```tscl
+<script>
+  import { json, request, resource } from 'clarusjs/fetch'
+  const feed = resource(({ signal }) => json('/api/posts', { signal }))
+  let temp = 0 // ids for posts on their way: unique, even for two in the same millisecond
+  let liking = state([]) // posts with a like on its way
+  // Swap the post with this id for another, or for nothing.
+  const replace = (id, post) => feed.mutate({ posts: feed.value.posts.flatMap((p) => (p.id === id ? (post ? [post] : []) : [p])) })
+  async function post(text) {
+    const pending = { id: 'new-' + ++temp, text, likes: 0, liked: false, pending: true }
+    feed.mutate({ posts: [pending, ...feed.value.posts] }) // shown now
+    try {
+      replace(pending.id, await request('/api/posts', { method: 'POST', body: { text } })) // the server's copy, with its id
+    } catch (e) {
+      replace(pending.id, null) // taken back
+    }
+  }
+  async function toggle(post) {
+    if (liking.includes(post.id)) return // one at a time per post
+    const on = !post.liked
+    replace(post.id, { ...post, liked: on, likes: post.likes + (on ? 1 : -1) }) // shown now
+    liking = [...liking, post.id]
+    try {
+      replace(post.id, await request('/api/posts', { method: 'POST', body: { like: post.id, on } }))
+    } catch (e) {
+      replace(post.id, post) // back to how it was
+    } finally {
+      liking = liking.filter((id) => id !== post.id)
+    }
+  }
+</script>
+```
+
+The roll back puts back the post as it was when the call started (`post`), not "one less". That holds only if nothing else changed the post meanwhile, so a post takes one like at a time (`liking`, and its button is `[disabled]` while one is on its way); different posts' likes still run at once. A failed post's text goes back into the box only if the box is still empty, so a newer draft isn't lost. Try it, then make the server fail and post or like again:
+
+<recipeFeed />
+
+## Editing a profile: save, or roll back
+
+The form starts from the saved profile, and the page shows the new values as soon as you save. Saved, they become the form's values and new starting point (`f.reset(saved)`), so `f.dirty` is false again; the fields are disabled while the request is on its way (`saving`, set in `submit`), since the answer would overwrite edits typed meanwhile. Not `f.submitting`: that starts before the checks, and a disabled field isn't checked. Failed, what the page shows goes back to what was saved, and the form keeps your edits to try again, or to undo with `f.reset()`. An error the server returns for a field lands on that field ([Form validation](/guide/form-validation#submit)).
+
+```tscl
+<script>
+  import { form } from 'clarusjs/forms'
+  import { json, request, resource } from 'clarusjs/fetch'
+  let edit = state({ name: '', bio: '' })
+  let saving = state(false)
+  const f = form(edit, {
+    async submit(values) {
+      const before = profile.value
+      profile.mutate(values) // shown now
+      saving = true
+      try {
+        const saved = await request('/api/profile', { method: 'PUT', body: values })
+        profile.mutate(saved)
+        f.reset(saved) // the new starting point
+      } catch (e) {
+        profile.mutate(before) // roll back
+        if (e.data?.errors) return { errors: e.data.errors } // on their fields
+      } finally {
+        saving = false
+      }
+    },
+  })
+  // Loaded, the profile is the form's values and its starting point.
+  const profile = resource(({ signal }) => json('/api/profile', { signal }), { onSuccess: (p) => f.reset(p) })
+</script>
+
+<form [engine]="f">
+  <fieldset [disabled]="saving">{{-- no edits while it saves: the answer would overwrite them --}}
+    <label>Name <input required [(value)]="edit.name"> <small data-cl-message></small></label>
+  </fieldset>
+  <button [disabled]="f.submitting || !f.dirty">Save</button>
+  <button type="button" [disabled]="!f.dirty" (click)="f.reset()">Undo changes</button>
+</form>
+```
+
+Try it: change the name and save, then make the server fail and save again. A name over 40 characters gets the server's error on the field.
+
+<recipeProfile />
+
 Tick *Make the server fail*, then like: the count goes up, and back down when the answer comes. With a cache key, [`setData()`](/reference/fetch#setdata) changes every resource showing that key at once.
 
 ## Requests in a chain, and in parallel

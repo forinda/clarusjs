@@ -8,6 +8,7 @@ import { parseExpressionAt } from 'acorn'
 import { routeFromFile } from '../server/handler.ts'
 import { ClarusError } from '../compiler/errors.ts'
 import { modifierError, splitEvent } from '../compiler/events.ts'
+import { outerIndexIn } from '../compiler/loops.ts'
 import { FOR_IMPLICIT, parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
 import { providesIn, referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
@@ -48,6 +49,8 @@ function patternNames(params: string): string[] {
 
 export function generateTs(source: string, file: string, options: { loader?: string; componentSuffix?: string; components?: ComponentNames } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
   const parsed = parse(source, file)
+  const outer = outerIndexIn(parsed.nodes) // an inner @for's $index on an outer list (#585), as the compiler reports it
+  if (outer) throw new ClarusError(outer.message, file, source, outer.start)
   // Components used by name (#458), imported as the build imports them.
   if (options.components) autoImport(parsed, options.components, file, source)
   const mappings: Mapping[] = []
@@ -316,11 +319,13 @@ export function generateTs(source: string, file: string, options: { loader?: str
         copy(node.list, node.listStart)
         // The row's implicit names: $index and $count numbers; $first, $last, $even, $odd booleans.
         emit(') {\n    const $index: number = 0, $count: number = 0, $first = __cl_bool, $last = __cl_bool, $even = __cl_bool, $odd = __cl_bool; __cl_use([$index, $count, $first, $last, $even, $odd])\n')
+        // let s = $index (#585): the same value under its own name.
+        for (const a of node.aliases) emit(`    const ${a.name} = ${a.of}; __cl_use(${a.name})\n`)
         if (node.track !== null) use(node.track, node.trackStart)
         // Inside the loop its item (and $index) shadow outer names: a condition about an outer `row` must not be
         // repeated where `row` is the loop's.
         const outer = guards.splice(0)
-        guards.push(...outer.filter((g) => !referencesNames(g, new Set([node.item, ...FOR_IMPLICIT]))))
+        guards.push(...outer.filter((g) => !referencesNames(g, new Set([node.item, ...FOR_IMPLICIT, ...node.aliases.map((a) => a.name)]))))
         node.children.forEach(visit)
         guards.splice(0, guards.length, ...outer)
         emit('  }\n')

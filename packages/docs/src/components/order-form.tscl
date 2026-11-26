@@ -1,47 +1,49 @@
-{{-- A larger form: one state object with a section, repeating lines bound by index, derived total and validation.
-     Each field's error shows under it once you've left it, or after Send; then it follows what you type. --}}
+{{-- A larger form: one state object with a section, repeating lines bound by index, a derived total, and the forms
+     engine for validation. Each field's error shows once you've left it, or after Send; then it follows what you
+     type. The name and email are components that show their own error: f.shown(path) tells them when. --}}
 @import textField from './text-field.tscl'
 
 <script>
+  import { form } from 'clarusjs/forms'
+  import { orderSchema } from '~/order.ts'
   let order = state({ customer: { name: '', email: '' }, lines: [{ item: 'Notebook', qty: '1', price: '4' }] })
-  const initial = order
   const total = derived(() => order.lines.reduce((sum, line) => sum + Number(line.qty) * Number(line.price), 0))
-  const errors = derived(() => ({
-    name: order.customer.name.trim() ? '' : 'Enter a name.',
-    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.customer.email) ? '' : 'Enter an email like ada@example.com.',
-    lines: order.lines.some((line) => !line.item.trim()) ? 'Every line needs an item.' : '',
-  }))
-  let tried = state(false) // after a Send: every error shows, not only those of fields you've left
   let sent = state('')
+  const f = form(order, {
+    schema: orderSchema,
+    // The numbers' own rules (step, min): the browser's messages are off, so the form says them.
+    messages: { stepMismatch: 'use a whole number.', rangeUnderflow: 'use 0 or more.', badInput: 'use a number.' },
+    submit: (values) => { sent = JSON.stringify(values) },
+  })
+  // A line's message, under it: its quantity's, else its price's (f.errors: the errors shown, in document order).
+  const lineError = (i) => {
+    const e = f.errors.find((x) => x.path === 'lines.' + i + '.qty' || x.path === 'lines.' + i + '.price')
+    return e ? (e.path.endsWith('.qty') ? 'Quantity: ' : 'Price: ') + e.message : ''
+  }
   function addLine() {
     order = { ...order, lines: [...order.lines, { item: '', qty: '1', price: '0' }] }
   }
   function removeLine(index) {
     order = { ...order, lines: order.lines.filter((_, i) => i !== index) }
   }
-  function submit() {
-    tried = true
-    if (errors.name || errors.email || errors.lines) return
-    sent = JSON.stringify(order)
-  }
 </script>
 
-<form class="order" (submit.prevent)="submit()">
+<form class="order" [engine]="f">
   <fieldset>
     <legend>Customer</legend>
     <textField
       [label]="'Name'"
       [placeholder]="'Ada Lovelace'"
-      [error]="errors.name"
-      [show]="tried"
+      [error]="f.error('customer.name')"
+      [show]="f.shown('customer.name')"
       [(value)]="order.customer.name"
     />
     <textField
       [label]="'Email'"
       [type]="'email'"
       [placeholder]="'ada@example.com'"
-      [error]="errors.email"
-      [show]="tried"
+      [error]="f.error('customer.email')"
+      [show]="f.shown('customer.email')"
       [(value)]="order.customer.email"
     />
   </fieldset>
@@ -59,17 +61,23 @@
           [(value)]="order.lines[$index].price"
         />
         <button type="button" [aria-label]="'Remove line ' + ($index + 1)" (click)="removeLine($index)">×</button>
+        @if (lineError($index)) {
+          <p class="order-error" role="alert">{{ lineError($index) }}</p>
+        }
       </div>
     }
     <button type="button" class="order-add" (click)="addLine()">Add a line</button>
-    @if (errors.lines && tried) {
-      <p class="order-error order-lines-error" role="alert">{{ errors.lines }}</p>
+    @if (f.error('lines')) {
+      <p class="order-error order-lines-error" role="alert">{{ f.error('lines') }}</p>
     }
   </fieldset>
   <p class="order-total">Total: {{ total }}</p>
   <div class="order-actions">
-    <button type="submit" class="primary">Send</button>
-    <button type="button" class="order-reset" (click)="order = initial; sent = ''; tried = false">Reset</button>
+    <button type="submit" class="primary" [disabled]="f.submitting">Send</button>
+    <button type="button" class="order-reset" (click)="f.reset(); sent = ''">Reset</button>
+    @if (f.dirty) {
+      <span class="order-changed">Unsaved changes</span>
+    }
   </div>
   @if (sent) {
     <pre class="order-sent">{{ sent }}</pre>
@@ -97,6 +105,9 @@
   }
   .order-line input {
     min-width: 0;
+  }
+  .order-line .order-error {
+    grid-column: 1 / -1;
   }
   input:not([type='checkbox']),
   select {
@@ -154,6 +165,11 @@
   .order-actions {
     display: flex;
     gap: 8px;
+  }
+  .order-changed {
+    align-self: center;
+    color: var(--muted);
+    font-size: 13px;
   }
   .order-total {
     margin: 0;
