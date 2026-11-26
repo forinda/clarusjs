@@ -18,6 +18,19 @@ vi.mock('node:fs', async (importOriginal) => {
 // Registered first, so it runs after the test file's own afterAll (which may still close a server in one of them).
 afterAll(async () => {
   const { rmSync } = await vi.importActual<typeof import('node:fs')>('node:fs')
-  for (const dir of made) rmSync(dir, { recursive: true, force: true, maxRetries: 3 })
+  // Each one tried, even after one fails (a file still locked on Windows): the rest still go, and the failures are
+  // reported together.
+  const failed: string[] = []
+  for (const dir of made) {
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 3 })
+    } catch (error) {
+      failed.push(`${dir}: ${(error as Error).message}`)
+    }
+  }
   made.clear()
+  if (failed.length)
+    throw new Error(
+      `couldn't remove ${failed.length} temp director${failed.length === 1 ? 'y' : 'ies'}:\n${failed.join('\n')}`,
+    )
 })
