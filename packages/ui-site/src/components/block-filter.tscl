@@ -1,14 +1,14 @@
 {{-- /blocks' search box and categories: shows the rows ([data-block], in the slot) whose name, line or category has
      the words typed, in the category picked. --}}
-@import { blocks } from '~/registry.ts'
+@import { blocks, sections } from '~/registry.ts'
 @import uiInput from '~/registry/input.tscl'
 
 <script>
   import { effect } from 'clarusjs/runtime'
-  const categories = [...new Set(blocks.map((b) => b.category ?? ''))].filter(Boolean)
+  const categories = [...new Set([...blocks, ...sections].map((b) => b.category ?? ''))].filter(Boolean)
   let query = state('')
   let category = state('')
-  let shown = state(blocks.length)
+  let shown = state(blocks.length + new Set(sections.map((s) => s.section)).size) // a row per block and per section kind
   const search = (event) => (query = event.target.value)
   function wire(el) {
     return effect(() => {

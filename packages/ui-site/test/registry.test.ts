@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { compile } from 'clarusjs/compiler'
 import { expect, test } from 'vitest'
-import { COMPONENT_GROUPS, SECTION_KINDS, blocks, codeFiles, components, registry, sections } from '../src/registry.ts'
+import { COMPONENT_GROUPS, SECTION_KINDS, blocks, codeFiles, components, registry, sections, sectionsOf, type SectionKind } from '../src/registry.ts'
 import { registryDir, render, source } from './render.ts'
 import { globalStyle, uiSection } from './css.ts'
 
@@ -25,7 +25,7 @@ test('sections: their own kind, each with a section kind and category Marketing'
 
 test('every entry\'s files exist, and every file in src/registry is an entry\'s file or usage example', () => {
   for (const { file } of files) expect(existsSync(resolve(registryDir, file)), file).toBe(true)
-  const known = [...files.map((f) => f.file), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`), ...(e.tailwind ?? [])])].sort()
+  const known = [...new Set(files.map((f) => f.file)), ...components.flatMap((e) => [`${e.name}-demo.tscl`, ...(e.examples ?? []).map((x) => `${e.name}-${x}-demo.tscl`), ...(e.tailwind ?? [])])].sort()
   const found = (readdirSync(registryDir, { recursive: true }) as string[]).map((f) => f.replaceAll('\\', '/')).filter((f) => statSync(resolve(registryDir, f)).isFile())
   expect(found.sort()).toEqual(known)
 })
@@ -58,6 +58,22 @@ test('copied files import only ui-primitives, clarusjs, their own files and thos
       const copied = [...entry.files, ...entry.uses.flatMap((u) => registry.find((e) => e.name === u)?.files ?? [])]
       const ok = shared(s) || (!!local && copied.includes(local))
       expect(ok, `${file} imports ${s}`).toBe(true)
+    }
+  }
+})
+
+test('every section kind with versions has src/pages/blocks/marketing/<kind>.md showing each version\'s files in Code order, and each version a view', () => {
+  expect(sections.length).toBeGreaterThan(0)
+  for (const kind of Object.keys(SECTION_KINDS) as SectionKind[]) {
+    const versions = sectionsOf(kind)
+    if (!versions.length) continue
+    const md = readFileSync(resolve(pages, 'blocks', 'marketing', `${kind}.md`), 'utf8')
+    for (const e of versions) {
+      const view = new RegExp(`<blockView name="${e.name}">([\\s\\S]*?)</blockView>`).exec(md)?.[1]
+      expect(view, e.name).toBeDefined()
+      expect(view, e.name).toContain(`<iframe src="/view/${e.name}"`)
+      expect([...view!.matchAll(/^<<< \.\.\/\.\.\/\.\.\/registry\/(\S+)/gm)].map((m) => m[1]), e.name).toEqual(codeFiles(e).map((f) => f.file))
+      expect(existsSync(resolve(pages, 'view', `${e.name}.tscl`)), e.name).toBe(true)
     }
   }
 })

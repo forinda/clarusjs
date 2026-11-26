@@ -3,12 +3,12 @@
   the header, then the frame or the code. The page passes the <iframe> (its src is never data) and the files' code
   blocks, in codeFiles() order; this shows one at a time.
 --}}
-@import { blocks, codeFiles } from '~/registry.ts'
+@import { codeFiles, registry } from '~/registry.ts'
 @input name: string
 
 <script>
   import { browser, effect } from 'clarusjs/runtime'
-  const entry = blocks.find((b) => b.name === name)
+  const entry = registry.find((b) => b.name === name) // a block or a section version
   const files = entry ? codeFiles(entry) : []
   const SIZES = [
     { key: 'desktop', label: 'Desktop width' },
