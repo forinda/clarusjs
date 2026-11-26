@@ -19,9 +19,15 @@ Import `typography.css` once and put the HTML in an element with `data-part="pro
 
 ## Source
 
-Copy it into `src/components/ui/` as `typography.css`.
+Copy it into `src/components/ui/` as `typography.css`. Or the Tailwind version (switch below): the same look in Tailwind utilities, `typography.tw.css`, imported where Tailwind runs.
+
+<sourceFlavor name="typography">
 
 <<< ../../registry/typography.css
+
+<<< ../../registry/typography.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

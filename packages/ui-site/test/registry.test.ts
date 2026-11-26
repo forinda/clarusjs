@@ -503,6 +503,6 @@ test('tailwind: a part\'s Tailwind stylesheet (<name>.tw.css) is Tailwind\'s: @r
   for (const e of components) for (const f of (e.tailwind ?? []).filter((x) => x.endsWith('.tw.css'))) {
     const css = source(f).replace(/\/\*[\s\S]*?\*\//g, '')
     expect(css, f).toMatch(/^\s*@reference "tailwindcss";/)
-    for (const [, body] of css.matchAll(/\{([^{}]*)\}/g)) expect(body!.trim(), f).toMatch(/^@apply [^;]+;$/)
+    for (const [, body] of css.replace(/@keyframes [\w-]+\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '').matchAll(/\{([^{}]*)\}/g)) expect(body!.trim(), f).toMatch(/^@apply [^;]+;$/)
   }
 })

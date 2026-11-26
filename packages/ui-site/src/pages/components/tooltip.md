@@ -19,9 +19,15 @@ The parts come from `@clarusjs/ui-primitives`; the look is `tooltip.css`, import
 
 ## Source
 
-Copy it into `src/components/ui/` as `tooltip.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `tooltip.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `tooltip.tw.css`, imported where Tailwind runs.
+
+<sourceFlavor name="tooltip">
 
 <<< ../../registry/tooltip.css
+
+<<< ../../registry/tooltip.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

@@ -1,0 +1,42 @@
+/*
+  The Tailwind version of popover's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Popover: the same rules as @clarusjs/ui's ui.css for popover.tscl, popover-trigger.tscl from @clarusjs/ui-primitives.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Buttons: triggers and closes. */
+  :where([data-part='trigger'], [data-part='close']) {
+    @apply font-semibold text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) py-(--ui-space-2) px-[calc(var(--ui-space)_*_3.5)] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-bg) text-(color:--ui-fg) cursor-pointer;
+  }
+  :where([data-part='trigger'], [data-part='close']):hover {
+    @apply border-(color:--ui-accent);
+  }
+
+  /* Popover: a little gap from its trigger, wherever it's placed. */
+  :where([data-part='popover']) {
+    @apply m-[calc(var(--ui-space)_*_1.5)] py-(--ui-space-3) px-[calc(var(--ui-space)_*_3.5)] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-popover) text-(color:--ui-popover-fg) text-(color:--ui-fg) shadow-(--ui-shadow) font-normal text-(length:--ui-font-size) leading-[1.5] font-(family-name:--ui-font);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}

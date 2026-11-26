@@ -1,0 +1,62 @@
+/*
+  The Tailwind version of sidebar's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Sidebar: the same rules as @clarusjs/ui's ui.css for sidebar.tscl and sidebar-trigger.tscl from
+  @clarusjs/ui-primitives. Copy it into src/components/ui/, @import it once.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Sidebar: inline beside the page on wide screens (hidden when collapsed: its data-state, or data-sidebar on <html>
+     from the remembered choice); on phones a popover panel from the left. */
+  :where([data-part='sidebar']) {
+    @apply flex-col gap-[calc(var(--ui-space)_*_0.5)] m-0 p-(--ui-space-3) border-0 border-none bg-(color:--ui-sidebar) text-(color:--ui-sidebar-fg) font-normal text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) overflow-auto;
+  }
+  :where([data-part='sidebar']) a {
+    @apply block py-[calc(var(--ui-space)_*_1.5)] px-[calc(var(--ui-space)_*_2.5)] rounded-(--ui-radius) text-inherit no-underline;
+  }
+  :where([data-part='sidebar']) a:hover,
+  :where([data-part='sidebar']) a[aria-current='page'] {
+    @apply bg-(color:--ui-sidebar-accent) text-(color:--ui-sidebar-accent-fg);
+  }
+  :where([data-part='sidebar-trigger']) {
+    @apply py-[calc(var(--ui-space)_*_1.5)] px-[calc(var(--ui-space)_*_2.5)] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-bg) text-(color:--ui-fg) [font:inherit] cursor-pointer;
+  }
+  @media (min-width: 768px) {
+    :where([data-part='sidebar']) {
+      @apply flex static inset-auto w-[240px] h-auto border-r [border-right-style:solid] border-r-(color:--ui-sidebar-border);
+    }
+    :where([data-part='sidebar'][data-state='collapsed']),
+    :where(:root[data-sidebar='collapsed'] [data-part='sidebar']) {
+      @apply hidden;
+    }
+    :where(:root[data-sidebar='open'] [data-part='sidebar']) {
+      @apply flex;
+    }
+  }
+  @media (max-width: 767px) {
+    :where([data-part='sidebar']):popover-open {
+      @apply flex top-0 right-auto bottom-0 left-0 w-[min(18rem,_85vw)] h-[100dvh] border-r [border-right-style:solid] border-r-(color:--ui-sidebar-border) shadow-(--ui-shadow);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}
