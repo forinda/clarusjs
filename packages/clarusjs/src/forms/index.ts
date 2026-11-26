@@ -29,6 +29,8 @@ const dotted = (path: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
 /** Equal plain values, compared through objects and arrays: a form typed into and back is not dirty. */
 const same = (a: unknown, b: unknown): boolean =>
   a === b || (!!a && !!b && typeof a === 'object' && typeof b === 'object' && Object.keys(a).length === Object.keys(b).length &&
+    // Arrays by length too (sparse ones have fewer keys); an array and an object differ here (a length, or none).
+    (a as { length?: number }).length === (b as { length?: number }).length &&
     Object.keys(a).every((k) => same((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])))
 
 function pathOf(field: Element, root: Element): string {

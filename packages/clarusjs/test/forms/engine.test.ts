@@ -313,3 +313,14 @@ test('#443: shown(path) applies the show rule, for a field that shows its own er
   await late.f.submit()
   expect(late.f.shown('customer.email')).toBe(true) // after a submit, every field
 })
+
+test('#443 review: dirty compares arrays by length too (a sparse array and an empty one differ)', () => {
+  const { f, v } = mount(emailForm, { customer: { email: '' }, rows: new Array(1) } as any)
+  expect(f.dirty).toBe(false)
+  v.set({ customer: { email: '' }, rows: [] } as any)
+  expect(f.dirty).toBe(true)
+  v.set({ customer: { email: '' }, rows: new Array(1) } as any)
+  expect(f.dirty).toBe(false)
+  v.set({ customer: { email: '' }, rows: { length: 1 } } as any) // an object is not an array
+  expect(f.dirty).toBe(true)
+})
