@@ -62,7 +62,7 @@
             <button
               type="button"
               [aria-pressed]="p.liked ? 'true' : 'false'"
-              [aria-label]="'Like: ' + p.text"
+              [aria-label]="'♥ ' + p.likes + ', Like: ' + p.text"
               (click)="toggle(p)"
             >
               ♥ {{ p.likes }}
@@ -118,8 +118,9 @@
   li.pending span {
     opacity: 0.6;
   }
+  /* Liked: a tinted fill and the accent edge; the text keeps the page's colour (contrast in both themes). */
   button[aria-pressed='true'] {
-    color: var(--accent);
+    background: var(--accent-soft);
     border-color: var(--accent);
   }
   .muted {
