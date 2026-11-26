@@ -578,7 +578,9 @@ export function generateTolerant(source: string, file: string, options: Paramete
         continue
       }
       // A broken @-construct (@if, @for, @slot, a block) goes from its @, which may be on an earlier line than the error.
-      const from = /@|block|\( after|\(\s*$/.test(message) && text.lastIndexOf('@', offset) !== -1 ? text.lastIndexOf('@', offset) : offset
+      // (A script's error isn't about a directive, even if its text names one: #594 review.)
+      const directive = !/^(script:|TypeScript syntax)/.test(message) && /@|block|\( after|\(\s*$/.test(message)
+      const from = directive && text.lastIndexOf('@', offset) !== -1 ? text.lastIndexOf('@', offset) : offset
       const lineStart = text.lastIndexOf('\n', from - 1) + 1
       const lineEnd = text.indexOf('\n', from) === -1 ? text.length : text.indexOf('\n', from)
       const blank = (from: number) => text.slice(0, from) + text.slice(from, lineEnd).replace(/[^\n]/g, ' ') + text.slice(lineEnd)

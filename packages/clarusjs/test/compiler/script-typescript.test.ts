@@ -27,7 +27,16 @@ test('syntax that is not JavaScript at all: named, at its place', () => {
   expect(error('  let n = state(0)\n  function id<T>(x) { return x }')).toMatch(/type parameters/)
 })
 
+test('#594 review: nested and union type arguments are caught too', () => {
+  expect(error('  let n = state(0)\n  const m = (f) => f<Map<string, number>>(1)')).toMatch(/a type argument, f<Map<string, number>>\(…\)/)
+  expect(error('  let n = state(0)\n  const u = (f) => f<string | number>(1)')).toMatch(/a type argument, f<string \| number>\(…\)/)
+  expect(error('  let n = state(0)\n  const g = (api) => api.get<string>(1)')).toMatch(/a type argument, api\.get<string>\(…\)/)
+})
+
 test('JavaScript that only looks like it stays fine', () => {
+  expect(error('  let n = state(0)\n  const r = (1 < 2) > 0')).toBe('') // #594 review: the same tree as f<T>(x)
+  expect(error('  let n = state(0)\n  const a = () => 1, b = () => 2, c = () => 3, d = () => 4\n  const r = (a() < b(), c() > d())')).toBe('')
+  expect(error("  let n = state(0)\n  const s = 'f<string>(x)'\n  const re = /a<b>(c)/")).toBe('')
   expect(error('  let n = state(0)\n  const a = 1, b = 2, c = 3\n  const ok = a < b && b > c')).toBe('')
   expect(error('  let n = state(0)\n  const t = n ? 1 : 2\n  const o = { a: 1 }')).toBe('')
   expect(error('  let n = state(0)\n  const not = !n')).toBe('')

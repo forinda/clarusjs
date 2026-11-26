@@ -1,5 +1,5 @@
 // <script> analysis and signal rewrites. Reads `count` → `count.get()`, writes `count++` → `count.set(count.get() + 1)`.
-import { parse as acornParse, parseExpressionAt } from 'acorn'
+import { tokenizer, parse as acornParse, parseExpressionAt } from 'acorn'
 import { FOR_IMPLICIT } from './parse.ts'
 import { ClarusError } from './errors.ts'
 
@@ -71,45 +71,54 @@ function typescriptAt(code: string, pos: number): string | null {
   return null
 }
 
-/** JavaScript that TypeScript reads as a type argument: f<T>(x) is f < T > (x) here. Its node, or null. */
-function typeArgumentIn(ast: N, code: string): { start: number; text: string } | null {
-  let found: { start: number; text: string } | null = null
-  const lt = (n: N | undefined) => n?.type === 'BinaryExpression' && n.operator === '<'
-  const gt = (n: N | undefined) => n?.type === 'BinaryExpression' && n.operator === '>'
-  const walk = (n: unknown): void => {
-    if (found || !isNode(n)) return
-    // f<A>(x): (f < A) > x;  f<A, B>(x): f < A, B > x (a sequence).
-    if (gt(n) && lt(n.left)) found = { start: n.start, text: `${code.slice(n.left.left.start, n.left.left.end)}<${code.slice(n.left.right.start, n.left.right.end)}>(…)` }
-    else if (n.type === 'SequenceExpression' && lt(n.expressions[0]) && gt(n.expressions.at(-1))) {
-      const first = n.expressions[0] as N
-      const last = n.expressions.at(-1) as N
-      found = { start: n.start, text: `${code.slice(first.left.start, first.left.end)}<${code.slice(first.right.start, last.left.end)}>(…)` }
+// Tokens that may stand between a type argument's < and >: names, literals and type punctuation, not operators.
+const TYPE_TOKENS = new Set(['name', 'string', 'num', ',', '.', '[', ']', '{', '}', ':', '?', '|', '&', '=>', '(', ')', 'true', 'false', 'null', 'void', 'typeof', 'new', '...'])
+
+/**
+ * A type argument written in JavaScript (#432): a name touching a `<`, type tokens, the matching `>` (a `>>` closes
+ * two), then `(`. f<T>(x) is f < T > (x) here; spaced comparisons (a < b), and strings and regexes (tokens of their
+ * own), never match. Where it starts and how it reads, or null.
+ */
+function typeArgumentIn(code: string): { start: number; text: string; what: string } | null {
+  let tokens: { type: { label: string }; value?: unknown; start: number; end: number }[]
+  try { tokens = [...tokenizer(code, OPTS)] as typeof tokens } catch { return null } // not even tokens: acorn says why
+  for (let i = 1; i < tokens.length; i++) {
+    const lt = tokens[i]!
+    const name = tokens[i - 1]!
+    if (lt.value !== '<' || name.type.label !== 'name' || name.end !== lt.start) continue
+    let depth = 1
+    let j = i + 1
+    for (; j < tokens.length && depth > 0; j++) {
+      const t = tokens[j]!
+      if (t.value === '<') depth++
+      else if (t.value === '>') depth--
+      else if (t.value === '>>') depth -= 2
+      else if (t.value === '>>>') depth -= 3
+      else if (!TYPE_TOKENS.has(t.type.label) && t.type.label !== 'keyof') break
+      if (depth < 0) break
     }
-    for (const v of Object.values(n)) if (Array.isArray(v)) v.forEach(walk); else if (isNode(v)) walk(v)
+    if (depth !== 0 || tokens[j]?.type.label !== '(') continue
+    let k = i - 1 // back over a member chain: api.get<T>(…)
+    while (k >= 2 && tokens[k - 1]!.type.label === '.' && tokens[k - 2]!.type.label === 'name') k -= 2
+    // function f<T>(x) declares type parameters; anything else passes a type argument.
+    const what = tokens[k - 1]?.type.label === 'function' ? 'type parameters' : 'a type argument'
+    return { start: tokens[k]!.start, text: `${code.slice(tokens[k]!.start, tokens[j - 1]!.end)}(…)`, what }
   }
-  walk(ast)
-  return found
+  return null
 }
 
 function parseScript(code: string, file = '<script>', source = code, offset = 0): N {
-  let ast: N
+  // Valid JavaScript or not (f<A, B>(x) in an arrow's body, new Map<K, V>()), a type argument is named first.
+  const arg = typeArgumentIn(code)
+  if (arg) throw new ClarusError(`${TS}${arg.what}, ${arg.text}${TS_WHERE}`, file, source, offset + arg.start)
   try {
-    ast = acornParse(code, OPTS) as unknown as N
+    return acornParse(code, OPTS) as unknown as N
   } catch (e) {
     const pos = (e as { pos?: number }).pos ?? 0
-    // f<A, B>(x) where a comma can't make a sequence (an arrow's body): acorn stops at the >. Reported at the name.
-    const open = code.lastIndexOf('<', pos)
-    if (code[pos] === '>' && open > 0 && !/[<>;{}\n]/.test(code.slice(open + 1, pos))) {
-      const name = /[\w$.]+$/.exec(code.slice(0, open))
-      if (name) throw new ClarusError(`${TS}a type argument, ${name[0]}${code.slice(open, pos + 1)}(…)${TS_WHERE}`, file, source, offset + name.index)
-    }
     const ts = typescriptAt(code, pos)
     if (ts) throw new ClarusError(TS + ts + TS_WHERE, file, source, offset + pos)
     throw new ClarusError(`script: ${(e as Error).message.replace(/ \(\d+:\d+\)$/, '')}`, file, source, offset + pos)
   }
-  const arg = typeArgumentIn(ast, code)
-  if (arg) throw new ClarusError(`${TS}a type argument, ${arg.text}${TS_WHERE}`, file, source, offset + arg.start)
-  return ast
 }
 
 /** Throw a located ClarusError for a script that isn't JavaScript (#432): what clarusjs check runs before reading it. */
