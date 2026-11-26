@@ -11,8 +11,9 @@
 </script>
 
 {{-- One size for a row of controls: data-size on what holds them (a Select is an island, so it takes the size from
-     around it); a Button takes its own size. --}}
-<div class="demo example">
+     around it); a Button takes its own size. The selects' labels are read by assistive technology, not shown: the row's
+     controls line up. --}}
+<div class="demo example size-rows">
   <div class="row" data-size="sm">
     <uiInput aria-label="Small search" placeholder="Search" />
     <uiSelect id="size-demo-sm" label="Small status" [options]="options" value="all" />
@@ -44,5 +45,17 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 10rem) auto;
     gap: var(--ui-space-3);
     align-items: end;
+  }
+</style>
+
+<style global>
+  /* A Select's own label, inside its part (scoped rules stop there): kept for screen readers, hidden from view. */
+  .size-rows [data-part='select'] [data-part='label'] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 </style>

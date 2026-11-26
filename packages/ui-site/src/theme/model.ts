@@ -35,7 +35,22 @@ export function toCss(theme: Theme, scope = ':root'): string {
   const osDark = root ? ":root:not([data-theme='light'])" : under(":root:not([data-theme='light'])", scope)
   const toggleDark = root ? ":root[data-theme='dark']" : under(":root[data-theme='dark']", scope)
   const scale = `\n  /* Spacing: steps of --ui-space (4px), set in the same rule so changing the unit rescales them. */\n${SCALE.map(([k, v]) => `  --ui-${k}: ${v};\n`).join('')}`
-  return `${scope} {\n${decl(theme.light, '  ')}${scale}}\n@media (prefers-color-scheme: dark) {\n  ${osDark} {\n${decl(theme.dark, '    ')}  }\n}\n${toggleDark} {\n${decl(theme.dark, '  ')}}\n`
+  // color-scheme: native controls (select popups, date pickers, scrollbars) follow light and dark too.
+  return `${scope} {\n  color-scheme: light;\n${decl(theme.light, '  ')}${scale}}\n@media (prefers-color-scheme: dark) {\n  ${osDark} {\n    color-scheme: dark;\n${decl(theme.dark, '    ')}  }\n}\n${toggleDark} {\n  color-scheme: dark;\n${decl(theme.dark, '  ')}}\n`
+}
+
+/**
+ * The site around the demos in the theme's accent, light and dark: the docs theme's --accent and --accent-soft (header,
+ * sidebar, links) and the accent --ui- tokens (the site's own components). Saved with toCss(theme, SCOPE).
+ */
+export function siteCss(theme: Theme): string {
+  // The docs theme's two, and this library's accent tokens for the site's own components (the Theme sheet's controls).
+  const keys = ['accent', 'accent-fg', 'accent-soft', 'accent-soft-fg', 'ring'] as const
+  const decls = (t: Theme['light'], pad: string) =>
+    `${pad}--accent: ${t.accent};\n${pad}--accent-soft: ${t['accent-soft']};\n` + keys.map((k) => `${pad}--ui-${k}: ${t[k]};\n`).join('')
+  // html:root, one step more specific than the docs theme's :root rules: the saved theme's <style> is set early in
+  // <head>, before the stylesheets, and must still win.
+  return `html:root {\n${decls(theme.light, '  ')}}\n@media (prefers-color-scheme: dark) {\n  html:root:not([data-theme='light']) {\n${decls(theme.dark, '    ')}  }\n}\nhtml:root[data-theme='dark'] {\n${decls(theme.dark, '  ')}}\n`
 }
 
 // sRGB hex ⇄ OKLCH (Björn Ottosson's OKLab), enough to flip lightness and keep hue.
@@ -141,4 +156,16 @@ export function decode(text: string): { base: PresetName; theme: Theme } | null 
     theme[m === 'l' ? 'light' : 'dark'][name] = value
   }
   return { base: base as PresetName, theme }
+}
+
+/**
+ * What a custom brand colour brings with it, so a theme built from one colour stays whole: the focus ring, text that
+ * reads on it (white or near-black, whichever passes 4.5:1), and a soft tint in its hue for hovers and selections, with
+ * text that reads on that.
+ */
+export function brandTokens(accent: string): Record<'accent' | 'ring' | 'accent-fg' | 'accent-soft' | 'accent-soft-fg', string> {
+  const [, , h] = toOklch(accent)
+  const on = (bg: string) => (contrast('#ffffff', bg) >= 4.5 ? '#ffffff' : '#111827')
+  const soft = fromOklch([0.95, 0.035, h])
+  return { accent, ring: accent, 'accent-fg': on(accent), 'accent-soft': soft, 'accent-soft-fg': fromOklch([0.35, 0.09, h]) }
 }

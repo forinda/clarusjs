@@ -23,6 +23,8 @@
     encode,
     fromOklch,
     restore,
+    brandTokens,
+    siteCss,
     toCss,
   } from '~/theme/model.ts'
   import { SCOPE, SOURCE_KEY, STORAGE_KEY, loadFonts } from '~/theme/apply.ts'
@@ -128,6 +130,10 @@
       theme = { light, dark: edited.includes(key) ? theme.dark : { ...theme.dark, [key]: darkFrom(light)[key] } }
     }
   }
+  // A custom brand colour: the accent, and the ring, text and tint that go with it (else focus rings stay the preset's).
+  function brand(value) {
+    for (const [key, v] of Object.entries(brandTokens(value))) set(key, v)
+  }
   const radius = (event) => set('radius', event.target.value + 'px')
   function font(key, value) {
     set(key, value)
@@ -157,8 +163,15 @@
       dark: tint(theme.dark, fromOklch([0.78, 0.13, h]), theme.dark.bg, fromOklch([0.27, 0.05, h])),
     }
   }
+  // Reset: the default theme, and the saved one forgotten (every page, tab and frame back to theme.css).
   function reset() {
-    pick(base)
+    pick('teal')
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(SOURCE_KEY)
+    } catch {}
+    document.getElementById('ui-theme')?.remove()
+    dirty = false
   }
   async function share() {
     try {
@@ -215,7 +228,7 @@
     // frames hear the save (a storage event) and set it too (APPLY_SCRIPT).
     const save = effect(() => {
       if (!dirty) return
-      const css = toCss(theme, SCOPE)
+      const css = toCss(theme, SCOPE) + siteCss(theme) // the demos' tokens, and the site's accent
       let sheet = document.getElementById('ui-theme')
       if (!sheet) {
         sheet = document.createElement('style')
@@ -247,129 +260,104 @@
 </script>
 
 <div class="theme-builder" role="group" aria-label="Theme controls" [data-mode]="mode" [use]="wire">
-  <div class="tb-rows">
-    <uiPopoverTrigger target="tb-presets">
-      <span class="row-label">Preset</span>
-      <span class="row-value">{{ PRESETS.find((p) => p.name === base)?.label ?? 'Custom' }}</span>
-      <span class="dot" [style]="'--sw: ' + theme[mode].accent"></span>
-    </uiPopoverTrigger>
-    <uiPopover id="tb-presets" side="right" align="start">
-      <div class="presets" role="group" aria-label="Presets">
-        @for (p of PRESETS; track p.name) {
-          <button
-            type="button"
-            class="pick"
-            [aria-label]="p.label + ' preset'"
-            [aria-pressed]="String(base === p.name)"
-            (click)="pick(p.name); document.getElementById('tb-presets')?.hidePopover()"
-          >
-            <span class="dot" [style]="'--sw: ' + p.accent"></span> {{ p.label }}
-          </button>
+  <div class="tb-body">
+    <div class="tb-group" role="group" aria-labelledby="tb-g-colours">
+      <p class="tb-group-title" id="tb-g-colours">Colours</p>
+      <uiPopoverTrigger target="tb-presets">
+        <span class="row-label">Preset</span>
+        <span class="row-end"><span class="row-value">{{ theme.light.accent === presets[base]?.light.accent ? PRESETS.find((p) => p.name === base)?.label ?? 'Custom' : 'Custom' }}</span><span class="dot" [style]="'--sw: ' + theme[mode].accent"></span><icon name="lucide:chevron-right" /></span>
+      </uiPopoverTrigger>
+      <uiPopover id="tb-presets" side="bottom" align="end">
+        <div class="presets" role="group" aria-label="Presets">
+          @for (p of PRESETS; track p.name) {
+            <button
+              type="button"
+              class="pick"
+              [aria-label]="p.label + ' preset'"
+              [aria-pressed]="String(base === p.name)"
+              (click)="pick(p.name); document.getElementById('tb-presets')?.hidePopover()"
+            >
+              <span class="dot" [style]="'--sw: ' + p.accent"></span> {{ p.label }}
+            </button>
+          }
+        </div>
+      </uiPopover>
+      <label class="row" for="tb-brand">
+        <span class="row-label">Brand</span>
+        <span class="row-end">
+          <code class="row-value">{{ theme[mode].accent }}</code>
+          <input
+            type="color"
+            id="tb-brand"
+            aria-label="Brand"
+            [value]="theme[mode].accent"
+            (input)="brand($event.target.value)"
+          />
+        </span>
+      </label>
+      <details class="tb-colours">
+        <summary><span class="row-label">Every colour ({{ mode }})</span><icon name="lucide:chevron-down" /></summary>
+        @for (g of GROUPS; track g.title) {
+          <fieldset>
+            <legend>{{ g.title }}</legend>
+            @for (tok of g.tokens; track tok.key) {
+              <div class="colour">
+                <label [for]="'tb-' + tok.key">{{ tok.label }}</label>
+                <input
+                  type="color"
+                  [id]="'tb-' + tok.key"
+                  [aria-describedby]="low(tok.key) ? 'tb-' + tok.key + '-warn' : null"
+                  [value]="theme[mode][tok.key]"
+                  (input)="set(tok.key, $event.target.value)"
+                />
+                <code>{{ theme[mode][tok.key] }}</code>
+                <p class="warn" [id]="'tb-' + tok.key + '-warn'" [hidden]="!low(tok.key)">
+                  Low contrast ({{ ratio(tok.key) }}:1, needs 4.5)
+                </p>
+              </div>
+            }
+          </fieldset>
         }
+      </details>
+    </div>
+    <div class="tb-group" role="group" aria-labelledby="tb-g-type">
+      <p class="tb-group-title" id="tb-g-type">Type</p>
+      <div class="row row-select">
+        <uiSelect id="tb-heading" label="Heading font" [options]="HEADINGS" [(value)]="theme.light['font-heading']" (change)="font('font-heading', $event)" />
       </div>
-    </uiPopover>
-    <label class="row" for="tb-brand">
-      <span class="row-label">Brand</span>
-      <code class="row-value">{{ theme[mode].accent }}</code>
-      <input
-        type="color"
-        id="tb-brand"
-        aria-label="Brand"
-        [value]="theme[mode].accent"
-        (input)="set('accent', $event.target.value)"
-      />
-    </label>
-    <div class="row row-select">
-      <uiSelect
-        id="tb-heading"
-        label="Heading font"
-        [options]="HEADINGS"
-        [(value)]="theme.light['font-heading']"
-        (change)="font('font-heading', $event)"
-      />
+      <div class="row row-select">
+        <uiSelect id="tb-font" label="Body font" [options]="FONTS" [(value)]="theme.light.font" (change)="font('font', $event)" />
+      </div>
+      <div class="row row-select">
+        <uiSelect id="tb-mono" label="Code font" [options]="MONOS" [(value)]="theme.light['font-mono']" (change)="font('font-mono', $event)" />
+      </div>
+      <div class="row row-select">
+        <uiSelect id="tb-size" label="Base size" [options]="SIZE_OPTIONS" [(value)]="theme.light['font-size']" (change)="set('font-size', $event)" />
+      </div>
     </div>
-    <div class="row row-select">
-      <uiSelect
-        id="tb-font"
-        label="Body font"
-        [options]="FONTS"
-        [(value)]="theme.light.font"
-        (change)="font('font', $event)"
-      />
-    </div>
-    <div class="row row-select">
-      <uiSelect
-        id="tb-mono"
-        label="Code font"
-        [options]="MONOS"
-        [(value)]="theme.light['font-mono']"
-        (change)="font('font-mono', $event)"
-      />
-    </div>
-    <div class="row row-select">
-      <uiSelect
-        id="tb-size"
-        label="Base size"
-        [options]="SIZE_OPTIONS"
-        [(value)]="theme.light['font-size']"
-        (change)="set('font-size', $event)"
-      />
-    </div>
-    <div class="row">
-      <span class="row-label" id="tb-radius-label">Radius</span>
-      <span class="row-value">{{ theme.light.radius }}</span>
-      <uiSlider id="tb-radius" aria-label="Radius" [min]="0" [max]="20" [value]="8" (input)="radius($event)" />
-    </div>
-    <div class="row row-select">
-      <uiSelect
-        id="tb-density"
-        label="Density"
-        [options]="DENSITIES"
-        [(value)]="theme.light.space"
-        (change)="set('space', $event)"
-      />
-    </div>
-    <div class="row row-select">
-      <uiSelect
-        id="tb-shadow"
-        label="Shadow"
-        [options]="SHADOW_OPTIONS"
-        [(value)]="shadow"
-        (change)="setShadow($event)"
-      />
+    <div class="tb-group" role="group" aria-labelledby="tb-g-shape">
+      <p class="tb-group-title" id="tb-g-shape">Shape</p>
+      <div class="row">
+        <span class="row-label" id="tb-radius-label">Radius</span>
+        <span class="row-end">
+          <span class="row-value">{{ theme.light.radius }}</span>
+          <uiSlider id="tb-radius" aria-label="Radius" [min]="0" [max]="20" [value]="8" (input)="radius($event)" />
+        </span>
+      </div>
+      <div class="row row-select">
+        <uiSelect id="tb-density" label="Density" [options]="DENSITIES" [(value)]="theme.light.space" (change)="set('space', $event)" />
+      </div>
+      <div class="row row-select">
+        <uiSelect id="tb-shadow" label="Shadow" [options]="SHADOW_OPTIONS" [(value)]="shadow" (change)="setShadow($event)" />
+      </div>
     </div>
   </div>
-  <details class="tb-colours">
-    <summary><icon name="lucide:palette" /> Every colour ({{ mode }})</summary>
-    @for (g of GROUPS; track g.title) {
-      <fieldset>
-        <legend>{{ g.title }}</legend>
-        @for (tok of g.tokens; track tok.key) {
-          <div class="colour">
-            <label [for]="'tb-' + tok.key">{{ tok.label }}</label>
-            <input
-              type="color"
-              [id]="'tb-' + tok.key"
-              [aria-describedby]="low(tok.key) ? 'tb-' + tok.key + '-warn' : null"
-              [value]="theme[mode][tok.key]"
-              (input)="set(tok.key, $event.target.value)"
-            />
-            <code>{{ theme[mode][tok.key] }}</code>
-            <p class="warn" [id]="'tb-' + tok.key + '-warn'" [hidden]="!low(tok.key)">
-              Low contrast ({{ ratio(tok.key) }}:1, needs 4.5)
-            </p>
-          </div>
-        }
-      </fieldset>
-    }
-  </details>
-  <div class="tb-actions">
+  <div class="tb-foot">
     <uiButton (click)="copy()"><icon name="lucide:copy" /> {{ copied ? 'Copied' : 'Copy CSS' }}</uiButton>
-    <uiButton variant="outline" (click)="shuffle()"><icon name="lucide:shuffle" /> Shuffle</uiButton>
-    <uiButton variant="outline" (click)="share()"
-      ><icon name="lucide:link" /> {{ shared ? 'Link copied' : 'Share link' }}</uiButton
-    >
-    <uiButton variant="outline" (click)="reset()"><icon name="lucide:rotate-ccw" /> Reset</uiButton>
+    <uiButton variant="ghost" aria-label="Shuffle" (click)="shuffle()"><icon name="lucide:shuffle" /></uiButton>
+    <uiButton variant="ghost" [aria-label]="shared ? 'Link copied' : 'Share link'" (click)="share()"><icon name="lucide:link" /></uiButton>
+    <uiButton variant="ghost" aria-label="Reset" (click)="reset()"><icon name="lucide:rotate-ccw" /></uiButton>
+    <a class="tb-preview" href="/theme" aria-label="Open the full preview">Preview <icon name="lucide:arrow-up-right" /></a>
   </div>
 </div>
 
@@ -378,77 +366,131 @@
   /* A slim panel of rows (shadcn's /create): each a choice and its value; every colour in its own section. */
   .theme-builder {
     display: grid;
-    gap: 8px;
-    align-content: start;
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: 0;
+    flex: 1;
   }
-  .theme-builder .tb-rows {
-    display: grid;
-    gap: 4px;
+  /* The controls scroll; the sheet's header and this footer stay put. */
+  .theme-builder .tb-body {
+    overflow-y: auto;
+    padding: 4px 16px 16px;
+    overscroll-behavior: contain;
   }
+  .theme-builder .tb-group + .tb-group {
+    margin-top: 16px;
+  }
+  .theme-builder .tb-group-title {
+    margin: 0 0 2px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  /* A row: one height, its name on the left and its value (and control) on the right, rows divided by a rule. */
   .theme-builder .row,
-  .theme-builder .tb-rows > [data-part='trigger'] {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    column-gap: 8px;
+  .theme-builder .tb-group > [data-part='trigger'],
+  .theme-builder .tb-colours summary {
+    display: flex;
+    gap: 12px;
     align-items: center;
+    justify-content: space-between;
     width: 100%;
-    padding: 6px 10px;
-    border: 1px solid var(--rule);
-    border-radius: 10px;
-    background: var(--bg);
+    min-height: 40px;
+    padding: 4px 0;
+    border: 0;
+    border-top: 1px solid var(--rule);
+    border-radius: 0;
+    background: none;
     color: inherit;
     font: inherit;
     text-align: left;
     cursor: pointer;
   }
+  .theme-builder .tb-group-title + * {
+    border-top: 0;
+  }
   .theme-builder .row-label {
-    grid-column: 1;
+    font-size: 13px;
+  }
+  .theme-builder .row-end {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
     color: var(--muted);
-    font-size: 11px;
   }
   .theme-builder .row-value {
-    grid-column: 1;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--fg);
     font-size: 13px;
     font-weight: 600;
   }
-  /* A select row: its label small and muted, its control the row's value, borderless. */
+  .theme-builder code.row-value {
+    font-weight: 500;
+  }
+  /* A select row: the part's label as the row's name, its select as the value, right-aligned with a chevron. */
   .theme-builder .row-select {
-    grid-template-columns: minmax(0, 1fr);
     cursor: default;
   }
-  .theme-builder .row-select > :last-child {
-    grid-column: 1;
-    grid-row: auto;
-  }
   .theme-builder .row-select [data-part='select'] {
-    gap: 0;
+    display: flex;
+    flex: 1;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
     max-width: none;
     min-width: 0;
   }
   .theme-builder .row-select [data-part='label'] {
-    color: var(--muted);
-    font-size: 11px;
+    color: inherit;
+    font-size: 13px;
     font-weight: 400;
   }
   .theme-builder .row-select select {
+    min-width: 0;
     min-height: 0;
-    padding: 0;
+    padding: 4px 18px 4px 4px;
     border: 0;
     background: none;
+    appearance: none;
     color: inherit;
     font-size: 13px;
     font-weight: 600;
+    text-align: right;
     cursor: pointer;
   }
-  .theme-builder .row > :last-child,
-  .theme-builder .tb-rows > [data-part='trigger'] > :last-child {
-    grid-column: 2;
-    grid-row: 1 / span 2;
+  .theme-builder .row-select [data-part='select'] {
+    position: relative;
+  }
+  .theme-builder .row-select [data-part='select']::after {
+    content: '';
+    position: absolute;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid var(--muted);
+    border-bottom: 1.5px solid var(--muted);
+    rotate: -45deg;
+    pointer-events: none;
+  }
+  .theme-builder .row-end svg,
+  .theme-builder .tb-colours summary svg {
+    width: 14px;
+    height: 14px;
+    color: var(--muted);
+  }
+  .theme-builder .tb-colours summary {
+    list-style: none;
+  }
+  .theme-builder .tb-colours summary::-webkit-details-marker {
+    display: none;
+  }
+  .theme-builder .tb-colours[open] summary svg {
+    rotate: 180deg;
   }
   .theme-builder .row input[type='color'] {
     width: 22px;
@@ -460,7 +502,7 @@
     cursor: pointer;
   }
   .theme-builder .row [data-part='slider'] {
-    width: 84px;
+    width: 96px;
   }
   .theme-builder .dot {
     width: 16px;
@@ -468,9 +510,11 @@
     border-radius: 50%;
     background: var(--sw);
   }
+  /* Under its row, right-aligned with it: the sheet sits at the screen's edge, so there's no room beside it. */
   .theme-builder #tb-presets {
-    position-area: right span-bottom;
-    margin: 0 0 0 8px;
+    position-area: bottom span-left;
+    min-width: 12rem;
+    margin: 4px 0 0;
     padding: 6px;
     border: 1px solid var(--rule);
     border-radius: 10px;
@@ -493,15 +537,6 @@
   }
   .theme-builder .pick[aria-pressed='true'] {
     background: var(--accent-soft);
-  }
-  .theme-builder .tb-colours summary {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    padding: 6px 10px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
   }
   .theme-builder fieldset {
     display: grid;
@@ -534,15 +569,34 @@
   .theme-builder .warn[hidden] {
     display: none;
   }
-  .theme-builder .tb-actions {
-    display: grid;
+  /* The footer: stays at the bottom of the sheet. One action, three icon actions (named by aria-label), the preview. */
+  .theme-builder .tb-foot {
+    display: flex;
     gap: 4px;
+    align-items: center;
+    padding: 12px 16px;
+    border-top: 1px solid var(--rule);
+    background: var(--bg);
   }
-  .theme-builder .tb-actions [data-part='button'] {
+  .theme-builder .tb-foot [data-part='button'] {
     display: inline-flex;
     gap: 6px;
     align-items: center;
     justify-content: center;
-    width: 100%;
+  }
+  .theme-builder .tb-foot > [data-part='button']:first-child {
+    margin-inline-end: 4px;
+  }
+  .theme-builder .tb-preview {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+    margin-inline-start: auto;
+    color: inherit;
+    font-size: 13px;
+  }
+  .theme-builder .tb-preview svg {
+    width: 14px;
+    height: 14px;
   }
 </style>

@@ -1,0 +1,47 @@
+/*
+  The Tailwind version of switch's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Switch and checkbox: the native input, tinted; the label next to it. */
+  :where([data-part='switch'], [data-part='checkbox']) {
+    @apply inline-flex items-center gap-(--ui-space-2) font-normal text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) text-(color:--ui-fg) cursor-pointer;
+  }
+  :where([data-part='switch'], [data-part='checkbox']) input {
+    @apply accent-(color:--ui-accent) w-[18px] h-[18px] m-0;
+  }
+  :where([data-part='switch']) input {
+    @apply appearance-none w-[36px] h-[20px] rounded-full bg-(color:--ui-border) relative transition-[background] duration-150;
+  }
+  :where([data-part='switch']) input::after {
+    @apply content-[''] absolute top-[2px] left-[2px] w-[16px] h-[16px] rounded-full bg-(color:--ui-bg) transition-[transform] duration-150;
+  }
+  :where([data-part='switch']) input:checked {
+    @apply bg-(color:--ui-accent);
+  }
+  :where([data-part='switch']) input:checked::after {
+    @apply translate-x-[16px];
+  }
+  :where([data-part='switch'], [data-part='checkbox'])[data-disabled] {
+    @apply opacity-[0.55] cursor-not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}

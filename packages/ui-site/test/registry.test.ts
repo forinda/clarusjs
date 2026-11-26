@@ -480,13 +480,29 @@ test('file upload: without JavaScript, a real file input in a labelled drop zone
 test('tailwind: each component\'s Tailwind twin (<name>.tw.tscl) takes the same inputs, models and events, has no <style>, and its page shows it under the CSS / Tailwind switch', () => {
   const decls = (text: string) => [...text.matchAll(/^@(input|model|event) ([\w]+)[^\n]*$/gm)].map((m) => m[0].replace(/\s+/g, ' ')).sort()
   const twins = components.filter((e) => e.tailwind?.length)
-  expect(twins.map((e) => e.name).sort()).toEqual(components.filter((e) => /<style scoped>/.test(source(e.files[0]!)) && !/@clarusjs\/ui-primitives\//.test(source(e.files[0]!))).map((e) => e.name).sort()) // every component that owns its markup
+  // Every component that owns its markup has one (and so do the parts given a Tailwind stylesheet).
+  const owners = components.filter((e) => /<style scoped>/.test(source(e.files[0]!)) && !/@clarusjs\/ui-primitives\//.test(source(e.files[0]!))).map((e) => e.name)
+  expect(owners.filter((n) => !twins.some((t) => t.name === n))).toEqual([])
   for (const e of twins) {
-    const tw = e.tailwind![0]!
-    expect(tw, e.name).toBe(e.files[0]!.replace(/\.tscl$/, '.tw.tscl'))
-    expect(decls(source(tw)), e.name).toEqual(decls(source(e.files[0]!)))
-    expect(source(tw), e.name).not.toMatch(/<style/)
+    const tw = e.tailwind!
+    const first = e.files[0]!
+    if (first.endsWith('.tscl')) {
+      expect(tw[0], e.name).toBe(first.replace(/\.tscl$/, '.tw.tscl'))
+      expect(decls(source(tw[0]!)), e.name).toEqual(decls(source(first)))
+      expect(source(tw[0]!), e.name).not.toMatch(/<style/)
+      // A part's twin imports its Tailwind stylesheet.
+      if (tw[1]) expect(source(tw[0]!), e.name).toContain(`@import './${tw[1]}'`)
+    } else expect(tw, e.name).toEqual([first.replace(/\.css$/, '.tw.css')])
     const md = readFileSync(page(e.name), 'utf8')
-    expect(md, e.name).toMatch(new RegExp(`<sourceFlavor name="${e.name}">\\s*<<< \\.\\./\\.\\./registry/${e.files[0]!.replace('.', '\\.')}\\s*<<< \\.\\./\\.\\./registry/${tw.replace(/\./g, '\\.')}\\s*</sourceFlavor>`))
+    const blocks = [first, ...tw].map((f) => `<<< \\.\\./\\.\\./registry/${f.replace(/\./g, '\\.')}`).join('\\s*')
+    expect(md, e.name).toMatch(new RegExp(`<sourceFlavor name="${e.name}">\\s*${blocks}\\s*</sourceFlavor>`))
+  }
+})
+
+test('tailwind: a part\'s Tailwind stylesheet (<name>.tw.css) is Tailwind\'s: @reference, then rules made only of @apply', () => {
+  for (const e of components) for (const f of (e.tailwind ?? []).filter((x) => x.endsWith('.tw.css'))) {
+    const css = source(f).replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(css, f).toMatch(/^\s*@reference "tailwindcss";/)
+    for (const [, body] of css.replace(/@keyframes [\w-]+\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '').matchAll(/\{([^{}]*)\}/g)) expect(body!.trim(), f).toMatch(/^@apply [^;]+;$/)
   }
 })

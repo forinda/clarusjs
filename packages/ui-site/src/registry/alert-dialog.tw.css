@@ -1,0 +1,14 @@
+/*
+  The Tailwind version of alert-dialog's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+@layer theme, base, components, utilities;
+@layer components {
+  :where([data-part='alert-dialog-description']) {
+    @apply text-(color:--ui-muted);
+  }
+  :where([data-part='alert-dialog-actions']) {
+    @apply flex flex-wrap justify-end gap-(--ui-space-2) mt-(--ui-space-4);
+  }
+}

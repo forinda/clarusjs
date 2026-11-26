@@ -1,0 +1,62 @@
+/*
+  The Tailwind version of dialog's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Dialog: the same rules as @clarusjs/ui's ui.css for dialog.tscl, dialog-trigger.tscl, dialog-close.tscl from @clarusjs/ui-primitives.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Buttons: triggers and closes. */
+  :where([data-part='trigger'], [data-part='close']) {
+    @apply font-semibold text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) py-(--ui-space-2) px-[calc(var(--ui-space)_*_3.5)] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-bg) text-(color:--ui-fg) cursor-pointer;
+  }
+  :where([data-part='trigger'], [data-part='close']):hover {
+    @apply border-(color:--ui-accent);
+  }
+
+  /* Dialog: centred by the browser; the backdrop dims the page. */
+  :where([data-part='dialog']) {
+    @apply max-w-[min(32rem,_calc(100vw_-_32px))] py-(--ui-space-5) px-(--ui-space-6) border border-solid border-(color:--ui-border) rounded-[calc(var(--ui-radius)_*_1.5)] bg-(color:--ui-card) text-(color:--ui-card-fg) shadow-(--ui-shadow) font-normal text-[calc(var(--ui-font-size)_+_1px)] leading-[1.5] font-(family-name:--ui-font);
+  }
+  /* The backdrop: a black scrim, dimmed by --ui-backdrop-opacity and blurred by --ui-backdrop-blur (it reads them from
+     its dialog). data-backdrop on the dialog picks a variant; set the knobs on :root for a site-wide default. */
+  :where([data-part='dialog'])::backdrop {
+    @apply [background:rgb(0_0_0_/_var(--ui-backdrop-opacity,_0.45))] [backdrop-filter:blur(var(--ui-backdrop-blur,_0px))];
+  }
+  :where([data-part='dialog'][data-backdrop='light']) {
+    @apply [--ui-backdrop-opacity:0.2];
+  }
+  :where([data-part='dialog'][data-backdrop='dark']) {
+    @apply [--ui-backdrop-opacity:0.7];
+  }
+  :where([data-part='dialog'][data-backdrop='blur']) {
+    @apply [--ui-backdrop-blur:6px];
+  }
+  :where([data-part='dialog'][data-backdrop='none']) {
+    @apply [--ui-backdrop-opacity:0];
+  }
+  :where([data-part='title']) {
+    @apply mt-0 mx-0 mb-(--ui-space-2) text-[calc(var(--ui-font-size)_+_4px)];
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}

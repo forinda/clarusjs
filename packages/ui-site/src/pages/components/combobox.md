@@ -29,9 +29,15 @@ The parts come from `@clarusjs/ui-primitives`; the look is `combobox.css`, impor
 
 ## Source
 
-Copy it into `src/components/ui/` as `combobox.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `combobox.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `combobox.tw.css`, imported where Tailwind runs.
+
+<sourceFlavor name="combobox">
 
 <<< ../../registry/combobox.css
+
+<<< ../../registry/combobox.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

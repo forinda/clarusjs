@@ -11,6 +11,10 @@
     outline: 2px solid var(--ui-ring);
     outline-offset: 2px;
   }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    outline: none;
+  }
 
   /* Toast: messages stacked at the bottom-right corner, above the page; each a card with its action and a close. */
   :where([data-part='toast-region']) {

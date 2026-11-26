@@ -2,8 +2,8 @@
 {{-- [show] shows the error at once (after a submit, say); without it, once the field has been left. --}}
 
 <div class="demo example">
-  <uiField id="error-email" label="Email" type="email" value="ada@" error="Enter a full email address." [show]="true" />
-  <uiField id="error-password" label="Password" type="password" error="Use at least 8 characters." [show]="true" />
+  <uiField id="error-email" label="Email" type="email" placeholder="you@example.com" value="ada@" error="Enter a full email address." [show]="true" />
+  <uiField id="error-password" label="Password" type="password" placeholder="At least 8 characters" error="Use at least 8 characters." [show]="true" />
 </div>
 
 <style scoped>

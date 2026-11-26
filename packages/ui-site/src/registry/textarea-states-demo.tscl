@@ -4,10 +4,10 @@
 <div class="demo example">
   <uiTextarea aria-label="Notes" placeholder="Notes" />
   <uiTextarea aria-label="Disabled" placeholder="Disabled" disabled />
-  <uiTextarea aria-label="Read-only" value="This was sent and can't be changed." readonly />
+  <uiTextarea aria-label="Read-only" placeholder="Read-only" value="This was sent and can't be changed." readonly />
   <div class="field">
     <uiLabel control="states-reason">Reason</uiLabel>
-    <uiTextarea id="states-reason" aria-invalid="true" aria-describedby="states-reason-error" />
+    <uiTextarea id="states-reason" placeholder="Why are you cancelling?" aria-invalid="true" aria-describedby="states-reason-error" />
     <p id="states-reason-error" class="error">Tell us why, in a sentence or two.</p>
   </div>
 </div>

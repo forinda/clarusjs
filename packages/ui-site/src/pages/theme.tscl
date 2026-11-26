@@ -9,15 +9,15 @@
 >
   <div class="theme-page">
     <div class="theme-head">
-      <div>
+      <div class="theme-title">
         <h1>Theme</h1>
-        <p class="lead">
-          Every component styles itself with the <code>--ui-</code> tokens. Change them in the Theme sheet (the header's
-          button, on every page) and see the whole set at once.
-        </p>
+        {{-- The same sheet as the header's button. --}}
+        <uiDialogTrigger target="theme-sheet"><icon name="lucide:sliders-horizontal" /> Customize</uiDialogTrigger>
       </div>
-      {{-- The same sheet as the header's button. --}}
-      <uiDialogTrigger target="theme-sheet"><icon name="lucide:sliders-horizontal" /> Customize</uiDialogTrigger>
+      <p class="lead">
+        Every component styles itself with the <code>--ui-</code> tokens. Change them in the Theme sheet (the header's
+        button, on every page) and see the whole set at once.
+      </p>
     </div>
     {{-- The dashboard block in a frame (a page of its own, with its own <main>): it follows each edit, which the
          builder saves as it goes. Then the rest of the components. --}}
@@ -31,15 +31,21 @@
 
 <style scoped>
   .theme-head {
+    margin-bottom: 16px;
+  }
+  /* The title and Customize on one row; the lead under them. */
+  .theme-title {
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
-    align-items: end;
+    align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+  }
+  .theme-title h1 {
+    margin: 0;
   }
   .theme-head .lead {
-    margin-bottom: 0;
+    margin: 8px 0 0;
   }
   .theme-canvas {
     display: grid;

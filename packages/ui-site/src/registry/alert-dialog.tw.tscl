@@ -1,0 +1,15 @@
+{{-- Tailwind version: its look is alert-dialog.tw.css (Tailwind utilities), imported here.
+     Alert dialog: a Dialog that asks before something can't be undone. A click outside never closes it; Escape
+     and Cancel do (as cancel). Put the cancel and the action in the actions slot, each a dialog-close. --}}
+@import './alert-dialog.tw.css'
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@input id: string
+@input backdrop: 'dim' | 'light' | 'dark' | 'blur' | 'none' = 'dim'
+
+<uiDialog [id]="id" role="alertdialog" [dismissible]="false" [aria-describedby]="id + '-description'" [data-backdrop]="backdrop === 'dim' ? false : backdrop">
+  @slot('title') {
+    <slot name="title" />
+  }
+  <div [id]="id + '-description'" data-part="alert-dialog-description"><slot /></div>
+  <div data-part="alert-dialog-actions"><slot name="actions" /></div>
+</uiDialog>

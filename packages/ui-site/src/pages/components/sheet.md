@@ -29,9 +29,15 @@ The same `data-backdrop` as a dialog: here `blur`.
 
 ## Source
 
-Copy it into `src/components/ui/` as `sheet.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `sheet.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `sheet.tw.css`, imported where Tailwind runs.
+
+<sourceFlavor name="sheet">
 
 <<< ../../registry/sheet.css
+
+<<< ../../registry/sheet.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

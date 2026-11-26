@@ -19,9 +19,15 @@ The parts come from `@clarusjs/ui-primitives`; the look is `toast.css`, imported
 
 ## Source
 
-Copy it into `src/components/ui/` as `toast.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `toast.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `toast.tw.css`, imported where Tailwind runs.
+
+<sourceFlavor name="toast">
 
 <<< ../../registry/toast.css
+
+<<< ../../registry/toast.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

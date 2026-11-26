@@ -27,9 +27,17 @@ An option that can't be chosen today, still listed so people know it exists.
 
 ## Source
 
-Copy it into `src/components/ui/` as `radio-group.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+Copy it into `src/components/ui/` as `radio-group.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `radio-group.tw.tscl` copied as `radio-group.tscl` with `radio-group.tw.css` beside it.
+
+<sourceFlavor name="radio-group">
 
 <<< ../../registry/radio-group.tscl
+
+<<< ../../registry/radio-group.tw.tscl
+
+<<< ../../registry/radio-group.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

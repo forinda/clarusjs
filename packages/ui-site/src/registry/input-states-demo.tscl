@@ -5,15 +5,15 @@
 <div class="demo example">
   <uiInput aria-label="Enabled" placeholder="Enabled" />
   <uiInput aria-label="Disabled" placeholder="Disabled" disabled />
-  <uiInput aria-label="Read-only" value="Read-only value" readonly />
+  <uiInput aria-label="Read-only" placeholder="Read-only" value="Read-only value" readonly />
   <div class="field">
     <uiLabel control="states-email">Email</uiLabel>
-    <uiInput id="states-email" type="email" value="ada@" aria-invalid="true" aria-describedby="states-email-error" />
+    <uiInput id="states-email" type="email" placeholder="you@example.com" value="ada@" aria-invalid="true" aria-describedby="states-email-error" />
     <p id="states-email-error" class="message error">Enter a full email address.</p>
   </div>
   <div class="field">
     <uiLabel control="states-name">Display name</uiLabel>
-    <uiInput id="states-name" value="admin" status="warning" aria-describedby="states-name-warn" />
+    <uiInput id="states-name" placeholder="Your username" value="admin" status="warning" aria-describedby="states-name-warn" />
     <p id="states-name-warn" class="message warn">Others can see this name.</p>
   </div>
 </div>
