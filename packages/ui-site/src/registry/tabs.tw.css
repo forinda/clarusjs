@@ -1,0 +1,46 @@
+/*
+  The Tailwind version of tabs's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Tabs: the same rules as @clarusjs/ui's ui.css for tabs.tscl, tab-list.tscl, tab.tscl, tab-panel.tscl from @clarusjs/ui-primitives.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Tabs: a row of tabs over the panels; the selected one is underlined (not colour alone). */
+  :where([data-part='tabs']) {
+    @apply font-normal text-[calc(var(--ui-font-size)_+_1px)] leading-[1.5] font-(family-name:--ui-font) text-(color:--ui-fg);
+  }
+  :where([data-part='tabs']) > :where([data-part='list']) {
+    @apply flex gap-(--ui-space-1) border-b [border-bottom-style:solid] border-b-(color:--ui-border);
+  }
+  :where([data-part='tab']) {
+    @apply font-semibold text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) py-(--ui-space-2) px-(--ui-space-3) mb-[calc(var(--ui-space)_*_-0.25)] border-0 border-none border-b-2 [border-bottom-style:solid] border-b-[transparent] bg-transparent text-(color:--ui-muted) cursor-pointer;
+  }
+  :where([data-part='tab'])[aria-selected='true'] {
+    @apply border-b-(color:--ui-accent) text-(color:--ui-fg);
+  }
+  :where([data-part='tabs']) > :where([data-part='panel']) {
+    @apply py-(--ui-space-3) px-[calc(var(--ui-space)_*_0.5)] text-(color:--ui-fg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}

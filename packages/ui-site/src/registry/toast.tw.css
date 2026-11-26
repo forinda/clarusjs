@@ -43,25 +43,25 @@
     @apply border-[transparent];
   }
   :where([data-part='toast'])[data-type='success'] {
-    @apply border-l-4 border-solid border-l-(color:--ui-success);
+    @apply border-l-4 [border-left-style:solid] border-l-(color:--ui-success);
   }
   :where([data-part='toast'])[data-type='success'] :where([data-part='toast-icon']) {
     @apply text-(color:--ui-success);
   }
   :where([data-part='toast'])[data-type='error'] {
-    @apply border-l-4 border-solid border-l-(color:--ui-danger);
+    @apply border-l-4 [border-left-style:solid] border-l-(color:--ui-danger);
   }
   :where([data-part='toast'])[data-type='error'] :where([data-part='toast-icon']) {
     @apply text-(color:--ui-danger);
   }
   :where([data-part='toast'])[data-type='warning'] {
-    @apply border-l-4 border-solid border-l-(color:--ui-warning);
+    @apply border-l-4 [border-left-style:solid] border-l-(color:--ui-warning);
   }
   :where([data-part='toast'])[data-type='warning'] :where([data-part='toast-icon']) {
     @apply text-(color:--ui-warning);
   }
   :where([data-part='toast'])[data-type='info'] {
-    @apply border-l-4 border-solid border-l-(color:--ui-accent);
+    @apply border-l-4 [border-left-style:solid] border-l-(color:--ui-accent);
   }
   :where([data-part='toast'])[data-type='info'] :where([data-part='toast-icon']) {
     @apply text-(color:--ui-accent);

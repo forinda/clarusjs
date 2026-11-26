@@ -19,9 +19,15 @@ The parts come from `@clarusjs/ui-primitives`; the look is `sidebar.css`, import
 
 ## Source
 
-Copy it into `src/components/ui/` as `sidebar.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `sidebar.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `sidebar.tw.css`, imported where Tailwind runs.
+
+<sourceFlavor name="sidebar">
 
 <<< ../../registry/sidebar.css
+
+<<< ../../registry/sidebar.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

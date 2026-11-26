@@ -1,0 +1,13 @@
+{{-- Tailwind version: its look is accordion.tw.css (Tailwind utilities), imported here.
+     Accordion item: a native <details>, exclusive by group (opening one closes the others in it). --}}
+@import './accordion.tw.css'
+@import uiAccordionItem from '@clarusjs/ui-primitives/accordion-item.tscl'
+@input group: string = ''
+@input open: boolean = false
+
+<uiAccordionItem [group]="group" [open]="open">
+  @slot('trigger') {
+    <slot name="trigger" />
+  }
+  <slot />
+</uiAccordionItem>
