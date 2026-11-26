@@ -5,6 +5,7 @@
   parent when it's left: (blur).
 
   <field id="email" label="Email" type="email" [error]="errors.email" [(value)]="form.email" />
+  autocomplete and inputmode go on the input: autocomplete="cc-number" inputmode="numeric" for a card number.
 --}}
 @input id: string
 @input label: string
@@ -15,6 +16,8 @@
 @input name: string = ''
 @input placeholder: string = ''
 @input required: boolean = false
+@input autocomplete: string = ''
+@input inputmode: string = ''
 @model value: string = ''
 @event blur
 
@@ -38,6 +41,8 @@
     [name]="name || false"
     [placeholder]="placeholder || false"
     [required]="required"
+    [autocomplete]="autocomplete || false"
+    [inputmode]="inputmode || false"
     [(value)]="value"
     [aria-invalid]="invalid ? 'true' : false"
     [aria-describedby]="[description ? id + '-description' : '', invalid ? id + '-error' : ''].filter(Boolean).join(' ') || false"

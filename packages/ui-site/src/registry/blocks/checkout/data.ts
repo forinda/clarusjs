@@ -6,12 +6,17 @@ import { z } from 'zod'
 
 export type Line = { id: string; name: string; variant?: string; unitCents: number; quantity: number }
 export type Order = {
+  firstName: string
+  lastName: string
   email: string
-  name: string
+  phone: string
   address: string
+  apartment: string
   city: string
+  region: string
   postal: string
   country: string
+  cardName: string
   card: string
   expiry: string
   cvc: string
@@ -57,6 +62,29 @@ export function formatMoney(cents: number, code: string = currency): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: code }).format(cents / 100)
 }
 
+const digits = (v: string, max: number) => v.replace(/\D/g, '').slice(0, max)
+
+/** A card number as it's typed: digits only (19 at most), in groups of four. */
+export function formatCard(value: string): string {
+  return digits(value, 19).replace(/(\d{4})(?=\d)/g, '$1 ')
+}
+
+/**
+ * An expiry as it's typed, MM/YY: the slash comes once the month is done (not while deleting it), and a first digit
+ * no month starts with (2 to 9) is that month (4 is 04).
+ */
+export function formatExpiry(value: string, deleting = false): string {
+  let d = digits(value, 4)
+  if (/^[2-9]$/.test(d)) d = '0' + d
+  if (d.length > 2) return d.slice(0, 2) + '/' + d.slice(2)
+  return d.length === 2 && !deleting ? d + '/' : d
+}
+
+/** A CVC as it's typed: up to 4 digits. */
+export function formatCvc(value: string): string {
+  return digits(value, 4)
+}
+
 /** The Luhn check card numbers carry. */
 const luhn = (digits: string) =>
   [...digits]
@@ -70,32 +98,40 @@ const filled = (message: string) => z.string().trim().min(1, { error: message })
 export const steps = [
   {
     title: 'Contact',
-    fields: ['email'] as (keyof Order)[],
+    fields: ['firstName', 'lastName', 'email', 'phone'] as (keyof Order)[],
     schema: () =>
       z.object({
+        firstName: filled('Enter your first name.'),
+        lastName: filled('Enter your last name.'),
         email: z
           .string()
           .trim()
           .pipe(z.email({ error: 'Enter your email address.' })),
+        // 7 to 15 digits, written any usual way: +44 20 7946 0958, (020) 7946-0958.
+        phone: z.string().refine((v) => /^\+?[\d\s().-]+$/.test(v.trim()) && /^\d{7,15}$/.test(v.replace(/\D/g, '')), {
+          error: 'Enter a phone number, with its country code if abroad.',
+        }),
       }),
   },
   {
     title: 'Shipping',
-    fields: ['name', 'address', 'city', 'postal', 'country'] as (keyof Order)[],
+    fields: ['address', 'apartment', 'city', 'region', 'postal', 'country'] as (keyof Order)[],
     schema: () =>
       z.object({
-        name: filled('Enter the name to deliver to.'),
         address: filled('Enter the street address.'),
+        apartment: z.string(), // optional
         city: filled('Enter the city.'),
+        region: filled('Enter the state, province or county.'),
         postal: filled('Enter the postal code.'),
         country: z.string().refine((c) => countries.some((x) => x.value === c), { error: 'Choose a country.' }),
       }),
   },
   {
     title: 'Payment',
-    fields: ['card', 'expiry', 'cvc'] as (keyof Order)[],
+    fields: ['cardName', 'card', 'expiry', 'cvc'] as (keyof Order)[],
     schema: (now: Date) =>
       z.object({
+        cardName: filled('Enter the name on the card.'),
         card: z
           .string()
           .transform((v) => v.replace(/[\s-]/g, ''))

@@ -1,6 +1,9 @@
 // The checkout block's rules: totals in whole cents, and what an order needs before placeOrder is called.
 import { expect, test } from 'vitest'
 import {
+  formatCard,
+  formatCvc,
+  formatExpiry,
   formatMoney,
   placeOrder,
   quantityOf,
@@ -47,12 +50,17 @@ test('formatMoney: cents in the currency', () => {
 })
 
 const good: Order = {
+  firstName: 'Ada',
+  lastName: 'Lovelace',
   email: 'ada@example.com',
-  name: 'Ada Lovelace',
+  phone: '+44 20 7946 0958',
   address: '12 St James Sq',
+  apartment: '',
   city: 'London',
+  region: 'Greater London',
   postal: 'SW1Y 4JH',
   country: 'GB',
+  cardName: 'Ada Lovelace',
   card: '4242 4242 4242 4242',
   expiry: '12/30',
   cvc: '123',
@@ -65,7 +73,17 @@ test('validateOrder: a complete order passes', () => {
 
 test('validateOrder: each field says what it needs', () => {
   const empty = Object.fromEntries(Object.keys(good).map((k) => [k, ''])) as Order
-  expect(Object.keys(validateOrder(empty, now)).sort()).toEqual(Object.keys(good).sort())
+  const optional = ['apartment']
+  expect(Object.keys(validateOrder(empty, now)).sort()).toEqual(
+    Object.keys(good)
+      .filter((k) => !optional.includes(k))
+      .sort(),
+  )
+  expect(validateOrder({ ...good, phone: '12 34' }, now).phone).toBe(
+    'Enter a phone number, with its country code if abroad.',
+  )
+  expect(validateOrder({ ...good, phone: '(020) 7946-0958' }, now).phone).toBeUndefined()
+  expect(validateOrder({ ...good, apartment: 'Flat 3' }, now)).toEqual({})
   expect(validateOrder({ ...good, card: '4242 4242 4242 4241' }, now).card).toBe('Check the card number.') // Luhn
   expect(validateOrder({ ...good, card: '4242' }, now).card).toBe('Check the card number.')
   expect(validateOrder({ ...good, expiry: '10/26' }, now).expiry).toBe('This card has expired.')
@@ -94,13 +112,27 @@ test('steps: contact, shipping, payment; each owns its fields, all of them once'
   expect(steps.map((s) => s.title)).toEqual(['Contact', 'Shipping', 'Payment'])
   expect(steps.flatMap((s) => s.fields).sort()).toEqual(Object.keys(good).sort())
   expect(stepOf('card')).toBe(2)
+  expect(steps.map((s) => s.fields.length).every((n) => n >= 4)).toBe(true)
   expect(stepOf('email')).toBe(0)
 })
 
 test("validateStep: only that step's fields, by its Zod schema", () => {
   const blank = Object.fromEntries(Object.keys(good).map((k) => [k, ''])) as Order
-  expect(Object.keys(validateStep(0, blank, now))).toEqual(['email'])
-  expect(Object.keys(validateStep(1, blank, now)).sort()).toEqual(['address', 'city', 'country', 'name', 'postal'])
+  expect(Object.keys(validateStep(0, blank, now)).sort()).toEqual(['email', 'firstName', 'lastName', 'phone'])
+  expect(Object.keys(validateStep(1, blank, now)).sort()).toEqual(['address', 'city', 'country', 'postal', 'region'])
   expect(validateStep(1, { ...blank, ...good, card: '' }, now)).toEqual({})
   expect(validateStep(2, { ...good, cvc: 'x' }, now)).toEqual({ cvc: 'Use the 3 or 4 digits on the card.' })
+})
+
+test('card fields format as they are typed: the number in fours, the expiry as MM/YY, the CVC in digits', () => {
+  expect(formatCard('4242424242424242')).toBe('4242 4242 4242 4242')
+  expect(formatCard('4242 42a4-2')).toBe('4242 4242')
+  expect(formatCard('1'.repeat(25))).toBe('1111 1111 1111 1111 111') // 19 digits at most
+  expect(formatExpiry('1')).toBe('1')
+  expect(formatExpiry('12')).toBe('12/') // the slash comes as the month is done
+  expect(formatExpiry('12/', true)).toBe('12') // but not while deleting it
+  expect(formatExpiry('1230')).toBe('12/30')
+  expect(formatExpiry('12/305')).toBe('12/30')
+  expect(formatExpiry('4')).toBe('04/') // no month starts with 4: it's April
+  expect(formatCvc('12a34 5')).toBe('1234')
 })

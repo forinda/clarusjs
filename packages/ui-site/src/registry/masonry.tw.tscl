@@ -1,0 +1,14 @@
+{{-- Masonry, in Tailwind classes (needs tailwind.css after theme.css): the same inputs and look as masonry.tscl.
+     Copy it into src/components/ui/ as masonry.tscl. --}}
+@input width: string = '14rem'
+
+<div
+  data-part="masonry"
+  class="
+    columns-(--ui-masonry-width) gap-x-[var(--ui-masonry-gap,var(--ui-space-3))]
+    [&>*]:mt-0 [&>*]:mx-0 [&>*]:mb-[var(--ui-masonry-gap,var(--ui-space-3))] [&>*]:break-inside-avoid
+  "
+  [style]="'--ui-masonry-width: ' + width"
+>
+  <slot />
+</div>

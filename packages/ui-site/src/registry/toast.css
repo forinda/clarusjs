@@ -30,7 +30,8 @@
     position: relative;
     display: flex;
     gap: var(--ui-space-2);
-    align-items: center;
+    /* Lined up on the message's first line, so a long message wraps under it. */
+    align-items: flex-start;
     padding: var(--ui-space-3) calc(var(--ui-space) * 3.5);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius);
@@ -41,7 +42,9 @@
   }
   :where([data-part='toast-message']) {
     flex: 1;
+    min-width: 0;
     margin: 0;
+    overflow-wrap: anywhere;
   }
   :where([data-part='toast-action']),
   :where([data-part='toast-close']) {
@@ -52,6 +55,8 @@
     color: inherit;
     font: inherit;
     cursor: pointer;
+    /* As tall as a line of the message, give or take their padding: centred on its first line. */
+    margin-block: calc(var(--ui-space-1) * -1);
   }
   :where([data-part='toast-close']) {
     border-color: transparent;
@@ -83,6 +88,8 @@
   :where([data-part='toast-icon']) {
     display: inline-flex;
     flex-shrink: 0;
+    align-items: center;
+    height: 1.4em;
   }
   :where([data-part='toast-icon']):empty {
     display: none;

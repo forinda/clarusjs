@@ -1,0 +1,15 @@
+@import uiAppointmentPicker from './appointment-picker.tscl'
+
+<form class="demo" method="post" action="#">
+  <uiAppointmentPicker id="demo-appointment" label="Appointment" />
+</form>
+
+<style scoped>
+  :scope {
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
