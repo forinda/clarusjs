@@ -84,9 +84,7 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, top?: Server
 /** `render_child({ props }, { slots })` for a component node. */
 export function componentCall(n: Extract<IRNode, { kind: 'component' }>, rw: Rewriter, ctx?: ServerCtx): string {
   const props = n.props.map((p) => (p.name === '...' ? `...${wrapExpr(rw.expr(p.expr))}` : `${/^[A-Za-z_$][\w$]*$/.test(p.name) ? p.name : JSON.stringify(p.name)}: ${wrapExpr(rw.expr(p.expr))}`)).join(', ') // a spread first (#406); data-x quoted
-  // In the browser (no ctx), an island's content in the slot is read untracked (#523): its holes, attributes and
-  // blocks are wired in place, so state it reads mustn't render the whole component again (replacing a field being
-  // typed in). A scoped fill stays tracked: its content depends on what the component passes it.
+  // In the browser, slot content is read untracked: it's wired in place (#523). A scoped fill stays tracked.
   const untracked = (body: string) => (ctx ? body : `__cl_untrack(() => ${body})`)
   const slots = [
     // Content is a function of the context where it is placed (#465), and of what its slot passes (#455).

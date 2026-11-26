@@ -210,7 +210,7 @@ export const lintRules: LintRuleDef[] = [
     },
   },
   {
-    // #543: a row's name hides the component's own inside the loop, silently: `[class]="item"` there reads the row.
+    // #543: a row named like the component's own name hides it in the loop.
     name: 'for-shadow',
     check({ parsed, report }) {
       const declared = new Map<string, string>()
