@@ -61,3 +61,18 @@ test('rename/move a file: importers\' specifiers follow (relative recomputed, ~/
   expect(after[at('src/pages/guide.md')]).toContain("@import card from '../ui/panels/card.tscl'")
   expect(after[at('src/components/card.tscl')]).toContain("@import badge from '../../components/badge.tscl'") // the moved file's own
 })
+
+test('kebab tags: <my-card> for @import MyCard (or myCard) is a reference, found from the tag or the import', async () => {
+  const { project, at } = await setup({ ...files, 'src/pages/kebab.tscl': "@import MyCard from '../components/card.tscl'\n<my-card></my-card>\n<my-card />\n" })
+  const text = project.textOf(at('src/pages/kebab.tscl'))!
+  const found = references(project, at('src/pages/kebab.tscl'), text, text.indexOf('<my-card') + 2)
+  const here = found.filter((l) => URI.parse(l.uri).fsPath.endsWith('kebab.tscl')).map((l) => `${l.range.start.line}:${l.range.start.character}-${l.range.end.character}`)
+  expect(here.sort()).toEqual(['0:8-14', '1:1-8', '1:11-18', '2:1-8'])
+})
+
+test('kebab tags: renaming MyCard to MyTile renames <my-card> to <my-tile> and keeps <MyCard> as written', async () => {
+  const { project, at } = await setup({ ...files, 'src/pages/kebab.tscl': "@import MyCard from '../components/card.tscl'\n<my-card />\n<MyCard />\n" })
+  const text = project.textOf(at('src/pages/kebab.tscl'))!
+  const out = apply(project, renameEdits(project, at('src/pages/kebab.tscl'), text, text.indexOf('<my-card') + 2, 'MyTile')!)
+  expect(out[at('src/pages/kebab.tscl')]).toBe("@import MyTile from '../components/card.tscl'\n<my-tile />\n<MyTile />\n")
+})

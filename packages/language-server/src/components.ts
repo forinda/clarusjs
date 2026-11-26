@@ -9,6 +9,8 @@ import { tagsIn } from './blank.ts'
 import { contextAt } from './context.ts'
 import { positionAt } from './positions.ts'
 import type { Import, Project } from './project.ts'
+import { namesImport } from './tag-names.ts'
+
 
 // ponytail: events a component sends, found by their literal name in its script; a name built at runtime isn't listed.
 const EVENT = /new\s+CustomEvent\(\s*(['"])([^'"]+)\1/g
@@ -30,7 +32,7 @@ function interfaceOf(project: Project, imp: Import): Info | undefined {
   }
 }
 
-const importNamed = (project: Project, path: string, name: string) => project.importsOf(path).find((i) => i.name === name)
+const importNamed = (project: Project, path: string, name: string) => project.importsOf(path).find((i) => namesImport(name, i.name))
 
 export function completions(project: Project, path: string, text: string, offset: number): CompletionList {
   const ctx = contextAt(text, offset)
