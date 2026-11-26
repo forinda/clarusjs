@@ -24,7 +24,7 @@ Copy it into `src/components/ui/` as `navbar.tscl`, with `sheet.css` for its pho
 ## Styling
 
 - **On the root:** `class`, `style`, `id`, `aria-*` and `data-*` written on the tag land on its root element; `class` and `style` merge with its own.
-- **Selectors:** `data-part` names `navbar`, `navbar-logo`, `navbar-links`, `navbar-actions`, `navbar-toggle`; a `menu-trigger` in the links is styled as a link; the sheet is `sheet.css`'s, opened by `data-side`.
+- **Selectors:** `data-part` names `navbar`, `navbar-logo`, `navbar-links`, `navbar-actions`, `navbar-toggle`; a `menu-trigger` in the links is styled as a link; the sheet is a `dialog` with its `title` (the dialog primitive's markup, written in the navbar so a link in it closes it), `sheet.css`'s, opened by `data-side`.
 - **Your rules win:** every rule here has zero specificity (`:where()`) and sits in `@layer components`, so your own CSS and Tailwind utilities override it.
 
 ## Needs

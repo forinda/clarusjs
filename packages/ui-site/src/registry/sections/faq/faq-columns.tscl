@@ -44,7 +44,7 @@
     }
     :where(dl) {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); /* one column, never wider than the section */
       gap: var(--ui-space-8) var(--ui-space-10);
       margin: 0;
     }

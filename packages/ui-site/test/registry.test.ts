@@ -260,9 +260,14 @@ test('a styled part\'s <style global> equals ui.css\'s sections for it, in order
 
 test('#review: a no-JavaScript component\'s data-part names are its own, never ones ui.css styles globally', () => {
   const styled = new Set([...readFileSync(resolve(import.meta.dirname, '../../ui/src/ui.css'), 'utf8').matchAll(/data-part='([\w-]+)'/g)].map((m) => m[1]!))
+  // Written on purpose: navbar writes the dialog primitive's own markup (so its island can wire the links in it).
+  const primitiveMarkup: Record<string, string[]> = { 'navbar.tscl': ['dialog', 'title'] }
   for (const { entry, file } of files) {
     if (entry.sections || !file.endsWith('.tscl')) continue
-    for (const [, part] of source(file).matchAll(/data-part="([\w-]+)"/g)) expect(styled.has(part!), `${file}: data-part="${part}"`).toBe(false)
+    for (const [, part] of source(file).matchAll(/data-part="([\w-]+)"/g)) {
+      if (primitiveMarkup[file]?.includes(part!)) continue
+      expect(styled.has(part!), `${file}: data-part="${part}"`).toBe(false)
+    }
   }
 })
 

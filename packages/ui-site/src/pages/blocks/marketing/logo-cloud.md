@@ -8,7 +8,7 @@ layout: "/src/layouts/wide.tscl"
 
 # Logo cloud
 
-<p class="lead">The names that use it, in a row of logos. Copy a version into <code>src/components/sections/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
+<p class="lead">The names that use it, in a row of logos. Copy a version into <code>src/components/sections/logo-cloud/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
 
 ## Logo cloud
 

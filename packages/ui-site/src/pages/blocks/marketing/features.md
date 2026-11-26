@@ -8,7 +8,7 @@ layout: "/src/layouts/wide.tscl"
 
 # Features
 
-<p class="lead">What the product does, in columns, ruled cells or a bento grid. Copy a version into <code>src/components/sections/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
+<p class="lead">What the product does, in columns, ruled cells or a bento grid. Copy a version into <code>src/components/sections/features/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
 
 ## Columns
 

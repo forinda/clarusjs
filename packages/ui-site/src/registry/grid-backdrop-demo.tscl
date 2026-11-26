@@ -6,7 +6,8 @@
 </div>
 
 <style scoped>
-  .demo {
+  /* The root itself: under @scope, a plain .demo would only match inside it. */
+  :where(:scope) {
     position: relative;
     display: grid;
     place-items: center;

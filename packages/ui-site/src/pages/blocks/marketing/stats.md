@@ -8,7 +8,7 @@ layout: "/src/layouts/wide.tscl"
 
 # Stats
 
-<p class="lead">A few numbers that say it works. Copy a version into <code>src/components/sections/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
+<p class="lead">A few numbers that say it works. Copy a version into <code>src/components/sections/stats/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
 
 ## Stats
 

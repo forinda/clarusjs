@@ -15,3 +15,15 @@ export function setTheme(mode: ThemeMode): void {
   if (mode === 'system') document.documentElement.removeAttribute('data-theme')
   else document.documentElement.setAttribute('data-theme', mode)
 }
+
+/** Calls `on` with the mode the page shows now, then on each change (the header's switch, another tab's); returns a stop. */
+export function watchTheme(on: (mode: ThemeMode) => void): () => void {
+  const read = () => {
+    const t = document.documentElement.getAttribute('data-theme')
+    on(t === 'light' || t === 'dark' ? t : 'system')
+  }
+  read()
+  const watch = new MutationObserver(read)
+  watch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+  return () => watch.disconnect()
+}

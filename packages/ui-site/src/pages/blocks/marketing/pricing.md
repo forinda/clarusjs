@@ -8,7 +8,7 @@ layout: "/src/layouts/wide.tscl"
 
 # Pricing
 
-<p class="lead">Plans side by side, or a table comparing what each includes. Copy a version into <code>src/components/sections/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
+<p class="lead">Plans side by side, or a table comparing what each includes. Copy a version into <code>src/components/sections/pricing/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
 
 ## Plans
 

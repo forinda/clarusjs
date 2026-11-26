@@ -756,7 +756,7 @@ export const registry: Entry[] = [
     title: 'Navbar',
     description: 'The bar at the top of a site: logo, links or menus, actions; on phones a Menu button opens a sheet.',
     files: ['navbar.tscl'],
-    parts: ['dialog.tscl', 'dialog-trigger.tscl'],
+    parts: ['dialog-trigger.tscl'],
     uses: ['sheet'],
     island: true,
     since: '0.2.0',

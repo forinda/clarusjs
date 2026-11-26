@@ -1,8 +1,8 @@
 {{--
   Footer with columns: the logo and a status line on the left, four columns of links, then the copyright and a
-  light / dark / system switch. The switch calls setTheme in data.ts beside it: replace it with your site's own.
+  light / dark / system switch. The switch calls setTheme in data.ts beside it, and watchTheme keeps it showing the page's theme: replace both with your site's own.
 --}}
-@import { brand, columns, setTheme, status } from './data.ts'
+@import { brand, columns, setTheme, status, watchTheme } from './data.ts'
 
 <script>
   let mode = state('system')
@@ -10,6 +10,8 @@
     mode = next
     setTheme(next)
   }
+  // Shows the theme the page already has (set before this attached, or changed elsewhere), as it changes.
+  const follow = () => watchTheme((m) => (mode = m))
 </script>
 
 <footer class="footer" aria-label="Site footer">
@@ -31,7 +33,7 @@
   </div>
   <div class="bottom">
     <p>{{ brand.copyright }}</p>
-    <fieldset class="theme">
+    <fieldset class="theme" [use]="follow">
       <legend>Theme</legend>
       @for (m of ['light', 'dark', 'system']; track m) {
         <label>

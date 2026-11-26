@@ -8,7 +8,7 @@ layout: "/src/layouts/wide.tscl"
 
 # Footer
 
-<p class="lead">Links, status and the small print at the bottom of every page. Copy a version into <code>src/components/sections/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
+<p class="lead">Links, status and the small print at the bottom of every page. Copy a version into <code>src/components/sections/footer/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
 
 ## Columns
 

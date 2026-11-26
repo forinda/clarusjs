@@ -46,9 +46,13 @@ export async function kindPageAxe(page: Page, kind: SectionKind) {
     for (const e of sectionsOf(kind)) await page.frameLocator(`iframe[src="/view/${e.name}"]`).locator('[data-ui-preview] > *').first().waitFor()
     const framed = sectionsOf(kind).find((e) => e.uses.includes('grid-effect'))
     if (framed) {
-      const box = (await page.locator(`iframe[src="/view/${framed.name}"]`).boundingBox())!
+      // In view first: the pointer moves in viewport coordinates, and this frame can sit below the fold.
+      const frame = page.locator(`iframe[src="/view/${framed.name}"]`)
+      await frame.scrollIntoViewIfNeeded()
+      const box = (await frame.boundingBox())!
       await page.mouse.move(box.x + 4, box.y + 4)
       for (let i = 0; i < 6; i++) await page.mouse.move(box.x + box.width / 2 + i * 6, box.y + box.height / 3)
+      await expect(page.frameLocator(`iframe[src="/view/${framed.name}"]`).locator('[data-part="grid-effect"][data-active]').first()).toBeAttached() // the effect is on
     }
     expect(await axeViolations(page), `${kind}, ${mode.label}`).toEqual([])
   }
@@ -222,4 +226,46 @@ test('footers: every link is a 24 px touch target on a phone, whatever the font 
       els.filter((el) => el.getBoundingClientRect().height < 24).map((el) => el.textContent!.trim()))
     expect(small, s.name).toEqual([])
   }
+})
+
+test('footer-columns: the theme switch shows the theme the page already has, and follows it', async ({ page }) => {
+  await page.addInitScript(() => addEventListener('DOMContentLoaded', () => (document.documentElement.dataset.theme = 'dark')))
+  await page.goto('/view/footer-columns')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  await expect(page.getByRole('radio', { name: 'Dark' })).toBeChecked()
+  await page.evaluate(() => document.documentElement.removeAttribute('data-theme'))
+  await expect(page.getByRole('radio', { name: 'System' })).toBeChecked()
+})
+
+test('header-centred: on a phone, a link in the menu closes it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/view/header-centred')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  await page.getByRole('button', { name: 'Menu' }).click()
+  const menu = page.getByRole('dialog', { name: 'Menu' })
+  await expect(menu).toBeVisible()
+  await menu.getByRole('link', { name: 'Pricing' }).click()
+  await expect(menu).toBeHidden()
+})
+
+test('faq-columns: its columns fit a 320 px section with larger text', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 })
+  await page.goto('/view/faq-columns')
+  await page.addStyleTag({ content: 'html { font-size: 20px }' })
+  const [dl, section] = await page.evaluate(() => [document.querySelector('dl')!.getBoundingClientRect().right, document.querySelector('section')!.getBoundingClientRect().right])
+  expect(dl).toBeLessThanOrEqual(section!)
+})
+
+test('every marketing page copies its versions into a folder of its own kind (each has its own data.ts)', async ({ page }) => {
+  for (const kind of Object.keys(SECTION_KINDS) as SectionKind[]) {
+    if (!sectionsOf(kind).length) continue
+    await page.goto(`/blocks/marketing/${kind}`)
+    await expect(page.locator('.lead'), kind).toContainText(`src/components/sections/${kind}/`)
+  }
+})
+
+test('grid-backdrop\'s demo: its box (the scope root) is styled, so the backdrop stays inside it', async ({ page }) => {
+  await page.goto('/components/grid-backdrop')
+  const demo = page.locator('cl-island[c="grid-backdrop-demo"] .demo, .demo:has([data-part="grid-backdrop"])').first()
+  expect(await demo.evaluate((el) => [getComputedStyle(el).position, getComputedStyle(el).minHeight])).toEqual(['relative', '240px'])
 })

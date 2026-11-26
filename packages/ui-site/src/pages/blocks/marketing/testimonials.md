@@ -8,7 +8,7 @@ layout: "/src/layouts/wide.tscl"
 
 # Testimonials
 
-<p class="lead">What people who use it say, as one quote or a grid of them. Copy a version into <code>src/components/sections/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
+<p class="lead">What people who use it say, as one quote or a grid of them. Copy a version into <code>src/components/sections/testimonials/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
 
 ## One quote
 

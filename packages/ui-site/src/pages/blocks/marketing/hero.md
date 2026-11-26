@@ -8,7 +8,7 @@ layout: "/src/layouts/wide.tscl"
 
 # Hero
 
-<p class="lead">The top of a landing page: a headline, a line and the first buttons. Copy a version into <code>src/components/sections/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
+<p class="lead">The top of a landing page: a headline, a line and the first buttons. Copy a version into <code>src/components/sections/hero/</code> with its <code>data.ts</code>, and the components it lists into <code>src/components/ui/</code>; put it in a page, then change <code>data.ts</code> to your words.</p>
 
 ## Centred
 
