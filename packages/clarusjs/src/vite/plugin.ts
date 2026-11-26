@@ -15,7 +15,7 @@ import { findClarusFiles, packageOf as packageOfFile, prerender, reachableCompon
 export { packageOf } from './build.ts'
 /** Newest commit time (unix seconds) of every file under a folder, from one `git log` (themes use it for "last updated"). */
 export { gitDates } from './sitemap.ts'
-import { writeManifest } from './manifest.ts'
+import { writeManifest, type RouteParts } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
@@ -110,6 +110,21 @@ function pageGraph(root: string, files: Files, aliases: Alias[] = []): Map<strin
     pages.set(routeFromFile(`/${relative(root, file).split(sep).join('/')}`), { css, components: [...seen] })
   }
   return pages
+}
+
+/** Each page's layouts and guards (#472), for the route manifest: what `clarusjs explain` lists. Paths from the root. */
+function routeParts(root: string, files: Files): RouteParts[] {
+  return files.pages(root).map((file) => {
+    const rel = relative(root, file).split(sep).join('/')
+    const none = /^@layout none\s*$/m.test(files.read(file, root))
+    const folders = rel.replace(/^src\/pages\//, '').split('/').slice(0, -1)
+    const guards: string[] = []
+    for (let i = 0; i <= folders.length; i++) {
+      const guard = ['src/pages', ...folders.slice(0, i), '+guard.ts'].join('/')
+      if (existsSync(resolve(root, guard))) guards.push(guard)
+    }
+    return { route: routeFromFile(`/${rel}`), layouts: none ? [] : (files.layouts(file, root) ?? []).map((l) => l.replace(/^\//, '')), guards }
+  })
 }
 
 /**
@@ -521,11 +536,12 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         const manifestFile = resolve(dist, 'clarusjs-manifest.json')
         rmSync(manifestFile, { force: true }) // a page reading the manifest must never see the previous build's
         const { routes, readers, loaded, server } = await prerender(entry, out, manifestFile)
-        writeManifest(dist, routes, builder.config.base, loaded, server)
+        const parts = routeParts(builder.config.root, files)
+        writeManifest(dist, routes, builder.config.base, loaded, server, parts)
         // Pages that read the manifest saw none on the first pass: render them again now that it exists.
         if (readers.length) {
           await prerender(entry, out, manifestFile, readers)
-          writeManifest(dist, routes, builder.config.base, loaded, server)
+          writeManifest(dist, routes, builder.config.base, loaded, server, parts)
         }
         // Links between pages and to anchors, checked against what was written.
         const pageRoutes = routes.filter((r) => !/\/(__data\.json|index\.frag\.html)$/.test(r))

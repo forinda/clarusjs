@@ -24,6 +24,8 @@ beforeAll(async () => {
   w('src/pages/embed/widget.tscl', '<p>widget</p>\n')
   // #472: page sources (Markdown, say) get the folder layouts too.
   w('src/pages/admin/notes.note', 'hello')
+  w('src/pages/+guard.ts', 'export function guard() {}\n')
+  w('src/pages/admin/+guard.ts', 'export function guard() {}\n')
   mkdirSync(resolve(root, 'node_modules'))
   symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   const layouts = [
@@ -60,4 +62,14 @@ test('+layout.tscl files are never routes', () => {
 
 test('#472: a page source (a Markdown page) is wrapped in its folder and config layouts like a .tscl page', () => {
   expect(page('/admin/notes')).toMatch(/<body data-path="\/admin\/notes"><div class="banner"><div class="site"><nav>site<\/nav><div class="admin"><aside>admin menu<\/aside><main><p class="note">hello<\/p><\/main><\/div><\/div><\/div><\/body>/)
+})
+
+test('#472: the route manifest (clarusjs explain) lists each route\'s layouts, outermost first, and its guards, outer first', () => {
+  const routes = JSON.parse(readFileSync(resolve(root, 'dist/clarusjs-manifest.json'), 'utf8')).routes
+  expect(routes['/admin/users'].layouts).toEqual(['src/layouts/shell.tscl', 'src/layouts/banner.tscl', 'src/pages/+layout.tscl', 'src/pages/admin/+layout.tscl'])
+  expect(routes['/admin/users'].guards).toEqual(['src/pages/+guard.ts', 'src/pages/admin/+guard.ts'])
+  expect(routes['/embed/widget'].layouts).toEqual(['src/pages/+layout.tscl'])
+  expect(routes['/embed/widget'].guards).toEqual(['src/pages/+guard.ts'])
+  expect(routes['/admin/sign-in'].layouts).toBeUndefined() // @layout none
+  expect(routes['/admin/sign-in'].guards).toEqual(['src/pages/+guard.ts', 'src/pages/admin/+guard.ts']) // guards still apply
 })
