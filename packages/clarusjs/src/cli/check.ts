@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync,
 import { createRequire } from 'node:module'
 import { basename, dirname, relative, resolve, sep } from 'node:path'
 import { ClarusError } from '../compiler/errors.ts'
+import { compile } from '../compiler/index.ts'
 import { applyFixes, lint, type LintConfig, type LintRuleDef } from '../compiler/lint.ts'
 import { checkIcons } from '../compiler/icon.ts'
 import { parse } from '../compiler/parse.ts'
@@ -78,6 +79,7 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
   const virtualRoot = resolve(root, VIRTUAL)
   rmSync(virtualRoot, { recursive: true, force: true })
   const diagnostics: Diagnostic[] = []
+  const compilerOnly: Diagnostic[] = []
   // `source`: the .tscl text checked; `original`: the file's own text, when a page source converted it.
   const generated = new Map<string, { file: string; source: string; original?: string; code: string; mappings: Mapping[]; loaderSpan?: [number, number]; fromPackage?: boolean }>()
   const sources = options.sources ?? []
@@ -128,6 +130,7 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
       const at = src ? inSource(original, source, lines.slice(0, err.line - 1).reduce((n, l) => n + l.length + 1, 0) + err.column - 1) : null
       diagnostics.push({ file, ...(src ? (at === null ? { line: 1, column: 1 } : position(original, at)) : { line: err.line, column: err.column }), severity: 'error', code: 'clarus', message })
     }
+    let generatedOk = true
     try {
       const loader = loaderOf(path)
       const { code, mappings, loaderSpan } = generateTs(source, file, { ...(loader ? { loader } : {}), components: names })
@@ -138,6 +141,17 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     } catch (err) {
       if (!(err instanceof ClarusError)) throw err
       located(err)
+      generatedOk = false
+    }
+    // The compiler's own rules too (what an island may hold, and the like), so check fails where the build would.
+    // Kept below only where nothing else is reported on that line (TypeScript often says the same thing first).
+    if (generatedOk) try {
+      compile(source, { file, target: 'client', components: names, icon: (name) => resolveIcon(name, path) })
+    } catch (err) {
+      if (!(err instanceof ClarusError)) throw err
+      const before = diagnostics.length
+      located(err)
+      compilerOnly.push(...diagnostics.splice(before))
     }
     // <icon> names, against the sets installed for this package (a template error was reported above).
     try {
@@ -262,6 +276,8 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     diagnostics.push({ file: g.file, ...at, severity: 'error', code: m[4]!, message })
   }
 
+  const errorLines = new Set(diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.file}:${d.line}`))
+  diagnostics.push(...compilerOnly.filter((d) => !errorLines.has(`${d.file}:${d.line}`)))
   diagnostics.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column)
   return {
     diagnostics,

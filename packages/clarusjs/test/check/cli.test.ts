@@ -291,13 +291,14 @@ test('#99: @interface and multi-line mapped, conditional and inferred @type type
 test('#99: multi-line @input types and function-typed inputs are checked, at their lines', () => {
   const root = project({
     'src/components/picker.tscl': "@input options: {\n  size: 'sm' | 'lg'\n  label?: string\n} = { size: 'sm' }\n@input onPick: (id: string) => void\n<p>{{ options.size }} {{ options.colour }}</p>\n",
-    'src/pages/index.tscl': "@import picker from '../components/picker.tscl'\n<picker [options]=\"{ size: 'xl' }\" [onPick]=\"(id: string) => id\" />\n<picker [onPick]=\"(id: number) => id\" />\n",
+    // Template expressions are JavaScript (the build rejects type annotations in them): a wrong value, not a wrong type.
+    'src/pages/index.tscl': "@import picker from '../components/picker.tscl'\n<picker [options]=\"{ size: 'xl' }\" [onPick]=\"(id) => id\" />\n<picker [onPick]=\"42\" />\n",
   })
   const result = check({ root, typescript })
   expect(result.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
     'src/components/picker.tscl:6 TS2339', // options.colour
     'src/pages/index.tscl:2 TS2322', // size 'xl'
-    'src/pages/index.tscl:3 TS2322', // onPick takes a string id
+    'src/pages/index.tscl:3 TS2322', // onPick is a function
   ])
 })
 
@@ -548,4 +549,17 @@ test('#432: check reports TypeScript syntax in a <script> where it is, as the co
   expect(at("  const csv = () => request<string>('/a')")).toEqual([expect.stringMatching(/^4:21 clarus TypeScript syntax in a <script> \(scripts are JavaScript\): a type argument/)])
   expect(at('  let m: number = 1')).toEqual([expect.stringMatching(/^4:8 clarus .*a type annotation/)])
   expect(at('  const v = n as number')).toEqual([expect.stringMatching(/^4:15 clarus .*an as cast/)])
+})
+
+// What the build rejects, check reports: the compiler's own rules (here, a slot inside a component in an island) run too.
+test('errors only the compiler finds (a slot inside component content in an island) are reported, as the build would', () => {
+  const root = project({
+    'src/components/box.tscl': '<div><slot /></div>\n',
+    'src/components/menu-bar.tscl': `@import box from './box.tscl'\n<script>\n  let n = state(0)\n</script>\n<nav>\n  <button type="button" (click)="n++">{{ n }}</button>\n  <box><slot /></box>\n</nav>\n`,
+  })
+  const result = check({ root, typescript })
+  expect(result.exitCode).toBe(1)
+  expect(result.diagnostics).toEqual([
+    { file: 'src/components/menu-bar.tscl', line: 7, column: 8, severity: 'error', code: 'clarus', message: expect.stringContaining('<slot /> goes outside') },
+  ])
 })
