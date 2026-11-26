@@ -1,5 +1,31 @@
 # clarusjs
 
+## 0.16.0
+
+### Minor Changes
+
+- [#508](https://github.com/forinda/clarusjs/pull/508) [`e32325f`](https://github.com/forinda/clarusjs/commit/e32325fcc70f6fad75e184e60abc7aa2ad105b16) Thanks [@forinda](https://github.com/forinda)! - `(name)` on a component that doesn't declare `@event name` is the DOM event on what it renders, as in Vue: `<likeButton (click)="likes++">` hears the click on its `<button>`, with the DOM event as `$event`. A declared `@event` still wins (the DOM event of the same name doesn't also fire). `clarusjs check` types `$event` as the DOM event and still reports a name that is neither an `@event` nor a DOM event.
+
+- [#513](https://github.com/forinda/clarusjs/pull/513) [`2cb2c58`](https://github.com/forinda/clarusjs/commit/2cb2c5812318916cd72a5da13668f684418f83fa) Thanks [@forinda](https://github.com/forinda)! - Components from libraries. List installed component libraries, `clarusjs({ components: { libraries: ['@clarusjs/ui-primitives'] } })` (or `{ from, prefix }` for your own prefix), and their components work by name without `@import`: `<ui-tabs>`, `<ui-tab-list>`. A library describes itself in its package.json, `"clarusjs": { "components": "./src", "prefix": "ui" }`, and each component is imported as `<package>/<file>`. An `@import` wins, then your own components, then libraries; a name two libraries share is an error naming both. The dev server, builds and `clarusjs check` write the names and the configured `components.dirs` to `.clarusjs/components.json`, which the language server and the TypeScript content mapper read. `@clarusjs/ui-primitives` describes itself with the `ui` prefix.
+
+- [#512](https://github.com/forinda/clarusjs/pull/512) [`3b770b3`](https://github.com/forinda/clarusjs/commit/3b770b3a142b5067ab8aa04d028aff6e750ce894) Thanks [@forinda](https://github.com/forinda)! - Lint fixes. A finding may carry a `fix` (`{ start, end, text }`); `one-root`'s wraps the component's top level in `<fragment>`, which renders the same HTML (a root `<fragment>` now renders like its children written at the top level: whitespace-only text between them is dropped, and so is the line break right after `<fragment>`). A `<script>`, `<style>` or declaration (`@input`, any `@import`, `@event`…) between the roots moves above them first, in order: wrapped, it would no longer be the component's, and at the top level its place doesn't matter. `clarusjs check --fix` writes fixes to the `.tscl` files before checking (with `--json`, the files it rewrote are listed on stderr), `applyFixes(source, messages)` from `clarusjs/compiler` applies them in code, ESLint's `--fix` applies them through `clarusjs/template`, and the language server offers each as a quick fix. A project's own rules can pass a fix as `report(start, message, fix)`.
+
+- [#510](https://github.com/forinda/clarusjs/pull/510) [`2181938`](https://github.com/forinda/clarusjs/commit/21819387c6ea835e43e9c97258228c0aa92c773a) Thanks [@forinda](https://github.com/forinda)! - One root per component, `<fragment>`, and `@extends`.
+
+  - `<fragment>` groups elements without rendering one, anywhere in a template (a component's root, an `@if` branch, a `@for` row, slot content). It takes no attributes, and a component whose root is one takes none from its parent: `clarusjs check` reports any `class`, attribute or `(event)` written on its tag.
+  - The `one-root` lint rule warns about a component without one root element (files under a `pages` or `layouts` folder, and whole documents, are exempt; a layout kept elsewhere is warned about), so what a parent passes always has one place to land. It becomes an error in a later minor.
+  - `@extends button` (or `input`, `textarea`, `select`, `option`, `a`, `img`, `form`, `label`, `details`, `dialog`): the component takes every attribute of that element, typed by `clarusjs check`, onto its root, which must be that element.
+  - A stateful `@extends` island kept in place when its parent re-renders takes the new passed attributes (a parent's `[disabled]` changing reaches its root).
+  - theme-docs: the page head and the contents part render a `<fragment>` (same HTML). The agent guidance teaches one root.
+
+### Patch Changes
+
+- [#537](https://github.com/forinda/clarusjs/pull/537) [`0086d3b`](https://github.com/forinda/clarusjs/commit/0086d3bdfa34c966d143f4f008226f8547ad6023) Thanks [@forinda](https://github.com/forinda)! - Image attributes (`src`, `srcset`, `poster`) accept object URLs (`blob:`), so a bound `<img [src]>` can preview a picked file. `href` still refuses them, and attributes that load a page or a script stay static only.
+
+- [#493](https://github.com/forinda/clarusjs/pull/493) [`98d3f38`](https://github.com/forinda/clarusjs/commit/98d3f38b2e1e098b1b98ba8ae6681610a599a1b3) Thanks [@forinda](https://github.com/forinda)! - Attributes passed to a component also land on its root when the top level is one `@if` … `@else` with a single element in each branch (outside islands): the branch that renders gets them. A button that renders an `<a>` when given `href` keeps `aria-*`, `data-*`, `id` and `style` either way.
+
+- [#521](https://github.com/forinda/clarusjs/pull/521) [`6641e73`](https://github.com/forinda/clarusjs/commit/6641e7352eff45c97d419cc8c8a676669f95506c) Thanks [@forinda](https://github.com/forinda)! - `attach="visible"` attaches in real browsers: it watched `<cl-island>` itself, which is `display: contents` and so never intersects; it now watches what the island holds.
+
 ## 0.15.0
 
 ### Minor Changes

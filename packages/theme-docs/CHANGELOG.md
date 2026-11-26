@@ -1,5 +1,33 @@
 # @clarusjs/theme-docs
 
+## 0.5.0
+
+### Minor Changes
+
+- [#526](https://github.com/forinda/clarusjs/pull/526) [`97318f1`](https://github.com/forinda/clarusjs/commit/97318f1c3a46c64a106969c2098d4b4df28b71a3) Thanks [@forinda](https://github.com/forinda)! - Ten more sidebar group icons, for a component library's groups: `form`, `pointer`, `table`, `panel`, `overlay`, `menu`, `chart`, `message`, `image` and `grid`.
+
+- [#521](https://github.com/forinda/clarusjs/pull/521) [`1dd2420`](https://github.com/forinda/clarusjs/commit/1dd2420be3cb7751cdd4f4d508720b2ca85f6c9b) Thanks [@forinda](https://github.com/forinda)! - The layout has a `header-end` slot: a site's own button or menu in the header, before the theme toggle, kept across navigations. A replaced header part (`themeDocs({ components: { header } })`) needs `<slot name="end"></slot>` where it should go; the build says so if it's missing.
+
+- [#511](https://github.com/forinda/clarusjs/pull/511) [`5be4c5e`](https://github.com/forinda/clarusjs/commit/5be4c5e0ff310c14b3c83bef1c928955ffd81cb7) Thanks [@forinda](https://github.com/forinda)! - Version badges in Markdown: `{since=0.16.0}`, `{deprecated=0.17.0}` and `{removed=0.18.0}` (combinable: `{deprecated=0.17.0 removed=0.18.0}`) after a heading, in a table cell or in text render as `<span class="version" data-version="since">Since 0.16.0</span>`, left out of the heading's id, anchor label and the page's contents. The docs theme styles them.
+
+### Patch Changes
+
+- [#526](https://github.com/forinda/clarusjs/pull/526) [`ded4eb0`](https://github.com/forinda/clarusjs/commit/ded4eb0f6a3a5e9268a7f9de8088deddae35ac47) Thanks [@forinda](https://github.com/forinda)! - `h3` and `h4` have the theme's own sizes and spacing (they had the browser's): more room above a heading than below it, and less for an `h3` right after an `h2`.
+
+- [#521](https://github.com/forinda/clarusjs/pull/521) [`0b77662`](https://github.com/forinda/clarusjs/commit/0b7766240f8df3cd38665a4b767d8916cb323253) Thanks [@forinda](https://github.com/forinda)! - The search dialog's input shows focus as one accent line along its bottom, instead of a square ring inside the dialog's rounded border.
+
+- [#510](https://github.com/forinda/clarusjs/pull/510) [`2181938`](https://github.com/forinda/clarusjs/commit/21819387c6ea835e43e9c97258228c0aa92c773a) Thanks [@forinda](https://github.com/forinda)! - One root per component, `<fragment>`, and `@extends`.
+
+  - `<fragment>` groups elements without rendering one, anywhere in a template (a component's root, an `@if` branch, a `@for` row, slot content). It takes no attributes, and a component whose root is one takes none from its parent: `clarusjs check` reports any `class`, attribute or `(event)` written on its tag.
+  - The `one-root` lint rule warns about a component without one root element (files under a `pages` or `layouts` folder, and whole documents, are exempt; a layout kept elsewhere is warned about), so what a parent passes always has one place to land. It becomes an error in a later minor.
+  - `@extends button` (or `input`, `textarea`, `select`, `option`, `a`, `img`, `form`, `label`, `details`, `dialog`): the component takes every attribute of that element, typed by `clarusjs check`, onto its root, which must be that element.
+  - A stateful `@extends` island kept in place when its parent re-renders takes the new passed attributes (a parent's `[disabled]` changing reaches its root).
+  - theme-docs: the page head and the contents part render a `<fragment>` (same HTML). The agent guidance teaches one root.
+
+- [#514](https://github.com/forinda/clarusjs/pull/514) [`4e77fd8`](https://github.com/forinda/clarusjs/commit/4e77fd8a138bf6aa94c3297c75b1f1e8a3f5e69f) Thanks [@forinda](https://github.com/forinda)! - A `.tscl` page with `<meta name="robots" content="noindex">` (its attributes in either order) is left out of the sidebar and llms.txt, as it already was out of search. The light/dark switch follows a choice made in another tab.
+- Updated dependencies [[`0086d3b`](https://github.com/forinda/clarusjs/commit/0086d3bdfa34c966d143f4f008226f8547ad6023), [`e32325f`](https://github.com/forinda/clarusjs/commit/e32325fcc70f6fad75e184e60abc7aa2ad105b16), [`98d3f38`](https://github.com/forinda/clarusjs/commit/98d3f38b2e1e098b1b98ba8ae6681610a599a1b3), [`2cb2c58`](https://github.com/forinda/clarusjs/commit/2cb2c5812318916cd72a5da13668f684418f83fa), [`3b770b3`](https://github.com/forinda/clarusjs/commit/3b770b3a142b5067ab8aa04d028aff6e750ce894), [`2181938`](https://github.com/forinda/clarusjs/commit/21819387c6ea835e43e9c97258228c0aa92c773a), [`6641e73`](https://github.com/forinda/clarusjs/commit/6641e7352eff45c97d419cc8c8a676669f95506c)]:
+  - clarusjs@0.16.0
+
 ## 0.4.2
 
 ### Patch Changes

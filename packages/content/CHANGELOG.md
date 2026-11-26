@@ -1,5 +1,16 @@
 # @clarusjs/content
 
+## 0.5.0
+
+### Minor Changes
+
+- [#511](https://github.com/forinda/clarusjs/pull/511) [`5be4c5e`](https://github.com/forinda/clarusjs/commit/5be4c5e0ff310c14b3c83bef1c928955ffd81cb7) Thanks [@forinda](https://github.com/forinda)! - Version badges in Markdown: `{since=0.16.0}`, `{deprecated=0.17.0}` and `{removed=0.18.0}` (combinable: `{deprecated=0.17.0 removed=0.18.0}`) after a heading, in a table cell or in text render as `<span class="version" data-version="since">Since 0.16.0</span>`, left out of the heading's id, anchor label and the page's contents. The docs theme styles them.
+
+### Patch Changes
+
+- Updated dependencies [[`0086d3b`](https://github.com/forinda/clarusjs/commit/0086d3bdfa34c966d143f4f008226f8547ad6023), [`e32325f`](https://github.com/forinda/clarusjs/commit/e32325fcc70f6fad75e184e60abc7aa2ad105b16), [`98d3f38`](https://github.com/forinda/clarusjs/commit/98d3f38b2e1e098b1b98ba8ae6681610a599a1b3), [`2cb2c58`](https://github.com/forinda/clarusjs/commit/2cb2c5812318916cd72a5da13668f684418f83fa), [`3b770b3`](https://github.com/forinda/clarusjs/commit/3b770b3a142b5067ab8aa04d028aff6e750ce894), [`2181938`](https://github.com/forinda/clarusjs/commit/21819387c6ea835e43e9c97258228c0aa92c773a), [`6641e73`](https://github.com/forinda/clarusjs/commit/6641e7352eff45c97d419cc8c8a676669f95506c)]:
+  - clarusjs@0.16.0
+
 ## 0.4.2
 
 ### Patch Changes
