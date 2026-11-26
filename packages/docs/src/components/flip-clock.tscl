@@ -1,0 +1,140 @@
+{{--
+  A flip clock, from @starting-style alone: each digit is a @for row keyed by its place and value, so a digit that
+  changes is a new row, and a new row animates in. Like a split-flap board: the old digit's top half folds down, then
+  the new digit's bottom half falls into place. The server renders dashes; the browser's time flips in on attach.
+  Its colours are the theme's (--bg, --fg, --rule…), so it follows light and dark.
+--}}
+
+<script>
+  let time = state('--:--:--')
+  let prev = state('--:--:--')
+  const pad = (n) => String(n).padStart(2, '0')
+  const read = () => {
+    const d = new Date()
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  }
+  const cells = () => [...time].map((ch, i) => ({ key: `${i}:${ch}`, ch, was: prev[i] ?? ch, sep: ch === ':' }))
+  function tick() {
+    const next = read()
+    if (next === time) return
+    prev = time
+    time = next
+  }
+  const wire = () => {
+    tick()
+    const timer = setInterval(tick, 250)
+    return () => clearInterval(timer)
+  }
+</script>
+
+<div class="flip-clock" role="timer" [aria-label]="time.includes('-') ? 'Clock' : 'The time is ' + time" [use]="wire">
+  @for (cell of cells(); track cell.key) {
+    @if (cell.sep) {
+      <span class="sep" aria-hidden="true">:</span>
+    } @else {
+      <span class="digit" aria-hidden="true">
+        <span class="half top"><span>{{ cell.ch }}</span></span>
+        <span class="half bottom"><span>{{ cell.was }}</span></span>
+        <span class="leaf fold"><span>{{ cell.was }}</span></span>
+        <span class="leaf fall"><span>{{ cell.ch }}</span></span>
+      </span>
+    }
+  }
+</div>
+
+<style scoped>
+  :scope {
+    --h: 72px;
+    --w: 52px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    margin: 16px 0;
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid var(--rule);
+    background: var(--code-bg, var(--surface));
+    font: 700 calc(var(--h) * 0.8) / var(--h) ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    color: var(--fg);
+  }
+  .sep {
+    padding: 0 2px;
+    color: var(--muted);
+  }
+  .digit {
+    position: relative;
+    width: var(--w);
+    height: var(--h);
+    perspective: 300px;
+  }
+  /* Each half shows half the glyph: the card's line-height is its full height, so the top half shows its top and the
+     bottom half (shifted up by half) its bottom. */
+  .half,
+  .leaf {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+    background: var(--bg);
+    box-shadow: inset 0 0 0 1px var(--rule);
+    text-align: center;
+    backface-visibility: hidden;
+  }
+  .top,
+  .fold {
+    top: 0;
+    border-radius: 8px 8px 0 0;
+    transform-origin: 50% 100%;
+  }
+  .bottom,
+  .fall {
+    bottom: 0;
+    border-radius: 0 0 8px 8px;
+    transform-origin: 50% 0;
+    background: color-mix(in oklab, var(--bg) 94%, var(--fg));
+  }
+  .half > span,
+  .leaf > span {
+    display: block;
+    height: var(--h);
+  }
+  .bottom > span,
+  .fall > span {
+    translate: 0 calc(var(--h) / -2);
+  }
+  /* The hinge. */
+  .digit::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(50% - 1px);
+    height: 2px;
+    background: var(--code-bg, var(--surface));
+  }
+  /* At rest: the old top has folded away, the new bottom has fallen into place. A new digit starts from the other
+     end, so the browser animates it: the fold first, then the fall. */
+  .fold {
+    rotate: x -90deg;
+    transition: rotate 0.25s ease-in;
+  }
+  .fall {
+    rotate: x 0deg;
+    transition: rotate 0.25s 0.25s ease-out;
+  }
+  @starting-style {
+    .fold {
+      rotate: x 0deg;
+    }
+    .fall {
+      rotate: x 90deg;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .leaf {
+      transition: none;
+    }
+  }
+</style>

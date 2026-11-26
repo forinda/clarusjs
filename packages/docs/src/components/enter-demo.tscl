@@ -1,0 +1,91 @@
+{{-- Animations, live: what @if and @for insert animates in with CSS alone (@starting-style), no JavaScript of its own.
+     The panel fades and rises in; each new row slides in from the right. Leaving is instant for now. --}}
+
+<script>
+  let open = state(false)
+  let rows = state(['First'])
+  function add() {
+    rows = [...rows, ['Second', 'Third', 'Fourth', 'Fifth'][rows.length - 1] ?? `Row ${rows.length + 1}`]
+  }
+</script>
+
+<div class="enter-demo">
+  <div class="enter-actions">
+    <button type="button" [aria-expanded]="String(open)" aria-controls="enter-panel" (click)="open = !open">{{ open ? 'Hide' : 'Show' }} the panel</button>
+    <button type="button" (click)="add()">Add a row</button>
+  </div>
+  <div id="enter-panel">
+    @if (open) {
+      <p class="enter-panel">Faded and raised in by <code>@starting-style</code>.</p>
+    }
+  </div>
+  <ul class="enter-rows">
+    @for (row of rows; track row) {
+      <li>{{ row }}</li>
+    }
+  </ul>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  .enter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  button {
+    padding: 6px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    cursor: pointer;
+  }
+  .enter-panel {
+    margin: 0;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--accent-soft, rgb(0 0 0 / 0.05));
+    transition: opacity 0.3s, translate 0.3s;
+  }
+  @starting-style {
+    .enter-panel {
+      opacity: 0;
+      translate: 0 8px;
+    }
+  }
+  .enter-rows {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .enter-rows li {
+    padding: 6px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    transition: opacity 0.3s, translate 0.3s;
+  }
+  @starting-style {
+    .enter-rows li {
+      opacity: 0;
+      translate: 24px 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .enter-panel,
+    .enter-rows li {
+      transition: opacity 0.2s;
+      translate: none;
+    }
+  }
+</style>
