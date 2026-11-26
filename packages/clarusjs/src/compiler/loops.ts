@@ -9,6 +9,8 @@ export type Loop = { item: string; list: string }
 /** Why `expr` indexes an outer loop's list with the inner loop's $index, or null. `loops`: outermost first. */
 export function outerIndexError(expr: string, loops: Loop[]): string | null {
   const inner = loops.at(-1)
+  // Text in quotes isn't code: '…rows[$index]…' in a string names nothing.
+  expr = expr.replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g, '""')
   for (const loop of loops.slice(0, -1)) {
     if (loop.list === inner!.list) continue // the same list, by its own loop's index
     const escaped = loop.list.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')
@@ -21,7 +23,7 @@ export function outerIndexError(expr: string, loops: Loop[]): string | null {
 
 /** The first expression in `nodes` that indexes an outer loop's list with an inner $index: why, and where. */
 export function outerIndexIn(nodes: TemplateNode[], loops: Loop[] = []): { message: string; start: number } | null {
-  const test = (expr: string, start: number) => { const why = loops.length > 1 && outerIndexError(expr, loops); return why ? { message: why, start } : null }
+  const test = (expr: string, start: number, around = loops) => { const why = around.length > 1 && outerIndexError(expr, around); return why ? { message: why, start } : null }
   for (const n of nodes) {
     let found: { message: string; start: number } | null = null
     if (n.type === 'expr') found = test(n.expr, n.start)
@@ -32,7 +34,10 @@ export function outerIndexIn(nodes: TemplateNode[], loops: Loop[] = []): { messa
       }
       found ??= outerIndexIn(n.children, loops)
     } else if (n.type === 'if') for (const b of n.branches) found ??= (b.cond !== null ? test(b.cond, b.condStart) : null) ?? outerIndexIn(b.children, loops)
-    else if (n.type === 'for') found = test(n.list, n.listStart) ?? outerIndexIn(n.children, [...loops, { item: n.item, list: n.list }]) ?? (n.empty ? outerIndexIn(n.empty, loops) : null)
+    else if (n.type === 'for') {
+      const inside = [...loops, { item: n.item, list: n.list }] // its track and rows are in it; its list, outside
+      found = test(n.list, n.listStart) ?? (n.track !== null ? test(n.track, n.trackStart, inside) : null) ?? outerIndexIn(n.children, inside) ?? (n.empty ? outerIndexIn(n.empty, loops) : null)
+    }
     else if (n.type === 'fill') found = outerIndexIn(n.children, loops)
     else if (n.type === 'await') { found = test(n.expr, n.exprStart); for (const kids of awaitLists(n)) found ??= outerIndexIn(kids, loops) }
     if (found) return found
