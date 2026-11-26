@@ -8,9 +8,7 @@ import { ClarusError } from '../../src/compiler/errors.ts'
 import { attachAll } from '../../src/runtime/loader.ts'
 import { importCode } from '../helpers.ts'
 
-afterEach(() => {
-  document.body.innerHTML = ''
-})
+afterEach(() => { document.body.innerHTML = '' })
 const log: string[] = []
 ;(globalThis as { __useLog?: string[] }).__useLog = log
 
@@ -52,18 +50,9 @@ test('the server marks the element only; the browser calls the behaviour with it
 })
 
 test('[use] needs an island, and is for elements', () => {
-  const at = (s: string) => {
-    try {
-      compile(s, { file: 'x.tscl', target: 'client' })
-      return ''
-    } catch (e) {
-      return (e as ClarusError).message
-    }
-  }
+  const at = (s: string) => { try { compile(s, { file: 'x.tscl', target: 'client' }); return '' } catch (e) { return (e as ClarusError).message } }
   expect(at('<div [use]="f"></div>\n')).toMatch(/^x\.tscl:1:6 .*\[use\] needs a <script>/)
-  expect(at('@import c from \'./c.tscl\'\n<script>\n  let f = () => {}\n</script>\n<c [use]="f" />\n')).toMatch(
-    /^x\.tscl:5:4 .*\[use\] is for elements/,
-  )
+  expect(at("@import c from './c.tscl'\n<script>\n  let f = () => {}\n</script>\n<c [use]=\"f\" />\n")).toMatch(/^x\.tscl:5:4 .*\[use\] is for elements/)
 })
 
 // #550: a behaviour that changes a @for's list while the island attaches (state from the URL, say). It ran before the
