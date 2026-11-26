@@ -1,0 +1,36 @@
+@import './dialog.css'
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+@import uiDialogClose from '@clarusjs/ui-primitives/dialog-close.tscl'
+
+<div class="demo example">
+  @for (variant of ['light', 'dark', 'blur', 'none']; track variant) {
+    <uiDialogTrigger [target]="'dialog-backdrop-' + variant">{{ variant[0].toUpperCase() + variant.slice(1) }}</uiDialogTrigger>
+    <uiDialog [id]="'dialog-backdrop-' + variant" [data-backdrop]="variant">
+      @slot('title') {
+        A {{ variant }} backdrop
+      }
+      <p>data-backdrop="{{ variant }}" on the dialog.</p>
+      <uiDialogClose [target]="'dialog-backdrop-' + variant">Close</uiDialogClose>
+    </uiDialog>
+  }
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--ui-space-3);
+      padding: var(--ui-space-6);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+    }
+    :where(p) {
+      margin: 0 0 var(--ui-space-3);
+    }
+  }
+</style>

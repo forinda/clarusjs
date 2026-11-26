@@ -164,3 +164,10 @@ test('spacing: every padding, margin and gap is a step of --ui-space, never raw 
     expect(value!.replace(/var\(--ui-space[\w-]*\)/g, '').match(/\d*\.?\d+px/g), `${prop}: ${value}`).toBeNull()
   }
 })
+
+test('dialog backdrop: data-backdrop light, dark, blur or none set two knobs the one ::backdrop rule reads', () => {
+  const dialog = rulesPart.slice(rulesPart.indexOf('/* part: dialog */'), rulesPart.indexOf('/* end part */', rulesPart.indexOf('/* part: dialog */')))
+  expect(dialog).toMatch(/::backdrop \{[^}]*var\(--ui-backdrop-opacity, 0\.45\)[^}]*var\(--ui-backdrop-blur, 0px\)/)
+  for (const [variant, knob] of [['light', '--ui-backdrop-opacity: 0.2'], ['dark', '--ui-backdrop-opacity: 0.7'], ['none', '--ui-backdrop-opacity: 0'], ['blur', '--ui-backdrop-blur: 6px']])
+    expect(dialog, variant).toContain(`:where([data-part='dialog'][data-backdrop='${variant}']) {\n    ${knob};`)
+})

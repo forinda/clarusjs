@@ -176,8 +176,23 @@
     box-shadow: var(--ui-shadow);
     font: calc(var(--ui-font-size) + 1px)/1.5 var(--ui-font);
   }
+  /* The backdrop: a black scrim, dimmed by --ui-backdrop-opacity and blurred by --ui-backdrop-blur (it reads them from
+     its dialog). data-backdrop on the dialog picks a variant; set the knobs on :root for a site-wide default. */
   :where([data-part='dialog'])::backdrop {
-    background: rgb(0 0 0 / 0.45);
+    background: rgb(0 0 0 / var(--ui-backdrop-opacity, 0.45));
+    backdrop-filter: blur(var(--ui-backdrop-blur, 0px));
+  }
+  :where([data-part='dialog'][data-backdrop='light']) {
+    --ui-backdrop-opacity: 0.2;
+  }
+  :where([data-part='dialog'][data-backdrop='dark']) {
+    --ui-backdrop-opacity: 0.7;
+  }
+  :where([data-part='dialog'][data-backdrop='blur']) {
+    --ui-backdrop-blur: 6px;
+  }
+  :where([data-part='dialog'][data-backdrop='none']) {
+    --ui-backdrop-opacity: 0;
   }
   :where([data-part='title']) {
     margin: 0 0 var(--ui-space-2);

@@ -1,0 +1,33 @@
+@import './sheet.css'
+@import uiDialog from '@clarusjs/ui-primitives/dialog.tscl'
+@import uiDialogTrigger from '@clarusjs/ui-primitives/dialog-trigger.tscl'
+@import uiDialogClose from '@clarusjs/ui-primitives/dialog-close.tscl'
+
+<div class="demo example">
+  <uiDialogTrigger target="sheet-backdrop-blur">Open, page blurred</uiDialogTrigger>
+  <uiDialog id="sheet-backdrop-blur" data-side="right" data-backdrop="blur">
+    @slot('title') {
+      Filters
+    }
+    <p>The page behind is dimmed and blurred: data-backdrop="blur".</p>
+    <uiDialogClose target="sheet-backdrop-blur">Done</uiDialogClose>
+  </uiDialog>
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      justify-items: start;
+      padding: var(--ui-space-6);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+    }
+    :where(p) {
+      margin: 0 0 var(--ui-space-3);
+    }
+  }
+</style>
