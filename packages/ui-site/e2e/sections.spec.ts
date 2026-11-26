@@ -108,3 +108,22 @@ for (const e of (Object.keys(SECTION_KINDS) as SectionKind[]).flatMap(sectionsOf
     expect(s.x !== '' || s.lit > 0 || s.paths > 0, JSON.stringify(s)).toBe(true)
   })
 }
+
+test('pricing-plans: the yearly switch changes every set price; Custom stays', async ({ page }) => {
+  await page.goto('/view/pricing-plans')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  const { plans } = await import('../src/registry/sections/pricing/data.ts')
+  const shown = (k: 'monthly' | 'yearly') => plans.map((p) => (p[k] === null ? 'Custom' : '$' + p[k]))
+  const prices = page.locator('[data-price]')
+  await expect(prices).toHaveText(shown('monthly'))
+  await page.getByRole('switch', { name: 'Billed yearly' }).click()
+  await expect(prices).toHaveText(shown('yearly'))
+  await expect(page.getByText('Popular', { exact: true })).toBeVisible()
+})
+
+test('pricing-compare: a table with a column header per plan and a check per included feature', async ({ page }) => {
+  await page.goto('/view/pricing-compare')
+  const table = page.getByRole('table')
+  for (const plan of ['Hobby', 'Pro', 'Enterprise']) await expect(table.getByRole('columnheader', { name: new RegExp(plan) })).toBeVisible()
+  await expect(table.getByRole('img', { name: 'Included' }).first()).toBeVisible()
+})

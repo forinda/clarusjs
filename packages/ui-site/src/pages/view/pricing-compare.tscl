@@ -1,0 +1,13 @@
+{{-- The pricing-compare section alone (the frame on /blocks/marketing/pricing shows it). Out of the nav, search and the sitemap. --}}
+@import '~/theme.css'
+@import '~/view.css'
+@import pricingCompare from '~/registry/sections/pricing/pricing-compare.tscl'
+
+<cl-head>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+</cl-head>
+
+<div data-ui-preview>
+  <pricingCompare />
+</div>

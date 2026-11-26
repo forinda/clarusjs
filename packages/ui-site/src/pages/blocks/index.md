@@ -48,4 +48,8 @@ layout: "/src/layouts/wide.tscl"
   <iframe src="/view/stats" title="Stats preview" loading="lazy" style="width: 100%; height: 340px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
 </blockRow>
 
+<blockRow name="pricing-plans">
+  <iframe src="/view/pricing-plans" title="Pricing preview" loading="lazy" style="width: 100%; height: 760px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
 </blockFilter>
