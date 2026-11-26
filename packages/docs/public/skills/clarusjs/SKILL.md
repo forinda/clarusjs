@@ -67,6 +67,36 @@ islands of JavaScript only where a component has a `<script>`. Vite runs it (`vi
 - Update objects and arrays by assigning new ones: `items = [...items, item]`, `form = { ...form, name }`.
 - `attach="visible"` (or `idle`, `interaction`) on an island's tag loads its JavaScript later.
 
+### Navigation and the URL
+
+Islands import from `clarusjs/navigation`:
+
+- `navigate(url, { replace, state, scroll })` and `back()` move like a link and the back button; `abort()` stops one.
+  `beforeNavigate((to, nav) => nav.cancel())`, `afterNavigate`, `onNavigateError` hook in.
+- `shared(currentUrl)` is the current URL and `shared(searchParams)` its query, as stores (`null` on the server).
+- `setSearch({ q: 'shoes', page: null })` changes the query: `null` removes a key, it replaces the history entry and
+  keeps the scroll position by default (`{ replace: false }` adds an entry, `{ scroll: true }` goes to the top).
+  `navigate(url, { scroll: false })` keeps it too. `navigationState()` reads the `state` a navigation passed.
+- `viewTransitions()`, called once from any island, runs page changes as view transitions; style them with
+  `::view-transition-old(root)` / `::view-transition-new(root)`.
+
+### Animations
+
+What `@if` and `@for` insert animates in with CSS alone, no JavaScript: give the element a `transition` and its
+starting look in `@starting-style`. It also runs for what the server rendered, on page load. Leaving is instant (an
+`@transition` block is planned). Under `prefers-reduced-motion: reduce`, drop the movement and keep fades.
+
+```css
+.panel { transition: opacity 0.3s, translate 0.3s; }
+@starting-style { .panel { opacity: 0; translate: 0 8px; } }
+```
+
+### Tag names
+
+A camelCase or PascalCase import name also works as a kebab-case tag: `@import userCard from './user-card.tscl'` (or
+`UserCard`) is `<user-card>`. Give components multi-word names: one-word names (`Button`) have no kebab form, so they
+never take an HTML element's place. Files in `src/components/` named in kebab case are used without an import.
+
 ### Check your work
 
 Run `npx clarusjs check` after editing `.tscl` files, and fix what it reports before calling the work done: it
