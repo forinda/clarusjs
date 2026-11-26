@@ -4,7 +4,7 @@
 // page it doesn't own. A form's values are any state: a component's or a store's.
 // @see https://clarusjs.com/guide/form-validation
 import { effect, onDispose, state, untrack, type Ctx, type Signal } from '../runtime/index.ts'
-import { marked, openSlots, owner } from '../runtime/dom.ts'
+import { keepSlots, marked, openSlots, owner } from '../runtime/dom.ts'
 import { browser } from '../runtime/env.ts'
 import type { Form, FormError, FormOptions, StandardSchema } from './types.ts'
 
@@ -28,9 +28,9 @@ const dotted = (path: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
  */
 /** Equal plain values, compared through objects and arrays: a form typed into and back is not dirty. */
 const same = (a: unknown, b: unknown): boolean =>
-  a === b || (!!a && !!b && typeof a === 'object' && typeof b === 'object' && Object.keys(a).length === Object.keys(b).length &&
-    // Arrays by length too (sparse ones have fewer keys); an array and an object differ here (a length, or none).
-    (a as { length?: number }).length === (b as { length?: number }).length &&
+  a === b || (!!a && !!b && typeof a === 'object' && typeof b === 'object' && Array.isArray(a) === Array.isArray(b) &&
+    // Arrays by length too: a sparse one has fewer keys.
+    Object.keys(a).length === Object.keys(b).length && (a as { length?: number }).length === (b as { length?: number }).length &&
     Object.keys(a).every((k) => same((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])))
 
 function pathOf(field: Element, root: Element): string {
@@ -138,7 +138,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
   /** Recompute every field's error (sources in order of precedence) and put each on its element. */
   function refresh(): void {
     const next: Record<string, string> = {}
-    const list = fields()
+    const list = keepSlots(fields) // every field's path: slot counts kept across them (a long list costs one pass)
     for (const { el, path } of list) {
       el.setCustomValidity('')
       let native = ''

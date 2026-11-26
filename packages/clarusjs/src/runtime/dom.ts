@@ -61,6 +61,17 @@ function contextAt(node: Node, root: Element, own?: object): object | undefined 
 
 /** Slot ranges still open at `n`, among the siblings before it (#465). @internal */
 export function openSlots(n: Node): number {
+  if (slots) {
+    // While keepSlots() runs: from the nearest sibling on the left already counted, then rightwards, keeping each count. A list's
+    // rows then cost one pass, not one walk back per row. Left to right it's a depth: [s opens, ]s closes an open one.
+    const todo: Node[] = []
+    let s = n.previousSibling
+    while (s && !slots.has(s)) { todo.push(s); s = s.previousSibling }
+    let depth = s ? step(slots.get(s)!, s) : 0
+    for (let i = todo.length - 1; i >= 0; i--) { slots.set(todo[i]!, depth); depth = step(depth, todo[i]!) }
+    slots.set(n, depth)
+    return depth
+  }
   let open = 0
   let closed = 0
   for (let s = n.previousSibling; s; s = s.previousSibling) {
@@ -70,6 +81,21 @@ export function openSlots(n: Node): number {
     else if (d === '[s') closed ? closed-- : open++
   }
   return open
+}
+
+// The slot ranges open before each node (#589 review), kept while keepSlots() runs: an island’s attach, a forms refresh.
+let slots: WeakMap<Node, number> | null = null
+const step = (depth: number, n: Node) => (n.nodeType !== 8 ? depth : (n as Comment).data === '[s' ? depth + 1 : (n as Comment).data === ']s' && depth ? depth - 1 : depth)
+/** The DOM's shape changed: counts kept so far may be wrong. */
+const reshaped = () => { if (slots) slots = new WeakMap() }
+/**
+ * Run `fn` with openSlots() counts kept between calls; nothing outside this file may add or remove nodes meanwhile.
+ * @internal The loader (attach) and the forms engine (refresh) call this.
+ */
+export function keepSlots<T>(fn: () => T): T {
+  if (slots) return fn()
+  slots = new WeakMap()
+  try { return fn() } finally { slots = null }
 }
 
 /** The island a context's root stands for: itself when it is one, else the island it is in (null: none). */
@@ -121,11 +147,13 @@ function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[]; regions:
       else if (n.nodeType !== 8) continue
       else if ((n as Comment).data === '[s') { ranges++; level-- }
       else if ((n as Comment).data === ']s') { if (ranges) { ranges--; level++ } }
-      else if (!level) take(n as Comment)
+      else if (!level && (near || inside(ctx, n))) take(n as Comment)
     }
   }
-  // A row: only between its markers (siblings), not the whole island once per row.
-  if ('root' in ctx) visit(ctx.start.nextSibling, ctx.end, 0)
+  // A row whose markers are siblings: only between them, not the whole island once per row. Otherwise (a <tr> row
+  // straight in a <table>: the parser puts a <tbody> between them) the whole island, kept to the row's range.
+  const near = 'root' in ctx && ctx.start.parentNode === ctx.end.parentNode
+  if (near) visit(ctx.start.nextSibling, ctx.end, 0)
   else visit(root.firstChild, null, 0)
   return { holes, blocks, fors, regions }
 }
@@ -147,6 +175,7 @@ function insertHtml(html: string, end: Node): { first: Node | null; last: Node |
   const first = t.content.firstChild
   const last = t.content.lastChild
   end.parentNode!.insertBefore(t.content, end)
+  reshaped()
   // Child islands in the new HTML attach like the ones on the page (the loader registers this hook).
   const attachIslands = (globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach
   if (attachIslands && end.parentNode) attachIslands(end.parentNode)
@@ -182,6 +211,7 @@ export function block(ctx: Ctx, index: number, which: () => number, branches: { 
       if (k !== current) {
         dispose?.()
         while (b.start.nextSibling && b.start.nextSibling !== b.end) b.start.nextSibling.remove()
+        reshaped()
         if (k >= 0) insertHtml(branches[k]!.html(), b.end)
         current = k
       }
@@ -245,6 +275,7 @@ export function region(ctx: Ctx, index: number, html: (cx?: object) => string, w
         if (old && fresh && (globalThis as { __clUpdate?: (el: Element, next: Element) => boolean }).__clUpdate?.(old, fresh)) return
         dispose?.()
         while (r.start.nextSibling && r.start.nextSibling !== r.end) r.start.nextSibling.remove()
+        reshaped()
         insertHtml(next, r.end)
       }
       first = false
@@ -332,10 +363,11 @@ export function forBlock(
         r.dispose()
         for (const n of rangeNodes(r.start, r.end)) n.parentNode?.removeChild(n)
       }
+      reshaped()
       // Put rows in order, moving only those that are not already right after the previous one.
       let anchor: Node = f.start
       for (const r of next) {
-        if (anchor.nextSibling !== r.start) (anchor as ChildNode).after(...rangeNodes(r.start, r.end))
+        if (anchor.nextSibling !== r.start) { (anchor as ChildNode).after(...rangeNodes(r.start, r.end)); reshaped() }
         anchor = r.end
       }
       rows = next
@@ -343,6 +375,7 @@ export function forBlock(
       if (items.length && emptyRange) {
         emptyRange.dispose()
         for (const n of rangeNodes(emptyRange.start, emptyRange.end)) n.parentNode?.removeChild(n)
+        reshaped()
         emptyRange = null
       } else if (!items.length && !emptyRange && empty) {
         const { first: start, last: end } = insertHtml(`<!--[e-->${empty.html()}<!--]-->`, f.end)
@@ -447,8 +480,8 @@ export function marked(ctx: Ctx, selector: string): Element | undefined {
   const root = rootOf(ctx)
   const island = islandOf(root)
   const mine = (e: Element) => owner(e) === island
-  if (!('root' in ctx)) return [...root.querySelectorAll(selector)].find(mine)
-  // A row: the elements between its markers, not the whole island's once per row.
+  if (!('root' in ctx) || ctx.start.parentNode !== ctx.end.parentNode) return [...root.querySelectorAll(selector)].find((e) => mine(e) && inside(ctx, e))
+  // A row with sibling markers: the elements between them, not the whole island's once per row.
   for (let n = ctx.start.nextSibling; n && n !== ctx.end; n = n.nextSibling) {
     if (n.nodeType !== 1) continue
     const found = ((n as Element).matches(selector) ? [n as Element] : []).concat([...(n as Element).querySelectorAll(selector)]).find(mine)
