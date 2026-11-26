@@ -4,12 +4,13 @@
 
 import { ClarusError } from './errors.ts'
 import { awaitLists, importNames, parse, rootNodes, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
+import { scriptNames } from './script.ts'
 
 /**
  * The built-in rules' names.
  * @see https://clarusjs.com/guide/lint#rules
  */
-export type LintRule = 'unused-input' | 'unused-import' | 'img-alt' | 'label-field' | 'accessible-name' | 'one-root'
+export type LintRule = 'unused-input' | 'unused-import' | 'img-alt' | 'label-field' | 'accessible-name' | 'one-root' | 'for-shadow'
 /**
  * Each rule's level, built-in or a project's, keyed by rule name.
  * @see https://clarusjs.com/guide/lint#warnings-and-errors
@@ -72,6 +73,21 @@ function* elements(nodes: TemplateNode[]): Generator<LintElement> {
     else if (n.type === 'fill') yield* elements(n.children)
     else if (n.type === 'await') for (const kids of awaitLists(n)) yield* elements(kids)
   }
+}
+
+/** Every @for in the template, nested ones too. */
+function* fors(nodes: TemplateNode[]): Generator<Extract<TemplateNode, { type: 'for' }>> {
+  for (const n of nodes) {
+    if (n.type === 'element' || n.type === 'fill') yield* fors(n.children)
+    else if (n.type === 'if') for (const b of n.branches) yield* fors(b.children)
+    else if (n.type === 'for') { yield n; yield* fors(n.children); if (n.empty) yield* fors(n.empty) }
+    else if (n.type === 'await') for (const kids of awaitLists(n)) yield* fors(kids)
+  }
+}
+
+/** A script's top-level names, or none when it doesn't parse (the compiler reports that). */
+function namesIn(code: string | undefined): Set<string> {
+  try { return code ? scriptNames(code) : new Set() } catch { return new Set() }
 }
 
 /** Every expression a template reads, as text: holes, bindings, conditions, lists. */
@@ -190,6 +206,23 @@ export const lintRules: LintRuleDef[] = [
       for (const d of parsed.dataImports) {
         const unused = importNames(d.clause).filter((name) => !reads(name))
         if (unused.length) report(d.start, `${unused.map((n) => `'${n}'`).join(', ')} ${unused.length === 1 ? 'is' : 'are'} imported but never used`)
+      }
+    },
+  },
+  {
+    // #543: a row's name hides the component's own inside the loop, silently: `[class]="item"` there reads the row.
+    name: 'for-shadow',
+    check({ parsed, report }) {
+      const declared = new Map<string, string>()
+      const add = (name: string, what: string) => { if (!declared.has(name)) declared.set(name, what) }
+      for (const n of namesIn(parsed.script?.code)) add(n, `the script's ${n}`)
+      for (const n of namesIn(parsed.serverScript?.code)) add(n, `the server script's ${n}`)
+      for (const i of parsed.inputs) add(i.name, `@${i.model ? 'model' : 'input'} ${i.name}`)
+      for (const i of parsed.imports) add(i.name, `the import ${i.name}`)
+      for (const d of parsed.dataImports) for (const n of importNames(d.clause)) add(n, `the import ${n}`)
+      for (const f of fors(parsed.nodes)) {
+        const what = declared.get(f.item)
+        if (what) report(f.itemStart, `the row's ${f.item} hides ${what} inside this @for: rename one of them`)
       }
     },
   },
