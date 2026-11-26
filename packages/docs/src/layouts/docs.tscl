@@ -1,5 +1,8 @@
-{{-- This site's layout: the docs theme with this site's navigation and settings (src/nav.ts). --}}
+{{-- This site's layout: the docs theme with this site's navigation and settings (src/nav.ts), and its version menu and
+     drawer links in the theme's slots. --}}
 @import docsTheme from '@clarusjs/theme-docs/layout.tscl'
+@import versionMenu from '~/theme/version-menu.tscl'
+@import drawerFooter from '~/theme/drawer-footer.tscl'
 @import { theme } from '~/nav.ts'
 @import type { Heading } from '@clarusjs/theme-docs/nav.ts'
 @import '~/styles/docs.css'
@@ -20,5 +23,9 @@
   [description]="description"
   [headings]="headings"
   [app]="app"
-  ><slot
-/></docsTheme>
+>
+  <slot />
+  {{-- This site's own touches, through the theme's slots (#373). --}}
+  @slot('sidebar-top') {<versionMenu />}
+  @slot('sidebar-bottom') {<drawerFooter [config]="theme" />}
+</docsTheme>

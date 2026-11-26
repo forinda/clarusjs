@@ -19,7 +19,7 @@ A page that fails to render fails the build, naming the page. `vite preview` ser
 
 ## The route manifest
 
-The build also writes `dist/clarusjs-manifest.json`: for every route, how it was rendered, which islands it has and when each attaches, and how much JavaScript it ships (gzip bytes, in all and on page load). It is read from the pages that were actually written, and it sits outside `dist/client`, so it isn't published with the site.
+The build also writes `dist/clarusjs-manifest.json`: for every route, how it was rendered, which islands it has and when each attaches, and how much JavaScript it ships (gzip bytes, in all and on page load). It is read from the pages that were actually written, and it sits outside `dist/client`, so it isn't published with the site. A route with folder or config layouts, or folder guards, also lists them: `"layouts": ["src/pages/+layout.tscl"]`, `"guards": ["src/pages/admin/+guard.ts"]`.
 
 ```json
 "/guide/state": {

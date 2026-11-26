@@ -16,7 +16,10 @@ const SHELL = new Set(['sh', 'bash', 'shell', 'zsh', 'console', 'powershell', 'p
  * @see https://clarusjs.com/reference/content#markdown
  */
 export type MarkdownOptions = {
-  /** The layout every page renders in, root-relative (`/src/layouts/docs.tscl`). Frontmatter `layout` overrides it; `false` means none. */
+  /**
+   * The layout every page renders in, root-relative (`/src/layouts/docs.tscl`), inside the page's folder and config
+   * layouts. Frontmatter `layout` overrides it; `layout: false` there renders the page with no layout at all.
+   */
   layout?: string | false
   /**
    * Render `::: tip` blocks (and alerts) through your own component: `<tag [type]="'tip'">`, with a custom title in its
@@ -562,7 +565,10 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       const title = typeof data.title === 'string' ? data.title : firstHeading
       const html = pageHead(data, title) + tags.restore(staticHtml(md.renderer.render(tokens, md.options, env)))
 
-      const layout = data.layout === false ? undefined : (typeof data.layout === 'string' ? data.layout : options.layout)
+      // layout: false in frontmatter: no layout at all, not even the folder's (#472). No layout of its own: the folder
+      // and config layouts wrap it, as they do a .tscl page.
+      if (data.layout === false) return ['@layout none', ...imports, html].join('\n')
+      const layout = typeof data.layout === 'string' ? data.layout : options.layout
       if (!layout) return [...imports, html].join('\n')
       const props = [
         title !== undefined ? `[title]="${quote(title)}"` : '',

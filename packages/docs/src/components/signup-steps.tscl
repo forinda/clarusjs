@@ -34,7 +34,7 @@
       <ul>
         @for (e of f.errors; track e.path) {
           <li>
-            <a [href]="'#' + e.id" (click)="$event.preventDefault(); f.focus(e.path)">{{ e.path }}: {{ e.message }}</a>
+            <a [href]="'#' + e.id" (click.prevent)="f.focus(e.path)">{{ e.path }}: {{ e.message }}</a>
           </li>
         }
       </ul>

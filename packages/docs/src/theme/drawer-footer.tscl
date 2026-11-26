@@ -1,0 +1,45 @@
+{{--
+  The phone drawer's end (#373), through the theme's sidebar-bottom slot: the project's links its links row doesn't
+  already have (config.menuLinks and config.social), and the footer line. Only in the drawer, below 1024px.
+--}}
+@import type { ThemeConfig } from '@clarusjs/theme-docs/nav.ts'
+@import { projectLinks } from './links.ts'
+@input config: ThemeConfig
+
+<div class="drawer-footer">
+  <nav aria-label="Project">
+    @for (link of projectLinks.filter((l) => ![...(config.menuLinks ?? []), ...(config.social ?? [])].some((r) => r.href === l.href)); track link.href) {
+      <a [href]="link.href">{{ link.label }}</a>
+    }
+  </nav>
+  @if (config.footer) {
+    <p>{{ config.footer }}</p>
+  }
+</div>
+
+<style scoped>
+  :scope {
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  :scope nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  :scope a {
+    color: var(--accent);
+    font-weight: 500;
+    text-decoration: none;
+  }
+  :scope p {
+    margin: 8px 0 0;
+    line-height: 1.5;
+  }
+  @media (min-width: 1024px) {
+    :scope {
+      display: none;
+    }
+  }
+</style>

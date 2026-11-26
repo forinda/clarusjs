@@ -170,11 +170,12 @@ src/pages/
 - **A layout's inputs** are `path` (the URL's path) and `params` (the route's, `{ step: '2' }` on `/tour/[step]`). Declare the ones it uses. A title per page goes in the page's `<cl-head><title>`, or the layout makes it from `params`.
 - **`@layout none`** at the top of a page skips its folder and config layouts: a sign-in page under a protected folder.
 - **`+` files are never routes**, so `+layout.tscl` is never served as a page.
+- **Its own data:** a `+layout.load.ts` next to it is its [loader](/guide/components#loading-data), like a component's `.load.ts`: `load({ params })` returns the layout's inputs, for every page it wraps, with that page's route params. Its stylesheets (`@import './admin.css'`) are linked on those pages too.
 - **Both kinds work together:** a page can still import a layout of its own, inside its folder layouts.
 
 This site's [client tour](/tour/1) is a folder layout: `src/pages/tour/+layout.tscl` renders the docs layout with each step's title, and the step pages only write their content. It works for [client routes](/guide/client-routes) too: the router renders the layout in the browser with the route's params.
 
-A page with a `<script>` of its own (an island page) can't have folder or config layouts yet: the compiler says so at the top of the page. Move its script into a component it uses, or add `@layout none`. A layout's own data (`+layout.load.ts`) and Markdown pages taking folder layouts are coming next.
+A page with a `<script>` of its own (an island page) gets its folder and config layouts around the island: the layouts stay server HTML, and only the page's own markup ships as the island. Its content is inside the island, so it can't fill its layouts' named slots (`@slot('aside')`): put that content in the layout, or move the script into a component the page uses. In a [client route](/guide/client-routes), which renders its layouts in the browser, an island page can't have layouts yet; add `@layout none` or make the route static or server.
 
 ## Layouts in the config
 
@@ -212,7 +213,7 @@ layout: /src/layouts/plain.tscl
 ---
 ```
 
-The page's `title`, `description` and route (`path`) are passed to the layout as inputs. See [Markdown pages](/guide/markdown).
+The page's `title`, `description` and route (`path`) are passed to the layout as inputs. Folder and config layouts wrap Markdown pages too, as they do `.tscl` pages: a Markdown page's own layout goes inside them, and a page with none gets only them. Frontmatter `layout: false` renders the page with no layout at all, like `@layout none`. See [Markdown pages](/guide/markdown).
 
 ## A theme
 

@@ -39,9 +39,9 @@ test('@import lines at the top pass through, so components can be used in the Ma
   expect(out).toContain('<callout [type]="\'tip\'">\n<p>Markdown <strong>inside</strong>.</p>\n</callout>')
 })
 
-test('layout: false in frontmatter (or no layout) renders the bare HTML; strings are quoted safely', () => {
+test('no layout renders the bare HTML (folder layouts still wrap it); layout: false in frontmatter, none at all; strings are quoted safely', () => {
   expect(markdown().toTscl('Plain.\n', '/a/src/pages/x.md', { route: '/x', root: '/a', addDependency: () => {} })).toBe('<p>Plain.</p>\n')
-  expect(page('---\nlayout: false\n---\nPlain.\n')).toBe('<p>Plain.</p>\n')
+  expect(page('---\nlayout: false\n---\nPlain.\n')).toBe('@layout none\n<p>Plain.</p>\n')
   const tricky = page('---\ntitle: "It\'s a \\"quote\\" \\\\ here"\n---\nx\n')
   expect(tricky).toContain('[title]="\'It\\\'s a \\u0022quote\\u0022 \\\\ here\'"')
 })

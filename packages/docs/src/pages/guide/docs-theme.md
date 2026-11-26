@@ -222,6 +222,8 @@ Add your own content in place, without copying the layout:
 
 The slots are `header-end` (in the header, before the theme toggle: a site's own button or menu, kept across navigations), `sidebar-top`, `sidebar-bottom`, `content-top`, `content-bottom` and `footer` (it replaces `config.footer`).
 
+This site fills two: `sidebar-top` with its version menu (a `<details>`, so it opens without JavaScript), and `sidebar-bottom` with links for the phone drawer, hidden from 1024px by its own CSS (`src/layouts/docs.tscl`).
+
 ## Parts
 
 The layout is made of parts, each a component in `@clarusjs/theme-docs/parts/`. Use them on their own when you compose a layout of your own:

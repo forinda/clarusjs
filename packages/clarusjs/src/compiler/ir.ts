@@ -1,4 +1,5 @@
 // Syntax tree → IR: static HTML chunks, holes (reactive or not), child components, events. Build-time checks live here.
+import { modifierError, splitEvent } from './events.ts'
 import { extendedAttrs } from './element-attrs.ts'
 import { parseExpressionAt } from 'acorn'
 import { iconElement, type IconResolver } from './icon.ts'
@@ -32,7 +33,8 @@ export type IRNode =
   // scope in `nodes`; `track` (or the index) keys rows.
   | { kind: 'for'; item: string; list: string; track: string | null; nodes: IRNode[]; empty: IRNode[] | null; block: number }
 // scope: which @if branch the element is in ("block.branch"); undefined at the top level.
-export type IREvent = { index: number; type: string; handler: string; scope?: string }
+/** An element's (type.mods)="handler"; mods are #444's modifiers, as written. */
+export type IREvent = { index: number; type: string; handler: string; scope?: string; mods?: string[] }
 export type ComponentIR = {
   file: string
   name: string // basename without .tscl
@@ -308,6 +310,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         else if (a.kind === 'event') {
           // (change)="…": the child's @event change (#442), handled in this island with $event (the value) and $info.
           if (!stateful) fail('event bindings need a <script> with state; this component is static', a.start)
+          if (a.name.includes('.')) fail(`(${a.name}): modifiers are for elements' DOM events; handle it in the handler`, a.start)
           checkHandler(a.expr, file, source, a.start)
           listens.push({ name: a.name, handler: a.expr })
         }
@@ -483,6 +486,9 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       if (a.kind === 'static') emitStatic(a.value === true ? ` ${a.name}` : ` ${a.name}="${a.value}"`)
       else if (a.kind === 'event') {
         if (!stateful) fail('event bindings need a <script> with state; this component is static', a.start)
+        const { type, mods } = splitEvent(a.name)
+        const wrong = modifierError(type, mods)
+        if (wrong) fail(wrong, a.start)
         checkHandler(a.expr, file, source, a.start)
         const found = source.indexOf(a.expr, a.start)
         const exprStart = found === -1 ? a.start : found // a generated handler ([(value)]): at the binding
@@ -537,7 +543,10 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     if (elementEvents.length) {
       const index = eventElementCount++
       emitStatic(` data-cl-e="${index}"`)
-      for (const a of elementEvents) events.push({ index, type: a.name, handler: a.kind === 'event' ? a.expr : '', scope: scopeKey })
+      for (const a of elementEvents) {
+        const { type, mods } = splitEvent(a.name)
+        events.push({ index, type, handler: a.kind === 'event' ? a.expr : '', scope: scopeKey, ...(mods.length ? { mods } : {}) })
+      }
     }
     emitStatic('>')
     const iconBody = iconBodies.get(node)

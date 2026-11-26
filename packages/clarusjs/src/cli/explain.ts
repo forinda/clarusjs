@@ -15,12 +15,15 @@ const kb = (bytes: number) => (bytes ? `${(bytes / 1024).toFixed(1)} KB` : '0 KB
 const row = (label: string, lines: string[]) => lines.map((l, i) => `  ${(i ? '' : label).padEnd(12)}${l}`)
 
 function describe(path: string, r: RouteInfo): string {
+  // Layouts and guards (#472), when it has any.
+  const parts = [...(r.layouts?.length ? row('Layouts', r.layouts) : []), ...(r.guards?.length ? row('Guards', r.guards) : [])]
   if (r.mode === 'server') {
     return [
       path,
       ...row('Rendered', ['on every request, by dist/server/index.mjs']),
       ...row('Data', [r.loader === 'request' ? `load() runs on every request${r.cookies ? ', and reads cookies' : ''}` : 'no loader']),
       ...row('Islands', ['decided per request']),
+      ...parts,
     ].join('\n')
   }
   const islands = r.islands.map((i) => `${i.component}${i.count > 1 ? ` ×${i.count}` : ''} (${kb(i.gzip)}, ${WHEN[i.attach]})`)
@@ -31,6 +34,7 @@ function describe(path: string, r: RouteInfo): string {
     ...row('Islands', islands.length ? islands : ['none']),
     ...row('JavaScript', [r.js.files.length ? `${kb(r.js.initialGzip)} on page load, ${kb(r.js.gzip)} in all (gzip, ${r.js.files.length} files)` : 'none']),
     ...row('CSS', [r.css.length ? r.css.join(', ') : 'none']),
+    ...parts,
   ].join('\n')
 }
 
