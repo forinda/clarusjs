@@ -273,7 +273,7 @@ test('size budget: clarusjs/fetch stays within 4 KB gzip on its own, and a site 
   })) as { output: { type: string; code?: string }[] }[]
   const code = out[0]!.output.find((o) => o.type === 'chunk')!.code!
   const size = gzipSync(code, { level: 9 }).length
-  expect(size, `clarusjs/fetch: ${size} B gzip`).toBeLessThanOrEqual(1)
+  expect(size, `clarusjs/fetch: ${size} B gzip`).toBeLessThanOrEqual(4 * KB)
   // The fixture site doesn't fetch: none of it is in its assets.
   const assets = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
   for (const f of assets) for (const marker of ['batch: no answer for', 'onStart']) expect(readFileSync(resolve(client, 'assets', f), 'utf8'), `${f}: ${marker}`).not.toContain(marker)
