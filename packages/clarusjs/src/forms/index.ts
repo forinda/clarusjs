@@ -241,6 +241,10 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     step?.querySelector<HTMLElement>('input, select, textarea, button, [tabindex]')?.focus()
   }
   const errorsIn = (step: Element) => new Set(fields().filter((f) => step.contains(f.el) && shown(f.path) && errorsNow[f.path]).map((f) => f.path)).size
+  /** One refresh on the next microtask, for every change until then (a keystroke's input and its value write). */
+  const refreshSoon = () => {
+    if (!queued) { queued = true; queueMicrotask(() => { queued = false; if (roots.size) refresh() }) }
+  }
   const checkSoon = () => {
     clearTimeout(timer)
     timer = setTimeout(check, 300)
@@ -254,7 +258,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
       last = value
       revision++
       // After the DOM follows the values (rows, sections added or removed), once for writes in a row.
-      if (roots.size && !queued) { queued = true; queueMicrotask(() => { queued = false; if (roots.size) refresh() }) }
+      if (roots.size) refreshSoon()
       if (roots.size) checkSoon()
     })
   })
@@ -264,7 +268,7 @@ export function form<T extends object>(values: Signal<T> | T, options: FormOptio
     if (!field) return
     dirty.add(field)
     revision++
-    refresh()
+    refreshSoon()
     checkSoon()
   }
   const onLeave = (e: Event) => {

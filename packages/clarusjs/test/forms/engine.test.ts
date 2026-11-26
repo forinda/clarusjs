@@ -33,7 +33,7 @@ const schema = (check: (v: any) => { message: string; path: (string | number)[] 
 
 const emailForm = `<form data-cl-form="0"><label>Email <input required data-cl-path="customer.email"> <small data-cl-message></small></label></form>`
 
-test('a native constraint shows in the field\'s message element once the field is left, with ARIA', () => {
+test('a native constraint shows in the field\'s message element once the field is left, with ARIA', async () => {
   const { el, f } = mount(emailForm, { customer: { email: '' } })
   const input = el('input')
   const message = el('[data-cl-message]')
@@ -47,6 +47,7 @@ test('a native constraint shows in the field\'s message element once the field i
   expect(input.getAttribute('aria-invalid')).toBe('true')
   expect(input.getAttribute('aria-describedby')).toBe(message.id)
   type(input, 'a@b.c')
+  await tick() // a keystroke's refresh runs once, on the next microtask (#592)
   expect(f.error('customer.email')).toBe('')
   expect(input.hasAttribute('aria-invalid')).toBe(false)
   expect(message.hidden).toBe(true)
@@ -77,13 +78,15 @@ test('a schema issue lands on its field (and the browser knows it is invalid); s
   expect(input.validity.customError).toBe(false)
 })
 
-test('show rules: "input" shows on the first keystroke; "blur" waits for the field to be left', () => {
+test('show rules: "input" shows on the first keystroke; "blur" waits for the field to be left', async () => {
   const html = `<form data-cl-form="0"><label><input minlength="3" data-cl-path="name"><small data-cl-message></small></label></form>`
   const eager = mount(html, { name: '' }, { show: 'input' })
   type(eager.el('input'), 'a')
+  await tick()
   expect(eager.f.error('name')).not.toBe('')
   const lazy = mount(html, { name: '' })
   type(lazy.el('input'), 'a')
+  await tick()
   expect(lazy.f.error('name')).toBe('')
   leave(lazy.el('input'))
   expect(lazy.f.touched('name')).toBe(true)
@@ -161,11 +164,12 @@ test('async schema results arriving late: the latest check wins', async () => {
   expect(f.pending).toBe(false)
 })
 
-test('touched, changed, valid and reset', () => {
+test('touched, changed, valid and reset', async () => {
   const { el, f, v } = mount(emailForm, { customer: { email: '' } })
   expect(f.valid).toBe(false) // required and empty, shown or not
   type(el('input'), 'a@b.c')
   v.set({ customer: { email: 'a@b.c' } })
+  await tick()
   expect(f.changed('customer.email')).toBe(true)
   expect(f.valid).toBe(true)
   leave(el('input'))
@@ -217,7 +221,7 @@ test('review: a field without its own message element doesn\'t take over another
   expect(document.querySelectorAll('input')[1]!.getAttribute('aria-describedby')).toBeNull()
 })
 
-test('review: touched follows the row, not the index: removing a touched row doesn\'t show the next row\'s error', () => {
+test('review: touched follows the row, not the index: removing a touched row doesn\'t show the next row\'s error', async () => {
   const { f } = mount(`<form data-cl-form="0"><label><input required data-cl-path="lines.0.item"><small data-cl-message></small></label><label><input required data-cl-path="lines.1.item"><small data-cl-message></small></label></form>`, { lines: [{ item: '' }, { item: '' }] })
   const [first, second] = [...document.querySelectorAll('input')] as HTMLInputElement[]
   leave(first!)
@@ -225,6 +229,7 @@ test('review: touched follows the row, not the index: removing a touched row doe
   first!.closest('label')!.remove()
   second!.setAttribute('data-cl-path', 'lines.0.item')
   second!.dispatchEvent(new Event('input', { bubbles: true })) // something makes the form look again
+  await tick()
   expect(f.error('lines.0.item')).toBe('') // the remaining row was never left
   expect(f.touched('lines.0.item')).toBe(false)
 })
