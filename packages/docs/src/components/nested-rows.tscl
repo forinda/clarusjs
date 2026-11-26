@@ -7,6 +7,9 @@
     { title: 'Build', steps: ['Write a page'] },
   ])
   let added = 0
+  function addSection() {
+    sections = [{ title: 'Plan ' + ++added, steps: ['Read the guide'] }, ...sections]
+  }
 </script>
 
 <div id="nested-rows" class="demo-panel">
@@ -22,9 +25,7 @@
       </li>
     }
   </ol>
-  <button type="button" (click)="sections = [{ title: 'Plan ' + ++added, steps: ['Read the guide'] }, ...sections]">
-    Add a section at the top
-  </button>
+  <button type="button" (click)="addSection()">Add a section at the top</button>
 </div>
 
 <style scoped>
