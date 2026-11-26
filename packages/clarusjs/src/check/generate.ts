@@ -47,6 +47,17 @@ function patternNames(params: string): string[] {
   return names
 }
 
+/** A fill's `{ note = '' }` keys: names with a default, which the slot may not pass (#472). */
+function defaultedKeys(params: string): string[] {
+  type P = { type: string; computed?: boolean; key?: { type: string; name?: string; value?: unknown }; value?: { type: string }; properties?: P[] }
+  try {
+    const p = (parseExpressionAt(`(${params}) => 0`, 0, { ecmaVersion: 'latest' }) as unknown as { params: P[] }).params[0]!
+    if (p.type !== 'ObjectPattern') return []
+    return p.properties!.flatMap((x) => x.type === 'Property' && !x.computed && x.value?.type === 'AssignmentPattern'
+      ? [String(x.key!.type === 'Identifier' ? x.key!.name : x.key!.value)] : [])
+  } catch { return [] }
+}
+
 export function generateTs(source: string, file: string, options: { loader?: string; componentSuffix?: string; components?: ComponentNames } = {}): { code: string; mappings: Mapping[]; loaderSpan?: [number, number] } {
   const parsed = parse(source, file)
   const outer = outerIndexIn(parsed.nodes) // an inner @for's $index on an outer list (#585), as the compiler reports it
@@ -94,7 +105,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
     copy(t.clause, t.clauseStart)
     emit(` from ${JSON.stringify(t.from)}\n`)
   }
-  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M, Events as ${alias(imp.name)}_E, Attrs as ${alias(imp.name)}_A, DomEvents as ${alias(imp.name)}_D } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
+  for (const imp of parsed.imports) emit(`import type { Inputs as ${alias(imp.name)}, Models as ${alias(imp.name)}_M, Events as ${alias(imp.name)}_E, Attrs as ${alias(imp.name)}_A, DomEvents as ${alias(imp.name)}_D, Slots as ${alias(imp.name)}_S } from ${JSON.stringify(`${imp.from}${options.componentSuffix ?? '.ts'}`)}\n`)
   for (const d of parsed.dataImports) {
     emit('import ')
     copy(d.clause, d.clauseStart)
@@ -178,6 +189,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   // events that bubble: one that doesn't (focus, mouseenter…) would never arrive, so it's reported.
   emit("export type __cl_Bubbling = Exclude<keyof HTMLElementEventMap, 'focus' | 'blur' | 'mouseenter' | 'mouseleave' | 'pointerenter' | 'pointerleave' | 'load' | 'error' | 'scroll' | 'scrollend' | 'toggle' | 'beforetoggle' | 'loadstart' | 'loadeddata' | 'loadedmetadata' | 'play' | 'pause' | 'ended'>\n")
   emit('export type __cl_Ev<T, K> = K extends keyof T ? T[K] : K extends keyof HTMLElementEventMap ? HTMLElementEventMap[K] : any\n')
+  emit('export type __cl_SlotOf<S, K extends string> = K extends keyof S ? S[K] : any\n')
   emit('export type __cl_Use<E> = ((el: E) => unknown) | readonly ((el: E) => unknown)[]\n')
   // What a parent may pass a component as attributes for its root (#463): the names passed() in runtime/attrs.ts keeps.
   emit('export type __cl_Passed = { class?: unknown; id?: string; role?: string; tabindex?: string | number; hidden?: boolean; lang?: string; dir?: string; style?: string; [k: `data-${string}`]: unknown; [k: `aria-${string}`]: unknown }\n')
@@ -259,6 +271,9 @@ export function generateTs(source: string, file: string, options: { loader?: str
     emit(') });\n')
   }
 
+  let owner: string | undefined // the component whose @slot fills are being visited
+  const slotVars: [string, string][] = [] // each <slot>'s name and the var holding what it passes
+
   function visit(node: TemplateNode): void {
     switch (node.type) {
       case 'text':
@@ -266,16 +281,27 @@ export function generateTs(source: string, file: string, options: { loader?: str
         return
       case 'expr':
         return use(node.expr, node.start + 2)
-      case 'fill':
-        // A fill that receives the slot's data (#455) names it as a parameter: in scope inside, typed any.
-        // ponytail: any, not the child's slot types; type it from the child's <slot [x]> when a component exports them.
+      case 'fill': {
+        // A fill that receives the slot's data (#455) names it as a parameter, typed by what the child's <slot> with
+        // that name passes (#472): any when the child has no such slot.
+        const of = owner
+        owner = undefined
         if (node.params !== undefined) {
-          // As an array pattern: any parameter list is one ({ item }, props = {}, ...args), as the fill's (params) => ….
-          emit(`  { const [${node.params}]: any = []; __cl_use([${patternNames(node.params).join(', ')}])\n`)
+          // As an array pattern: any parameter list is one ({ item }, ...args), as the fill's (params) => ….
+          const slot = of ? `__cl_SlotOf<${alias(of)}_S, ${JSON.stringify(node.name)}>` : 'any'
+          // A name with a default that the slot doesn't pass is any (the default, unchecked), not reported. One it
+          // passes keeps the slot's type.
+          const own = defaultedKeys(node.params).map((k) => `${JSON.stringify(k)}?: any`)
+          const data = own.length && of ? `${slot} & Omit<{ ${own.join('; ')} }, keyof ${slot}>` : slot
+          emit('  { const [')
+          copy(node.params, node.paramsStart!) // mapped: an error in a parameter (a default that doesn't fit) lands on it
+          emit(`]: [${data}, ...any[]] = null!; __cl_use([${patternNames(node.params).join(', ')}])\n`)
           node.children.forEach(visit)
           emit('  }\n')
         } else node.children.forEach(visit)
+        owner = of
         return
+      }
       case 'if':
         node.branches.forEach((b, i) => {
           if (b.cond === null) emit('  else {\n')
@@ -406,8 +432,26 @@ export function generateTs(source: string, file: string, options: { loader?: str
             copy(a.expr, at(a.expr, attrValueStart(a)))
             emit(' } __cl_use($info) });\n')
           }
+          const outer = owner
+          owner = node.tag // its @slot fills are typed by its slots
           node.children.forEach(visit)
+          owner = outer
           return
+        }
+        if (node.tag === 'slot') {
+          // What this slot passes its fill (#472): a var, so it's in scope at the end, where Slots is read from.
+          const name = node.attrs.find((a) => a.kind === 'static' && a.name === 'name')
+          const key = name?.kind === 'static' && typeof name.value === 'string' ? name.value : 'default'
+          const v = `__cl_slot_${slotVars.length}`
+          slotVars.push([key, v])
+          emit(`  var ${v} = { `)
+          for (const a of node.attrs) {
+            if (a.kind !== 'prop') continue
+            emit(`${JSON.stringify(a.name)}: (`)
+            copy(a.expr, at(a.expr, attrValueStart(a)))
+            emit('), ')
+          }
+          emit('};\n')
         }
         for (const a of node.attrs) {
           if (a.kind === 'model') {
@@ -419,7 +463,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
             writable(a, radio ? JSON.stringify(own.value === true ? '' : own.value) : undefined)
           }
           else if (a.kind === 'prop' && node.tag === 'slot') {
-            use(a.expr, attrValueStart(a)) // data the slot passes to its fill (#455): any value, whatever its name
+            continue // data the slot passes to its fill (#455): checked above, any value, whatever its name
           } else if (a.kind === 'prop' && a.name === 'use') {
             // [use]="behaviour" (#464): a function of this element (or a list of them), run in the browser.
             emit(`  ;((__cl_u: __cl_Use<__cl_El<${JSON.stringify(node.tag.toLowerCase())}>>) => __cl_use(__cl_u))((`)
@@ -455,7 +499,12 @@ export function generateTs(source: string, file: string, options: { loader?: str
     }
   }
   parsed.nodes.forEach(visit)
+  // Each slot's data, by name (several slots of one name: any of theirs), for the components that fill them.
+  const byName = new Map<string, string[]>()
+  for (const [key, v] of slotVars) byName.set(key, [...(byName.get(key) ?? []), `typeof ${v}`])
+  emit(`  return { __cl_slots: null! as { ${[...byName].map(([k, t]) => `${JSON.stringify(k)}: ${t.join(' | ')}`).join('; ')} } }\n`)
   emit('}\n')
+  emit('export type Slots = Awaited<ReturnType<typeof __cl_check>>[\'__cl_slots\']\n')
   return { code, mappings, loaderSpan }
 }
 

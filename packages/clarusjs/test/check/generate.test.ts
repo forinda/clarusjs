@@ -298,13 +298,43 @@ test('#455: a slot\'s data is checked where the child passes it, and a fill that
   expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': some })).toEqual([])
 })
 
-test('#455 review: any function parameter in a fill (a default, a rest) and any slot data name ([engine]) type-check', () => {
+test('#455 review: any function parameter in a fill (a rest) and any slot data name ([engine]) type-check; #472: a default is checked against the data', () => {
   const list = '@input rows: { id: number; name: string }[]\n<ul>@for (r of rows; track r.id) {<li><slot name="row" [item]="r" [engine]="42">{{ r.name }}</slot></li>}</ul>\n'
   const page = (fill: string) => `@import list from '../components/list.tscl'\n<list [rows]="[]">${fill}</list>\n`
   expect(check({ 'src/components/list.tscl': list })).toEqual([]) // [engine] on a slot is data, not a form
-  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', props = {}) {<b>{{ props.item.name }}</b>}") })).toEqual([])
+  // The slot always passes its data, so a default never applies: one that doesn't fit the data is reported, on it.
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', props = {}) {<b>{{ props.item.name }}</b>}") })).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:2:32 Type '\{\}' is missing the following properties/),
+  ])
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', props) {<b>{{ props.item.name }}{{ props.engine.toFixed() }}</b>}") })).toEqual([])
   expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', ...args) {<b>{{ args.length }}</b>}") })).toEqual([])
-  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', { item } = {}) {<b>{{ item }}</b>}") })).toEqual([])
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', { item } = {}) {<b>{{ item }}</b>}") })).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:2:\d+ Type '\{\}' is missing the following properties/),
+  ])
+})
+
+test('#472: a fill\'s names are typed by what the child\'s <slot> passes', () => {
+  const list = '@input rows: { id: number; name: string }[]\n<ul>@for (r of rows; track r.id) {<li><slot name="row" [item]="r" [index]="$index">{{ r.name }}</slot></li>}</ul>\n<slot [count]="rows.length" />\n'
+  const page = (fill: string) => `@import list from '../components/list.tscl'\n<list [rows]="[]">${fill}</list>\n`
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', { item, index }) {<b>{{ index.toFixed() }} {{ item.name.toUpperCase() }}</b>}") })).toEqual([])
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', { item }) {<b>{{ item.nmae }}</b>}") })).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:2:\d+ Property 'nmae' does not exist on type '\{ readonly id: number; readonly name: string; \}'/),
+  ])
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', { item, idx }) {<b>{{ item.id }}{{ idx }}</b>}") })).toEqual([
+    expect.stringMatching(/^src\/pages\/index\.tscl:2:\d+ Property 'idx' does not exist on type/),
+  ])
+  // A name with a default may be one the slot doesn't pass (the docs' { item, note = '' }): any, not an error.
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('row', { item, note = '', index = 0 }) {<b>{{ note.toUpperCase() }}{{ item.id }}{{ index.toFixed() }}</b>}") })).toEqual([])
+  // The default slot's data too; a slot the child doesn't have stays any.
+  expect(check({ 'src/components/list.tscl': list, 'src/pages/index.tscl': page("@slot('default', { count }) {<b>{{ count.toFixed() }}</b>}@slot('other', { x }) {<b>{{ x.y }}</b>}") })).toEqual([])
+})
+
+test('#472: a component that renders itself and fills its own slot type-checks (no circular type)', () => {
+  const tree = "@input node: { label: string; kids: any[] }\n@import tree from './tree.tscl'\n<li><slot name=\"label\" [text]=\"node.label\">{{ node.label }}</slot><ul>@for (k of node.kids; track $index) {<tree [node]=\"k\">@slot('label', { text }) {<i>{{ text.toUpperCase() }}</i>}</tree>}</ul></li>\n"
+  expect(check({ 'src/components/tree.tscl': tree })).toEqual([])
+  expect(check({ 'src/components/tree.tscl': tree.replace('text.toUpperCase()', 'text.toFixed()') })).toEqual([
+    expect.stringMatching(/Property 'toFixed' does not exist on type 'string'/),
+  ])
 })
 
 test('#442 events: emit() is typed by @event, and a parent handler gets $event as the value and $info', () => {
