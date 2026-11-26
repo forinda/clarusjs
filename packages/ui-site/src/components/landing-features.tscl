@@ -1,10 +1,19 @@
-{{-- What the library promises, in four cards. --}}
+{{-- What the library promises, in six cards. --}}
 
 <ul class="landing-features" aria-label="Why it works this way">
   <li>
     <icon name="lucide:clipboard-copy" />
     <h3>Copy, don't install</h3>
     <p>Each component is a file you paste into <code>src/components/ui/</code>. Change anything: it's yours.</p>
+  </li>
+  <li>
+    <icon name="lucide:code-xml" />
+    <h3>Built on native HTML</h3>
+    <p>
+      Real <code>&lt;dialog&gt;</code>, popover, <code>&lt;details&gt;</code>, <code>&lt;select&gt;</code>,
+      <code>&lt;table&gt;</code> and form inputs: focus, Escape, autofill and form submits come from the browser, not
+      from code you ship.
+    </p>
   </li>
   <li>
     <icon name="lucide:feather" />
@@ -16,7 +25,9 @@
   <li>
     <icon name="lucide:accessibility" />
     <h3>Accessible by default</h3>
-    <p>Native elements first, keyboard paths and ARIA where they're not enough, and every page tested with axe.</p>
+    <p>
+      Keyboard paths and ARIA wherever the native elements need help, and every page tested with axe, light and dark.
+    </p>
   </li>
   <li>
     <icon name="lucide:palette" />
@@ -25,6 +36,11 @@
       About forty <code>--ui-</code> tokens, light and dark. Tune them in the Theme sheet and copy one
       <code>theme.css</code>.
     </p>
+  </li>
+  <li>
+    <icon name="lucide:wind" />
+    <h3>Plain CSS or Tailwind</h3>
+    <p>Every component that owns its markup comes in both, switchable on its page, and tested to look the same.</p>
   </li>
 </ul>
 

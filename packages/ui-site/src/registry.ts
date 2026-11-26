@@ -589,6 +589,18 @@ export const registry: Entry[] = [
     island: false,
   },
   {
+    name: 'masonry',
+    group: 'Media',
+    title: 'Masonry',
+    description: 'Photos or cards in columns at their own heights, as many columns as fit. CSS only.',
+    files: ['masonry.tscl'],
+    tailwind: ['masonry.tw.tscl'],
+    parts: [],
+    uses: [],
+    examples: ['cards'],
+    island: false,
+  },
+  {
     name: 'sheet',
     group: 'Overlay',
     title: 'Sheet',

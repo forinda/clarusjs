@@ -1,0 +1,24 @@
+{{--
+  Masonry: items in columns at their own heights, as many columns as fit at least `width` wide (CSS multi-column:
+  no JavaScript). An item never breaks across columns. Items read down each column, then across: fine for photos
+  and cards; for a list whose order matters across rows, use a grid.
+--}}
+@input width: string = '14rem'
+
+<div data-part="masonry" [style]="'--ui-masonry-width: ' + width">
+  <slot />
+</div>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      columns: var(--ui-masonry-width);
+      column-gap: var(--ui-masonry-gap, var(--ui-space-3));
+    }
+    :where(:scope > *) {
+      margin: 0 0 var(--ui-masonry-gap, var(--ui-space-3));
+      break-inside: avoid;
+    }
+  }
+</style>

@@ -67,6 +67,8 @@
 @import twScrollArea from '~/registry/scroll-area.tw.tscl'
 @import uiOtpInput from '~/registry/otp-input.tscl'
 @import twOtpInput from '~/registry/otp-input.tw.tscl'
+@import uiMasonry from '~/registry/masonry.tscl'
+@import twMasonry from '~/registry/masonry.tw.tscl'
 @import uiAppointmentPicker from '~/registry/appointment-picker.tscl'
 @import twAppointmentPicker from '~/registry/appointment-picker.tw.tscl'
 @import { ALERT_VARIANTS, BADGE_VARIANTS, BUTTON_VARIANTS, CHART_TYPES, INPUT_VARIANTS, SIZES } from './tailwind-parity.ts'
@@ -327,6 +329,15 @@
   </div>
   <div data-pair="otp-input">
     <uiOtpInput id="po1" label="Code" value="12" /><twOtpInput id="po2" label="Code" value="12" />
+  </div>
+  <div data-pair="masonry">
+    <uiMasonry width="8rem"
+      ><p>a</p>
+      <p>b</p></uiMasonry
+    ><twMasonry width="8rem"
+      ><p>a</p>
+      <p>b</p></twMasonry
+    >
   </div>
   <div data-pair="appointment-picker">
     <uiAppointmentPicker id="pa1" label="When" /><twAppointmentPicker id="pa2" label="When" />
