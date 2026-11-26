@@ -266,3 +266,8 @@ test('#465 @context is a directive: kept as written, with an object type and a d
   expect(out.startsWith("@context tabs: { id: string; value: string }\n@context theme: { tone: string } = { tone: 'light' }\n\n<p>")).toBe(true)
   expect(await fmt(out)).toBe(out)
 })
+
+test('#585: a @for header with let aliases keeps them', async () => {
+  const out = await same('@for (row of rows; track $index; let r = $index, n = $count) {\n  @for (c of row; track $index) {<i>{{ r }}{{ n }}{{ c }}</i>}\n}\n')
+  expect(out).toContain('@for (row of rows; track $index; let r = $index, n = $count) {')
+})

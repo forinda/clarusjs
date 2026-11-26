@@ -113,17 +113,20 @@ function scan(ctx: Ctx): { holes: Hole[]; blocks: Block[]; fors: For[]; regions:
   }
   // One pass (#465): `level` counts the islands entered below this one, minus the slot ranges entered (each moves its
   // content one island out), so the island's own comments are at 0 and nothing below 0 is (as owner() says, linearly).
-  const visit = (parent: Node, level: number) => {
+  // The siblings from `first` up to `stop` (not included), and what they hold.
+  const visit = (first: Node | null, stop: Node | null, level: number) => {
     let ranges = 0
-    for (let n = parent.firstChild; n; n = n.nextSibling) {
-      if (n.nodeType === 1) level < 0 || visit(n, level + ((n as Element).localName === 'cl-island' ? 1 : 0))
+    for (let n = first; n && n !== stop; n = n.nextSibling) {
+      if (n.nodeType === 1) level < 0 || visit(n.firstChild, null, level + ((n as Element).localName === 'cl-island' ? 1 : 0))
       else if (n.nodeType !== 8) continue
       else if ((n as Comment).data === '[s') { ranges++; level-- }
       else if ((n as Comment).data === ']s') { if (ranges) { ranges--; level++ } }
-      else if (!level && inside(ctx, n)) take(n as Comment)
+      else if (!level) take(n as Comment)
     }
   }
-  visit(root, 0)
+  // A row: only between its markers (siblings), not the whole island once per row.
+  if ('root' in ctx) visit(ctx.start.nextSibling, ctx.end, 0)
+  else visit(root.firstChild, null, 0)
   return { holes, blocks, fors, regions }
 }
 
@@ -443,7 +446,15 @@ export function use(ctx: Ctx, index: number, get: () => unknown): void {
 export function marked(ctx: Ctx, selector: string): Element | undefined {
   const root = rootOf(ctx)
   const island = islandOf(root)
-  return [...root.querySelectorAll(selector)].find((e) => owner(e) === island && inside(ctx, e))
+  const mine = (e: Element) => owner(e) === island
+  if (!('root' in ctx)) return [...root.querySelectorAll(selector)].find(mine)
+  // A row: the elements between its markers, not the whole island's once per row.
+  for (let n = ctx.start.nextSibling; n && n !== ctx.end; n = n.nextSibling) {
+    if (n.nodeType !== 1) continue
+    const found = ((n as Element).matches(selector) ? [n as Element] : []).concat([...(n as Element).querySelectorAll(selector)]).find(mine)
+    if (found) return found
+  }
+  return undefined
 }
 
 /**

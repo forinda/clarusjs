@@ -507,3 +507,35 @@ test('#444: check reports a modifier that isn\'t one, where it is written, as th
     expect.objectContaining({ file: 'src/pages/index.tscl', line: 4, column: 7, code: 'clarus', message: expect.stringContaining('unknown modifier .prevnt') }),
   ])
 })
+
+test('#585: @for let aliases are typed as what they name; an inner $index on an outer list is reported', () => {
+  const root = project({
+    'src/pages/index.tscl': `<script>
+  let order = state({ sections: [{ title: '', items: [{ name: '' }] }] })
+</script>
+@for (section of order.sections; track $index; let s = $index, last = $last) {
+  @for (item of section.items; track $index) {
+    <input [(value)]="order.sections[s].items[$index].name">
+    <b>{{ s.toFixed(0) }}{{ last ? '!' : '' }}{{ s.length }}</b>
+  }
+}
+`,
+  })
+  expect(check({ root, typescript }).diagnostics).toEqual([
+    expect.objectContaining({ line: 7, code: 'TS2339', message: expect.stringContaining("'length' does not exist on type 'number'") }),
+  ])
+  const wrong = project({
+    'src/pages/index.tscl': `<script>
+  let order = state({ sections: [{ items: [{ name: '' }] }] })
+</script>
+@for (section of order.sections; track $index) {
+  @for (item of section.items; track $index) {
+    <input [(value)]="order.sections[$index].items[$index].name">
+  }
+}
+`,
+  })
+  expect(check({ root: wrong, typescript }).diagnostics).toEqual([
+    expect.objectContaining({ line: 6, code: 'clarus', message: expect.stringContaining("$index here is the inner @for's, not the one over order.sections") }),
+  ])
+})

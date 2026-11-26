@@ -112,15 +112,24 @@ test('code samples show template syntax literally (verbatim)', async ({ page }) 
   await expect(page.locator('pre').filter({ hasText: '<code verbatim>' })).toContainText('<p>Hello, {{ name }}!</p>')
 })
 
-test('the sidebar marks the current page, the header its section, and each page has its own description', async ({ page }) => {
+// One test per section (#585): ~90 pages in one test ran past the 30 s a test gets when the whole suite ran at once.
+for (const section of docSections) {
+  test(`the sidebar marks the current page and the header its section: ${section.key}`, async ({ page }) => {
+    for (const { path } of items([section])) {
+      await page.goto(path, { waitUntil: 'domcontentloaded' }) // what it checks is in the server's HTML
+      const current = page.locator('.sidebar a[aria-current="page"]')
+      await expect(current, path).toHaveCount(1)
+      await expect(current, path).toHaveAttribute('href', path)
+      await expect(page.locator('header nav a[aria-current]'), path).toHaveAttribute('href', section.href)
+    }
+  })
+}
+
+test('each docs page has its own description; the home page has no sidebar and no current section', async ({ page }) => {
   const descriptions = new Set<string>()
-  for (const { path, section } of docs) {
-    await page.goto(path)
-    const current = page.locator('.sidebar a[aria-current="page"]')
-    await expect(current, path).toHaveCount(1)
-    await expect(current, path).toHaveAttribute('href', path)
-    await expect(page.locator('header nav a[aria-current]'), path).toHaveAttribute('href', sections.find((s) => s.key === section)!.href)
-    descriptions.add((await page.locator('meta[name="description"]').getAttribute('content'))!)
+  for (const { path } of docs) {
+    const html = await (await page.request.get(path)).text() // the HTML only: nothing to render
+    descriptions.add(/<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? '')
   }
   expect(descriptions.size).toBe(docs.length)
   await page.goto('/')
@@ -1686,6 +1695,15 @@ test('#249 lists: $count, $first, $last, $even and $odd follow the list in an is
   await expect(demo.locator('li')).toHaveText(['1 of 2 · first · even', '2 of 2 · last · odd'])
   await demo.getByRole('button', { name: 'Add a row' }).click()
   await expect(demo.locator('li')).toHaveText(['1 of 3 · first · even', '2 of 3 · odd', '3 of 3 · last · even'])
+})
+
+test('#585 lists: a nested @for numbers its rows with the outer index (let s = $index), and renumbers when rows move', async ({ page }) => {
+  await page.goto('/guide/lists#nested-loops')
+  const demo = page.locator('#nested-rows')
+  await expect(demo.locator('.n')).toHaveText(['1.1', '1.2', '2.1']) // the server's render
+  await expect(page.locator('cl-island[c="nested-rows"]')).toHaveAttribute('data-cl-ready', '')
+  await demo.getByRole('button', { name: 'Add a section at the top' }).click()
+  await expect(demo.locator('.n')).toHaveText(['1.1', '2.1', '2.2', '3.1'])
 })
 
 test('#259 h(): the playground builds HTML in load() with h(), and the page shows it as HTML (text stays escaped)', async ({ page }) => {
