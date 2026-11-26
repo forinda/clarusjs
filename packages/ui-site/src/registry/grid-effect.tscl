@@ -39,7 +39,6 @@
     }
     :where([data-part='grid-effect'][data-effect='trail']) {
       display: grid;
-      grid-template-columns: repeat(auto-fill, var(--ui-grid-cell, 48px));
       grid-auto-rows: var(--ui-grid-cell, 48px);
     }
     :where([data-part='grid-effect'] [data-cell]) {
