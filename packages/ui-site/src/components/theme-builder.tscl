@@ -261,7 +261,7 @@
         <span class="row-label">Preset</span>
         <span class="row-end"><span class="row-value">{{ PRESETS.find((p) => p.name === base)?.label ?? 'Custom' }}</span><span class="dot" [style]="'--sw: ' + theme[mode].accent"></span><icon name="lucide:chevron-right" /></span>
       </uiPopoverTrigger>
-      <uiPopover id="tb-presets" side="right" align="start">
+      <uiPopover id="tb-presets" side="bottom" align="end">
         <div class="presets" role="group" aria-label="Presets">
           @for (p of PRESETS; track p.name) {
             <button
@@ -504,9 +504,11 @@
     border-radius: 50%;
     background: var(--sw);
   }
+  /* Under its row, right-aligned with it: the sheet sits at the screen's edge, so there's no room beside it. */
   .theme-builder #tb-presets {
-    position-area: right span-bottom;
-    margin: 0 0 0 8px;
+    position-area: bottom span-left;
+    min-width: 12rem;
+    margin: 4px 0 0;
     padding: 6px;
     border: 1px solid var(--rule);
     border-radius: 10px;

@@ -345,3 +345,16 @@ test('#rework: /theme puts Customize in its heading row, beside the title', asyn
   expect(Math.abs(button.y + button.height / 2 - (h1.y + h1.height / 2))).toBeLessThan(24)
   expect(button.x).toBeGreaterThan(h1.x + h1.width)
 })
+
+test('#rework: the Preset list opens under its row, inside the sheet, not off to its left', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/components/button')
+  await openSheet(page)
+  const trigger = (await page.getByRole('button', { name: /^Preset/ }).boundingBox())!
+  await page.getByRole('button', { name: /^Preset/ }).click()
+  const list = (await page.locator('#tb-presets').boundingBox())!
+  const sheet = (await page.getByRole('dialog', { name: 'Theme' }).boundingBox())!
+  expect(list.y).toBeGreaterThanOrEqual(trigger.y + trigger.height - 1) // below the row
+  expect(list.x).toBeGreaterThanOrEqual(sheet.x) // inside the sheet
+  expect(list.x + list.width).toBeLessThanOrEqual(trigger.x + trigger.width + 1) // right-aligned with the row
+})
