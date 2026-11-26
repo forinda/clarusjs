@@ -947,6 +947,7 @@ test('large forms: a section, lines bound by index, derived total and validation
   await expect(order.getByLabel('Name')).toHaveAttribute('placeholder', 'Ada Lovelace')
   await expect(order.getByLabel('Email')).toHaveAttribute('placeholder', 'ada@example.com')
   await expect(order.getByLabel('Item 1')).toHaveAttribute('placeholder', 'Item')
+  await expect(order.locator('.order-changed')).toHaveCount(0) // f.dirty: nothing changed yet
   // A field's error shows under that field once you leave it, then follows what you type.
   const nameField = order.locator('.text-field').filter({ has: page.getByLabel('Name') })
   const emailField = order.locator('.text-field').filter({ has: page.getByLabel('Email') })
@@ -955,6 +956,9 @@ test('large forms: a section, lines bound by index, derived total and validation
   await order.getByLabel('Name').focus() // left the email field
   await expect(emailField.getByRole('alert')).toHaveText('Enter an email like ada@example.com.')
   await expect(order.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true')
+  await expect(order.locator('.order-changed')).toHaveText('Unsaved changes')
+  await order.getByLabel('Email').fill('')
+  await expect(order.locator('.order-changed')).toHaveCount(0) // typed and taken back: compared by value
   await order.getByLabel('Email').fill('ada@example.com')
   await expect(emailField.getByRole('alert')).toHaveCount(0)
   await expect(nameField.getByRole('alert')).toHaveText('Enter a name.') // Name was left empty (focused, then Email): its own error, under it
@@ -980,6 +984,8 @@ test('large forms: a section, lines bound by index, derived total and validation
   await expect(order.locator('.order-total')).toHaveText('Total: 4')
   await expect(order.getByLabel('Item 1')).toHaveValue('Notebook')
   await expect(order.getByLabel('Name')).toHaveValue('')
+  await expect(order.locator('.order-changed')).toHaveCount(0)
+  await expect(order.getByRole('alert')).toHaveCount(0) // reset clears what was shown
 })
 
 test('client routes: pushState and replaceState from the page are not page loads', async ({ page }) => {

@@ -43,6 +43,8 @@ A `Form<T>`:
 - **Fields:**
   - **`touched(path)`**: the field has been left at least once.
   - **`changed(path)`**: the field differs from its starting value.
+  - **`dirty`** (since 0.17.0): any value differs from the start, compared by value through objects and arrays.
+  - **`shown(path)`** (since 0.17.0): the field's error shows now, by `show` (or a step check, or after a submit).
   - **`focus(path)`**: focuses a field (the checked radio of a group, else the first).
   - **`reset(values?)`**: back to the starting values, with touched and errors cleared. With `values`, those become the values and the new starting point.
 - **Steps** (multi-step forms):

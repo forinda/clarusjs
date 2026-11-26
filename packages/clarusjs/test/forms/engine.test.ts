@@ -289,3 +289,27 @@ test('review #233 (2): a field bound to a component\'s model takes that model\'s
   expect(f.errors.map((e) => e.path)).toEqual(['name.first', 'name.last'])
   void el
 })
+
+test('#443: dirty is the whole form differing from its start, by value: typing then undoing is clean again', () => {
+  const { f, v } = mount(emailForm, { customer: { email: '' } })
+  expect(f.dirty).toBe(false)
+  v.set({ customer: { email: 'a' } })
+  expect(f.dirty).toBe(true)
+  v.set({ customer: { email: '' } }) // a new object, equal to the start
+  expect(f.dirty).toBe(false)
+  v.set({ customer: { email: 'b' } })
+  f.reset({ customer: { email: 'b' } }) // saved: the new starting point
+  expect(f.dirty).toBe(false)
+})
+
+test('#443: shown(path) applies the show rule, for a field that shows its own error (a component, a custom control)', async () => {
+  const { el, f } = mount(emailForm, { customer: { email: '' } })
+  expect(f.shown('customer.email')).toBe(false)
+  leave(el('input'))
+  expect(f.shown('customer.email')).toBe(true)
+  const late = mount(emailForm, { customer: { email: '' } }, { show: 'submit' })
+  leave(late.el('input'))
+  expect(late.f.shown('customer.email')).toBe(false)
+  await late.f.submit()
+  expect(late.f.shown('customer.email')).toBe(true) // after a submit, every field
+})

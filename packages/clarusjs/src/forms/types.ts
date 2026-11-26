@@ -59,6 +59,13 @@ export type Form<T> = {
   touched(path: Path<T>): boolean
   /** Differs from the starting value. */
   changed(path: Path<T>): boolean
+  /** Any value differs from the start (compared by value: typed into and back is clean). For "unsaved changes". */
+  readonly dirty: boolean
+  /**
+   * Whether this field's error shows now, by the form's `show` rule (or after a step check or a submit): for a field
+   * that shows its own error, such as a component's.
+   */
+  shown(path: Path<T>): boolean
   /** No errors at all (shown or not). */
   readonly valid: boolean
   /** An async schema check is running. */
