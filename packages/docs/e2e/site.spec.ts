@@ -2878,3 +2878,18 @@ test('#373: the phone drawer ends with the site\'s own links, those its links ro
   await page.setViewportSize({ width: 1440, height: 900 })
   await expect(own).toBeHidden()
 })
+
+test('animations guide: what @if and @for insert animates in with @starting-style; reduced motion drops the movement', async ({ page }) => {
+  await page.goto('/guide/animations')
+  await expect(page.locator('cl-island[c="enter-demo"]')).toHaveAttribute('data-cl-ready', '')
+  const running = (sel: string) => page.locator(sel).last().evaluate((el) => el.getAnimations().map((a) => (a as CSSTransition).transitionProperty).sort())
+  await page.getByRole('button', { name: 'Show the panel' }).click()
+  expect(await running('.enter-panel')).toEqual(['opacity', 'translate'])
+  await page.getByRole('button', { name: 'Add a row' }).click()
+  expect(await running('.enter-rows li')).toEqual(['opacity', 'translate'])
+  // Reduced motion: no movement (this site's theme also shortens every transition to nothing).
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.getByRole('button', { name: 'Add a row' }).click()
+  expect(await page.locator('.enter-rows li').last().evaluate((el) => getComputedStyle(el).translate)).toBe('none')
+  expect(await running('.enter-rows li')).not.toContain('translate')
+})
