@@ -1,0 +1,2 @@
+@input tone: string = 'neutral'
+<span class="badge" [data-tone]="tone"><slot /></span>

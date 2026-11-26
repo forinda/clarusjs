@@ -188,3 +188,10 @@ test('#465 @context is offered as a directive', async () => {
   const { at } = await setup()
   expect(labels(at('<p>\n@c§', completions))).toContain('@context')
 })
+
+test('kebab tags: hover and go to definition on <my-card> for @import MyCard', async () => {
+  const { at } = await setup()
+  const shown = at(`@import MyCard from '../components/card.tscl'\n<my-ca§rd [title]="'x'" />\n`, hover)?.contents as { value: string }
+  expect(shown.value).toContain('title: string')
+  expect(at(`@import MyCard from '../components/card.tscl'\n<my-ca§rd />\n`, definition)?.[0]?.targetUri).toMatch(/card\.tscl$/)
+})
