@@ -35,7 +35,8 @@ export function toCss(theme: Theme, scope = ':root'): string {
   const osDark = root ? ":root:not([data-theme='light'])" : under(":root:not([data-theme='light'])", scope)
   const toggleDark = root ? ":root[data-theme='dark']" : under(":root[data-theme='dark']", scope)
   const scale = `\n  /* Spacing: steps of --ui-space (4px), set in the same rule so changing the unit rescales them. */\n${SCALE.map(([k, v]) => `  --ui-${k}: ${v};\n`).join('')}`
-  return `${scope} {\n${decl(theme.light, '  ')}${scale}}\n@media (prefers-color-scheme: dark) {\n  ${osDark} {\n${decl(theme.dark, '    ')}  }\n}\n${toggleDark} {\n${decl(theme.dark, '  ')}}\n`
+  // color-scheme: native controls (select popups, date pickers, scrollbars) follow light and dark too.
+  return `${scope} {\n  color-scheme: light;\n${decl(theme.light, '  ')}${scale}}\n@media (prefers-color-scheme: dark) {\n  ${osDark} {\n    color-scheme: dark;\n${decl(theme.dark, '    ')}  }\n}\n${toggleDark} {\n  color-scheme: dark;\n${decl(theme.dark, '  ')}}\n`
 }
 
 /**

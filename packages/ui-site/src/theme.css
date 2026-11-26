@@ -5,6 +5,7 @@
 */
 
 :root {
+  color-scheme: light;
   --ui-font: system-ui, sans-serif;
   --ui-font-heading: var(--ui-font);
   --ui-font-mono: ui-monospace, monospace;
@@ -63,6 +64,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
+    color-scheme: dark;
     --ui-bg: #121a1b;
     --ui-fg: #e6eded;
     --ui-muted: #9aa8a9;
@@ -100,6 +102,7 @@
   }
 }
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --ui-bg: #121a1b;
   --ui-fg: #e6eded;
   --ui-muted: #9aa8a9;

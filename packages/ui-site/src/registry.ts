@@ -192,6 +192,7 @@ export const registry: Entry[] = [
     tailwind: ['label.tw.tscl'],
     parts: [],
     uses: [],
+    example: ['input'],
     island: false,
   },
   {
