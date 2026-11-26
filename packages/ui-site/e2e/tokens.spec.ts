@@ -38,3 +38,12 @@ test('#tokens: every component\'s focus ring takes the theme\'s brand', async ({
   }
   expect(misses).toEqual([])
 })
+
+test('#tokens: the OTP input\'s active box (its focus, the real input being unseen) takes the brand', async ({ page }) => {
+  await page.addInitScript(([key, css]) => localStorage.setItem(key, css), [STORAGE_KEY, toCss(theme, SCOPE) + siteCss(theme)] as const)
+  await page.goto('/components/otp-input')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  await page.locator('.demo [data-part="otp-input"]').first().focus()
+  const cell = page.locator('.demo [data-part="otp-cell"][data-active="true"]').first()
+  await expect(cell).toHaveCSS('border-top-color', BRAND)
+})
