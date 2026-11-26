@@ -33,6 +33,15 @@ test('#594 review: nested and union type arguments are caught too', () => {
   expect(error('  let n = state(0)\n  const g = (api) => api.get<string>(1)')).toMatch(/a type argument, api\.get<string>\(…\)/)
 })
 
+test('#594 review: a<b>(c) is refused though it is valid JavaScript: TypeScript reads the same text as a call', () => {
+  // Decided: both readings are possible, and check (TypeScript) and the build (JavaScript) would disagree. Rejected,
+  // with how to write the comparison so both read it alike.
+  const m = error('  let n = state(0)\n  const a = 1, b = 2, c = 0\n  const r = a<b>(c)')
+  expect(m).toMatch(/a type argument, a<b>\(…\)/)
+  expect(m).toMatch(/for a comparison, add parentheses: \(a < b\) > c/)
+  expect(error('  let n = state(0)\n  const a = 1, b = 2, c = 0\n  const r = (a < b) > c')).toBe('')
+})
+
 test('JavaScript that only looks like it stays fine', () => {
   expect(error('  let n = state(0)\n  const r = (1 < 2) > 0')).toBe('') // #594 review: the same tree as f<T>(x)
   expect(error('  let n = state(0)\n  const a = () => 1, b = () => 2, c = () => 3, d = () => 4\n  const r = (a() < b(), c() > d())')).toBe('')

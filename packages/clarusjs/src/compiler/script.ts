@@ -79,7 +79,7 @@ const TYPE_TOKENS = new Set(['name', 'string', 'num', ',', '.', '[', ']', '{', '
  * two), then `(`. f<T>(x) is f < T > (x) here; spaced comparisons (a < b), and strings and regexes (tokens of their
  * own), never match. Where it starts and how it reads, or null.
  */
-function typeArgumentIn(code: string): { start: number; text: string; what: string } | null {
+function typeArgumentIn(code: string): { start: number; text: string; what: string; comparison: string } | null {
   let tokens: { type: { label: string }; value?: unknown; start: number; end: number }[]
   try { tokens = [...tokenizer(code, OPTS)] as typeof tokens } catch { return null } // not even tokens: acorn says why
   for (let i = 1; i < tokens.length; i++) {
@@ -102,7 +102,14 @@ function typeArgumentIn(code: string): { start: number; text: string; what: stri
     while (k >= 2 && tokens[k - 1]!.type.label === '.' && tokens[k - 2]!.type.label === 'name') k -= 2
     // function f<T>(x) declares type parameters; anything else passes a type argument.
     const what = tokens[k - 1]?.type.label === 'function' ? 'type parameters' : 'a type argument'
-    return { start: tokens[k]!.start, text: `${code.slice(tokens[k]!.start, tokens[j - 1]!.end)}(…)`, what }
+    // a<b>(c) is valid JavaScript too (two comparisons), so say how to write the comparison both read alike. Only for
+    // a plain name between the brackets: a<Map<K, V>>(c) is no comparison anyone meant.
+    const between = code.slice(lt.end, tokens[j - 1]!.start).trim()
+    let p = j + 1
+    for (let open = 1; p < tokens.length && open; p++) open += tokens[p]!.type.label === '(' ? 1 : tokens[p]!.type.label === ')' ? -1 : 0
+    const inside = code.slice(tokens[j]!.end, tokens[p - 1]!.start).trim()
+    const comparison = /^[\w$.]+$/.test(between) && tokens[j - 1]!.value === '>' ? `(${code.slice(tokens[k]!.start, lt.start)} < ${between}) > ${inside.includes(',') ? `(${inside})` : inside}` : ''
+    return { start: tokens[k]!.start, text: `${code.slice(tokens[k]!.start, tokens[j - 1]!.end)}(…)`, what, comparison }
   }
   return null
 }
@@ -110,7 +117,7 @@ function typeArgumentIn(code: string): { start: number; text: string; what: stri
 function parseScript(code: string, file = '<script>', source = code, offset = 0): N {
   // Valid JavaScript or not (f<A, B>(x) in an arrow's body, new Map<K, V>()), a type argument is named first.
   const arg = typeArgumentIn(code)
-  if (arg) throw new ClarusError(`${TS}${arg.what}, ${arg.text}${TS_WHERE}`, file, source, offset + arg.start)
+  if (arg) throw new ClarusError(`${TS}${arg.what}, ${arg.text}${TS_WHERE}${arg.comparison ? ` (for a comparison, add parentheses: ${arg.comparison})` : ''}`, file, source, offset + arg.start)
   try {
     return acornParse(code, OPTS) as unknown as N
   } catch (e) {
