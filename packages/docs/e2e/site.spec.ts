@@ -2882,16 +2882,20 @@ test('#373: the phone drawer ends with the site\'s own links, those its links ro
 test('animations guide: what @if and @for insert animates in with @starting-style; reduced motion drops the movement', async ({ page }) => {
   await page.goto('/guide/animations')
   await expect(page.locator('cl-island[c="enter-demo"]')).toHaveAttribute('data-cl-ready', '')
-  const running = (sel: string) => page.locator(sel).last().evaluate((el) => el.getAnimations().map((a) => (a as CSSTransition).transitionProperty).sort())
-  await page.getByRole('button', { name: 'Show the panel' }).click()
-  expect(await running('.enter-panel')).toEqual(['opacity', 'translate'])
-  await page.getByRole('button', { name: 'Add a row' }).click()
-  expect(await running('.enter-rows li')).toEqual(['opacity', 'translate'])
+  // Transitions started, as they start (transitionrun), so a slow runner can't miss one that has already ended.
+  const started = async (click: () => Promise<void>, sel: string) => {
+    await page.evaluate(() => { (window as { runs?: string[] }).runs = []; addEventListener('transitionrun', (e) => (window as { runs?: string[] }).runs!.push(`${(e.target as Element).matches(document.body.dataset.sel!) ? '' : 'other:'}${e.propertyName}`)) })
+    await page.evaluate((s) => (document.body.dataset.sel = s), sel)
+    await click()
+    await expect.poll(() => page.evaluate(() => (window as { runs?: string[] }).runs!.filter((r) => !r.startsWith('other:')).length)).toBeGreaterThan(0)
+    return page.evaluate(() => [...new Set((window as { runs?: string[] }).runs!.filter((r) => !r.startsWith('other:')))].sort())
+  }
+  expect(await started(() => page.getByRole('button', { name: 'Show the panel' }).click(), '.enter-panel')).toEqual(['opacity', 'translate'])
+  expect(await started(() => page.getByRole('button', { name: 'Add a row' }).click(), '.enter-rows li')).toEqual(['opacity', 'translate'])
   // Reduced motion: no movement (this site's theme also shortens every transition to nothing).
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.getByRole('button', { name: 'Add a row' }).click()
   expect(await page.locator('.enter-rows li').last().evaluate((el) => getComputedStyle(el).translate)).toBe('none')
-  expect(await running('.enter-rows li')).not.toContain('translate')
 })
 
 test('animations guide: the flip clock shows the time and flips only the digits that change', async ({ page }) => {

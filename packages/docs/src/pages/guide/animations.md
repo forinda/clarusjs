@@ -38,7 +38,7 @@ Try it:
 
 <enterDemo />
 
-- **It runs only on insertion**: what the server rendered is already in place when the page loads, so nothing animates on the first paint.
+- **It runs on first render too**: an element's first style comes from `@starting-style`, whether `@if` or `@for` inserts it later or the server rendered it, so what the page loads with animates in as well. Scope the rules to a class you add after load if only later insertions should animate.
 - **Each element animates on its own**: give rows a `transition-delay` from a custom property (`style="--i: {{ $index }}"`, `transition-delay: calc(var(--i) * 40ms)`) to stagger them.
 - **Browsers without `@starting-style`** show the element at once, in its final style: nothing breaks.
 
@@ -83,7 +83,7 @@ Some visitors ask their system for less motion. Keep fades, drop movement:
 ```css
 @media (prefers-reduced-motion: reduce) {
   .panel, .rows li { transition: opacity 0.2s; translate: none; }
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; } /* named parts move in their group */
 }
 ```
 
