@@ -34,10 +34,44 @@ export function scope(fn: () => void): () => void {
   const prev = currentScope
   const cleanups: (() => void)[] = []
   currentScope = cleanups
-  try { fn() } finally { currentScope = prev }
+  // The outermost scope running is a wiring pass (an island attaching, a row or branch rendered): what waits for
+  // the wiring to finish runs when it ends.
+  const outer = !after
+  if (outer) after = []
+  let wired = false
+  try {
+    fn()
+    wired = true
+  } finally {
+    currentScope = prev
+    if (outer) {
+      const waiting = after!
+      after = null
+      if (wired) for (const run of waiting) run() // not on a pass that failed half way
+    }
+  }
   const dispose = () => { for (const c of cleanups.splice(0).reverse()) c() }
   onDispose(dispose)
   return dispose
+}
+
+// What waits for the wiring pass that's running (null when none is).
+let after: (() => void)[] | null = null
+
+/**
+ * Run `fn` once the wiring that's running is done (now, if none is), in the scope it was asked from: its effects
+ * and cleanups belong there. For [use] behaviours (#550): one that changes state while an island attaches would
+ * otherwise run before a @for after it has adopted the server's rows.
+ * @internal
+ */
+export function afterWiring(fn: () => void): void {
+  if (!after) return fn()
+  const owner = currentScope
+  after.push(() => {
+    const prev = currentScope
+    currentScope = owner
+    try { fn() } finally { currentScope = prev }
+  })
 }
 
 /**

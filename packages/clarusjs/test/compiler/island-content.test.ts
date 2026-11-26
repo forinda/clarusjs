@@ -25,6 +25,8 @@ const parts: Record<string, string> = {
   onlyEmitter: "@import emitter from './emitter.tscl'\n<emitter />\n",
   xbtn: "@extends button\n<script>\n  let c = state(0)\n</script>\n<button class=\"xb\" type=\"button\" [data-c]=\"c\" (click)=\"c++\">{{ c }}</button>\n",
   titled: "@input title: string = ''\n<section><h3 class=\"t\">{{ title }}</h3><slot /></section>\n",
+  tagline: "@input text: string = 'x'\n<script>\n  let seen = state(0)\n</script>\n<b class=\"tagline\" (click)=\"seen++\">{{ text }}</b>\n",
+  lamp: "@input on: boolean = false\n<script>\n  let flips = state(0)\n</script>\n<p class=\"lamp\" (click)=\"flips++\">\n  @if (on) { <b class=\"on\">on</b> } @else { <b class=\"off\">off</b> }\n</p>\n",
   emitter: "@event click: string\n<script>\n  function go(event) { emit('click', 'from-child', { event }) }\n</script>\n<button class=\"em\" (click)=\"go($event)\">e</button>\n",
 }
 let n = 0
@@ -294,3 +296,52 @@ test('#523: the component\'s own input changing still renders it again (its slot
   expect($('.t').textContent).toBe('xyy')
 })
 
+// #524: a parent island that changes state while it attaches (a [use] reading the URL, say): its nested island shows
+// the new value, not the server's, whether that island attached first or loads after it.
+const changesOnAttach =
+  '<script>\n  let t = state(\'server\')\n  const wire = () => { t = \'browser\' }\n</script>\n<div [use]="wire"><tagline [text]="t" /></div>\n'
+
+test('#524: a change the parent makes while attaching reaches its nested island (attached first)', async () => {
+  await mount(changesOnAttach)
+  expect($('.tagline').textContent).toBe('browser')
+})
+
+test('#524: … and one whose script loads after the parent attached', async () => {
+  let release!: () => void
+  const late = new Promise<void>((r) => (release = r))
+  let loads = 0
+  const mounted = mount(changesOnAttach, {}, (modules) => async (src) => {
+    if (src === '/tagline.js') {
+      loads++
+      await late
+    }
+    return modules[src]
+  })
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="page"][data-cl-ready]')).not.toBe(null)) // the parent first
+  release()
+  await mounted
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="tagline"][data-cl-ready]')).not.toBe(null))
+  expect($('.tagline').textContent).toBe('browser')
+  click('.tagline') // and it works: its own state is wired
+  expect(document.querySelectorAll('cl-island[c="tagline"]')).toHaveLength(1)
+  expect(loads).toBe(1) // updated while it loaded, not thrown away and loaded again
+})
+
+test('#524: … its markup too: a late island whose @if follows the changed input attaches showing the right branch', async () => {
+  let release!: () => void
+  const late = new Promise<void>((r) => (release = r))
+  const mounted = mount(
+    '<script>\n  let lit = state(false)\n  const wire = () => { lit = true }\n</script>\n<div [use]="wire"><lamp [on]="lit" /></div>\n',
+    {},
+    (modules) => async (src) => {
+      if (src === '/lamp.js') await late
+      return modules[src]
+    },
+  )
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="page"][data-cl-ready]')).not.toBe(null))
+  release()
+  await mounted
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="lamp"][data-cl-ready]')).not.toBe(null))
+  expect(document.querySelector('.on')).not.toBe(null)
+  expect(document.querySelector('.off')).toBe(null)
+})

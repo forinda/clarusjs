@@ -93,9 +93,6 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
   let state: Record<string, unknown> | undefined
   try {
     mod = await load(el.getAttribute('src')!)
-    props = parse(el.getAttribute('p') ?? '{}') as Record<string, unknown>
-    const s = el.getAttribute('s')
-    state = s === null ? undefined : (parse(s) as Record<string, unknown>)
     // Islands in it holding its content attach first (#465): content it re-renders there reads what they provide. One
     // failing to load fails this one too (both retry). ponytail: later ones (idle, visible, interaction) aren't waited for.
     for (const inner of el.querySelectorAll('cl-island')) {
@@ -103,6 +100,10 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
       await pending.get(inner)
       if (!pending.has(inner)) throw 0
     }
+    // Read last: a parent that attached meanwhile may have passed it new props (#524).
+    props = parse(el.getAttribute('p') ?? '{}') as Record<string, unknown>
+    const s = el.getAttribute('s')
+    state = s === null ? undefined : (parse(s) as Record<string, unknown>)
   } catch (err) {
     recorded.stop()
     loading.delete(el) // network or parse failure: the next attachAll() retries
@@ -193,12 +194,20 @@ function arrive(): void {
   // The same component: the same name and the same source (two panel.tscl files share a name). An attached island
   // without inputs has nothing to update (#465: re-rendered because the content it holds changed, which its parent
   // wires in place).
-  if (!attached.has(el) || el.getAttribute('c') !== next.getAttribute('c') || el.getAttribute('src') !== next.getAttribute('src')) return false
+  if (el.getAttribute('c') !== next.getAttribute('c') || el.getAttribute('src') !== next.getAttribute('src')) return false
+  // Not attached yet but on its way (loading, or waiting for idle, visible or a first use): it takes the new props
+  // and attaches with them, rather than being thrown away and loaded again (#524).
+  if (!attached.has(el) && !loading.has(el)) return false
   const p = next.getAttribute('p') ?? '{}'
   el.setAttribute('p', p)
   // Its paths for the forms engine (data-cl-path-<model>) move with it: a row removed above shifts the indexes.
   for (const { name } of [...el.attributes]) if (name.startsWith('data-cl-path-')) el.removeAttribute(name)
   for (const { name, value } of [...next.attributes]) if (name.startsWith('data-cl-path-')) el.setAttribute(name, value)
+  if (!attached.has(el)) {
+    // Its markup too, rendered for the new props: it attaches to HTML that matches them (its @for and @if adopt it).
+    el.replaceChildren(...next.childNodes)
+    return true
+  }
   const root = el.firstElementChild
   const before = rendered.get(el)
   const after = rootAttrs(next)
