@@ -29,6 +29,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     hasFors && 'forBlock as __cl_for',
     all.some((n) => n.kind === 'for' && n.block >= 0 && rowNames(n, ir.events).some((x) => x !== '$count')) && 'derived as __cl_derived',
     hasRegions && 'region as __cl_region',
+    all.some((n) => n.kind === 'component' && (n.children.length > 0 || n.fills.some((f) => !f.params))) && 'untrack as __cl_untrack',
     all.some((n) => n.kind === 'component' && !!n.models?.length) && 'model as __cl_model',
     all.some((n) => n.kind === 'component' && !!n.listens?.length) && 'listen as __cl_listen',
     all.some((n) => n.kind === 'use') && 'use as __cl_useOn',

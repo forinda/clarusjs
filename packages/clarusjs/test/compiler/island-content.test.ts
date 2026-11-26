@@ -24,6 +24,9 @@ const parts: Record<string, string> = {
   wrapper: "<div class=\"wrap\"><slot /></div>\n",
   onlyEmitter: "@import emitter from './emitter.tscl'\n<emitter />\n",
   xbtn: "@extends button\n<script>\n  let c = state(0)\n</script>\n<button class=\"xb\" type=\"button\" [data-c]=\"c\" (click)=\"c++\">{{ c }}</button>\n",
+  titled: "@input title: string = ''\n<section><h3 class=\"t\">{{ title }}</h3><slot /></section>\n",
+  tagline: "@input text: string = 'x'\n<script>\n  let seen = state(0)\n</script>\n<b class=\"tagline\" (click)=\"seen++\">{{ text }}</b>\n",
+  lamp: "@input on: boolean = false\n<script>\n  let flips = state(0)\n</script>\n<p class=\"lamp\" (click)=\"flips++\">\n  @if (on) { <b class=\"on\">on</b> } @else { <b class=\"off\">off</b> }\n</p>\n",
   emitter: "@event click: string\n<script>\n  function go(event) { emit('click', 'from-child', { event }) }\n</script>\n<button class=\"em\" (click)=\"go($event)\">e</button>\n",
 }
 let n = 0
@@ -252,4 +255,93 @@ test('#review: an @extends island kept in place takes the new passed attributes;
   await tick()
   expect($('.xb').hasAttribute('disabled')).toBe(false)
   expect($('.xb').getAttribute('title')).toBe('on')
+})
+
+// #523: content an island puts in a (script-less) component's slot is wired in place: typing in a field there keeps
+// the field (and its focus), and what reads the same state updates beside it. Only the component's own inputs
+// changing render it again.
+const type = (el: HTMLInputElement, text: string) => {
+  for (const ch of text) {
+    el.value += ch
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+}
+
+test('#523: typing in a field in a component\'s slot keeps that field; the text reading it updates in place', async () => {
+  await mount("<script>\n  let email = state('')\n</script>\n<wrapper><input class=\"em\" [(value)]=\"email\" /><p class=\"len\">{{ email.length }}</p></wrapper>\n")
+  const input = $('.em') as HTMLInputElement
+  input.focus()
+  type(input, 'ada')
+  expect($('.em')).toBe(input) // the same element, not a new one
+  expect(document.activeElement).toBe(input)
+  expect(input.value).toBe('ada')
+  expect($('.len').textContent).toBe('3')
+})
+
+test('#523: … and @if and @for in the slot follow the state in place too', async () => {
+  await mount("<script>\n  let items = state(['a'])\n  let on = state(false)\n</script>\n<wrapper><input class=\"keep\" /><button class=\"add\" (click)=\"items = [...items, 'b']; on = true\">+</button>@if (on) { <i class=\"on\">on</i> }<ul>@for (i of items; track i) { <li>{{ i }}</li> }</ul></wrapper>\n")
+  const kept = $('.keep')
+  click('.add')
+  expect($('.keep')).toBe(kept)
+  expect(document.querySelector('.on')).not.toBe(null)
+  expect([...document.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['a', 'b'])
+})
+
+test('#523: the component\'s own input changing still renders it again (its slot content wired anew)', async () => {
+  await mount("<script>\n  let name = state('x')\n</script>\n<titled [title]=\"name\"><button class=\"nm\" (click)=\"name = name + 'y'\">{{ name }}</button></titled>\n")
+  click('.nm')
+  expect($('.t').textContent).toBe('xy')
+  expect($('.nm').textContent).toBe('xy')
+  click('.nm') // wired again after the re-render
+  expect($('.t').textContent).toBe('xyy')
+})
+
+// #524: a parent island that changes state while it attaches (a [use] reading the URL, say): its nested island shows
+// the new value, not the server's, whether that island attached first or loads after it.
+const changesOnAttach =
+  '<script>\n  let t = state(\'server\')\n  const wire = () => { t = \'browser\' }\n</script>\n<div [use]="wire"><tagline [text]="t" /></div>\n'
+
+test('#524: a change the parent makes while attaching reaches its nested island (attached first)', async () => {
+  await mount(changesOnAttach)
+  expect($('.tagline').textContent).toBe('browser')
+})
+
+test('#524: … and one whose script loads after the parent attached', async () => {
+  let release!: () => void
+  const late = new Promise<void>((r) => (release = r))
+  let loads = 0
+  const mounted = mount(changesOnAttach, {}, (modules) => async (src) => {
+    if (src === '/tagline.js') {
+      loads++
+      await late
+    }
+    return modules[src]
+  })
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="page"][data-cl-ready]')).not.toBe(null)) // the parent first
+  release()
+  await mounted
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="tagline"][data-cl-ready]')).not.toBe(null))
+  expect($('.tagline').textContent).toBe('browser')
+  click('.tagline') // and it works: its own state is wired
+  expect(document.querySelectorAll('cl-island[c="tagline"]')).toHaveLength(1)
+  expect(loads).toBe(1) // updated while it loaded, not thrown away and loaded again
+})
+
+test('#524: … its markup too: a late island whose @if follows the changed input attaches showing the right branch', async () => {
+  let release!: () => void
+  const late = new Promise<void>((r) => (release = r))
+  const mounted = mount(
+    '<script>\n  let lit = state(false)\n  const wire = () => { lit = true }\n</script>\n<div [use]="wire"><lamp [on]="lit" /></div>\n',
+    {},
+    (modules) => async (src) => {
+      if (src === '/lamp.js') await late
+      return modules[src]
+    },
+  )
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="page"][data-cl-ready]')).not.toBe(null))
+  release()
+  await mounted
+  await vi.waitFor(() => expect(document.querySelector('cl-island[c="lamp"][data-cl-ready]')).not.toBe(null))
+  expect(document.querySelector('.on')).not.toBe(null)
+  expect(document.querySelector('.off')).toBe(null)
 })

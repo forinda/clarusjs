@@ -207,3 +207,42 @@ test('one-root fix: declarations, <script> and <style> between the roots move ab
   }
   expect(fix(cases[4]!)).toContain('<fragment>\n<p>a</p>\n<!-- note -->\n<p>{{ t }}{{ u }}</p>') // a comment renders: it stays
 })
+
+// #543: a loop variable named like something the component declares hides it inside the loop: `[class]="item"`
+// there reads the row, not the script's item (ui.clarusjs.com's Breadcrumb lost its separators to this).
+test('for-shadow: an @for item named like a script name, an input, a model or an import', () => {
+  const source = `@import badge from './badge.tscl'
+@import { site } from '../site.ts'
+@input title: string
+@model open: boolean = false
+<script>
+  const item = 'not-last:after:ml-1'
+  let rows = state([{ label: 'a' }])
+  function pick() {}
+</script>
+<script server>
+  const crumb = 'x'
+</script>
+<ul>
+  @for (item of rows; track $index) { <li [class]="item">{{ item.label }} {{ title }} {{ site.name }} {{ crumb }} <badge /></li> }
+  @for (pick of rows; track $index) { <li>{{ pick.label }}</li> }
+  @for (title of rows; track $index) { <li>{{ title.label }}</li> }
+  @for (open of rows; track $index) { <li>{{ open.label }}</li> }
+  @for (badge of rows; track $index) { <li>{{ badge.label }}</li> }
+  @for (site of rows; track $index) { <li>{{ site.label }}</li> }
+  @for (crumb of rows; track $index) { <li>{{ crumb.label }}</li> }
+  @for (row of rows; track $index) { <li>{{ row.label }}</li> }
+</ul>
+<button (click)="pick()">p</button>
+`
+  const found = lint(source, file).filter((m) => m.rule === 'for-shadow')
+  expect(found.map((m) => `${m.line}:${m.column}`)).toEqual(['14:9', '15:9', '16:9', '17:9', '18:9', '19:9', '20:9'])
+  expect(found[0]!.message).toBe("the row's item hides the script's item inside this @for: rename one of them")
+  expect(found.map((m) => m.message.split(' hides ')[1]!.split(' inside')[0])).toEqual([
+    "the script's item", "the script's pick", '@input title', '@model open', 'the import badge', 'the import site', "the server script's crumb",
+  ])
+})
+
+test('for-shadow: a script it can\'t parse is left alone (the compiler reports it)', () => {
+  expect(lint('<script>\n  let a = (\n</script>\n@for (a of [1]; track a) { <i>{{ a }}</i> }\n', file).filter((m) => m.rule === 'for-shadow')).toEqual([])
+})
