@@ -1,0 +1,7 @@
+@input rows: { id: number; name: string }[]
+
+<ul>
+  @for (r of rows; track r.id) {
+    <li><slot name="row" [item]="r" [index]="$index">{{ r.name }}</slot></li>
+  }
+</ul>

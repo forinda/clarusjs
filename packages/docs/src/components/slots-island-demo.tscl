@@ -1,0 +1,34 @@
+{{-- The Slots guide's island demo (#472): an island fills the list's row slot with the data it passes. The fill
+     only shows it, so the island renders the list again, fill included, when its steps change. --}}
+<script>
+  let steps = state([
+    { id: 'first-page', label: 'Make a page' },
+    { id: 'first-island', label: 'Add an island' },
+  ])
+  function add() {
+    steps = [...steps, { id: `step-${steps.length + 1}`, label: 'Ship it' }]
+  }
+</script>
+
+<section class="slots-island-demo" id="slots-island-demo" aria-labelledby="slots-island-demo-title">
+  <h3 id="slots-island-demo-title">In an island: the fill follows its state</h3>
+  <item-list [items]="steps">
+    @slot('row', { item, index }) {
+      <strong>{{ index + 1 }} of {{ steps.length }}.</strong> {{ item.label }}
+    }
+  </item-list>
+  <button type="button" (click)="add()">Add a step</button>
+</section>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 8px;
+    justify-items: start;
+    margin: 16px 0;
+  }
+  h3 {
+    margin: 0;
+    font-size: 15px;
+  }
+</style>

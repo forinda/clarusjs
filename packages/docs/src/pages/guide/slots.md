@@ -65,7 +65,11 @@ A component can hand data to the content filling a slot. A list renders its rows
 
 <slotsDemo />
 
-`clarusjs check` checks the values where the component passes them, and since 0.17.0 types the names a fill receives by them: `item.nmae` in the fill above is an error, and so is a name the slot doesn't pass, unless it has a default (`note = ''`). A fill that receives data can't be inside an [island](/guide/islands) yet (the compiler says so at its place): render that component outside the island, or pass the data in as props.
+`clarusjs check` checks the values where the component passes them, and since 0.17.0 types the names a fill receives by them: `item.nmae` in the fill above is an error, and so is a name the slot doesn't pass, unless it has a default (`note = ''`).
+
+Inside an [island](/guide/islands), a fill that receives data shows it: the island renders the component again, fill included, when what they read changes. Handlers and bindings in such a fill (`(click)`, `[(value)]`, `[use]`) aren't supported yet, and the compiler says so at their place: put them outside the `@slot`, or render that component outside the island.
+
+<slotsIslandDemo />
 
 ## Slots in an island
 

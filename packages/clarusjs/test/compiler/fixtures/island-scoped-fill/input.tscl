@@ -1,0 +1,15 @@
+{{-- #472: an island fills a slot with the data it passes. The fill only shows it, so it's plain server HTML; the
+     island re-renders the list, fill included, when rows or mark change. --}}
+<script>
+  let rows = state([{ id: 1, name: 'Ada' }, { id: 2, name: 'Grace' }])
+  let mark = state('-')
+</script>
+
+<div>
+  <item-list [rows]="rows">
+    @slot('row', { item, index }) {
+      <b>{{ mark }}{{ index + 1 }} {{ item.name }}</b>
+    }
+  </item-list>
+  <button (click)="mark = '+'">mark</button>
+</div>
