@@ -1,0 +1,273 @@
+@import uiTable from './table.tscl'
+@import uiInput from './input.tscl'
+@import uiButton from './button.tscl'
+
+<script>
+  import { resizeColumn } from '@clarusjs/ui-primitives/resize-column.js'
+  import { facets, filterRows, nextSort, paginate, parseTable, serializeTable, sortRows } from './data-table.ts'
+  const PEOPLE = [
+    { id: '1', name: 'Amara Okafor', team: 'Design', role: 'Product designer', joined: 2021 },
+    { id: '2', name: 'Daniel Kim', team: 'Engineering', role: 'Software engineer', joined: 2020 },
+    { id: '3', name: 'Grace Mensah', team: 'Sales', role: 'Sales lead', joined: 2017 },
+    { id: '4', name: 'Lucas Moreau', team: 'Design', role: 'Brand designer', joined: 2023 },
+    { id: '5', name: 'Hana Sato', team: 'Engineering', role: 'Platform engineer', joined: 2022 },
+    { id: '6', name: 'Chloé Martin', team: 'Sales', role: 'Account executive', joined: 2021 },
+    { id: '7', name: 'Priya Nair', team: 'Design', role: 'Design lead', joined: 2019 },
+    { id: '8', name: 'Mateo García', team: 'Engineering', role: 'Engineering manager', joined: 2018 },
+    { id: '9', name: 'Omar Haddad', team: 'Sales', role: 'Solutions engineer', joined: 2023 },
+    { id: '10', name: 'Sofia Rossi', team: 'Design', role: 'UX researcher', joined: 2024 },
+    { id: '11', name: 'Noah Williams', team: 'Engineering', role: 'Frontend engineer', joined: 2025 },
+    { id: '12', name: 'Tomás Silva', team: 'Sales', role: 'Account manager', joined: 2024 },
+  ]
+  const COLUMNS = [
+    { id: 'name', label: 'Name' },
+    { id: 'team', label: 'Team' },
+    { id: 'role', label: 'Role' },
+    { id: 'joined', label: 'Joined', number: true },
+  ]
+  const TEAMS = ['Design', 'Engineering', 'Sales']
+  const SIZE = 5
+  let sort = state([{ id: '', desc: false }].slice(0, 0))
+  let query = state('')
+  let teams = state([''].slice(0, 0))
+  let page = state(0)
+  // Column widths, as resized: kept, so the table rendering again (a sort, a page) keeps them.
+  let widths = state({ name: 0 })
+  const resized = (id, w) => (widths = { ...widths, [id]: w })
+  const table = () => ({ sort, query, filters: { team: teams }, page })
+  const searched = () => filterRows(PEOPLE, { query, columns: ['name', 'role'] })
+  // How many people each team button would show, given the search.
+  const counts = () => facets(searched(), 'team')
+  const view = () => paginate(sortRows(filterRows(searched(), { filters: { team: teams } }), sort), page, SIZE)
+  const ariaSort = (id) => (sort[0]?.id === id ? (sort[0].desc ? 'descending' : 'ascending') : 'none')
+  const sorted = (id) => sort.find((s) => s.id === id)
+  // The state goes into the URL as it changes, without a new history entry, so the address is a link to this view.
+  function save() {
+    const q = serializeTable(table())
+    history.replaceState(history.state, '', q ? '?' + q : location.pathname)
+  }
+  function sortBy(id, event) {
+    sort = nextSort(sort, id, { multi: event.shiftKey })
+    page = 0
+    save()
+    requestAnimationFrame(() => document.getElementById('people-sort-' + id)?.focus())
+  }
+  function search(event) {
+    query = event.target.value
+    page = 0
+    save()
+  }
+  function toggle(team) {
+    teams = teams.includes(team) ? teams.filter((t) => t !== team) : [...teams, team]
+    page = 0
+    save()
+  }
+  function go(next) {
+    page = next
+    save()
+  }
+  // Opened from a link: start from the state in its URL. ponytail: applied just after attach, since changing the
+  // rows while the island attaches breaks its @for (#550); apply it directly once that's fixed.
+  function wire(el) {
+    const from = parseTable(new URLSearchParams(location.search), ['team'])
+    const field = el.querySelector('input[type="search"]')
+    if (field instanceof HTMLInputElement) field.value = from.query
+    setTimeout(() => {
+      sort = from.sort
+      query = from.query
+      teams = from.filters.team ?? []
+      page = from.page
+    })
+  }
+</script>
+
+<div class="demo" [use]="wire">
+  <div class="people-bar">
+    <div class="people-search">
+      <uiInput type="search" aria-label="Search people" placeholder="Search people" (input)="search($event)" />
+    </div>
+    <div class="people-teams" role="group" aria-label="Team">
+      @for (t of TEAMS; track t) {
+        <button type="button" [aria-pressed]="teams.includes(t) ? 'true' : 'false'" (click)="toggle(t)">
+          {{ t }} <span class="people-count">{{ counts().get(t) ?? 0 }}</span>
+        </button>
+      }
+    </div>
+  </div>
+  <uiTable label="People">
+    <thead>
+      <tr>
+        @for (c of COLUMNS; track c.id) {
+          <th
+            scope="col"
+            [aria-sort]="ariaSort(c.id)"
+            [data-number]="c.number ? 'true' : false"
+            [style]="widths[c.id] ? 'width: ' + widths[c.id] + 'px' : false"
+          >
+            <button type="button" [id]="'people-sort-' + c.id" (click)="sortBy(c.id, $event)">
+              {{ c.label }}
+              @if (sorted(c.id)) {
+                @if (!sorted(c.id)?.desc) {<icon name="lucide:arrow-up" />} @else {<icon name="lucide:arrow-down" />}
+              } @else {
+                <icon name="lucide:arrow-up-down" />
+              }
+            </button>
+            <span
+              class="people-resize"
+              [aria-label]="'Resize ' + c.label"
+              [use]="(el) => resizeColumn(el, { min: 80, max: 480, onResize: (w) => resized(c.id, w) })"
+            ></span>
+          </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of view().rows; track p.id) {
+        <tr>
+          <td data-col="name">{{ p.name }}</td>
+          <td data-col="team">{{ p.team }}</td>
+          <td data-col="role">{{ p.role }}</td>
+          <td data-col="joined" data-number="true">{{ p.joined }}</td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="4" class="people-empty">No one matches.</td>
+        </tr>
+      }
+    </tbody>
+  </uiTable>
+  <div class="people-pages">
+    <p data-part="data-table-range">{{ view().from }}–{{ view().to }} of {{ view().total }}</p>
+    <uiButton
+      variant="outline"
+      size="sm"
+      aria-label="Previous page"
+      [disabled]="!view().canPrev"
+      (click)="go(view().page - 1)"
+    >
+      <icon name="lucide:chevron-left" />
+    </uiButton>
+    <uiButton
+      variant="outline"
+      size="sm"
+      aria-label="Next page"
+      [disabled]="!view().canNext"
+      (click)="go(view().page + 1)"
+    >
+      <icon name="lucide:chevron-right" />
+    </uiButton>
+  </div>
+  <p class="people-url">
+    URL: <code>{{ serializeTable(table()) ? '?' + serializeTable(table()) : 'no query (the defaults)' }}</code>
+  </p>
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+  .people-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ui-space-2);
+    align-items: center;
+    justify-content: space-between;
+  }
+  .people-search {
+    flex: 1 1 12rem;
+    max-width: 18rem;
+  }
+  .people-teams {
+    display: flex;
+    gap: var(--ui-space-1);
+    padding: var(--ui-space-1);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+  }
+  .people-teams button {
+    display: inline-flex;
+    gap: var(--ui-space-1);
+    align-items: center;
+    padding: var(--ui-space-1) var(--ui-space-2);
+    border: 0;
+    border-radius: calc(var(--ui-radius) / 2);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .people-teams button[aria-pressed='true'] {
+    background: var(--ui-muted-bg);
+  }
+  .people-count {
+    color: var(--ui-muted);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+  .people-pages {
+    display: flex;
+    gap: var(--ui-space-2);
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .people-pages p,
+  .people-url {
+    margin: 0 var(--ui-space-2) 0 0;
+    color: var(--ui-muted);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+
+{{-- Global: the header buttons and cells sit inside the Table's own markup, out of this demo's scope. --}}
+<style global>
+  .demo th:has(> [id^='people-sort-']) {
+    position: relative;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .demo [id^='people-sort-'] {
+    display: inline-flex;
+    gap: var(--ui-space-1);
+    align-items: center;
+    padding: var(--ui-space-1) var(--ui-space-2);
+    border: 0;
+    border-radius: calc(var(--ui-radius) / 2);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  /* The resize handle: the header's end edge, a line while hovered, held or focused. */
+  .people-resize {
+    position: absolute;
+    inset-block: var(--ui-space-2);
+    inset-inline-end: 0;
+    width: calc(var(--ui-space) * 1.5);
+    border-inline-end: 2px solid transparent;
+    cursor: col-resize;
+    touch-action: none;
+  }
+  .people-resize:hover,
+  .people-resize:active,
+  .people-resize:focus-visible {
+    border-color: var(--ui-accent);
+    outline: none;
+  }
+  .demo [data-number='true'] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .people-empty {
+    padding: var(--ui-space-8);
+    color: var(--ui-muted);
+    text-align: center;
+  }
+</style>

@@ -1,9 +1,9 @@
 // The dashboard block's data: the stat cards, the chart's 90 days and the table's rows, made up and the same on every
-// build. Replace them with yours (load them in the page, or fetch them). The helpers filter, sort and page the rows.
+// build. Replace them with yours (load them in the page, or fetch them). The table sorts, filters and pages them with
+// data-table.ts.
 import type { Series } from '~/components/ui/chart-geometry.ts'
 
 export type Row = { id: string; header: string; type: string; status: 'Done' | 'In progress'; target: number; limit: number; reviewer: string }
-export type SortKey = 'header' | 'type' | 'status' | 'target' | 'limit' | 'reviewer'
 
 export const stats: { label: string; value: string; change: number; note: string }[] = [
   { label: 'Total revenue', value: '$1,250.00', change: 12.5, note: 'Trending up this month' },
@@ -35,27 +35,3 @@ export const rows: Row[] = HEADERS.map((header, i) => ({
   limit: 3 + ((i * 11) % 24),
   reviewer: REVIEWERS[i % REVIEWERS.length]!,
 }))
-
-/** The rows with that status ('all' for any) and every word of the query in their header, type or reviewer. */
-export function filterRows(list: readonly Row[], status: string, query: string): Row[] {
-  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
-  return list.filter((r) => (status === 'all' || r.status === status) && words.every((w) => `${r.header} ${r.type} ${r.reviewer}`.toLowerCase().includes(w)))
-}
-
-/** A sorted copy: by that column, ascending or descending; rows that tie keep their order. */
-export function sortRows(list: readonly Row[], key: string, dir: string): Row[] {
-  const sign = dir === 'descending' ? -1 : 1
-  const k = key as SortKey
-  return [...list].sort((a, b) => {
-    const x = a[k]
-    const y = b[k]
-    return sign * (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y)))
-  })
-}
-
-/** Page `page` (from 0) of `size` rows, kept within the pages there are; one empty page for no rows. */
-export function pageRows(list: readonly Row[], page: number, size: number): { page: number; pages: number; rows: Row[] } {
-  const pages = Math.max(1, Math.ceil(list.length / size))
-  const at = Math.min(Math.max(0, page), pages - 1)
-  return { page: at, pages, rows: list.slice(at * size, at * size + size) }
-}
