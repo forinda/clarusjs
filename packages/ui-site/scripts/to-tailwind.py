@@ -48,7 +48,7 @@ WEIGHTS = {'400': 'font-normal', '500': 'font-medium', '600': 'font-semibold', '
 def font(v):
     v = v.strip()
     if v == 'inherit': return ['[font:inherit]']
-    parts = split(v)  # [weight] size[/line-height] family, with calc()/var() kept whole
+    parts = split(re.sub(r'\s+/\s+(?=[\d.]+\s)', '/', v))  # [weight] size[/line-height] family, calc()/var() whole
     w = parts.pop(0) if parts and re.fullmatch(r'\d00', parts[0]) else None
     if len(parts) < 2: return [f'[font:{v.replace(" ", "_")}]']
     sz, fam = parts[0], ' '.join(parts[1:])
@@ -58,15 +58,18 @@ def font(v):
         sz = head
     out = [WEIGHTS.get(w, f'font-[{w}]') if w else 'font-normal', f'text-{typed("length", sz)}', f'leading-[{lh}]' if lh else 'leading-[normal]']  # Tailwind's leading-normal is 1.5, not CSS normal
     fm = re.fullmatch(r'var\((--[\w-]+)\)', fam.strip())
-    out.append(f'font-(family-name:{fm.group(1)})' if fm else f'font-[{fam.replace(" ", "_")}]')
+    out.append(f'font-(family-name:{fm.group(1)})' if fm else f'font-[family-name:{fam.replace(", ", ",").replace(" ", "_")}]')
     return out
+
+SIDES = {'border-top': 't', 'border-right': 'r', 'border-bottom': 'b', 'border-left': 'l'}
+PADS = {'padding-top': 'pt', 'padding-right': 'pr', 'padding-bottom': 'pb', 'padding-left': 'pl', 'margin-top': 'mt', 'margin-right': 'mr', 'margin-bottom': 'mb', 'margin-left': 'ml'}
 
 def utils(prop, v):
     v = v.strip()
     imp = v.endswith('!important')
     if imp: v = v[:-len('!important')].strip()
     if prop.startswith('--'): out = [f'[{prop}:{v.replace(" ", "_")}]']
-    elif prop == 'display': out = [{'block': 'block', 'inline-flex': 'inline-flex', 'flex': 'flex', 'grid': 'grid', 'none': 'hidden', 'inline-block': 'inline-block', 'contents': 'contents', 'inline-grid': 'inline-grid'}.get(v, f'[display:{v}]')]
+    elif prop == 'display': out = [{'block': 'block', 'inline-flex': 'inline-flex', 'flex': 'flex', 'grid': 'grid', 'none': 'hidden', 'inline-block': 'inline-block', 'contents': 'contents', 'inline-grid': 'inline-grid', 'list-item': 'list-item', 'table': 'table'}.get(v, f'[display:{v}]')]
     elif prop == 'color': out = ['text-inherit' if v == 'inherit' else f'text-{typed("color", v)}']
     elif prop in ('background', 'background-color'):
         out = ['bg-transparent' if v in ('none', 'transparent') else f'bg-{typed("color", v)}' if v.startswith('var(') else f'[background:{v.replace(" ", "_")}]']
@@ -135,8 +138,28 @@ def utils(prop, v):
     elif prop == 'inset' and len(split(v)) == 4:
         t, r, b, l = split(v)
         out = [f'{side}-{x if x in ("0", "auto") else arg(x)}' for side, x in zip(('top', 'right', 'bottom', 'left'), (t, r, b, l))]
-    elif prop == 'border-left' and (m := re.fullmatch(r'(\d+)px\s+(solid)\s+(.+)', v)):
-        out = [f'border-l-{m.group(1)}', 'border-solid', f'border-l-{typed("color", m.group(3))}']
+    elif prop in SIDES and (m := re.fullmatch(r'(\d+)px\s+(solid)\s+(.+)', v)):
+        k = SIDES[prop]
+        # One side only: Tailwind has no per-side style utility, and border-solid would style all four sides.
+        out = [f'border-{k}' if m.group(1) == '1' else f'border-{k}-{m.group(1)}', f'[{prop}-style:solid]', f'border-{k}-{typed("color", m.group(3))}']
+    elif prop.removesuffix('-width') in SIDES and prop.endswith('-width') and re.fullmatch(r'\d+px', v):
+        k = SIDES[prop.removesuffix('-width')]
+        out = [f'border-{k}' if v == '1px' else f'border-{k}-{v[:-2]}']
+    elif prop.removesuffix('-color') in SIDES and prop.endswith('-color'): out = [f'border-{SIDES[prop.removesuffix("-color")]}-{typed("color", v)}']
+    elif prop in PADS: out = [f'{PADS[prop]}-{"0" if v == "0" else arg(v)}']
+    elif prop == 'text-wrap' and v in ('pretty', 'balance', 'nowrap', 'wrap'): out = [f'text-{v}']
+    elif prop == 'text-decoration' and v in ('underline', 'none', 'line-through'): out = ['no-underline' if v == 'none' else v]
+    elif prop == 'text-decoration-thickness': out = [f'decoration-{v[:-2]}' if re.fullmatch(r'\d+px', v) else f'decoration-[{v}]']
+    elif prop == 'text-underline-offset': out = [f'underline-offset-{v[:-2]}' if re.fullmatch(r'\d+px', v) else f'underline-offset-[{v}]']
+    elif prop in ('overflow-x', 'overflow-y') and v in ('auto', 'hidden', 'scroll', 'visible'): out = [f'{prop}-{v}']
+    elif prop == 'list-style' and v in ('disc', 'decimal'): out = [f'list-{v}']
+    elif prop == 'line-height': out = [f'leading-{"none" if v == "1" else arg(v)}']
+    elif prop == 'letter-spacing': out = [f'tracking-{arg(v)}']
+    elif prop == 'font-style' and v in ('italic', 'normal'): out = ['italic' if v == 'italic' else 'not-italic']
+    elif prop == 'font-family': out = [f'font-(family-name:{m.group(1)})' if (m := re.fullmatch(r'var\((--[\w-]+)\)', v)) else f'font-[family-name:{v.replace(" ", "_")}]']
+    elif prop == 'flex-direction': out = [{'column': 'flex-col', 'row': 'flex-row', 'column-reverse': 'flex-col-reverse', 'row-reverse': 'flex-row-reverse'}[v]]
+    elif prop == 'border-collapse': out = [f'border-{v}']
+    elif prop == 'inset' and v == 'auto': out = ['inset-auto']
     else: out = [f'[{prop}:{v.replace(" ", "_")}]']
     return [u + '!' for u in out] if imp else out
 

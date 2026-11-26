@@ -13,7 +13,6 @@
 @import uiToggle from '@clarusjs/ui-primitives/toggle.tscl'
 @import uiToggleGroup from '@clarusjs/ui-primitives/toggle-group.tscl'
 @import uiToggleItem from '@clarusjs/ui-primitives/toggle-item.tscl'
-
 @import '~/registry/dialog.css'
 @import '~/registry/sheet.css'
 @import '~/registry/popover.css'
@@ -29,9 +28,28 @@
 @import uiMenuTrigger from '@clarusjs/ui-primitives/menu-trigger.tscl'
 @import uiMenuList from '@clarusjs/ui-primitives/menu-list.tscl'
 @import uiMenuItem from '@clarusjs/ui-primitives/menu-item.tscl'
+@import '~/registry/tabs.css'
+@import '~/registry/typography.css'
+@import '~/registry/sidebar.css'
+@import uiAccordion from '~/registry/accordion.tscl'
+@import uiTabs from '@clarusjs/ui-primitives/tabs.tscl'
+@import uiTabList from '@clarusjs/ui-primitives/tab-list.tscl'
+@import uiTab from '@clarusjs/ui-primitives/tab.tscl'
+@import uiTabPanel from '@clarusjs/ui-primitives/tab-panel.tscl'
+@import uiSidebar from '@clarusjs/ui-primitives/sidebar.tscl'
+@import uiSidebarTrigger from '@clarusjs/ui-primitives/sidebar-trigger.tscl'
+
 <script server>
-  const sizes = [{ value: 's', label: 'Small' }, { value: 'm', label: 'Medium' }, { value: 'l', label: 'Large' }]
-  const fruits = [{ value: 'apple', label: 'Apple' }, { value: 'pear', label: 'Pear' }, { value: 'plum', label: 'Plum' }]
+  const sizes = [
+    { value: 's', label: 'Small' },
+    { value: 'm', label: 'Medium' },
+    { value: 'l', label: 'Large' },
+  ]
+  const fruits = [
+    { value: 'apple', label: 'Apple' },
+    { value: 'pear', label: 'Pear' },
+    { value: 'plum', label: 'Plum' },
+  ]
   const toastTypes = ['', 'success', 'error', 'info', 'warning']
 </script>
 
@@ -41,8 +59,12 @@
 </cl-head>
 
 <div data-ui-preview>
-  <div data-sample="checkbox"><uiCheckbox label="Terms" /><uiCheckbox label="On" [checked]="true" /><uiCheckbox label="Off" [disabled]="true" /></div>
-  <div data-sample="switch"><uiSwitch label="Wi-Fi" /><uiSwitch label="On" [checked]="true" /><uiSwitch label="Off" [disabled]="true" /></div>
+  <div data-sample="checkbox">
+    <uiCheckbox label="Terms" /><uiCheckbox label="On" [checked]="true" /><uiCheckbox label="Off" [disabled]="true" />
+  </div>
+  <div data-sample="switch">
+    <uiSwitch label="Wi-Fi" /><uiSwitch label="On" [checked]="true" /><uiSwitch label="Off" [disabled]="true" />
+  </div>
   <div data-sample="radio-group"><uiRadioGroup name="size" label="Size" [options]="sizes" value="m" /></div>
   <div data-sample="field">
     <uiField id="p-email" label="Email" type="email" placeholder="you@example.com" description="We never share it." />
@@ -94,7 +116,9 @@
       }
     </uiAlertDialog>
   </div>
-  <div data-sample="popover"><uiPopover id="p-pop" side="bottom" align="start"><p>Copy the link.</p></uiPopover></div>
+  <div data-sample="popover">
+    <uiPopover id="p-pop" side="bottom" align="start"><p>Copy the link.</p></uiPopover>
+  </div>
   <div data-sample="tooltip"><uiTooltip id="p-tip" side="bottom">Copies the address</uiTooltip></div>
   <div data-sample="menu">
     <uiMenu id="p-menu">
@@ -111,7 +135,8 @@
       <div aria-live="polite" data-part="toast-list">
         @for (type of toastTypes; track type) {
           <div data-part="toast" [data-type]="type" tabindex="0">
-            <span data-part="toast-kind">{{ type }}</span><span data-part="toast-icon" aria-hidden="true"></span>
+            <span data-part="toast-kind">{{ type }}</span
+            ><span data-part="toast-icon" aria-hidden="true"></span>
             <p data-part="toast-message">Saved.</p>
             <button type="button" data-part="toast-action">Undo</button>
             <button type="button" data-part="toast-close" aria-label="Dismiss">×</button>
@@ -119,5 +144,83 @@
         }
       </div>
     </section>
+  </div>
+  <div data-sample="accordion">
+    <uiAccordion group="p-faq" [open]="true">
+      @slot('trigger') {
+        Does it need JavaScript?
+      }
+      No: it's a details element.
+    </uiAccordion>
+    <uiAccordion group="p-faq">
+      @slot('trigger') {
+        Can two be open?
+      }
+      Not in the same group.
+    </uiAccordion>
+  </div>
+  <div data-sample="tabs">
+    <uiTabs id="p-tabs" label="Package manager" value="npm">
+      <uiTabList>
+        <uiTab value="npm">npm</uiTab>
+        <uiTab value="pnpm">pnpm</uiTab>
+      </uiTabList>
+      <uiTabPanel value="npm">npm i clarusjs</uiTabPanel>
+      <uiTabPanel value="pnpm">pnpm add clarusjs</uiTabPanel>
+    </uiTabs>
+  </div>
+  <div data-sample="typography">
+    <article data-part="prose">
+      <h2>Field notes</h2>
+      <p>
+        Plain HTML, as Markdown gives it: <strong>no classes</strong>. Read the
+        <a href="/components">component list</a>, press <kbd>Ctrl</kbd> + <kbd>K</kbd> to search, or call
+        <code>render(props)</code>.
+      </p>
+      <h3>What we packed</h3>
+      <ul>
+        <li>A tent and two sleeping bags</li>
+        <li>
+          Food for three days
+          <ul>
+            <li>Oats and coffee</li>
+          </ul>
+        </li>
+      </ul>
+      <h4>The route</h4>
+      <ol>
+        <li>Up the ridge before noon</li>
+        <li>Down to the lake</li>
+      </ol>
+      <blockquote><p>The view from the top was worth every step.</p></blockquote>
+      <pre><code>const pack = ['tent', 'stove', 'map']</code></pre>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            <th scope="col">Distance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>One</td>
+            <td>12 km</td>
+          </tr>
+          <tr>
+            <td>Two</td>
+            <td>9 km</td>
+          </tr>
+        </tbody>
+      </table>
+      <hr />
+      <p>Back home by Sunday.</p>
+    </article>
+  </div>
+  <div data-sample="sidebar">
+    <uiSidebar id="p-nav" label="Project">
+      <a href="#p-overview" aria-current="page">Overview</a>
+      <a href="#p-issues">Issues</a>
+    </uiSidebar>
+    <uiSidebarTrigger target="p-nav">Menu</uiSidebarTrigger>
   </div>
 </div>
