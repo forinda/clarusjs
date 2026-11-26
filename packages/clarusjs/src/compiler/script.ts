@@ -52,13 +52,69 @@ function print(node: N, code: string, hook: Hook, parent: N | null = null, key =
   return out + code.slice(pos, node.end)
 }
 
+// #432: a <script> is JavaScript (acorn), while clarusjs check reads it with TypeScript: TypeScript-only syntax is an
+// error here, named, so the build, dev and check agree. Types come from @input, inference, and the .ts modules it imports.
+const TS = 'TypeScript syntax in a <script> (scripts are JavaScript): '
+const TS_WHERE = '. Types come from @input, inference, and the .ts modules a script imports'
+
+/** What TypeScript construct starts where acorn stopped (`pos`), if it looks like one. */
+function typescriptAt(code: string, pos: number): string | null {
+  const before = code.slice(0, pos).trimEnd()
+  const at = code.slice(pos)
+  if (/^as\s/.test(at) && /[\w$)\]]$/.test(before)) return 'an as cast'
+  if (/^satisfies\s/.test(at)) return 'a satisfies check'
+  if (/^!(?!=)/.test(at) && /[\w$)\]]$/.test(before)) return 'a non-null assertion (!)'
+  if (/^:/.test(at) && /[\w$)\]]$/.test(before)) return 'a type annotation'
+  if (/(^|[\n;{}])\s*(interface|enum)\s*$/.test(before) || /(^|[\n;{}])\s*(interface|enum|type\s+[\w$]+\s*[=<])/.test(code.slice(code.lastIndexOf('\n', pos - 1) + 1, pos + 40))) return 'a type declaration'
+  if (/^</.test(at) && /\bfunction\s+[\w$]+$|[\w$]$/.test(before)) return 'type parameters (<T>)'
+  if (/<[^<>]*>\s*\(?$/.test(before)) return 'a type argument (<…>)'
+  return null
+}
+
+/** JavaScript that TypeScript reads as a type argument: f<T>(x) is f < T > (x) here. Its node, or null. */
+function typeArgumentIn(ast: N, code: string): { start: number; text: string } | null {
+  let found: { start: number; text: string } | null = null
+  const lt = (n: N | undefined) => n?.type === 'BinaryExpression' && n.operator === '<'
+  const gt = (n: N | undefined) => n?.type === 'BinaryExpression' && n.operator === '>'
+  const walk = (n: unknown): void => {
+    if (found || !isNode(n)) return
+    // f<A>(x): (f < A) > x;  f<A, B>(x): f < A, B > x (a sequence).
+    if (gt(n) && lt(n.left)) found = { start: n.start, text: `${code.slice(n.left.left.start, n.left.left.end)}<${code.slice(n.left.right.start, n.left.right.end)}>(…)` }
+    else if (n.type === 'SequenceExpression' && lt(n.expressions[0]) && gt(n.expressions.at(-1))) {
+      const first = n.expressions[0] as N
+      const last = n.expressions.at(-1) as N
+      found = { start: n.start, text: `${code.slice(first.left.start, first.left.end)}<${code.slice(first.right.start, last.left.end)}>(…)` }
+    }
+    for (const v of Object.values(n)) if (Array.isArray(v)) v.forEach(walk); else if (isNode(v)) walk(v)
+  }
+  walk(ast)
+  return found
+}
+
 function parseScript(code: string, file = '<script>', source = code, offset = 0): N {
+  let ast: N
   try {
-    return acornParse(code, OPTS) as unknown as N
+    ast = acornParse(code, OPTS) as unknown as N
   } catch (e) {
     const pos = (e as { pos?: number }).pos ?? 0
+    // f<A, B>(x) where a comma can't make a sequence (an arrow's body): acorn stops at the >. Reported at the name.
+    const open = code.lastIndexOf('<', pos)
+    if (code[pos] === '>' && open > 0 && !/[<>;{}\n]/.test(code.slice(open + 1, pos))) {
+      const name = /[\w$.]+$/.exec(code.slice(0, open))
+      if (name) throw new ClarusError(`${TS}a type argument, ${name[0]}${code.slice(open, pos + 1)}(…)${TS_WHERE}`, file, source, offset + name.index)
+    }
+    const ts = typescriptAt(code, pos)
+    if (ts) throw new ClarusError(TS + ts + TS_WHERE, file, source, offset + pos)
     throw new ClarusError(`script: ${(e as Error).message.replace(/ \(\d+:\d+\)$/, '')}`, file, source, offset + pos)
   }
+  const arg = typeArgumentIn(ast, code)
+  if (arg) throw new ClarusError(`${TS}a type argument, ${arg.text}${TS_WHERE}`, file, source, offset + arg.start)
+  return ast
+}
+
+/** Throw a located ClarusError for a script that isn't JavaScript (#432): what clarusjs check runs before reading it. */
+export function checkScript(code: string, file: string, source: string, offset: number): void {
+  parseScript(code, file, source, offset)
 }
 
 function parseExpr(expr: string): N {

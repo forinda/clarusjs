@@ -10,7 +10,7 @@ import { ClarusError } from '../compiler/errors.ts'
 import { modifierError, splitEvent } from '../compiler/events.ts'
 import { outerIndexIn } from '../compiler/loops.ts'
 import { FOR_IMPLICIT, parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
-import { providesIn, referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
+import { checkScript, providesIn, referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
  * [virtual offset, length, source offset, exact, source length]. Exact spans are verbatim copies (offsets map one to
@@ -51,6 +51,8 @@ export function generateTs(source: string, file: string, options: { loader?: str
   const parsed = parse(source, file)
   const outer = outerIndexIn(parsed.nodes) // an inner @for's $index on an outer list (#585), as the compiler reports it
   if (outer) throw new ClarusError(outer.message, file, source, outer.start)
+  // A script is JavaScript (#432): TypeScript-only syntax is the compiler's error here too, not TypeScript's to accept.
+  for (const s of [parsed.script, parsed.serverScript]) if (s) checkScript(s.code, file, source, s.start)
   // Components used by name (#458), imported as the build imports them.
   if (options.components) autoImport(parsed, options.components, file, source)
   const mappings: Mapping[] = []

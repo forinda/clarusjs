@@ -539,3 +539,13 @@ test('#585: @for let aliases are typed as what they name; an inner $index on an 
     expect.objectContaining({ line: 6, code: 'clarus', message: expect.stringContaining("$index here is the inner @for's, not the one over order.sections") }),
   ])
 })
+
+test('#432: check reports TypeScript syntax in a <script> where it is, as the compiler does', () => {
+  const at = (script: string) => {
+    const root = project({ 'src/pages/index.tscl': `<script>\n  import { request } from 'clarusjs/fetch'\n  let n = state(0)\n${script}\n</script>\n<p>{{ n }}</p>\n` })
+    return check({ root, typescript }).diagnostics.map((d) => `${d.line}:${d.column} ${d.code} ${d.message}`)
+  }
+  expect(at("  const csv = () => request<string>('/a')")).toEqual([expect.stringMatching(/^4:21 clarus TypeScript syntax in a <script> \(scripts are JavaScript\): a type argument/)])
+  expect(at('  let m: number = 1')).toEqual([expect.stringMatching(/^4:8 clarus .*a type annotation/)])
+  expect(at('  const v = n as number')).toEqual([expect.stringMatching(/^4:15 clarus .*an as cast/)])
+})

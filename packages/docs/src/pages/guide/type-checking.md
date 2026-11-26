@@ -34,7 +34,7 @@ If your project has a `tsconfig.json` (or, in JavaScript, a `jsconfig.json`), it
 - **Events.** In `(click)="…"`, `$event` has the right event type, such as `MouseEvent`.
 - **Attributes.** `[disabled]="…"` on a boolean attribute takes a boolean: a string, even `'false'`, would switch it on. Any other `[attr]` takes text, a number or a boolean; an object would show as `[object Object]`.
 - **Rendering by name.** `render('components/pill', { text })` from `clarusjs/views` is checked against the view's inputs, through the generated `.clarusjs/views.d.ts`.
-- **Scripts and data.** An island's script, and data brought in with `@import`, are ordinary TypeScript.
+- **Scripts and data.** An island's script is JavaScript, checked with the types it gets from your inputs, its imports and inference ([below](#scripts-are-javascript)); data brought in with `@import` is typed like any module.
 - **Markdown pages.** Pages from the plugin's `sources` (Markdown from `@clarusjs/content`) are checked as the build sees them: a component used in a `.md` page is checked like in a `.tscl` page, with errors at `page.md:line:col`. `clarusjs check` reads the sources, and `resolve.alias`, from your `vite.config`.
 
 ```tscl
@@ -49,6 +49,22 @@ src/pages/index.tscl:2:38 error TS2339: Property 'hrfe' does not exist on type '
 
 1 error
 ```
+
+## Scripts are JavaScript {since=0.17.0}
+
+A `<script>` runs as JavaScript, so TypeScript-only syntax in it is an error, in the build and in `clarusjs check` alike, at its place:
+
+```sh
+src/pages/export.tscl:4:21 TypeScript syntax in a <script> (scripts are JavaScript): a type argument, request<string>(…). Types come from @input, inference, and the .ts modules a script imports
+```
+
+A type argument is the one to watch: JavaScript reads `request<string>('/a')` as two comparisons, `request < string > ('/a')`, so without the error it would fail only when it runs. Annotations (`let n: number`), casts (`as`, `satisfies`, `!`) and type declarations (`interface`, `type`) are reported the same way.
+
+Types come from elsewhere:
+
+- **Inputs:** `@input user: User`, with `User` from `@import type { User } from './types.ts'`.
+- **Inference:** `state(0)` holds a number and `state({ name: '' })` an object with a `name`; an empty list (`state([])`) is widened, so it can hold anything you add.
+- **`.ts` modules:** put a typed helper in a `.ts` file and import it. Its types reach the script: `export const exportCsv = () => request<string>('/api/export')` in `api.ts`, then `resource(exportCsv)`.
 
 ## In CI
 
