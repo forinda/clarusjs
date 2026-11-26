@@ -85,11 +85,11 @@ test('after a section above is removed (or one added), each field\'s mark follow
 })
 
 /** DOM attribute reads during `fn`: the engine's work, counted rather than timed. */
-function reads(fn: () => void): number {
+async function reads(fn: () => void): Promise<number> {
   const get = Element.prototype.getAttribute
   let n = 0
   Element.prototype.getAttribute = function (this: Element, name: string) { n++; return get.call(this, name) }
-  try { fn() } finally { Element.prototype.getAttribute = get }
+  try { fn(); await tick() } finally { Element.prototype.getAttribute = get } // the refresh a change queues, too
   return n
 }
 
@@ -97,9 +97,8 @@ test('the work per keystroke and per field left grows with the fields, not their
   const cost = async (sections: number) => {
     await mount(sections, 4, `scale${sections}`)
     const names = $$('.name')
-    const keystroke = reads(() => type(names.at(-1)!, 'x'))
-    const left = reads(() => leave(names[0]!))
-    await tick()
+    const keystroke = await reads(() => type(names.at(-1)!, 'x'))
+    const left = await reads(() => leave(names[0]!))
     document.body.innerHTML = ''
     return { keystroke, left }
   }
@@ -108,6 +107,19 @@ test('the work per keystroke and per field left grows with the fields, not their
   expect(big.keystroke / small.keystroke).toBeLessThan(7)
   expect(big.left / small.left).toBeLessThan(7)
 }, 60_000)
+
+test('#592: a keystroke refreshes the form once (each refresh clears every field\'s custom validity once)', async () => {
+  await mount(3, 2, 'once')
+  const fields = $$('input').length
+  const set = HTMLInputElement.prototype.setCustomValidity
+  let n = 0
+  HTMLInputElement.prototype.setCustomValidity = function (this: HTMLInputElement, m: string) { if (m === '') n++; return set.call(this, m) }
+  try {
+    type($$('.name')[2]!, 'x')
+    await tick()
+  } finally { HTMLInputElement.prototype.setCustomValidity = set }
+  expect(n).toBe(fields)
+})
 
 // FORMS_TIMING=1 prints how long each operation takes at a few sizes, with and without the engine (not run in CI).
 for (const [sections, items] of [[10, 10], [20, 25], [40, 25]] as const) {
