@@ -213,3 +213,13 @@ test('#review: pricing-compare says "Not included" as an image name, not a label
   await page.goto('/view/pricing-compare')
   await expect(page.getByRole('table').getByRole('img', { name: 'Not included' }).first()).toBeVisible()
 })
+
+test('footers: every link is a 24 px touch target on a phone, whatever the font (WCAG 2.5.8)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  for (const s of sectionsOf('footer')) {
+    await page.goto(`/view/${s.name}`)
+    const small = await page.locator('footer a, footer button').evaluateAll((els) =>
+      els.filter((el) => el.getBoundingClientRect().height < 24).map((el) => el.textContent!.trim()))
+    expect(small, s.name).toEqual([])
+  }
+})

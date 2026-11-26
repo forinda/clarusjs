@@ -96,6 +96,12 @@
       padding: 0;
       list-style: none;
     }
+    /* A 24px touch target for every link however small the font (WCAG 2.5.8): a list's sit close together. */
+    :where(a) {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+    }
     :where(nav a) {
       color: var(--ui-muted);
       text-decoration: none;

@@ -39,7 +39,11 @@
       padding: 0;
       list-style: none;
     }
+    /* A 24px touch target however small the font (WCAG 2.5.8). */
     :where(a) {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
       color: var(--ui-muted);
       text-decoration: none;
     }
