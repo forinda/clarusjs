@@ -69,11 +69,22 @@ test('the section versions the spec lists, each with its grid effect where it ha
     'header-menus': 'none', 'header-centred': 'none',
     'features-columns': 'none', 'features-grid': 'spotlight', 'features-bento': 'trail',
     'logo-cloud': 'trail', stats: 'trail',
+    'pricing-plans': 'spotlight', 'pricing-compare': 'spotlight',
+    'cta-centred': 'lean', 'cta-split': 'lean', 'testimonials-quote': 'none', 'testimonials-grid': 'none',
+    'faq-accordion': 'spotlight', 'faq-columns': 'spotlight', newsletter: 'none',
+    'footer-columns': 'none', 'footer-simple': 'none',
   }
   for (const [name, fx] of Object.entries(want)) {
     expect(sections.some((e) => e.name === name), name).toBe(true)
     expect(effect(name), name).toBe(fx)
   }
+})
+
+test('pricing data: three plans, exactly one popular, each comparison row with a value per plan', async () => {
+  const { plans, comparison } = await import('../src/registry/sections/pricing/data.ts')
+  expect(plans).toHaveLength(3)
+  expect(plans.filter((p) => p.popular)).toHaveLength(1)
+  for (const g of comparison) for (const r of g.rows) expect(r.values, r.label).toHaveLength(plans.length)
 })
 
 test('every section kind with versions has src/pages/blocks/marketing/<kind>.md showing each version\'s files in Code order, and each version a view', () => {
