@@ -12,21 +12,50 @@
 @event select: string
 
 <script>
+  import { effect } from 'clarusjs/runtime'
   import { addDays, addMonths, clamp, inRange, monthGrid, parseIso, today, weekStart } from './calendar-dates.ts'
   // The day the keyboard is on; its month is the one shown. Today is known in the browser only (a static page's
   // "today" would be the day it was built), so it's set once the calendar is live.
-  let focus = state(clamp(value || today(), min, max))
+  // min and max may be 'today': the visitor's day, worked out in the browser (a static page's build day goes stale).
+  const lo = () => (min === 'today' ? today() : min)
+  const hi = () => (max === 'today' ? today() : max)
+  let focus = state(clamp(value || today(), lo(), hi()))
   let now = state('')
   let hovered = state('')
+  // A date set from outside (a shortcut, a reset) shows its month.
+  let seen = value
+  effect(() => {
+    if (value === seen) return
+    seen = value
+    if (value) focus = clamp(value, lo(), hi())
+  })
   const date = (iso, options) =>
     new Intl.DateTimeFormat(locale, { timeZone: 'UTC', ...options }).format(parseIso(iso) ?? undefined)
   const weeks = () => monthGrid(focus, firstDay)
   const days = () =>
     weeks()[0].map((d) => ({ short: date(d.iso, { weekday: 'short' }), long: date(d.iso, { weekday: 'long' }) }))
-  const off = (iso) => (min !== '' && iso < min) || (max !== '' && iso > max)
+  const off = (iso) => (lo() !== '' && iso < lo()) || (hi() !== '' && iso > hi())
   const picked = (iso) => (range ? iso === value || iso === end : iso === value)
   // Between a start and an end (or, while choosing the end, the day under the pointer).
   const between = (iso) => range && value !== '' && inRange(iso, value, end || hovered || value) && !picked(iso)
+  // The month and year lists: months by short name in the locale (the title, read out, has the whole name); years within min and max, else a century back and
+  // twenty years on (from this year, or the shown one if it's outside that).
+  const months = () =>
+    Array.from({ length: 12 }, (_, i) => ({
+      value: i + 1,
+      label: date(`2026-${String(i + 1).padStart(2, '0')}-01`, { month: 'short' }),
+    }))
+  const years = () => {
+    const shown = Number(focus.slice(0, 4))
+    const now = Number(today().slice(0, 4))
+    const from = lo() ? Number(lo().slice(0, 4)) : Math.min(shown, now - 100)
+    const to = hi() ? Number(hi().slice(0, 4)) : Math.max(shown, now + 20)
+    return Array.from({ length: to - from + 1 }, (_, i) => to - i)
+  }
+  // To month m of year y, keeping the day (or the month's last), within the limits.
+  function jump(y, m) {
+    focus = clamp(addMonths(focus, (y - Number(focus.slice(0, 4))) * 12 + m - Number(focus.slice(5, 7))), lo(), hi())
+  }
   function show(iso) {
     focus = iso
     requestAnimationFrame(() => document.getElementById(`${id}-${iso}`)?.focus())
@@ -71,8 +100,11 @@
   [use]="wire"
   class="
     inline-grid gap-2 p-3 text-foreground font-sans text-(length:--ui-font-size) leading-[normal]
-    [&_[data-part=calendar-head]]:flex [&_[data-part=calendar-head]]:items-center [&_[data-part=calendar-head]]:justify-between [&_[data-part=calendar-title]]:m-0 [&_[data-part=calendar-title]]:font-semibold
-    [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:grid [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:place-items-center [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:size-(--ui-control-sm) [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:p-0 [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:border [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:border-border [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:rounded-lg [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:bg-background [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:text-foreground [&_:is([data-part=calendar-prev],[data-part=calendar-next])]:cursor-pointer
+    [&_[data-part=calendar-head]]:flex [&_[data-part=calendar-head]]:gap-1 [&_[data-part=calendar-head]]:items-center [&_[data-part=calendar-title]]:absolute [&_[data-part=calendar-title]]:w-px [&_[data-part=calendar-title]]:h-px [&_[data-part=calendar-title]]:m-0 [&_[data-part=calendar-title]]:overflow-hidden [&_[data-part=calendar-title]]:[clip-path:inset(50%)] [&_[data-part=calendar-title]]:whitespace-nowrap
+    [&_:is([data-part=calendar-month],[data-part=calendar-year])]:min-h-(--ui-control-sm) [&_:is([data-part=calendar-month],[data-part=calendar-year])]:px-1 [&_:is([data-part=calendar-month],[data-part=calendar-year])]:border [&_:is([data-part=calendar-month],[data-part=calendar-year])]:border-border [&_:is([data-part=calendar-month],[data-part=calendar-year])]:rounded-lg [&_:is([data-part=calendar-month],[data-part=calendar-year])]:bg-background [&_:is([data-part=calendar-month],[data-part=calendar-year])]:text-foreground [&_:is([data-part=calendar-month],[data-part=calendar-year])]:font-[inherit] [&_:is([data-part=calendar-month],[data-part=calendar-year])]:font-semibold [&_:is([data-part=calendar-month],[data-part=calendar-year])]:cursor-pointer
+    [&_[data-part=calendar-month]]:[flex:1_1_auto] [&_[data-part=calendar-month]]:w-0 [&_[data-part=calendar-month]]:ml-1 [&_[data-part=calendar-year]]:flex-none [&_[data-part=calendar-year]]:mr-1
+    max-[30rem]:[&_[data-part=calendar-head]]:flex-wrap max-[30rem]:[&_[data-part=calendar-month]]:-order-2 max-[30rem]:[&_[data-part=calendar-month]]:[flex:1_1_60%] max-[30rem]:[&_[data-part=calendar-month]]:m-0 max-[30rem]:[&_[data-part=calendar-year]]:-order-1 max-[30rem]:[&_[data-part=calendar-year]]:[flex:1_1_30%] max-[30rem]:[&_[data-part=calendar-year]]:m-0 max-[30rem]:[&_[data-part=calendar-prev]]:mr-auto
+    [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:shrink-0 [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:grid [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:place-items-center [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:size-(--ui-control-sm) [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:p-0 [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:border [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:border-border [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:rounded-lg [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:bg-background [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:text-foreground [&_:is([data-part=calendar-prev],[data-part=calendar-next],[data-part=calendar-prev-year],[data-part=calendar-next-year])]:cursor-pointer
     [&_[data-part=calendar-grid]]:border-collapse [&_[data-part=calendar-grid]_td]:p-[calc(var(--ui-space)/4)]
     [&_[data-part=calendar-grid]_th]:pt-0 [&_[data-part=calendar-grid]_th]:px-0 [&_[data-part=calendar-grid]_th]:pb-1 [&_[data-part=calendar-grid]_th]:text-muted-foreground [&_[data-part=calendar-grid]_th]:font-normal [&_[data-part=calendar-grid]_th]:text-[length:calc(var(--ui-font-size)-1px)]
     [&_[data-part=calendar-day]]:size-(--ui-control-md) [&_[data-part=calendar-day]]:p-0 [&_[data-part=calendar-day]]:border-0 [&_[data-part=calendar-day]]:border-none [&_[data-part=calendar-day]]:rounded-lg [&_[data-part=calendar-day]]:bg-transparent [&_[data-part=calendar-day]]:text-foreground [&_[data-part=calendar-day]]:font-[inherit] [&_[data-part=calendar-day]]:tabular-nums [&_[data-part=calendar-day]]:cursor-pointer
@@ -86,12 +118,56 @@
   "
 >
   <div data-part="calendar-head">
-    <button type="button" data-part="calendar-prev" aria-label="Previous month" (click)="show(addMonths(focus, -1))">
+    <button
+      type="button"
+      data-part="calendar-prev-year"
+      aria-label="Previous year"
+      (click)="show(clamp(addMonths(focus, -12), lo(), hi()))"
+    >
+      <icon name="lucide:chevrons-left" />
+    </button>
+    <button
+      type="button"
+      data-part="calendar-prev"
+      aria-label="Previous month"
+      (click)="show(clamp(addMonths(focus, -1), lo(), hi()))"
+    >
       <icon name="lucide:chevron-left" />
     </button>
     <p data-part="calendar-title" aria-live="polite">{{ date(focus, { month: 'long', year: 'numeric' }) }}</p>
-    <button type="button" data-part="calendar-next" aria-label="Next month" (click)="show(addMonths(focus, 1))">
+    <select
+      data-part="calendar-month"
+      aria-label="Month"
+      (change)="jump(Number(focus.slice(0, 4)), Number($event.target.value))"
+    >
+      @for (m of months(); track m.value) {
+        <option [value]="m.value" [selected]="m.value === Number(focus.slice(5, 7))">{{ m.label }}</option>
+      }
+    </select>
+    <select
+      data-part="calendar-year"
+      aria-label="Year"
+      (change)="jump(Number($event.target.value), Number(focus.slice(5, 7)))"
+    >
+      @for (y of years(); track y) {
+        <option [value]="y" [selected]="y === Number(focus.slice(0, 4))">{{ y }}</option>
+      }
+    </select>
+    <button
+      type="button"
+      data-part="calendar-next"
+      aria-label="Next month"
+      (click)="show(clamp(addMonths(focus, 1), lo(), hi()))"
+    >
       <icon name="lucide:chevron-right" />
+    </button>
+    <button
+      type="button"
+      data-part="calendar-next-year"
+      aria-label="Next year"
+      (click)="show(clamp(addMonths(focus, 12), lo(), hi()))"
+    >
+      <icon name="lucide:chevrons-right" />
     </button>
   </div>
   <table

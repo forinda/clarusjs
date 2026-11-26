@@ -5,6 +5,7 @@ test('introduction (/components): renders, offers theme.css to copy', async ({ p
   const response = await page.goto('/components')
   expect(response?.status()).toBe(200)
   await expect(page).toHaveTitle(/clarusjs ui/)
+  await page.locator('summary', { hasText: 'Show theme.css' }).click() // folded away until asked for
   const theme = page.locator('pre', { hasText: '--ui-accent:' })
   await expect(theme).toHaveCount(1)
   await expect(page.locator('.code-block', { has: theme }).getByRole('button', { name: /copy/i })).toHaveCount(1)

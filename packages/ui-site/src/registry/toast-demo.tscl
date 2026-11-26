@@ -23,6 +23,11 @@
   const fail = () => toast('Upload failed', { type: 'error' })
   const note = () => toast('A new version is ready', { type: 'info' })
   const warn = () => toast('Storage almost full', { type: 'warning' })
+  const long = () =>
+    toast(
+      'Your export is ready to download from https://example.com/exports/2026/11/very-long-file-name-without-spaces.csv, and it stays there for seven days.',
+      { type: 'info' },
+    )
   function remove() {
     removed++
     toast('Project deleted', { action: { label: 'Undo', onClick: () => removed-- } })
@@ -34,6 +39,7 @@
   <uiButton variant="outline" (click)="fail()">Fail</uiButton>
   <uiButton variant="outline" (click)="note()">Info</uiButton>
   <uiButton variant="outline" (click)="warn()">Warn</uiButton>
+  <uiButton variant="outline" (click)="long()">Long</uiButton>
   <uiButton variant="outline" (click)="remove()">Delete project</uiButton>
   <p>
     Deleted: <span class="out">{{ removed }}</span>

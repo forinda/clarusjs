@@ -3,7 +3,15 @@ import { expect, test } from '@playwright/test'
 import { presets } from '../src/theme/presets.ts'
 import { axeViolations, modes, pageIn } from './helpers.ts'
 
-const rgb = (page: import('@playwright/test').Page, hex: string) => page.evaluate((h) => { const p = document.createElement('p'); p.style.color = h; document.body.append(p); const c = getComputedStyle(p).color; p.remove(); return c }, hex)
+const rgb = (page: import('@playwright/test').Page, hex: string) =>
+  page.evaluate((h) => {
+    const p = document.createElement('p')
+    p.style.color = h
+    document.body.append(p)
+    const c = getComputedStyle(p).color
+    p.remove()
+    return c
+  }, hex)
 
 test('/: a headline and the ways in: components, blocks, and the theme sheet', async ({ page }) => {
   await page.goto('/')
@@ -26,7 +34,14 @@ test('/: the playground restyles its components from a preset, the radius and th
   await page.locator('.landing-playground').getByLabel('Radius').fill('16')
   await expect(button).toHaveCSS('border-top-left-radius', '16px')
   await page.getByRole('button', { name: 'Comfortable' }).click()
-  const step4 = () => canvas.evaluate((el) => { const p = el.appendChild(document.createElement('div')); p.style.padding = 'var(--ui-space-4)'; const v = getComputedStyle(p).paddingTop; p.remove(); return v })
+  const step4 = () =>
+    canvas.evaluate((el) => {
+      const p = el.appendChild(document.createElement('div'))
+      p.style.padding = 'var(--ui-space-4)'
+      const v = getComputedStyle(p).paddingTop
+      p.remove()
+      return v
+    })
   await expect.poll(step4).toBe('20px')
 })
 
@@ -57,7 +72,10 @@ for (const mode of modes) {
   })
 }
 
-for (const [where, open] of [['the landing playground', null], ['the Theme sheet', 'sheet']] as const) {
+for (const [where, open] of [
+  ['the landing playground', null],
+  ['the Theme sheet', 'sheet'],
+] as const) {
   test(`${where}: the radius slider moves smoothly: the same element, focused, one step per key`, async ({ page }) => {
     await page.goto('/')
     let slider
@@ -78,3 +96,11 @@ for (const [where, open] of [['the landing playground', null], ['the Theme sheet
     expect(await slider.evaluate((el) => (el as HTMLElement & { mark?: boolean }).mark === true)).toBe(true)
   })
 }
+
+test('the promises include native HTML first and plain CSS or Tailwind, six cards in all', async ({ page }) => {
+  await page.goto('/')
+  const cards = page.getByRole('list', { name: 'Why it works this way' }).getByRole('listitem')
+  await expect(cards).toHaveCount(6)
+  await expect(page.getByRole('heading', { name: 'Built on native HTML' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Plain CSS or Tailwind' })).toBeVisible()
+})

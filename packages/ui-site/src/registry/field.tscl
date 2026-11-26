@@ -11,6 +11,8 @@
 @input name: string = ''
 @input placeholder: string = ''
 @input required: boolean = false
+@input autocomplete: string = ''
+@input inputmode: string = ''
 @model value: string = ''
 
 <uiField
@@ -23,6 +25,8 @@
   [name]="name"
   [placeholder]="placeholder"
   [required]="required"
+  [autocomplete]="autocomplete"
+  [inputmode]="inputmode"
   [(value)]="value"
 />
 
