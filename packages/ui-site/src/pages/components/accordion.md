@@ -17,9 +17,17 @@ description: "Questions that open one at a time, on native details."
 
 ## Source
 
-Copy it into `src/components/ui/` as `accordion.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same.
+Copy it into `src/components/ui/` as `accordion.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `accordion.tw.tscl` copied as `accordion.tscl` with `accordion.tw.css` beside it.
+
+<sourceFlavor name="accordion">
 
 <<< ../../registry/accordion.tscl
+
+<<< ../../registry/accordion.tw.tscl
+
+<<< ../../registry/accordion.tw.css
+
+</sourceFlavor>
 
 ## Styling
 

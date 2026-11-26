@@ -1,0 +1,41 @@
+/*
+  The Tailwind version of radio-group's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Radio group: a fieldset with its legend; radios like checkboxes, round. */
+  :where([data-part='radio-group']) {
+    @apply grid gap-(--ui-space-2) m-0 p-0 border-0 border-none font-normal text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) text-(color:--ui-fg);
+  }
+  :where([data-part='radio-group']) > :where([data-part='legend']) {
+    @apply p-0 mb-(--ui-space-1) font-semibold;
+  }
+  :where([data-part='radio']) {
+    @apply inline-flex items-center gap-(--ui-space-2) cursor-pointer;
+  }
+  :where([data-part='radio']) input {
+    @apply accent-(color:--ui-accent) w-[18px] h-[18px] m-0;
+  }
+  :where([data-part='radio'])[data-disabled] {
+    @apply opacity-[0.55] cursor-not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}

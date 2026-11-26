@@ -1,0 +1,10 @@
+{{-- Tailwind version: its look is checkbox.tw.css (Tailwind utilities), imported here.
+ Checkbox: a native checkbox with its label, bound two ways with [(checked)]. --}}
+@import './checkbox.tw.css'
+@import uiCheckbox from '@clarusjs/ui-primitives/checkbox.tscl'
+@input label: string
+@input name: string = ''
+@input disabled: boolean = false
+@model checked: boolean = false
+
+<uiCheckbox [label]="label" [name]="name" [disabled]="disabled" [(checked)]="checked" />
