@@ -175,7 +175,7 @@ src/pages/
 
 This site's [client tour](/tour/1) is a folder layout: `src/pages/tour/+layout.tscl` renders the docs layout with each step's title, and the step pages only write their content. It works for [client routes](/guide/client-routes) too: the router renders the layout in the browser with the route's params.
 
-A page with a `<script>` of its own (an island page) can't have folder or config layouts yet: the compiler says so at the top of the page. Move its script into a component it uses, or add `@layout none`.
+A page with a `<script>` of its own (an island page) gets its folder and config layouts around the island: the layouts stay server HTML, and only the page's own markup ships as the island. Its content is inside the island, so it can't fill its layouts' named slots (`@slot('aside')`): put that content in the layout, or move the script into a component the page uses. In a [client route](/guide/client-routes), which renders its layouts in the browser, an island page can't have layouts yet; add `@layout none` or make the route static or server.
 
 ## Layouts in the config
 
