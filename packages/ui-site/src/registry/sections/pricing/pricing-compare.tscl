@@ -1,0 +1,137 @@
+{{--
+  Pricing, comparison: a table with a column per plan (its name, price and a button) and a row per feature, grouped,
+  with a check where it's included. A soft light follows the pointer across the grid behind (spotlight): delete the
+  <gridEffect> tag for no JavaScript. Its plans and rows are in data.ts beside it.
+--}}
+@import uiButton from '~/components/ui/button.tscl'
+@import gridBackdrop from '~/components/ui/grid-backdrop.tscl'
+@import gridEffect from '~/components/ui/grid-effect.tscl'
+@import { comparison, plans, pricing } from './data.ts'
+
+<section class="compare">
+  <gridBackdrop />
+  <gridEffect effect="spotlight" />
+  <h2>{{ pricing.title }}</h2>
+  <div class="scroll">
+    <table>
+      <caption>What each plan includes</caption>
+      <thead>
+        <tr>
+          <td></td>
+          @for (plan of plans; track plan.name) {
+            <th scope="col">
+              <span class="name">{{ plan.name }}</span>
+              <span class="price">{{ plan.monthly === null ? 'Custom' : '$' + plan.monthly + ' a month' }}</span>
+              <uiButton size="sm" [variant]="plan.popular ? 'default' : 'outline'" [href]="plan.cta.href">{{ plan.cta.label }}</uiButton>
+            </th>
+          }
+        </tr>
+      </thead>
+      @for (g of comparison; track g.group) {
+        <tbody>
+          <tr class="group"><th scope="rowgroup" [colspan]="plans.length + 1">{{ g.group }}</th></tr>
+          @for (r of g.rows; track r.label) {
+            <tr>
+              <th scope="row">{{ r.label }}</th>
+              @for (v of r.values; track $index) {
+                <td>
+                  @if (v === true) {
+                    <svg role="img" aria-label="Included" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10" /></svg>
+                  } @else if (v === false) {
+                    <span class="no" role="img" aria-label="Not included">–</span>
+                  } @else {
+                    {{ v }}
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      }
+    </table>
+  </div>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      display: grid;
+      gap: var(--ui-space-8);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      overflow: hidden;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(h2), :where(.scroll) {
+      position: relative;
+      z-index: 1;
+    }
+    :where(h2) {
+      margin: 0;
+      font: 700 calc(var(--ui-font-size) * 2) / 1.15 var(--ui-font-heading);
+      letter-spacing: -0.02em;
+    }
+    :where(.scroll) {
+      overflow-x: auto;
+    }
+    :where(table) {
+      width: 100%;
+      min-width: 40rem;
+      border-collapse: collapse;
+      background: color-mix(in oklab, var(--ui-bg) 85%, transparent);
+    }
+    :where(caption) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    :where(th), :where(td) {
+      padding: var(--ui-space-3) var(--ui-space-4);
+      border-bottom: 1px solid var(--ui-border);
+      text-align: center;
+    }
+    :where(th[scope='row']) {
+      text-align: start;
+      font-weight: 400;
+    }
+    :where(thead th) {
+      vertical-align: top;
+    }
+    :where(thead th > *) {
+      display: block;
+      margin-bottom: var(--ui-space-2);
+    }
+    :where(.name) {
+      font: 600 calc(var(--ui-font-size) * 1.05) var(--ui-font-heading);
+    }
+    :where(.price) {
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) * 0.9);
+    }
+    :where(.group th) {
+      padding-top: var(--ui-space-6);
+      text-align: start;
+      font-size: calc(var(--ui-font-size) * 0.8);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ui-muted);
+    }
+    :where(svg) {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: var(--ui-fg);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    :where(.no) {
+      color: var(--ui-muted);
+    }
+  }
+</style>

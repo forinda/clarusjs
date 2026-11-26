@@ -1,0 +1,147 @@
+{{--
+  Pricing, plans: three plans side by side, the popular one flagged, each listing what it adds to the one before;
+  a switch shows yearly prices. A soft light follows the pointer across the grid behind (spotlight): delete the
+  <gridEffect> tag to drop it. Its plans and prices are in data.ts beside it.
+--}}
+@import uiButton from '~/components/ui/button.tscl'
+@import uiSwitch from '~/components/ui/switch.tscl'
+@import gridBackdrop from '~/components/ui/grid-backdrop.tscl'
+@import gridEffect from '~/components/ui/grid-effect.tscl'
+@import { plans, pricing } from './data.ts'
+
+<script>
+  let yearly = state(false)
+  const price = (p) => {
+    const n = yearly ? p.yearly : p.monthly
+    return n === null ? 'Custom' : '$' + n
+  }
+</script>
+
+<section class="pricing">
+  <gridBackdrop />
+  <gridEffect effect="spotlight" />
+  <header>
+    <h2>{{ pricing.title }}</h2>
+    <p>{{ pricing.line }}</p>
+    <uiSwitch [label]="pricing.yearly" [(checked)]="yearly" />
+  </header>
+  <div class="plans">
+    @for (plan of plans; track plan.name) {
+      <article [data-popular]="plan.popular ? 'true' : false">
+        @if (plan.popular) {
+          <span class="flag">Popular</span>
+        }
+        <h3>{{ plan.name }}</h3>
+        <p class="price"><span data-price>{{ price(plan) }}</span>@if (plan.monthly !== null) {<small> a month</small>}</p>
+        <p class="line">{{ plan.line }}</p>
+        @if (plan.inherits) {
+          <p class="inherits">Everything in {{ plan.inherits }}, plus:</p>
+        }
+        <ul>
+          @for (f of plan.features; track f) {
+            <li>{{ f }}</li>
+          }
+        </ul>
+        <uiButton block [variant]="plan.popular ? 'default' : 'outline'" [href]="plan.cta.href">{{ plan.cta.label }}</uiButton>
+      </article>
+    }
+  </div>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      position: relative;
+      display: grid;
+      gap: var(--ui-space-10);
+      padding: var(--ui-space-12) var(--ui-space-6);
+      overflow: hidden;
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font-family: var(--ui-font);
+    }
+    :where(header), :where(.plans) {
+      position: relative;
+      z-index: 1;
+    }
+    :where(header) {
+      display: grid;
+      justify-items: center;
+      gap: var(--ui-space-3);
+      text-align: center;
+    }
+    :where(h2) {
+      margin: 0;
+      font: 700 calc(var(--ui-font-size) * 2.25) / 1.1 var(--ui-font-heading);
+      letter-spacing: -0.02em;
+    }
+    :where(header p) {
+      margin: 0;
+      color: var(--ui-muted);
+    }
+    :where(.plans) {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+      gap: var(--ui-space-4);
+      align-items: start;
+    }
+    :where(article) {
+      position: relative;
+      display: grid;
+      gap: var(--ui-space-3);
+      padding: var(--ui-space-6);
+      border: 1px solid var(--ui-border);
+      border-radius: calc(var(--ui-radius) * 1.5);
+      background: var(--ui-card);
+      color: var(--ui-card-fg);
+    }
+    :where(article[data-popular]) {
+      border-color: var(--ui-fg);
+      box-shadow: var(--ui-shadow);
+    }
+    :where(.flag) {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      translate: -50% -50%;
+      padding: var(--ui-space-1) var(--ui-space-3);
+      border-radius: 999px;
+      background: var(--ui-fg);
+      color: var(--ui-bg);
+      font-size: calc(var(--ui-font-size) * 0.8);
+      font-weight: 600;
+    }
+    :where(h3) {
+      margin: 0;
+      font: 600 calc(var(--ui-font-size) * 1.1) var(--ui-font-heading);
+    }
+    :where(.price) {
+      margin: 0;
+      font: 700 calc(var(--ui-font-size) * 2.25) / 1 var(--ui-font-heading);
+    }
+    :where(.price small) {
+      font: 400 var(--ui-font-size) var(--ui-font);
+      color: var(--ui-muted);
+    }
+    :where(.line), :where(.inherits) {
+      margin: 0;
+      color: var(--ui-muted);
+    }
+    :where(.inherits) {
+      font-size: calc(var(--ui-font-size) * 0.9);
+    }
+    :where(ul) {
+      display: grid;
+      gap: var(--ui-space-2);
+      margin: 0 0 var(--ui-space-2);
+      padding: 0;
+      list-style: none;
+    }
+    :where(li)::before {
+      content: '✓';
+      margin-inline-end: var(--ui-space-2);
+      color: var(--ui-accent);
+    }
+  }
+</style>
