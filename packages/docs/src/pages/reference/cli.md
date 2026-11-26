@@ -47,4 +47,13 @@ $ clarusjs explain /guide/state
   CSS         /assets/src/styles/docs-C2a9Lf0q.css, /assets/cl-styles-D3qK0wPz.css
 ```
 
+A route with [folder or config layouts](/guide/layouts#folder-layouts) or [guards](/guide/auth#guarding-a-folder) gets two more rows (since 0.17.0): its layouts, outermost first, and its folders' `+guard.ts`, outer first.
+
+```sh
+  Layouts     src/layouts/site.tscl
+              src/pages/admin/+layout.tscl
+  Guards      src/pages/+guard.ts
+              src/pages/admin/+guard.ts
+```
+
 Exits with 1 when the route doesn't exist or the site hasn't been built.

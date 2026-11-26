@@ -32,7 +32,13 @@ export type RouteInfo = {
   /** Files relative to dist/client; gzip sizes in bytes. initialGzip is what loads with the page (attach="load"). */
   js: { files: string[]; gzip: number; initialGzip: number }
   css: string[]
+  /** Its config and folder layouts (#456), outermost first, from the root (`src/pages/+layout.tscl`); none: left out. */
+  layouts?: string[]
+  /** Its folders' +guard.ts (#457), outer first; none: left out. */
+  guards?: string[]
 }
+/** A page's layouts and guards, by its route as its file names it (`/blog/[slug]`). */
+export type RouteParts = { route: string; layouts: string[]; guards: string[] }
 /**
  * The built site's route manifest (`dist/clarusjs-manifest.json`).
  * @see https://clarusjs.com/reference/server#readmanifest
@@ -93,7 +99,7 @@ export function describeRoute(route: string, html: string, opts: { base: string;
 }
 
 /** Describe every prerendered route and write `<distDir>/clarusjs-manifest.json`. */
-export function writeManifest(distDir: string, routes: string[], base: string, loaded: string[] = [], server: { route: string; loader: boolean; cookies?: boolean }[] = []): Manifest {
+export function writeManifest(distDir: string, routes: string[], base: string, loaded: string[] = [], server: { route: string; loader: boolean; cookies?: boolean }[] = [], parts: RouteParts[] = []): Manifest {
   const client = resolve(distDir, 'client')
   const chunks = JSON.parse(readFileSync(resolve(client, '.vite/manifest.json'), 'utf8')) as ChunkGraph
   const sizes = new Map<string, number>()
@@ -113,6 +119,13 @@ export function writeManifest(distDir: string, routes: string[], base: string, l
   // Server routes have no HTML at build time: what they ship is decided per request.
   for (const { route, loader, cookies } of server) {
     manifest.routes[route] = { mode: 'server', html: null, loader: loader ? 'request' : null, ...(cookies ? { cookies: true } : {}), islands: [], js: { files: [], gzip: 0, initialGzip: 0 }, css: [] }
+  }
+  // Each route's layouts and guards (#472): its page's, found by pattern (a route without [params] first).
+  const table = [...parts].sort((a, b) => Number(a.route.includes('[')) - Number(b.route.includes('['))).map((p) => ({ p: p.route, r: p.route }))
+  for (const [route, info] of Object.entries(manifest.routes)) {
+    const found = parts.find((p) => p.route === matchRoute(table, route)?.r)
+    if (found?.layouts.length) info.layouts = found.layouts
+    if (found?.guards.length) info.guards = found.guards
   }
   writeFileSync(resolve(distDir, 'clarusjs-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
   return manifest
