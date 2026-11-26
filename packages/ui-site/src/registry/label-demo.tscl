@@ -3,7 +3,7 @@
 
 <div class="demo">
   <uiLabel control="demo-name">Name</uiLabel>
-  <uiInput id="demo-name" />
+  <uiInput id="demo-name" placeholder="Ada Lovelace" />
   <uiLabel><input type="checkbox" /> Remember me</uiLabel>
 </div>
 

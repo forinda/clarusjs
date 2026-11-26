@@ -1,0 +1,85 @@
+/*
+  The Tailwind version of toast's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Toast: the same rules as @clarusjs/ui's ui.css for toast-region.tscl from @clarusjs/ui-primitives (and the
+  messages toast() adds). Copy it into src/components/ui/, @import it once.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Toast: messages stacked at the bottom-right corner, above the page; each a card with its action and a close. */
+  :where([data-part='toast-region']) {
+    @apply fixed top-auto right-[16px] bottom-[16px] left-auto z-[50] w-[min(22rem,_calc(100vw_-_32px))];
+  }
+  :where([data-part='toast-list']) {
+    @apply grid gap-(--ui-space-2) m-0 p-0 list-none;
+  }
+  :where([data-part='toast']) {
+    /* Lined up on the message's first line, so a long message wraps under it. */
+    @apply relative flex gap-(--ui-space-2) items-start py-(--ui-space-3) px-[calc(var(--ui-space)_*_3.5)] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-popover) text-(color:--ui-popover-fg) shadow-(--ui-shadow) font-normal text-(length:--ui-font-size) leading-[1.4] font-(family-name:--ui-font);
+  }
+  :where([data-part='toast-message']) {
+    @apply flex-1 min-w-0 m-0 wrap-anywhere;
+  }
+  :where([data-part='toast-action']),
+  :where([data-part='toast-close']) {
+    /* As tall as a line of the message, give or take their padding: centred on its first line. */
+    @apply py-(--ui-space-1) px-(--ui-space-2) border border-solid border-(color:--ui-border) rounded-[calc(var(--ui-radius)_-_2px)] bg-transparent text-inherit [font:inherit] cursor-pointer [margin-block:calc(var(--ui-space-1)_*_-1)];
+  }
+  :where([data-part='toast-close']) {
+    @apply border-[transparent];
+  }
+  :where([data-part='toast'])[data-type='success'] {
+    @apply border-l-4 [border-left-style:solid] border-l-(color:--ui-success);
+  }
+  :where([data-part='toast'])[data-type='success'] :where([data-part='toast-icon']) {
+    @apply text-(color:--ui-success);
+  }
+  :where([data-part='toast'])[data-type='error'] {
+    @apply border-l-4 [border-left-style:solid] border-l-(color:--ui-danger);
+  }
+  :where([data-part='toast'])[data-type='error'] :where([data-part='toast-icon']) {
+    @apply text-(color:--ui-danger);
+  }
+  :where([data-part='toast'])[data-type='warning'] {
+    @apply border-l-4 [border-left-style:solid] border-l-(color:--ui-warning);
+  }
+  :where([data-part='toast'])[data-type='warning'] :where([data-part='toast-icon']) {
+    @apply text-(color:--ui-warning);
+  }
+  :where([data-part='toast'])[data-type='info'] {
+    @apply border-l-4 [border-left-style:solid] border-l-(color:--ui-accent);
+  }
+  :where([data-part='toast'])[data-type='info'] :where([data-part='toast-icon']) {
+    @apply text-(color:--ui-accent);
+  }
+  :where([data-part='toast-icon']) {
+    @apply inline-flex shrink-0 items-center h-[1.4em];
+  }
+  :where([data-part='toast-icon']):empty {
+    @apply hidden;
+  }
+  :where([data-part='toast-kind']) {
+    @apply absolute w-[1px] h-[1px] overflow-hidden [clip-path:inset(50%)] whitespace-nowrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}

@@ -1,0 +1,42 @@
+/*
+  The Tailwind version of tooltip's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Tooltip: the same rules as @clarusjs/ui's ui.css for tooltip.tscl, tooltip-trigger.tscl from @clarusjs/ui-primitives.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Buttons: triggers and closes. */
+  :where([data-part='trigger'], [data-part='close']) {
+    @apply font-semibold text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) py-(--ui-space-2) px-[calc(var(--ui-space)_*_3.5)] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-bg) text-(color:--ui-fg) cursor-pointer;
+  }
+  :where([data-part='trigger'], [data-part='close']):hover {
+    @apply border-(color:--ui-accent);
+  }
+
+  /* Tooltip: small, inverted, a little gap from its trigger. */
+  :where([data-part='tooltip']) {
+    @apply m-[calc(var(--ui-space)_*_1.5)] py-(--ui-space-1) px-(--ui-space-2) border-0 border-none rounded-[calc(var(--ui-radius)_-_2px)] bg-(color:--ui-fg) text-(color:--ui-bg) font-normal text-[calc(var(--ui-font-size)_-_1px)] leading-[1.4] font-(family-name:--ui-font) max-w-[240px];
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}

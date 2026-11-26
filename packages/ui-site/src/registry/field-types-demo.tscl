@@ -3,7 +3,7 @@
 <div class="demo example">
   <uiField id="types-email" label="Email" type="email" placeholder="you@example.com" />
   <uiField id="types-phone" label="Phone" type="tel" placeholder="+1 555 0100" />
-  <uiField id="types-age" label="Age" type="number" />
+  <uiField id="types-age" label="Age" type="number" placeholder="30" />
   <uiField id="types-date" label="Start date" type="date" />
   <uiField id="types-site" label="Website" type="url" placeholder="https://" />
 </div>

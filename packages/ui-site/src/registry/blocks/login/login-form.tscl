@@ -59,6 +59,7 @@
     label="Password"
     type="password"
     name="password"
+    placeholder="••••••••"
     [error]="errors().password ?? ''"
     [show]="tried"
     [(value)]="password"

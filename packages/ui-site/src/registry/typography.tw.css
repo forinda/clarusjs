@@ -1,0 +1,114 @@
+/*
+  The Tailwind version of typography's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Typography: plain HTML (Markdown's output, a CMS's, your own) set from the theme's tokens, inside
+  data-part="prose": headings, paragraphs, links, lists, quotes, code, tables, rules and images.
+  Copy it into src/components/ui/, @import it once, and put the HTML in <article data-part="prose">.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* A comfortable measure, and a vertical rhythm from the font size. */
+  :where([data-part='prose']) {
+    @apply max-w-[68ch] text-(color:--ui-fg) font-normal text-(length:--ui-font-size) leading-[1.7] font-(family-name:--ui-font);
+  }
+  :where([data-part='prose']) :where(p, ul, ol, blockquote, pre, table, figure, hr) {
+    @apply mt-0 mx-0 mb-[1.25em];
+  }
+
+  :where([data-part='prose']) :where(h1, h2, h3, h4) {
+    @apply mt-[1.8em] mx-0 mb-[0.6em] font-[family-name:var(--ui-font-heading,_var(--ui-font))] font-bold leading-[1.25] tracking-[-0.01em] text-balance;
+  }
+  :where([data-part='prose']) :where(h1) {
+    @apply text-[2.25em] tracking-[-0.02em];
+  }
+  :where([data-part='prose']) :where(h2) {
+    @apply pb-[0.3em] border-b [border-bottom-style:solid] border-b-(color:--ui-border) text-[1.6em];
+  }
+  :where([data-part='prose']) :where(h3) {
+    @apply text-[1.25em];
+  }
+  :where([data-part='prose']) :where(h4) {
+    @apply text-[1.05em];
+  }
+  :where([data-part='prose']) :where(p) {
+    @apply text-pretty;
+  }
+  :where([data-part='prose']) :where(strong) {
+    @apply font-[650];
+  }
+
+  :where([data-part='prose']) :where(a) {
+    @apply text-(color:--ui-accent) underline decoration-1 underline-offset-[0.2em];
+  }
+  :where([data-part='prose']) :where(a:hover) {
+    @apply decoration-2;
+  }
+
+  :where([data-part='prose']) :where(ul, ol) {
+    @apply pl-[1.5em];
+  }
+  :where([data-part='prose']) :where(ul) {
+    @apply list-disc;
+  }
+  :where([data-part='prose']) :where(ol) {
+    @apply list-decimal;
+  }
+  :where([data-part='prose']) :where(li) {
+    @apply my-[0.35em] mx-0;
+  }
+  :where([data-part='prose']) :where(li) > :where(ul, ol) {
+    @apply mt-[0.35em] mx-0 mb-0;
+  }
+  :where([data-part='prose']) :where(li)::marker {
+    @apply text-(color:--ui-muted);
+  }
+
+  :where([data-part='prose']) :where(blockquote) {
+    @apply pl-[1em] border-l-3 [border-left-style:solid] border-l-(color:--ui-border) text-(color:--ui-muted) italic;
+  }
+
+  :where([data-part='prose']) :where(code) {
+    @apply py-[0.15em] px-[0.35em] rounded-[calc(var(--ui-radius)_/_2)] bg-(color:--ui-accent-soft) font-normal text-[0.9em] leading-[normal] font-[family-name:var(--ui-font-mono,ui-monospace,monospace)];
+  }
+  :where([data-part='prose']) :where(pre) {
+    @apply overflow-x-auto py-[1em] px-[1.25em] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-accent-soft) leading-[1.55];
+  }
+  :where([data-part='prose']) :where(pre code) {
+    @apply p-0 bg-transparent;
+  }
+  :where([data-part='prose']) :where(kbd) {
+    @apply py-[0.1em] px-[0.4em] border border-solid border-(color:--ui-border) border-b-2 rounded-[calc(var(--ui-radius)_/_2)] font-normal text-[0.85em] leading-[normal] font-[family-name:var(--ui-font-mono,ui-monospace,monospace)];
+  }
+
+  :where([data-part='prose']) :where(table) {
+    @apply w-full border-collapse text-[0.95em];
+  }
+  :where([data-part='prose']) :where(th, td) {
+    @apply py-[0.5em] px-[0.75em] border-b [border-bottom-style:solid] border-b-(color:--ui-border) text-left;
+  }
+  :where([data-part='prose']) :where(th) {
+    @apply font-semibold;
+  }
+
+  :where([data-part='prose']) :where(hr) {
+    @apply my-[2em] mx-0 border-0 border-none border-t [border-top-style:solid] border-t-(color:--ui-border);
+  }
+  :where([data-part='prose']) :where(img, video) {
+    @apply max-w-full h-auto rounded-(--ui-radius);
+  }
+  :where([data-part='prose']) :where(figcaption) {
+    @apply mt-[0.5em] text-(color:--ui-muted) text-[0.9em];
+  }
+
+  /* Last, so they win over every margin above: nothing hangs outside the prose box. */
+  :where([data-part='prose']) > :where(:first-child) {
+    @apply mt-0;
+  }
+  :where([data-part='prose']) > :where(:last-child) {
+    @apply mb-0;
+  }
+}

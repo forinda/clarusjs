@@ -1,0 +1,33 @@
+{{-- Tailwind version: its look is field.tw.css (Tailwind utilities), imported here.
+ Field: a label, a native input, a description and an error, wired by id, bound two ways with [(value)]. The
+     error shows once the field has been left, or with [show] (after a submit). For (blur), use field.tscl from
+     @clarusjs/ui-primitives directly: the styles apply the same. --}}
+@import './field.tw.css'
+@import uiField from '@clarusjs/ui-primitives/field.tscl'
+@input id: string
+@input label: string
+@input description: string = ''
+@input error: string = ''
+@input show: boolean = false
+@input type: string = 'text'
+@input name: string = ''
+@input placeholder: string = ''
+@input required: boolean = false
+@input autocomplete: string = ''
+@input inputmode: string = ''
+@model value: string = ''
+
+<uiField
+  [id]="id"
+  [label]="label"
+  [description]="description"
+  [error]="error"
+  [show]="show"
+  [type]="type"
+  [name]="name"
+  [placeholder]="placeholder"
+  [required]="required"
+  [autocomplete]="autocomplete"
+  [inputmode]="inputmode"
+  [(value)]="value"
+/>

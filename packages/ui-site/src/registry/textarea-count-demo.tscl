@@ -9,7 +9,7 @@
 
 <div class="demo example">
   <uiLabel control="count-post">Post</uiLabel>
-  <uiTextarea id="count-post" [rows]="4" [maxlength]="MAX" aria-describedby="count-post-left" (input)="typed($event)" />
+  <uiTextarea id="count-post" placeholder="What’s happening?" [rows]="4" [maxlength]="MAX" aria-describedby="count-post-left" (input)="typed($event)" />
   <p id="count-post-left" class="count" aria-live="polite">{{ MAX - text.length }} characters left</p>
 </div>
 

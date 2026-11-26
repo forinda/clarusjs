@@ -1,0 +1,82 @@
+/*
+  The Tailwind version of sheet's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Sheet: the same rules as @clarusjs/ui's ui.css for dialog.tscl, dialog-trigger.tscl, dialog-close.tscl from
+  @clarusjs/ui-primitives, with data-side on the dialog. Copy it into src/components/ui/, @import it once.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Buttons: triggers and closes. */
+  :where([data-part='trigger'], [data-part='close']) {
+    @apply font-semibold text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) py-(--ui-space-2) px-[calc(var(--ui-space)_*_3.5)] border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-bg) text-(color:--ui-fg) cursor-pointer;
+  }
+  :where([data-part='trigger'], [data-part='close']):hover {
+    @apply border-(color:--ui-accent);
+  }
+
+  /* Dialog: centred by the browser; the backdrop dims the page. */
+  :where([data-part='dialog']) {
+    @apply max-w-[min(32rem,_calc(100vw_-_32px))] py-(--ui-space-5) px-(--ui-space-6) border border-solid border-(color:--ui-border) rounded-[calc(var(--ui-radius)_*_1.5)] bg-(color:--ui-card) text-(color:--ui-card-fg) shadow-(--ui-shadow) font-normal text-[calc(var(--ui-font-size)_+_1px)] leading-[1.5] font-(family-name:--ui-font);
+  }
+  :where([data-part='dialog'])::backdrop {
+    @apply [background:rgb(0_0_0_/_0.45)];
+  }
+  :where([data-part='title']) {
+    @apply mt-0 mx-0 mb-(--ui-space-2) text-[calc(var(--ui-font-size)_+_4px)];
+  }
+
+  /* Sheet: a dialog against one side of the screen (data-side), sliding in; still under reduced motion. */
+  :where([data-part='dialog'][data-side]) {
+    @apply box-border max-w-none max-h-none m-0 rounded-none overflow-auto;
+  }
+  :where([data-part='dialog'][data-side='left']),
+  :where([data-part='dialog'][data-side='right']) {
+    @apply w-[min(24rem,_100%)] h-[100dvh];
+  }
+  :where([data-part='dialog'][data-side='top']),
+  :where([data-part='dialog'][data-side='bottom']) {
+    @apply w-auto max-h-[80dvh];
+  }
+  :where([data-part='dialog'][data-side='left']) {
+    @apply top-0 right-auto bottom-0 left-0 animate-[ui-sheet-left_0.2s_ease-out];
+  }
+  :where([data-part='dialog'][data-side='right']) {
+    @apply top-0 right-0 bottom-0 left-auto animate-[ui-sheet-right_0.2s_ease-out];
+  }
+  :where([data-part='dialog'][data-side='top']) {
+    @apply top-0 right-0 bottom-auto left-0 animate-[ui-sheet-top_0.2s_ease-out];
+  }
+  :where([data-part='dialog'][data-side='bottom']) {
+    @apply top-auto right-0 bottom-0 left-0 animate-[ui-sheet-bottom_0.2s_ease-out];
+  }
+  @keyframes ui-sheet-left { from { transform: translateX(-100%); } }
+  @keyframes ui-sheet-right { from { transform: translateX(100%); } }
+  @keyframes ui-sheet-top { from { transform: translateY(-100%); } }
+  @keyframes ui-sheet-bottom { from { transform: translateY(100%); } }
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part='dialog'][data-side]) {
+      @apply animate-none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}

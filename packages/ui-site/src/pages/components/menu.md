@@ -19,9 +19,15 @@ The parts come from `@clarusjs/ui-primitives`; the look is `menu.css`, imported 
 
 ## Source
 
-Copy it into `src/components/ui/` as `menu.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same.
+Copy it into `src/components/ui/` as `menu.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `menu.tw.css`, imported where Tailwind runs.
+
+<sourceFlavor name="menu">
 
 <<< ../../registry/menu.css
+
+<<< ../../registry/menu.tw.css
+
+</sourceFlavor>
 
 ## Styling
 
