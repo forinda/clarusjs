@@ -1,0 +1,44 @@
+{{-- The Lists guide's demo: a nested @for numbers its rows with the outer row's index, named with let. Adding a
+     section at the top renumbers every row below it. --}}
+
+<script>
+  let sections = state([
+    { title: 'Install', steps: ['Add the package', 'Add the plugin'] },
+    { title: 'Build', steps: ['Write a page'] },
+  ])
+  let added = 0
+</script>
+
+<div id="nested-rows" class="demo-panel">
+  <ol>
+    @for (section of sections; track section.title; let s = $index) {
+      <li>
+        {{ section.title }}
+        <ol>
+          @for (step of section.steps; track $index) {
+            <li><span class="n">{{ s + 1 }}.{{ $index + 1 }}</span> {{ step }}</li>
+          }
+        </ol>
+      </li>
+    }
+  </ol>
+  <button type="button" (click)="sections = [{ title: 'Plan ' + ++added, steps: ['Read the guide'] }, ...sections]">
+    Add a section at the top
+  </button>
+</div>
+
+<style scoped>
+  :scope {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  ol ol {
+    list-style: none;
+    padding-left: 12px;
+  }
+  .n {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+</style>

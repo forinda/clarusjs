@@ -32,7 +32,7 @@ export type TemplateNode =
   | { type: 'await'; expr: string; exprStart: number; pending: TemplateNode[]; then: AwaitBranch | null; catch: AwaitBranch | null; start: number }
   // @slot('name') { … } inside a component tag; @slot('name', { item }) { … } names what the slot passes (#455).
   | { type: 'fill'; name: string; params?: string; paramsStart?: number; children: TemplateNode[]; start: number }
-  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; itemStart: number; listStart: number; trackStart: number; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
+  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; itemStart: number; listStart: number; trackStart: number; aliases: ForAlias[]; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
 // model: declared with @model, the one kind of input a component may write (two-way binding, [(name)] at the use site).
 /**
  * An `@input` (or `@model`) declaration: its name, type text, default, and offsets.
@@ -87,6 +87,8 @@ export type ParsedFile = {
   nodes: TemplateNode[]
 }
 
+/** `let name = $index` in a @for header: another name for a row's implicit value, for a nested loop to reach. */
+export type ForAlias = { name: string; of: string; start: number }
 /** The names a @for row has besides its item: $index, $count, $first, $last, $even, $odd. */
 export const FOR_IMPLICIT = ['$index', '$count', '$first', '$last', '$even', '$odd']
 const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'])
@@ -468,7 +470,26 @@ export function parse(source: string, file: string): ParsedFile {
     const listStart = at + first.start + m!.indices![2]![0]
     let track: string | null = null
     let trackStart = -1
+    const aliases: ForAlias[] = []
     for (const clause of rest) {
+      // let s = $index, n = $count (#585): the row's implicit names, named for nested loops.
+      if (/^let\s/.test(clause.text)) {
+        let from = at + clause.start + 4
+        for (const part of clause.text.slice(4).split(',')) {
+          const lead = part.length - part.trimStart().length
+          const a = /^([A-Za-z_$][\w$]*)\s*=\s*(\S+)$/.exec(part.trim())
+          const start = from + lead
+          from += part.length + 1
+          if (!a) fail('let takes name = $index (or $count, $first, $last, $even, $odd), separated by commas', start)
+          const [, name, of] = a!
+          if (!FOR_IMPLICIT.includes(of!)) fail(`let takes the row's $index, $count, $first, $last, $even or $odd: ${name} = ${of}`, start)
+          if (FOR_IMPLICIT.includes(name!)) fail(`"${name}" is an implicit @for variable: name the alias something else`, start)
+          if (name === m![1]!.trim()) fail(`"${name}" is this @for's item: name the alias something else`, start)
+          if (aliases.some((x) => x.name === name)) fail(`"${name}" is named twice in this @for`, start)
+          aliases.push({ name: name!, of: of!, start })
+        }
+        continue
+      }
       const t = /^track\s+([\s\S]+)$/d.exec(clause.text)
       if (!t) fail(`unknown @for clause "${clause.text}"`, headStart)
       if (track !== null) fail('only one track per @for', at + clause.start)
@@ -493,7 +514,7 @@ export function parse(source: string, file: string): ParsedFile {
       if (/^@empty[\s{]/.test(source.slice(i, i + 7))) fail('only one @empty per @for', i)
       i = after
     } else i = save
-    return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, itemStart, listStart, trackStart, children: body, empty, start }
+    return { type: 'for', item: m![1]!, list: m![2]!.trim(), track, headStart, itemStart, listStart, trackStart, aliases, children: body, empty, start }
   }
 
   // @slot('name') { … }: content for a component's named slot.

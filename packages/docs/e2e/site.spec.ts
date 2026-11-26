@@ -1688,6 +1688,15 @@ test('#249 lists: $count, $first, $last, $even and $odd follow the list in an is
   await expect(demo.locator('li')).toHaveText(['1 of 3 · first · even', '2 of 3 · odd', '3 of 3 · last · even'])
 })
 
+test('#585 lists: a nested @for numbers its rows with the outer index (let s = $index), and renumbers when rows move', async ({ page }) => {
+  await page.goto('/guide/lists#nested-loops')
+  const demo = page.locator('#nested-rows')
+  await expect(demo.locator('.n')).toHaveText(['1.1', '1.2', '2.1']) // the server's render
+  await expect(page.locator('cl-island[c="nested-rows"]')).toHaveAttribute('data-cl-ready', '')
+  await demo.getByRole('button', { name: 'Add a section at the top' }).click()
+  await expect(demo.locator('.n')).toHaveText(['1.1', '2.1', '2.2', '3.1'])
+})
+
 test('#259 h(): the playground builds HTML in load() with h(), and the page shows it as HTML (text stays escaped)', async ({ page }) => {
   await page.goto('/playground?name=%3Cb%3EAda%3C%2Fb%3E')
   const built = page.locator('#h-built')

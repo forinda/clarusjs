@@ -4,6 +4,7 @@ import { extendedAttrs } from './element-attrs.ts'
 import { parseExpressionAt } from 'acorn'
 import { iconElement, type IconResolver } from './icon.ts'
 import { ClarusError } from './errors.ts'
+import { outerIndexIn } from './loops.ts'
 import { FOR_IMPLICIT, importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
 import { analyzeScript, providesIn, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, serverScriptParts, splitImports, type Signals } from './script.ts'
 
@@ -31,7 +32,7 @@ export type IRNode =
   | { kind: 'await'; expr: string; pending: IRNode[]; then: { name: string; nodes: IRNode[] } | null; catch: { name: string; nodes: IRNode[] } | null; block: number }
   // @for / @empty. block = -1 outside islands; inside an island, the list's marker index. `item` and `$index` are in
   // scope in `nodes`; `track` (or the index) keys rows.
-  | { kind: 'for'; item: string; list: string; track: string | null; nodes: IRNode[]; empty: IRNode[] | null; block: number }
+  | { kind: 'for'; item: string; list: string; track: string | null; aliases: { name: string; of: string }[]; nodes: IRNode[]; empty: IRNode[] | null; block: number }
 // scope: which @if branch the element is in ("block.branch"); undefined at the top level.
 /** An element's (type.mods)="handler"; mods are #444's modifiers, as written. */
 export type IREvent = { index: number; type: string; handler: string; scope?: string; mods?: string[] }
@@ -77,6 +78,9 @@ const iconBodies = new WeakMap<object, string>()
 
 export function lower(parsed: ParsedFile, file: string, source: string, options: { collapseWhitespace?: boolean; icon?: IconResolver } = {}): ComponentIR {
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
+  // An inner @for's $index on an outer loop's list (#585): the wrong row, silently.
+  const outer = outerIndexIn(parsed.nodes)
+  if (outer) fail(outer.message, outer.start)
   // An island: it has a script, or a @model input (which it writes, even from an event handler alone).
   const stateful = !!parsed.script || parsed.inputs.some((i) => i.model)
   // A component sends its events from its script (#442).
@@ -246,12 +250,12 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       }
       if (node.track !== null && referencesNames(node.track, new Set(FOR_IMPLICIT.filter((x) => x !== '$index')))) fail('track can use the item and $index, not $count, $first, $last, $even or $odd (a key must not change when the list grows)', node.trackStart)
       if (block >= 0 && node.track === null) warnings.push(new ClarusError('@for without track: rows are matched by position, so a row\'s state moves to another item when the list changes order; add track item.id (or another unique key)', file, source, node.start))
-      const nodes = lowerInto(node.children, `f${block}`, new Set([...parentLoop, node.item, ...FOR_IMPLICIT]))
+      const nodes = lowerInto(node.children, `f${block}`, new Set([...parentLoop, node.item, ...FOR_IMPLICIT, ...node.aliases.map((a) => a.name)]))
       const empty = node.empty ? lowerInto(node.empty, `f${block}e`, parentLoop) : null
       out = parent
       scopeKey = parentScope
       loopNames = parentLoop
-      out.push({ kind: 'for', item: node.item, list: node.list, track: node.track, nodes, empty, block })
+      out.push({ kind: 'for', item: node.item, list: node.list, track: node.track, aliases: node.aliases.map(({ name, of }) => ({ name, of })), nodes, empty, block })
       return
     }
     if (node.type === 'raw') return emitStatic(node.value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))

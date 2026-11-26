@@ -175,8 +175,9 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
       const names = rowNames(n, ir.events)
       const derivedNames = names.filter((x) => x !== '$count')
       const loop = [n.item, '$index', ...(names.length ? ['$count'] : [])]
-      const rowSignals: Signals = new Map([...signals, ...loop.map((name) => [name, 'state'] as const), ...derivedNames.map((name) => [name, 'derived'] as const)])
-      const plain = rw.without([n.item, ...FOR_IMPLICIT])
+      const aliasKind = (of: string) => (of === '$index' || of === '$count' ? 'state' as const : 'derived' as const)
+      const rowSignals: Signals = new Map([...signals, ...loop.map((name) => [name, 'state'] as const), ...derivedNames.map((name) => [name, 'derived'] as const), ...n.aliases.map((a) => [a.name, aliasKind(a.of)] as const)])
+      const plain = rw.without([n.item, ...FOR_IMPLICIT, ...n.aliases.map((a) => a.name)])
       const key = n.track === null ? '$index' : wrapExpr(plain.expr(n.track))
       const wire = [...rowDerived(n, ir.events), ...wiring(ir, n.nodes, `f${n.block}`, rowCtx, rowSignals, depth + 1)]
       const row = `{\n    html: (${rowParams(n)}) => ${htmlExpr(n.nodes, plain)},\n    wire: ${fn(`${rowCtx}, ${loop.join(', ')}`, wire)},\n  }`

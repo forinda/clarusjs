@@ -118,7 +118,7 @@ The same pieces scale: one state object for the whole form, sections as nested o
 </form>
 ```
 
-- **Repeating groups.** Bind a row's field through the list and its index: `[(value)]="order.lines[$index].item"`. A write replaces that one line and the list around it, copy-on-write. Binding the row variable itself (`line.item`) is an error, because it would only change the row's copy.
+- **Repeating groups.** Bind a row's field through the list and its index: `[(value)]="order.lines[$index].item"`. A write replaces that one line and the list around it, copy-on-write. Binding the row variable itself (`line.item`) is an error, because it would only change the row's copy. In a nested loop, name the outer row's index with `let s = $index` and bind through both indexes ([Nested loops](/guide/lists#nested-loops)).
 - **Adding and removing** replaces the list: `[...lines, next]`, `lines.filter(…)`.
 - **Derived values** such as totals are `derived()`. They recompute when the parts they read change, and nothing else does.
 - **Validation** is the forms engine's: `form(order, { schema })` on `[engine]` puts each error on the field with its path, once the field was left or after a submit ([Form validation](/guide/form-validation)). Keep the schema in a `.ts` module so the server can run the same rules. A component that shows its own error, like `textField`, gets the message from `f.error(path)` and when to show it from `f.shown(path)`. `f.dirty` says whether anything differs from the start, for an "unsaved changes" note.
