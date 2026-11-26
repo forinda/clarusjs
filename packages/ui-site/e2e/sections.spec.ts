@@ -160,3 +160,15 @@ test('two effects on one page react independently: moving over one leaves the ot
   await expect(sections.nth(1)).not.toHaveAttribute('data-grid-lean', '')
   expect(await sections.nth(1).locator('[data-part="grid-effect"] path').count()).toBe(0)
 })
+
+test('footer-columns: four labelled link columns; the theme switch changes the frame\'s theme', async ({ page }) => {
+  await page.goto('/view/footer-columns')
+  await page.locator('cl-island[data-cl-ready]').first().waitFor({ state: 'attached' })
+  const footer = page.getByRole('contentinfo', { name: 'Site footer' })
+  for (const name of ['Product', 'Resources', 'Company', 'Legal']) await expect(footer.getByRole('navigation', { name })).toBeVisible()
+  await expect(footer).toContainText('All systems normal')
+  await footer.getByRole('radio', { name: 'Dark' }).check()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await footer.getByRole('radio', { name: 'System' }).check()
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./)
+})
