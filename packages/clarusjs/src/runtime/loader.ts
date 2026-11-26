@@ -100,7 +100,7 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
       await pending.get(inner)
       if (!pending.has(inner)) throw 0
     }
-    // Read last: a parent that attached meanwhile may have passed it new props (#524).
+    // Read last: a parent may have passed new props meanwhile (#524).
     props = parse(el.getAttribute('p') ?? '{}') as Record<string, unknown>
     const s = el.getAttribute('s')
     state = s === null ? undefined : (parse(s) as Record<string, unknown>)
@@ -195,8 +195,7 @@ function arrive(): void {
   // without inputs has nothing to update (#465: re-rendered because the content it holds changed, which its parent
   // wires in place).
   if (el.getAttribute('c') !== next.getAttribute('c') || el.getAttribute('src') !== next.getAttribute('src')) return false
-  // Not attached yet but on its way (loading, or waiting for idle, visible or a first use): it takes the new props
-  // and attaches with them, rather than being thrown away and loaded again (#524).
+  // Not attached yet but on its way: it takes the new props and attaches with them (#524).
   if (!attached.has(el) && !loading.has(el)) return false
   const p = next.getAttribute('p') ?? '{}'
   el.setAttribute('p', p)
@@ -204,7 +203,7 @@ function arrive(): void {
   for (const { name } of [...el.attributes]) if (name.startsWith('data-cl-path-')) el.removeAttribute(name)
   for (const { name, value } of [...next.attributes]) if (name.startsWith('data-cl-path-')) el.setAttribute(name, value)
   if (!attached.has(el)) {
-    // Its markup too, rendered for the new props: it attaches to HTML that matches them (its @for and @if adopt it).
+    // And the markup rendered for them, which it adopts.
     el.replaceChildren(...next.childNodes)
     return true
   }

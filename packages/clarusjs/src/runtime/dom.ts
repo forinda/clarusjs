@@ -412,8 +412,7 @@ export function on(ctx: Ctx, index: number, type: string, fn: (e: Event) => void
 export function use(ctx: Ctx, index: number, get: () => unknown): void {
   const el = marked(ctx, `[data-cl-u="${index}"]`)
   if (!el) return
-  // Once the island (or row, or branch) around it is wired (#550): a behaviour that changes state then updates
-  // the @for and @if blocks as any later change does. Not if its element went meanwhile.
+  // After the wiring around it (#550), if its element is still there.
   afterWiring(() => {
     if (!el.isConnected) return
     for (const fn of [untrack(get)].flat()) {
