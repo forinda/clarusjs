@@ -95,7 +95,7 @@ const transformers: ShikiTransformer[] = [
 export function highlight(code: string, lang: string, meta: string): string {
   const hl = get()
   return hl.codeToHtml(code, {
-    lang: language(hl, ALIASES[lang] ?? lang) ?? 'text',
+    lang: language(hl, Object.hasOwn(ALIASES, lang) ? ALIASES[lang]! : lang) ?? 'text', // own keys only: ```constructor is no alias
     themes: { light: 'github-light-default', dark: 'github-dark-default' },
     defaultColor: false, // colours only as --shiki-light/--shiki-dark: the page's theme picks one with CSS
     meta: { __raw: meta },

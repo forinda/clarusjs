@@ -3215,3 +3215,18 @@ test('synced code tabs: picking a language switches every group of that name, ke
   // an unnamed group isn't touched
   await expect(page.locator('.code-group:not([data-sync]) input:checked + label').first()).toHaveText('pnpm')
 })
+
+test('review (#660): a tab picked before the tabs island loads is kept (and remembered), not replaced by the stored one', async ({ page }) => {
+  await page.addInitScript(() => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('clarusjs-tabs', JSON.stringify({ sdk: 'Go' })); sessionStorage.setItem('seeded', '1') } })
+  let release!: () => void
+  const held = new Promise<void>((r) => { release = r })
+  await page.route(/code-tabs/, async (route) => { await held; await route.continue() })
+  await page.goto('/guide/markdown')
+  const groups = page.locator('#synced-tabs ~ .code-group[data-sync="sdk"]')
+  await groups.nth(0).getByText('Python', { exact: true }).click() // works without JavaScript: the island isn't there yet
+  release()
+  await expect(page.locator('cl-island[c*="code-tabs"]').first()).toHaveAttribute('data-cl-ready', '')
+  await expect(groups.nth(0).locator('input:checked + label')).toHaveText('Python')
+  await expect(groups.nth(1).locator('input:checked + label')).toHaveText('Python')
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('clarusjs-tabs') ?? '{}').sdk)).toBe('Python')
+})

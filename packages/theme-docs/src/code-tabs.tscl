@@ -25,8 +25,21 @@
       const input = tabs().find((tab) => labelOf(tab) === label)
       if (input && !input.checked) input.checked = true // no change event: the others aren't told again
     }
+    // A tab picked before the islands attached (the tabs work without JavaScript): any group of this name showing a tab
+    // other than its first. It wins over the remembered one, and is remembered. ponytail: a pick of a first tab looks
+    // like the default and isn't seen.
+    const early = [...document.querySelectorAll('.code-group[data-sync]')]
+      .filter((other) => other instanceof HTMLElement && other.dataset.sync === name)
+      .map((other) => other.querySelector(':scope > input[type="radio"]:checked:not(:first-child)'))
+      .find((input) => input instanceof HTMLInputElement)
     const remembered = saved()[name]
-    if (typeof remembered === 'string') pick(remembered)
+    if (early) {
+      const label = labelOf(early)
+      pick(label)
+      try {
+        localStorage.setItem(KEY, JSON.stringify({ ...saved(), [name]: label }))
+      } catch {}
+    } else if (typeof remembered === 'string') pick(remembered)
     function changed(event) {
       const input = event.target
       if (!(input instanceof HTMLInputElement) || !input.checked || input.parentElement !== group) return

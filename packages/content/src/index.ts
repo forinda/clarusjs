@@ -176,7 +176,8 @@ function renderer(options: MarkdownOptions): Md {
     }
     const open = state.push(m[2] === 'code-group' ? 'cl_group_open' : 'cl_container_open', 'div', 1)
     open.info = m[2]!
-    open.meta = { title: m[3]?.trim() || titles[m[2]!]! }
+    // name: as written (a code group's sync name); title falls back to the type's default
+    open.meta = { title: m[3]?.trim() || titles[m[2]!]!, name: m[3]?.trim() || undefined }
     const oldMax = state.lineMax
     state.lineMax = close
     state.md.block.tokenize(state, startLine + 1, close)
@@ -283,7 +284,7 @@ function renderer(options: MarkdownOptions): Md {
   // ::: code-group NAME: data-sync="NAME", and the codeGroups component, which switches groups of a name together.
   md.renderer.rules.cl_group_open = (tokens, i, _o, env) => {
     const e = env as { groups: number; group?: { id: number; n: number; sync?: string } }
-    const sync = (tokens[i]!.meta as { title?: string }).title
+    const sync = (tokens[i]!.meta as { name?: string }).name // written, never a default title
     e.group = { id: e.groups++, n: 0, ...(sync ? { sync } : {}) }
     return `<div class="code-group"${sync ? ` data-sync="${inert(sync)}"` : ''}>`
   }
@@ -574,7 +575,7 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       if (options.quiz && /^\s*:{3,}\s*quiz\b/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.quiz!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.quiz.tag} from '${options.quiz.from}'`)
       }
-      if (options.codeGroups && /^\s*:{3,}\s*code-group[ \t]+\S/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.codeGroups!.tag}\\s+from`).test(line))) {
+      if (options.codeGroups && /^\s*:{3,}\s*code-group[^\S\n]+\S/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.codeGroups!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.codeGroups.tag} from '${options.codeGroups.from}'`)
       }
       if (options.mermaid && /^\s*(`{3,}|~{3,})\s*mermaid\b/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.mermaid!.tag}\\s+from`).test(line))) {

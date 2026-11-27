@@ -133,3 +133,17 @@ test('::: code-group NAME: a named group is marked to sync (data-sync), and with
   expect(md('::: code-group\n```sh [a]\nx\n```\n:::\n', { codeGroups: { tag: 'codeTabs', from: '/x.tscl' } })).not.toContain('@import codeTabs')
   expect(md('::: code-group a"b\n```sh [a]\nx\n```\n:::\n')).toContain('data-sync="a&quot;b"')
 })
+
+test('review (#660): a fence named like an object property (constructor, __proto__) is plain text, not a crash', () => {
+  for (const name of ['constructor', '__proto__', 'toString']) expect(md('```' + name + '\nx\n```\n')).toContain('<span class="line"><span>x</span></span>')
+})
+
+test('review (#660): only a written name syncs a code group, not a default title; any space but a newline separates it', () => {
+  const opts = { titles: { 'code-group': 'Examples' }, codeGroups: { tag: 'codeTabs', from: '/x.tscl' } }
+  const unnamed = md('::: code-group\n```sh [a]\nx\n```\n:::\n', opts)
+  expect(unnamed).not.toContain('data-sync')
+  expect(unnamed).not.toContain('codeTabs')
+  const nbsp = md('::: code-group sdk\n```sh [a]\nx\n```\n:::\n', opts)
+  expect(nbsp).toContain('data-sync="sdk"')
+  expect(nbsp.split('\n')[0]).toBe("@import codeTabs from '/x.tscl'")
+})
