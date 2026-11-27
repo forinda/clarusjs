@@ -56,3 +56,11 @@ test('link asks for the address, refuses an unsafe one, and unlinks when pressed
   button('link').click()
   expect(ed.active('link')).toBe(false)
 })
+
+test('review: tools that start disabled (as <editor-tool> renders them) get a Tab stop once the toolbar enables them', () => {
+  document.body.innerHTML = '<div id="ed"></div><div id="bar"><button type="button" data-command="bold" disabled>B</button><button type="button" data-command="italic" disabled>I</button></div>'
+  const el = document.getElementById('ed')!
+  stops.push(editor(el, { extensions: composerExtensions(), format: 'json' }))
+  stops.push(toolbar(document.getElementById('bar')!, { editor: el }))
+  expect([...document.querySelectorAll('#bar button')].map((b) => (b as HTMLButtonElement).tabIndex)).toEqual([0, -1])
+})

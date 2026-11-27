@@ -46,6 +46,8 @@
   }
   // (send), then, unless cancelled and with [name] in a form, the form posts it (as it would with no JavaScript).
   function sent(v) {
+    // a form that isn't valid yet (another field required): it says so, and nothing is sent or cleared
+    if (name && hidden?.form && !hidden.form.reportValidity()) return false
     if (!emit('send', { value: v })) return false
     if (name && hidden?.form) {
       hidden.value = typeof v === 'string' ? v : JSON.stringify(v)

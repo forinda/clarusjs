@@ -47,6 +47,12 @@ export function toolbar(el: HTMLElement, options: { editor: Element }): () => vo
       b.setAttribute('aria-pressed', String(ed.active(command)))
       b.disabled = command === 'link' ? false : !ed.can(command) // link asks for its address: always there
     }
+    // one Tab stop among the enabled buttons (rovingFocus gave none while every tool was disabled)
+    const all = buttons()
+    if (!all.some((b) => b.tabIndex === 0 && !b.disabled)) {
+      const first = all.find((b) => !b.disabled)
+      for (const b of all) b.tabIndex = b === first ? 0 : -1
+    }
   })
 
   return () => {

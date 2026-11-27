@@ -8,6 +8,7 @@ type Wire = (editor: Editor, el: Element) => (() => void) | void
 type Waiting = { wire: Wire; el?: Element; undo?: (() => void) | void }
 
 const instances = new WeakMap<Element, Editor>()
+const ids = new WeakMap<Element, string>() // the id each field registered with
 const waiting = new Map<string, Set<Waiting>>()
 
 const unwire = (w: Waiting) => {
@@ -20,6 +21,7 @@ const unwire = (w: Waiting) => {
 export function register(el: Element, editor: Editor): () => void {
   const id = el.id // the id it registers with: a later rename doesn't move its wiring
   instances.set(el, editor)
+  ids.set(el, id)
   for (const w of waiting.get(id) ?? []) {
     unwire(w) // wired to another field with this id: the newest wins, the old wiring is undone first
     w.el = el
@@ -27,6 +29,7 @@ export function register(el: Element, editor: Editor): () => void {
   }
   return () => {
     instances.delete(el)
+    ids.delete(el)
     for (const w of waiting.get(id) ?? []) if (w.el === el) unwire(w)
   }
 }
@@ -53,7 +56,7 @@ export function onEditor(id: string, wire: Wire): () => void {
   set.add(w)
   const el = typeof document !== 'undefined' ? document.getElementById(id) : null
   const editor = el && instances.get(el)
-  if (el && editor) {
+  if (el && editor && ids.get(el) === id) { // a field renamed since: its parts are those of the id it registered with
     w.el = el
     w.undo = wire(editor, el)
   }

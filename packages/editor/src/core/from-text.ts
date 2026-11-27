@@ -4,6 +4,11 @@ import type { Node, Schema } from 'prosemirror-model'
 
 /** A document from plain text (blank lines apart: paragraphs; a line break: a hard break), and where `caret` falls. */
 export function fromText(schema: Schema, text: string, caret?: number): { doc: Node; pos?: number } {
+  // a native form post sends CRLF line endings: the same text as LF (the caret moved back by each \r it passes)
+  if (text.includes('\r')) {
+    if (caret !== undefined) caret -= (text.slice(0, caret).match(/\r\n/g) ?? []).length
+    text = text.replace(/\r\n?/g, '\n')
+  }
   const blocks: Node[][] = [[]]
   let buf = ''
   let pos = 1 // inside the first paragraph

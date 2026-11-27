@@ -25,6 +25,7 @@ export function content(el: HTMLElement, options: { value: string | object; form
     } else {
       doc = Node.fromJSON(schema, typeof options.value === 'string' ? JSON.parse(options.value) : options.value)
       doc.check()
+      if (doc.type !== schema.topNodeType) doc = undefined // not a document: nothing
     }
   } catch {
     doc = undefined

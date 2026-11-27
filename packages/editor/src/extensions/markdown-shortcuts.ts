@@ -6,10 +6,18 @@ import { defineExtension } from '../core/extension.ts'
 
 /** A rule that turns the matched text into its first group, marked with `type`. */
 const markRule = (pattern: RegExp, type: MarkType) =>
-  new InputRule(pattern, (state, match, start, end) => {
-    const marks = type.create().addToSet(state.doc.resolve(start).marks())
-    return state.tr.replaceWith(start, end, state.schema.text(match[1]!, marks)).removeStoredMark(type)
-  })
+  new InputRule(
+    pattern,
+    (state, match, start, end) => {
+      // a mention or line break inside the match: leave it as typed (rebuilding it as text would lose them)
+      let leaf = false
+      state.doc.nodesBetween(start, end, (node) => { if (node.isInline && !node.isText) leaf = true })
+      if (leaf) return null
+      const marks = type.create().addToSet(state.doc.resolve(start).marks())
+      return state.tr.replaceWith(start, end, state.schema.text(match[1]!, marks)).removeStoredMark(type)
+    },
+    { inCodeMark: false }, // inside inline code, ** and ` are code
+  )
 
 /**
  * Markdown shortcuts while typing.

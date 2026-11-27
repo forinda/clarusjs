@@ -117,12 +117,12 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
     active = 0
     status.textContent = items.length ? `${items.length} result${items.length === 1 ? '' : 's'}` : 'No results'
     if (!items.length) return hide()
+    render() // first: position() measures the list it places
     if (list.hidden) {
       list.hidden = false
       view.dom.setAttribute('aria-controls', list.id)
       unposition = position(list, anchor, { side: 'bottom', align: 'start' })
     }
-    render()
   }
   function pick(i: number) {
     const item = items[i]
@@ -152,6 +152,9 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
     controller = undefined
     const hit = cache.get(query)
     if (hit) return show(hit)
+    // a new query: the results shown are an older one's, so they go (Enter can't pick one) until it answers
+    items = []
+    hide()
     const q = query
     timer = setTimeout(async () => {
       const c = (controller = new AbortController())
@@ -160,7 +163,11 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
         cache.set(q, result)
         if (c === controller) show(result)
       } catch (err) {
-        if (!c.signal.aborted) throw err
+        if (c.signal.aborted || c !== controller) return
+        items = []
+        hide()
+        status.textContent = 'Search failed'
+        console.error('[@clarusjs/editor] search failed', err) // the next query tries again
       }
     }, DEBOUNCE)
   }

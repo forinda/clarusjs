@@ -20,7 +20,11 @@ export const codeBlock = defineExtension({
   },
   commands: (schema) => ({
     codeBlock: (): Command => (state, dispatch) => {
-      const { $from, $to } = state.selection
+      let { $from, $to } = state.selection
+      // select all (the document's own edges): from inside its first block to inside its last
+      if ($from.depth === 0) $from = state.doc.resolve(Math.min($from.pos + 1, state.doc.content.size))
+      if ($to.depth === 0) $to = state.doc.resolve(Math.max($to.pos - 1, 0))
+      if ($from.depth === 0 || $to.depth === 0) return false
       const code = schema.nodes.code_block!
       const lineBreak = schema.nodes.hard_break
       const start = $from.before($from.depth)

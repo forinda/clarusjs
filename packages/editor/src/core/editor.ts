@@ -162,12 +162,16 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
     handlePaste: (_view, event) => files(event.clipboardData?.files),
     handleDrop: (_view, event) => files((event as DragEvent).dataTransfer?.files),
     dispatchTransaction(tr) {
-      view.updateState(view.state.apply(tr))
+      const before = view.state.doc
+      view.updateState(view.state.apply(tr)) // with what plugins append
+      // the final document, compared (a plugin may change it after a selection-only transaction); value before
+      // state, so whoever state wakes reads the value that goes with it
+      if (view.state.doc !== before) {
+        lastEmitted = serialize(view.state.doc)
+        length.set(docLength(view.state.doc))
+        value.set(lastEmitted)
+      }
       current.set(view.state)
-      if (!tr.docChanged) return
-      lastEmitted = serialize(view.state.doc)
-      length.set(docLength(view.state.doc))
-      value.set(lastEmitted)
     },
   })
 

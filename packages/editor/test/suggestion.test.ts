@@ -7,6 +7,9 @@ import { editor, editorOf } from '../src/behaviours/editor.ts'
 import { loadEmoji, suggestion, type SuggestionItem } from '../src/behaviours/suggestion.ts'
 import type { Editor } from '../src/core/editor.ts'
 
+// position() measures the list: record how many options it has when first called
+const positioned: number[] = []
+vi.mock('@clarusjs/ui-primitives/position.js', () => ({ position: (list: HTMLElement) => { positioned.push(list.children.length); return () => {} } }))
 vi.mock('../src/emoji.ts', () => ({ emoji: [{ id: 'smile', label: 'smile', name: 'smile', char: '😄' }, { id: 'smirk', label: 'smirk', name: 'smirk', char: '😏' }] }))
 
 const people: SuggestionItem[] = [{ id: 'u1', label: 'Mara Okafor' }, { id: 'u2', label: 'Marcus Lee' }, { id: 'u3', label: 'Ada' }]
@@ -150,4 +153,39 @@ test('review: an Enter that confirms a composition (keyCode 229, isComposing) do
   ed.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true }))
   expect(pick).not.toHaveBeenCalled()
   expect(list.hidden).toBe(false)
+})
+
+test('review: the list has its options when it is first positioned (it measures what it places)', async () => {
+  positioned.length = 0
+  const { ed } = setup()
+  type(ed, '@ma')
+  await vi.advanceTimersByTimeAsync(200)
+  expect(positioned).toEqual([2])
+})
+
+test('review: typing on after results hides them until the new query answers; Enter then picks nothing stale', async () => {
+  const { ed, list, pick } = setup()
+  type(ed, '@ma')
+  await vi.advanceTimersByTimeAsync(200)
+  type(ed, 'x')
+  expect(list.hidden).toBe(true)
+  key(ed, 'Enter')
+  expect(pick).not.toHaveBeenCalled()
+})
+
+test('review: a search that fails closes the list and says so; nothing is thrown, and the next query tries again', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  let fail = true
+  const search = vi.fn(async (q: string) => { if (fail) throw new Error('down'); return people.filter((p) => p.label.toLowerCase().includes(q)) })
+  const { ed, list } = setup({ search })
+  type(ed, '@ma')
+  await vi.advanceTimersByTimeAsync(200)
+  expect(list.hidden).toBe(true)
+  expect(document.querySelector('[role=status]')!.textContent).toBe('Search failed')
+  expect(error).toHaveBeenCalled()
+  fail = false
+  type(ed, 'r')
+  await vi.advanceTimersByTimeAsync(200)
+  expect(list.hidden).toBe(false)
+  error.mockRestore()
 })

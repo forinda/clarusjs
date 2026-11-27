@@ -123,13 +123,11 @@ function specHTML(spec: DOMOutputSpec, inner: () => string): string {
 }
 
 function nodeHTML(node: Node): string {
-  if (node.isText) {
-    // ponytail: marks wrap each text node on its own (no merging across neighbours); equal HTML for a reader.
-    return node.marks.reduceRight((html, mark) => specHTML(mark.type.spec.toDOM!(mark, true), () => html), escapeText(node.text!))
-  }
-  const toDOM = node.type.spec.toDOM
   const inner = () => { let s = ''; node.forEach((child) => { s += nodeHTML(child) }); return s }
-  return toDOM ? specHTML(toDOM(node), inner) : inner()
+  const toDOM = node.type.spec.toDOM
+  const html = node.isText ? escapeText(node.text!) : toDOM ? specHTML(toDOM(node), inner) : inner()
+  // ponytail: marks wrap each inline node on its own (no merging across neighbours); equal HTML for a reader.
+  return node.isInline ? node.marks.reduceRight((h, mark) => specHTML(mark.type.spec.toDOM!(mark, true), () => h), html) : html
 }
 
 /**

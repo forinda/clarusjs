@@ -189,3 +189,17 @@ test('files: picked with the attach button, or pasted into the field, go to (fil
   input.dispatchEvent(new Event('change', { bubbles: true }))
   expect(events.filter((e) => e.name === 'files').map((e) => [e.from, e.value.files])).toEqual([['field', [file]], ['files', [file]]])
 })
+
+test('review: in a form that fails its own validation, a send neither posts nor clears', async () => {
+  const p = await page({ format: 'html' })
+  const form = document.querySelector('form')!
+  form.insertAdjacentHTML('beforeend', '<input name="title" required>')
+  const submitted = vi.fn()
+  form.addEventListener('submit', (e) => { e.preventDefault(); submitted() })
+  const { ed, type, key } = await p.attachField()
+  type('keep')
+  key('Enter')
+  expect(submitted).not.toHaveBeenCalled()
+  expect(events.some((e) => e.name === 'send')).toBe(false)
+  expect(ed.view.state.doc.textContent).toBe('keep')
+})
