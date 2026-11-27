@@ -1,0 +1,29 @@
+@import './combobox.css'
+@import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
+
+<script>
+  // (search): your function gives the options for what's typed (an API client, IndexedDB, a worker…). It gets the
+  // search and an AbortSignal (a newer search aborts it), and returns them or a promise of them.
+  const LANGUAGES = ['Ada', 'C', 'Clojure', 'Elixir', 'Elm', 'Erlang', 'F#', 'Go', 'Haskell', 'Julia', 'Kotlin', 'Lua', 'OCaml', 'Python', 'Ruby', 'Rust', 'Scala', 'Swift', 'TypeScript', 'Zig']
+  async function findLanguages(term, signal) {
+    const q = term.toLowerCase()
+    return LANGUAGES.filter((l) => l.toLowerCase().startsWith(q)).map((l) => ({ value: l.toLowerCase(), label: l }))
+  }
+</script>
+
+<div class="demo example">
+  <uiCombobox id="search-language" label="Language" placeholder="Type a language…" (search)="$event.respond(findLanguages($event.term, $event.signal))" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

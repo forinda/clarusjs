@@ -15,8 +15,8 @@
   :where([data-part]) :focus-visible {
     @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
   }
-  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
-  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+  /* A combobox's or chip input's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input'], [data-part~='chip-input'] [data-part~='input']):focus-visible {
     @apply outline-none;
   }
 

@@ -15,6 +15,10 @@ description: "The bar at the top of a site: logo, links or menus, actions; on ph
 
 <<< ../../registry/navbar-demo.tscl
 
+## API
+
+<componentApi name="navbar" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `navbar.tscl`, with `sheet.css` for its phone sheet. Its `<style global>` holds its rules: change them there to change its look.

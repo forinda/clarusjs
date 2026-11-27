@@ -15,6 +15,10 @@ description: "What to show when there is nothing yet, with a way to start."
 
 <<< ../../registry/empty-demo.tscl
 
+## API
+
+<componentApi name="empty" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `empty.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

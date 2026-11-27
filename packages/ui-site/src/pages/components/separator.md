@@ -15,6 +15,10 @@ description: "A line between content, horizontal or vertical."
 
 <<< ../../registry/separator-demo.tscl
 
+## API
+
+<componentApi name="separator" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `separator.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

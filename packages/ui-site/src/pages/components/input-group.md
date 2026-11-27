@@ -15,6 +15,10 @@ description: "A field with text or icons before and after it."
 
 <<< ../../registry/input-group-demo.tscl
 
+## API
+
+<componentApi name="input-group" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `input-group.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

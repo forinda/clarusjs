@@ -15,6 +15,10 @@ description: "A pulsing placeholder while content loads."
 
 <<< ../../registry/skeleton-demo.tscl
 
+## API
+
+<componentApi name="skeleton" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `skeleton.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
