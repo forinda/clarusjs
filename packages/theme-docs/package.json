@@ -1,6 +1,6 @@
 {
   "name": "@clarusjs/theme-docs",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "A docs theme for clarusjs: layout with header, sidebar, content and on-this-page, design tokens, dark mode, copy buttons and callouts.",
   "type": "module",
   "license": "MIT",

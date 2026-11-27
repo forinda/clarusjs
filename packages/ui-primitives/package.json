@@ -1,6 +1,6 @@
 {
   "name": "@clarusjs/ui-primitives",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Accessible behaviours for clarusjs components: roving focus, typeahead, dismiss, transitions, focus return and positioning, as small DOM functions for [use].",
   "type": "module",
   "license": "MIT",

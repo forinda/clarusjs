@@ -1,6 +1,6 @@
 {
   "name": "@clarusjs/content",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Markdown pages for clarusjs: frontmatter, layouts, components in Markdown, rendered to static HTML at build time.",
   "type": "module",
   "license": "MIT",

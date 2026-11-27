@@ -1,5 +1,16 @@
 # @clarusjs/ui
 
+## 0.4.0
+
+### Minor Changes
+
+- [#647](https://github.com/forinda/clarusjs/pull/647) [`5686dca`](https://github.com/forinda/clarusjs/commit/5686dca33f86eb38987aca6d513aa0666441dc13) Thanks [@forinda](https://github.com/forinda)! - Styles for `@clarusjs/editor`'s parts, each on its own: the field's box and editable, the toolbar and tools, suggestion lists, mentions, the placeholder, the count, Send and the attach button.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @clarusjs/ui-primitives@0.3.1
+
 ## 0.3.0
 
 ### Minor Changes

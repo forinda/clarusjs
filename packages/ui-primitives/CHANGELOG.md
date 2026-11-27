@@ -1,5 +1,12 @@
 # @clarusjs/ui-primitives
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [[`0306c9c`](https://github.com/forinda/clarusjs/commit/0306c9cabe7d8196d400600367d5506e478769be), [`0306c9c`](https://github.com/forinda/clarusjs/commit/0306c9cabe7d8196d400600367d5506e478769be)]:
+  - clarusjs@0.18.0
+
 ## 0.3.0
 
 ### Minor Changes
