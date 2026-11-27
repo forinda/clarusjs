@@ -633,3 +633,13 @@ test("@transition's arguments are type-checked around a @for too", () => {
   symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   expect(check({ root, typescript }).diagnostics.map((d) => `${d.line} ${d.code}`)).toEqual(['5 TS2561'])
 })
+
+test('a client route renders in the browser: a <script server> in it, or in a component it uses, is an error; as a static page it is fine', () => {
+  const page = `@import serverNote from '../../components/server-note.tscl'\n<server-note />\n`
+  const note = `<script server>\n  const at = 'build time'\n</script>\n<p>{{ at }}</p>\n`
+  const files = { 'src/pages/app/index.tscl': page, 'src/components/server-note.tscl': note }
+  const client = checkProject({ root: project(files), typescript, routes: { '/app/*': 'client', '/app': 'client' } })
+  expect(client.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/components/server-note.tscl:1 clarus'])
+  expect(client.diagnostics[0]!.message).toContain('this component renders in the browser (a client route')
+  expect(checkProject({ root: project(files), typescript }).diagnostics).toEqual([])
+})
