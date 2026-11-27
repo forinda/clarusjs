@@ -3,6 +3,7 @@
 import { createRequire } from 'node:module'
 import { createHighlighterCoreSync, type HighlighterCore, type LanguageRegistration, type ShikiTransformer } from 'shiki/core'
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript'
+import { bundledLanguagesInfo } from 'shiki/langs'
 import {
   transformerMetaHighlight,
   transformerNotationDiff,
@@ -65,6 +66,23 @@ export function addLanguages(langs: (string | LanguageRegistration | LanguageReg
   if (add.length) hl.loadLanguageSync(add)
 }
 
+// Every language Shiki ships, by its id and its aliases ('rb' → ruby): a page using one loads it, once.
+const SHIKI = new Map(bundledLanguagesInfo.flatMap((l) => [l.id, ...(l.aliases ?? [])].map((name) => [name, l.id] as const)))
+const unavailable = new Set<string>()
+/** The loaded language for `id`: already loaded, or Shiki's, loaded now; undefined for one Shiki doesn't have. */
+function language(hl: HighlighterCore, id: string): string | undefined {
+  if (hl.getLoadedLanguages().includes(id)) return id
+  const shiki = SHIKI.get(id.toLowerCase())
+  if (!shiki || unavailable.has(shiki)) return undefined
+  try {
+    addLanguages([shiki])
+    return shiki
+  } catch {
+    unavailable.add(shiki) // ponytail: a grammar that fails to load is plain text for the rest of the build, silently
+    return undefined
+  }
+}
+
 const transformers: ShikiTransformer[] = [
   transformerNotationDiff(),
   transformerNotationFocus(),
@@ -73,13 +91,11 @@ const transformers: ShikiTransformer[] = [
   transformerMetaHighlight(),
 ]
 
-/** Highlighted <pre> for `code` in `lang` (unknown languages are plain text); `meta` carries `{1,3-5}`. */
+/** Highlighted <pre> for `code` in `lang` (any language Shiki has, loaded on first use; others are plain text); `meta` carries `{1,3-5}`. */
 export function highlight(code: string, lang: string, meta: string): string {
   const hl = get()
-  const id = ALIASES[lang] ?? lang
-  const known = hl.getLoadedLanguages().includes(id)
   return hl.codeToHtml(code, {
-    lang: known ? id : 'text',
+    lang: language(hl, ALIASES[lang] ?? lang) ?? 'text',
     themes: { light: 'github-light-default', dark: 'github-dark-default' },
     defaultColor: false, // colours only as --shiki-light/--shiki-dark: the page's theme picks one with CSS
     meta: { __raw: meta },

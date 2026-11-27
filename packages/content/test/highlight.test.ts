@@ -87,13 +87,11 @@ test('zig is highlighted', () => {
 test('langs: a site adds Shiki grammars of its own (markdown({ langs: [rust] }))', async () => {
   const rust = (await import('shiki/langs/rust.mjs')).default
   const code = '```rust\nfn main() { let x = 1; }\n```\n'
-  expect(keyword(md(code), 'fn')).toBe(false) // not built in: plain text
   expect(keyword(md(code, { langs: rust }), 'fn')).toBe(true)
 })
 
 test('langs by name: loaded from content\'s own Shiki, so the site installs nothing; an unknown name is a clear error', () => {
   const code = '```go\nfunc main() { var x = 1 }\n```\n'
-  expect(keyword(md(code), 'func')).toBe(false)
   expect(keyword(md(code, { langs: ['go'] }), 'func')).toBe(true)
   expect(() => md('', { langs: ['no-such-language'] })).toThrow('@clarusjs/content: Shiki has no grammar "no-such-language"')
   expect(() => md('', { langs: ['../evil'] })).toThrow('@clarusjs/content: Shiki has no grammar "../evil"')
@@ -109,4 +107,16 @@ test('with mermaid: { tag, from }, a ```mermaid block is its source in <pre clas
 test('without the mermaid option a ```mermaid block is code, as before; with it, a page without diagrams imports nothing', () => {
   expect(md('```mermaid\ngraph TD\n```\n')).toContain('<div class="code-block language-mermaid">')
   expect(md('```ts\na()\n```\n', { mermaid: { tag: 'diagram', from: '/x.tscl' } })).not.toContain('@import diagram')
+})
+
+test('a language Shiki has is loaded the first time a page uses it, by name or alias, with no langs option', () => {
+  const lua = md('```lua\nlocal x = 1\n```\n')
+  expect(lua).toContain('<div class="code-block language-lua">')
+  expect(keyword(lua, 'local')).toBe(true)
+  expect(keyword(md('```rb\ndef f\nend\n```\n'), 'def')).toBe(true) // Shiki's alias for ruby
+})
+
+test('a language Shiki doesn\'t have stays plain text, and a name that isn\'t one never reaches require()', () => {
+  expect(md('```notalang\nx\n```\n')).toContain('<span class="line"><span>x</span></span>')
+  expect(md('```../../etc\nx\n```\n')).toContain('<span class="line"><span>x</span></span>')
 })

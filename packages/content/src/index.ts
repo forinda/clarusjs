@@ -51,9 +51,10 @@ export type MarkdownOptions = {
    */
   lineNumbers?: boolean
   /**
-   * More languages to highlight, on top of the built-in ones (TypeScript, JavaScript, TSX, HTML, CSS, JSON, YAML, TOML,
-   * Markdown, bash, diff, Zig, and tscl): names of Shiki's grammars, `markdown({ langs: ['rust', 'go'] })`, loaded from
-   * this package's own Shiki (nothing to install), or grammars of your own. A language not loaded is plain text.
+   * Every language Shiki has is highlighted already, loaded the first time a page uses it (by name or alias:
+   * ```` ```rust ````, ```` ```py ````), from this package's own Shiki (nothing to install). Add grammars of your own
+   * here, or names of Shiki's (`markdown({ langs: ['rust'] })`) to load them up front, where a typo is a build error.
+   * A language Shiki doesn't have is plain text.
    * @see https://clarusjs.com/guide/markdown#code
    */
   langs?: (string | LanguageRegistration | LanguageRegistration[])[]
