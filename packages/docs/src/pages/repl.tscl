@@ -1,12 +1,12 @@
-@import docs from '~/layouts/docs.tscl'
-@import repl from '~/components/repl.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
+@import codeRepl from '~/components/repl.tscl'
 {{-- A tool, laid out like other playgrounds: the header, then the editor and its output filling the window. --}}
 
-<docs
+<docsLayout
   [title]="'Playground'"
   [path]="'/repl'"
   [description]="'Write a clarusjs component and see it run: compiled in your browser, previewed in a sandbox.'"
   [app]="true"
 >
-  <repl />
-</docs>
+  <codeRepl />
+</docsLayout>

@@ -35,6 +35,10 @@ A real `<input type="file">` sits behind the drop zone, so without JavaScript it
 
 <<< ../../registry/file-upload-single-demo.tscl
 
+## API
+
+<componentApi name="file-upload" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `file-upload.tscl`.

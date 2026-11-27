@@ -15,6 +15,10 @@ description: "Where a page sits in the site, as links back up."
 
 <<< ../../registry/breadcrumb-demo.tscl
 
+## API
+
+<componentApi name="breadcrumb" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `breadcrumb.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

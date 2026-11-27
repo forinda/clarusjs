@@ -5,9 +5,21 @@ import { themeDocs } from '@clarusjs/theme-docs/vite.js'
 import { APPLY_SCRIPT, FLAVOR_SCRIPT, SCHEME_SCRIPT } from './src/theme/apply.ts'
 import tailwindcss from '@tailwindcss/vite'
 import { SIDEBAR_SCRIPT } from '@clarusjs/ui-primitives/sidebar.js'
+import type { Connect, Plugin } from 'vite'
+import cities from './src/api/cities.ts'
+
+// /api/cities in `vite` and `vite preview`, as the Netlify Function answers it on the site.
+const api: Connect.NextHandleFunction = async (req, res, next) => {
+  if (!req.url?.startsWith('/api/cities')) return next()
+  const answer = cities(new Request(new URL(req.url, 'http://localhost')))
+  res.setHeader('content-type', 'application/json')
+  res.end(await answer.text())
+}
+const citiesApi: Plugin = { name: 'ui-site:cities-api', configureServer: (s) => void s.middlewares.use(api), configurePreviewServer: (s) => void s.middlewares.use(api) }
 
 export default defineConfig({
   plugins: [
+    citiesApi,
     // Only the Tailwind parity page imports tailwind.css; nothing else on the site uses Tailwind.
     tailwindcss(),
     // The sidebar from src/pages, search, and llms.txt for AI tools.

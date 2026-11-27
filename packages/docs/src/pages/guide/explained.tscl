@@ -1,5 +1,5 @@
-@import copy from '@clarusjs/theme-docs/copy.tscl'
-@import docs from '~/layouts/docs.tscl'
+@import copyButton from '@clarusjs/theme-docs/copy.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
 @import explainedTable from '~/components/explained-table.tscl'
 
 <script server>
@@ -12,7 +12,7 @@
   const commit = (await promisify(execFile)('git', ['rev-parse', '--short', 'HEAD'])).stdout.trim()
 </script>
 
-<docs
+<docsLayout
   [title]="'This site, explained'"
   [path]="'/guide/explained'"
   [description]="'Every page of this site with its islands and the JavaScript it ships, generated from the route manifest at build time.'"
@@ -52,7 +52,7 @@
 @for (entry of routes; track entry[0]) {
   <p>{{ entry[0] }}: {{ entry[1].islands.length }} islands</p>
 }</code></pre>
-    <copy attach="interaction" />
+    <copyButton attach="interaction" />
   </div>
   <p>To see one page in detail, run <code>clarusjs explain /guide/state</code> after a build.</p>
-</docs>
+</docsLayout>

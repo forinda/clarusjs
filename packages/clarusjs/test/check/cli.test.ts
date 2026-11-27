@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, 
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { expect, onTestFinished, test } from 'vitest'
-import { check } from '../../src/cli/check.ts'
+import { check as checkProject } from '../../src/cli/check.ts'
 import type { LintContext } from '../../src/compiler/lint.ts'
 
 function project(files: Record<string, string>): string {
@@ -15,6 +15,8 @@ function project(files: Record<string, string>): string {
   return root
 }
 const typescript = resolve(import.meta.dirname, '../../node_modules/typescript')
+// These projects name components in one word (badge, card): multi-word-name has its own test, below.
+const check = (options: Parameters<typeof checkProject>[0]) => checkProject({ ...options, lint: { 'multi-word-name': 'off', ...options.lint } })
 
 test('a clean project passes', () => {
   const root = project({
@@ -291,13 +293,14 @@ test('#99: @interface and multi-line mapped, conditional and inferred @type type
 test('#99: multi-line @input types and function-typed inputs are checked, at their lines', () => {
   const root = project({
     'src/components/picker.tscl': "@input options: {\n  size: 'sm' | 'lg'\n  label?: string\n} = { size: 'sm' }\n@input onPick: (id: string) => void\n<p>{{ options.size }} {{ options.colour }}</p>\n",
-    'src/pages/index.tscl': "@import picker from '../components/picker.tscl'\n<picker [options]=\"{ size: 'xl' }\" [onPick]=\"(id: string) => id\" />\n<picker [onPick]=\"(id: number) => id\" />\n",
+    // Template expressions are JavaScript (the build rejects type annotations in them): a wrong value, not a wrong type.
+    'src/pages/index.tscl': "@import picker from '../components/picker.tscl'\n<picker [options]=\"{ size: 'xl' }\" [onPick]=\"(id) => id\" />\n<picker [onPick]=\"42\" />\n",
   })
   const result = check({ root, typescript })
   expect(result.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual([
     'src/components/picker.tscl:6 TS2339', // options.colour
     'src/pages/index.tscl:2 TS2322', // size 'xl'
-    'src/pages/index.tscl:3 TS2322', // onPick takes a string id
+    'src/pages/index.tscl:3 TS2322', // onPick is a function
   ])
 })
 
@@ -548,4 +551,42 @@ test('#432: check reports TypeScript syntax in a <script> where it is, as the co
   expect(at("  const csv = () => request<string>('/a')")).toEqual([expect.stringMatching(/^4:21 clarus TypeScript syntax in a <script> \(scripts are JavaScript\): a type argument/)])
   expect(at('  let m: number = 1')).toEqual([expect.stringMatching(/^4:8 clarus .*a type annotation/)])
   expect(at('  const v = n as number')).toEqual([expect.stringMatching(/^4:15 clarus .*an as cast/)])
+})
+
+// What the build rejects, check reports: the compiler's own rules (here, a slot inside a component in an island) run too.
+test('errors only the compiler finds (a slot inside component content in an island) are reported, as the build would', () => {
+  const root = project({
+    'src/components/box.tscl': '<div><slot /></div>\n',
+    'src/components/menu-bar.tscl': `@import box from './box.tscl'\n<script>\n  let n = state(0)\n</script>\n<nav>\n  <button type="button" (click)="n++">{{ n }}</button>\n  <box><slot /></box>\n</nav>\n`,
+  })
+  const result = check({ root, typescript })
+  expect(result.exitCode).toBe(1)
+  expect(result.diagnostics).toEqual([
+    { file: 'src/components/menu-bar.tscl', line: 7, column: 8, severity: 'error', code: 'clarus', message: expect.stringContaining('<slot /> goes outside') },
+  ])
+})
+
+test('a child of an island with a <script server> is an error, as the build reports it; used by a static page it is fine', () => {
+  const child = `<script server>\n  const at = 'build time'\n</script>\n<p>{{ at }}</p>\n`
+  const island = `@import serverNote from '../components/server-note.tscl'\n<script>\n  let n = state(0)\n</script>\n<div>\n  <button type="button" (click)="n++">{{ n }}</button>\n  <server-note />\n</div>\n`
+  const root = project({ 'src/components/server-note.tscl': child, 'src/components/note-island.tscl': island })
+  const result = checkProject({ root, typescript })
+  expect(result.exitCode).toBe(1)
+  expect(result.diagnostics).toEqual([
+    { file: 'src/components/server-note.tscl', line: 1, column: 1, severity: 'error', code: 'clarus', message: expect.stringContaining('<script server> runs on the server only, and this component renders in the browser') },
+  ])
+  // The same child under a static page only: rendered on the server, so nothing to report.
+  const fine = project({ 'src/components/server-note.tscl': child, 'src/pages/index.tscl': `@import serverNote from '../components/server-note.tscl'\n<server-note />\n` })
+  expect(checkProject({ root: fine, typescript }).diagnostics).toEqual([])
+})
+
+test('multi-word-name warns about a one-word component name, and --strict fails on it', () => {
+  const root = project({
+    'src/components/badge.tscl': '<b>hi</b>\n',
+    'src/pages/index.tscl': `@import badge from '../components/badge.tscl'\n@import uiBadge from '../components/badge.tscl'\n<badge />\n<ui-badge />\n`,
+  })
+  const result = checkProject({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.severity} ${d.code}`)).toEqual(['src/pages/index.tscl:1 warning multi-word-name'])
+  expect(result.exitCode).toBe(0)
+  expect(checkProject({ root, typescript, strict: true }).exitCode).toBe(1)
 })

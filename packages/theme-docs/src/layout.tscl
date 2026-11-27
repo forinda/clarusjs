@@ -7,7 +7,7 @@
 @import pageHead from './page-head.tscl'
 @import siteHeader from './parts/header.tscl'
 @import docsSidebar from './parts/sidebar.tscl'
-@import contents from './parts/contents.tscl'
+@import pageContents from './parts/contents.tscl'
 @import pageFooter from './parts/page-footer.tscl'
 @import siteFooter from './parts/footer.tscl'
 @import type { ThemeConfig, Heading } from './nav.ts'
@@ -43,13 +43,13 @@
         {{-- tabindex -1: the skip link (and navigation) can move focus here. --}}
         <main class="content" id="content" tabindex="-1">
           <p class="crumb">{{ crumb(config.sections, path) }}</p>
-          <contents [headings]="headings" [inline]="true" />
+          <pageContents [headings]="headings" [inline]="true" />
           <slot name="content-top"></slot>
           <slot />
           <slot name="content-bottom"></slot>
           <pageFooter [config]="config" [path]="path" [source]="source" />
         </main>
-        <contents [headings]="headings" />
+        <pageContents [headings]="headings" />
       </div>
     } @else {
       <main class="content home" id="content" tabindex="-1"><slot /></main>

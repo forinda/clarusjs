@@ -1,6 +1,6 @@
 {{-- A form from field components: one state object, written back copy-on-write; reset needs no cloning. --}}
 @import textField from './text-field.tscl'
-@import combobox from '@clarusjs/ui-primitives/combobox.tscl'
+@import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
 
 <script>
   // The choices, as data: the radios, checkboxes and options below are loops over them.
@@ -63,7 +63,7 @@
       <label><input type="checkbox" [value]="t.id" [(value)]="form.topics" /> {{ t.label }}</label>
     }
   </fieldset>
-  <combobox
+  <uiCombobox
     [id]="'signup-langs'"
     [label]="'Languages'"
     [options]="langs"

@@ -1,0 +1,105 @@
+{{-- A component's API, read from its files when the site builds: each .tscl's @input (type, default), @model (bound
+     two ways with [(name)]), @event ((name)="…", with what $event holds) and the @types they use. Its own files (which
+     wrap the parts, so theirs is the API used), else the @clarusjs/ui-primitives parts. Generated: it can't drift. --}}
+@import { registry } from '~/registry.ts'
+@input name: string
+
+<script server>
+  import { readFileSync } from 'node:fs'
+  import { resolve } from 'node:path'
+  import { parse } from 'clarusjs/compiler'
+
+  const entry = registry.find((e) => e.name === name)
+  if (!entry) throw new Error(`componentApi: no registry entry "${name}"`)
+  // Run from the package (vite build, vite preview): its registry, and the primitives it depends on.
+  const own = entry.files.filter((f) => f.endsWith('.tscl')).map((f) => ({ file: f, from: '', path: resolve('src/registry', f) }))
+  const parts = entry.parts.filter((f) => f.endsWith('.tscl')).map((f) => ({ file: f, from: '@clarusjs/ui-primitives', path: resolve('node_modules/@clarusjs/ui-primitives/src', f) }))
+  const flat = (t) => t.replace(/\s+/g, ' ').trim()
+  // A long default (an example list) is shortened: the source, below on the page, has it whole.
+  const short = (t) => (t.length > 48 ? t.slice(0, 44).trimEnd() + ' …' : t)
+  const files = (own.length ? own : parts).map((f) => {
+    const parsed = parse(readFileSync(f.path, 'utf8'), f.file)
+    const rows = [
+      ...parsed.inputs.map((i) => ({ name: i.name, kind: i.model ? 'model' : 'input', type: flat(i.type), default: i.default === undefined ? '' : short(flat(i.default)) })),
+      ...parsed.events.map((e) => ({ name: e.name, kind: 'event', type: flat(e.type), default: '' })),
+    ]
+    const types = parsed.types.map((t) => (t.kind === 'interface' ? `interface ${t.name}${t.params ?? ''} ${flat(t.type)}` : `type ${t.name}${t.params ?? ''} = ${flat(t.type)}`))
+    return { ...f, rows, types }
+  }).filter((f) => f.rows.length)
+</script>
+
+<section class="component-api">
+  <p>
+    Read from the component's files when this site builds: <code>[name]</code> an input, <code>[(name)]</code> bound
+    two ways, <code>(name)</code> an event (<code>$event</code> is its type).
+  </p>
+  @for (f of files; track f.file) {
+    <h3>
+      <code>{{ f.file }}</code>{{ f.from ? ' (' + f.from + ')' : '' }}
+    </h3>
+    <div class="api-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Kind</th>
+            <th scope="col">Type</th>
+            <th scope="col">Default</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of f.rows; track r.kind + r.name) {
+            <tr>
+              <th scope="row">
+                <code>{{ r.kind === 'event' ? '(' + r.name + ')' : r.kind === 'model' ? '[(' + r.name + ')]' : '[' + r.name + ']' }}</code>
+              </th>
+              <td>{{ r.kind }}</td>
+              <td><code>{{ r.type }}</code></td>
+              <td>
+                @if (r.default) {
+                  <code>{{ r.default }}</code>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @for (t of f.types; track t) {
+      <p class="api-type"><code>{{ t }}</code></p>
+    }
+  } @empty {
+    <p>No inputs or events: style it with its classes and data-part names (below).</p>
+  }
+</section>
+
+<style scoped>
+  /* Headings and spacing: the page's own (its h3 rhythm). */
+  .api-scroll {
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th,
+  td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--rule);
+    text-align: start;
+    vertical-align: top;
+  }
+  thead th {
+    color: var(--muted);
+    font-weight: 600;
+  }
+  td code,
+  .api-type code {
+    overflow-wrap: anywhere;
+  }
+  .api-type {
+    margin: 0;
+    font-size: 14px;
+  }
+</style>

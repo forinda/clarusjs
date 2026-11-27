@@ -1,7 +1,7 @@
 {{-- The dashboard block alone (the frame on /blocks/dashboard shows it). Out of the nav, search and the sitemap. --}}
 @import '~/theme.css'
 @import '~/view.css'
-@import dashboard from '~/registry/blocks/dashboard/dashboard.tscl'
+@import dashboardBlock from '~/registry/blocks/dashboard/dashboard.tscl'
 
 <cl-head>
   <meta name="sitemap" content="false" />
@@ -9,5 +9,5 @@
 </cl-head>
 
 <div data-ui-preview>
-  <dashboard />
+  <dashboardBlock />
 </div>

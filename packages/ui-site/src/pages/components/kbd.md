@@ -15,6 +15,10 @@ description: "A key to press, as in Ctrl K."
 
 <<< ../../registry/kbd-demo.tscl
 
+## API
+
+<componentApi name="kbd" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `kbd.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

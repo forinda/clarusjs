@@ -1,7 +1,7 @@
 {{-- The login block alone (the frame on /blocks/login shows it). Out of the nav, search and the sitemap. --}}
 @import '~/theme.css'
 @import '~/view.css'
-@import login from '~/registry/blocks/login/login.tscl'
+@import loginBlock from '~/registry/blocks/login/login.tscl'
 
 <cl-head>
   <meta name="sitemap" content="false" />
@@ -9,5 +9,5 @@
 </cl-head>
 
 <div data-ui-preview>
-  <login />
+  <loginBlock />
 </div>

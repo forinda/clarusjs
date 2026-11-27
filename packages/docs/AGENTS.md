@@ -18,7 +18,7 @@ islands of JavaScript only where a component has a `<script>`. Vite runs it (`vi
 ### A component
 
 ```tscl
-@import badge from './badge.tscl'
+@import siteBadge from './site-badge.tscl'
 @import { site } from '../site.ts'
 @input title: string
 @input count: number = 0
@@ -32,7 +32,7 @@ islands of JavaScript only where a component has a `<script>`. Vite runs it (`vi
 </script>
 
 <section>
-  <h2>{{ title }} <badge [label]="site.name" /></h2>
+  <h2>{{ title }} <site-badge [label]="site.name" /></h2>
   <button type="button" (click)="add()">Clicked {{ n }} times ({{ double }})</button>
   @if (n > 3) {
     <p>That's a lot.</p>

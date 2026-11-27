@@ -1,6 +1,6 @@
-@import docs from '~/layouts/docs.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
 
-<docs
+<docsLayout
   [title]="'Verbatim'"
   [path]="'/guide/verbatim'"
   [description]="'Show template code as text with the verbatim attribute.'"
@@ -17,4 +17,4 @@
     The content can't contain the element's own closing tag. This sample contains <code>&lt;/code&gt;</code>, so it sits
     in a <code>&lt;pre verbatim&gt;</code> instead.
   </p>
-</docs>
+</docsLayout>

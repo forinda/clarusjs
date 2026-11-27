@@ -198,7 +198,8 @@ test('#review: the trail lights the cell under the pointer, in a frame whose wid
   const at = { x: box.x + box.width - 70, y: box.y + box.height - 40 } // far right, bottom rows: where a wrong count drifts most
   await watchTrail(page)
   await page.mouse.move(box.x + 2, box.y + 2)
-  await page.mouse.move(at.x, at.y)
+  // In steps: one jump can be coalesced into a single pointermove (one lit cell), as Chromium does under load.
+  await page.mouse.move(at.x, at.y, { steps: 12 })
   await expect.poll(() => page.evaluate(() => (window as unknown as { __lit: DOMRect[] }).__lit.length)).toBeGreaterThan(1)
   const cell = await page.evaluate(() => { const l = (window as unknown as { __lit: DOMRect[] }).__lit; const r = l[l.length - 1]!; return { x: r.x, y: r.y, width: r.width, height: r.height } })
   expect(at.x >= cell.x && at.x <= cell.x + cell.width && at.y >= cell.y && at.y <= cell.y + cell.height, JSON.stringify({ at, cell })).toBe(true)

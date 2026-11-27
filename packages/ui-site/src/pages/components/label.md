@@ -15,6 +15,10 @@ description: "A native label for a field."
 
 <<< ../../registry/label-demo.tscl
 
+## API
+
+<componentApi name="label" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `label.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

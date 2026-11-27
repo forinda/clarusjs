@@ -1,9 +1,9 @@
-@import docs from '~/layouts/docs.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
 @import latestRelease from '~/components/latest-release.tscl'
 @import { releases } from '~/releases.ts'
 @import { changelogUpdated } from '~/changelog-date.ts'
 
-<docs
+<docsLayout
   [title]="'Release notes'"
   [path]="'/releases'"
   [description]="'Every clarusjs release and what changed in it, from the package changelog.'"
@@ -30,4 +30,4 @@
       <li>No releases yet.</li>
     }
   </ul>
-</docs>
+</docsLayout>

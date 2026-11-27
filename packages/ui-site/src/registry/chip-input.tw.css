@@ -1,0 +1,94 @@
+/*
+  The Tailwind version of chip-input's styles: the same selectors and look as its CSS, written with Tailwind (v4) utilities.
+  Import it where Tailwind runs, e.g. after tailwind.css. The --ui- tokens still set every colour, size and font.
+*/
+@reference "tailwindcss";
+/*
+  Chip input: the same rules as @clarusjs/ui's ui.css for chip-input.tscl from @clarusjs/ui-primitives.
+  Copy it into src/components/ui/, @import it once, and change it to change the look.
+*/
+
+@layer theme, base, components, utilities;
+@layer components {
+  /* Focus is always visible, on every part and what's inside it. */
+  :where([data-part]):focus-visible,
+  :where([data-part]) :focus-visible {
+    @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
+  }
+  /* A combobox's or chip input's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input'], [data-part~='chip-input'] [data-part~='input']):focus-visible {
+    @apply outline-none;
+  }
+
+  /* Field and select: label, control, description, error. */
+  :where([data-part='field'], [data-part='select']) {
+    @apply grid gap-(--ui-space-1) max-w-[360px] font-normal text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) text-(color:--ui-fg);
+  }
+  :where([data-part='label']) {
+    @apply font-semibold text-[calc(var(--ui-font-size)_-_1px)] text-(color:--ui-fg);
+  }
+  :where([data-part='control']) {
+    @apply min-h-[var(--ui-control-h,_var(--ui-control-md))] py-(--ui-space-1) px-[calc(var(--ui-space)_*_2.5)] border border-solid border-(color:--ui-input) rounded-(--ui-radius) bg-(color:--ui-bg) text-(color:--ui-fg) font-normal text-[length:var(--ui-control-font,_var(--ui-font-size))] leading-[normal] font-(family-name:--ui-font);
+  }
+  /* Sizes: the nearest data-size (on the control, or on anything around it) sets these, and they inherit, so a
+     control's own size wins over its row's. */
+  :where([data-size='sm']) {
+    @apply [--ui-control-h:var(--ui-control-sm)] [--ui-control-font:calc(var(--ui-font-size)_-_1px)];
+  }
+  :where([data-size='md']) {
+    @apply [--ui-control-h:var(--ui-control-md)] [--ui-control-font:var(--ui-font-size)];
+  }
+  :where([data-size='lg']) {
+    @apply [--ui-control-h:var(--ui-control-lg)] [--ui-control-font:calc(var(--ui-font-size)_+_2px)];
+  }
+  :where([data-part='control'])[aria-invalid='true'] {
+    @apply border border-solid border-(color:--ui-danger);
+  }
+  :where([data-part='control']):disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+  :where([data-part='description']) {
+    @apply m-0 text-(color:--ui-muted) text-[calc(var(--ui-font-size)_-_1px)];
+  }
+  :where([data-part='error']) {
+    @apply m-0 text-(color:--ui-danger) text-[calc(var(--ui-font-size)_-_1px)];
+  }
+  :where([data-part='option']) {
+    @apply py-[calc(var(--ui-space)_*_1.5)] px-[calc(var(--ui-space)_*_2.5)] rounded-[calc(var(--ui-radius)_-_2px)];
+  }
+  :where([data-part='select']) ::picker(select) {
+    @apply p-(--ui-space-1) border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-popover) text-(color:--ui-popover-fg) shadow-(--ui-shadow);
+  }
+
+  /* Chips in a control, beside the field you type in (combobox, chip input). */
+  :where([data-part='input']) {
+    @apply flex-1 min-w-[6ch] min-h-[26px] py-0 px-(--ui-space-1) border-0 border-none bg-transparent text-(color:--ui-fg) [font:inherit] outline-none;
+  }
+  :where([data-part='chip']) {
+    @apply inline-flex items-center gap-[calc(var(--ui-space)_*_0.5)] pt-0 pr-[calc(var(--ui-space)_*_0.5)] pb-0 pl-(--ui-space-2) rounded-full bg-(color:--ui-accent-soft) text-[calc(var(--ui-font-size)_-_1px)];
+  }
+  :where([data-part='chip']) button {
+    @apply min-w-[24px] min-h-[24px] border-0 border-none rounded-full bg-transparent text-(color:--ui-muted) cursor-pointer;
+  }
+
+  /* Chip input: what's typed becomes a chip in the control; a hint below. */
+  :where([data-part='chip-input']) {
+    @apply grid gap-(--ui-space-1) max-w-[360px] font-normal text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) text-(color:--ui-fg);
+  }
+  :where([data-part='chip-input']) > :where([data-part='control']) {
+    @apply flex flex-wrap items-center gap-(--ui-space-1) py-[calc(var(--ui-space)_*_0.5)] px-[calc(var(--ui-space)_*_1.5)];
+  }
+  :where([data-part='chip-input']) > :where([data-part='control']):focus-within {
+    @apply border-(color:--ui-ring) shadow-[0_0_0_3px_var(--ui-accent-soft)];
+  }
+  :where([data-part='hint']) {
+    @apply m-0 text-(color:--ui-muted) text-[calc(var(--ui-font-size)_-_1px)];
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-part]),
+    :where([data-part]) * {
+      @apply transition-none!;
+    }
+  }
+}

@@ -1,4 +1,4 @@
-@import pill from './pill.tscl'
+@import optionPill from './pill.tscl'
 
 <script>
   import { todos } from '~/stores/todos.ts'
@@ -28,7 +28,7 @@
     />
     <button type="submit">Add</button>
   </form>
-  <p class="todo-count"><pill [text]="items.length === 1 ? '1 item' : items.length + ' items'" /></p>
+  <p class="todo-count"><optionPill [text]="items.length === 1 ? '1 item' : items.length + ' items'" /></p>
   <ul class="todo-list">
     @for (item of items; track item.id) {
       <li>
