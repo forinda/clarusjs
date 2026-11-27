@@ -263,6 +263,15 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
         }
         visit(n.children, false, rawText || n.tag === 'script' || n.tag === 'style', BLOCK_TAGS.has(n.tag) || OPTION_LISTS.has(n.tag))
       } else {
+        // @transition (…) { @if … }: Angular has no such block, so its header becomes @if (…) around a saved copy of
+        // it, as @await's do; the @if inside is the block's content.
+        if (n.type === 'if' && n.transition) {
+          const from = n.transition.start
+          const word = from + '@transition'.length
+          const open = word + source.slice(word).search(/\S/)
+          const end = source[open] === '(' ? parenEnd(open) + 1 : word
+          edits.push({ start: from, end, text: `@if (${HEAD}${save(source.slice(from, end))}_)` })
+        }
         const end = blockEnd(n.start)
         if (!canLayout(n, nodes[k - 1], nodes[k + 1], edgeOk || topLevel) && end !== -1) {
           holds.push({ start: n.start, end, text: `${INLINE}${save(source.slice(n.start, end))}_` })

@@ -2,9 +2,13 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { check as checkProject } from '../../src/cli/check.ts'
 import type { LintContext } from '../../src/compiler/lint.ts'
+
+// Each test runs a whole TypeScript program: a few hundred ms here, but CI runs every package's tests at once on two
+// cores, where one went past the default 5 s (#641's CI). 30 s leaves room without hiding a real hang.
+vi.setConfig({ testTimeout: 30_000 })
 
 function project(files: Record<string, string>): string {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-cli-'))
@@ -589,6 +593,24 @@ test('multi-word-name warns about a one-word component name, and --strict fails 
   expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.severity} ${d.code}`)).toEqual(['src/pages/index.tscl:1 warning multi-word-name'])
   expect(result.exitCode).toBe(0)
   expect(checkProject({ root, typescript, strict: true }).exitCode).toBe(1)
+})
+
+test("@transition's name and options are type-checked (a misspelt option, a name that isn't a string)", () => {
+  const island = (wrapper: string) => `<script>\n  let open = state(true)\n</script>\n<div>\n  <button type="button" (click)="open = !open">Toggle</button>\n  ${wrapper}\n</div>\n`
+  const files = {
+    'src/components/typo-panel.tscl': island("@transition ('fade', { mod: 'out-in' }) { @if (open) { <p>A</p> } }"),
+    'src/components/number-panel.tscl': island('@transition (42) { @if (open) { <p>A</p> } }'),
+    'src/components/good-panel.tscl': island("@transition ('fade', { mode: 'out-in', appear: true, duration: { enter: 200 } }) { @if (open) { <p>A</p> } }"),
+  }
+  const root = project(files)
+  // An app has clarusjs installed: its clarusjs/motion types are what the options are checked against.
+  mkdirSync(resolve(root, 'node_modules'), { recursive: true })
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  const found = check({ root, typescript }).diagnostics
+  const at = (file: string) => found.filter((d) => d.file === `src/components/${file}`).map((d) => `${d.line}:${d.column} ${d.code}`)
+  expect(at('typo-panel.tscl')).toEqual([`6:${'  @transition (\'fade\', { '.length + 1} TS2561`])
+  expect(at('number-panel.tscl')).toEqual([`6:${'  @transition ('.length + 1} TS2345`])
+  expect(at('good-panel.tscl')).toEqual([])
 })
 
 test('#602: .clarusjs/env.d.ts (the env option\'s types) is part of the checked program', () => {

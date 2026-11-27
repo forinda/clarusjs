@@ -474,6 +474,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           alias: [
             { find: 'clarusjs/runtime/server', replacement: here('../runtime/server') },
             { find: 'clarusjs/runtime', replacement: here('../runtime/index') },
+            { find: 'clarusjs/motion', replacement: here('../runtime/motion') },
             ...own,
           ],
         },

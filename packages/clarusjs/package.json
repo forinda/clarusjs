@@ -51,7 +51,8 @@
     "./manifest": "./src/server/manifest.ts",
     "./views": "./src/server/views.ts",
     "./node": "./src/node/serve.ts",
-    "./seo": "./src/seo.ts"
+    "./seo": "./src/seo.ts",
+    "./motion": "./src/runtime/motion.ts"
   },
   "bin": {
     "clarusjs": "./dist/cli/index.js"
@@ -142,6 +143,10 @@
       "./seo": {
         "types": "./dist/seo.d.ts",
         "default": "./dist/seo.js"
+      },
+      "./motion": {
+        "types": "./dist/runtime/motion.d.ts",
+        "default": "./dist/runtime/motion.js"
       }
     }
   },

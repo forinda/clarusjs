@@ -79,8 +79,13 @@ Islands import from `clarusjs/navigation`:
 ### Animations
 
 What `@if` and `@for` insert animates in with CSS alone, no JavaScript: give the element a `transition` and its
-starting look in `@starting-style`. It also runs for what the server rendered, on page load. Leaving is instant (an
-`@transition` block is planned). Under `prefers-reduced-motion: reduce`, drop the movement and keep fades.
+starting look in `@starting-style`. It also runs for what the server rendered, on page load. To animate leaving too,
+wrap an island's `@if` in `@transition ('fade') { @if (open) { … } }`: Vue's classes (`fade-enter-from`,
+`fade-enter-active`, `fade-leave-to`…) are added, and the old branch is removed once its transition ends. Options:
+`{ mode: 'out-in' | 'in-out', appear, duration, css: false }` and Vue's hooks (`onEnter(el, done)`…). It wraps one
+`@if`, in an island only (not `@for` yet). Don't confuse it with view transitions (`viewTransitions()` from
+`clarusjs/navigation`): those animate the whole page on navigation, `@transition` an element inside it. Under
+`prefers-reduced-motion: reduce`, drop the movement and keep fades.
 
 ```css
 .panel { transition: opacity 0.3s, translate 0.3s; }

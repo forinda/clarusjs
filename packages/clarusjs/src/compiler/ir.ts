@@ -27,7 +27,7 @@ export type IRNode =
   // [use]="behaviour" (#464): an element handed to a function in the browser (marked data-cl-u="index").
   | { kind: 'use'; expr: string; index: number }
   // @if / @else. block = -1 outside islands (plain server-side choice); inside an island, the block's marker index.
-  | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number }
+  | { kind: 'if'; branches: { cond: string | null; nodes: IRNode[] }[]; block: number; transition?: { name: string | null; options: string | null } }
   // @await (#430): `block` shares @if's markers (<!--[bN:K-->, K = 0 pending, 1 then, 2 catch); -1 outside islands.
   | { kind: 'await'; expr: string; pending: IRNode[]; then: { name: string; nodes: IRNode[] } | null; catch: { name: string; nodes: IRNode[] } | null; block: number }
   // @for / @empty. block = -1 outside islands; inside an island, the list's marker index. `item` and `$index` are in
@@ -198,6 +198,13 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     if (node.type === 'text') return emitStatic(text(node.value))
     if (node.type === 'fill') return fail('@slot only works directly inside a component tag', node.start)
     if (node.type === 'if') {
+      const tr = node.transition
+      if (tr) {
+        // The wrapper only does something in the browser: a component without an island has no code there.
+        if (!stateful) fail('@transition runs in the browser: this component needs a <script> or a @model input (an island)', tr.start)
+        if (tr.name !== null) checkExpr(tr.name, file, source, tr.nameStart)
+        if (tr.options !== null) checkExpr(tr.options, file, source, tr.optionsStart)
+      }
       const block = stateful ? blockCount++ : -1
       const parent = out
       const parentScope = scopeKey
@@ -211,7 +218,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       })
       out = parent
       scopeKey = parentScope
-      out.push({ kind: 'if', branches, block })
+      out.push({ kind: 'if', branches, block, ...(tr ? { transition: { name: tr.name, options: tr.options } } : {}) })
       return
     }
     if (node.type === 'await') {

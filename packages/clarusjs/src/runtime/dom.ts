@@ -87,7 +87,8 @@ export function openSlots(n: Node): number {
 let slots: WeakMap<Node, number> | null = null
 const step = (depth: number, n: Node) => (n.nodeType !== 8 ? depth : (n as Comment).data === '[s' ? depth + 1 : (n as Comment).data === ']s' && depth ? depth - 1 : depth)
 /** The DOM's shape changed: counts kept so far may be wrong. */
-const reshaped = () => { if (slots) slots = new WeakMap() }
+/** @internal Nodes were added or removed: cached slot ranges are stale. */
+export const reshaped = () => { if (slots) slots = new WeakMap() }
 /**
  * Run `fn` with openSlots() counts kept between calls; nothing outside this file may add or remove nodes meanwhile.
  * @internal The loader (attach) and the forms engine (refresh) call this.
@@ -168,8 +169,8 @@ export function blocks(ctx: Ctx): Block[] {
   return scan(ctx).blocks
 }
 
-/** Turn HTML into nodes and put them before `end`; returns the first and last inserted node. */
-function insertHtml(html: string, end: Node): { first: Node | null; last: Node | null } {
+/** Turn HTML into nodes and put them before `end`; returns the first and last inserted node. @internal */
+export function insertHtml(html: string, end: Node): { first: Node | null; last: Node | null } {
   const t = document.createElement('template')
   t.innerHTML = html
   const first = t.content.firstChild

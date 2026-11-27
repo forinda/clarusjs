@@ -236,7 +236,7 @@ For CSS alone, `<html data-cl-navigating>` carries the phase.
 viewTransitions(): void
 ```
 
-Page changes run as view transitions where the browser has them (`document.startViewTransition`), so CSS `::view-transition-*` rules animate them. Elsewhere they stay instant. Call it once, from any island's script.
+Page changes run as view transitions where the browser has them (`document.startViewTransition`), so CSS `::view-transition-*` rules animate them. Elsewhere they stay instant. Call it once, from any island's script. For an element inside a page (an `@if` branch entering and leaving), see [`@transition`](/guide/animations#transition) instead.
 
 ### Caveats
 

@@ -27,7 +27,13 @@ export type TemplateNode =
   | { type: 'text'; value: string; start: number }
   | { type: 'expr'; expr: string; start: number; json?: true } // {{ expr }}; json: written as JSON (JSON-LD)
   | { type: 'raw'; value: string; start: number } // content of a `verbatim` element, shown as text
-  | { type: 'if'; branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]; start: number }
+  | {
+      type: 'if'
+      branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]
+      start: number
+      /** `@transition (name, options) { @if … }` around it: the argument expressions as written (null: none). */
+      transition?: { name: string | null; nameStart: number; options: string | null; optionsStart: number; start: number }
+    }
   // @await (promise) { pending } @then (value) { … } @catch (error) { … } (#430)
   | { type: 'await'; expr: string; exprStart: number; pending: TemplateNode[]; then: AwaitBranch | null; catch: AwaitBranch | null; start: number }
   // @slot('name') { … } inside a component tag; @slot('name', { item }) { … } names what the slot passes (#455).
@@ -409,6 +415,74 @@ export function parse(source: string, file: string): ParsedFile {
     return { type: 'await', expr, exprStart, pending, then, catch: caught, start }
   }
 
+  // @transition (name, options) { @if … }: the one @if inside, carrying the transition (motion phase 2).
+  function transitionBlock(): TemplateNode {
+    const start = i
+    i += '@transition'.length
+    while (/\s/.test(source[i] ?? '')) i++
+    let args: { name: string | null; nameStart: number; options: string | null; optionsStart: number } = { name: null, nameStart: i, options: null, optionsStart: i }
+    if (source[i] === '(') {
+      const { condStart } = condition('@transition')
+      const raw = source.slice(condStart, i - 1) // between the parentheses, as written
+      const comma = topLevelComma(raw)
+      const part = (from: number, to: number) => {
+        const text = raw.slice(from, to)
+        const lead = text.length - text.trimStart().length
+        return { text: text.trim() || null, at: condStart + from + lead }
+      }
+      const name = part(0, comma === -1 ? raw.length : comma)
+      const options = comma === -1 ? { text: null, at: condStart + raw.length } : part(comma + 1, raw.length)
+      args = { name: name.text, nameStart: name.at, options: options.text, optionsStart: options.at }
+      while (/\s/.test(source[i] ?? '')) i++
+    }
+    if (source[i] !== '{') fail('expected { to open the block', i)
+    i++
+    const kids = children({ tag: '@transition', start, block: true })
+    const wrapped = kids.filter((n) => !(n.type === 'text' && !n.value.trim()))
+    const only = wrapped[0]
+    if (wrapped.length !== 1 || only!.type !== 'if') fail('@transition wraps one @if (@for comes later)', (wrapped.find((n) => n.type !== 'if') ?? wrapped[1] ?? { start }).start)
+    const node = only as Extract<TemplateNode, { type: 'if' }>
+    node.transition = { ...args, start }
+    return node
+  }
+
+  /**
+   * The first `,` outside brackets, strings, comments and template literals (their `${}` included) in `text`, or -1.
+   */
+  function topLevelComma(text: string): number {
+    let depth = 0
+    // Past the template literal opening at `j` (its `${…}` parts may hold anything, backticks too).
+    const template = (j: number): number => {
+      for (j++; j < text.length; j++) {
+        if (text[j] === '\\') j++
+        else if (text[j] === '`') return j
+        else if (text[j] === '$' && text[j + 1] === '{') {
+          let inner = 1
+          for (j += 2; j < text.length && inner; j++) {
+            const c = text[j]!
+            if (c === '`') j = template(j)
+            else if (c === '"' || c === "'") { for (j++; j < text.length && text[j] !== c; j++) if (text[j] === '\\') j++ }
+            else if (c === '{') inner++
+            else if (c === '}') inner--
+          }
+          j--
+        }
+      }
+      return j
+    }
+    for (let j = 0; j < text.length; j++) {
+      const c = text[j]!
+      if (c === '"' || c === "'") { for (j++; j < text.length && text[j] !== c; j++) if (text[j] === '\\') j++ }
+      else if (c === '`') j = template(j)
+      else if (c === '/' && text[j + 1] === '/') { const nl = text.indexOf('\n', j); j = nl === -1 ? text.length : nl }
+      else if (c === '/' && text[j + 1] === '*') { const close = text.indexOf('*/', j + 2); j = close === -1 ? text.length : close + 1 }
+      else if (c === '(' || c === '[' || c === '{') depth++
+      else if (c === ')' || c === ']' || c === '}') depth--
+      else if (c === ',' && depth === 0) return j
+    }
+    return -1
+  }
+
   // @if (a) { … } @else if (b) { … } @else { … }
   function ifBlock(): TemplateNode {
     const start = i
@@ -553,6 +627,8 @@ export function parse(source: string, file: string): ParsedFile {
         i = end + 3
       } else if (/^@if[\s(]/.test(source.slice(i, i + 4))) {
         flush(); nodes.push(ifBlock()); textStart = i
+      } else if (/^@transition[\s({]/.test(source.slice(i, i + 12))) {
+        flush(); nodes.push(transitionBlock()); textStart = i
       } else if (/^@await[\s(]/.test(source.slice(i, i + 7))) {
         flush(); nodes.push(awaitBlock()); textStart = i
       } else if (/^@(then|catch)[\s(]/.test(source.slice(i, i + 7))) {

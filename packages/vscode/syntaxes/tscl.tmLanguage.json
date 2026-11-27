@@ -188,9 +188,9 @@
     "block": {
       "patterns": [
         {
-          "comment": "@if (\u2026) {, @else if (\u2026) {, @for (item of list; track key) {, @await (\u2026) {, @then (value) {, @catch (error) {",
+          "comment": "@if (\u2026) {, @else if (\u2026) {, @for (item of list; track key) {, @await (\u2026) {, @then (value) {, @catch (error) {, @transition (name, options) {",
           "name": "meta.block.control.tscl",
-          "begin": "(@)(if|else\\s+if|for|await|then|catch)\\s*(\\()",
+          "begin": "(@)(if|else\\s+if|for|await|then|catch|transition)\\s*(\\()",
           "end": "\\)",
           "beginCaptures": {
             "1": {
@@ -221,7 +221,7 @@
         },
         {
           "comment": "@else, @empty",
-          "match": "(@)(else|empty)\\b",
+          "match": "(@)(else|empty|transition)\\b",
           "captures": {
             "1": {
               "name": "punctuation.definition.keyword.tscl"

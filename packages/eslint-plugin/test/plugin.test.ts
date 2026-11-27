@@ -102,3 +102,8 @@ test('template fixes apply through --fix: several roots are wrapped in <fragment
   expect(out.output).toBe('<fragment>\n<h1>a</h1>\n<p>b</p>\n</fragment>\n')
   expect(out.messages).toEqual([])
 })
+
+test("a script name read only in @transition's arguments is used", () => {
+  const source = "<script>\n  let open = state(true)\n  const slide = { mode: 'out-in' }\n</script>\n\n<div>\n  <button (click)=\"open = !open\">Toggle</button>\n  @transition ('slide', slide) { @if (open) { <p>A</p> } }\n</div>\n"
+  expect(run(source, { 'no-unused-vars': 'error' })).toEqual([])
+})

@@ -83,6 +83,15 @@ export function generateTs(source: string, file: string, options: { loader?: str
   emit('declare function shared<T>(store: { get(): T }): T\n')
   emit('declare function __cl_use(value: unknown): void\n')
   emit('declare const __cl_bool: boolean\n') // a row's $first…: boolean, not narrowed to false
+  // @transition (name, options): typed as clarusjs/motion takes them. Declared only where used, so a file without one
+  // needs no clarusjs/motion types.
+  const transitions = (nodes: TemplateNode[]): boolean => nodes.some((n) => {
+    if (n.type === 'if') return !!n.transition || n.branches.some((b) => transitions(b.children))
+    if (n.type === 'for') return transitions(n.children) || (!!n.empty && transitions(n.empty))
+    if (n.type === 'await') return transitions(n.pending) || (!!n.then && transitions(n.then.children)) || (!!n.catch && transitions(n.catch.children))
+    return 'children' in n && Array.isArray(n.children) && transitions(n.children as TemplateNode[])
+  })
+  if (transitions(parsed.nodes)) emit("declare function __cl_transition(name: string, options?: import('clarusjs/motion').TransitionOptions): void\n")
   // [prop] on an element sets an attribute: true → bare, false/null → removed, anything else as text. So a boolean
   // attribute (per the DOM's own types) takes a boolean (a string, even 'false', would switch it on), and any other a
   // primitive (an object would read "[object Object]").
@@ -303,6 +312,14 @@ export function generateTs(source: string, file: string, options: { loader?: str
         return
       }
       case 'if':
+        if (node.transition) {
+          const tr = node.transition
+          emit('  __cl_transition(')
+          if (tr.name !== null) copy(tr.name, tr.nameStart)
+          else emit("'cl'")
+          if (tr.options !== null) { emit(', '); copy(tr.options, tr.optionsStart) }
+          emit(')\n')
+        }
         node.branches.forEach((b, i) => {
           if (b.cond === null) emit('  else {\n')
           else {

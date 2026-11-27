@@ -185,4 +185,4 @@ import { viewTransitions } from 'clarusjs/navigation'
 viewTransitions() // once, from any island
 ```
 
-Page changes then run as [view transitions](https://developer.mozilla.org/docs/Web/API/View_Transition_API) where the browser has them: a cross-fade by default, changed with `::view-transition-*` rules in your CSS. Elsewhere they stay instant. `beforeSwap` hooks run before the browser's snapshot of the old page, `afterSwap` hooks once the new one is in. The docs theme turns it on with `viewTransitions: true` in its config, as this site does.
+Page changes then run as [view transitions](https://developer.mozilla.org/docs/Web/API/View_Transition_API) where the browser has them (the whole page, old to new: not [`@transition`](/guide/animations#transition), which animates an `@if` inside an island): a cross-fade by default, changed with `::view-transition-*` rules in your CSS. Elsewhere they stay instant. `beforeSwap` hooks run before the browser's snapshot of the old page, `afterSwap` hooks once the new one is in. The docs theme turns it on with `viewTransitions: true` in its config, as this site does.

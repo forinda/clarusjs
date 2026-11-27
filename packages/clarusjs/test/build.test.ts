@@ -292,6 +292,22 @@ test('size budget: an island importing resource and json from clarusjs/fetch pay
   expect(size, `resource + json: ${size} B gzip`).toBeLessThanOrEqual(3 * KB)
 }, 60_000)
 
+// 1,920 B: clarusjs/motion (@transition's block: classes, the three modes, appear, duration, hooks, cancelling an
+// enter, neutralising leaving nodes by owner(), hooks that throw, the timeout) is 1,842 B on its own (1,671 B before
+// #641's review); dom.ts's new exports leave the runtime and the fixture site as they were (4,819 and 7,108 B).
+test('size budget: clarusjs/motion stays within 1,920 B gzip on its own, and a site without @transition ships none of it', async () => {
+  const { build: viteBuild } = await import('vite')
+  const out = (await viteBuild({
+    configFile: false, logLevel: 'silent',
+    build: { write: false, minify: true, lib: { entry: resolve(import.meta.dirname, '../src/runtime/motion.ts'), formats: ['es'], fileName: 'motion' }, rollupOptions: { external: [/\/runtime\/(dom|signals)/] } },
+  })) as { output: { type: string; code?: string }[] }[]
+  const code = out[0]!.output.find((o) => o.type === 'chunk')!.code!
+  const size = gzipSync(code, { level: 9 }).length
+  expect(size, `clarusjs/motion: ${size} B gzip`).toBeLessThanOrEqual(1920)
+  const assets = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
+  for (const f of assets) expect(read(`assets/${f}`), f).not.toContain('getAnimations')
+}, 60_000)
+
 // 4 KB: clarusjs/forms is at 3,582 B of 3,584 after #585 (one pass over the fields per change, dirty, shown); its
 // review fixes (dirty telling arrays from objects, slot counts kept per refresh for long lists) take it to 3,609 B.
 test('size budget: clarusjs/forms stays within 4 KB gzip on its own, and a site without forms ships none of it', async () => {

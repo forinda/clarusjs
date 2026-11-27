@@ -271,3 +271,12 @@ test('#585: a @for header with let aliases keeps them', async () => {
   const out = await same('@for (row of rows; track $index; let r = $index, n = $count) {\n  @for (c of row; track $index) {<i>{{ r }}{{ n }}{{ c }}</i>}\n}\n')
   expect(out).toContain('@for (row of rows; track $index; let r = $index, n = $count) {')
 })
+
+test('@transition wraps its @if: kept, with its arguments as written, laid out like a block, and stable', async () => {
+  const input = "<script>\n  let open = state(true)\n</script>\n<div>\n@transition ('fade', { mode: 'out-in' }) { @if (open) { <p>A</p> } @else { <p>B</p> } }\n</div>\n"
+  const out = await fmt(input)
+  expect(out).toContain("@transition ('fade', { mode: 'out-in' }) {")
+  expect(out).toContain('@if (open) {')
+  expect(parse(out, 'x.tscl').nodes.some((n) => n.type === 'element' && n.children.some((c) => c.type === 'if' && c.transition?.name === "'fade'"))).toBe(true)
+  expect(await fmt(out)).toBe(out)
+})

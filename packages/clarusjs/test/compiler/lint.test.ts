@@ -255,6 +255,11 @@ test('multi-word-name: a component imported under one word warns (it has no keba
   expect(rules("@import XMLViewer from './x.tscl'\n<XMLViewer />\n", on)).toEqual([]) // xml-viewer
 })
 
+test("@transition's arguments read names: an @input used only there is used", () => {
+  const source = "@input speed: number = 200\n<script>\n  let open = state(true)\n</script>\n<div>\n  <button type=\"button\" (click)=\"open = !open\">Toggle</button>\n  @transition ('fade', { duration: speed }) { @if (open) { <p>A</p> } }\n</div>\n"
+  expect(lint(source, file).filter((m) => m.rule === 'unused-input')).toEqual([])
+})
+
 test('#602 server-env-in-browser: an error by default, for process.env and unprefixed import.meta.env in browser scripts', () => {
   const source = `<script server>
   const key = process.env.API_KEY
