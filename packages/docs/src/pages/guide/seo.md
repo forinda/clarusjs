@@ -140,3 +140,4 @@ The builders are plain functions that run where the page renders. They add nothi
 - Every page has its own `<title>` and description.
 - Pages that shouldn't be found have `noindex`.
 - Moved pages have [redirects](/guide/routing#redirects), so old links and rankings carry over.
+- Pages are fast: see [Performance](/guide/performance).
