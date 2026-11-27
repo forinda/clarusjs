@@ -15,6 +15,10 @@ description: "Ruled lines behind a section, fading at the edges; no JavaScript."
 
 <<< ../../registry/grid-backdrop-demo.tscl
 
+## API
+
+<componentApi name="grid-backdrop" />
+
 ## Source
 
 Copy it into `src/components/ui/`. Its `<style global>` holds its rules: change them there to change its look.

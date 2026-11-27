@@ -33,6 +33,10 @@ An icon in the title for the eye, and what to do next under the text.
 
 <<< ../../registry/alert-icons-demo.tscl
 
+## API
+
+<componentApi name="alert" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `alert.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

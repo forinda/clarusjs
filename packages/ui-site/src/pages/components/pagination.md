@@ -17,6 +17,10 @@ Plain links, no JavaScript: `href` is a pattern with `{page}` (`/posts?page={pag
 
 <<< ../../registry/pagination-demo.tscl
 
+## API
+
+<componentApi name="pagination" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `pagination.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

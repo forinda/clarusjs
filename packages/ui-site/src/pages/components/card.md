@@ -33,6 +33,10 @@ A number and its trend: the building block of a dashboard.
 
 <<< ../../registry/card-stat-demo.tscl
 
+## API
+
+<componentApi name="card" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `card.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

@@ -1,0 +1,77 @@
+{{--
+  Chip input: values typed into one field, each becoming a chip (tags, email addresses). Enter or a comma adds what's
+  typed; Backspace in the empty field removes the last chip; each chip's × removes it. Bind the list with
+  [(values)]; with [name], a hidden input per value sends them with a form.
+
+  <chip-input [id]="'tags'" [label]="'Tags'" [name]="'tag'" [(values)]="post.tags" />
+
+  Headless: data-part names each element (chip-input, label, control, chip, input, hint). Each add or removal sends
+  (change) first, with the value and whether it's now in; $info.reason is 'add' or 'remove', and $info.cancel() keeps it
+  from happening: <chip-input … (change)="if ($event.added && !valid($event.value)) $info.cancel()" />
+--}}
+@input id: string = 'chips'
+@input label: string = 'Tags'
+@input name: string = ''
+@input placeholder: string = 'Add…'
+@input hint: string = 'Enter or comma adds; Backspace removes the last.'
+@model values: string[] = []
+@event change: { value: string; added: boolean }
+
+<script>
+  let text = state('')
+
+  function add(raw) {
+    const value = raw.trim()
+    text = ''
+    if (!value || values.includes(value)) return
+    if (!emit('change', { value, added: true }, { reason: 'add' })) return
+    values = [...values, value]
+  }
+  function remove(value, event) {
+    if (!emit('change', { value, added: false }, { reason: 'remove', event })) return
+    values = values.filter((v) => v !== value)
+  }
+  function key(event) {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault()
+      add(text)
+    } else if (event.key === 'Backspace' && !text && values.length) {
+      remove(values[values.length - 1], event)
+    }
+  }
+  // A comma typed or pasted in: everything before it becomes chips.
+  function type(next) {
+    const parts = next.split(',')
+    const rest = parts.pop()
+    for (const p of parts) add(p)
+    text = rest
+  }
+</script>
+
+<div data-part="chip-input">
+  <label [for]="id + '-input'" data-part="label">{{ label }}</label>
+  <div data-part="control">
+    @for (v of values; track v) {
+      <span data-part="chip"
+        >{{ v }} <button type="button" [aria-label]="'Remove ' + v" (click)="remove(v, $event)">×</button></span
+      >
+    }
+    <input
+      [id]="id + '-input'"
+      data-part="input"
+      autocomplete="off"
+      [aria-describedby]="id + '-hint'"
+      [placeholder]="placeholder"
+      [value]="text"
+      (input)="type($event.target.value)"
+      (keydown)="key($event)"
+      (blur)="add(text)"
+    />
+  </div>
+  <p [id]="id + '-hint'" data-part="hint">{{ hint }}</p>
+  @if (name) {
+    @for (v of values; track v) {
+      <input type="hidden" [name]="name" [value]="v" />
+    }
+  }
+</div>

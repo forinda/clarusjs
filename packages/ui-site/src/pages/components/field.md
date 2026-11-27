@@ -41,6 +41,10 @@ Any input type: the keyboard on phones follows it (email, tel, number, date, url
 
 <<< ../../registry/field-types-demo.tscl
 
+## API
+
+<componentApi name="field" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `field.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `field.tw.tscl` copied as `field.tscl` with `field.tw.css` beside it.

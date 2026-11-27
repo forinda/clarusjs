@@ -33,6 +33,10 @@ An `<output>` beside the label, kept in step as it moves.
 
 <<< ../../registry/slider-steps-demo.tscl
 
+## API
+
+<componentApi name="slider" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `slider.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

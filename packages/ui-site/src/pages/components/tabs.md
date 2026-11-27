@@ -17,6 +17,10 @@ The parts come from `@clarusjs/ui-primitives`; the look is `tabs.css`, imported 
 
 <<< ../../registry/tabs-demo.tscl
 
+## API
+
+<componentApi name="tabs" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `tabs.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `tabs.tw.css`, imported where Tailwind runs.

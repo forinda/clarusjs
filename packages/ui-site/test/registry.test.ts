@@ -577,3 +577,11 @@ test('tailwind: a part\'s Tailwind stylesheet (<name>.tw.css) is Tailwind\'s: @r
     for (const [, body] of css.replace(/@keyframes [\w-]+\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '').matchAll(/\{([^{}]*)\}/g)) expect(body!.trim(), f).toMatch(/^@apply [^;]+;$/)
   }
 })
+
+test('every component page with inputs, models or events has an API section, generated from its files and parts', () => {
+  for (const e of components) {
+    const tscl = [...e.files.filter((f) => f.endsWith('.tscl')), ...e.parts.filter((f) => f.endsWith('.tscl'))]
+    if (!tscl.length) continue
+    expect(readFileSync(page(e.name), 'utf8'), e.name).toMatch(new RegExp(`^## API\\n\\n<componentApi name="${e.name}" />$`, 'm'))
+  }
+})
