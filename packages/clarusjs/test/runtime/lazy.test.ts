@@ -161,3 +161,15 @@ test('typed before attach is kept: a field already changed is not reset to state
   expect([name.value, note.value]).toEqual(['typed', 'a note'])
   expect(document.querySelector('.out')!.textContent).toBe('typed|a note')
 })
+
+test('review: a field the browser filled before attach (form restore, autofill: no input event) writes its value to state', async () => {
+  const src = `<script>let name = state('')</script>
+<input class="name" [(value)]="name"><p class="out">{{ name }}</p>`
+  const client = await importCode(compile(src, { file: 'g.tscl', target: 'client' }).code, 'lazy-restored-c')
+  const { render } = await importCode(compile(src, { file: 'g.tscl', target: 'server', clientUrl: '/g.js' }).code, 'lazy-restored-s')
+  document.body.innerHTML = render({})
+  document.querySelector<HTMLInputElement>('.name')!.value = 'restored'
+  await attachAll(document, async () => client)
+  await flush(); await flush()
+  expect(document.querySelector('.out')!.textContent).toBe('restored')
+})

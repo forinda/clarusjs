@@ -583,6 +583,8 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     emitStatic('>')
     // A textarea's value is its text: written in place of its children.
     if (textareaValue !== undefined) {
+      // The HTML parser drops one line break right after <textarea>: write one, so a value starting with one keeps it.
+      emitStatic('\n')
       out.push({ kind: 'hole', expr: textareaValue, reactive: false, index: -1 })
       emitStatic('</textarea>')
       return

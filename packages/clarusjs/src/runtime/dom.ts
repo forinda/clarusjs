@@ -564,6 +564,8 @@ export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, t
     if (v === null) el.removeAttribute(name)
     else el.setAttribute(name, v === true ? '' : v)
     // A form field shows its property once someone has typed or clicked in it, not the attribute: set both.
+    // Filled without an input event to replay (form restore, autofill): send one, once the island's handlers listen.
+    if (typed) queueMicrotask(() => el.dispatchEvent(new Event('input', { bubbles: true })))
     if (name === 'value' && 'value' in el && !typed) {
       const field = el as HTMLInputElement
       const next = v === null || v === true ? '' : v

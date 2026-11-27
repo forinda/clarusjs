@@ -169,7 +169,7 @@ test('a textarea\'s [value] or [(value)] is its text in the HTML (a value attrib
   const c = await importCode(compile(src, { file: 'x.tscl', target: 'client' }).code, 'model-tac')
   const html = s.render({ start: '</textarea><b>&' })
   expect(html).not.toContain('value=')
-  expect(html).toMatch(/<textarea class="a[^"]*"[^>]*>&lt;\/textarea&gt;&lt;b&gt;&amp;<\/textarea>/)
+  expect(html).toMatch(/<textarea class="a[^"]*"[^>]*>\n&lt;\/textarea&gt;&lt;b&gt;&amp;<\/textarea>/)
   document.body.innerHTML = html
   c.attach(document.querySelector('cl-island')!, { start: '</textarea><b>&' })
   const [a, b] = [...document.querySelectorAll('textarea')]
@@ -178,5 +178,12 @@ test('a textarea\'s [value] or [(value)] is its text in the HTML (a value attrib
   expect(document.querySelector<HTMLTextAreaElement>('.b')!.value).toBe('next!')
   // outside an island too
   const plain = await importCode(compile('@input v: string = \'\'\n<textarea [value]="v"></textarea>\n', { file: 'p.tscl', target: 'server' }).code, 'model-tap')
-  expect(plain.render({ v: 'x < y' })).toMatch(/<textarea[^>]*>x &lt; y<\/textarea>/)
+  expect(plain.render({ v: "x < y" })).toMatch(/<textarea[^>]*>\nx &lt; y<\/textarea>/)
+})
+
+test('review: a textarea value starting with a line break keeps it (the HTML parser drops one after <textarea>)', async () => {
+  const s = await importCode(compile('@input v: string = \'\'\n<textarea [value]="v"></textarea>\n', { file: 'p.tscl', target: 'server' }).code, 'model-tnl')
+  // browsers drop one line break right after <textarea>: the HTML writes one more, always
+  expect(s.render({ v: '\n\nfoo' })).toMatch(/<textarea[^>]*>\n\n\nfoo<\/textarea>/)
+  expect(s.render({ v: 'x' })).toMatch(/<textarea[^>]*>\nx<\/textarea>/)
 })
