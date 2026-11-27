@@ -590,3 +590,21 @@ test('multi-word-name warns about a one-word component name, and --strict fails 
   expect(result.exitCode).toBe(0)
   expect(checkProject({ root, typescript, strict: true }).exitCode).toBe(1)
 })
+
+test("@transition's name and options are type-checked (a misspelt option, a name that isn't a string)", () => {
+  const island = (wrapper: string) => `<script>\n  let open = state(true)\n</script>\n<div>\n  <button type="button" (click)="open = !open">Toggle</button>\n  ${wrapper}\n</div>\n`
+  const files = {
+    'src/components/typo-panel.tscl': island("@transition ('fade', { mod: 'out-in' }) { @if (open) { <p>A</p> } }"),
+    'src/components/number-panel.tscl': island('@transition (42) { @if (open) { <p>A</p> } }'),
+    'src/components/good-panel.tscl': island("@transition ('fade', { mode: 'out-in', appear: true, duration: { enter: 200 } }) { @if (open) { <p>A</p> } }"),
+  }
+  const root = project(files)
+  // An app has clarusjs installed: its clarusjs/motion types are what the options are checked against.
+  mkdirSync(resolve(root, 'node_modules'), { recursive: true })
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  const found = check({ root, typescript }).diagnostics
+  const at = (file: string) => found.filter((d) => d.file === `src/components/${file}`).map((d) => `${d.line}:${d.column} ${d.code}`)
+  expect(at('typo-panel.tscl')).toEqual([`6:${'  @transition (\'fade\', { '.length + 1} TS2561`])
+  expect(at('number-panel.tscl')).toEqual([`6:${'  @transition ('.length + 1} TS2345`])
+  expect(at('good-panel.tscl')).toEqual([])
+})

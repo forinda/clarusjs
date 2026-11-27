@@ -4,7 +4,7 @@
 // uses by name (#458), as src/components/<path>.tscl. To accept a change in output, run
 //   UPDATE=1 pnpm --filter clarusjs exec vitest run test/compiler/fixtures.test.ts
 // and review the diff of the expected files in the PR.
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { expect, test } from 'vitest'
@@ -47,6 +47,8 @@ function diagnostics(name: string, source: string): string {
     writeFileSync(resolve(root, path), text)
   }
   iconSet(root)
+  // As an app has it: clarusjs installed (@transition's options are typed from clarusjs/motion).
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   writeFileSync(resolve(root, `src/components/${name}.tscl`), source)
   return check({ root, typescript }).diagnostics.map((d) => `${d.line}:${d.column} ${d.code} ${d.message}\n`).join('')
 }
