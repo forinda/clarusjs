@@ -140,3 +140,63 @@ test('an island waiting to attach (idle) that starts leaving (@transition makes 
   expect(attached).toEqual([])
   vi.unstubAllGlobals()
 })
+
+test('typed before attach is kept: a field already changed is not reset to state at attach, and the replay writes it', async () => {
+  const src = `<script>let name = state('start'); let note = state('')</script>
+<input class="name" [(value)]="name"><textarea class="note" [(value)]="note"></textarea><p class="out">{{ name }}|{{ note }}</p>`
+  const { render } = await importCode(compile(src, { file: 'f.tscl', target: 'server', clientUrl: '/f.js' }).code, 'lazy-typed-s')
+  const client = await importCode(compile(src, { file: 'f.tscl', target: 'client' }).code, 'lazy-typed-c')
+  const { render: pageRender } = await importCode(compile(`@import f from './f.tscl'\n<f attach="interaction" />`, { file: 'page.tscl', target: 'server' }).code, 'lazy-typed-p', { './f.tscl': compile(src, { file: 'f.tscl', target: 'server', clientUrl: '/f.js' }).code })
+  void render
+  document.body.innerHTML = pageRender()
+  await attachAll(document, async () => client)
+  const name = document.querySelector<HTMLInputElement>('.name')!
+  const note = document.querySelector<HTMLTextAreaElement>('.note')!
+  name.focus()
+  name.value = 'typed'
+  name.dispatchEvent(new Event('input', { bubbles: true }))
+  note.value = 'a note'
+  note.dispatchEvent(new Event('input', { bubbles: true }))
+  await flush(); await flush()
+  expect([name.value, note.value]).toEqual(['typed', 'a note'])
+  expect(document.querySelector('.out')!.textContent).toBe('typed|a note')
+})
+
+test('review: a field the browser filled before attach (form restore, autofill: no input event) writes its value to state', async () => {
+  const src = `<script>let name = state('')</script>
+<input class="name" [(value)]="name"><p class="out">{{ name }}</p>`
+  const client = await importCode(compile(src, { file: 'g.tscl', target: 'client' }).code, 'lazy-restored-c')
+  const { render } = await importCode(compile(src, { file: 'g.tscl', target: 'server', clientUrl: '/g.js' }).code, 'lazy-restored-s')
+  document.body.innerHTML = render({})
+  document.querySelector<HTMLInputElement>('.name')!.value = 'restored'
+  await attachAll(document, async () => client)
+  await flush(); await flush()
+  expect(document.querySelector('.out')!.textContent).toBe('restored')
+})
+
+test('PR #647 review: a field typed in before attach runs its (input) handler once, not twice (replay, then a sync)', async () => {
+  const src = `<script>let name = state(''); let runs = state(0)</script>
+<input class="name" [(value)]="name" (input)="runs++"><p class="out">{{ runs }}</p>`
+  const client = await importCode(compile(src, { file: 'h.tscl', target: 'client' }).code, 'lazy-once-c')
+  const { render: pageRender } = await importCode(compile(`@import h from './h.tscl'\n<h attach="interaction" />`, { file: 'page.tscl', target: 'server' }).code, 'lazy-once-p', { './h.tscl': compile(src, { file: 'h.tscl', target: 'server', clientUrl: '/h.js' }).code })
+  document.body.innerHTML = pageRender()
+  await attachAll(document, async () => client)
+  const name = document.querySelector<HTMLInputElement>('.name')!
+  name.value = 'typed'
+  name.dispatchEvent(new Event('input', { bubbles: true }))
+  await flush(); await flush()
+  expect(document.querySelector('.out')!.textContent).toBe('1')
+})
+
+test('PR #647 review: a restored field reaches state before a replayed submit runs', async () => {
+  const src = `<script>let name = state(''); let sent = state('')</script>
+<form (submit)="$event.preventDefault(); sent = name"><input class="name" [(value)]="name"><button type="submit">go</button></form><p class="out">{{ sent }}</p>`
+  const client = await importCode(compile(src, { file: 'k.tscl', target: 'client' }).code, 'lazy-submit-c')
+  const { render: pageRender } = await importCode(compile(`@import k from './k.tscl'\n<k attach="interaction" />`, { file: 'page.tscl', target: 'server' }).code, 'lazy-submit-p', { './k.tscl': compile(src, { file: 'k.tscl', target: 'server', clientUrl: '/k.js' }).code })
+  document.body.innerHTML = pageRender()
+  document.querySelector<HTMLInputElement>('.name')!.value = 'restored' // the browser restored it: no input event
+  await attachAll(document, async () => client)
+  document.querySelector<HTMLButtonElement>('button')!.click() // held, then replayed after attach
+  await flush(); await flush()
+  expect(document.querySelector('.out')!.textContent).toBe('restored')
+})

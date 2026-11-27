@@ -1,0 +1,117 @@
+{
+  "name": "@clarusjs/editor",
+  "version": "0.0.0",
+  "description": "A rich-text editor for clarusjs: a composer to drop in, behaviours to build your own, and a server side that validates and renders without a DOM.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forinda/clarusjs.git",
+    "directory": "packages/editor"
+  },
+  "homepage": "https://clarusjs.com/guide/editor-composer",
+  "keywords": [
+    "clarusjs",
+    "editor",
+    "rich-text",
+    "prosemirror",
+    "composer"
+  ],
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts",
+    "./components/*": "./src/components/*",
+    "./plain-text": "./src/core/plain-text.ts",
+    "./registry": "./src/core/registry.ts",
+    "./toolbar": "./src/behaviours/toolbar.ts",
+    "./suggestion": "./src/behaviours/suggestion.ts",
+    "./content": "./src/behaviours/content.ts",
+    "./editor": "./src/behaviours/editor.ts",
+    "./extensions": "./src/extensions/composer.ts"
+  },
+  "clarusjs": {
+    "components": "./src/components",
+    "prefix": "editor"
+  },
+  "files": [
+    "dist",
+    "src/components",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./server": {
+        "types": "./dist/server.d.ts",
+        "default": "./dist/server.js"
+      },
+      "./components/*": "./src/components/*",
+      "./plain-text": {
+        "types": "./dist/core/plain-text.d.ts",
+        "default": "./dist/core/plain-text.js"
+      },
+      "./registry": {
+        "types": "./dist/core/registry.d.ts",
+        "default": "./dist/core/registry.js"
+      },
+      "./toolbar": {
+        "types": "./dist/behaviours/toolbar.d.ts",
+        "default": "./dist/behaviours/toolbar.js"
+      },
+      "./suggestion": {
+        "types": "./dist/behaviours/suggestion.d.ts",
+        "default": "./dist/behaviours/suggestion.js"
+      },
+      "./content": {
+        "types": "./dist/behaviours/content.d.ts",
+        "default": "./dist/behaviours/content.js"
+      },
+      "./editor": {
+        "types": "./dist/behaviours/editor.d.ts",
+        "default": "./dist/behaviours/editor.js"
+      },
+      "./extensions": {
+        "types": "./dist/extensions/composer.d.ts",
+        "default": "./dist/extensions/composer.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-package.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "clarusjs": "workspace:^"
+  },
+  "dependencies": {
+    "@clarusjs/ui-primitives": "workspace:^",
+    "linkedom": "^0.18.15",
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-history": "^1.5.2",
+    "prosemirror-inputrules": "^1.7.0",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.13",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-transform": "^1.12.7",
+    "prosemirror-view": "^1.44.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "clarusjs": "workspace:^",
+    "happy-dom": "^21.0.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  },
+  "sideEffects": false
+}

@@ -37,8 +37,11 @@ export type Entry = {
   description: string
   /** Files in src/registry/ to copy; the first is the component (a block's: its page, 'blocks/login/login.tscl'). */
   files: string[]
-  /** @clarusjs/ui-primitives parts it renders ('switch.tscl', …); [] if none. */
+  /** The parts it renders ('switch.tscl', …), from @clarusjs/ui-primitives or partsFrom; [] if none. */
   parts: string[]
+  /** The package its parts come from, when not @clarusjs/ui-primitives ('@clarusjs/editor'): a part is imported as
+   *  '<package>/<part>' and read from its src/<part>. */
+  partsFrom?: string
   /** Other entries it imports as ./<name>.tscl. */
   uses: string[]
   /** Its Tailwind version: <name>.tw.tscl (the same inputs and look, classes instead of <style>), copied as <name>.tscl;
@@ -52,7 +55,7 @@ export type Entry = {
   island: boolean
   /** npm packages to install beside it ('zod'). */
   packages?: string[]
-  /** The @clarusjs/ui-primitives version it needs, when parts is not empty. */
+  /** The version of its parts' package it needs, when parts is not empty. */
   since?: string
   /** For a styled part: the sections of @clarusjs/ui's ui.css its global rules copy, in order (a .tscl's
    *  <style global>, or a whole .css file for parts used as a set). */
@@ -499,6 +502,20 @@ export const registry: Entry[] = [
     island: true,
     since: '0.3.0',
     sections: ['focus', 'field-select', 'chips', 'chip-input', 'motion'],
+  },
+  {
+    name: 'editor',
+    group: 'Form',
+    title: 'Editor',
+    description: 'A rich text field in parts you put together: the field, a toolbar, suggestions for @ / and :, a count, Send.',
+    files: ['editor.css'],
+    tailwind: ['editor.tw.css'],
+    parts: ['components/field.tscl', 'components/toolbar.tscl', 'components/tool.tscl', 'components/suggestions.tscl', 'components/count.tscl', 'components/send.tscl', 'components/files.tscl'],
+    partsFrom: '@clarusjs/editor',
+    uses: [],
+    island: true,
+    since: '0.1.0',
+    sections: ['focus', 'editor', 'motion'],
   },
   {
     name: 'progress',
@@ -1011,6 +1028,34 @@ export const registry: Entry[] = [
     parts: [],
     uses: [],
     island: false,
+  },
+  {
+    kind: 'block',
+    name: 'chat-composer',
+    category: 'Editor',
+    title: 'Chat composer',
+    description: 'Messages and a box to write them: Enter sends, @ mentions, / commands, : emoji, files, a limit.',
+    files: ['blocks/chat-composer/chat-composer.tscl'],
+    parts: ['components/field.tscl', 'components/toolbar.tscl', 'components/tool.tscl', 'components/suggestions.tscl', 'components/count.tscl', 'components/send.tscl', 'components/files.tscl'],
+    partsFrom: '@clarusjs/editor',
+    uses: ['editor'],
+    packages: ['@clarusjs/editor'],
+    island: true,
+    since: '0.1.0',
+  },
+  {
+    kind: 'block',
+    name: 'comment-box',
+    category: 'Editor',
+    title: 'Comment box',
+    description: 'Write or preview a comment, with Markdown shortcuts and mentions; Comment posts it, Cancel clears it.',
+    files: ['blocks/comment-box/comment-box.tscl'],
+    parts: ['components/field.tscl', 'components/toolbar.tscl', 'components/tool.tscl', 'components/suggestions.tscl', 'components/send.tscl'],
+    partsFrom: '@clarusjs/editor',
+    uses: ['editor'],
+    packages: ['@clarusjs/editor'],
+    island: true,
+    since: '0.1.0',
   },
   {
     kind: 'block',

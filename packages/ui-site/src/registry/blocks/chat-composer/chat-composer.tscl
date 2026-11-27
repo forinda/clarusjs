@@ -1,0 +1,152 @@
+{{--
+  Chat composer: messages and a box to write them, made of @clarusjs/editor's parts. Enter sends, Shift+Enter is a new
+  line; @ mentions people, / runs commands, : inserts emoji; files are picked, pasted or dropped; 500 characters at
+  most. Copy it into src/components/, editor.css (under Code) into src/components/ui/, and replace post, people and
+  upload with your own. The sent messages show as typed, through the content behaviour.
+  Give each one its own [id] (the field's, which its parts name) to put several on a page.
+--}}
+@input id: string = 'chat-message'
+@import '~/components/ui/editor.css'
+@import editorField from '@clarusjs/editor/components/field.tscl'
+@import editorToolbar from '@clarusjs/editor/components/toolbar.tscl'
+@import editorTool from '@clarusjs/editor/components/tool.tscl'
+@import editorSuggestions from '@clarusjs/editor/components/suggestions.tscl'
+@import editorCount from '@clarusjs/editor/components/count.tscl'
+@import editorSend from '@clarusjs/editor/components/send.tscl'
+@import editorFiles from '@clarusjs/editor/components/files.tscl'
+
+<script>
+  // Replace with your own: who can be mentioned, what / does, where messages and files go.
+  const people = [
+    { id: 'mara', label: 'Mara Okafor' },
+    { id: 'marcus', label: 'Marcus Lee' },
+    { id: 'ada', label: 'Ada Lovelace' },
+    { id: 'lin', label: 'Lin Wei' },
+  ]
+  const commands = [{ id: 'shrug', label: 'Shrug', keywords: ['shrug'] }]
+  let messages = state([])
+  let attached = state([])
+  function post(value) {
+    messages = [...messages, { id: messages.length + 1, value }]
+  }
+  const find = (query) => people.filter((p) => p.label.toLowerCase().includes(query.toLowerCase()))
+  function run(event) {
+    if (event.id === 'shrug') event.editor.view.dispatch(event.editor.view.state.tr.insertText('¯\\_(ツ)_/¯'))
+  }
+  function upload(files) {
+    attached = [...attached, ...files.map((f) => f.name)]
+  }
+  // A message as it was typed. Imported once one is sent: the field has loaded the editor's code by then.
+  function show(el, value) {
+    let stop
+    import('@clarusjs/editor').then(({ content, composerExtensions }) => {
+      stop = content(el, { value, format: 'json', extensions: composerExtensions() })
+    })
+    return () => stop?.()
+  }
+</script>
+
+<section class="chat" aria-label="Chat">
+  <ul class="messages" aria-label="Messages" aria-live="polite">
+    @for (m of messages; track m.id) {
+      <li [use]="(el) => show(el, m.value)"></li>
+    } @empty {
+      <li class="none">No messages yet. Type one, @ to mention, / for commands, : for emoji.</li>
+    }
+  </ul>
+  <form class="composer" (submit)="$event.preventDefault()">
+    <editorField
+      class="field"
+      attach="interaction"
+      [id]="id"
+      [label]="'Message'"
+      [placeholder]="'Message #general'"
+      [maxLength]="500"
+      (send)="post($event.value)"
+      (files)="upload($event.files)"
+    />
+    <editorSuggestions [field]="id" char="@" (search)="$event.respond(find($event.query))" />
+    <editorSuggestions [field]="id" char="/" [commands]="commands" (command)="run($event)" />
+    <editorSuggestions [field]="id" char=":" />
+    <div class="footer">
+      <editorToolbar [field]="id">
+        <editorTool command="bold" label="Bold"><b>B</b></editorTool>
+        <editorTool command="italic" label="Italic"><i>I</i></editorTool>
+        <editorTool command="code" label="Code">&lt;/&gt;</editorTool>
+        <editorTool command="link" label="Link">🔗</editorTool>
+        <editorTool command="codeBlock" label="Code block">{ }</editorTool>
+      </editorToolbar>
+      <editorFiles (files)="upload($event.files)" />
+      <editorCount [field]="id" />
+      <editorSend [field]="id" />
+    </div>
+    @if (attached.length) {
+      <p class="attached">Attached: {{ attached.join(', ') }}</p>
+    }
+  </form>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: var(--ui-space-3);
+      max-width: 640px;
+      padding: var(--ui-space-6);
+      background: var(--ui-bg); /* its muted text is measured against this */
+      color: var(--ui-fg);
+    }
+    :where(.messages) {
+      display: grid;
+      gap: var(--ui-space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    :where(.messages li) {
+      min-width: 0;
+      padding: var(--ui-space-2) var(--ui-space-3);
+      border-radius: var(--ui-radius);
+      background: var(--ui-muted-bg);
+      overflow-wrap: anywhere;
+    }
+    :where(.messages .none) {
+      background: none;
+      color: var(--ui-muted);
+    }
+    /* The frame: the field and its footer in one box, with the ring when anything in it has focus. */
+    :where(.composer) {
+      display: grid;
+      min-width: 0;
+      border: 1px solid var(--ui-input);
+      border-radius: var(--ui-radius);
+      background: var(--ui-bg);
+    }
+    :where(.composer:focus-within) {
+      border-color: var(--ui-ring);
+      box-shadow: 0 0 0 3px var(--ui-accent-soft);
+    }
+    :where(.field) {
+      border: 0;
+      box-shadow: none;
+    }
+    :where(.footer) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--ui-space-2);
+      padding: var(--ui-space-1) var(--ui-space-2);
+      border-top: 1px solid var(--ui-border);
+    }
+    :where(.footer > :first-child) {
+      margin-right: auto;
+    }
+    :where(.attached) {
+      margin: 0;
+      padding: 0 var(--ui-space-3) var(--ui-space-2);
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+  }
+</style>

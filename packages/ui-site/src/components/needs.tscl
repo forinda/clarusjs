@@ -21,7 +21,7 @@
   }
   @if (entry.parts.length) {
     <li>
-      <code>@clarusjs/ui-primitives</code> {{ entry.since ? '≥ ' + entry.since : '' }}: {{ entry.parts.join(', ') }}
+      <code>{{ entry.partsFrom ?? '@clarusjs/ui-primitives' }}</code> {{ entry.since ? '≥ ' + entry.since : '' }}: {{ entry.parts.join(', ') }}
     </li>
   }
   @for (p of entry.packages ?? []; track p) {

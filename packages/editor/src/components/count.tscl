@@ -1,0 +1,27 @@
+{{--
+  Editor count (@clarusjs/editor): the length of the field named by [field] and its limit ([maxLength] on the field),
+  as "120/2000"; data-over once past it. Graphemes, as people count: an emoji is one, a mention its label.
+
+  <editor-count [field]="'msg'" />
+
+  Headless: data-part="count", data-over.
+--}}
+@input field: string
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  import { onEditor } from '@clarusjs/editor/registry'
+  let count = state(0)
+  let max = state(0)
+  let over = state(false)
+  const wire = () =>
+    onEditor(field, (editor) => {
+      max = editor.maxLength ?? 0
+      return effect(() => {
+        count = editor.length.get()
+        over = editor.over.get()
+      })
+    })
+</script>
+
+<span data-part="count" [data-over]="over ? '' : false" [use]="wire">{{ max ? count + '/' + max : count }}</span>

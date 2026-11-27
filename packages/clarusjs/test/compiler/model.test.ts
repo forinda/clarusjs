@@ -155,3 +155,35 @@ test('#267: a radio bound with [(value)] needs a value (static or [value])', () 
   expect(compileError('<script>let plan = state("a")</script>\n<input type="radio" [(value)]="plan">\n').message)
     .toBe('x.tscl:2:21 a radio bound with [(value)] needs a value (value="…" or [value]): it\'s what the radio writes when picked')
 })
+
+test('a textarea\'s [value] or [(value)] is its text in the HTML (a value attribute means nothing on a textarea)', async () => {
+  const src = `@input start: string = ''
+<script>
+  let note = state(start)
+  let open = state(true)
+</script>
+<div><textarea class="a" [(value)]="note"></textarea>
+@if (open) { <textarea class="b" [value]="note + '!'"></textarea> }</div>
+`
+  const s = await importCode(compile(src, { file: 'x.tscl', target: 'server', clientUrl: '/x.js' }).code, 'model-tas')
+  const c = await importCode(compile(src, { file: 'x.tscl', target: 'client' }).code, 'model-tac')
+  const html = s.render({ start: '</textarea><b>&' })
+  expect(html).not.toContain('value=')
+  expect(html).toMatch(/<textarea class="a[^"]*"[^>]*>\n&lt;\/textarea&gt;&lt;b&gt;&amp;<\/textarea>/)
+  document.body.innerHTML = html
+  c.attach(document.querySelector('cl-island')!, { start: '</textarea><b>&' })
+  const [a, b] = [...document.querySelectorAll('textarea')]
+  expect([a!.value, b!.value]).toEqual(['</textarea><b>&', '</textarea><b>&!'])
+  type(a!, 'next')
+  expect(document.querySelector<HTMLTextAreaElement>('.b')!.value).toBe('next!')
+  // outside an island too
+  const plain = await importCode(compile('@input v: string = \'\'\n<textarea [value]="v"></textarea>\n', { file: 'p.tscl', target: 'server' }).code, 'model-tap')
+  expect(plain.render({ v: "x < y" })).toMatch(/<textarea[^>]*>\nx &lt; y<\/textarea>/)
+})
+
+test('review: a textarea value starting with a line break keeps it (the HTML parser drops one after <textarea>)', async () => {
+  const s = await importCode(compile('@input v: string = \'\'\n<textarea [value]="v"></textarea>\n', { file: 'p.tscl', target: 'server' }).code, 'model-tnl')
+  // browsers drop one line break right after <textarea>: the HTML writes one more, always
+  expect(s.render({ v: '\n\nfoo' })).toMatch(/<textarea[^>]*>\n\n\nfoo<\/textarea>/)
+  expect(s.render({ v: 'x' })).toMatch(/<textarea[^>]*>\nx<\/textarea>/)
+})
