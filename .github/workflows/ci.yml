@@ -47,6 +47,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter clarusjs test
 
+  docker:
+    # #601: examples/docker's image (the deploy guide's Dockerfile) with this checkout's clarusjs, built and run.
+    name: Docker image (build + run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: sh scripts/docker-smoke.sh
+
   docs:
     name: Docs site (build + browser tests)
     runs-on: ubuntu-latest

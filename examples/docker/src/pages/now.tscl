@@ -1,0 +1,5 @@
+<script server>
+  const at = new Date().toISOString()
+</script>
+
+<h1>Rendered at {{ at }}</h1>
