@@ -1,0 +1,78 @@
+{
+  "name": "@clarusjs/editor",
+  "version": "0.0.0",
+  "description": "A rich-text editor for clarusjs: a composer to drop in, behaviours to build your own, and a server side that validates and renders without a DOM.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/forinda/clarusjs.git",
+    "directory": "packages/editor"
+  },
+  "homepage": "https://clarusjs.com/guide/editor-composer",
+  "keywords": [
+    "clarusjs",
+    "editor",
+    "rich-text",
+    "prosemirror",
+    "composer"
+  ],
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "clarusjs": {
+    "components": "./src/components",
+    "prefix": "editor"
+  },
+  "files": [
+    "dist",
+    "src/components",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./server": {
+        "types": "./dist/server.d.ts",
+        "default": "./dist/server.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-package.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "clarusjs": "workspace:^"
+  },
+  "dependencies": {
+    "linkedom": "^0.18.15",
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-history": "^1.5.2",
+    "prosemirror-inputrules": "^1.7.0",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.13",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-transform": "^1.12.7",
+    "prosemirror-view": "^1.44.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "clarusjs": "workspace:^",
+    "happy-dom": "^21.0.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}
