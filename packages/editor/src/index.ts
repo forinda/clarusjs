@@ -3,6 +3,7 @@
 export { createEditor, type Editor, type EditorOptions } from './core/editor.ts'
 export { buildSchema, defineExtension, type Extension, type MarkSpec, type NodeSpec } from './core/schema.ts'
 export { editor, editorOf } from './behaviours/editor.ts'
+export { loadEmoji, suggestion, type SuggestionItem, type SuggestionOptions } from './behaviours/suggestion.ts'
 export { base } from './extensions/base.ts'
 export { bold, code, italic } from './extensions/marks.ts'
 export { link } from './extensions/link.ts'

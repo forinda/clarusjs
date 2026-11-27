@@ -1,0 +1,201 @@
+// The suggestion behaviour, for [use] on a list: a trigger character in the editor (@, /, :) opens it, with what
+// search() gives for the text typed after it. The editable keeps focus, as in a combobox: aria-controls and
+// aria-activedescendant point at the list and its active option, the arrow keys move, Enter or Tab picks, Escape
+// closes, and a polite status says how many results came. Search is debounced, the newest query wins (older ones are
+// aborted), and answers are cached by query.
+import { position } from '@clarusjs/ui-primitives/position.js'
+import { Plugin, type EditorState } from 'prosemirror-state'
+import type { Editor } from '../core/editor.ts'
+import { editorOf } from './editor.ts'
+
+/**
+ * One suggestion: an id, the label shown, and for emoji the character.
+ * @see https://clarusjs.com/guide/editor-composer#suggestions
+ */
+export type SuggestionItem = { id: string; label: string; char?: string }
+
+/**
+ * What `suggestion()` takes.
+ * @see https://clarusjs.com/guide/editor-composer#suggestions
+ */
+export type SuggestionOptions = {
+  /** The element the `editor` behaviour runs on. */
+  editor: Element
+  char: '@' | '/' | ':'
+  /** The items for what's typed after the character; `signal` aborts when a newer query replaces it. */
+  search(query: string, signal: AbortSignal): Promise<SuggestionItem[]> | SuggestionItem[]
+  /** Called with the chosen item and the range of the trigger and its query, to replace or run. */
+  pick(item: SuggestionItem, range: { from: number; to: number }, editor: Editor): void
+  /** Characters to type after the trigger before it opens. Default 2 for ":", else 0. */
+  minLength?: number
+}
+
+const DEBOUNCE = 200
+const HIDDEN = 'position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap'
+let uid = 0
+
+/**
+ * Suggestions on `list`, for the editor on `options.editor`; returns the dispose.
+ * @example
+ * <ul [use]="(el) => suggestion(el, { editor: field, char: '@', search: findPeople, pick: (item, range, e) => e.run('mention', item, range) })"></ul>
+ * @see https://clarusjs.com/guide/editor-composer#suggestions
+ */
+export function suggestion(list: HTMLElement, options: SuggestionOptions): () => void {
+  const ed = editorOf(options.editor)
+  if (!ed) throw new Error('@clarusjs/editor: suggestion() needs the element the editor behaviour runs on')
+  const { view } = ed
+  const char = options.char
+  const min = options.minLength ?? (char === ':' ? 2 : 0)
+  const esc = char.replace(/[/]/g, '\\$&')
+  const pattern = new RegExp(`(?:^|\\s)${esc}([^\\s${esc}]*)$`)
+
+  list.id ||= `cl-suggestions-${++uid}`
+  list.setAttribute('role', 'listbox')
+  list.hidden = true
+  const status = document.createElement('div')
+  status.setAttribute('role', 'status')
+  status.dataset.part = 'suggestion-status'
+  status.style.cssText = HIDDEN
+  list.after(status)
+
+  const cache = new Map<string, SuggestionItem[]>()
+  let range: { from: number; to: number } | null = null
+  let query: string | null = null
+  let items: SuggestionItem[] = []
+  let active = 0
+  let dismissed = -1
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let controller: AbortController | undefined
+  let unposition: (() => void) | undefined
+
+  // the caret, as an anchor for position()
+  const anchor = {
+    getBoundingClientRect() {
+      try {
+        const c = view.coordsAtPos(range?.from ?? view.state.selection.from)
+        return new DOMRect(c.left, c.top, 0, c.bottom - c.top)
+      } catch {
+        return view.dom.getBoundingClientRect()
+      }
+    },
+  } as Element
+
+  const optionId = (i: number) => `${list.id}-${i}`
+  function render() {
+    list.replaceChildren(...items.map((item, i) => {
+      const li = document.createElement('li')
+      li.id = optionId(i)
+      li.setAttribute('role', 'option')
+      li.setAttribute('aria-selected', String(i === active))
+      li.dataset.part = 'suggestion'
+      li.textContent = item.char ? `${item.char} ${item.label}` : item.label
+      li.addEventListener('mousedown', (e) => { e.preventDefault(); pick(i) })
+      return li
+    }))
+    view.dom.setAttribute('aria-activedescendant', optionId(active))
+  }
+  function hide() {
+    list.hidden = true
+    list.replaceChildren()
+    view.dom.removeAttribute('aria-controls')
+    view.dom.removeAttribute('aria-activedescendant')
+    unposition?.()
+    unposition = undefined
+  }
+  function close() {
+    clearTimeout(timer)
+    controller?.abort()
+    controller = undefined
+    range = null
+    query = null
+    items = []
+    hide()
+  }
+  function show(next: SuggestionItem[]) {
+    items = next
+    active = 0
+    status.textContent = items.length ? `${items.length} result${items.length === 1 ? '' : 's'}` : 'No results'
+    if (!items.length) return hide()
+    if (list.hidden) {
+      list.hidden = false
+      view.dom.setAttribute('aria-controls', list.id)
+      unposition = position(list, anchor, { side: 'bottom', align: 'start' })
+    }
+    render()
+  }
+  function pick(i: number) {
+    const item = items[i]
+    const r = range
+    close()
+    if (item && r) options.pick(item, r, ed!)
+  }
+
+  /** The trigger and query before the caret, or null. */
+  function match(state: EditorState) {
+    const { $from, empty } = state.selection
+    if (!empty || $from.parent.type.spec.code) return null
+    const m = pattern.exec($from.parent.textBetween(0, $from.parentOffset, undefined, '￼'))
+    if (!m || m[1]!.length < min) return null
+    return { from: $from.pos - m[1]!.length - 1, to: $from.pos, query: m[1]! }
+  }
+  function update(state: EditorState) {
+    const m = match(state)
+    if (!m) dismissed = -1
+    if (!m || m.from === dismissed) return void (range && close())
+    range = { from: m.from, to: m.to }
+    if (m.query === query) return
+    query = m.query
+    clearTimeout(timer)
+    controller?.abort()
+    controller = undefined
+    const hit = cache.get(query)
+    if (hit) return show(hit)
+    const q = query
+    timer = setTimeout(async () => {
+      const c = (controller = new AbortController())
+      try {
+        const result = await options.search(q, c.signal)
+        cache.set(q, result)
+        if (c === controller) show(result)
+      } catch (err) {
+        if (!c.signal.aborted) throw err
+      }
+    }, DEBOUNCE)
+  }
+
+  const plugin = new Plugin({
+    view: () => ({ update: (v) => update(v.state) }),
+    props: {
+      handleKeyDown(_view, event) {
+        if (list.hidden || !items.length) return false
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          active = (active + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+          render()
+          return true
+        }
+        if (event.key === 'Enter' || event.key === 'Tab') { pick(active); return true }
+        if (event.key === 'Escape') { dismissed = range!.from; close(); return true }
+        return false
+      },
+    },
+  })
+  // first, so the list's keys come before the editor's (Enter picks here, it doesn't send)
+  view.updateState(view.state.reconfigure({ plugins: [plugin, ...view.state.plugins] }))
+
+  return () => {
+    close()
+    status.remove()
+    if (!view.isDestroyed) view.updateState(view.state.reconfigure({ plugins: view.state.plugins.filter((p) => p !== plugin) }))
+  }
+}
+
+let emojiList: Promise<{ id: string; label: string; char: string }[]> | undefined
+/**
+ * The built-in emoji (about a hundred, by shortcode), loaded on first call as its own chunk.
+ * @example
+ * search: async (q) => (await loadEmoji()).filter((e) => e.label.startsWith(q))
+ * @see https://clarusjs.com/guide/editor-composer#suggestions
+ */
+export function loadEmoji() {
+  return (emojiList ??= import('../emoji.ts').then((m) => m.emoji))
+}

@@ -57,6 +57,7 @@
     "clarusjs": "workspace:^"
   },
   "dependencies": {
+    "@clarusjs/ui-primitives": "workspace:^",
     "linkedom": "^0.18.15",
     "prosemirror-commands": "^1.7.2",
     "prosemirror-history": "^1.5.2",

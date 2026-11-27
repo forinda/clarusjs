@@ -351,6 +351,9 @@ importers:
 
   packages/editor:
     dependencies:
+      '@clarusjs/ui-primitives':
+        specifier: workspace:^
+        version: link:../ui-primitives
       linkedom:
         specifier: ^0.18.15
         version: 0.18.15
