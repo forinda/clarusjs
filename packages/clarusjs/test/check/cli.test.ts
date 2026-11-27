@@ -566,6 +566,20 @@ test('errors only the compiler finds (a slot inside component content in an isla
   ])
 })
 
+test('a child of an island with a <script server> is an error, as the build reports it; used by a static page it is fine', () => {
+  const child = `<script server>\n  const at = 'build time'\n</script>\n<p>{{ at }}</p>\n`
+  const island = `@import serverNote from '../components/server-note.tscl'\n<script>\n  let n = state(0)\n</script>\n<div>\n  <button type="button" (click)="n++">{{ n }}</button>\n  <server-note />\n</div>\n`
+  const root = project({ 'src/components/server-note.tscl': child, 'src/components/note-island.tscl': island })
+  const result = checkProject({ root, typescript })
+  expect(result.exitCode).toBe(1)
+  expect(result.diagnostics).toEqual([
+    { file: 'src/components/server-note.tscl', line: 1, column: 1, severity: 'error', code: 'clarus', message: expect.stringContaining('<script server> runs on the server only, and this component renders in the browser') },
+  ])
+  // The same child under a static page only: rendered on the server, so nothing to report.
+  const fine = project({ 'src/components/server-note.tscl': child, 'src/pages/index.tscl': `@import serverNote from '../components/server-note.tscl'\n<server-note />\n` })
+  expect(checkProject({ root: fine, typescript }).diagnostics).toEqual([])
+})
+
 test('multi-word-name warns about a one-word component name, and --strict fails on it', () => {
   const root = project({
     'src/components/badge.tscl': '<b>hi</b>\n',

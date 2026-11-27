@@ -89,6 +89,19 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     .filter((f) => f.endsWith('.tscl') || f.startsWith(resolve(root, 'src/pages') + sep))
   const views: { file: string; source: string }[] = []
   const fixed: string[] = []
+  // Children of islands render in the browser too: the build compiles them as render modules (?render), which can't
+  // hold a <script server>. They are what an island (a <script> or a @model input) reaches, the island itself aside.
+  // ponytail: client routes' pages render in the browser as well; check doesn't read the routes table yet.
+  const readRaw = (p: string) => readFileSync(p, 'utf8')
+  const islands = pageFiles.filter((p) => {
+    if (!p.endsWith('.tscl')) return false
+    try { const parsed = parse(readRaw(p), p); return !!parsed.script || parsed.inputs.some((i) => i.model) } catch { return false }
+  })
+  const inIslands = new Set<string>()
+  for (const island of islands) {
+    const self = realpathSync(island)
+    try { for (const f of reachableComponents(root, [island], readRaw, ['.tscl'], aliases, names)) if (f !== self) inIslands.add(f) } catch {}
+  }
 
   for (const path of pageFiles) {
     const file = posix(relative(root, path))
@@ -146,7 +159,7 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     // The compiler's own rules too (what an island may hold, and the like), so check fails where the build would.
     // Kept below only where nothing else is reported on that line (TypeScript often says the same thing first).
     if (generatedOk) try {
-      compile(source, { file, target: 'client', components: names, icon: (name) => resolveIcon(name, path) })
+      compile(source, { file, target: 'client', components: names, icon: (name) => resolveIcon(name, path), renderImports: inIslands.has(realpathSync(path)) })
     } catch (err) {
       if (!(err instanceof ClarusError)) throw err
       const before = diagnostics.length
