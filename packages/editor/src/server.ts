@@ -53,7 +53,7 @@ function renderProblem(doc: Node): string | undefined {
     for (const [name, value] of Object.entries(attrs ?? {})) {
       if (!ATTR_NAME.test(name)) return void (found = `invalid attribute: ${name}`)
       if (value != null && typeof value === 'object') return void (found = `invalid attribute: ${name}`)
-      if (typeof value === 'string' && attrValue(name, value, tag) === UNSAFE_URL) return void (found = `unsafe URL: ${value}`)
+      if (typeof value === 'string' && attrValue(localName(name), value, localName(tag)) === UNSAFE_URL) return void (found = `unsafe URL: ${value}`)
     }
     for (const child of rest.slice(attrs ? 1 : 0)) walk(child as DOMOutputSpec)
   }

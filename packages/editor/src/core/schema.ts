@@ -68,7 +68,8 @@ export function safeSpec(spec: DOMOutputSpec, attrs?: Record<string, unknown>): 
         const kept: Record<string, string> = {}
         for (const [name, value] of Object.entries(child as Record<string, unknown>)) {
           if (!ATTR_NAME.test(name) || UNSAFE_ATTR.test(localName(name)) || (value && typeof value === 'object')) continue
-          const v = attrValue(name, value, tag)
+          // checked by its local name, at its local tag: a namespaced xlink:href or <animate> is still a URL to check
+          const v = attrValue(localName(name), value, localName(tag))
           if (v !== null) kept[name] = v === true ? '' : v
         }
         out.push(kept)

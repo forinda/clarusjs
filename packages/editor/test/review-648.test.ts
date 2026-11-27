@@ -105,3 +105,16 @@ test('a part attaching late finds the newest field registered under its id, and 
   expect(late).toHaveBeenCalledTimes(1)
   offC()
 })
+
+test('security: a namespaced URL attribute or SVG animation tag gets the same URL check as a plain one', () => {
+  const XLINK = 'http://www.w3.org/1999/xlink'
+  const SVG = 'http://www.w3.org/2000/svg'
+  const icon = defineExtension({ name: 'ic', nodes: { ic: { attrs: { url: {} }, inline: true, group: 'inline', render: (n) => [`${SVG} svg`, [`${SVG} a`, { [`${XLINK} xlink:href`]: n.attrs.url, [`${XLINK} href`]: n.attrs.url }, [`${SVG} animate`, { attributeName: 'href', values: n.attrs.url }]]] } } })
+  const bad = docWith({ type: 'ic', attrs: { url: 'javascript:alert(1)' } })
+  expect(validate(bad, [base, icon]).ok).toBe(false)
+  const el = mount()
+  content(el, { value: bad, format: 'json', extensions: [base, icon] })
+  expect(el.innerHTML).not.toContain('javascript')
+  expect(renderHTML(bad, [base, icon])).not.toContain('javascript')
+  expect(validate(docWith({ type: 'ic', attrs: { url: '/icons.svg#x' } }), [base, icon]).ok).toBe(true)
+})
