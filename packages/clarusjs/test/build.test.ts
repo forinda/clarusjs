@@ -154,13 +154,15 @@ test('size budget: the browser runtime every island shares stays within 5 KB gzi
   expect(total, `runtime: ${files.join(', ')} = ${total} B gzip`).toBeLessThanOrEqual(5 * KB)
 })
 
-// 7 KB (was 6.5): #465 (islands passing content to islands: owner() and slot ranges, context read in the browser, an
-// island waiting for the nested islands holding its content) left the site at 6654 B of 6656, no room for the next
-// feature. Before that, 6.5 KB (was 6): #301's @for $count/$first/$last and #241's field fixes.
-test('size budget: all the JavaScript the fixture site ships stays within 7 KB gzip', () => {
+// 7.25 KB (was 7): #647's field fixes (a textarea's value as its text, and fields typed in, restored or autofilled
+// before a lazy island attaches keeping their value and reaching state before a replayed submit) take the site to
+// 7188 B of 7168. Before that, 7 KB (was 6.5): #465 (islands passing content to islands: owner() and slot ranges,
+// context read in the browser, an island waiting for the nested islands holding its content) left it at 6654 B of
+// 6656. Before that, 6.5 KB (was 6): #301's @for $count/$first/$last and #241's field fixes.
+test('size budget: all the JavaScript the fixture site ships stays within 7.25 KB gzip', () => {
   const files = (readdirSync(resolve(client, 'assets'), { recursive: true }) as string[]).filter((f) => f.endsWith('.js'))
   const total = files.reduce((n, f) => n + gz(resolve(client, 'assets', f)), 0)
-  expect(total, `${total} B gzip`).toBeLessThanOrEqual(7 * KB)
+  expect(total, `${total} B gzip`).toBeLessThanOrEqual(7.25 * KB)
 })
 
 test('no compiler or command-line code reaches the browser', () => {
