@@ -86,7 +86,7 @@
   </div>
   <div data-sample="chip-input"><uiChipInput id="p-tags" label="Tags" [values]="['css', 'html']" /></div>
   <div data-sample="editor">
-    <editorField attach="interaction" [id]="'p-editor'" [maxLength]="20" [value]="'Over the twenty-character limit'" />
+    <editorField attach="interaction" [id]="'p-editor'" [maxLength]="20" [format]="'html'" [value]="'<p>Over the twenty-character limit</p>'" />
     <editorToolbar [field]="'p-editor'"><editorTool command="bold" label="Bold">B</editorTool><editorTool command="italic" label="Italic">I</editorTool></editorToolbar>
     <editorCount [field]="'p-editor'" /><editorFiles /><editorSend [field]="'p-editor'" />
     {{-- What the field becomes once its editor runs: the editable (empty, then with marks and a mention), and an open list. --}}

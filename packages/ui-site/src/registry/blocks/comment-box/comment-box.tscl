@@ -34,7 +34,13 @@
     return () => (editor = undefined)
   })
   function cancel() {
-    editor?.clear()
+    if (editor) editor.clear()
+    else {
+      // the editor's code still loading: the textarea is the field, and what was typed in it goes
+      const textarea = document.getElementById(id)
+      if (textarea instanceof HTMLTextAreaElement) textarea.value = ''
+    }
+    draft = ''
     preview = false
   }
   const empty = (value) => !value || JSON.stringify(value) === '{"type":"doc","content":[{"type":"paragraph"}]}'

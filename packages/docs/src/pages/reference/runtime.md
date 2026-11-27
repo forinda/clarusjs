@@ -214,7 +214,7 @@ const browser: boolean
 attrValue(name: string, value: unknown, tag?: string): string | true | null
 ```
 
-What a value becomes as the attribute `name`: `null` removes it, `true` makes it a bare boolean attribute, and a string is its value. URL attributes (`href`, `src` and the rest) are checked as templates check them: a relative URL or a safe scheme (`http`, `https`, `mailto`, `tel`) passes, and anything else becomes `UNSAFE_URL` (`about:invalid#unsafe`). It's for code that writes attributes itself, such as [`@clarusjs/editor`](/guide/editor-composer) rendering stored content.
+What a value becomes as the attribute `name`: `null` removes it, `true` makes it a bare boolean attribute, and a string is its value. URL attributes (`href`, `src` and the rest) are checked as templates check them: a relative URL or a safe scheme (`http`, `https`, `mailto`, `tel`) passes, and anything else becomes `UNSAFE_URL` (`about:invalid#unsafe`). Attributes that load an image (`src`, `srcset`, `poster`) also take a raster `data:image/…` URL (PNG, GIF, JPEG, WebP, AVIF, BMP) and a `blob:` URL (a preview of a picked file): an image can't run script. `href` refuses both. It's for code that writes attributes itself, such as [`@clarusjs/editor`](/guide/editor-composer) rendering stored content.
 
 ```ts
 import { attrValue, UNSAFE_URL } from 'clarusjs/runtime'
