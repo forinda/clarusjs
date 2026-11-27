@@ -43,7 +43,7 @@ The editor comes as small parts you put together, each its own island. Use them 
 
 ## Loading
 
-From the server `<editor-field>` is a plain `<textarea>`: people can type, and with `[name]` inside a form, post, all with no JavaScript. With `attach="interaction"` its code loads the first time someone focuses it, and the editor takes over with what they typed and where the caret was: nothing is lost. The other parts load no editor code of their own; ProseMirror (most of the editor's 80 KB gzip) loads with the field, when someone uses it.
+From the server `<editor-field>` is a plain `<textarea>`: people can type, and with `[name]` inside a form, post, all with no JavaScript. With `attach="interaction"` its code loads the first time someone focuses it, and the editor takes over with what they typed and where the caret was: nothing is lost. The other parts load no editor code of their own; ProseMirror (most of the editor's 85 KB gzip, a whole chat composer's worth) loads with the field, when someone uses it.
 
 With JavaScript, a send that isn't cancelled also posts the form, when the field has a `[name]` and is inside one, so a form handler works either way. The field posts `<name>-format` beside the value: `text` from the bare textarea, `json` or `html` from the editor; pass it to `validate()`.
 
