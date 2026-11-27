@@ -3072,6 +3072,29 @@ test('editor: the composer is a textarea until used; its code loads on first foc
   await page.getByRole('option', { name: 'Mara Okafor' }).waitFor()
   await page.keyboard.press('Enter')
   await page.keyboard.press('Enter')
-  await expect(demo.locator('.messages li')).toHaveText(/^Hi all\s+@Mara Okafor\s*$/)
+  await expect(demo.locator('.messages li')).toHaveText(/^Hi all\s*@Mara Okafor\s*$/)
+  await expect(demo.locator('.messages li [data-mention="mara"]')).toHaveText('@Mara Okafor') // as typed: the mention, not just its text
   await expect(editable).toHaveText('')
+})
+
+test('user: in the guide, long words and code lines wrap inside the composer; nothing overflows the page', async ({ page }) => {
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 800 })
+    await page.goto('/guide/editor-composer')
+    const demo = page.locator('.composer-demo')
+    await demo.getByRole('textbox', { name: 'Message' }).click()
+    const editable = demo.locator('[contenteditable=true]')
+    await expect(editable).toBeFocused()
+    await page.keyboard.type('x'.repeat(160))
+    await page.keyboard.press('Shift+Enter')
+    await demo.getByRole('button', { name: 'Code block' }).click()
+    await page.keyboard.type('const longLine = "' + 'y'.repeat(160) + '"')
+    for (let i = 0; i < 20; i++) await page.keyboard.press('Enter')
+    const sizes = await demo.locator('[data-part=composer]').evaluate((el, width) => {
+      const box = el.querySelector('[contenteditable]')!
+      const rect = el.getBoundingClientRect(), demoRect = el.closest('.composer-demo')!.getBoundingClientRect()
+      return { width, editable: box.scrollWidth - box.clientWidth, composer: el.scrollWidth - el.clientWidth, right: Math.max(0, Math.round(rect.right - demoRect.right)), page: document.documentElement.scrollWidth - innerWidth }
+    }, width)
+    expect(sizes).toEqual({ width, editable: 0, composer: 0, right: 0, page: 0 })
+  }
 })

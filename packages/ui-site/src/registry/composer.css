@@ -20,6 +20,7 @@
      then a footer with the toolbar, the count and Send. Suggestions float by the caret. */
   :where([data-part='composer']) {
     display: grid;
+    min-width: 0; /* in a grid or flex row, long content wraps instead of widening it */
     max-width: 640px;
     border: 1px solid var(--ui-input);
     border-radius: var(--ui-radius);
@@ -36,6 +37,7 @@
   }
   :where([data-part='composer']) > :where([data-part='field']) {
     display: block;
+    min-width: 0;
     max-width: none;
   }
   :where([data-part='composer']) :where(textarea[data-part='field'], [data-part='field'] > [role='textbox']) {
@@ -79,6 +81,8 @@
   }
   :where([data-part='field'] > [role='textbox']) :where(pre) {
     margin: var(--ui-space-1) 0;
+    white-space: pre-wrap; /* long lines wrap (a pre would set the composer's width) */
+    overflow-wrap: anywhere;
     padding: var(--ui-space-2);
     border-radius: calc(var(--ui-radius) / 2);
     background: var(--ui-muted-bg);
@@ -166,6 +170,7 @@
   :where([data-part='suggestions']) {
     z-index: 50;
     min-width: 200px;
+    max-width: calc(100vw - var(--ui-space-8));
     max-height: 240px;
     overflow-y: auto;
     margin: 0;
