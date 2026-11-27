@@ -7,7 +7,8 @@ const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url),
 
 test('Tailwind is a dev dependency: nothing a site installs with the theme pulls it in', () => {
   expect(pkg.dependencies).toBeUndefined()
-  expect(Object.keys(pkg.peerDependencies)).toEqual(['clarusjs'])
+  expect(Object.keys(pkg.peerDependencies)).toEqual(['clarusjs', 'mermaid'])
+  expect(pkg.peerDependenciesMeta).toEqual({ mermaid: { optional: true } }) // only a site that draws diagrams installs it
   expect(pkg.devDependencies.tailwindcss).toBe('4.3.5')
   expect(pkg.devDependencies['@tailwindcss/cli']).toBe('4.3.5')
 })

@@ -1275,6 +1275,17 @@ details.custom-block[open] > summary {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+.mermaid-diagram {
+  margin: 0 0 20px;
+}
+.mermaid-svg {
+  display: flex;
+  overflow-x: auto;
+}
+.mermaid-svg svg {
+  margin: 0 auto;
+  height: auto;
+}
 .code-group > .code-block {
   order: 1;
   width: 100%;

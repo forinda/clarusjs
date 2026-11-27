@@ -3104,3 +3104,81 @@ test('user: in the guide, long words and code lines wrap inside the composer; no
     expect(sizes).toEqual({ width, editable: 0, composer: 0, right: 0, page: 0 })
   }
 })
+
+test('a ```mermaid block is drawn as a diagram when it scrolls into view, every load, after navigation, and again in dark mode', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  const box = page.locator('#diagrams ~ .mermaid-diagram').first()
+  const drawn = async () => {
+    await box.scrollIntoViewIfNeeded()
+    await expect(box).toHaveAttribute('data-state', 'drawn')
+    await expect(box.locator('.mermaid-svg svg')).toBeVisible()
+    await expect(box.locator('pre.mermaid')).toBeHidden()
+    await readable()
+  }
+  // every label is there, visible, and reads against the page: contrast at least 4.5:1 (WCAG AA)
+  const readable = async () => {
+    for (const label of ['page.md', '.tscl', 'server module', 'island modules', 'HTML', '@clarusjs/content', 'compile']) {
+      await expect(box.locator('.mermaid-svg').getByText(label, { exact: true }).first()).toBeVisible()
+    }
+    const worst = await box.evaluate((el) => {
+      const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number)
+      const lum = ([r, g, b]: number[]) => {
+        const f = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+        return 0.2126 * f(r!) + 0.7152 * f(g!) + 0.0722 * f(b!)
+      }
+      // the colour behind a label: the nearest node or edge-label shape's fill, else the page's background
+      const behind = (node: Element) => {
+        const shape = node.closest('.node, .edgeLabel')?.querySelector('rect, polygon, circle, path, .labelBkg, span')
+        const fill = shape && getComputedStyle(shape).getPropertyValue(shape.tagName === 'SPAN' ? 'background-color' : 'fill')
+        return fill && !/none|rgba\(0, 0, 0, 0\)|transparent/.test(fill) ? fill : getComputedStyle(document.body).backgroundColor
+      }
+      let min = Infinity
+      for (const node of el.querySelectorAll('.mermaid-svg .nodeLabel, .mermaid-svg .edgeLabel span, .mermaid-svg text')) {
+        if (!node.textContent?.trim()) continue
+        const text = lum(rgb(getComputedStyle(node).getPropertyValue(node.tagName === 'text' ? 'fill' : 'color')))
+        const back = lum(rgb(behind(node)))
+        min = Math.min(min, (Math.max(text, back) + 0.05) / (Math.min(text, back) + 0.05))
+      }
+      return min
+    })
+    expect(worst).toBeGreaterThanOrEqual(4.5)
+  }
+  // reached by navigation (a fragment swap), then reloaded: drawn each time
+  await page.goto('/guide/holes')
+  await page.locator('.sidebar a[href="/guide/markdown"]').click()
+  await expect(page).toHaveURL(/\/guide\/markdown$/)
+  await drawn()
+  for (let i = 0; i < 2; i++) {
+    await page.reload()
+    await drawn()
+  }
+  // the theme changes: drawn again, in the other theme
+  const light = await box.locator('.mermaid-svg').innerHTML()
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
+  await expect.poll(() => box.locator('.mermaid-svg').innerHTML()).not.toBe(light)
+  await readable()
+  expect(errors).toEqual([])
+})
+
+test('without JavaScript a ```mermaid diagram shows its source', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false })
+  const page = await context.newPage()
+  await page.goto('/guide/markdown')
+  await expect(page.locator('.mermaid-diagram pre.mermaid').first()).toContainText('flowchart LR')
+  await context.close()
+})
+
+test('on a phone a wide diagram keeps its text readable: full size, scrolled sideways (keyboard too), not shrunk', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/guide/markdown')
+  const box = page.locator('#diagrams ~ .mermaid-diagram').first()
+  await box.scrollIntoViewIfNeeded()
+  await expect(box).toHaveAttribute('data-state', 'drawn')
+  const label = box.locator('.mermaid-svg').getByText('server module', { exact: true }).first()
+  expect((await label.boundingBox())!.height).toBeGreaterThanOrEqual(14)
+  const region = box.locator('.mermaid-svg')
+  expect(await region.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
+  await expect(region).toHaveAttribute('tabindex', '0')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true) // the page itself doesn't scroll sideways
+})

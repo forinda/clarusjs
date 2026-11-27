@@ -334,6 +334,10 @@ details.custom-block[open] > summary { margin-bottom: 8px; }
 .code-group > label { order: 0; font: 600 13px var(--mono); padding: 6px 12px; border: 1px solid var(--rule); border-bottom: 0; border-radius: 8px 8px 0 0; color: var(--muted); cursor: pointer; }
 .code-group > input:checked + label { color: var(--accent); background: var(--code-bg); }
 .code-group > input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* ```mermaid diagrams (mermaid.tscl): the source until drawn, then the SVG at full size, scrolling sideways when wider than the column */
+.mermaid-diagram { margin: 0 0 20px; }
+.mermaid-svg { display: flex; overflow-x: auto; }
+.mermaid-svg svg { margin: 0 auto; height: auto; } /* centred; wider than the column, it scrolls (flex centring would cut off its start) */
 .code-group > .code-block { order: 1; width: 100%; display: none; margin: 0; }
 .code-group > input:checked + label + .code-block { display: block; }
 .code-group > .code-block pre { border-top-left-radius: 0; }

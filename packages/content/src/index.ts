@@ -32,6 +32,13 @@ export type MarkdownOptions = {
   /** Put your copy component in every code block: `<tag attach="interaction" />` (it finds the code itself). */
   copy?: { tag: string; from: string }
   /**
+   * Render ```mermaid blocks as diagrams: each becomes its source in `<pre class="mermaid">` (not highlighted) with your
+   * diagram component after it, `<tag attach="visible" />`, which draws it in the browser. theme-docs ships one:
+   * `{ tag: 'diagram', from: '@clarusjs/theme-docs/mermaid.tscl' }` (install `mermaid` beside it). Without this option
+   * a ```mermaid block is code, as any other.
+   */
+  mermaid?: { tag: string; from: string }
+  /**
    * Render `::: quiz` blocks through your quiz component (an island): `<tag [name] [question] [options] [answer]>`
    * with the explanation as its content. Without it they are static HTML that works without JavaScript.
    */
@@ -286,6 +293,10 @@ function renderer(options: MarkdownOptions): Md {
     const e = env as { tags: string[]; group?: { id: number; n: number } }
     const info = tokens[i]!.info.trim()
     const lang = /^[^\s{[:]+/.exec(info)?.[0] ?? 'text'
+    if (options.mermaid && lang === 'mermaid' && !e.group) {
+      e.tags.push(`<${options.mermaid.tag} attach="visible" />`)
+      return `<div class="mermaid-diagram"><pre class="mermaid" tabindex="0">${inert(tokens[i]!.content.replace(/\n$/, ''))}</pre><!--cl-tag-${e.tags.length - 1}--></div>\n`
+    }
     const title = /\[([^\]]+)\]/.exec(info)?.[1]
     const code = tokens[i]!.content
     // Shell commands aren't numbered; a shell script (a file title, or a #! line) is.
@@ -546,6 +557,9 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       if (components.has('cl-layout')) throw new Error(`${file}: cl-layout is reserved for the page's layout; import the component under another name`)
       if (options.quiz && /^\s*:{3,}\s*quiz\b/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.quiz!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.quiz.tag} from '${options.quiz.from}'`)
+      }
+      if (options.mermaid && /^\s*(`{3,}|~{3,})\s*mermaid\b/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.mermaid!.tag}\\s+from`).test(line))) {
+        imports.unshift(`@import ${options.mermaid.tag} from '${options.mermaid.from}'`)
       }
       if (options.copy && !imports.some((line) => new RegExp(`^@import\\s+${options.copy!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.copy.tag} from '${options.copy.from}'`)
