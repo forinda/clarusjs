@@ -1,0 +1,14 @@
+<script>
+  let step = state(1)
+</script>
+
+<section>
+  @transition ('slide', { mode: 'out-in', duration: { enter: 200, leave: 150 } }) {
+    @if (step === 1) {
+      <p>One</p>
+    } @else {
+      <p>Two</p>
+    }
+  }
+  <button type="button" (click)="step = step === 1 ? 2 : 1">Next</button>
+</section>

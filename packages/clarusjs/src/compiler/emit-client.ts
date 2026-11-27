@@ -26,7 +26,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     ir.events.some((e) => /\$values\b/.test(e.handler)) && 'values as __cl_values',
     all.some((n) => n.kind === 'attr' && n.reactive && n.name !== '...') && 'attr as __cl_attr',
     all.some((n) => n.kind === 'attr' && n.reactive && n.name === '...') && 'spread as __cl_spread',
-    hasBlocks && 'block as __cl_block',
+    all.some((n) => ((n.kind === 'if' && !n.transition) || n.kind === 'await') && n.block >= 0) && 'block as __cl_block',
     all.some((n) => n.kind === 'await' && n.block >= 0) && 'awaited as __cl_awaited',
     hasFors && 'forBlock as __cl_for',
     all.some((n) => n.kind === 'for' && n.block >= 0 && rowNames(n, ir.events).some((x) => x !== '$count')) && 'derived as __cl_derived',
@@ -53,6 +53,8 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
   ].filter(Boolean)
 
   let out = used.length ? `import { ${used.join(', ')} } from 'clarusjs/runtime'\n` : ''
+  // @transition (motion phase 2): its own block, from a module only the islands that use it load.
+  if (all.some((n) => n.kind === 'if' && n.transition && n.block >= 0)) out += `import { transitionBlock as __cl_tb } from 'clarusjs/motion'\n`
   if (hot) out += `import { swap as __cl_swap } from ${JSON.stringify(hot)}\n`
   // Child components render in the browser too (in branches, rows and regions): import their server render
   // functions through the plugin's ?render query.
@@ -153,7 +155,10 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
     if (n.kind === 'if' && n.block >= 0) {
       const branches = n.branches.map((b, i) =>
         `    { html: () => ${htmlExpr(b.nodes, rw)}, wire: ${fn('', wiring(ir, b.nodes, `${n.block}.${i}`, ctx, signals, depth))} },`)
-      lines.push(`__cl_block(${ctx}, ${n.block}, () => ${whichExpr(n, rw)}, [\n${branches.join('\n')}\n  ])`)
+      if (n.transition) {
+        const arg = (x: string | null, none: string) => (x === null ? none : wrapExpr(rw.expr(x)))
+        lines.push(`__cl_tb(${ctx}, ${n.block}, () => ${whichExpr(n, rw)}, [\n${branches.join('\n')}\n  ], ${arg(n.transition.name, '"cl"')}, ${arg(n.transition.options, 'undefined')})`)
+      } else lines.push(`__cl_block(${ctx}, ${n.block}, () => ${whichExpr(n, rw)}, [\n${branches.join('\n')}\n  ])`)
     }
     if (n.kind === 'await' && n.block >= 0) {
       // The promise's state (0 pending, 1 then, 2 catch) drives an ordinary block; @then / @catch get the value.
