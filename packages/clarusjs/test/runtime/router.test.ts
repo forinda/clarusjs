@@ -113,3 +113,19 @@ test('review (#186): show() resolves once the new page\'s islands that attach ri
   await show(new URL('http://x/app'), table, undefined, async () => ({ render: () => '<p>x</p>' }), async () => new Response('{}'))
   expect(attached).toBe(true)
 })
+
+test('swapIn runs a page\'s inline scripts, never its data (JSON-LD, JSON): those aren\'t JavaScript', async () => {
+  // happy-dom doesn't run scripts: what the router appends to run them is checked (Playwright checks they run)
+  const appended: [string, string][] = []
+  const append = vi.spyOn(document.head, 'append').mockImplementation((...nodes) => {
+    for (const n of nodes) if (n instanceof HTMLScriptElement) appended.push([n.type, n.textContent ?? ''])
+  })
+  await swapIn('<html><head><title>T</title>'
+    + '<script>run("plain")</script>'
+    + '<script type="module">run("module")</script>'
+    + '<script type="application/ld+json">{"@context":"https://schema.org","name":"x"}</script>'
+    + '<script type="application/json" id="data">{"a":1}</script>'
+    + '</head><body><p>x</p></body></html>')
+  append.mockRestore()
+  expect(appended).toEqual([['', 'run("plain")'], ['module', 'run("module")']])
+})

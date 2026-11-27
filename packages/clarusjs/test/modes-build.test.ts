@@ -100,17 +100,19 @@ test('#33: the manifest marks client routes and leaves data files out', () => {
   expect(manifest.routes['/app/one'].js.files.some((f: string) => f.includes('render/'))).toBe(true)
 })
 
+// 1.6 KB: a swap runs only real scripts from the new page's head, not data (JSON-LD, JSON), and keeps a module a module
+// (~49 B: an allowlist of script types fails closed; a shorter json-only filter still came out over 1.5 KB).
 // 1.5 KB: keeping the scroll position when asked (navigate(…, { scroll: false }), setSearch() by default) adds ~45 B;
 // main left ~5 B. 1.45 KB: review fixes on #186 (cleanup when a navigation is cancelled, failures reported before the fallback load,
 // islands attached before afterSwap). 1.4 KB until then: a client route that fails its first render shows the site's
 // 404 or 500 page (#196). 1.35 KB before, for
 // aborting a navigation (#193); 1.2 KB for the transitions of #182; 1.1 KB before; 1 KB before #167.
-test('size budget: the client router stays within 1.5 KB gzip', async () => {
+test('size budget: the client router stays within 1.6 KB gzip', async () => {
   const { gzipSync } = await import('node:zlib')
   const shell = readFileSync(resolve(root, 'dist/client/app/index.html'), 'utf8')
   const router = /<script type="module" src="([^"]+)"><\/script><\/head>/.exec(shell)![1]!
   const size = gzipSync(readFileSync(resolve(root, 'dist/client', router.slice(1))), { level: 9 }).length
-  expect(size).toBeLessThanOrEqual(1536)
+  expect(size).toBeLessThanOrEqual(1638)
 })
 
 test('review: Netlify parameter names never collide', async () => {

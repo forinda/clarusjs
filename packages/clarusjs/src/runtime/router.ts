@@ -68,8 +68,11 @@ export async function swapIn(html: string, title: (title: string) => string = (t
   for (const { name, value } of [...doc.documentElement.attributes]) root.setAttribute(name, value)
   document.title = title(doc.title) // before islands attach: the loader announces it
   document.body.replaceWith(doc.body)
-  for (const old of doc.head.querySelectorAll('script:not([src])')) {
+  for (const old of doc.head.querySelectorAll<HTMLScriptElement>('script:not([src])')) {
+    // scripts only: data (JSON-LD, JSON) isn't run, and a module stays one
+    if (old.type && !/^(module|(text|application)\/javascript)$/i.test(old.type)) continue
     const script = document.createElement('script')
+    script.type = old.type
     script.textContent = old.textContent
     document.head.append(script)
     script.remove()

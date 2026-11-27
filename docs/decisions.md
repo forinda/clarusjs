@@ -16,6 +16,10 @@ Revisit an entry only with a new reason (a new tool version, a changed constrain
 - **Removing whitespace between tags at build** (#309). Only safe when the CSS is known: between inline-block elements
   the space shows. `collapseWhitespace` collapses each run to one character instead. That keeps the docs site's HTML
   smaller than before it was formatted (2.72 MB against 2.84 MB), so removal would gain little.
+- **A json-only filter for the scripts a client-route swap re-runs** (router budget 1.5 → 1.6 KB). Skipping
+  `[type*=json]` by selector, without keeping a module's type, still came out at 1,540 B, over 1,536. It also fails
+  open: any other data type (`text/plain`, a template) would run. The allowlist (no type, `module`, a JavaScript type)
+  that keeps the type is 1,585 B; the budget went to 1,638.
 
 ## Module resolution
 
