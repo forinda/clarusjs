@@ -132,3 +132,12 @@ test('emoji: ":" needs two characters; the list loads once, on first use', async
   expect(ed.view.state.doc.textContent).toBe('ok 😄')
   expect(loadEmoji()).toBe(loadEmoji())
 })
+
+test('a trigger right after a line break (Shift+Enter) opens the list, as at the start of a line', async () => {
+  const { ed, list } = setup()
+  type(ed, 'hi')
+  ed.view.dispatch(ed.view.state.tr.replaceSelectionWith(ed.schema.nodes.hard_break!.create()))
+  type(ed, '@ma')
+  await vi.advanceTimersByTimeAsync(200)
+  expect(list.hidden).toBe(false)
+})

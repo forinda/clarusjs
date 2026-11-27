@@ -135,7 +135,8 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
   function match(state: EditorState) {
     const { $from, empty } = state.selection
     if (!empty || $from.parent.type.spec.code) return null
-    const m = pattern.exec($from.parent.textBetween(0, $from.parentOffset, undefined, '￼'))
+    // a line break counts as whitespace (a trigger may start a line); other leaves (a mention) don't
+    const m = pattern.exec($from.parent.textBetween(0, $from.parentOffset, undefined, (leaf) => (leaf.type.name === 'hard_break' ? '\n' : '\ufffc')))
     if (!m || m[1]!.length < min) return null
     return { from: $from.pos - m[1]!.length - 1, to: $from.pos, query: m[1]! }
   }
