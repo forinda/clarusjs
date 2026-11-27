@@ -2,7 +2,7 @@
 title: "CLI"
 group: "APIs"
 order: 3
-description: "The clarusjs command line: check and explain."
+description: "The clarusjs command line: check, explain and serve."
 ---
 
 # CLI
@@ -57,3 +57,19 @@ A route with [folder or config layouts](/guide/layouts#folder-layouts) or [guard
 ```
 
 Exits with 1 when the route doesn't exist or the site hasn't been built.
+
+## clarusjs serve {since=0.17.0}
+
+Serves a built site on Node: run `vite build` first. For any Node host or a container; see [Deploying](/guide/deploy#node).
+
+```sh
+clarusjs serve [dir] [--port 3000] [--host 0.0.0.0]
+```
+
+| Option | Meaning |
+|---|---|
+| `dir` | project folder, the one with `dist/` (default: the current folder) |
+| `--port` | port (default: `$PORT`, else 3000) |
+| `--host` | interface to listen on (default: `$HOST`, else `0.0.0.0`, every interface) |
+
+Each request gets a file from `dist/client` (a page from `<path>/index.html`), else a server route or endpoint, else `404.html` with status 404. It applies `dist/client/_headers` (see [headers](/reference/vite-plugin#headers)) and sends files with an ETag. Hashed assets are cached for a year, and everything else is revalidated (`Cache-Control: no-cache`). The `.br` and `.gz` copies from [`compress: true`](/reference/vite-plugin#compress) are sent when the browser accepts them. On `SIGTERM` it finishes the requests in flight, then exits.

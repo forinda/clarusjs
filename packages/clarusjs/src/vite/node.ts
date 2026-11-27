@@ -1,6 +1,7 @@
-// Node http ⇄ fetch Request/Response, for the dev server and vite preview (request bodies streamed through).
+// Node http ⇄ fetch Request/Response, for the dev server, vite preview and clarusjs serve (bodies streamed both ways).
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 
 export function toRequest(req: IncomingMessage): Request {
   const headers = new Headers()
@@ -14,10 +15,18 @@ export function toRequest(req: IncomingMessage): Request {
   return new Request(`http://${req.headers.host ?? 'localhost'}${req.url ?? '/'}`, { method, headers, body, ...(body ? { duplex: 'half' } : {}) } as RequestInit)
 }
 
+/**
+ * Streamed: a body is sent as it comes (an event stream, a long render), with backpressure. A client that goes away
+ * cancels the body (pipeline destroys the source, which cancels the web stream).
+ */
 export async function sendResponse(res: ServerResponse, response: Response): Promise<void> {
   res.statusCode = response.status
-  response.headers.forEach((value, key) => res.setHeader(key, value))
-  res.end(Buffer.from(await response.arrayBuffer()))
+  response.headers.forEach((value, key) => { if (key !== 'set-cookie') res.setHeader(key, value) })
+  // Each cookie its own Set-Cookie field: forEach gives them one at a time, and setHeader would keep only the last.
+  const cookies = response.headers.getSetCookie()
+  if (cookies.length) res.setHeader('set-cookie', cookies)
+  if (!response.body) return void res.end()
+  await pipeline(Readable.fromWeb(response.body as import('node:stream/web').ReadableStream), res).catch(() => {})
 }
 
 /** Whether an Accept-Encoding header allows `encoding`: named, or through `*`, and not with q=0. */

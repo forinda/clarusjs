@@ -203,7 +203,7 @@ export function createHandler(
     /** Endpoints: .ts files under src/pages (not .load.ts) exporting GET, POST, … handlers. */
     endpoints?: Record<string, () => Promise<EndpointModule>>
   } = {},
-): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; readsCookies(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
+): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; base: string; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; readsCookies(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
   const routes: Route[] = Object.entries(pages)
     .filter(([file]) => isPageFile(file))
@@ -287,6 +287,8 @@ export function createHandler(
 
   const handler: ReturnType<typeof createHandler> = {
     routes: routes.map((r) => r.path).sort(),
+    /** Vite's base: a server in front strips it from request paths before calling fetch() (routes are base-free). */
+    base: options.base ?? '/',
     /** Routes rendered per request ('server' mode), as their files name them. */
     serverRoutes: [...routes.filter((r) => modeFor(r.path, modes) === 'server').map((r) => r.path), ...endpointRoutes.map((r) => r.path)].sort(),
     /** Whether a URL path belongs to a server route (what a host must send to this handler instead of a file). */

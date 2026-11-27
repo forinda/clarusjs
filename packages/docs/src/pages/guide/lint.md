@@ -27,6 +27,7 @@ src/components/card.tscl:4:3 warning img-alt: <img> without alt: describe the im
 | `one-root` {since=0.16.0} | a component without one root element (files under a `pages` or `layouts` folder, and whole documents, are exempt; a layout kept elsewhere is warned about): wrap its top level in an element, or in [`<fragment>`](/guide/components#several-elements-without-a-wrapper-fragment) |
 | `multi-word-name` {since=0.17.0} | a component imported under a one-word name (`card`): two words or more (`userCard`, `UserCard`) give it a [kebab-case tag](/guide/components#automatic-imports) (`<user-card>`) and can't be mistaken for an HTML element, today's or a future one |
 | `for-shadow` {since=0.17.0} | an `@for` row named like something the component declares (a script name, an `@input` or `@model`, an import): inside the loop the row hides it, so `[class]="item"` reads the row |
+| `server-env-in-browser` {since=0.17.0} | `process.env`, or an `import.meta.env` variable without the `VITE_` prefix, read in a `<script>` or `<script inline>`, which run in the browser: there `process.env` doesn't exist and Vite sends only `VITE_` variables (or those with your `envPrefix`). Comments and strings that mention them don't count. **An error by default.** See [Environment variables](/guide/environment-variables) |
 
 A component or `<slot>` inside a label, button or link counts as content: lint can't see what it renders, so it gives it the benefit of the doubt. A `@for` without `track` and a two-way binding on an element it doesn't fit are reported by the compiler itself.
 

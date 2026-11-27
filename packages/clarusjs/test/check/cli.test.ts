@@ -608,3 +608,17 @@ test("@transition's name and options are type-checked (a misspelt option, a name
   expect(at('number-panel.tscl')).toEqual([`6:${'  @transition ('.length + 1} TS2345`])
   expect(at('good-panel.tscl')).toEqual([])
 })
+
+test('#602: .clarusjs/env.d.ts (the env option\'s types) is part of the checked program', () => {
+  const root = project({
+    'src/components/api-link.tscl': '<script>\n  const size = state(import.meta.env.VITE_CL_API.length)\n</script>\n<p>{{ size }}</p>\n',
+    '.clarusjs/env.d.ts': 'interface ImportMetaEnv {\n  readonly VITE_CL_API: string\n}\ninterface ImportMeta {\n  readonly env: ImportMetaEnv\n}\n',
+  })
+  expect(checkProject({ root, typescript }).diagnostics).toEqual([])
+})
+
+test("#602: check reads the project's envPrefix for server-env-in-browser", () => {
+  const root = project({ 'src/components/api-link.tscl': '<script>\n  const url = state(import.meta.env.PUBLIC_API)\n</script>\n<p>{{ url }}</p>\n' })
+  expect(checkProject({ root, typescript }).diagnostics.map((d) => d.code)).toContain('server-env-in-browser')
+  expect(checkProject({ root, typescript, envPrefix: 'PUBLIC_' }).diagnostics.map((d) => d.code)).not.toContain('server-env-in-browser')
+})

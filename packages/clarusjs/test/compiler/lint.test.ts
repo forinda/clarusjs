@@ -259,3 +259,44 @@ test("@transition's arguments read names: an @input used only there is used", ()
   const source = "@input speed: number = 200\n<script>\n  let open = state(true)\n</script>\n<div>\n  <button type=\"button\" (click)=\"open = !open\">Toggle</button>\n  @transition ('fade', { duration: speed }) { @if (open) { <p>A</p> } }\n</div>\n"
   expect(lint(source, file).filter((m) => m.rule === 'unused-input')).toEqual([])
 })
+
+test('#602 server-env-in-browser: an error by default, for process.env and unprefixed import.meta.env in browser scripts', () => {
+  const source = `<script server>
+  const key = process.env.API_KEY
+</script>
+<script>
+  const a = process.env.API_KEY
+  const mode = process.env.NODE_ENV
+  const b = import.meta.env.SECRET
+  const c = import.meta.env.VITE_PUBLIC_URL + import.meta.env.DEV + import.meta.env.BASE_URL
+  let n = state(0)
+</script>
+<button (click)="n++">{{ n }} {{ key }}</button>
+`
+  const found = lint(source, file).filter((m) => m.rule === 'server-env-in-browser')
+  expect(found.map((m) => `${m.line}:${m.column} ${m.severity}`)).toEqual(['5:13 error', '7:13 error'])
+  expect(found[0]!.message).toBe("process.env runs in the browser here, where it doesn't exist: read API_KEY in <script server> or a load(), or name it VITE_API_KEY to send it to the browser")
+  expect(found[1]!.message).toBe("import.meta.env.SECRET is never sent to the browser (only VITE_ variables are): read it in <script server> or a load(), or name it VITE_SECRET")
+  expect(rules(source, { 'server-env-in-browser': 'warn' }).filter((r) => r.endsWith('server-env-in-browser'))).toEqual(['5:13 warning server-env-in-browser', '7:13 warning server-env-in-browser'])
+  expect(rules('<script inline>console.log(process.env.TOKEN)</script>')).toEqual(['1:28 error server-env-in-browser'])
+})
+
+test('server-env-in-browser reads code, not comments or text: a mention in a string or comment is fine', () => {
+  const source = `<script>
+  // set process.env.API_KEY on the server
+  const help = "Set process.env.API_KEY and import.meta.env.SECRET on the server"
+  const shown = \`token: \${process.env.TOKEN}\`
+  const other = config.process.env.X
+  let n = state(0)
+</script>
+<button (click)="n++">{{ n }} {{ help }} {{ shown }} {{ other }}</button>
+`
+  expect(lint(source, file).filter((m) => m.rule === 'server-env-in-browser').map((m) => `${m.line}:${m.column}`)).toEqual(['4:27'])
+})
+
+test("server-env-in-browser takes the project's envPrefix: those variables reach the browser too", () => {
+  const source = '<script>\n  const url = import.meta.env.PUBLIC_API_URL + import.meta.env.VITE_OTHER\n  let n = state(0)\n</script>\n<p>{{ n }} {{ url }}</p>\n'
+  const found = lint(source, file, {}, [], { envPrefix: 'PUBLIC_' }).filter((m) => m.rule === 'server-env-in-browser')
+  expect(found.map((m) => `${m.line}:${m.column}`)).toEqual(['2:48'])
+  expect(found[0]!.message).toBe('import.meta.env.VITE_OTHER is never sent to the browser (only PUBLIC_ variables are): read it in <script server> or a load(), or name it PUBLIC_VITE_OTHER')
+})

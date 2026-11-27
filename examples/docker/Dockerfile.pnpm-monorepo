@@ -1,0 +1,24 @@
+# A site in a pnpm workspace (apps/my-site here): build in the repo, then `pnpm deploy` copies the site's package with
+# its production dependencies only (workspace packages copied in, not linked) into a folder the image takes as is.
+#   docker build -f Dockerfile.pnpm-monorepo -t my-site .   (from the repo root)
+# pnpm-workspace.yaml needs `injectWorkspacePackages: true` for pnpm deploy (pnpm 10 and later).
+FROM node:24-slim AS base
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+RUN corepack enable
+
+FROM base AS build
+WORKDIR /repo
+COPY . .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# my-site... : the site and the workspace packages it depends on, those first.
+RUN pnpm --filter "my-site..." build
+RUN pnpm --filter my-site deploy --prod /deploy && cp -r apps/my-site/dist /deploy/dist
+
+FROM node:24-slim
+WORKDIR /app
+ENV NODE_ENV=production PORT=3000
+COPY --from=build /deploy ./
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT}/`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+CMD ["node_modules/.bin/clarusjs", "serve"]

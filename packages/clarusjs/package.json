@@ -50,6 +50,8 @@
     "./vite": "./src/vite/plugin.ts",
     "./manifest": "./src/server/manifest.ts",
     "./views": "./src/server/views.ts",
+    "./node": "./src/node/serve.ts",
+    "./seo": "./src/seo.ts",
     "./motion": "./src/runtime/motion.ts"
   },
   "bin": {
@@ -80,6 +82,7 @@
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^26.6.6",
     "happy-dom": "^21.0.4",
+    "miniflare": "^4.20260730.0",
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
     "typescript-beta": "npm:typescript@7.1.0-beta",
@@ -132,6 +135,14 @@
       "./views": {
         "types": "./dist/server/views.d.ts",
         "default": "./dist/server/views.js"
+      },
+      "./node": {
+        "types": "./dist/node/serve.d.ts",
+        "default": "./dist/node/serve.js"
+      },
+      "./seo": {
+        "types": "./dist/seo.d.ts",
+        "default": "./dist/seo.js"
       },
       "./motion": {
         "types": "./dist/runtime/motion.d.ts",
