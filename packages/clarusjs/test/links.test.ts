@@ -35,7 +35,8 @@ test('a missing page and a missing anchor are reported, with the closest match s
 
 test('a base is respected; client routes have no anchors to check; links under the base only', () => {
   const out = site({ '/': '<a href="/docs/guide">a</a><a href="/docs/app/1#x">b</a><a href="/elsewhere">c</a>', '/guide': '<p>g</p>' })
-  expect(checkLinks({ outDir: out, routes: ['/', '/guide', '/app/1'], serverRoutes: [], clientRoutes: ['/app/1'], base: '/docs/' })).toEqual([])
+  // a link outside the base is no broken link: an 'outside' notice, which the build warns about
+  expect(checkLinks({ outDir: out, routes: ['/', '/guide', '/app/1'], serverRoutes: [], clientRoutes: ['/app/1'], base: '/docs/' }).map((i) => [i.kind, i.href])).toEqual([['outside', '/elsewhere']])
 })
 
 // A whole build: problems name the page's source file and line.
@@ -77,11 +78,24 @@ test('malformed escapes, directories and an absolute base', () => {
 test('absolute links to the site itself are checked like internal ones', () => {
   const out = site({ '/': '<a href="https://example.com/docs/guide">a</a><a href="https://example.com/docs/nope#x">b</a><a href="https://example.com/other">c</a><a href="https://other.dev/docs/nope">d</a>', '/guide': '<p>g</p>' })
   const issues = checkLinks({ outDir: out, routes: ['/', '/guide'], serverRoutes: [], clientRoutes: [], base: '/docs/', site: 'https://example.com' })
-  expect(issues.map((i) => i.message)).toEqual(['no page at /nope'])
+  expect(issues.filter((i) => i.kind !== 'outside').map((i) => i.message)).toEqual(['no page at /nope'])
+  expect(issues.filter((i) => i.kind === 'outside').map((i) => i.href)).toEqual(['https://example.com/other'])
 })
 
 test('review: own-site links are compared as parsed URLs (host case, base without its slash plus a #hash)', () => {
   const out = site({ '/': '<a href="https://EXAMPLE.com/docs/nope">a</a><a href="https://example.com/docs#missing">b</a><a href="https://example.com/other">c</a>', '/guide': '<p>g</p>' })
   const issues = checkLinks({ outDir: out, routes: ['/', '/guide'], serverRoutes: [], clientRoutes: [], base: '/docs/', site: 'https://example.com' })
-  expect(issues.map((i) => i.message)).toEqual(['no page at /nope', 'no #missing on /'])
+  expect(issues.filter((i) => i.kind !== 'outside').map((i) => i.message)).toEqual(['no page at /nope', 'no #missing on /'])
+})
+
+test('review (#653): a network-path link (//host/…) to the site itself is checked as a full one; other hosts are skipped', () => {
+  const out = site({ '/': '<a href="//example.com/other">a</a><a href="//example.com/docs/nope">b</a><a href="//example.com/docs/guide">c</a><a href="//other.dev/x">d</a>', '/guide': '<p>g</p>' })
+  const issues = checkLinks({ outDir: out, routes: ['/', '/guide'], serverRoutes: [], clientRoutes: [], base: '/docs/', site: 'https://example.com' })
+  expect(issues.map((i) => [i.kind, i.href])).toEqual([['outside', '//example.com/other'], ['pages', '/docs/nope']]) // own-site links are checked by their path, as full ones are
+})
+
+test('review (#653): a full-URL (CDN) base serves assets only: pages stay at the site root, so their links are checked there', () => {
+  const out = site({ '/': '<a href="/about">a</a><a href="/nope">b</a>', '/about': '<p>a</p>' })
+  const issues = checkLinks({ outDir: out, routes: ['/', '/about'], serverRoutes: [], clientRoutes: [], base: 'https://cdn.example.com/docs/' })
+  expect(issues.map((i) => [i.kind, i.message])).toEqual([['pages', 'no page at /nope']])
 })

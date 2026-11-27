@@ -2,8 +2,14 @@
 // imports the built server). The server entry registers the views; `clarusjs check` writes .clarusjs/views.d.ts,
 // which types each name with that view's inputs.
 
+import { baseUrl } from '../runtime/attrs.ts'
 import { attrHtml, escape, HTML } from '../runtime/html.ts'
 
+// The site's base (Vite's), for the URL attributes h() writes: the handler sets it.
+// The base h() gives URLs: the handler's own, for the whole request (load() and render; createHandler() keeps it in an
+// AsyncLocalStorage), so two handlers in one process, or overlapping requests, don't mix theirs. Outside a request: '/'.
+const requestBase = () => (globalThis as { __clViewBase?: { getStore(): string | undefined } }).__clViewBase?.getStore()
+/** @internal createHandler() calls this with its base. */
 type View = { render(props?: object, slots?: Record<string, string>): string | Promise<string> } // async: a <script server> that awaits (#430)
 type Registry = Record<string, () => Promise<View>>
 
@@ -123,7 +129,7 @@ export async function h<N extends ViewName>(name: N | (string & {}), props: (N e
   for (const [key, value] of Object.entries(props as Record<string, unknown>)) {
     if (!/^[^\s"'>/=]+$/.test(key)) throw new Error(`h(): "${key}" isn't an attribute name`)
     if (/^on/i.test(key) || key.toLowerCase() === 'srcdoc') throw new Error(`h(): "${key}" can't be set from code (event handlers and srcdoc run code); use a .tscl view`)
-    attrs += attrHtml(key, value, tag)
+    attrs += attrHtml(key, baseUrl(requestBase() ?? '/', key, value), tag) // a root-relative URL gets the site's base, as in templates
   }
   const inner = await childrenHtml(children as Children)
   if (VOID.has(tag) && inner) throw new Error(`h(): <${tag}> can't have children`)

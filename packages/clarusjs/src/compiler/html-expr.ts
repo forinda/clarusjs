@@ -36,8 +36,8 @@ export function htmlExpr(nodes: IRNode[], rw: Rewriter = asWritten, top?: Server
     }
     if (n.kind === 'connect' || n.kind === 'use') return '""' // its marker is static; the browser connects it
     // The attributes passed to this component (#463), on its root.
-    if (n.kind === 'attr' && n.name === '...' && 'expr' in n.value && n.value.expr === '__cl_attrs') return `__cl_passedHtml(__cl_attrs, ${JSON.stringify((n.skip ?? []).filter((x) => x !== 'engine' && x !== 'use' && !x.includes('.')))})` // the root's own attributes win (@extends passes any of its element's); [engine], [use], [class.x] aren't attributes
-    if (n.kind === 'attr' && n.name === '...') return `__cl_spreadHtml(${attrValueExpr(n.value, rw.expr)}, ${JSON.stringify(n.skip ?? [])}, ${JSON.stringify(n.tag)}${rw === asWritten && n.where ? `, ${JSON.stringify(n.where)}` : ''})` // the place, for warnings: server code only
+    if (n.kind === 'attr' && n.name === '...' && 'expr' in n.value && n.value.expr === '__cl_attrs') return `__cl_passedHtml(${n.base ? `__cl_baseAttrs(${JSON.stringify(n.base)}, __cl_attrs)` : '__cl_attrs'}, ${JSON.stringify((n.skip ?? []).filter((x) => x !== 'engine' && x !== 'use' && !x.includes('.')))})` // the root's own attributes win (@extends passes any of its element's); [engine], [use], [class.x] aren't attributes
+    if (n.kind === 'attr' && n.name === '...') return `__cl_spreadHtml(${n.base ? `__cl_baseAttrs(${JSON.stringify(n.base)}, ${attrValueExpr(n.value, rw.expr)})` : attrValueExpr(n.value, rw.expr)}, ${JSON.stringify(n.skip ?? [])}, ${JSON.stringify(n.tag)}${rw === asWritten && n.where ? `, ${JSON.stringify(n.where)}` : ''})` // the place, for warnings: server code only
     if (n.kind === 'attr' && n.content) return '""' // a textarea's value: its text, after the tag
     if (n.kind === 'attr') return `__cl_attrHtml(${JSON.stringify(n.name)}, ${attrValueExpr(n.value, rw.expr)}${tagArg(n)})`
     if (n.kind === 'if') {

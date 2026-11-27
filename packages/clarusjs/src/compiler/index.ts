@@ -45,6 +45,11 @@ export type CompileOptions = {
   collapseWhitespace?: boolean
   loader?: string
   hot?: string
+  /**
+   * Vite's base path (`/docs/`): root-relative URL attributes (href, src, srcset, action…) get it, static ones written
+   * in, dynamic ones through `baseUrl()`. `'/'` or none: nothing changes. The Vite plugin passes it.
+   */
+  base?: string
   /** Finds `<icon name="set:name">` icons: `(name) => resolveIcon(name, file)` from clarusjs/icons. Without it, `<icon>` is an error. */
   icon?: IconResolver
 }
@@ -104,7 +109,7 @@ function compileParsed(parsed: ReturnType<typeof parse>, source: string, options
   }
   // renderImports: a render module that runs in the browser (a client route's page, a child an island re-renders).
   if (options.renderImports && parsed.serverScript) throw new ClarusError('<script server> runs on the server only, and this component renders in the browser (a client route, or a child of an island, which re-renders it): make the route static or server, or render the component outside the island', options.file, source, parsed.serverScript.tag)
-  const ir = lower(parsed, options.file, source, { collapseWhitespace: options.collapseWhitespace, icon: options.icon })
+  const ir = lower(parsed, options.file, source, { collapseWhitespace: options.collapseWhitespace, icon: options.icon, base: options.base })
   warnings.push(...ir.warnings)
   if (options.target === 'client') return { code: emitClient(ir, options.hot), stateful: ir.stateful, css, warnings }
   if (ir.stateful && !options.clientUrl) throw new Error(`[clarusjs] ${options.file}: clientUrl is required to compile a stateful component for the server`)

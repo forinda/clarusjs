@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { routeToFile } from './build.ts'
 
-export type LinkIssue = { kind: 'pages' | 'anchors'; page: string; href: string; message: string }
+export type LinkIssue = { kind: 'pages' | 'anchors' | 'outside'; page: string; href: string; message: string }
 
 type Options = {
   outDir: string
@@ -55,8 +55,8 @@ const hrefs = (html: string) => [...html.replace(/<!--[\s\S]*?-->/g, '').matchAl
 
 export function checkLinks(options: Options): LinkIssue[] {
   const { outDir } = options
-  // An absolute base (https://cdn.example.com/docs/) is compared by its path.
-  const base = /^https?:\/\//.test(options.base) ? new URL(options.base).pathname : options.base
+  // A full-URL (CDN) base serves assets only: pages, and so their links, stay at the site root (as sitePrefix() has it).
+  const base = /^https?:\/\//i.test(options.base) ? '/' : options.base
   const siteRoot = options.site ? new URL(base, options.site.replace(/\/?$/, '/')) : undefined
   const routes = new Set(options.routes.map(trim))
   const client = new Set(options.clientRoutes.map(trim))
@@ -73,15 +73,22 @@ export function checkLinks(options: Options): LinkIssue[] {
   for (const page of [...routes].filter((r) => !client.has(r))) {
     for (let href of hrefs(read(page))) {
       // Absolute links to the site itself (compared parsed: host case, the base with or without its slash).
-      if (siteRoot && /^https?:/i.test(href)) {
-        const u = new URL(href)
+      if (siteRoot && /^(https?:)?\/\//i.test(href)) {
+        const u = new URL(href, siteRoot) // //host/… (a network path) takes the site's scheme
         if (u.origin === siteRoot.origin && (u.pathname.startsWith(siteRoot.pathname) || `${u.pathname}/` === siteRoot.pathname)) {
           href = base + u.pathname.slice(Math.min(u.pathname.length, siteRoot.pathname.length)) + u.search + u.hash
+        } else if (u.origin === siteRoot.origin && base !== '/') {
+          issues.push({ kind: 'outside', page, href, message: `${href} is outside the base ${base} (fine for another site on this origin)` })
+          continue
         }
       }
       if (/^[a-z][\w+.-]*:|^\/\//i.test(href) || href === '') continue // external, mailto:, tel:, …
       const url = new URL(href, `http://site${base}${page === '/' ? '' : page.slice(1) + '/'}`)
-      if (!url.pathname.startsWith(base) && `${url.pathname}/` !== base) continue // outside this site
+      if (!url.pathname.startsWith(base) && `${url.pathname}/` !== base) {
+        // a root-relative link outside the base: written around it (templates get the base by themselves)
+        if (base !== '/' && href.startsWith('/')) issues.push({ kind: 'outside', page, href, message: `${href} is outside the base ${base} (fine for another site on this origin)` })
+        continue
+      }
       let path = trim(decode(url.pathname.slice(base.length - 1)) || '/')
       if (path.endsWith('/index.html')) path = trim(path.slice(0, -'index.html'.length))
       const anchor = decode(url.hash.slice(1))

@@ -6,6 +6,7 @@ import { iconElement, type IconResolver } from './icon.ts'
 import { ClarusError } from './errors.ts'
 import { outerIndexIn } from './loops.ts'
 import { FOR_IMPLICIT, importNames, type Attr, type DataImport, type ImportDecl, type InputDecl, type ParsedFile, type TemplateNode } from './parse.ts'
+import { baseUrl, isBaseAttr } from '../runtime/attrs.ts'
 import { analyzeScript, providesIn, mutationsOf, writesTo, checkExpr, checkHandler, referencesNames, scriptNames, serverScriptParts, splitImports, type Signals } from './script.ts'
 
 export type IRNode =
@@ -23,7 +24,8 @@ export type IRNode =
   // name '...': a spread (#405); skip: the names written on the element (lowercase), where: its place, for warnings.
   // content: a textarea's value, written as its text in HTML (a value attribute means nothing there); the browser
   // still sets the property.
-  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string; content?: true }
+  // base: under Vite's base, a spread's (or passed attributes') URL attributes get it.
+  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string; content?: true; base?: string }
   // [engine]="f": an element connected to a form from clarusjs/forms (marked data-cl-form="index").
   | { kind: 'connect'; expr: string; index: number }
   // [use]="behaviour" (#464): an element handed to a function in the browser (marked data-cl-u="index").
@@ -78,7 +80,9 @@ const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input'
  */
 const iconBodies = new WeakMap<object, string>()
 
-export function lower(parsed: ParsedFile, file: string, source: string, options: { collapseWhitespace?: boolean; icon?: IconResolver } = {}): ComponentIR {
+export function lower(parsed: ParsedFile, file: string, source: string, options: { collapseWhitespace?: boolean; icon?: IconResolver; base?: string } = {}): ComponentIR {
+  // Vite's base for root-relative URL attributes; none at '/' (the output is then exactly as without one).
+  const base = options.base && options.base !== '/' ? options.base : undefined
   const fail = (text: string, at: number): never => { throw new ClarusError(text, file, source, at) }
   // An inner @for's $index on an outer loop's list (#585): the wrong row, silently.
   const outer = outerIndexIn(parsed.nodes)
@@ -513,7 +517,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     let textareaValue: string | undefined
     let engine = false
     for (const a of attrs) {
-      if (a.kind === 'static') emitStatic(a.value === true ? ` ${a.name}` : ` ${a.name}="${a.value}"`)
+      if (a.kind === 'static') emitStatic(a.value === true ? ` ${a.name}` : ` ${a.name}="${base ? baseUrl(base, a.name, a.value) : a.value}"`)
       else if (a.kind === 'event') {
         if (!stateful) fail('event bindings need a <script> with state; this component is static', a.start)
         const { type, mods } = splitEvent(a.name)
@@ -531,7 +535,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         // Written attributes win over the spread's (class and style merge, in the fold): their names, lowercase.
         const skip = [...new Set(attrs.filter((x) => x !== a && x.kind !== 'event').map((x) => x.name.toLowerCase()))]
         const at = new ClarusError('', file, source, a.start)
-        const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, ...(a.expr === '__cl_attrs' ? {} : { where: `${file}:${at.line}:${at.column}` }) }
+        const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, ...(a.expr === '__cl_attrs' ? {} : { where: `${file}:${at.line}:${at.column}` }), ...(base ? { base } : {}) }
         if (reactive) dynamic.push(node_)
         out.push(node_)
       } else if (a.kind === 'prop' && a.name === 'use') {
@@ -558,7 +562,11 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         const exprs = a.kind === 'prop' ? [{ expr: a.expr, start: a.start }] : a.parts.filter((p) => typeof p !== 'string')
         for (const e of exprs) checkExpr(e.expr, file, source, e.start)
         const reactive = stateful && exprs.some((e) => referencesNames(e.expr, scriptScope) || referencesNames(e.expr, loopNames))
-        const value = a.kind === 'prop' ? { expr: a.expr } : { parts: a.parts.map((p) => (typeof p === 'string' ? p : { expr: p.expr })) }
+        const written = a.kind === 'prop' ? { expr: a.expr } : { parts: a.parts.map((p) => (typeof p === 'string' ? p : { expr: p.expr })) }
+        // Under a base, a URL attribute's value goes through baseUrl(): the base once, for a root-relative URL.
+        const value = base && isBaseAttr(a.name)
+          ? { expr: `__cl_baseUrl(${JSON.stringify(base)}, ${JSON.stringify(a.name)}, ${a.kind === 'prop' ? `(${a.expr})` : `[${a.parts.map((p) => (typeof p === 'string' ? JSON.stringify(p) : `(${p.expr})`)).join(', ')}].join('')`})` }
+          : written
         const content = node.tag === 'textarea' && a.name === 'value'
         const node_ = { kind: 'attr' as const, name: a.name, value, reactive, index: -1, tag: node.tag, ...(content ? { content: true as const } : {}) }
         if (content) textareaValue = a.kind === 'prop' ? a.expr : `[${a.parts.map((p) => (typeof p === 'string' ? JSON.stringify(p) : `(${p.expr})`)).join(', ')}].join('')`

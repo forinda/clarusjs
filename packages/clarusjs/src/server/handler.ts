@@ -16,6 +16,8 @@ type PageModule = { render(props?: object, slots?: undefined, opts?: { route: { 
 /** Each render's component loader data (#97), read by loaded() (runtime/server.ts) across awaits (#430). */
 const loadedStore = new AsyncLocalStorage<Map<string, object>>()
 ;(globalThis as { __clLoadedStore?: AsyncLocalStorage<Map<string, object>> }).__clLoadedStore = loadedStore
+/** Each request's site base, for h() (server/views.ts): per handler, across awaits. */
+const viewBase = ((globalThis as { __clViewBase?: AsyncLocalStorage<string> }).__clViewBase ??= new AsyncLocalStorage<string>())
 type Params = Record<string, string>
 /**
  * `[page].load.ts`: data for a route, server only. entries() lists a dynamic route's pages to prerender; load()
@@ -555,6 +557,10 @@ export function createHandler(
       return new Response(head ? null : body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
     }
   }
+  // h() writes URLs with this handler's base (a CDN base: page links stay on the site)
+  const respond = handler.fetch
+  const base = /^https?:\/\//.test(options.base ?? '/') ? '/' : (options.base ?? '/')
+  handler.fetch = (request) => viewBase.run(base, () => respond(request))
   return handler
 }
 

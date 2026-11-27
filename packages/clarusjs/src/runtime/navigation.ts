@@ -3,6 +3,7 @@
 // over exactly like a link click; without it they are normal page loads. Island scripts also run on the server,
 // where this does nothing.
 import { effect, onDispose, state, type Signal } from './signals.ts'
+import { underBase } from './attrs.ts'
 import type { Transition } from './navigate.ts'
 
 export type { Transition }
@@ -115,6 +116,7 @@ export function navigationState<T = unknown>(): T | undefined {
  */
 export async function navigate(to: string | URL, options: { replace?: boolean; state?: unknown; scroll?: boolean } = {}): Promise<void> {
   if (!browser) return
+  if (typeof to === 'string') to = addBase(siteBase(), to) // a path without the site's base, as everywhere
   if (!navigation) return options.replace ? location.replace(String(to)) : location.assign(String(to))
   try {
     // scroll: false reaches the navigator (navigate.ts) as info: it keeps the scroll position for this navigation.
@@ -311,6 +313,54 @@ export function href<R extends RouteName>(
   ...params: [keyof Routes] extends [never] ? [Record<string, string>?] : keyof ParamsOf<R> extends never ? [] : [ParamsOf<R>]
 ): string {
   const values = (params[0] ?? {}) as Record<string, string>
-  const base = ((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/').replace(/\/$/, '')
+  const base = sitePrefix((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/')
   return base + route.replace(/\[([^\]]+)\]/g, (_, key: string) => encodeURIComponent(values[key] ?? ''))
+}
+
+/**
+ * The path a site's own URLs start with, from Vite's base: `/docs/` gives `/docs`; `/` and a full-URL (CDN) base give
+ * '' (a CDN serves the assets; pages, and so links and navigations, stay on the site). @internal
+ */
+export function sitePrefix(base: string): string {
+  return /^https?:\/\//i.test(base) ? '' : base.replace(/\/$/, '')
+}
+const siteBase = () => sitePrefix((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/') + '/'
+
+/** `path` with `base` in front, when it's root-relative (one `/`). @internal withBase() and navigate() call this. */
+export function addBase(base: string, path: string): string {
+  const b = base.replace(/\/$/, '')
+  // already under it (href() gives such paths): as it is, so the base never doubles
+  return path.startsWith('/') && !path.startsWith('//') && !underBase(b, path) ? b + path : path
+}
+
+/** `url` without a leading `base`: the reverse of addBase(). @internal withoutBase() calls this. */
+export function removeBase(base: string, url: string): string {
+  const b = base.replace(/\/$/, '')
+  if (!b) return url
+  if (!underBase(b, url)) return url
+  const rest = url.slice(b.length)
+  return rest.startsWith('/') ? rest : '/' + rest // '/docs?q=1' → '/?q=1'
+}
+
+/**
+ * A root-relative path with the site's base (Vite's `base`): `withBase('/guide')` is `/docs/guide` at a site under
+ * `/docs/`; a path already under it is returned as it is. For URLs built in code (`fetch()`, a link from data); templates' URL attributes get the base by themselves.
+ * Full URLs, `//host`, `#…`, `?…` and relative paths are returned as they are.
+ * @example
+ * fetch(withBase('/api/items'))
+ * @see https://clarusjs.com/reference/navigation#withbase
+ */
+export function withBase(path: string): string {
+  return addBase(siteBase(), path)
+}
+
+/**
+ * A URL's path without the site's base, the reverse of `withBase()`: `/docs/guide` is `/guide` at a site under
+ * `/docs/`, to compare a link (which has the base) with a route (which doesn't). Others are returned as they are.
+ * @example
+ * withoutBase(link.getAttribute('href')) === '/guide'
+ * @see https://clarusjs.com/reference/navigation#withoutbase
+ */
+export function withoutBase(url: string): string {
+  return removeBase(siteBase(), url)
 }

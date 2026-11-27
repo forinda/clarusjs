@@ -1,5 +1,6 @@
 // Every page's <head>: <cl-head> contents moved in from the page, a title template, site-wide tags and a final
 // transform. Page tags win over site tags with the same key (title, meta name/property, canonical link…).
+import { baseUrl } from '../runtime/attrs.ts'
 import { escape, json } from '../runtime/html.ts'
 
 /**
@@ -27,8 +28,9 @@ export type SiteOptions = { url: string; name?: string; image?: string }
 
 const VOID = new Set(['meta', 'link', 'base'])
 
-export function renderTag([tag, attrs, content]: HeadTag): string {
-  const a = Object.entries(attrs).map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${escape(v)}"`)).join('')
+export function renderTag([tag, attrs, content]: HeadTag, base = '/'): string {
+  // a root-relative URL (an icon, a stylesheet, a script) gets the site's base, as in templates
+  const a = Object.entries(attrs).map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${escape(baseUrl(base, k, v) as string)}"`)).join('')
   return VOID.has(tag) && content === undefined ? `<${tag}${a}>` : `<${tag}${a}>${content ?? ''}</${tag}>`
 }
 
@@ -107,7 +109,7 @@ export function completeHead(html: string, mask: (html: string) => string, optio
   const pageSet = { image: content(find('meta:property:og:image')?.text), url: content(find('meta:property:og:url')?.text) }
   const fill = (tag: string) => { if (!find(key(tag) ?? '')) head += tag }
   for (const t of options.tags ?? []) {
-    const tag = renderTag(t)
+    const tag = renderTag(t, options.base && !/^https?:\/\//.test(options.base) ? options.base : '/')
     if (key(tag)) fill(tag)
     else head += tag
   }
@@ -147,7 +149,11 @@ function social(head: string, title: string, options: HeadOptions, page: { path:
   const root = new URL(basePath(options.base), options.site.url.replace(/\/?$/, '/'))
   // './' keeps the request path a path under the root: '/https:/evil.com' must not become another site.
   const url = new URL(`./${page.path.slice(1)}`, root).href
-  const absolute = (u: string) => (u.startsWith('/') && !u.startsWith('//') ? new URL(u.slice(1), root).href : new URL(u, url.endsWith('/') ? url : `${url}/`).href)
+  const prefix = basePath(options.base).replace(/\/$/, '')
+  // root-relative: under the site's base (once: one already under it, as templates write it now, stays as it is)
+  const absolute = (u: string) => (u.startsWith('/') && !u.startsWith('//')
+    ? (prefix && (u === prefix || u.startsWith(prefix + '/')) ? new URL(u, root.origin).href : new URL(u.slice(1), root).href)
+    : new URL(u, url.endsWith('/') ? url : `${url}/`).href)
   for (const [property, value] of [['og:image', pageSet.image], ['og:url', pageSet.url]] as const) {
     if (relative(value)) head = setTag(head, `<meta property="${property}" content="${escape(absolute(value))}">`, mask)
   }
@@ -166,7 +172,10 @@ function social(head: string, title: string, options: HeadOptions, page: { path:
   return head
 }
 
-/** Vite's base as a path: an absolute base (https://cdn.example.com/docs/) counts by its pathname. */
+/**
+ * Vite's base as the path pages live under. A full-URL base (https://cdn.example.com/docs/) moves only the assets, as
+ * in Vite: pages stay at the site's root, '/' (#653; the compiler, navigate() and the link checker agree).
+ */
 export function basePath(base = '/'): string {
-  return /^https?:\/\//i.test(base) ? new URL(base).pathname : base
+  return /^https?:\/\//i.test(base) ? '/' : base
 }

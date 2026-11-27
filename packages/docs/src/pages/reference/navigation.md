@@ -47,7 +47,7 @@ Goes to `to`, as a link click would: the page's navigator swaps or renders the n
 
 ### Parameters
 
-- **`to`**: the address.
+- **`to`**: the address. A root-relative path (`/account`) gets the site's [base](/guide/deploy#a-site-under-a-path), unless it's already under it (as `href()`'s are).
 - **`options.replace`**: replace the current history entry instead of adding one.
 - **`options.state`**: history state for the new entry, read back with `navigationState()`.
 - **`options.scroll`**: `false` keeps the scroll position; by default the new page starts at the top (or at its `#hash`), and Back and Forward restore where the visitor was.
@@ -283,3 +283,23 @@ A page's URL from its route, as its file names it, with the site's base: `href('
 ```tscl
 <a [href]="href('/releases/[version]', { version: '0.8.0' })">0.8.0</a>
 ```
+
+## withBase() {since=0.18.0}
+
+```ts
+withBase(path: string): string
+```
+
+A root-relative path with the site's base (Vite's `base`): `withBase('/api/items')` is `/docs/api/items` at a site under `/docs/`. For URLs built in code, such as `fetch()` or a link a script makes. A template's URL attributes (`href`, `src`…) get the base by themselves. A path already under the base, a full URL, `//host`, `#…`, `?…` and a relative path are returned as they are.
+
+```ts
+const items = await (await fetch(withBase('/api/items'))).json()
+```
+
+## withoutBase() {since=0.18.0}
+
+```ts
+withoutBase(url: string): string
+```
+
+The reverse: `/docs/guide` is `/guide` at a site under `/docs/`. Use it to compare a link (which has the base) with a route (which doesn't): `withoutBase(link.getAttribute('href')) === '/guide'`.

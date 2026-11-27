@@ -108,6 +108,63 @@ export function attrValue(name: string, value: unknown, tag?: string): string | 
   return s
 }
 
+// Attributes whose URL a site's base applies to (Vite's base: a site at /docs/), for the compiler and h().
+const BASE_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'poster', 'cite', 'data', 'xlink:href'])
+const rooted = (u: string) => u.startsWith('/') && !u.startsWith('//')
+/** Whether a site's base applies to this attribute's URL (srcset included). @internal The compiler asks. */
+export const isBaseAttr = (name: string): boolean => BASE_ATTRS.has(name.toLowerCase()) || name.toLowerCase() === 'srcset'
+
+/**
+ * A URL attribute's value with the site's base: a root-relative URL (one `/`) gets it, unless it's already under it
+ * (`href()` and `withBase()` give such URLs), so the base never doubles; `srcset` gets it on each candidate. Anything else (another attribute, a full or `//` URL, `#`, `?`, a
+ * relative path, a value that isn't a string) is returned as it is, and base `/` changes nothing.
+ * @internal The compiler and h() call this; apps use `withBase()` from clarusjs/navigation.
+ */
+export function baseUrl(base: string, name: string, value: unknown): unknown {
+  if (base === '/' || typeof value !== 'string') return value
+  const n = name.toLowerCase()
+  const prefix = base.replace(/\/$/, '')
+  const add = (u: string) => (rooted(u) && !underBase(prefix, u) ? prefix + u : u)
+  if (BASE_ATTRS.has(n)) return add(value)
+  if (n !== 'srcset') return value
+  // As HTML reads a srcset: a URL runs to the next whitespace (commas inside it stay), commas at its end part two
+  // candidates, and its descriptors (1x, 640w) run to the next comma.
+  let out = ''
+  for (let i = 0; i < value.length;) {
+    let j = i
+    while (j < value.length && /[\s,]/.test(value[j]!)) j++
+    out += value.slice(i, j)
+    if ((i = j) >= value.length) break
+    while (j < value.length && !/\s/.test(value[j]!)) j++
+    let url = value.slice(i, j)
+    const commas = /,+$/.exec(url)?.[0] ?? ''
+    url = url.slice(0, url.length - commas.length)
+    out += add(url) + commas
+    i = j
+    if (commas) continue
+    while (j < value.length && value[j] !== ',') j++
+    out += value.slice(i, j)
+    i = j
+  }
+  return out
+}
+
+/**
+ * `url` is already under the base path `prefix` (`/docs`): it is the prefix, or the prefix then `/`, `?` or `#`
+ * (`/docs/guide`, `/docs?q=1`, `/docs#top`; not `/documents`). '' (base /): every root-relative URL. @internal
+ */
+export const underBase = (prefix: string, url: string): boolean => url.startsWith(prefix) && (url.length === prefix.length || '/?#'.includes(url[prefix.length]!))
+
+/**
+ * An attributes object (a spread, or what a component passes on to its root) with the site's base on its URL
+ * attributes, as baseUrl() gives each one. The same object when there's nothing to do.
+ * @internal The compiler calls this under a base.
+ */
+export function baseAttrs(base: string, obj: unknown): unknown {
+  if (base === '/' || !obj || typeof obj !== 'object' || Array.isArray(obj)) return obj
+  return Object.fromEntries(Object.entries(obj as Record<string, unknown>).map(([k, v]) => [k, baseUrl(base, k, v)]))
+}
+
 const ATTR_NAME = /^[a-zA-Z_:][-a-zA-Z0-9_:.]*$/
 
 /**

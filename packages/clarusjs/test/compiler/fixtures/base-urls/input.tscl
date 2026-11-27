@@ -1,0 +1,15 @@
+{{-- Under Vite's base (/docs/): root-relative URL attributes get it, static ones written in, dynamic ones wrapped. --}}
+@input slug: string = 'intro'
+
+<script>
+  let next = state('/guide/next')
+</script>
+
+<nav>
+  <a href="/guide">Guide</a>
+  <a href="/guide/{{ slug }}">This page</a>
+  <a [href]="next">Next</a>
+  <a href="https://example.com">Away</a>
+  <img src="/logo.svg" srcset="/logo.svg 1x, /logo@2x.svg 2x" alt="">
+  <span data-href="/not-a-link">/not-a-link</span>
+</nav>
