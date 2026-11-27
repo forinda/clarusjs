@@ -5,6 +5,7 @@
 @import '~/registry/combobox.css'
 @import '~/registry/toggle.css'
 @import '~/registry/chip-input.css'
+@import '~/registry/composer.css'
 @import uiCheckbox from '~/registry/checkbox.tscl'
 @import uiSwitch from '~/registry/switch.tscl'
 @import uiRadioGroup from '~/registry/radio-group.tscl'
@@ -12,6 +13,7 @@
 @import uiSelect from '@clarusjs/ui-primitives/select.tscl'
 @import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
 @import uiChipInput from '@clarusjs/ui-primitives/chip-input.tscl'
+@import editorComposer from '@clarusjs/editor/components/composer.tscl'
 @import uiToggle from '@clarusjs/ui-primitives/toggle.tscl'
 @import uiToggleGroup from '@clarusjs/ui-primitives/toggle-group.tscl'
 @import uiToggleItem from '@clarusjs/ui-primitives/toggle-item.tscl'
@@ -78,6 +80,18 @@
     <uiCombobox [id]="'p-many'" [label]="'Fruits'" [options]="fruits" [multiple]="true" [values]="['apple', 'pear']" />
   </div>
   <div data-sample="chip-input"><uiChipInput id="p-tags" label="Tags" [values]="['css', 'html']" /></div>
+  <div data-sample="composer">
+    <editorComposer attach="interaction" [id]="'p-composer'" [maxLength]="20" [value]="'Over the twenty-character limit'" />
+    {{-- What the editor makes once attached: the editable (empty, then with marks and a mention), and an open list. --}}
+    <div data-part="composer">
+      <div data-part="field"><div role="textbox" data-empty data-placeholder="Reply…"><p></p></div></div>
+    </div>
+    <div data-part="composer">
+      <div data-part="field"><div role="textbox"><p>Hi <span data-mention="u1">@Mara</span>, <code>npm</code> <a href="/components">link</a></p><pre><code>let a = 1</code></pre></div></div>
+      <div data-part="footer"><div data-part="toolbar" role="toolbar" aria-label="Formatting"><button type="button" data-part="tool" aria-label="Bold" aria-pressed="true">B</button><button type="button" data-part="tool" aria-label="Italic" aria-pressed="false" disabled>I</button></div><span data-part="count">3/20</span><button type="submit" data-part="send">Send</button></div>
+    </div>
+    <ul data-part="suggestions" role="listbox" aria-label="People"><li data-part="suggestion" role="option" aria-selected="true">Mara</li><li data-part="suggestion" role="option" aria-selected="false">Marcus</li></ul>
+  </div>
   <div data-sample="toggle">
     <uiToggle aria-label="Bold"><b>B</b></uiToggle>
     <uiToggleGroup label="Alignment" value="left">

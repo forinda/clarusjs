@@ -1,6 +1,6 @@
 {{-- A component's API, read from its files when the site builds: each .tscl's @input (type, default), @model (bound
      two ways with [(name)]), @event ((name)="…", with what $event holds) and the @types they use. Its own files (which
-     wrap the parts, so theirs is the API used), else the @clarusjs/ui-primitives parts. Generated: it can't drift. --}}
+     wrap the parts, so theirs is the API used), else its parts (@clarusjs/ui-primitives', or partsFrom's). Generated: it can't drift. --}}
 @import { registry } from '~/registry.ts'
 @input name: string
 
@@ -13,7 +13,8 @@
   if (!entry) throw new Error(`componentApi: no registry entry "${name}"`)
   // Run from the package (vite build, vite preview): its registry, and the primitives it depends on.
   const own = entry.files.filter((f) => f.endsWith('.tscl')).map((f) => ({ file: f, from: '', path: resolve('src/registry', f) }))
-  const parts = entry.parts.filter((f) => f.endsWith('.tscl')).map((f) => ({ file: f, from: '@clarusjs/ui-primitives', path: resolve('node_modules/@clarusjs/ui-primitives/src', f) }))
+  const from = entry.partsFrom ?? '@clarusjs/ui-primitives'
+  const parts = entry.parts.filter((f) => f.endsWith('.tscl')).map((f) => ({ file: f, from, path: resolve('node_modules', from, 'src', f) }))
   const flat = (t) => t.replace(/\s+/g, ' ').trim()
   // A long default (an example list) is shortened: the source, below on the page, has it whole.
   const short = (t) => (t.length > 48 ? t.slice(0, 44).trimEnd() + ' …' : t)

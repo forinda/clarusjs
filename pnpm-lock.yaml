@@ -544,6 +544,9 @@ importers:
 
   packages/ui-site:
     dependencies:
+      '@clarusjs/editor':
+        specifier: workspace:^
+        version: link:../editor
       '@clarusjs/theme-docs':
         specifier: workspace:*
         version: link:../theme-docs

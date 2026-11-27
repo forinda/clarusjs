@@ -37,8 +37,11 @@ export type Entry = {
   description: string
   /** Files in src/registry/ to copy; the first is the component (a block's: its page, 'blocks/login/login.tscl'). */
   files: string[]
-  /** @clarusjs/ui-primitives parts it renders ('switch.tscl', …); [] if none. */
+  /** The parts it renders ('switch.tscl', …), from @clarusjs/ui-primitives or partsFrom; [] if none. */
   parts: string[]
+  /** The package its parts come from, when not @clarusjs/ui-primitives ('@clarusjs/editor'): a part is imported as
+   *  '<package>/<part>' and read from its src/<part>. */
+  partsFrom?: string
   /** Other entries it imports as ./<name>.tscl. */
   uses: string[]
   /** Its Tailwind version: <name>.tw.tscl (the same inputs and look, classes instead of <style>), copied as <name>.tscl;
@@ -52,7 +55,7 @@ export type Entry = {
   island: boolean
   /** npm packages to install beside it ('zod'). */
   packages?: string[]
-  /** The @clarusjs/ui-primitives version it needs, when parts is not empty. */
+  /** The version of its parts' package it needs, when parts is not empty. */
   since?: string
   /** For a styled part: the sections of @clarusjs/ui's ui.css its global rules copy, in order (a .tscl's
    *  <style global>, or a whole .css file for parts used as a set). */
@@ -499,6 +502,20 @@ export const registry: Entry[] = [
     island: true,
     since: '0.3.0',
     sections: ['focus', 'field-select', 'chips', 'chip-input', 'motion'],
+  },
+  {
+    name: 'composer',
+    group: 'Form',
+    title: 'Composer',
+    description: 'A chat or comment box: a textarea with no JavaScript, then an editor with mentions, commands and emoji.',
+    files: ['composer.css'],
+    tailwind: ['composer.tw.css'],
+    parts: ['components/composer.tscl'],
+    partsFrom: '@clarusjs/editor',
+    uses: [],
+    island: true,
+    since: '0.1.0',
+    sections: ['focus', 'composer', 'motion'],
   },
   {
     name: 'progress',

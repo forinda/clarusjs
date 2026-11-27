@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@clarusjs/editor": "workspace:^",
     "@clarusjs/theme-docs": "workspace:*",
     "@clarusjs/ui-primitives": "workspace:*",
     "clarusjs": "workspace:*",

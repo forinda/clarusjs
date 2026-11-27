@@ -276,7 +276,7 @@ test('#review: each usage example sits next to its component and imports only wh
     const demo = readFileSync(resolve(registryDir, `${e.name}-demo.tscl`), 'utf8')
     for (const [, s] of demo.matchAll(/@import\s+(?:[\w$]+\s+from\s+)?'([^']+)'/g)) {
       const local = /^\.\/([a-z-]+)\.(tscl|css)$/.exec(s!)
-      const ok = /^@clarusjs\/ui-primitives\//.test(s!) || /^clarusjs(\/|$)/.test(s!)
+      const ok = /^@clarusjs\/ui-primitives\//.test(s!) || /^clarusjs(\/|$)/.test(s!) || (!!e.partsFrom && e.parts.some((p) => s === `${e.partsFrom}/${p}`))
         || (!!local && (e.files.includes(`${local[1]}.${local[2]}`) || [...e.uses, ...(e.example ?? [])].includes(local[1]!)))
       expect(ok, `${e.name}-demo.tscl imports ${s}`).toBe(true)
     }
