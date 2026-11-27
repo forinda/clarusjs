@@ -78,7 +78,7 @@ async function page(field: object = {}, before?: (t: HTMLTextAreaElement) => voi
 
 test('the field from the server: a labelled textarea with the value as its text, and the format it posts: text', async () => {
   const html = await render('field', { id: 'c', name: 'msg', label: 'Reply', placeholder: 'Reply…', format: 'html', value: '<p>Hi &amp; <b>bye</b></p>' })
-  expect(html).toMatch(/<textarea id="c" data-part="field" name="msg" placeholder="Reply…" aria-label="Reply" rows="3"[^>]*>\nHi &amp; bye<\/textarea>/)
+  expect(html).toMatch(/<textarea id="c" data-part="editor" name="msg" placeholder="Reply…" aria-label="Reply" rows="3"[^>]*>\nHi &amp; bye<\/textarea>/)
   expect(html).toMatch(/<input type="hidden" name="msg-format"[^>]* value="text"/)
   // the tools start disabled: nothing to run until the field's editor does
   expect(await render('tool', { command: 'bold', label: 'Bold' }, { default: 'B' })).toMatch(/<button type="button" data-part="tool" data-command="bold" aria-label="Bold" aria-pressed="false" disabled[^>]*>B<\/button>/)

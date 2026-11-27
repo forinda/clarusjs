@@ -10,7 +10,7 @@
   makes Enter a new line and Ctrl/⌘+Enter send. Files pasted or dropped go to (files). With [name] in a form it posts
   the value under that name, and <name>-format: 'text' (posted with no JavaScript), 'json' or 'html'. Pass that to
   validate() from @clarusjs/editor/server.
-  Headless: data-part="field" (the textarea, then the editor's box, whose editable is [role='textbox']).
+  Headless: data-part="editor" (the textarea, then the editor's box, whose editable is [role='textbox']).
 --}}
 @input id: string = 'editor'
 @input label: string = 'Message'
@@ -86,7 +86,7 @@
 </script>
 
 @if (ready) {
-  <div [id]="id" data-part="field" [use]="mount"></div>
+  <div [id]="id" data-part="editor" [use]="mount"></div>
   @if (name) {
     <input type="hidden" [name]="name" [value]="typeof value === 'string' ? value : JSON.stringify(value)" [use]="(el) => { hidden = el }" />
     <input type="hidden" [name]="name + '-format'" [value]="format" />
@@ -94,7 +94,7 @@
 } @else {
   <textarea
     [id]="id"
-    data-part="field"
+    data-part="editor"
     [name]="name || false"
     [placeholder]="placeholder || false"
     [aria-label]="label"
