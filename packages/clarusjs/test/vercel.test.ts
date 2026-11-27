@@ -48,7 +48,6 @@ async function emulate(output: string, fn: Fn | undefined, url: string): Promise
     if (!m) continue
     Object.assign(headers, route.headers ?? {})
     if (route.status && route.headers?.Location) return { status: route.status, headers, body: '' }
-    if (route.continue) continue
     if (route.dest) {
       const dest = new URL(route.dest.replace(/\$(\d)/g, (_, i: string) => m[Number(i)] ?? ''), 'https://site.example')
       if (phase === 'filesystem' && dest.pathname === '/clarusjs-server' && fn) {
@@ -58,7 +57,11 @@ async function emulate(output: string, fn: Fn | undefined, url: string): Promise
       }
       pathname = dest.pathname
       if (dest.search) search = dest.search
-      if (phase === undefined) { const f = file(pathname); if (f) return { status: 200, headers, body: readFileSync(f, 'utf8') } }
+      // Without continue, a rewrite ends routing: the file at its destination, or nothing.
+      if (!route.continue) {
+        const f = file(pathname)
+        return f ? { status: 200, headers, body: readFileSync(f, 'utf8') } : { status: 404, headers, body: '' }
+      }
     }
   }
   // The error phase: its route with a status and a static dest.
@@ -124,6 +127,8 @@ test('routes: static pages (with and without the slash), redirects, headers, ser
   const moved = await emulate(output, fn, 'https://site.example/old')
   expect(moved.status).toBe(301)
   expect(moved.headers.Location).toBe('/about')
+  // A server route with the slash: the slash rewrite continues to the function's route.
+  expect(unscoped((await emulate(output, fn, 'https://site.example/account/8/')).body)).toContain('<h1>Account 8</h1>')
   const account = await emulate(output, fn, 'https://site.example/account/7')
   expect(account.status).toBe(200)
   expect(unscoped(account.body)).toContain('<h1>Account 7</h1>')
@@ -149,4 +154,12 @@ test('under a base: static files and clean URLs under it', async () => {
   const out = resolve(docs, '.vercel/output')
   expect(JSON.parse(readFileSync(resolve(out, 'config.json'), 'utf8')).overrides).toEqual({ 'docs/index.html': { path: 'docs' }, 'docs/guide/index.html': { path: 'docs/guide' } })
   for (const path of ['/docs', '/docs/', '/docs/guide/']) expect((await emulate(out, undefined, `https://site.example${path}`)).status, path).toBe(200)
+}, 120_000)
+
+test('an absolute base (a CDN URL): static files and routes under its path', async () => {
+  const cdn = site({ 'src/pages/index.tscl': '<h1>Docs</h1>' })
+  await (await createBuilder({ root: cdn, base: 'https://cdn.example/docs/', configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'vercel' })] })).buildApp()
+  const out = resolve(cdn, '.vercel/output')
+  expect(JSON.parse(readFileSync(resolve(out, 'config.json'), 'utf8')).overrides).toEqual({ 'docs/index.html': { path: 'docs' } })
+  expect(existsSync(resolve(out, 'static/docs/index.html'))).toBe(true)
 }, 120_000)

@@ -8,6 +8,19 @@ import { resolve } from 'node:path'
 /** @see https://clarusjs.com/guide/environment-variables */
 export type EnvOption = { server?: string[]; browser?: string[] }
 
+/** The values this module put in process.env (not the host's), by name. */
+const loaded = new Map<string, string>()
+
+/**
+ * Takes back what an earlier load put in process.env (a dev server restarted, a second build in one process): those
+ * values are the plugin's, not the host's. Call it before Vite's loadEnv, which prefers process.env to the files. A
+ * value the host changed since stays the host's.
+ */
+export function releaseServerEnv(): void {
+  for (const [key, value] of loaded) if (process.env[key] === value) delete process.env[key]
+  loaded.clear()
+}
+
 /**
  * `all`: Vite's loadEnv(mode, dir, '') (`.env`, `.env.local`, `.env.[mode]`, `.env.[mode].local`). Puts every variable
  * without a browser prefix in process.env for server code, unless already set (the host's value wins). Then checks the
@@ -15,7 +28,10 @@ export type EnvOption = { server?: string[]; browser?: string[] }
  */
 export function loadServerEnv(all: Record<string, string>, prefixes: string[], required: EnvOption = {}): string | undefined {
   for (const [key, value] of Object.entries(all)) {
-    if (!prefixes.some((p) => key.startsWith(p)) && process.env[key] === undefined) process.env[key] = value
+    if (!prefixes.some((p) => key.startsWith(p)) && process.env[key] === undefined) {
+      process.env[key] = value
+      loaded.set(key, value)
+    }
   }
   for (const key of required.browser ?? []) {
     if (!prefixes.some((p) => key.startsWith(p))) throw new Error(`clarusjs: env.browser: '${key}' doesn't start with ${prefixes.join(' or ')}, so Vite won't send it to the browser`)

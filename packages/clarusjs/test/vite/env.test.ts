@@ -73,3 +73,21 @@ test('env: .clarusjs/env.d.ts types the named variables as strings', async () =>
     'declare namespace NodeJS {\n  interface ProcessEnv {\n    readonly CL_ENV_DB: string\n  }\n}\n',
   )
 })
+
+test('a second config in the same process loads its own .env: a value the plugin loaded is not a host value', async () => {
+  set.push('CL_ENV_SWAP')
+  const page = (v: string) => ({ '.env': `CL_ENV_SWAP=${v}\n`, 'src/pages/index.tscl': '<script server>const v = process.env.CL_ENV_SWAP</script>\n<p>{{ v }}</p>' })
+  const staging = site(page('staging'))
+  await build(staging)
+  expect(readFileSync(resolve(staging, 'dist/client/index.html'), 'utf8')).toContain('staging')
+  const production = site(page('production'))
+  await build(production)
+  expect(readFileSync(resolve(production, 'dist/client/index.html'), 'utf8')).toContain('production')
+})
+
+test('envDir: false loads no .env file, and still fails the build on a missing required variable', async () => {
+  const root = site({ '.env': 'CL_ENV_FROM_FILE=1\n', 'src/pages/index.tscl': '<p>Hi</p>' })
+  // Thrown by the config hook, so by createBuilder itself.
+  await expect((async () => (await createBuilder({ root, envDir: false, configFile: false, customLogger: quiet, plugins: [clarusjs({ env: { server: ['CL_ENV_FROM_FILE'] } })] })).buildApp())())
+    .rejects.toThrow('clarusjs: missing environment variables: CL_ENV_FROM_FILE (server)')
+})

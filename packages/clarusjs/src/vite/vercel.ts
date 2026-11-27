@@ -39,7 +39,8 @@ export function writeVercelOutput(root: string, client: string, server: string, 
       .map((line) => line.trim().split(/\s+/))
       .filter((parts) => parts.length >= 2 && parts[0]!.startsWith('/'))
       .map(([from, to, status]) => ({ src: `^${escape(from!.replace(/\/$/, '') || '/')}/?$`, status: Number(status ?? 301), headers: { Location: to } })),
-    { src: '^/(.+)/$', dest: '/$1' },
+    // The slash form rewritten to the page's path; continue, so the filesystem and the server routes still see it.
+    { src: '^/(.+)/$', dest: '/$1', continue: true },
     { handle: 'filesystem' },
     ...serverRoutes.map((route) => ({ src: vercelSource(route, prefix, fragments), dest: `/${FUNCTION}` })),
     ...(existsSync(resolve(client, '404.html')) ? [{ handle: 'error' }, { src: '.*', status: 404, dest: `${prefix}/404.html` }] : []),

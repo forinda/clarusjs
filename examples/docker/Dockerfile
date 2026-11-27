@@ -1,6 +1,7 @@
 # A clarusjs site in a container: built with the dev dependencies, run with only the production ones.
 #   docker build -t my-site . && docker run -p 3000:3000 my-site
 # clarusjs is a dependency (not a devDependency): the built server imports it at runtime.
+# package-lock.json must be committed (run npm install once): npm ci installs exactly what it lists.
 FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

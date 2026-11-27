@@ -15,7 +15,7 @@ async function flatten(plugins: unknown): Promise<Plugin[]> {
   return value && typeof value === 'object' ? [value as Plugin] : []
 }
 
-type Project = { sources: CheckSource[]; viteAliases: unknown; lint: LintConfig | undefined; lintRules: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }; env?: EnvOption }
+type Project = { sources: CheckSource[]; viteAliases: unknown; lint: LintConfig | undefined; lintRules: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }; env?: EnvOption; envPrefix?: string | string[] }
 const none: Project = { sources: [], viteAliases: undefined, lint: undefined, lintRules: [] }
 
 export async function loadProject(root: string): Promise<Project> {
@@ -24,5 +24,5 @@ export async function loadProject(root: string): Promise<Project> {
   const loaded = await vite.loadConfigFromFile({ command: 'build', mode: 'production' }, undefined, resolve(root), 'silent')
   if (!loaded) return none
   const plugin = (await flatten(loaded.config.plugins)).find((p) => p.name === 'clarusjs')
-  return { sources: plugin?.api?.sources ?? [], viteAliases: loaded.config.resolve?.alias, lint: plugin?.api?.lint, lintRules: plugin?.api?.lintRules ?? [], components: plugin?.api?.components, env: plugin?.api?.env }
+  return { sources: plugin?.api?.sources ?? [], viteAliases: loaded.config.resolve?.alias, lint: plugin?.api?.lint, lintRules: plugin?.api?.lintRules ?? [], components: plugin?.api?.components, env: plugin?.api?.env, envPrefix: loaded.config.envPrefix }
 }

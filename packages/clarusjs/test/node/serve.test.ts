@@ -1,6 +1,6 @@
 // #600: `clarusjs serve` / serve() from clarusjs/node runs a built site on any Node host: files with cache headers,
 // server routes through the built handler, the headers the build wrote to _headers, and the 404 page.
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { get } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -183,3 +183,47 @@ test('header rules ignore case, as the file systems that serve /ADMIN/x as admin
   const rules = parseHeaders('/admin/*\n  X-Robots-Tag: noindex\n')
   expect(headersFor(rules, '/ADMIN/secret.html').get('x-robots-tag')).toBe('noindex')
 })
+
+test('serve(): an absolute base (a CDN URL) serves pages at its path', async () => {
+  const root = site({ 'src/pages/index.tscl': '<h1>Docs home</h1>' })
+  await build(root, {}, 'https://cdn.example.com/docs/')
+  const server = await serve({ root, port: 0, host: '127.0.0.1' })
+  const { port } = server.address() as AddressInfo
+  try {
+    expect(await (await fetch(`http://127.0.0.1:${port}/docs/`)).text()).toContain('Docs home')
+  } finally {
+    await new Promise((done) => server.close(done))
+  }
+}, 120_000)
+
+test('serve(): a streamed response is sent as it comes (an open event stream), and an unreadable file is a 500, not a crash', async () => {
+  const root = site({
+    'src/pages/index.tscl': '<h1>Home</h1>',
+    'src/pages/api/events.ts': `export function GET() {
+  let n = 0
+  const body = new ReadableStream({ pull(c) { if (n++ === 0) c.enqueue(new TextEncoder().encode('data: first\\n\\n')); else return new Promise(() => {}) } })
+  return new Response(body, { headers: { 'content-type': 'text/event-stream' } })
+}`,
+    'public/secret.txt': 'x',
+  })
+  await build(root, {})
+  const server = await serve({ root, port: 0, host: '127.0.0.1' })
+  const { port } = server.address() as AddressInfo
+  try {
+    // The stream never ends: the first event arrives anyway.
+    const controller = new AbortController()
+    const res = await fetch(`http://127.0.0.1:${port}/api/events`, { signal: controller.signal })
+    const { value } = await res.body!.getReader().read()
+    expect(new TextDecoder().decode(value)).toBe('data: first\n\n')
+    controller.abort()
+    if (process.platform !== 'win32' && process.getuid?.() !== 0) {
+      chmodSync(resolve(root, 'dist/client/secret.txt'), 0o000)
+      expect((await fetch(`http://127.0.0.1:${port}/secret.txt`).catch(() => ({ status: 0 }))).status).not.toBe(200)
+      // Still serving.
+      expect((await fetch(`http://127.0.0.1:${port}/`)).status).toBe(200)
+    }
+  } finally {
+    server.closeAllConnections()
+    await new Promise((done) => server.close(done))
+  }
+}, 120_000)

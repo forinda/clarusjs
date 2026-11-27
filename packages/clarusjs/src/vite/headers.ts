@@ -75,3 +75,22 @@ export function readHeaders(dir: string): ParsedRule[] {
   const file = resolve(dir, '_headers')
   return existsSync(file) ? parseHeaders(readFileSync(file, 'utf8')) : []
 }
+
+/**
+ * JavaScript for a generated function or worker: `withHeaders(response, path)` adds the _headers rules matching `path`
+ * (as written, or decoded) to a response that doesn't set them itself. For hosts that apply _headers to static files
+ * only (Netlify, Cloudflare Pages).
+ */
+export function headersCode(dir: string): string {
+  const rules = readHeaders(dir).map((rule) => [rule.regex.source, rule.headers])
+  return [
+    `const rules = ${JSON.stringify(rules)}.map(([src, headers]) => [new RegExp(src, 'i'), headers])`,
+    'function withHeaders(response, path) {',
+    '  let decoded = path',
+    '  try { decoded = decodeURIComponent(path) } catch {}',
+    '  const headers = new Headers(response.headers)',
+    '  for (const [regex, set] of rules) if (regex.test(decoded) || regex.test(path)) for (const [name, value] of set) if (!response.headers.has(name)) headers.set(name, headers.has(name) ? `${headers.get(name)}, ${value}` : value)',
+    '  return new Response(response.body, { status: response.status, statusText: response.statusText, headers })',
+    '}',
+  ].join('\n')
+}

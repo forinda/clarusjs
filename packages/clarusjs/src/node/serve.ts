@@ -5,6 +5,8 @@ import { createReadStream, existsSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { extname, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { pipeline } from 'node:stream/promises'
+import { basePath } from '../server/head.ts'
 import { canonical, headersFor, readHeaders } from '../vite/headers.ts'
 import { acceptsEncoding, sendResponse, toRequest } from '../vite/node.ts'
 
@@ -45,7 +47,8 @@ export async function createListener(root = '.'): Promise<(req: IncomingMessage,
   const entry = resolve(root, 'dist/server/index.mjs')
   if (!existsSync(client)) throw new Error(`clarusjs serve: no ${client}; run vite build first`)
   const app = existsSync(entry) ? ((await import(pathToFileURL(entry).href)) as { default: App }).default : undefined
-  const base = app?.base ?? '/'
+  // The base's path: an absolute base (https://cdn.example/docs/) is served at /docs/.
+  const base = basePath(app?.base ?? '/')
   const rules = readHeaders(client)
 
   // A file under dist/client: the path itself, else its page.
@@ -88,7 +91,15 @@ export async function createListener(root = '.'): Promise<(req: IncomingMessage,
     res.statusCode = status
     res.setHeader('content-length', statSync(body).size)
     if (req.method === 'HEAD') return void res.end()
-    createReadStream(body).pipe(res)
+    // A file that can't be read (permissions, removed since the lookup): a 500 if nothing was sent yet, never an
+    // unhandled stream error that ends the process.
+    pipeline(createReadStream(body), res).catch((err) => {
+      if (res.headersSent) return void res.destroy(err)
+      res.statusCode = 500
+      res.removeHeader('content-length')
+      res.removeHeader('content-encoding')
+      res.end()
+    })
   }
 
   return async (req, res) => {

@@ -21,7 +21,7 @@ import { writeVercelOutput } from './vercel.ts'
 import { writeCloudflareWorker } from './cloudflare.ts'
 import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
-import { loadServerEnv, writeEnvTypes, type EnvOption } from './env.ts'
+import { loadServerEnv, releaseServerEnv, writeEnvTypes, type EnvOption } from './env.ts'
 import { canonical, checkHeaders, headersFor, readHeaders, writeHeaders, type HeaderRules } from './headers.ts'
 import { projectAliases, resolveAlias, type Alias } from './aliases.ts'
 import { gitDates, sitemapFiles } from './sitemap.ts'
@@ -480,11 +480,14 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       }
       if (env.isPreview) config.build = { outDir: CLIENT_OUT } // preview serves the static site
       // .env files for server code (process.env), in dev, build and preview; then the env option's required variables.
-      if (userConfig.envDir !== false) {
-        const missing = loadServerEnv(loadEnv(env.mode, resolve(projectRoot, userConfig.envDir ?? '.'), ''), [userConfig.envPrefix ?? 'VITE_'].flat(), options.env)
-        if (missing && env.command === 'build' && !env.isPreview) throw new Error(missing)
-        envWarning = missing && !env.isPreview ? missing : undefined
-      }
+      // envDir: false loads no file; the required variables are still checked, against the environment.
+      releaseServerEnv()
+      const envFiles = userConfig.envDir === false ? {} : loadEnv(env.mode, resolve(projectRoot, userConfig.envDir ?? '.'), '')
+      const prefixes = [userConfig.envPrefix ?? 'VITE_'].flat()
+      // Browser variables come from the environment too (Vite reads VITE_ ones there), not only the files.
+      const missing = loadServerEnv({ ...Object.fromEntries(Object.entries(process.env).filter(([k, v]) => v !== undefined && prefixes.some((p) => k.startsWith(p))) as [string, string][]), ...envFiles }, prefixes, options.env)
+      if (missing && env.command === 'build' && !env.isPreview) throw new Error(missing)
+      envWarning = missing && !env.isPreview ? missing : undefined
       if (options.env && !env.isPreview) writeEnvTypes(projectRoot, options.env)
       // Packages that ship components are bundled for server rendering: Node can't load a .tscl file itself.
       const shipping = new Set<string>()
@@ -717,13 +720,14 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const sitemap = options.sitemap !== false ? `\nSitemap: ${new URL('sitemap.xml', new URL(builder.config.base, options.site.url.replace(/\/?$/, '/'))).href}\n` : ''
           writeFileSync(resolve(out, 'robots.txt'), `User-agent: *\nAllow: /\n${sitemap}`)
         }
-        if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
+        if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true, out)
         // Vite's manifest was for this build (island URLs, clarusjs-manifest.json); it isn't part of the site.
         rmSync(resolve(out, '.vite'), { recursive: true, force: true })
         if (options.compress) precompress(out)
-        // Adapters last: they copy dist/client as it ships (no .vite manifest).
-        if (options.adapter === 'vercel') writeVercelOutput(builder.config.root, out, dirname(entry), server.map((s) => s.route), builder.config.base, options.fragments === true)
-        if (options.adapter === 'cloudflare') writeCloudflareWorker(out, dirname(entry), server.map((s) => s.route), builder.config.base, options.fragments === true)
+        // Adapters last: they copy dist/client as it ships (no .vite manifest). The base's path: an absolute base
+        // (https://cdn.example/docs/) is served at /docs/.
+        if (options.adapter === 'vercel') writeVercelOutput(builder.config.root, out, dirname(entry), server.map((s) => s.route), basePath(builder.config.base), options.fragments === true)
+        if (options.adapter === 'cloudflare') writeCloudflareWorker(out, dirname(entry), server.map((s) => s.route), basePath(builder.config.base), options.fragments === true)
       }
       await once()
       if (watching) watchApp(builder, once)

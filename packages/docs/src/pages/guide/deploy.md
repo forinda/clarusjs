@@ -134,6 +134,18 @@ clarusjs({ adapter: 'cloudflare', routes: { '/account/*': 'server' } })
 }
 ```
 
+A site with no server routes (and no base) gets no worker: deploy the folder as static assets alone.
+
+```jsonc [wrangler.jsonc]
+{
+  "name": "my-site",
+  "compatibility_date": "2025-09-01",
+  "assets": { "directory": "dist/client" }
+}
+```
+
+Under a base (`base: '/docs/'`), Cloudflare serves the folder at the site's root, so the worker takes the base's requests and serves its files without it. That holds even for a static site. The same happens when a site has more server routes than Pages' 100 routing rules allow: the worker then takes every request.
+
 On Cloudflare, `process.env` holds the project's variables and secrets (with `nodejs_compat` and a compatibility date from 2025-04-01 on), so server code reads them as on any host. See [Environment variables](/guide/environment-variables).
 
 ## Node {since=0.17.0}
@@ -160,12 +172,13 @@ createServer((req, res) => {
 
 ## Docker {since=0.17.0}
 
-A two-stage image: the first stage builds with the dev dependencies, and the second runs [`clarusjs serve`](#node) with only the production ones. Put `clarusjs` in `dependencies`, not `devDependencies`, because the built server imports it at runtime.
+A two-stage image: the first stage builds with the dev dependencies, and the second runs [`clarusjs serve`](#node) with only the production ones. Put `clarusjs` in `dependencies`, not `devDependencies`, because the built server imports it at runtime. Commit `package-lock.json` (run `npm install` once if you haven't): `npm ci` installs exactly what it lists, and fails without it.
 
 ```dockerfile [Dockerfile]
 # A clarusjs site in a container: built with the dev dependencies, run with only the production ones.
 #   docker build -t my-site . && docker run -p 3000:3000 my-site
 # clarusjs is a dependency (not a devDependency): the built server imports it at runtime.
+# package-lock.json must be committed (run npm install once): npm ci installs exactly what it lists.
 FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -201,7 +214,7 @@ It listens on `$PORT` (3000) on every interface, runs as the unprivileged `node`
 
 ## Headers {since=0.17.0}
 
-Set response headers in the plugin's [`headers`](/reference/vite-plugin#headers) option. The build writes them to `_headers`. Netlify and Cloudflare Pages read that file as it is. `clarusjs serve` and `vite preview` apply it, and the Vercel and Cloudflare adapters turn it into routes and worker code. Every site already sends `X-Content-Type-Options: nosniff`, a `Referrer-Policy`, and immutable caching for hashed assets. A pattern applies to its path with and without the trailing slash, and its case is ignored.
+Set response headers in the plugin's [`headers`](/reference/vite-plugin#headers) option. The build writes them to `_headers`. Netlify and Cloudflare Pages read that file as it is for static files, and the Netlify function and the Cloudflare worker apply it to the responses they make (a header a route sets itself wins). `clarusjs serve` and `vite preview` apply it, and the Vercel adapter turns it into routes. Every site already sends `X-Content-Type-Options: nosniff`, a `Referrer-Policy`, and immutable caching for hashed assets. A pattern applies to its path with and without the trailing slash, and its case is ignored.
 
 clarusjs adds no inline scripts of its own: an island's state is JSON, which a Content-Security-Policy doesn't block, and the loader is a file. A strict policy fits:
 

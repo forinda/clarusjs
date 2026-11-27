@@ -92,3 +92,38 @@ test('without server routes: no worker', async () => {
   expect(existsSync(resolve(plain, 'dist/client/_worker.js'))).toBe(false)
   expect(existsSync(resolve(plain, 'dist/client/_routes.json'))).toBe(false)
 }, 120_000)
+
+test('under a base (or an absolute one): the worker takes the base and hands static requests to ASSETS without it', async () => {
+  const docs = site({ 'src/pages/index.tscl': '<h1>Docs</h1>', 'src/pages/about.tscl': '<h1>About</h1>', 'src/pages/api/ping.ts': 'export function GET() { return new Response("pong") }' })
+  await (await createBuilder({ root: docs, base: 'https://cdn.example/docs/', configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'cloudflare' })] })).buildApp()
+  const out = resolve(docs, 'dist/client')
+  expect(JSON.parse(readFileSync(resolve(out, '_routes.json'), 'utf8'))).toEqual({ version: 1, include: ['/docs', '/docs/*'], exclude: [] })
+  const asked: string[] = []
+  const worker = new Miniflare({
+    modules: true, scriptPath: resolve(out, '_worker.js/index.js'), modulesRoot: resolve(out, '_worker.js'),
+    modulesRules: [{ type: 'ESModule', include: ['**/*.js', '**/*.mjs'] }], compatibilityDate: '2025-09-01', compatibilityFlags: ['nodejs_compat'],
+    serviceBindings: { ASSETS: (request: Request) => { asked.push(new URL(request.url).pathname); return new Response('asset') } },
+  })
+  try {
+    expect(await (await worker.dispatchFetch('https://site.example/docs/api/ping')).text()).toBe('pong')
+    expect(await (await worker.dispatchFetch('https://site.example/docs/about')).text()).toBe('asset')
+    expect(asked).toEqual(['/about'])
+  } finally {
+    await worker.dispose()
+  }
+}, 120_000)
+
+test("more include rules than Pages allows (100): the worker takes every request, and hands static ones to ASSETS", async () => {
+  const many: Record<string, string> = { 'src/pages/index.tscl': '<h1>Home</h1>' }
+  for (let i = 0; i < 51; i++) many[`src/pages/api/e${i}.ts`] = 'export function GET() { return new Response("ok") }'
+  const root = site(many)
+  await (await createBuilder({ root, configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'cloudflare' })] })).buildApp()
+  expect(JSON.parse(readFileSync(resolve(root, 'dist/client/_routes.json'), 'utf8'))).toEqual({ version: 1, include: ['/*'], exclude: [] })
+}, 120_000)
+
+test('a static site under a base gets the worker too (to serve its files under the base)', async () => {
+  const docs = site({ 'src/pages/index.tscl': '<h1>Docs</h1>' })
+  await (await createBuilder({ root: docs, base: '/docs/', configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'cloudflare' })] })).buildApp()
+  expect(existsSync(resolve(docs, 'dist/client/_worker.js/index.js'))).toBe(true)
+  expect(JSON.parse(readFileSync(resolve(docs, 'dist/client/_routes.json'), 'utf8')).include).toEqual(['/docs', '/docs/*'])
+}, 120_000)
