@@ -50,7 +50,8 @@
     "./vite": "./src/vite/plugin.ts",
     "./manifest": "./src/server/manifest.ts",
     "./views": "./src/server/views.ts",
-    "./node": "./src/node/serve.ts"
+    "./node": "./src/node/serve.ts",
+    "./seo": "./src/seo.ts"
   },
   "bin": {
     "clarusjs": "./dist/cli/index.js"
@@ -137,6 +138,10 @@
       "./node": {
         "types": "./dist/node/serve.d.ts",
         "default": "./dist/node/serve.js"
+      },
+      "./seo": {
+        "types": "./dist/seo.d.ts",
+        "default": "./dist/seo.js"
       }
     }
   },
