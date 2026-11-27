@@ -75,6 +75,8 @@ jobs:
       - run: pnpm docs:check
       - run: pnpm --filter @clarusjs/docs exec playwright install --with-deps chromium
       - run: pnpm --filter @clarusjs/docs test:e2e
+      # the same site under a base (/clarusjs/, as on GitHub Pages): every link, file and script stays under it
+      - run: pnpm --filter @clarusjs/docs test:e2e:base
       - if: failure()
         uses: actions/upload-artifact@v7
         with:

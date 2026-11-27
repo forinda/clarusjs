@@ -11,7 +11,8 @@
     "check": "node --experimental-strip-types ../clarusjs/src/cli/index.ts check --strict",
     "explain": "node --experimental-strip-types --no-warnings ../clarusjs/src/cli/index.ts explain",
     "test": "vitest run",
-    "lint": "eslint \"src/**/*.tscl\""
+    "lint": "eslint \"src/**/*.tscl\"",
+    "test:e2e:base": "playwright test -c playwright.base.config.ts"
   },
   "dependencies": {
     "@clarusjs/editor": "workspace:*",

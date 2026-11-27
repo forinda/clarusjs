@@ -9,6 +9,20 @@ description: "What vite build makes, and how to deploy it: any static host, Netl
 
 <p class="lead">A site with only static pages is a folder of files, <code>dist/client</code>, that any host serves. Server routes need a host that runs code: an adapter writes what Netlify, Vercel or Cloudflare expect, and anywhere else runs <code>clarusjs serve</code>.</p>
 
+
+## A site under a path {since=0.18.0}
+
+Set Vite's `base` in `vite.config.ts` (`base: '/docs/'`), and write links as if the site were at the root: `/guide/routing`, `/logo.svg`. The base is added for you:
+
+- **in templates and Markdown:** every root-relative URL attribute (`href`, `src`, `srcset`, `action`, `formaction`, `poster`, `cite`, `data`), whether written (`href="/guide"`) or bound (`[href]="link"`), in pages, components, islands and client routes alike;
+- **in what clarusjs writes itself:** Vite's assets, the head tags from the plugin's `head` option, `h()` output, the 404 and 500 pages, headers, redirects and the sitemap;
+- **in `navigate('/account')`**, and in `href()`.
+
+A URL already under the base is left as it is, so `href()` and hand-written `/docs/…` links work too. For URLs built in code (`fetch()`, a link a script makes), use `withBase()` from `clarusjs/navigation`; `withoutBase()` does the reverse. Full URLs, `//host`, `#…` and relative paths are never changed.
+
+- **The build warns** about a link outside the base on the same site (a sibling project on GitHub Pages is fine; set `links: { outside: 'off' }` to stop the warning), and about a route that starts with the base itself (base `/about/` and a route `/about`): its links can't be told apart from the base's own.
+- **A CDN base** (`base: 'https://cdn.example.com/'`) applies to Vite's assets only; page links stay as written.
+
 ## What the build makes
 
 `vite build` writes:
@@ -35,7 +49,7 @@ A site's pages are static unless the [`routes`](/reference/vite-plugin#routes) o
 
 ## Any static host
 
-Upload `dist/client`. A host should send `404.html` (with status 404) for unknown paths, and serve `<path>/index.html` at `<path>/`. Most do both. For a site under a path, such as `example.com/docs/`, set Vite's `base: '/docs/'` in `vite.config.ts`: every link and asset URL gets it, and so do the headers and redirects. Then upload the folder's contents to that path.
+Upload `dist/client`. A host should send `404.html` (with status 404) for unknown paths, and serve `<path>/index.html` at `<path>/`. Most do both. For a site under a path, such as `example.com/docs/` or a GitHub Pages project site, set Vite's `base` (see [A site under a path](#a-site-under-a-path)). Then upload the folder's contents to that path.
 
 On a server of your own, with nginx for example, serve the folder like this. With [`compress: true`](/reference/vite-plugin#compress), the `.br` and `.gz` copies are sent as they are:
 

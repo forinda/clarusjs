@@ -7,6 +7,7 @@
 @input progress: string
 
 <script>
+  import { withoutBase } from 'clarusjs/navigation'
   import { load, stats } from './progress.ts'
   let xp = state(0)
   let ready = state(false)
@@ -16,7 +17,8 @@
     xp = s.xp
     ready = true
     for (const link of document.querySelectorAll('.sidebar ul a[href]')) {
-      const href = link.getAttribute('href') ?? ''
+      // the link has the site's base; lessons are routes, without it
+      const href = withoutBase(link.getAttribute('href') ?? '')
       if (!(link instanceof HTMLElement) || !lessons.includes(href)) continue
       const status = s.status(href)
       link.dataset.status = status
