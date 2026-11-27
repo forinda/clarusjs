@@ -191,3 +191,23 @@ test('review: an Enter just after compositionend sends outside Safari (Android s
   key(ed, 'Enter')
   expect(onSend).toHaveBeenCalledTimes(1)
 })
+
+test('reshape: over and maxLength for the count and Send parts; caret puts the cursor into a rich value by its text offset', () => {
+  const ed = createEditor({ element: mount(), extensions: composerExtensions(), format: 'json', maxLength: 3 })
+  expect([ed.maxLength, ed.over.get()]).toEqual([3, false])
+  type(ed, 'abcd')
+  expect(ed.over.get()).toBe(true)
+  // "Hi @Mara x\n\nend": offset 9 is just after "Hi @Mara " (the mention counts as "@Mara")
+  const value = { type: 'doc', content: [
+    { type: 'paragraph', content: [{ type: 'text', text: 'Hi ' }, { type: 'mention', attrs: { id: 'm', label: 'Mara' } }, { type: 'text', text: ' x', marks: [{ type: 'strong' }] }] },
+    { type: 'paragraph', content: [{ type: 'text', text: 'end' }] },
+  ] }
+  const at = (caret: number) => createEditor({ element: mount(), extensions: composerExtensions(), format: 'json', value, caret }).view.state.selection.from
+  expect(at(0)).toBe(1)
+  expect(at(3)).toBe(4) // before the mention
+  expect(at(9)).toBe(6) // after "Hi @Mara " : mention (1 position) then " "
+  expect(at(10)).toBe(7) // the end of the first paragraph
+  expect(at(11)).toBe(7) // between the two line breaks that part them: still its end
+  expect(at(12)).toBe(9) // the start of "end"
+  expect(at(99)).toBe(12) // past the end: the end
+})

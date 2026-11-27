@@ -1,6 +1,6 @@
 // createEditor: a ProseMirror view built from extensions, its value a clarusjs signal in the chosen format, with
 // Enter to send (never while an input method is composing), a length limit, and commands by name.
-import { effect, state, type ReadSignal, type Signal } from 'clarusjs/runtime'
+import { derived, effect, state, type ReadSignal, type Signal } from 'clarusjs/runtime'
 import { baseKeymap, chainCommands, newlineInCode } from 'prosemirror-commands'
 import { inputRules } from 'prosemirror-inputrules'
 import { keymap } from 'prosemirror-keymap'
@@ -9,7 +9,7 @@ import { EditorState, Plugin, Selection, TextSelection, type Command, type Plugi
 import { EditorView } from 'prosemirror-view'
 import type { Extension } from './extension.ts'
 import { docLength } from './length.ts'
-import { fromText } from './from-text.ts'
+import { fromText, posAtOffset } from './from-text.ts'
 import { buildSchema } from './schema.ts'
 
 /**
@@ -23,6 +23,8 @@ export type EditorOptions = {
   value?: string | object
   /** Start from plain text instead (a textarea's, with its caret): blank lines make paragraphs. */
   text?: { value: string; caret?: number }
+  /** With value: where the cursor starts, as an offset into the value's plain text (a textarea's caret). */
+  caret?: number
   editable?: boolean
   /** The editable's accessible name. */
   label?: string
@@ -44,6 +46,9 @@ export type Editor = {
   value: Signal<string | object>
   /** The length in graphemes, a mention counting as its label. */
   length: ReadSignal<number>
+  /** The limit (maxLength), if any, and whether the length is past it. */
+  maxLength: number | undefined
+  over: ReadSignal<boolean>
   /** The ProseMirror state, after every change (the selection's too): for toolbars. */
   state: ReadSignal<EditorState>
   /** Runs a command by name (`bold`, `link`, `undo`…), with its arguments: false when it can't run. */
@@ -129,7 +134,10 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
     ...extensions.flatMap((e) => e.plugins?.(schema) ?? []),
   ]
 
-  const start = options.text ? fromText(schema, options.text.value, options.text.caret) : { doc: parse(options.value), pos: undefined }
+  const start = options.text ? fromText(schema, options.text.value, options.text.caret) : (() => {
+    const doc = parse(options.value)
+    return { doc, pos: options.caret === undefined ? undefined : posAtOffset(doc, options.caret) }
+  })()
   const initial = EditorState.create({
     schema, plugins, doc: start.doc,
     selection: start.pos === undefined ? (options.text ? Selection.atEnd(start.doc) : undefined) : TextSelection.create(start.doc, start.pos),
@@ -185,6 +193,8 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
   return {
     value,
     length,
+    maxLength,
+    over: derived(() => maxLength !== undefined && length.get() > maxLength),
     state: current,
     view,
     schema,

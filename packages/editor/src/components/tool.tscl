@@ -1,0 +1,12 @@
+{{--
+  Editor tool (@clarusjs/editor): a button in an <editor-toolbar> that runs a command: bold, italic, code, link,
+  codeBlock, undo, redo, or one an extension adds. Disabled until its field's editor runs.
+
+  <editor-tool command="bold" label="Bold"><b>B</b></editor-tool>
+
+  Headless: data-part="tool".
+--}}
+@input command: string
+@input label: string
+
+<button type="button" data-part="tool" [data-command]="command" [aria-label]="label" aria-pressed="false" disabled><slot /></button>

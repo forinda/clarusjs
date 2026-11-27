@@ -1,0 +1,52 @@
+{{--
+  Editor suggestions (@clarusjs/editor): the list a character opens in the field named by [field], as a combobox (the
+  field keeps focus; ↑ ↓ move, Enter or Tab picks, Escape closes).
+  - char "@": people, from (search): answer with $event.respond(items) ({ id, label }); a pick becomes a mention.
+  - char "/": [commands] ({ id, label, keywords? }); a pick sends (command) with its id and the editor.
+  - char ":": emoji, by GitHub's shortcodes and their names; a pick inserts it.
+
+  <editor-suggestions [field]="'msg'" char="@" (search)="$event.respond(people($event.query, $event.signal))" />
+  <editor-suggestions [field]="'msg'" char="/" [commands]="commands" (command)="run($event)" />
+  <editor-suggestions [field]="'msg'" char=":" />
+
+  Headless: data-part="suggestions" (the list) and "suggestion" (each option).
+--}}
+@type Item = { id: string; label: string }
+@type Command = { id: string; label: string; keywords?: string[] }
+@input field: string
+@input char: '@' | '/' | ':' = '@'
+@input label: string = ''
+@input commands: Command[] = []
+@event search: { query: string; signal: AbortSignal; respond: (items: Item[] | Promise<Item[]>) => void }
+@event command: { id: string; editor: any }
+
+<script>
+  import { onEditor } from '@clarusjs/editor/registry'
+  import { searchEmoji, suggestion } from '@clarusjs/editor/suggestion'
+  const names = { '@': 'People', '/': 'Commands', ':': 'Emoji' }
+  // (search): whoever listens answers with respond().
+  function ask(query, signal) {
+    let answer
+    emit('search', { query, signal, respond: (items) => (answer = items) })
+    return answer ?? []
+  }
+  const matching = (q) =>
+    commands.filter((c) => [c.label, ...(c.keywords ?? [])].some((w) => w.toLowerCase().includes(q.toLowerCase())))
+  const kinds = {
+    '@': { search: ask, pick: (item, range, e) => e.run('mention', item, range) },
+    '/': {
+      search: matching,
+      pick: (item, range, e) => {
+        e.view.dispatch(e.view.state.tr.delete(range.from, range.to))
+        emit('command', { id: item.id, editor: e })
+      },
+    },
+    ':': {
+      search: (q) => searchEmoji(q),
+      pick: (item, range, e) => e.view.dispatch(e.view.state.tr.insertText(item.char, range.from, range.to)),
+    },
+  }
+  const wire = (list) => onEditor(field, (_editor, el) => suggestion(list, { editor: el, char, ...kinds[char] }))
+</script>
+
+<ul data-part="suggestions" [aria-label]="label || names[char]" hidden [use]="wire"></ul>

@@ -28,7 +28,9 @@
     "./registry": "./src/core/registry.ts",
     "./toolbar": "./src/behaviours/toolbar.ts",
     "./suggestion": "./src/behaviours/suggestion.ts",
-    "./content": "./src/behaviours/content.ts"
+    "./content": "./src/behaviours/content.ts",
+    "./editor": "./src/behaviours/editor.ts",
+    "./extensions": "./src/extensions/composer.ts"
   },
   "clarusjs": {
     "components": "./src/components",
@@ -71,6 +73,14 @@
       "./content": {
         "types": "./dist/behaviours/content.d.ts",
         "default": "./dist/behaviours/content.js"
+      },
+      "./editor": {
+        "types": "./dist/behaviours/editor.d.ts",
+        "default": "./dist/behaviours/editor.js"
+      },
+      "./extensions": {
+        "types": "./dist/extensions/composer.d.ts",
+        "default": "./dist/extensions/composer.js"
       }
     }
   },
@@ -102,5 +112,6 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.1"
-  }
+  },
+  "sideEffects": false
 }

@@ -32,3 +32,32 @@ export function fromText(schema: Schema, text: string, caret?: number): { doc: N
   flush()
   return { doc: schema.node('doc', null, blocks.map((b) => schema.node('paragraph', null, b))), pos: at }
 }
+
+/**
+ * The position in `doc` for an offset into its plain text, counted as plainText() counts it (blocks apart by a blank
+ * line, a hard break one character, a mention its "@label"): where a textarea's caret goes in the rich document.
+ */
+export function posAtOffset(doc: Node, offset: number): number {
+  let left = Math.max(0, offset)
+  let blockStart = 0
+  let end = 1
+  for (let i = 0; i < doc.childCount; i++) {
+    const block = doc.child(i)
+    if (i > 0) {
+      if (left < 2) return end // on the blank line parting two blocks: the end of the first
+      left -= 2
+    }
+    let p = blockStart + 1
+    for (let j = 0; j < block.childCount; j++) {
+      const child = block.child(j)
+      const len = child.isText ? child.text!.length : child.type.name === 'hard_break' ? 1 : (child.type.spec.leafText?.(child) ?? '').length
+      if (left <= len) return child.isText ? p + left : left === 0 ? p : p + child.nodeSize
+      left -= len
+      p += child.nodeSize
+    }
+    end = p
+    if (left === 0) return end
+    blockStart += block.nodeSize
+  }
+  return end
+}

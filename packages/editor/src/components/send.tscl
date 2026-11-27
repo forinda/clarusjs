@@ -1,0 +1,36 @@
+{{--
+  Editor send (@clarusjs/editor): a submit button that sends the field named by [field] (its (send) fires), disabled
+  past the field's limit. Before the field's editor runs it's a plain submit: the form posts the textarea.
+
+  <editor-send [field]="'msg'" label="Send" />
+
+  Headless: data-part="send".
+--}}
+@input field: string
+@input label: string = 'Send'
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  import { onEditor } from '@clarusjs/editor/registry'
+  let over = state(false)
+  let current
+  const wire = () =>
+    onEditor(field, (editor) => {
+      current = editor
+      const stop = effect(() => {
+        over = editor.over.get()
+      })
+      return () => {
+        stop()
+        current = undefined
+        over = false
+      }
+    })
+  function click(event) {
+    if (!current) return // no editor yet: the form posts the textarea, as with no JavaScript
+    event.preventDefault()
+    current.send()
+  }
+</script>
+
+<button type="submit" data-part="send" [disabled]="over" [use]="wire" (click)="click($event)">{{ label }}</button>

@@ -13,7 +13,16 @@ const BUDGET = 80 * 1024
 test('a page with a composer ships at most 80 KB gzip of JavaScript; emoji load apart, on first use', async () => {
   const root = mkdtempSync(resolve(tmpdir(), 'clarusjs-editor-'))
   const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
-  w('src/pages/index.tscl', "@import editorComposer from '@clarusjs/editor/components/composer.tscl'\n<html><head><title>Chat</title></head><body><editorComposer attach=\"interaction\" [maxLength]=\"500\" /></body></html>\n")
+  // a chat composer made of the parts
+  const parts = ['field', 'toolbar', 'tool', 'suggestions', 'count', 'send', 'files'].map((p) => `@import editor${p[0]!.toUpperCase() + p.slice(1)} from '@clarusjs/editor/components/${p}.tscl'`).join('\n')
+  w('src/pages/index.tscl', parts + `
+<html><head><title>Chat</title></head><body><form>
+  <editorField attach="interaction" [id]="'msg'" [maxLength]="500" />
+  <editorToolbar [field]="'msg'"><editorTool command="bold" label="Bold">B</editorTool><editorTool command="codeBlock" label="Code block">{}</editorTool></editorToolbar>
+  <editorSuggestions [field]="'msg'" char="@" /><editorSuggestions [field]="'msg'" char="/" /><editorSuggestions [field]="'msg'" char=":" />
+  <editorCount [field]="'msg'" /><editorFiles /><editorSend [field]="'msg'" />
+</form></body></html>
+`)
   mkdirSync(resolve(root, 'node_modules/@clarusjs'), { recursive: true })
   symlinkSync(resolve(import.meta.dirname, '../../clarusjs'), resolve(root, 'node_modules/clarusjs'), 'junction')
   symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/@clarusjs/editor'), 'junction')

@@ -1,0 +1,23 @@
+{{--
+  Editor files (@clarusjs/editor): a button that opens a file picker; the files picked go to (files), as files pasted or
+  dropped into the field go to the field's (files). Uploading and showing them is yours.
+
+  <editor-files (files)="upload($event.files)" />
+
+  Headless: data-part="attach" (the button) and "files" (its hidden input).
+--}}
+@input label: string = 'Attach files'
+@input accept: string = ''
+@event files: { files: File[] }
+
+<script>
+  let input
+  function picked(event) {
+    const files = [...event.target.files]
+    event.target.value = ''
+    if (files.length) emit('files', { files })
+  }
+</script>
+
+<button type="button" data-part="attach" [aria-label]="label" (click)="input?.click()">📎</button>
+<input type="file" multiple hidden data-part="files" [accept]="accept || false" [use]="(el) => { input = el }" (change)="picked($event)" />
