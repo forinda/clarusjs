@@ -49,7 +49,8 @@
     "./server": "./src/server/handler.ts",
     "./vite": "./src/vite/plugin.ts",
     "./manifest": "./src/server/manifest.ts",
-    "./views": "./src/server/views.ts"
+    "./views": "./src/server/views.ts",
+    "./motion": "./src/runtime/motion.ts"
   },
   "bin": {
     "clarusjs": "./dist/cli/index.js"
@@ -131,6 +132,10 @@
       "./views": {
         "types": "./dist/server/views.d.ts",
         "default": "./dist/server/views.js"
+      },
+      "./motion": {
+        "types": "./dist/runtime/motion.d.ts",
+        "default": "./dist/runtime/motion.js"
       }
     }
   },
