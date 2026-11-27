@@ -210,7 +210,71 @@ docker build -t my-site .
 docker run -p 3000:3000 my-site
 ```
 
-It listens on `$PORT` (3000) on every interface, runs as the unprivileged `node` user, and reports itself healthy while `/` answers. On `docker stop` it finishes the requests in flight, then exits. With pnpm, run `corepack enable` and copy `pnpm-lock.yaml` instead, then use `pnpm install --frozen-lockfile`, `pnpm build` and `pnpm prune --prod`. The repo's [examples/docker](https://github.com/forinda/clarusjs/tree/main/examples/docker) is this setup with a server route, and CI builds and runs it.
+It listens on `$PORT` (3000) on every interface, runs as the unprivileged `node` user, and reports itself healthy while `/` answers. On `docker stop` it finishes the requests in flight, then exits.
+
+### With pnpm
+
+The same two stages with pnpm. Corepack installs the pnpm version named by `packageManager` in `package.json`, and a BuildKit cache mount keeps pnpm's store between builds, so an unchanged lockfile installs from the cache:
+
+```dockerfile [Dockerfile.pnpm]
+# The same image with pnpm: a store cache between builds, and only production dependencies in the image.
+#   docker build -f Dockerfile.pnpm -t my-site . && docker run -p 3000:3000 my-site
+# pnpm-lock.yaml must be committed; package.json's "packageManager" picks the pnpm version (corepack).
+FROM node:24-slim AS base
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+RUN corepack enable
+WORKDIR /app
+
+FROM base AS build
+COPY package.json pnpm-lock.yaml ./
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm build && pnpm prune --prod
+
+FROM node:24-slim
+WORKDIR /app
+ENV NODE_ENV=production PORT=3000
+COPY --from=build /app/package.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT}/`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+CMD ["node_modules/.bin/clarusjs", "serve"]
+```
+
+### In a pnpm workspace
+
+In a monorepo, build the site in the repository. `pnpm deploy` then writes a folder with the site's package and its production dependencies, with workspace packages copied in rather than linked, and the image takes that folder as it is:
+
+```dockerfile [Dockerfile.pnpm-monorepo]
+# A site in a pnpm workspace (apps/my-site here): build in the repo, then `pnpm deploy` copies the site's package with
+# its production dependencies only (workspace packages copied in, not linked) into a folder the image takes as is.
+#   docker build -f Dockerfile.pnpm-monorepo -t my-site .   (from the repo root)
+# pnpm-workspace.yaml needs `injectWorkspacePackages: true` for pnpm deploy (pnpm 10 and later).
+FROM node:24-slim AS base
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+RUN corepack enable
+
+FROM base AS build
+WORKDIR /repo
+COPY . .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# my-site... : the site and the workspace packages it depends on, those first.
+RUN pnpm --filter "my-site..." build
+RUN pnpm --filter my-site deploy --prod /deploy && cp -r apps/my-site/dist /deploy/dist
+
+FROM node:24-slim
+WORKDIR /app
+ENV NODE_ENV=production PORT=3000
+COPY --from=build /deploy ./
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT}/`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+CMD ["node_modules/.bin/clarusjs", "serve"]
+```
+
+`pnpm deploy` needs `injectWorkspacePackages: true` in `pnpm-workspace.yaml` (pnpm 10 and later). `--filter "my-site..."` builds the site's workspace dependencies before the site. Keep `node_modules` and the apps' `dist` folders out of the build context with `.dockerignore`. All three Dockerfiles are in [examples/docker](https://github.com/forinda/clarusjs/tree/main/examples/docker), and CI builds and runs each one.
 
 ## Headers {since=0.17.0}
 

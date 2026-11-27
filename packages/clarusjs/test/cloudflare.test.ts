@@ -106,7 +106,10 @@ test('under a base (or an absolute one): the worker takes the base and hands sta
   })
   try {
     expect(await (await worker.dispatchFetch('https://site.example/docs/api/ping')).text()).toBe('pong')
-    expect(await (await worker.dispatchFetch('https://site.example/docs/about')).text()).toBe('asset')
+    const about = await worker.dispatchFetch('https://site.example/docs/about')
+    expect(await about.text()).toBe('asset')
+    // Cloudflare matches _headers (base-prefixed) against /about here: the worker applies them by the path asked.
+    expect(about.headers.get('x-content-type-options')).toBe('nosniff')
     expect(asked).toEqual(['/about'])
   } finally {
     await worker.dispose()
