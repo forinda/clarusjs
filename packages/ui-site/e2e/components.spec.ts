@@ -215,3 +215,27 @@ test('button group: its buttons join: inner corners square, outer ones round', a
   expect(radii[0]![0]).not.toBe('0px')
   expect(radii.at(-1)![1]).not.toBe('0px')
 })
+
+test('combobox remote example: typing asks /api/cities for the search, and lists what it answers', async ({ page }) => {
+  await page.goto('/components/combobox')
+  const city = page.getByRole('combobox', { name: 'City' })
+  await city.scrollIntoViewIfNeeded()
+  await page.locator('cl-island[data-cl-ready]', { has: city }).waitFor({ state: 'attached' })
+  const asked = page.waitForRequest((r) => r.url().includes('/api/cities?q=lo'))
+  await city.fill('lo')
+  await asked
+  const list = page.getByRole('listbox', { name: 'City' })
+  await expect(list.getByRole('option', { name: 'London' })).toBeVisible()
+  await expect(list.getByRole('option', { name: 'Lagos' })).toHaveCount(0) // the server filtered: "lo" isn't in Lagos
+  // Answers are cached by search: going back to "lo" asks nothing again.
+  await city.fill('lon')
+  await expect(list.getByRole('option')).toHaveCount(1)
+  const requests: string[] = []
+  page.on('request', (r) => r.url().includes('/api/cities') && requests.push(r.url()))
+  await city.fill('lo')
+  await expect(list.getByRole('option', { name: 'Oslo' })).toBeVisible()
+  await page.waitForTimeout(400) // past the 200 ms pause after the last key, when a request would go
+  expect(requests).toEqual([])
+  await list.getByRole('option', { name: 'London' }).click()
+  await expect(city).toHaveValue('London')
+})
