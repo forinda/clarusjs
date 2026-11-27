@@ -100,7 +100,12 @@ function* expressions(nodes: TemplateNode[]): Generator<string> {
         else if (a.kind !== 'static') yield a.expr
       }
       yield* expressions(n.children)
-    } else if (n.type === 'if') for (const b of n.branches) { if (b.cond) yield b.cond; yield* expressions(b.children) }
+    } else if (n.type === 'if') {
+      // @transition (name, options) around it reads names too.
+      if (n.transition?.name) yield n.transition.name
+      if (n.transition?.options) yield n.transition.options
+      for (const b of n.branches) { if (b.cond) yield b.cond; yield* expressions(b.children) }
+    }
     else if (n.type === 'for') { yield n.list; if (n.track) yield n.track; yield* expressions(n.children); if (n.empty) yield* expressions(n.empty) }
     else if (n.type === 'fill') yield* expressions(n.children)
     else if (n.type === 'await') { yield n.expr; for (const kids of awaitLists(n)) yield* expressions(kids) }

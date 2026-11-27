@@ -285,3 +285,33 @@ test('a leaving child island that never attached is marked so the next insert do
     delete (globalThis as Record<string, unknown>).__clAttach
   }
 })
+
+// --- review fixes ---
+
+test('first run: state that differs from what the server rendered (HMR, a restored state) shows the right branch, wired', async () => {
+  const source = component("@transition ('fade') { @if (open) { <p class=\"a\" (click)=\"clicks++\">A {{ clicks }}</p> } @else { <p class=\"b\">B</p> } }", false)
+  const server = compile(source, { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code
+  const client = compile(source, { file: 'x.tscl', target: 'client' }).code
+  const s = await importCode(server, 'motion-s')
+  const c = await importCode(client, 'motion-c')
+  document.body.innerHTML = s.render({}) // the server rendered the closed branch
+  const island = document.querySelector('cl-island')!
+  c.attach(island, {}, { open: true }) // the browser's state is open
+  const a = island.querySelector('p.a')
+  expect(a).not.toBe(null)
+  ;(a as HTMLElement).click()
+  await settle()
+  expect(a!.textContent).toBe('A 1') // wired
+  toggle(island) // and the next change is seen
+  expect(island.querySelector('p.b')).not.toBe(null)
+})
+
+test("a running child island inside a leaving branch keeps its own markers (only the outer island's go)", async () => {
+  const island = await mount(component("@transition ('fade') { @if (open) { <div class=\"box\"><cl-island c=\"inner\" data-cl-ready=\"\"><!--[b0:0--><p>inner</p><!--]--></cl-island></div> } }"))
+  const inner = island.querySelector('cl-island[c="inner"]')!
+  toggle(island)
+  const walker = document.createTreeWalker(inner, NodeFilter.SHOW_COMMENT)
+  const kept: string[] = []
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) kept.push((n as Comment).data)
+  expect(kept).toEqual(['[b0:0', ']'])
+})

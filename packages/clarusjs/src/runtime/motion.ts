@@ -108,11 +108,16 @@ function neutralise(nodes: Node[]): void {
   for (const node of nodes) {
     if (node.nodeType !== 1) continue
     const el = node as Element
+    // The outer island's markers only: a child island's own (inside a <cl-island>) are its, and a running child still
+    // updates its blocks during the leave. Its <cl-island> element is the outer island's, so its attributes go.
     const comments: Node[] = []
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_COMMENT)
+    const elements: Element[] = [el]
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, {
+      acceptNode: (n) => (n.nodeType === 8 ? NodeFilter.FILTER_ACCEPT : (elements.push(n as Element), (n as Element).localName === 'cl-island' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP)),
+    })
     for (let c = walker.nextNode(); c; c = walker.nextNode()) comments.push(c)
     for (const c of comments) c.parentNode!.removeChild(c)
-    for (const e of [el, ...el.querySelectorAll('*')]) {
+    for (const e of elements) {
       for (const a of [...e.attributes]) if (a.name.startsWith('data-cl-') && a.name !== 'data-cl-ready' && a.name !== 'data-cl-error') e.removeAttribute(a.name)
       // The next insert would attach an island that hasn't yet (idle, visible, interaction): it's leaving.
       if (e.localName === 'cl-island' && !e.hasAttribute('data-cl-error')) e.setAttribute('data-cl-ready', '')
@@ -160,12 +165,12 @@ export function transitionBlock(ctx: Ctx, index: number, which: () => number, br
       if (attach && parent) attach(parent)
     }))
   }
-  const insert = (k: number): Promise<unknown> => {
+  const insert = (k: number, animate = true): Promise<unknown> => {
     if (!alive || k < 0) return Promise.resolve()
     const { first: from, last } = insertHtml(branches[k]!.html(), b.end)
     live = from && last ? between(from.previousSibling ?? b.start, last.nextSibling ?? b.end) : []
     dispose = scope(() => branches[k]!.wire())
-    return enter(live)
+    return animate ? enter(live) : Promise.resolve()
   }
 
   effect(() => {
@@ -173,6 +178,16 @@ export function transitionBlock(ctx: Ctx, index: number, which: () => number, br
     untrack(() => {
       if (first) {
         first = false
+        // The browser's state picks another branch than the server rendered (HMR carrying state over, a state restored
+        // in the browser): swapped at once, as block() does, then entered only with appear.
+        if (k !== current) {
+          for (const n of live) n.parentNode?.removeChild(n)
+          reshaped()
+          live = []
+          current = k
+          void insert(k, o.appear === true)
+          return
+        }
         if (k >= 0) {
           dispose = scope(() => branches[k]!.wire())
           if (o.appear) void enter(live)

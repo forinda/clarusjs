@@ -254,3 +254,8 @@ test('multi-word-name: a component imported under one word warns (it has no keba
   expect(lint("@import card from './card.tscl'\n<card />\n", file)[0]!.message).toBe("'card' is one word: give components two or more (e.g. appCard), so the tag has a kebab-case form and can't be mistaken for an HTML element")
   expect(rules("@import XMLViewer from './x.tscl'\n<XMLViewer />\n", on)).toEqual([]) // xml-viewer
 })
+
+test("@transition's arguments read names: an @input used only there is used", () => {
+  const source = "@input speed: number = 200\n<script>\n  let open = state(true)\n</script>\n<div>\n  <button type=\"button\" (click)=\"open = !open\">Toggle</button>\n  @transition ('fade', { duration: speed }) { @if (open) { <p>A</p> } }\n</div>\n"
+  expect(lint(source, file).filter((m) => m.rule === 'unused-input')).toEqual([])
+})
