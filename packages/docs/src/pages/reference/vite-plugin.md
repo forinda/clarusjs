@@ -36,9 +36,11 @@ clarusjs({ routes: { '/account/*': 'server' } })
 
 ## adapter
 
-**Type:** `'netlify'` · **Default:** none
+**Type:** `'netlify' | 'vercel'` · **Default:** none
 
 Where server routes deploy. With `'netlify'`, `vite build` writes `.netlify/v1/functions/clarusjs-server.mjs` (Netlify's Frameworks API, read from the site's package directory: in a monorepo, set Netlify's package directory to the folder with `vite.config.ts`, and don't also set `base` to it): a function that calls `dist/server/index.mjs` for the server routes' paths, with static files served first. With no server routes, no function is written.
+
+With `'vercel'` {since=0.17.0}, `vite build` writes `.vercel/output` in Vercel's [Build Output API](https://vercel.com/docs/build-output-api/v3). `static/` holds `dist/client`, served under the base. Pages answer without the trailing slash, and the slash form is rewritten to them. `config.json` routes carry your [headers](#headers), [redirects](/guide/routing) and the 404 page. Server routes and endpoints go to one Node function (`functions/clarusjs-server.func`) that calls the same handler. The server build is bundled with its dependencies, so the function needs nothing installed. Vercel deploys `.vercel/output` as it finds it after the build command: set the build command to `vite build`, or run `vercel deploy --prebuilt`.
 
 ## fragments
 

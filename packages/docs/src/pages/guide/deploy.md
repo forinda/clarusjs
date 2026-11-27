@@ -20,6 +20,16 @@ This site deploys to Netlify:
   publish = "packages/docs/dist/client"
 ```
 
+## Vercel {since=0.17.0}
+
+Set `adapter: 'vercel'`. The build writes Vercel's Build Output API to `.vercel/output`: static files, one function for server routes, and routes for your headers, redirects and 404 page.
+
+```ts [vite.config.ts]
+clarusjs({ adapter: 'vercel', routes: { '/account/*': 'server' } })
+```
+
+In the Vercel project, set the build command to `vite build` (or `npm run build`) and leave the output directory empty: Vercel uses `.vercel/output` when it's there. Add `.vercel` to `.gitignore`. A fully static site needs no adapter: set the output directory to `dist/client` instead.
+
 ## Node {since=0.17.0}
 
 On any host that runs Node (a VPS, Fly.io, Render, Railway, a container), build, then serve:
