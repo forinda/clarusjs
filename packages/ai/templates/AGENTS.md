@@ -53,6 +53,10 @@ islands of JavaScript only where a component has a `<script>`. Vite runs it (`vi
   component whose root is a `<fragment>` takes nothing from its parent: `clarusjs check` reports any attribute, `class`
   or `(event)` written on its tag.
 
+To pick components at runtime (widgets from settings, a generated layout), build them in server code with `h(name,
+props, children)` from `clarusjs/views` (a component's path or a tag), return the result from `load()` and put it in
+the template with `{{ }}`. It's server only: not in island scripts, not in an island's props.
+
 ### Islands and state
 
 - A component with a `<script>` is an island: it ships JavaScript and runs in the browser. Without one it ships

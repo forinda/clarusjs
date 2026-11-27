@@ -156,6 +156,33 @@ The Release notes page shows this one, as `<latestRelease />`.
 - **Islands:** a component with a `<script>` gets its loaded inputs in the browser too, like any other props.
 - **Not in client routes yet:** they render in the browser, where loaders don't run. Using such a component there is an error at build.
 
+## Composing in code: `h()`
+
+Most pages compose components in their template. When which component renders isn't known until the server runs (a dashboard whose widgets come from settings, a layout generated from data, a wrapper that passes everything through), build it in code with `h()` from `clarusjs/views`, like Vue's `h()`. It takes a component's name (its path, `'components/chart'`) or an element's tag, then props, then children, and returns HTML that a template inserts as is:
+
+```ts
+// src/pages/dashboard.load.ts
+import { h } from 'clarusjs/views'
+
+export async function load() {
+  const widgets = await getWidgets() // [{ view: 'components/chart', props: { … } }, …]
+  return { grid: await h('div', { class: 'grid' }, widgets.map((w) => h(w.view, w.props))) }
+}
+```
+
+```tscl
+{{-- src/pages/dashboard.tscl --}}
+@input grid: any
+<main>{{ grid }}</main>
+```
+
+- **Props are typed** by the component, as in a template, and text children are escaped. An object fills named slots: `h('components/card', { title: 'Hi' }, { default: [h('p', {}, ['Body'])], footer: 'Read more' })`.
+- **Server only:** it runs in `load()` and other server code, not in an island's script, and its result can't be sent to the browser as an island's props.
+- **Pick names from your own list,** never from request data: a name decides what renders.
+- **Some things stay in templates,** where the compiler checks them: `on*` attributes, `srcdoc`, and tags like `script` or `iframe` are refused.
+
+Its parameters and every rule are in the [server reference](/reference/server#h).
+
 ## Components from packages
 
 Import a component from a package by its path, as you would any module. It can be interactive, have scoped styles, and import other components:
