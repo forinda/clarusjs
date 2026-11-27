@@ -33,6 +33,10 @@ A limit (`maxlength`) and what's left, read politely rather than on every key.
 
 <<< ../../registry/textarea-count-demo.tscl
 
+## API
+
+<componentApi name="textarea" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `textarea.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

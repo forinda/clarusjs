@@ -27,6 +27,10 @@ A placeholder until something is chosen, an option that can't be picked, and the
 
 <<< ../../registry/select-states-demo.tscl
 
+## API
+
+<componentApi name="select" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `select.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `select.tw.css`, imported where Tailwind runs.

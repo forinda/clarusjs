@@ -239,3 +239,43 @@ test('combobox remote example: typing asks /api/cities for the search, and lists
   await list.getByRole('option', { name: 'London' }).click()
   await expect(city).toHaveValue('London')
 })
+
+test('combobox [search] example: a function gives the options for what\'s typed', async ({ page }) => {
+  await page.goto('/components/combobox')
+  const lang = page.getByRole('combobox', { name: 'Language', exact: true })
+  await lang.scrollIntoViewIfNeeded()
+  await page.locator('cl-island[data-cl-ready]', { has: lang }).last().waitFor({ state: 'attached' }) // the combobox's, inside the example's
+  await lang.fill('el')
+  const list = page.getByRole('listbox', { name: 'Language', exact: true })
+  await expect(list.getByRole('option')).toHaveText(['Elixir', 'Elm'])
+  await list.getByRole('option', { name: 'Elm' }).click()
+  await expect(lang).toHaveValue('Elm')
+})
+
+test('a component page\'s API section lists every input, model and event, with types and defaults', async ({ page }) => {
+  await page.goto('/components/combobox')
+  const api = page.locator('section.component-api')
+  await expect(api.getByRole('row', { name: "[src] input string ''" })).toBeVisible()
+  await expect(api.getByRole('row', { name: "[(value)] model string ''" })).toBeVisible()
+  await expect(api.getByRole('row', { name: /^\(search\) event/ })).toContainText('respond')
+})
+
+test('chip input: Enter and a comma add chips, Backspace removes the last, × removes one; duplicates are skipped', async ({ page }) => {
+  await page.goto('/components/chip-input')
+  const field = page.getByRole('textbox', { name: 'Tags' })
+  await page.locator('cl-island[data-cl-ready]', { has: field }).last().waitFor({ state: 'attached' })
+  const out = page.locator('.demo .out').first()
+  await field.fill('js')
+  await field.press('Enter')
+  await expect(out).toHaveText('css, html, js')
+  await field.fill('a11y, ts,')
+  await expect(out).toHaveText('css, html, js, a11y, ts')
+  await field.fill('css')
+  await field.press('Enter')
+  await expect(out).toHaveText('css, html, js, a11y, ts') // already there
+  await field.press('Backspace')
+  await expect(out).toHaveText('css, html, js, a11y')
+  await page.getByRole('button', { name: 'Remove html' }).click()
+  await expect(out).toHaveText('css, js, a11y')
+  expect(await page.locator('.demo input[type="hidden"][name="tag"]').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))).toEqual(['css', 'js', 'a11y'])
+})

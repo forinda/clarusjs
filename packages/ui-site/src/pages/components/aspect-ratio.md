@@ -25,6 +25,10 @@ description: "A box that keeps its shape as its width changes."
 
 <<< ../../registry/aspect-ratio-ratios-demo.tscl
 
+## API
+
+<componentApi name="aspect-ratio" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `aspect-ratio.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

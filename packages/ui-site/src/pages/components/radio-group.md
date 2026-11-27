@@ -25,6 +25,10 @@ An option that can't be chosen today, still listed so people know it exists.
 
 <<< ../../registry/radio-group-disabled-demo.tscl
 
+## API
+
+<componentApi name="radio-group" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `radio-group.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `radio-group.tw.tscl` copied as `radio-group.tscl` with `radio-group.tw.css` beside it.

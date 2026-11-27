@@ -15,6 +15,10 @@ description: "A native meter for a value in a known range."
 
 <<< ../../registry/meter-demo.tscl
 
+## API
+
+<componentApi name="meter" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `meter.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

@@ -29,6 +29,10 @@ Any content: text cards of different lengths.
 
 <<< ../../registry/masonry-cards-demo.tscl
 
+## API
+
+<componentApi name="masonry" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `masonry.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
