@@ -1,5 +1,6 @@
 // Every page's <head>: <cl-head> contents moved in from the page, a title template, site-wide tags and a final
 // transform. Page tags win over site tags with the same key (title, meta name/property, canonical link…).
+import { baseUrl } from '../runtime/attrs.ts'
 import { escape, json } from '../runtime/html.ts'
 
 /**
@@ -27,8 +28,9 @@ export type SiteOptions = { url: string; name?: string; image?: string }
 
 const VOID = new Set(['meta', 'link', 'base'])
 
-export function renderTag([tag, attrs, content]: HeadTag): string {
-  const a = Object.entries(attrs).map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${escape(v)}"`)).join('')
+export function renderTag([tag, attrs, content]: HeadTag, base = '/'): string {
+  // a root-relative URL (an icon, a stylesheet, a script) gets the site's base, as in templates
+  const a = Object.entries(attrs).map(([k, v]) => (v === true ? ` ${k}` : ` ${k}="${escape(baseUrl(base, k, v) as string)}"`)).join('')
   return VOID.has(tag) && content === undefined ? `<${tag}${a}>` : `<${tag}${a}>${content ?? ''}</${tag}>`
 }
 
@@ -107,7 +109,7 @@ export function completeHead(html: string, mask: (html: string) => string, optio
   const pageSet = { image: content(find('meta:property:og:image')?.text), url: content(find('meta:property:og:url')?.text) }
   const fill = (tag: string) => { if (!find(key(tag) ?? '')) head += tag }
   for (const t of options.tags ?? []) {
-    const tag = renderTag(t)
+    const tag = renderTag(t, options.base && !/^https?:\/\//.test(options.base) ? options.base : '/')
     if (key(tag)) fill(tag)
     else head += tag
   }

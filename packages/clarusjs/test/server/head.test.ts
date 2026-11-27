@@ -86,3 +86,14 @@ test('a <cl-head> title marked data-cl-template gets the site template, like the
   const h = createHandler({ '/src/pages/index.tscl': async () => ({ render: () => '<cl-head><title data-cl-template>Pricing</title></cl-head><h1>x</h1>' }) }, { head: { titleTemplate: '%s · Site' } })
   expect(headOf(await get(h))).toBe('<meta charset="utf-8"><title>Pricing · Site</title>')
 })
+
+test('under a base, site head tags with root-relative URLs get it (an icon, a stylesheet), full URLs not', async () => {
+  const h = createHandler({ '/src/pages/index.tscl': async () => ({ render: () => doc('<title>T</title>') }) }, {
+    base: '/docs/',
+    head: { tags: [['link', { rel: 'icon', href: '/i.svg' }], ['link', { rel: 'preconnect', href: 'https://fonts.example' }], ['script', { src: '/a.js' }, '']] },
+  })
+  const head = headOf(await get(h, '/'))
+  expect(head).toContain('<link rel="icon" href="/docs/i.svg">')
+  expect(head).toContain('<link rel="preconnect" href="https://fonts.example">')
+  expect(head).toContain('<script src="/docs/a.js"></script>')
+})
