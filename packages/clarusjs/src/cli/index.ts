@@ -4,7 +4,8 @@ import { Command } from 'commander'
 import { check } from './check.ts'
 import { loadProject } from './project.ts'
 import { explain } from './explain.ts'
-import { serve } from './mapper.ts'
+import { serve as mapper } from './mapper.ts'
+import { serve } from '../node/serve.ts'
 
 const program = new Command('clarusjs').description('clarusjs: clear, compiled views')
 
@@ -46,6 +47,20 @@ program
 program
   .command('mapper')
   .description('the TypeScript 7.1 content mapper for .tscl files (TypeScript starts it; see https://clarusjs.com/guide/editor)')
-  .action(() => serve())
+  .action(() => mapper())
+
+program
+  .command('serve')
+  .description('serve a built site (vite build first) on Node: its files, server routes and _headers; for any Node host or a container')
+  .argument('[dir]', 'project folder', '.')
+  .option('--port <port>', 'port (default: $PORT, else 3000)')
+  .option('--host <host>', 'interface (default: $HOST, else 0.0.0.0)')
+  .action(async (dir: string, options: { port?: string; host?: string }) => {
+    const server = await serve({ root: dir, port: options.port === undefined ? undefined : Number(options.port), host: options.host })
+    const address = server.address()
+    console.log(`clarusjs: serving ${dir} at http://${typeof address === 'object' && address ? `${address.address === '0.0.0.0' ? 'localhost' : address.address}:${address.port}` : address}/`)
+    // A container stops with SIGTERM: finish the requests in flight, then exit.
+    for (const signal of ['SIGTERM', 'SIGINT'] as const) process.once(signal, () => server.close(() => process.exit(0)))
+  })
 
 program.parse()
