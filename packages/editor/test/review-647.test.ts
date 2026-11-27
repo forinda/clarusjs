@@ -16,16 +16,37 @@ import { renderHTML, validate } from '../src/server.ts'
 afterEach(() => { document.body.innerHTML = '' })
 const mount = () => { const el = document.createElement('div'); document.body.append(el); return el }
 
-test('a render spec never carries an event handler or a script-like tag, whatever an attribute holds (server and browser)', () => {
-  const card = defineExtension({ name: 'card', nodes: { card: { attrs: { label: {} }, inline: true, group: 'inline', render: (n) => ['span', n.attrs.label] } } })
+// CodeRabbit (security): a value a document sets on a node or mark must never become part of the render spec
+const card = defineExtension({ name: 'card', nodes: { card: { attrs: { label: {}, widths: { default: [] } }, inline: true, group: 'inline', render: (n) => ['span', n.attrs.label] } } })
+const anchor = defineExtension({ name: 'anchor', nodes: { anchor: { attrs: { url: {} }, inline: true, group: 'inline', render: (n) => ['a', { href: n.attrs.url }, 'go'] } } })
+const docWith = (...inline: object[]) => ({ type: 'doc', content: [{ type: 'paragraph', content: inline }] })
+
+test('security: validate() refuses an attribute value used as a render spec; plain labels and unused object attributes pass', () => {
   const exts = [base, card]
-  const evil = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'card', attrs: { label: ['img', { src: '/a.png', onerror: 'alert(1)' }] } }, { type: 'card', attrs: { label: ['script', 'alert(2)'] } }] }] }
-  const html = renderHTML(evil, exts)
-  expect(html).not.toMatch(/onerror|<script/i)
+  expect(validate(docWith({ type: 'card', attrs: { label: ['img', { src: '/a.png', onerror: 'alert(1)' }] } }), exts)).toEqual({ ok: false, error: 'invalid attribute: label' })
+  expect(validate(docWith({ type: 'card', attrs: { label: ['a', { href: '/x' }, 'harmless-looking'] } }), exts)).toEqual({ ok: false, error: 'invalid attribute: label' })
+  expect(validate(docWith({ type: 'card', attrs: { label: 'Mara', widths: [120, 80] } }), exts).ok).toBe(true)
+})
+
+test('security: rendered anyway (no validate), an attribute value used as a spec renders nothing, server and browser', () => {
+  const exts = [base, card]
+  const evil = docWith({ type: 'card', attrs: { label: ['img', { src: '/a.png', onerror: 'alert(1)' }] } }, { type: 'card', attrs: { label: ['script', 'alert(2)'] } })
+  expect(renderHTML(evil, exts)).toBe('<p><span></span><span></span></p>')
   const el = mount()
   content(el, { value: evil, format: 'json', extensions: exts })
-  expect(el.innerHTML).not.toMatch(/onerror|<script/i)
-  expect(el.querySelector('img')?.getAttribute('src')).toBe('/a.png') // the safe part stays
+  expect(el.innerHTML).toBe('<p><span></span><span></span></p>')
+  expect(renderHTML(docWith({ type: 'card', attrs: { label: 'Mara' } }), exts)).toBe('<p><span>Mara</span></p>')
+})
+
+test('security: in the browser too, an extension\'s URL attributes go through clarusjs\'s URL check, and handlers never render', () => {
+  const exts = [base, anchor]
+  const el = mount()
+  content(el, { value: docWith({ type: 'anchor', attrs: { url: 'javascript:alert(1)' } }), format: 'json', extensions: exts })
+  expect(el.querySelector('a')!.getAttribute('href')).toBe('about:invalid#unsafe')
+  const handler = defineExtension({ name: 'h', nodes: { h: { inline: true, group: 'inline', render: () => ['b', { onclick: 'alert(1)', title: 'ok' }, 'x'] } } })
+  const el2 = mount()
+  content(el2, { value: docWith({ type: 'h' }), format: 'json', extensions: [base, handler] })
+  expect(el2.innerHTML).toBe('<p><b title="ok">x</b></p>')
 })
 
 test('renderHTML applies marks to inline nodes too (a bold mention), as the browser does', () => {
@@ -111,4 +132,9 @@ test('Markdown shortcuts leave inline code literal and never swallow a mention o
   m = m.apply(m.tr.setSelection(TextSelection.create(m.doc, m.doc.content.size - 1)))
   m = typeInto(m, '*')
   expect(m.doc.firstChild!.childCount).toBe(3) // the mention is still there
+  // around a line break (Shift+Enter)
+  let b = EditorState.create({ schema, doc: schema.node('doc', null, [schema.node('paragraph', null, [schema.text('**a'), schema.nodes.hard_break!.create(), schema.text('b*')])]) })
+  b = b.apply(b.tr.setSelection(TextSelection.create(b.doc, b.doc.content.size - 1)))
+  b = typeInto(b, '*')
+  expect(b.doc.firstChild!.child(1).type.name).toBe('hard_break')
 })

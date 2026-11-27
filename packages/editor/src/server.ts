@@ -7,7 +7,7 @@ import { attrValue, UNSAFE_URL } from 'clarusjs/runtime'
 import type { Extension } from './core/extension.ts'
 import { docLength } from './core/length.ts'
 import { fromText } from './core/from-text.ts'
-import { buildSchema } from './core/schema.ts'
+import { attrInSpec, buildSchema } from './core/schema.ts'
 import { base } from './extensions/base.ts'
 
 /**
@@ -56,8 +56,18 @@ function renderProblem(doc: Node): string | undefined {
     for (const child of rest.slice(attrs ? 1 : 0)) walk(child as DOMOutputSpec)
   }
   doc.descendants((node) => {
-    if (!node.isText && node.type.spec.toDOM) walk(node.type.spec.toDOM(node))
-    for (const mark of node.marks) walk(mark.type.spec.toDOM!(mark, true))
+    // a value the document set used as part of the spec itself: refused (rendering would drop it, quietly)
+    const raw = node.type.spec.render as ((n: Node) => DOMOutputSpec) | undefined
+    const used = raw && attrInSpec(raw(node), node.attrs)
+    if (used) return void (found = `invalid attribute: ${used}`)
+    for (const mark of node.marks) {
+      const m = mark.type.spec.render as ((mk: typeof mark, inline: boolean) => DOMOutputSpec) | undefined
+      const usedByMark = m && attrInSpec(m(mark, true), mark.attrs)
+      if (usedByMark) return void (found = `invalid attribute: ${usedByMark}`)
+    }
+    // the specs as the extensions wrote them (before the render guard), so an error names what was submitted
+    if (!node.isText && (raw || node.type.spec.toDOM)) walk(raw ? raw(node) : node.type.spec.toDOM!(node))
+    for (const mark of node.marks) walk(((mark.type.spec.render as typeof mark.type.spec.toDOM) ?? mark.type.spec.toDOM)!(mark, true))
     return !found
   })
   return found
