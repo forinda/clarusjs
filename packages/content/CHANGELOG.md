@@ -1,5 +1,11 @@
 # @clarusjs/content
 
+## 0.7.0
+
+### Minor Changes
+
+- [#651](https://github.com/forinda/clarusjs/pull/651) [`221c079`](https://github.com/forinda/clarusjs/commit/221c0794d5cc74c30dc8118907af294f902e0e8a) Thanks [@forinda](https://github.com/forinda)! - Zig is highlighted, and `markdown({ langs: ['rust', 'go'] })` adds more of Shiki's languages by name, loaded from `@clarusjs/content`'s own Shiki (nothing to install), or grammars of your own. At build time only.
+
 ## 0.6.1
 
 ### Patch Changes
