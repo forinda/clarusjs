@@ -17,8 +17,8 @@ const TYPES: Record<string, string> = {
   '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf',
   '.wasm': 'application/wasm', '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg',
 }
-// Files the build leaves for hosts, not visitors (compared in lower case: some file systems ignore case).
-const HIDDEN = new Set(['_headers', '_redirects'])
+// Files and folders the build leaves for hosts, not visitors (compared in lower case: some file systems ignore case).
+const HIDDEN = new Set(['_headers', '_redirects', '_routes.json', '.assetsignore', '_worker.js'])
 
 type App = { fetch(request: Request): Promise<Response>; isServerPath(pathname: string): boolean; base?: string }
 
@@ -52,7 +52,7 @@ export async function createListener(root = '.'): Promise<(req: IncomingMessage,
   const fileFor = (path: string): string | undefined => {
     for (const candidate of [path, `${path.replace(/\/?$/, '/')}index.html`]) {
       const file = resolve(client, `.${candidate}`)
-      if (!file.startsWith(client + sep) || HIDDEN.has(file.slice(client.length + 1).toLowerCase())) continue
+      if (!file.startsWith(client + sep) || HIDDEN.has(file.slice(client.length + 1).split(sep)[0]!.toLowerCase())) continue
       if (existsSync(file) && statSync(file).isFile()) return file
     }
     return undefined

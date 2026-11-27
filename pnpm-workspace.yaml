@@ -10,6 +10,9 @@ packages:
 allowBuilds:
   '@parcel/watcher': false
   '@vscode/vsce-sign': false
+  # workerd (via miniflare, clarusjs's Cloudflare adapter test): its binary comes as an optional dependency per
+  # platform; the script only checks it.
+  workerd: false
 
 # GHSA-g3hv-75wg-m249 (minimatch < 11.0.1: pattern amplification). @vscode/vsce and vscode-languageclient (the VS Code
 # extension) still ask for ^10.2.6, and no 10.x is patched. @vscode/vsce works with 11. vscode-languageclient calls
