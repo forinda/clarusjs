@@ -123,13 +123,15 @@ The parts are made of behaviours, each `(element, options) → dispose` for `[us
 
 ```tscl
 <script>
-  import { composerExtensions, editor, suggestion, toolbar } from '@clarusjs/editor'
+  import { composerExtensions, editor, toolbar } from '@clarusjs/editor'
   let field
   const mount = (el) => editor((field = el), { extensions: composerExtensions(), format: 'json', label: 'Note' })
 </script>
 
-<div [use]="mount"></div>
-<div aria-label="Formatting" [use]="(el) => toolbar(el, { editor: field })">
-  <button type="button" data-command="bold" aria-label="Bold">B</button>
-</div>
+<fragment>
+  <div [use]="mount"></div>
+  <div aria-label="Formatting" [use]="(el) => toolbar(el, { editor: field })">
+    <button type="button" data-command="bold" aria-label="Bold">B</button>
+  </div>
+</fragment>
 ```

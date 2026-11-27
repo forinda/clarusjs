@@ -93,10 +93,12 @@
     overflow-wrap: anywhere;
   }
   .messages li {
+    min-width: 0;
     padding: 8px 12px;
     border-radius: 8px;
     background: var(--bg-soft, transparent);
     white-space: pre-wrap;
+    overflow-wrap: anywhere; /* a long word wraps instead of widening the list */
   }
   .composer {
     display: grid;

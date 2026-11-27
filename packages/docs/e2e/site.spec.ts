@@ -3090,10 +3090,13 @@ test('user: in the guide, long words and code lines wrap inside the composer; no
     await demo.getByRole('button', { name: 'Code block' }).click()
     await page.keyboard.type('const longLine = "' + 'y'.repeat(160) + '"')
     for (let i = 0; i < 20; i++) await page.keyboard.press('Enter')
+    // sent too: the long word in the message list (CodeRabbit on #647)
+    await page.keyboard.press('ControlOrMeta+Enter')
+    await expect(demo.locator('.messages li').first()).toContainText('xxxx')
     const sizes = await demo.locator('form.composer').evaluate((el, width) => {
       const box = el.querySelector('[contenteditable]')!
       const rect = el.getBoundingClientRect(), demoRect = el.closest('.composer-demo')!.getBoundingClientRect()
-      return { width, editable: box.scrollWidth - box.clientWidth, composer: el.scrollWidth - el.clientWidth, right: Math.max(0, Math.round(rect.right - demoRect.right)), page: document.documentElement.scrollWidth - innerWidth }
+      return { width, editable: box.scrollWidth - box.clientWidth, composer: el.scrollWidth - el.clientWidth, right: Math.max(0, Math.round(Math.max(rect.right, el.closest('.composer-demo')!.querySelector('.messages')!.getBoundingClientRect().right) - demoRect.right)), page: document.documentElement.scrollWidth - innerWidth }
     }, width)
     expect(sizes).toEqual({ width, editable: 0, composer: 0, right: 0, page: 0 })
   }
