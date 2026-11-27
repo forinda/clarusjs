@@ -482,7 +482,7 @@ export const registry: Entry[] = [
     tailwind: ['combobox.tw.css'],
     parts: ['combobox.tscl'],
     uses: [],
-    examples: ['multiple', 'remote'],
+    examples: ['multiple', 'remote', 'search'],
     island: true,
     since: '0.1.0',
     sections: ['focus', 'field-select', 'combobox', 'motion'],

@@ -27,6 +27,14 @@ The parts come from `@clarusjs/ui-primitives`; the look is `combobox.css`, impor
 
 <<< ../../registry/combobox-multiple-demo.tscl
 
+### Options from a function
+
+`(search)`: answer each search yourself, for a source that isn't a URL (an API client, IndexedDB, a worker). The event brings the term (`$event.term`) and an `AbortSignal` (`$event.signal`, aborted by a newer search); `$event.respond()` takes the options or a promise of them. Answers are cached by search, like `[src]`'s. The listener is in an island's script, as here:
+
+<comboboxSearchDemo />
+
+<<< ../../registry/combobox-search-demo.tscl
+
 ### Options from a server
 
 `[src]`: typing asks the URL for `?q=<search>`, 200 ms after the last key, and lists what it answers (JSON: `[{ value, label }]`). The newest search wins; answers are cached by search. Here `/api/cities` is a small function on this site:

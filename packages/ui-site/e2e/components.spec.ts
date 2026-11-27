@@ -239,3 +239,15 @@ test('combobox remote example: typing asks /api/cities for the search, and lists
   await list.getByRole('option', { name: 'London' }).click()
   await expect(city).toHaveValue('London')
 })
+
+test('combobox [search] example: a function gives the options for what\'s typed', async ({ page }) => {
+  await page.goto('/components/combobox')
+  const lang = page.getByRole('combobox', { name: 'Language', exact: true })
+  await lang.scrollIntoViewIfNeeded()
+  await page.locator('cl-island[data-cl-ready]', { has: lang }).last().waitFor({ state: 'attached' }) // the combobox's, inside the example's
+  await lang.fill('el')
+  const list = page.getByRole('listbox', { name: 'Language', exact: true })
+  await expect(list.getByRole('option')).toHaveText(['Elixir', 'Elm'])
+  await list.getByRole('option', { name: 'Elm' }).click()
+  await expect(lang).toHaveValue('Elm')
+})

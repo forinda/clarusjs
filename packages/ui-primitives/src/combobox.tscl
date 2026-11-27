@@ -11,6 +11,10 @@
 
   Remote options: give [src] a URL; typing asks it for `src?q=<search>` (JSON: [{ value, label }]), 200 ms after the
   last key, and the newest search wins. <combobox [id]="'city'" [label]="'City'" [src]="'/api/cities'" [(value)]="city" />
+  Or answer each search yourself (an API client, IndexedDB, a worker): (search) brings the term and an AbortSignal (a
+  newer search aborts it); respond with the options or a promise of them, from an island's script:
+  <combobox [id]="'lang'" (search)="$event.respond(findLanguages($event.term, $event.signal))" />
+  Either way, answers are cached by search (by src, or by id for (search)).
 
   Keyboard: ↑ ↓ move, Home / End jump, Enter picks, Esc closes, Backspace in an empty search removes the last pick.
 
@@ -38,6 +42,7 @@
 @model value: string = ''
 @model values: string[] = []
 @event change: { value: string; label: string; selected: boolean }
+@event search: { term: string; signal: AbortSignal; respond: (options: Option[] | Promise<Option[]>) => void }
 
 <script>
   import { json, resource } from 'clarusjs/fetch'
@@ -49,23 +54,37 @@
   let active = state(0)
   // What's chosen, as a list in both modes.
   const chosen = derived(() => (multiple ? values : value ? [value] : []))
-  // With src: the server's answer for the term, cached by it; nothing is asked until the list opens.
+  // Answered by a (search) listener (known once one responds) or by src: the answer for the term, cached by it;
+  // nothing is asked until the list opens.
+  // A plain flag, not state: the fetcher runs while the options are read, where state can't be written.
+  let answered = false
+  const remotely = () => answered || !!src
   const remote = resource(
-    ({ signal }) =>
-      src && open ? json(src + (src.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(term), { signal }) : false,
-    { key: () => (src && open ? ['combobox', src, term] : false) },
+    ({ signal }) => {
+      if (!open) return false
+      let answer
+      emit('search', { term, signal, respond: (options) => (answer = options) })
+      if (answer !== undefined) {
+        answered = true
+        return Promise.resolve(answer)
+      }
+      return src ? json(src + (src.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(term), { signal }) : false
+    },
+    { key: () => (open ? ['combobox', src || '#' + id, term] : false) },
   )
   // The options matching what's typed (by label, ignoring case), or the server's.
   const shown = derived(() => {
-    if (src) return remote.value ?? []
+    const answer = remote.value // read first, always: the first (search) answer arrives after this runs
+    if (remotely()) return answer ?? []
     const q = query.trim().toLowerCase()
     return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options
   })
   const labelOf = (v) => known[v] ?? options.find((o) => o.value === v)?.label ?? v
   const status = derived(() => {
     if (!open) return ''
-    if (src && remote.loading) return 'Searching…'
-    if (src && remote.error) return "Couldn't load the options."
+    const { loading, error } = remote
+    if (remotely() && loading) return 'Searching…'
+    if (remotely() && error) return "Couldn't load the options."
     return shown.length ? '' : 'No match for "' + query + '"'
   })
 
@@ -86,7 +105,7 @@
       )
     )
       return
-    if (src) known = { ...known, [option.value]: option.label }
+    if (remotely()) known = { ...known, [option.value]: option.label }
     if (multiple) {
       values = chosen.includes(option.value) ? chosen.filter((v) => v !== option.value) : [...chosen, option.value]
     } else {
@@ -105,7 +124,7 @@
     open = true
     active = 0
     clearTimeout(timer)
-    timer = setTimeout(() => (term = text), src ? 200 : 0)
+    timer = setTimeout(() => (term = text), remotely() ? 200 : 0)
   }
   function key(event) {
     const last = shown.length - 1
