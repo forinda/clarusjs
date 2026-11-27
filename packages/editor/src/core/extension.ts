@@ -9,12 +9,12 @@ import type { Command, Plugin } from 'prosemirror-state'
  * render on the server) in place of `toDOM`. Text nodes have none: they are their text.
  * @see https://clarusjs.com/guide/editor-composer#extensions
  */
-export type NodeSpec = Omit<PMNodeSpec, 'toDOM'> & { render?: (node: Node) => DOMOutputSpec }
+export type NodeSpec = PMNodeSpec & { render?: (node: Node) => DOMOutputSpec }
 /**
  * A mark type: ProseMirror's MarkSpec, with `render` in place of `toDOM`.
  * @see https://clarusjs.com/guide/editor-composer#extensions
  */
-export type MarkSpec = Omit<PMMarkSpec, 'toDOM'> & { render: (mark: Mark, inline: boolean) => DOMOutputSpec }
+export type MarkSpec = PMMarkSpec & { render: (mark: Mark, inline: boolean) => DOMOutputSpec }
 
 /**
  * An editor extension: the nodes and marks it adds to the schema, its commands (by name), keys, input rules and

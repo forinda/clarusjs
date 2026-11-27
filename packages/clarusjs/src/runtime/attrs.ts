@@ -14,6 +14,12 @@ const ANIMATION_ELEMENTS = new Set(['animate', 'set', 'animatemotion', 'animatet
 const IMAGE_ATTRS = new Set(['src', 'srcset', 'poster'])
 const SAFE_SCHEMES = new Set(['http', 'https', 'mailto', 'tel'])
 const RASTER_DATA = /^data:image\/(png|gif|jpe?g|webp|avif|bmp);/i
+/**
+ * What `attrValue()` puts in place of a URL it refuses (a `javascript:` link, say): an address that goes nowhere.
+ * @example
+ * attrValue('href', 'javascript:alert(1)') === UNSAFE_URL // true
+ * @see https://clarusjs.com/reference/runtime#attrvalue
+ */
 export const UNSAFE_URL = 'about:invalid#unsafe'
 
 /**
@@ -65,6 +71,13 @@ export function styleValue(value: unknown): string {
 
 /**
  * What an attribute should become: `null` removes it, `true` makes it a bare boolean attribute, a string is its value.
+ * URL attributes (`href`, `src`…) are checked: a relative URL or a safe scheme passes, anything else becomes
+ * `UNSAFE_URL`. The same check templates use, for packages that write attributes themselves (`@clarusjs/editor`).
+ * @example
+ * attrValue('href', '/docs') // '/docs'
+ * attrValue('href', 'javascript:alert(1)') // UNSAFE_URL
+ * attrValue('disabled', true) // true
+ * @see https://clarusjs.com/reference/runtime#attrvalue
  */
 export function attrValue(name: string, value: unknown, tag?: string): string | true | null {
   if (value == null) return null

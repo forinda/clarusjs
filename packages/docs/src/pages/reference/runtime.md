@@ -207,3 +207,16 @@ const browser: boolean
 - **A runtime that defines `window` without `document`** (some server runtimes do) counts as the server.
 
 `render()`, for rendering a view to HTML in server code, is in the [Server reference](/reference/server#render).
+
+## attrValue() {since=0.18.0}
+
+```ts
+attrValue(name: string, value: unknown, tag?: string): string | true | null
+```
+
+What a value becomes as the attribute `name`: `null` removes it, `true` makes it a bare boolean attribute, and a string is its value. URL attributes (`href`, `src` and the rest) are checked as templates check them: a relative URL or a safe scheme (`http`, `https`, `mailto`, `tel`) passes, and anything else becomes `UNSAFE_URL` (`about:invalid#unsafe`). It's for code that writes attributes itself, such as [`@clarusjs/editor`](/guide/editor-composer) rendering stored content.
+
+```ts
+import { attrValue, UNSAFE_URL } from 'clarusjs/runtime'
+attrValue('href', 'javascript:alert(1)') === UNSAFE_URL // true
+```
