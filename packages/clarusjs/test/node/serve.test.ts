@@ -125,7 +125,7 @@ describe('serve(): a built site', () => {
     expect(await head.text()).toBe('')
     expect((await fetch(url('/%E0%A4%A'))).status).toBe(400)
     // Host files in any case: Windows and macOS file systems ignore it.
-    for (const path of ['/%2e%2e/package.json', '/_headers', '/_HEADERS', '/_Headers']) expect((await fetch(url(path))).status, path).toBe(404)
+    for (const path of ['/%2e%2e/package.json', '/_headers', '/_HEADERS', '/_Headers', '/_worker.js/index.js', '/_WORKER.JS/index.js', '/_routes.json']) expect((await fetch(url(path))).status, path).toBe(404)
     expect((await fetch(url('/..%2fpackage.json'))).status).toBe(400)
   })
 })

@@ -246,3 +246,24 @@ test('for-shadow: an @for item named like a script name, an input, a model or an
 test('for-shadow: a script it can\'t parse is left alone (the compiler reports it)', () => {
   expect(lint('<script>\n  let a = (\n</script>\n@for (a of [1]; track a) { <i>{{ a }}</i> }\n', file).filter((m) => m.rule === 'for-shadow')).toEqual([])
 })
+
+test('#602 server-env-in-browser: an error by default, for process.env and unprefixed import.meta.env in browser scripts', () => {
+  const source = `<script server>
+  const key = process.env.API_KEY
+</script>
+<script>
+  const a = process.env.API_KEY
+  const mode = process.env.NODE_ENV
+  const b = import.meta.env.SECRET
+  const c = import.meta.env.VITE_PUBLIC_URL + import.meta.env.DEV + import.meta.env.BASE_URL
+  let n = state(0)
+</script>
+<button (click)="n++">{{ n }} {{ key }}</button>
+`
+  const found = lint(source, file).filter((m) => m.rule === 'server-env-in-browser')
+  expect(found.map((m) => `${m.line}:${m.column} ${m.severity}`)).toEqual(['5:13 error', '7:13 error'])
+  expect(found[0]!.message).toBe("process.env runs in the browser here, where it doesn't exist: read API_KEY in <script server> or a load(), or name it VITE_API_KEY to send it to the browser")
+  expect(found[1]!.message).toBe("import.meta.env.SECRET is never sent to the browser (only VITE_ variables are): read it in <script server> or a load(), or name it VITE_SECRET")
+  expect(rules(source, { 'server-env-in-browser': 'warn' }).filter((r) => r.endsWith('server-env-in-browser'))).toEqual(['5:13 warning server-env-in-browser', '7:13 warning server-env-in-browser'])
+  expect(rules('<script inline>console.log(process.env.TOKEN)</script>')).toEqual(['1:28 error server-env-in-browser'])
+})

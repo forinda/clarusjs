@@ -26,6 +26,7 @@ src/components/card.tscl:4:3 warning img-alt: <img> without alt: describe the im
 | `accessible-name` | a `<button>` or link with no text, `aria-label`, `aria-labelledby` or `title` |
 | `one-root` {since=0.16.0} | a component without one root element (files under a `pages` or `layouts` folder, and whole documents, are exempt; a layout kept elsewhere is warned about): wrap its top level in an element, or in [`<fragment>`](/guide/components#several-elements-without-a-wrapper-fragment) |
 | `for-shadow` {since=0.17.0} | an `@for` row named like something the component declares (a script name, an `@input` or `@model`, an import): inside the loop the row hides it, so `[class]="item"` reads the row |
+| `server-env-in-browser` {since=0.17.0} | `process.env`, or an `import.meta.env` variable without the `VITE_` prefix, read in a `<script>` or `<script inline>`, which run in the browser: there `process.env` doesn't exist and Vite sends only `VITE_` variables. **An error by default.** See [Environment variables](/guide/environment-variables) |
 
 A component or `<slot>` inside a label, button or link counts as content: lint can't see what it renders, so it gives it the benefit of the doubt. A `@for` without `track` and a two-way binding on an element it doesn't fit are reported by the compiler itself.
 
