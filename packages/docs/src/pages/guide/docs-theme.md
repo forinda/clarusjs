@@ -197,6 +197,7 @@ export const config: ThemeConfig = {
 - **Where it shows:** an XP chip in the lesson header and on the section's pages; in the Learn sidebar each lesson is marked done, up next or not started (a hint: every lesson stays open); the progress page has XP, lessons, quiz accuracy, badges and a Reset button.
 - **When storage is blocked** the progress page says so and lessons work as usual; without JavaScript the progress page lists the lessons as links.
 - Finishing the last lesson, and ✕ in a lesson, lead to the progress page.
+- **Code beside the text or inline:** from 1024px wide, a step's code blocks and results go in a column beside its text (`layout: 'split'`, the default). `learn: { …, layout: 'stacked' }` keeps them where they are in the text, as on a phone.
 
 ## Regions at every width
 

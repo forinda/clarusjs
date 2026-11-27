@@ -7,6 +7,7 @@
 @input prev: string = ''
 @input next: string = ''
 @input leave: string = '/'
+@input layout: 'split' | 'stacked' = 'split'
 
 <script>
   import { answer, finish, load, save, step } from './progress.ts'
@@ -85,7 +86,7 @@
       location.href = next || leave
     }
   }
-  // Each step's code and results (code blocks, .result) go in a side column, its text in the main one.
+  // Each step's code and results (code blocks, .result) go in a side column, its text in the main one ('split').
   function split(step) {
     const side = [...step.children].filter((el) => el.matches('.code-block, .sample, pre, .result'))
     if (!side.length || step.classList.contains('split')) return
@@ -98,7 +99,7 @@
     step.classList.add('split')
   }
   if (typeof document !== 'undefined' && steps().length) {
-    steps().forEach(split)
+    if (layout === 'split') steps().forEach(split)
     document.body.classList.add('one-step')
     const lessonBar = document.querySelector('.lesson-bar')
     if (lessonBar instanceof HTMLElement) lessonBar.hidden = false

@@ -21,7 +21,7 @@ beforeAll(async () => {
   symlinkSync(resolve(import.meta.dirname, '../node_modules/clarusjs'), resolve(root, 'node_modules/clarusjs'), 'junction')
   w('src/config.ts', `export const config = {
   brand: { text: 'acme', accent: '.dev' },
-  learn: { section: 'learn', progress: '/learn/progress' },
+  learn: { section: 'learn', progress: '/learn/progress', layout: 'stacked' },
   sections: [{ key: 'learn', title: 'Learn', href: '/learn/one', groups: [{ title: 'First site', items: [{ title: 'One', href: '/learn/one', xp: 90, minutes: 5 }, { title: 'Two', href: '/learn/two', xp: 60 }] }, { title: 'You', items: [{ title: 'Progress', href: '/learn/progress' }] }] }, { key: 'guide', title: 'Guide', href: '/guide/start', groups: [{ title: 'Basics', icon: 'book', items: [{ title: 'Start', href: '/guide/start', badge: 'New' }, { title: 'Next', href: '/guide/next' }] }, { title: 'Tools', icon: 'wrench', collapsed: true, items: [{ title: 'Extra', href: '/guide/extra' }] }] }, { key: 'api', title: 'API', href: '/guide/next', switch: false, groups: [] }],
   social: [{ label: 'GitHub', href: 'https://github.com/acme/x', icon: 'github' }],
   menuLinks: [{ label: 'Releases', href: '/guide/next' }],
@@ -203,4 +203,9 @@ test('#371: a lesson page has the path: course, progress, each lesson with its X
   expect(path).toMatch(/<a [^>]*href="\/learn\/progress"[^>]*>[\s\S]*XP/)
   // It's an island: done / current / locked come from the progress in the browser.
   expect(one).toMatch(/<cl-island c="learn-path"/)
+})
+
+test('learn.layout: \'stacked\' reaches the lesson bar, which then leaves each step\'s code inline (no side column)', () => {
+  const one = readFileSync(resolve(root, 'dist/client/learn/one/index.html'), 'utf8')
+  expect(one).toMatch(/<cl-island c="[^"]*lesson-bar" [^>]*p="[^"]*layout[^"]*stacked/)
 })
