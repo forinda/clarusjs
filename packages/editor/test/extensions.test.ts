@@ -90,3 +90,26 @@ test('composerExtensions: code blocks and mentions can be left out; the same opt
   expect(markdownShortcuts.requires ?? []).toEqual([])
   expect([bold, italic, code, link, mention].every((e) => e.name)).toBe(true)
 })
+
+const docOf = (...blocks: any[]) => schema.node('doc', null, blocks)
+const p = (...content: any[]) => schema.node('paragraph', null, content)
+const t = (s: string) => schema.text(s)
+const br = () => schema.nodes.hard_break!.create()
+const selectAll = (doc: any) => { const s = EditorState.create({ doc, schema }); return s.apply(s.tr.setSelection(TextSelection.create(s.doc, 1, s.doc.content.size - 1))) }
+
+test('user: toggling a code block over lines keeps every line, and toggling back gives them back', () => {
+  // three paragraphs, the second with a Shift+Enter break, all selected
+  const code = run(selectAll(docOf(p(t('one')), p(t('two'), br(), t('three')), p(t('four')))), commands.codeBlock())
+  expect(code.doc.childCount).toBe(1)
+  expect(code.doc.firstChild!.type.name).toBe('code_block')
+  expect(code.doc.firstChild!.textContent).toBe('one\ntwo\nthree\nfour')
+  const back = run(code, commands.codeBlock())
+  expect(back.doc.firstChild!.type.name).toBe('paragraph')
+  expect(back.doc.firstChild!.toJSON().content).toEqual([
+    { type: 'text', text: 'one' }, { type: 'hard_break' }, { type: 'text', text: 'two' }, { type: 'hard_break' },
+    { type: 'text', text: 'three' }, { type: 'hard_break' }, { type: 'text', text: 'four' },
+  ])
+  // a caret alone in a paragraph: that paragraph becomes the code block
+  const one = EditorState.create({ doc: docOf(p(t('x')), p(t('y'))), schema })
+  expect(run(one, commands.codeBlock()).doc.toJSON().content.map((b: any) => b.type)).toEqual(['code_block', 'paragraph'])
+})
