@@ -2,23 +2,139 @@
 title: "Deploying"
 group: "Build & deploy"
 order: 3
-description: "Upload dist/client to any static host; this site deploys to Netlify."
+description: "What vite build makes, and how to deploy it: any static host, Netlify, Vercel, Cloudflare, Node and Docker, with headers and environment variables."
 ---
 
 # Deploying
 
-<p class="lead">Upload <code>dist/client/</code> to any static host.</p>
+<p class="lead">A site with only static pages is a folder of files, <code>dist/client</code>, that any host serves. Server routes need a host that runs code: an adapter writes what Netlify, Vercel or Cloudflare expect, and anywhere else runs <code>clarusjs serve</code>.</p>
+
+## What the build makes
+
+`vite build` writes:
+
+| Path | What |
+|---|---|
+| `dist/client/` | the site: every static page (`<path>/index.html`), `404.html`, the hashed JavaScript and CSS under `assets/`, and `public/`'s files |
+| `dist/client/_headers` | your [headers](#headers), plus safe defaults, in the format Netlify and Cloudflare Pages read |
+| `dist/client/_redirects` | your [redirects](/guide/routing), as 301s for the hosts that read it (each old path also gets a page that sends visitors on) |
+| `dist/server/` | the handler for [server routes](/guide/rendering-modes) and endpoints, and for prerendering |
+
+## Choosing a host
+
+| Host | Static pages | Server routes | Setup |
+|---|---|---|---|
+| Any static host (GitHub Pages, S3, nginx, Caddy…) | yes | no | upload `dist/client` |
+| [Netlify](#netlify) | yes | `adapter: 'netlify'` | `netlify.toml` |
+| [Vercel](#vercel) | yes | `adapter: 'vercel'` | build command only |
+| [Cloudflare](#cloudflare) | yes | `adapter: 'cloudflare'` | Pages, or `wrangler.jsonc` |
+| [Node](#node) (VPS, Fly.io, Render, Railway) | yes | yes | `clarusjs serve` |
+| [Docker](#docker) | yes | yes | the Dockerfile below |
+
+A site's pages are static unless the [`routes`](/reference/vite-plugin#routes) option makes some `'server'`. Endpoints (`.ts` files under `src/pages`) always run per request, so a site with one needs a host from the lower rows.
+
+## Any static host
+
+Upload `dist/client`. A host should send `404.html` (with status 404) for unknown paths, and serve `<path>/index.html` at `<path>/`. Most do both. For a site under a path, such as `example.com/docs/`, set Vite's `base: '/docs/'` in `vite.config.ts`: every link and asset URL gets it, and so do the headers and redirects. Then upload the folder's contents to that path.
+
+On a server of your own, with nginx for example, serve the folder like this. With [`compress: true`](/reference/vite-plugin#compress), the `.br` and `.gz` copies are sent as they are:
+
+```nginx [nginx.conf]
+server {
+  root /srv/my-site/dist/client;
+  gzip_static on;
+  location /assets/ {
+    add_header Cache-Control "public, max-age=31536000, immutable";
+  }
+  location / {
+    try_files $uri $uri/index.html =404;
+  }
+  error_page 404 /404.html;
+}
+```
+
+nginx doesn't read `_headers` or `_redirects`, so write their lines in its config. For server routes, run [`clarusjs serve`](#node) and `proxy_pass` to it.
+
+### Caddy
+
+Caddy serves the folder the same way, and gets the site its HTTPS certificate on its own. `precompressed` sends the `.br` and `.gz` copies from `compress: true`, and `handle_errors` answers unknown paths with `404.html`:
+
+```caddy [Caddyfile]
+example.com {
+  root * /srv/my-site/dist/client
+  try_files {path} {path}/index.html
+  header /assets/* Cache-Control "public, max-age=31536000, immutable"
+  file_server {
+    precompressed br gzip
+  }
+  handle_errors 404 {
+    rewrite * /404.html
+    file_server
+  }
+}
+```
+
+Like nginx, Caddy doesn't read `_headers` or `_redirects`: write them as `header` and `redir` lines. With server routes, let [`clarusjs serve`](#node) answer everything (files, headers and all) and put Caddy in front for HTTPS:
+
+```caddy [Caddyfile]
+example.com {
+  reverse_proxy localhost:3000
+}
+```
 
 ## Netlify
 
-This site deploys to Netlify:
+For a static site, publish `dist/client`:
 
-```toml
-# netlify.toml
+```toml [netlify.toml]
+[build]
+  command = "npm run build"
+  publish = "dist/client"
+```
+
+For server routes, set `adapter: 'netlify'`. The build then also writes `.netlify/v1/functions/clarusjs-server.mjs`, one function for every server route and endpoint, through Netlify's Frameworks API. Static files are served first. Netlify reads `_headers` and `_redirects` from the published folder itself.
+
+In a monorepo, set the site's package directory, in Netlify's settings, to the folder with `vite.config.ts`, where the adapter writes its function, and don't also set Netlify's `base` to it. This site deploys that way:
+
+```toml [netlify.toml]
 [build]
   command = "pnpm install --frozen-lockfile && pnpm --filter @clarusjs/docs build"
   publish = "packages/docs/dist/client"
 ```
+
+## Vercel {since=0.17.0}
+
+Set `adapter: 'vercel'`. The build writes Vercel's Build Output API to `.vercel/output`: static files, one function for server routes, and routes for your headers, redirects and 404 page.
+
+```ts [vite.config.ts]
+clarusjs({ adapter: 'vercel', routes: { '/account/*': 'server' } })
+```
+
+In the Vercel project, set the build command to `vite build` (or `npm run build`) and leave the output directory empty: Vercel uses `.vercel/output` when it's there. Add `.vercel` to `.gitignore`. A fully static site needs no adapter: set the output directory to `dist/client` instead.
+
+## Cloudflare {since=0.17.0}
+
+Set `adapter: 'cloudflare'`. The build adds a worker for server routes to `dist/client`, and Cloudflare serves everything else as static files, with your headers and redirects.
+
+```ts [vite.config.ts]
+clarusjs({ adapter: 'cloudflare', routes: { '/account/*': 'server' } })
+```
+
+**Pages:** set the build command to `vite build` and the output directory to `dist/client`, or run `wrangler pages deploy dist/client`. Turn on the `nodejs_compat` compatibility flag, because the server uses `AsyncLocalStorage`.
+
+**Workers:** point a `wrangler.jsonc` at the same folder. `run_worker_first` sends the server routes to the worker, and everything else is served as a static file:
+
+```jsonc [wrangler.jsonc]
+{
+  "name": "my-site",
+  "main": "dist/client/_worker.js/index.js",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "dist/client", "binding": "ASSETS", "run_worker_first": ["/account/*"] }
+}
+```
+
+On Cloudflare, `process.env` holds the project's variables and secrets (with `nodejs_compat` and a compatibility date from 2025-04-01 on), so server code reads them as on any host. See [Environment variables](/guide/environment-variables).
 
 ## Node {since=0.17.0}
 
@@ -85,9 +201,9 @@ It listens on `$PORT` (3000) on every interface, runs as the unprivileged `node`
 
 ## Headers {since=0.17.0}
 
-Set response headers in the plugin's [`headers`](/reference/vite-plugin#headers) option. The build writes them to `_headers`, which Netlify and Cloudflare Pages read as they are, and which `clarusjs serve` and `vite preview` apply. Every site already sends `nosniff`, a `Referrer-Policy`, and immutable caching for hashed assets.
+Set response headers in the plugin's [`headers`](/reference/vite-plugin#headers) option. The build writes them to `_headers`. Netlify and Cloudflare Pages read that file as it is. `clarusjs serve` and `vite preview` apply it, and the Vercel and Cloudflare adapters turn it into routes and worker code. Every site already sends `X-Content-Type-Options: nosniff`, a `Referrer-Policy`, and immutable caching for hashed assets. A pattern applies to its path with and without the trailing slash, and its case is ignored.
 
-clarusjs pages run no inline scripts (island state is JSON, and the loader is a file), so a strict Content-Security-Policy fits. Here's one to start from:
+clarusjs adds no inline scripts of its own: an island's state is JSON, which a Content-Security-Policy doesn't block, and the loader is a file. A strict policy fits:
 
 ```ts
 clarusjs({
@@ -100,4 +216,17 @@ clarusjs({
 })
 ```
 
-`style-src` needs `'unsafe-inline'` for the small style each page carries for islands, and for any `style=""` attributes. Add each origin your pages load from (fonts, analytics, images) to its directive.
+Inline scripts you add need allowing too. That covers a `<script inline>` (a theme script that runs before the first paint, for example) and a `head.tags` script with content (an analytics snippet). Add each one's hash to `script-src` as `'sha256-…'`: the browser's console prints it when the policy blocks the script. `style-src` needs `'unsafe-inline'` for the small style each page carries for islands, and for any `style=""` attributes. Add each origin your pages load from (fonts, analytics, images) to its directive.
+
+## Environment variables
+
+Server code reads `process.env`, and the browser gets only `VITE_` variables, which are written into the JavaScript at build time. See [Environment variables](/guide/environment-variables).
+
+| Host | Where they go |
+|---|---|
+| Netlify, Vercel | the project's environment variables settings, for builds and functions |
+| Cloudflare | the project's variables and secrets (`process.env` with `nodejs_compat`) |
+| Node | the process's environment, or `node --env-file=.env node_modules/.bin/clarusjs serve` |
+| Docker | `docker run -e NAME=value`, or `--env-file` |
+
+A variable a prerendered page reads is read once, when the site builds: set it for the build too, and build again when it changes.
