@@ -300,3 +300,15 @@ test("server-env-in-browser takes the project's envPrefix: those variables reach
   expect(found.map((m) => `${m.line}:${m.column}`)).toEqual(['2:48'])
   expect(found[0]!.message).toBe('import.meta.env.VITE_OTHER is never sent to the browser (only PUBLIC_ variables are): read it in <script server> or a load(), or name it PUBLIC_VITE_OTHER')
 })
+
+test("@transition's arguments around a @for read names too", () => {
+  const source = "@input speed: number = 200\n<script>\n  let xs = state([1])\n</script>\n<ul>\n  @transition ('list', { duration: speed }) { @for (x of xs; track x) { <li>{{ x }}</li> } }\n</ul>\n"
+  expect(lint(source, file).filter((m) => m.rule === 'unused-input')).toEqual([])
+})
+
+test('unused-import: a name spread into an array or object (...name) is used', () => {
+  const source = "@import { base } from '../data.ts'\n<script>\n  let all = state([...base, 4])\n</script>\n<p>{{ all.length }}</p>\n"
+  expect(lint(source, file).filter((m) => m.rule === 'unused-import')).toEqual([])
+  // A property of that name on something else still isn't a read of it.
+  expect(lint("@import { base } from '../data.ts'\n<script>\n  let x = state(obj.base)\n</script>\n<p>{{ x }}</p>\n", file).filter((m) => m.rule === 'unused-import')).toHaveLength(1)
+})

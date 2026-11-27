@@ -2,7 +2,8 @@
 // own, so only islands that use @transition load this: dom.ts's block() stays as it is. Vue's contract (classes
 // `<name>-enter-from/-active/-to`, `-leave-…`, modes, appear, duration, hooks); the end of a transition is read from
 // the element's animations (getAnimations), capped by a timeout.
-import { blocks, insertHtml, owner, reshaped, type Ctx } from './dom.ts'
+import { blocks, forBlock, insertHtml, owner, reshaped, type Ctx } from './dom.ts'
+import type { Signal } from './signals.ts'
 import { effect, onDispose, scope, untrack } from './signals.ts'
 
 /**
@@ -41,6 +42,11 @@ type Dir = 'enter' | 'leave'
 
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms))
+/** `wait`, or `ms` if that comes first; the timer is cleared either way, so none is left pending. */
+const capped = async (wait: Promise<unknown>, ms: number): Promise<void> => {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try { await Promise.race([wait, new Promise<void>((done) => (timer = setTimeout(done, ms)))]) } finally { clearTimeout(timer) }
+}
 // Vue's timing: the -from class is in place for one painted frame before -to replaces it.
 const nextFrame = () => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())))
 
@@ -85,7 +91,7 @@ function run(el: Element, dir: Dir, name: string, o: TransitionOptions): { done:
         : css ? Promise.allSettled((el.getAnimations?.({ subtree: true }) ?? []).map((a) => a.finished)) : Promise.resolve()
     }
     // The safety net: an animation that never ends (infinite, or never started) can't hold the element.
-    await Promise.race([wait, sleep(Math.max(5000, 2 * (ms ?? 0)))])
+    await capped(wait, Math.max(5000, 2 * (ms ?? 0)))
     if (cancelled) return
     clear()
     hook(dir === 'enter' ? 'AfterEnter' : 'AfterLeave')?.(el, () => {})
@@ -159,17 +165,18 @@ export function transitionBlock(ctx: Ctx, index: number, which: () => number, br
     // Text goes at once; elements leave, then go.
     for (const n of nodes) if (n.nodeType !== 1) n.parentNode?.removeChild(n)
     const elements = nodes.filter((n) => n.nodeType === 1) as Element[]
+    const parent = elements[0]?.parentNode
     return Promise.all(elements.map(async (top) => {
       const els = targets([top])
       for (const el of els) entering.get(el)?.()
       // A hook that throws is reported; the element still goes, and out-in still inserts what comes next.
       try { await Promise.all(els.map((el) => run(el, 'leave', name, o).done)) } catch (err) { failed(err) }
-      const parent = top.parentNode
       top.remove()
-      // Child islands that left are disposed by the loader's next pass over the page.
+    })).then(() => {
+      // Child islands that left are disposed by the loader's next pass over the page: one pass for them all.
       const attach = (globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach
       if (attach && parent) attach(parent)
-    }))
+    })
   }
   const insert = (k: number, animate = true): Promise<unknown> => {
     if (!alive || k < 0) return Promise.resolve()
@@ -208,6 +215,9 @@ export function transitionBlock(ctx: Ctx, index: number, which: () => number, br
       const old = live
       live = []
       neutralise(old, 'root' in ctx ? ctx.root : ctx)
+      // Now, whatever the mode: its text goes, and an enter it was still running stops (in-out leaves it only later).
+      for (const n of old) if (n.nodeType !== 1) n.parentNode?.removeChild(n)
+      for (const el of targets(old)) entering.get(el)?.()
       if (o.mode === 'out-in') {
         const leaving = leave(old)
         if (holding) return
@@ -220,5 +230,82 @@ export function transitionBlock(ctx: Ctx, index: number, which: () => number, br
         void insert(k)
       }
     })
+  })
+}
+
+/** A row's template, as the compiler passes it to forBlock. */
+type RowParts = { html: (item: any, i: number, list: unknown[]) => string; wire: (ctx: Ctx, item: Signal<any>, index: Signal<number>, count: Signal<number>) => void }
+
+/**
+ * The @for block of `@transition (name, options) { @for … }`: dom.ts's forBlock(), with rows entering and leaving
+ * with the classes, and rows that move sliding into place (FLIP: measured before and after the update, put back with
+ * an inverse transform, then `<name>-move` and the transform off, so its CSS transition animates the move).
+ * @internal Compiled components call this; apps don't.
+ */
+export function transitionFor(ctx: Ctx, index: number, list: () => unknown, keyOf: (item: any, i: number) => unknown, row: RowParts, empty: { html: () => string; wire: (ctx: Ctx) => void } | null, name: string, options?: TransitionOptions): void {
+  const o = options ?? {}
+  const island = 'root' in ctx ? ctx.root : ctx
+  const entering = new Map<Element, () => void>()
+  const enter = (el: Element) => {
+    try {
+      const r = run(el, 'enter', name, o)
+      entering.set(el, r.cancel)
+      r.done.catch(failed).finally(() => entering.delete(el))
+    } catch (err) { failed(err) }
+  }
+  forBlock(ctx, index, list, keyOf, row, empty, {
+    in(nodes, initial) {
+      if (initial && !o.appear) return
+      for (const el of targets(nodes)) enter(el)
+    },
+    out(nodes) {
+      neutralise(nodes, island)
+      // The row's markers and text go now; its elements leave, then go.
+      for (const n of nodes) if (n.nodeType !== 1) n.parentNode?.removeChild(n)
+      for (const top of nodes.filter((n) => n.nodeType === 1) as Element[]) {
+        const els = targets([top])
+        for (const el of els) entering.get(el)?.()
+        void (async () => {
+          try { await Promise.all(els.map((el) => run(el, 'leave', name, o).done)) } catch (err) { failed(err) }
+          const parent = top.parentNode
+          top.remove()
+          const attach = (globalThis as { __clAttach?: (root: ParentNode) => void }).__clAttach
+          if (attach && parent) attach(parent)
+        })()
+      }
+      reshaped()
+    },
+    frame(start, end, update) {
+      // Nothing slides under reduced motion: the rows take their places at once.
+      if (reduced() || o.css === false) return update()
+      const before = new Map<Element, DOMRect>()
+      for (const n of between(start, end)) if (n.nodeType === 1 && !(n as Element).hasAttribute('inert')) for (const el of targets([n])) before.set(el, el.getBoundingClientRect())
+      update()
+      const moved: HTMLElement[] = []
+      for (const [el, was] of before) {
+        if (!el.isConnected || el.closest('[inert]')) continue
+        const now = el.getBoundingClientRect()
+        const dx = was.left - now.left
+        const dy = was.top - now.top
+        if (!dx && !dy) continue
+        const s = (el as HTMLElement).style
+        s.transform = `translate(${dx}px, ${dy}px)`
+        s.transitionDuration = '0s'
+        moved.push(el as HTMLElement)
+      }
+      if (!moved.length) return
+      void document.body.offsetHeight // the inverse transforms take effect before the move starts
+      const cls = `${name}-move`
+      for (const el of moved) {
+        el.classList.add(cls)
+        el.style.transform = ''
+        el.style.transitionDuration = ''
+        void (async () => {
+          await nextFrame()
+          await capped(Promise.allSettled((el.getAnimations?.() ?? []).map((a) => a.finished)), 5000)
+          el.classList.remove(cls)
+        })()
+      }
+    },
   })
 }

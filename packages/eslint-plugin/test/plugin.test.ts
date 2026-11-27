@@ -107,3 +107,8 @@ test("a script name read only in @transition's arguments is used", () => {
   const source = "<script>\n  let open = state(true)\n  const slide = { mode: 'out-in' }\n</script>\n\n<div>\n  <button (click)=\"open = !open\">Toggle</button>\n  @transition ('slide', slide) { @if (open) { <p>A</p> } }\n</div>\n"
   expect(run(source, { 'no-unused-vars': 'error' })).toEqual([])
 })
+
+test("a script name read only in @transition's arguments around a @for is used", () => {
+  const source = "<script>\n  let xs = state([1])\n  const opts = { appear: true }\n</script>\n\n<ul>\n  @transition ('list', opts) { @for (x of xs; track x) { <li>{{ x }}</li> } }\n</ul>\n"
+  expect(run(source, { 'no-unused-vars': 'error' })).toEqual([])
+})

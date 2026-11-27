@@ -280,3 +280,11 @@ test('@transition wraps its @if: kept, with its arguments as written, laid out l
   expect(parse(out, 'x.tscl').nodes.some((n) => n.type === 'element' && n.children.some((c) => c.type === 'if' && c.transition?.name === "'fade'"))).toBe(true)
   expect(await fmt(out)).toBe(out)
 })
+
+test('@transition around a @for: kept, laid out as a block, and stable', async () => {
+  const input = "<script>\n  let xs = state([1])\n</script>\n<ul>\n@transition ('list') { @for (x of xs; track x) { <li>{{ x }}</li> } }\n</ul>\n"
+  const out = await fmt(input)
+  expect(out).toContain("@transition ('list') {")
+  expect(out).toContain('@for (x of xs; track x) {')
+  expect(await fmt(out)).toBe(out)
+})

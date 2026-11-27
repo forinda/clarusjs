@@ -31,12 +31,11 @@ test('@transition without arguments, a name alone, and comments or whitespace ar
   expect(nested.transition).toMatchObject({ name: "pick('a,b')", options: '{ duration: { enter: 1, leave: 2 } }' })
 })
 
-test('@transition holds exactly one @if: anything else is an error at that node', () => {
-  const message = '@transition wraps one @if (@for comes later)'
+test('@transition holds exactly one @if or @for: anything else is an error at that node', () => {
+  const message = '@transition wraps one @if or @for'
   expect(parseError('@transition { <p/> }').message).toBe(`x.tscl:1:15 ${message}`)
   const two = '@transition { @if (a) { } @if (b) { } }'
   expect(parseError(two).message).toBe(`x.tscl:1:${two.indexOf('@if (b)') + 1} ${message}`)
-  expect(parseError('@transition { @for (x of xs; track x) { } }').message).toBe(`x.tscl:1:15 ${message}`)
   expect(parseError('@transition { }').message).toBe(`x.tscl:1:1 ${message}`)
   expect(parseError('@transition { @if (a) { }').message).toBe('x.tscl:1:1 unclosed @transition block')
 })
@@ -82,4 +81,21 @@ test("a comma inside a JavaScript comment or a template's ${} doesn't split the 
   expect(lined.transition).toMatchObject({ name: "'fade' // a, b", options: 'opts' })
   const template = parse("@transition (`${pick(a, b)}-fade`, opts) { @if (a) { <p/> } }", 'x.tscl').nodes[0] as any
   expect(template.transition).toMatchObject({ name: '`${pick(a, b)}-fade`', options: 'opts' })
+})
+
+// --- @for (motion phase 3) ---
+
+test('@transition around a @for: the @for carries the transition', () => {
+  const node = parse("@transition ('list', { appear: true }) {\n  @for (x of xs; track x.id) { <li>{{ x.name }}</li> } @empty { <li>None</li> }\n}", 'x.tscl').nodes[0] as any
+  expect(node).toMatchObject({ type: 'for', transition: { name: "'list'", options: '{ appear: true }', start: 0 } })
+})
+
+test('in an island, a wrapped @for compiles to transitionFor from clarusjs/motion; the server is unchanged', () => {
+  const list = (wrapped: boolean) => `<script>\n  let xs = state([{ id: 1, name: 'a' }])\n</script>\n<ul>\n  ${wrapped ? "@transition ('list') { " : ''}@for (x of xs; track x.id) { <li>{{ x.name }}</li> }${wrapped ? ' }' : ''}\n</ul>\n`
+  const client = compile(list(true), { file: 'x.tscl', target: 'client' }).code
+  expect(client).toContain("import { transitionFor as __cl_tf } from 'clarusjs/motion'")
+  expect(client).toMatch(/__cl_tf\(__cl_root, 0, [\s\S]*, 'list', undefined\)/)
+  expect(client).not.toContain('__cl_for(')
+  expect(compile(list(true), { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code).toBe(compile(list(false), { file: 'x.tscl', target: 'server', clientUrl: '/x' }).code)
+  expect(compileError("<ul>@transition ('list') { @for (x of [1]; track x) { <li>{{ x }}</li> } }</ul>").message).toContain('@transition runs in the browser')
 })

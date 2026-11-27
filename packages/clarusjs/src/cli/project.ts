@@ -2,11 +2,12 @@
 // resolve.alias, so check sees the same pages and imports as the build. Read with Vite's own config loader.
 import type { LibraryOption } from '../vite/libraries.ts'
 import type { EnvOption } from '../vite/env.ts'
+import type { ModeTable } from '../server/modes.ts'
 import { resolve } from 'node:path'
 import type { CheckSource } from './check.ts'
 import type { LintConfig, LintRuleDef } from '../compiler/lint.ts'
 
-type Plugin = { name?: string; api?: { sources?: CheckSource[]; lint?: LintConfig; lintRules?: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }; env?: EnvOption } }
+type Plugin = { name?: string; api?: { sources?: CheckSource[]; lint?: LintConfig; lintRules?: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }; env?: EnvOption; routes?: ModeTable } }
 
 /** Vite's plugins option: plugins, falsy entries, nested arrays and promises of any of these. */
 async function flatten(plugins: unknown): Promise<Plugin[]> {
@@ -15,7 +16,7 @@ async function flatten(plugins: unknown): Promise<Plugin[]> {
   return value && typeof value === 'object' ? [value as Plugin] : []
 }
 
-type Project = { sources: CheckSource[]; viteAliases: unknown; lint: LintConfig | undefined; lintRules: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }; env?: EnvOption; envPrefix?: string | string[] }
+type Project = { sources: CheckSource[]; viteAliases: unknown; lint: LintConfig | undefined; lintRules: LintRuleDef[]; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }; env?: EnvOption; envPrefix?: string | string[]; routes?: ModeTable }
 const none: Project = { sources: [], viteAliases: undefined, lint: undefined, lintRules: [] }
 
 export async function loadProject(root: string): Promise<Project> {
@@ -24,5 +25,5 @@ export async function loadProject(root: string): Promise<Project> {
   const loaded = await vite.loadConfigFromFile({ command: 'build', mode: 'production' }, undefined, resolve(root), 'silent')
   if (!loaded) return none
   const plugin = (await flatten(loaded.config.plugins)).find((p) => p.name === 'clarusjs')
-  return { sources: plugin?.api?.sources ?? [], viteAliases: loaded.config.resolve?.alias, lint: plugin?.api?.lint, lintRules: plugin?.api?.lintRules ?? [], components: plugin?.api?.components, env: plugin?.api?.env, envPrefix: loaded.config.envPrefix }
+  return { sources: plugin?.api?.sources ?? [], viteAliases: loaded.config.resolve?.alias, lint: plugin?.api?.lint, lintRules: plugin?.api?.lintRules ?? [], components: plugin?.api?.components, env: plugin?.api?.env, envPrefix: loaded.config.envPrefix, routes: plugin?.api?.routes }
 }

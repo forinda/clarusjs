@@ -127,3 +127,16 @@ test('visible: attaches when the island scrolls into view', async () => {
   await flush(); await flush()
   expect(load).toHaveBeenCalledTimes(1)
 })
+
+test('an island waiting to attach (idle) that starts leaving (@transition makes it inert) never attaches', async () => {
+  const attached: string[] = []
+  document.body.innerHTML = '<div class="box"><cl-island c="later" src="/later.js" a="idle"><p>later</p></cl-island></div>'
+  const idle: (() => void)[] = []
+  vi.stubGlobal('requestIdleCallback', (fn: () => void) => idle.push(fn))
+  await attachAll(document, async () => ({ attach: (el: Element) => { attached.push(el.getAttribute('c')!) } }))
+  document.querySelector('.box')!.setAttribute('inert', '')
+  idle.forEach((fn) => fn())
+  await new Promise((done) => setTimeout(done, 0))
+  expect(attached).toEqual([])
+  vi.unstubAllGlobals()
+})

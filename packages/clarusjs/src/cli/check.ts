@@ -15,6 +15,7 @@ import { generateTs, routesDeclaration, toSourceOffset, viewsDeclaration, type M
 import { findClarusFiles, reachableComponents } from '../vite/build.ts'
 import { projectAliases, resolveAlias } from '../vite/aliases.ts'
 import { routeFromFile } from '../server/handler.ts'
+import { modeFor, type ModeTable } from '../server/modes.ts'
 
 /** A type error, a template error, or a lint finding (#304: `code` is the rule, usually a warning). */
 export type Diagnostic = { file: string; line: number; column: number; severity: 'error' | 'warning'; code: string; message: string }
@@ -72,7 +73,7 @@ function typescriptDir(root: string, override?: string): string {
 export type CheckSource = { extension: string; toTscl(code: string, file: string, context: { route: string; root: string; addDependency(file: string): void }): string }
 
 /** `lint`: the plugin's rule levels; `lintRules`: the project's own rules; `strict`: warnings fail too; `fix`: lint fixes are written to the .tscl files first. */
-export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown; lint?: LintConfig; lintRules?: LintRuleDef[]; strict?: boolean; fix?: boolean; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }; envPrefix?: string | string[] }): CheckResult {
+export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown; lint?: LintConfig; lintRules?: LintRuleDef[]; strict?: boolean; fix?: boolean; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }; envPrefix?: string | string[]; routes?: ModeTable }): CheckResult {
   const root = resolve(options.root)
   // Automatic component imports (#458), named as the plugin names them.
   const names = componentNames(root, options.components)
@@ -91,7 +92,6 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
   const fixed: string[] = []
   // Children of islands render in the browser too: the build compiles them as render modules (?render), which can't
   // hold a <script server>. They are what an island (a <script> or a @model input) reaches, the island itself aside.
-  // ponytail: client routes' pages render in the browser as well; check doesn't read the routes table yet.
   const readRaw = (p: string) => readFileSync(p, 'utf8')
   const islands = pageFiles.filter((p) => {
     if (!p.endsWith('.tscl')) return false
@@ -101,6 +101,13 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
   for (const island of islands) {
     const self = realpathSync(island)
     try { for (const f of reachableComponents(root, [island], readRaw, ['.tscl'], aliases, names)) if (f !== self) inIslands.add(f) } catch {}
+  }
+  // Client routes (the plugin's routes table) render in the browser too: the page and everything it uses.
+  const pagesDir = resolve(root, 'src/pages') + sep
+  for (const page of pageFiles) {
+    if (!page.endsWith('.tscl') || !page.startsWith(pagesDir)) continue
+    if (modeFor(routeFromFile(`/${posix(relative(root, page))}`), options.routes ?? {}) !== 'client') continue
+    try { for (const f of reachableComponents(root, [page], readRaw, ['.tscl'], aliases, names)) inIslands.add(f) } catch {}
   }
 
   for (const path of pageFiles) {

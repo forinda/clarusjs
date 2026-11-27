@@ -16,7 +16,7 @@ Three things here are called a transition. They animate different things:
 | Kind | Animates | Where | Written as |
 |---|---|---|---|
 | [CSS transitions with `@starting-style`](#entering-starting-style) | an element appearing (`@if`, `@for`, or on page load) | any page, no JavaScript | CSS: `transition` and `@starting-style` |
-| [`@transition`](#transition) | an island's `@if` branches entering and leaving: the old one stays until it has animated out | in an island; loads `clarusjs/motion` (1.8 KB) | a block in the template, plus Vue's classes in CSS |
+| [`@transition`](#transition) | an island's `@if` branches entering and leaving, and `@for` rows entering, leaving and moving into place | in an island; loads `clarusjs/motion` (2.3 KB) | a block in the template, plus Vue's classes in CSS |
 | [View transitions](#page-changes-view-transitions) | the whole page changing on navigation, from the old page to the new | the browser's View Transition API, turned on once with `viewTransitions()` | CSS: `::view-transition-*` |
 
 Use `@starting-style` when only entering needs to animate, and `@transition` when leaving does too. View transitions are separate: they animate one page becoming the next, not an element inside a page. Both can run together.
@@ -121,7 +121,28 @@ An enter or leave ends when the element's animations do (CSS transitions, CSS an
 
 In the default mode, the leaving and the entering branch are both in the page for a moment. Take the leaving one out of the flow, for example with `.fade-leave-active { position: absolute }`, so the page doesn't jump. A branch whose top element is a stateful component animates that component's own root element.
 
-`@transition` needs an island (a `<script>` or a `@model` input), and wraps one `@if`. It isn't available for `@for` yet: rows moving into place are next. The transition code (1.8 KB gzip) loads only in islands that use it.
+### Lists
+
+Around a `@for`, each row added enters and each row removed leaves, with the same classes. Rows that change places (a sort, or a row removed above them) slide to their new places, with a `-move` class while they go, as in Vue's `TransitionGroup`:
+
+```tscl
+@transition ('list') {
+  @for (item of items; track item.id) {
+    <li>{{ item.name }}</li>
+  }
+}
+```
+
+```css
+.list-enter-active, .list-leave-active { transition: opacity 0.3s, translate 0.3s; }
+.list-enter-from, .list-leave-to { opacity: 0; translate: 24px 0; }
+.list-move { transition: transform 0.3s; }
+.list-leave-active { position: absolute; } /* so the rows below move up as it goes */
+```
+
+clarusjs measures each row before and after the change, puts a moved row back with an inverse `transform`, then takes it off with `-move` added, so your `transition: transform` animates the move. Under reduced motion, rows take their places at once. `mode` doesn't apply to lists, and `@empty` content comes and goes at once.
+
+`@transition` needs an island (a `<script>` or a `@model` input), and wraps one `@if` or one `@for`. The transition code (2.3 KB gzip) loads only in islands that use it.
 
 ## Page changes: view transitions
 
@@ -134,7 +155,7 @@ View transitions are the browser's, for navigation: they animate the old page tu
 @keyframes slide-in { from { translate: 100% 0; } }
 ```
 
-Name a part of the page (`view-transition-name: hero`) and it animates on its own, from where it was to where it is on the new page.
+Name a part of the page (`view-transition-name: hero`) and it animates on its own, from where it was to where it is on the new page. [Try it on two demo pages](/demos/view-transitions/one): a card named the same on both moves and grows between them.
 
 ## Reduced motion
 

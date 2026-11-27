@@ -109,7 +109,7 @@ function* expressions(nodes: TemplateNode[]): Generator<string> {
       if (n.transition?.options) yield n.transition.options
       for (const b of n.branches) { if (b.cond) yield b.cond; yield* expressions(b.children) }
     }
-    else if (n.type === 'for') { yield n.list; if (n.track) yield n.track; yield* expressions(n.children); if (n.empty) yield* expressions(n.empty) }
+    else if (n.type === 'for') { if (n.transition?.name) yield n.transition.name; if (n.transition?.options) yield n.transition.options; yield n.list; if (n.track) yield n.track; yield* expressions(n.children); if (n.empty) yield* expressions(n.empty) }
     else if (n.type === 'fill') yield* expressions(n.children)
     else if (n.type === 'await') { yield n.expr; for (const kids of awaitLists(n)) yield* expressions(kids) }
   }
@@ -344,7 +344,8 @@ export function lint(source: string, file: string, config: LintConfig = {}, extr
     parsed,
     elements: [...elements(parsed.nodes)],
     components: new Set(parsed.imports.map((i) => i.name)),
-    reads: (name: string) => new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(corpus),
+    // Not a property (obj.name), but a spread (...name) is a read.
+    reads: (name: string) => new RegExp(`(?<![\\w$])(?<!(?<!\\.\\.)\\.)${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(corpus),
     envPrefix: [options.envPrefix ?? 'VITE_'].flat(),
   }
 

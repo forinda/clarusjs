@@ -93,6 +93,8 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
   let state: Record<string, unknown> | undefined
   try {
     mod = await load(el.getAttribute('src')!)
+    // Waiting (idle, visible, interaction) or loading while it started leaving (@transition: inert): it's going.
+    if (el.closest('[inert]')) return
     // Islands in it holding its content attach first (#465): content it re-renders there reads what they provide. One
     // failing to load fails this one too (both retry). ponytail: later ones (idle, visible, interaction) aren't waited for.
     for (const inner of el.querySelectorAll('cl-island')) {

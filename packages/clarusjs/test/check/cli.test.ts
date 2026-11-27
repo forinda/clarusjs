@@ -626,3 +626,20 @@ test("#602: check reads the project's envPrefix for server-env-in-browser", () =
   expect(checkProject({ root, typescript }).diagnostics.map((d) => d.code)).toContain('server-env-in-browser')
   expect(checkProject({ root, typescript, envPrefix: 'PUBLIC_' }).diagnostics.map((d) => d.code)).not.toContain('server-env-in-browser')
 })
+
+test("@transition's arguments are type-checked around a @for too", () => {
+  const root = project({ 'src/components/list-panel.tscl': "<script>\n  let xs = state([1])\n</script>\n<ul>\n  @transition ('list', { apear: true }) { @for (x of xs; track x) { <li>{{ x }}</li> } }\n</ul>\n" })
+  mkdirSync(resolve(root, 'node_modules'), { recursive: true })
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  expect(check({ root, typescript }).diagnostics.map((d) => `${d.line} ${d.code}`)).toEqual(['5 TS2561'])
+})
+
+test('a client route renders in the browser: a <script server> in it, or in a component it uses, is an error; as a static page it is fine', () => {
+  const page = `@import serverNote from '../../components/server-note.tscl'\n<server-note />\n`
+  const note = `<script server>\n  const at = 'build time'\n</script>\n<p>{{ at }}</p>\n`
+  const files = { 'src/pages/app/index.tscl': page, 'src/components/server-note.tscl': note }
+  const client = checkProject({ root: project(files), typescript, routes: { '/app/*': 'client', '/app': 'client' } })
+  expect(client.diagnostics.map((d) => `${d.file}:${d.line} ${d.code}`)).toEqual(['src/components/server-note.tscl:1 clarus'])
+  expect(client.diagnostics[0]!.message).toContain('this component renders in the browser (a client route')
+  expect(checkProject({ root: project(files), typescript }).diagnostics).toEqual([])
+})

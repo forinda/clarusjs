@@ -4,12 +4,21 @@
 <script>
   let open = state(true)
   let step = state(1)
+  let fruit = state(['Apple', 'Banana', 'Cherry'])
+  const more = ['Date', 'Elderberry', 'Fig', 'Grape']
+  function addFruit() {
+    const next = more.find((f) => !fruit.includes(f))
+    if (next) fruit = [...fruit, next]
+  }
 </script>
 
 <div class="transition-demo">
   <div class="transition-actions">
     <button type="button" [aria-expanded]="String(open)" aria-controls="transition-panel" (click)="open = !open">{{ open ? 'Hide' : 'Show' }} the panel</button>
     <button type="button" (click)="step = step === 3 ? 1 : step + 1">Next step</button>
+    <button type="button" (click)="addFruit()">Add a fruit</button>
+    <button type="button" (click)="fruit = fruit.slice(1)">Remove the first</button>
+    <button type="button" (click)="fruit = [...fruit].reverse()">Reverse</button>
   </div>
   <div id="transition-panel">
     @transition ('fade') {
@@ -29,6 +38,13 @@
       }
     }
   </div>
+  <ul class="transition-list">
+    @transition ('list') {
+      @for (f of fruit; track f) {
+        <li [data-fruit]="f">{{ f }}</li>
+      }
+    }
+  </ul>
 </div>
 
 <style scoped>
@@ -74,9 +90,37 @@
     opacity: 0;
     translate: 0 8px;
   }
+  .transition-list {
+    position: relative;
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .transition-list li {
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: var(--bg-soft, transparent);
+  }
+  .list-enter-active,
+  .list-leave-active {
+    transition: opacity 0.3s, translate 0.3s;
+  }
+  .list-enter-from,
+  .list-leave-to {
+    opacity: 0;
+    translate: 24px 0;
+  }
+  .list-move {
+    transition: transform 0.3s;
+  }
   @media (prefers-reduced-motion: reduce) {
     .fade-enter-active,
-    .fade-leave-active {
+    .fade-leave-active,
+    .list-enter-active,
+    .list-leave-active,
+    .list-move {
       transition: none;
     }
   }

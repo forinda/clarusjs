@@ -355,3 +355,119 @@ test('a leave hook that throws still removes the element, and out-in still inser
   expect(reported).toHaveBeenCalledWith('[clarusjs] a @transition hook failed', expect.any(Error))
   reported.mockRestore()
 })
+
+// --- @for (motion phase 3) ---
+
+const list = (opts = '') => `<script>
+  let xs = state([1, 2, 3])
+</script>
+<div>
+  <button type="button" class="add" (click)="xs = [...xs, Math.max(0, ...xs) + 1]">Add</button>
+  <button type="button" class="drop" (click)="xs = xs.slice(1)">Drop</button>
+  <button type="button" class="rev" (click)="xs = [...xs].reverse()">Reverse</button>
+  <ul>
+    @transition ('list'${opts ? `, ${opts}` : ''}) {
+      @for (x of xs; track x) {
+        <li [data-x]="x">{{ x }}</li>
+      }
+    }
+  </ul>
+</div>
+`
+const press = (island: Element, cls: string) => (island.querySelector(`button.${cls}`) as HTMLElement).click()
+const rowsOf = (island: Element) => [...island.querySelectorAll('li')].map((li) => li.getAttribute('data-x') + (li.hasAttribute('inert') ? '(leaving)' : ''))
+// Layout for FLIP: each row 20px tall, placed by its position among its siblings.
+function stubLayout() {
+  const proto = Element.prototype as unknown as { getBoundingClientRect: () => DOMRect }
+  const real = proto.getBoundingClientRect
+  proto.getBoundingClientRect = function (this: Element) {
+    const i = this.parentElement ? [...this.parentElement.children].indexOf(this) : 0
+    return { left: 0, top: i * 20, right: 100, bottom: i * 20 + 20, width: 100, height: 20, x: 0, y: i * 20, toJSON() {} } as DOMRect
+  }
+  return () => { proto.getBoundingClientRect = real }
+}
+
+test('@for: an added row enters with the list classes; a removed one leaves, inert, then goes', async () => {
+  const island = await mount(list())
+  press(island, 'add')
+  const added = island.querySelector('li[data-x="4"]')!
+  expect([...added.classList]).toEqual(['list-enter-from', 'list-enter-active'])
+  await frame()
+  await settle()
+  expect([...added.classList]).toEqual([])
+  const first = island.querySelector('li[data-x="1"]')!
+  const leaving = animate(first)
+  press(island, 'drop')
+  expect(rowsOf(island)).toEqual(['1(leaving)', '2', '3', '4'])
+  expect(first.classList.contains('list-leave-active')).toBe(true)
+  leaving.finish()
+  await frame()
+  await settle()
+  expect(rowsOf(island)).toEqual(['2', '3', '4'])
+  // The list still works after: no duplicated rows, no stale markers.
+  press(island, 'add')
+  expect(rowsOf(island)).toEqual(['2', '3', '4', '5'])
+})
+
+test('@for: rows that move slide into place (-move while their animations run)', async () => {
+  const restore = stubLayout()
+  try {
+    const island = await mount(list())
+    press(island, 'rev')
+    const moved = [...island.querySelectorAll('li')]
+    expect(rowsOf(island)).toEqual(['3', '2', '1'])
+    // 3 and 1 moved (2 stayed in the middle): they get the move class, their inverse transform already cleared.
+    expect(moved.filter((li) => li.classList.contains('list-move')).map((li) => li.getAttribute('data-x'))).toEqual(['3', '1'])
+    expect(moved.map((li) => (li as HTMLElement).style.transform)).toEqual(['', '', ''])
+    await frame()
+    await settle()
+    expect(moved.some((li) => li.classList.contains('list-move'))).toBe(false)
+  } finally {
+    restore()
+  }
+})
+
+test('@for: no sliding under reduced motion; appear makes the server rows enter on attach', async () => {
+  const restore = stubLayout()
+  try {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }))
+    const island = await mount(list())
+    press(island, 'rev')
+    expect([...island.querySelectorAll('li.list-move')]).toHaveLength(0)
+  } finally {
+    restore()
+  }
+  vi.stubGlobal('matchMedia', () => ({ matches: false }))
+  const shown = await mount(list('{ appear: true }'))
+  expect([...shown.querySelectorAll('li')].every((li) => li.classList.contains('list-enter-from'))).toBe(true)
+  const plain = await mount(list())
+  expect([...plain.querySelectorAll('li')].some((li) => li.classList.length > 0)).toBe(false)
+})
+
+test('in-out: at the change, the old branch loses its text and stops entering, though it leaves only later', async () => {
+  const island = await mount(component("@transition ('fade', { mode: 'in-out' }) { @if (open) { <p class=\"a\">A</p> } @else { <p class=\"b\">B</p> } }"))
+  toggle(island) // B enters, A waits
+  const b = island.querySelector('p.b')!
+  animate(b)
+  expect(b.classList.contains('fade-enter-active')).toBe(true)
+  toggle(island) // back to A while B is still entering: B is the old branch now
+  expect(b.classList.contains('fade-enter-active')).toBe(false) // its enter cancelled at once, not when its leave starts
+})
+
+test('a finished transition leaves no timer behind, and the loader is asked once per change', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+  const asked: ParentNode[] = []
+  ;(globalThis as Record<string, unknown>).__clAttach = (root: ParentNode) => asked.push(root)
+  try {
+    const island = await mount(component("@transition ('fade') { @if (open) { <p class=\"a\">A</p><p class=\"a2\">A2</p> } @else { <p class=\"b\">B</p> } }"))
+    const before = asked.length
+    toggle(island)
+    await fakeFrame()
+    await after(0)
+    expect(island.querySelector('p.a')).toBe(null)
+    expect(vi.getTimerCount()).toBe(0)
+    expect(asked.length - before).toBe(2) // B's insert, then one clean-up for both leaving elements
+  } finally {
+    delete (globalThis as Record<string, unknown>).__clAttach
+  }
+})

@@ -263,9 +263,9 @@ function prepare(source: string, parsed: ParsedFile): { head: string; text: stri
         }
         visit(n.children, false, rawText || n.tag === 'script' || n.tag === 'style', BLOCK_TAGS.has(n.tag) || OPTION_LISTS.has(n.tag))
       } else {
-        // @transition (…) { @if … }: Angular has no such block, so its header becomes @if (…) around a saved copy of
+        // @transition (…) { @if … } or { @for … }: Angular has no such block, so its header becomes @if (…) around a saved copy of
         // it, as @await's do; the @if inside is the block's content.
-        if (n.type === 'if' && n.transition) {
+        if ((n.type === 'if' || n.type === 'for') && n.transition) {
           const from = n.transition.start
           const word = from + '@transition'.length
           const open = word + source.slice(word).search(/\S/)

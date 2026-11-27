@@ -386,12 +386,16 @@ function renderer(options: MarkdownOptions): Md {
 }
 
 /**
- * Frontmatter `image` (the social card), `lastmod` (the sitemap's date for the page), `jsonLd` (an object or a list), `head: [[tag, attrs, content?]]` and `titleTemplate: false` (the title as written) as <cl-head>, which
+ * Frontmatter `image` (the social card), `lastmod` (the sitemap's date for the page), `jsonLd` (an object or a list), `head: [[tag, attrs, content?]]` and `titleTemplate: false` (the title as written), and with no layout to pass them to (`bare`) the title and description, as <cl-head>, which
  * the server moves into the page's <head>.
  */
-function pageHead(data: Record<string, unknown>, title: string | undefined): string {
+function pageHead(data: Record<string, unknown>, title: string | undefined, bare = false): string {
   const tags: string[] = []
   if (data.titleTemplate === false && title !== undefined) tags.push(`<title>${escapeHtml(title)}</title>`)
+  // No layout receives the title and description (layout: false, or only folder layouts): they go in the head
+  // here, the title with the site's template (data-cl-template), as a layout's own <title> would get it.
+  else if (bare && title !== undefined) tags.push(`<title data-cl-template>${escapeHtml(title)}</title>`)
+  if (bare && typeof data.description === 'string') tags.push(`<meta name="description" content="${escapeHtml(data.description)}">`)
   if (data.sitemap === false) tags.push('<meta name="sitemap" content="false">')
   // lastmod: the page's date in the sitemap (over git's). YAML may read a bare date as a Date.
   const lastmod = data.lastmod instanceof Date ? data.lastmod.toISOString().slice(0, 10) : typeof data.lastmod === 'string' ? data.lastmod : undefined
@@ -563,12 +567,12 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       const h1 = tokens.findIndex((t: Tok & { tag: string }) => t.type === 'heading_open' && t.tag === 'h1')
       const firstHeading = h1 === -1 ? undefined : (tokens[h1 + 1]!.children ?? []).filter((t: Tok) => t.type === 'text' || t.type === 'code_inline').map((t: Tok) => t.content).join('')
       const title = typeof data.title === 'string' ? data.title : firstHeading
-      const html = pageHead(data, title) + tags.restore(staticHtml(md.renderer.render(tokens, md.options, env)))
+      const layout = data.layout === false ? undefined : typeof data.layout === 'string' ? data.layout : options.layout
+      const html = pageHead(data, title, !layout) + tags.restore(staticHtml(md.renderer.render(tokens, md.options, env)))
 
       // layout: false in frontmatter: no layout at all, not even the folder's (#472). No layout of its own: the folder
       // and config layouts wrap it, as they do a .tscl page.
       if (data.layout === false) return ['@layout none', ...imports, html].join('\n')
-      const layout = typeof data.layout === 'string' ? data.layout : options.layout
       if (!layout) return [...imports, html].join('\n')
       const props = [
         title !== undefined ? `[title]="${quote(title)}"` : '',

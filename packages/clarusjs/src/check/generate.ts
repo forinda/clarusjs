@@ -9,7 +9,7 @@ import { routeFromFile } from '../server/handler.ts'
 import { ClarusError } from '../compiler/errors.ts'
 import { modifierError, splitEvent } from '../compiler/events.ts'
 import { outerIndexIn } from '../compiler/loops.ts'
-import { FOR_IMPLICIT, parse, type Attr, type TemplateNode } from '../compiler/parse.ts'
+import { FOR_IMPLICIT, parse, type Attr, type TemplateNode, type Transition } from '../compiler/parse.ts'
 import { checkScript, providesIn, referencesNames, splitImports, untypedParams } from '../compiler/script.ts'
 
 /**
@@ -87,7 +87,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
   // needs no clarusjs/motion types.
   const transitions = (nodes: TemplateNode[]): boolean => nodes.some((n) => {
     if (n.type === 'if') return !!n.transition || n.branches.some((b) => transitions(b.children))
-    if (n.type === 'for') return transitions(n.children) || (!!n.empty && transitions(n.empty))
+    if (n.type === 'for') return !!n.transition || transitions(n.children) || (!!n.empty && transitions(n.empty))
     if (n.type === 'await') return transitions(n.pending) || (!!n.then && transitions(n.then.children)) || (!!n.catch && transitions(n.catch.children))
     return 'children' in n && Array.isArray(n.children) && transitions(n.children as TemplateNode[])
   })
@@ -283,6 +283,15 @@ export function generateTs(source: string, file: string, options: { loader?: str
   let owner: string | undefined // the component whose @slot fills are being visited
   const slotVars: [string, string][] = [] // each <slot>'s name and the var holding what it passes
 
+  /** @transition (name, options) around an @if or @for: a typed call, mapped to the arguments as written. */
+  const transitionCall = (tr: Transition | undefined) => {
+    if (!tr) return
+    emit('  __cl_transition(')
+    if (tr.name !== null) copy(tr.name, tr.nameStart)
+    else emit("'cl'")
+    if (tr.options !== null) { emit(', '); copy(tr.options, tr.optionsStart) }
+    emit(')\n')
+  }
   function visit(node: TemplateNode): void {
     switch (node.type) {
       case 'text':
@@ -312,14 +321,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
         return
       }
       case 'if':
-        if (node.transition) {
-          const tr = node.transition
-          emit('  __cl_transition(')
-          if (tr.name !== null) copy(tr.name, tr.nameStart)
-          else emit("'cl'")
-          if (tr.options !== null) { emit(', '); copy(tr.options, tr.optionsStart) }
-          emit(')\n')
-        }
+        transitionCall(node.transition)
         node.branches.forEach((b, i) => {
           if (b.cond === null) emit('  else {\n')
           else {
@@ -358,6 +360,7 @@ export function generateTs(source: string, file: string, options: { loader?: str
         return
       }
       case 'for': {
+        transitionCall(node.transition)
         emit('  for (const ')
         copy(node.item, node.itemStart)
         emit(' of ')
