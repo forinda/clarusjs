@@ -1,5 +1,23 @@
 # @clarusjs/ui
 
+## 0.3.0
+
+### Minor Changes
+
+- [#614](https://github.com/forinda/clarusjs/pull/614) [`60083b6`](https://github.com/forinda/clarusjs/commit/60083b67de9a5765050d5471eb8833ae4e3d99a3) Thanks [@forinda](https://github.com/forinda)! - Dialog backdrop variants: `data-backdrop="light" | "dark" | "blur" | "none"` on a dialog (and so on sheets and alert dialogs), read through two knobs, `--ui-backdrop-opacity` (0.45) and `--ui-backdrop-blur` (0px), which you can also set on `:root` for a site-wide default.
+
+- [#631](https://github.com/forinda/clarusjs/pull/631) [`223bf01`](https://github.com/forinda/clarusjs/commit/223bf01c9ccb308e95a6bcb7ec3187a2e52a285a) Thanks [@forinda](https://github.com/forinda)! - Chip input: a field where each value typed becomes a chip (tags, email addresses). Enter or a comma adds, Backspace removes the last, × removes one; `[(values)]`, hidden inputs with `[name]`, and a cancelable `(change)`. `ui.css` styles it, and its chip and input rules are now a `chips` section shared with the combobox.
+
+### Patch Changes
+
+- [#620](https://github.com/forinda/clarusjs/pull/620) [`9c3d374`](https://github.com/forinda/clarusjs/commit/9c3d374f10ac25f44fcda8499164bfb439ec00e7) Thanks [@forinda](https://github.com/forinda)! - The token rules set `color-scheme` (light, and dark with the system or `data-theme="dark"`), so native controls (select popups, date pickers, scrollbars) follow the theme's mode.
+
+- [#620](https://github.com/forinda/clarusjs/pull/620) [`f6ad653`](https://github.com/forinda/clarusjs/commit/f6ad6536c1203825cdd6c652f49c630bd3dbc9c8) Thanks [@forinda](https://github.com/forinda)! - A combobox shows one focus ring, on its box: the input inside no longer draws a second outline.
+
+- [#574](https://github.com/forinda/clarusjs/pull/574) [`f7efc2e`](https://github.com/forinda/clarusjs/commit/f7efc2efa9b35a825b79b1b14e00dd07d1b3c36d) Thanks [@forinda](https://github.com/forinda)! - The READMEs point to ui.clarusjs.com, where the styled components to copy are.
+- Updated dependencies [[`223bf01`](https://github.com/forinda/clarusjs/commit/223bf01c9ccb308e95a6bcb7ec3187a2e52a285a), [`e6c32e4`](https://github.com/forinda/clarusjs/commit/e6c32e4486075a27204747e79a0d432a643a5d0b), [`f7efc2e`](https://github.com/forinda/clarusjs/commit/f7efc2efa9b35a825b79b1b14e00dd07d1b3c36d)]:
+  - @clarusjs/ui-primitives@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

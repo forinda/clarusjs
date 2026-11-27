@@ -1,6 +1,6 @@
 {
   "name": "@clarusjs/ui",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A styled set for @clarusjs/ui-primitives: design tokens and thin, accessible styles over the parts' data-part and state attributes, light and dark.",
   "type": "module",
   "license": "MIT",

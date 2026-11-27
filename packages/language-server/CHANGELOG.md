@@ -1,5 +1,11 @@
 # @clarusjs/language-server
 
+## 0.7.1
+
+### Patch Changes
+
+- [#615](https://github.com/forinda/clarusjs/pull/615) [`80d54da`](https://github.com/forinda/clarusjs/commit/80d54da684eea571c110e103da712b0813b0b38f) Thanks [@forinda](https://github.com/forinda)! - An @imported component answers to its name in kebab case: `@import uiButton` or `@import UiButton` is `<ui-button>` too (before, `<ui-button>` silently rendered as a plain element). Only hyphenated forms: a one-word import such as `Button` never takes `<button>`. The language server's hover, go to definition, references and rename follow, keeping each tag in the case it was written.
+
 ## 0.7.0
 
 ### Minor Changes
