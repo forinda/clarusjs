@@ -91,3 +91,11 @@ test("when the page's islands no longer line up, or the page fails, or the new v
   await swap('http://localhost/src/counter.tscl?import&broken&t=4')
   expect(reload).toHaveBeenCalledTimes(3)
 })
+
+test('a copy still leaving (@transition: inert, no longer the page\'s) is not one of the islands: the swap happens, state carried', async () => {
+  document.body.insertAdjacentHTML('beforeend', '<div inert aria-hidden="true"><cl-island c="counter" src="/src/counter.tscl?import" data-cl-ready=""><button>leaving</button></cl-island></div>')
+  serve(page('<cl-island c="counter" src="/src/counter.tscl?import" p="{&quot;start&quot;:1}" s="{}"><button>new</button></cl-island>'))
+  await swap('http://localhost/src/counter.tscl?import&t=9')
+  expect(reload).not.toHaveBeenCalled()
+  expect(calls).toEqual([{ src: '/src/counter.tscl?import&t=9', state: { count: 2 }, html: '<button>new</button>', p: '{"start":1}' }])
+})

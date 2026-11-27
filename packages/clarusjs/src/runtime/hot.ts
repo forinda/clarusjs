@@ -12,7 +12,8 @@ export async function swap(url: string): Promise<void> {
   const next = new URL(url, location.href)
   const pathOf = (el: Element) => new URL(el.getAttribute('src') ?? '', location.href).pathname
   // The outermost islands of this component: one nested in another is swapped with it.
-  const mine = (root: ParentNode) => [...root.querySelectorAll('cl-island')].filter((el) => pathOf(el) === next.pathname && !el.parentElement?.closest(`cl-island[src="${CSS.escape(el.getAttribute('src')!)}"]`))
+  // A copy still leaving (@transition: inert) isn't the page's any more: not counted.
+  const mine = (root: ParentNode) => [...root.querySelectorAll('cl-island')].filter((el) => pathOf(el) === next.pathname && !el.closest('[inert]') && !el.parentElement?.closest(`cl-island[src="${CSS.escape(el.getAttribute('src')!)}"]`))
   const old = mine(document)
   if (!old.length) return
   try {
@@ -29,7 +30,7 @@ export async function swap(url: string): Promise<void> {
       swapped.replaceChildren(...[...fresh[i]!.childNodes].map((n) => document.importNode(n, true)))
       swapped.setAttribute('s', fresh[i]!.getAttribute('s') ?? '{}')
       // State: what the server rendered with, then what the running version had, island by island in page order.
-      const before = [el, ...el.querySelectorAll('cl-island')] as Hot[]
+      const before = [el, ...[...el.querySelectorAll('cl-island')].filter((x) => !x.closest('[inert]'))] as Hot[]
       const after = [swapped, ...swapped.querySelectorAll('cl-island')]
       if (before.length === after.length) {
         before.forEach((b, j) => {

@@ -443,3 +443,31 @@ test('@for: no sliding under reduced motion; appear makes the server rows enter 
   const plain = await mount(list())
   expect([...plain.querySelectorAll('li')].some((li) => li.classList.length > 0)).toBe(false)
 })
+
+test('in-out: at the change, the old branch loses its text and stops entering, though it leaves only later', async () => {
+  const island = await mount(component("@transition ('fade', { mode: 'in-out' }) { @if (open) { <p class=\"a\">A</p> } @else { <p class=\"b\">B</p> } }"))
+  toggle(island) // B enters, A waits
+  const b = island.querySelector('p.b')!
+  animate(b)
+  expect(b.classList.contains('fade-enter-active')).toBe(true)
+  toggle(island) // back to A while B is still entering: B is the old branch now
+  expect(b.classList.contains('fade-enter-active')).toBe(false) // its enter cancelled at once, not when its leave starts
+})
+
+test('a finished transition leaves no timer behind, and the loader is asked once per change', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+  const asked: ParentNode[] = []
+  ;(globalThis as Record<string, unknown>).__clAttach = (root: ParentNode) => asked.push(root)
+  try {
+    const island = await mount(component("@transition ('fade') { @if (open) { <p class=\"a\">A</p><p class=\"a2\">A2</p> } @else { <p class=\"b\">B</p> } }"))
+    const before = asked.length
+    toggle(island)
+    await fakeFrame()
+    await after(0)
+    expect(island.querySelector('p.a')).toBe(null)
+    expect(vi.getTimerCount()).toBe(0)
+    expect(asked.length - before).toBe(2) // B's insert, then one clean-up for both leaving elements
+  } finally {
+    delete (globalThis as Record<string, unknown>).__clAttach
+  }
+})
