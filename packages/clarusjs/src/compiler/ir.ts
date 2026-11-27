@@ -21,7 +21,9 @@ export type IRNode =
   | { kind: 'slot'; name: string; props: { name: string; expr: string }[]; fallback: IRNode[] }
   // A dynamic attribute: [name]="expr" (value) or name="a {{ b }}" (parts, joined into a string).
   // name '...': a spread (#405); skip: the names written on the element (lowercase), where: its place, for warnings.
-  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string }
+  // content: a textarea's value, written as its text in HTML (a value attribute means nothing there); the browser
+  // still sets the property.
+  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string; content?: true }
   // [engine]="f": an element connected to a form from clarusjs/forms (marked data-cl-form="index").
   | { kind: 'connect'; expr: string; index: number }
   // [use]="behaviour" (#464): an element handed to a function in the browser (marked data-cl-u="index").
@@ -508,6 +510,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
     emitStatic(`<${node.tag}`)
     const elementEvents = attrs.filter((a) => a.kind === 'event')
     const dynamic: Extract<IRNode, { kind: 'attr' }>[] = []
+    let textareaValue: string | undefined
     let engine = false
     for (const a of attrs) {
       if (a.kind === 'static') emitStatic(a.value === true ? ` ${a.name}` : ` ${a.name}="${a.value}"`)
@@ -556,7 +559,9 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         for (const e of exprs) checkExpr(e.expr, file, source, e.start)
         const reactive = stateful && exprs.some((e) => referencesNames(e.expr, scriptScope) || referencesNames(e.expr, loopNames))
         const value = a.kind === 'prop' ? { expr: a.expr } : { parts: a.parts.map((p) => (typeof p === 'string' ? p : { expr: p.expr })) }
-        const node_ = { kind: 'attr' as const, name: a.name, value, reactive, index: -1, tag: node.tag }
+        const content = node.tag === 'textarea' && a.name === 'value'
+        const node_ = { kind: 'attr' as const, name: a.name, value, reactive, index: -1, tag: node.tag, ...(content ? { content: true as const } : {}) }
+        if (content) textareaValue = a.kind === 'prop' ? a.expr : `[${a.parts.map((p) => (typeof p === 'string' ? JSON.stringify(p) : `(${p.expr})`)).join(', ')}].join('')`
         if (reactive) dynamic.push(node_)
         out.push(node_)
       }
@@ -576,6 +581,12 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       }
     }
     emitStatic('>')
+    // A textarea's value is its text: written in place of its children.
+    if (textareaValue !== undefined) {
+      out.push({ kind: 'hole', expr: textareaValue, reactive: false, index: -1 })
+      emitStatic('</textarea>')
+      return
+    }
     const iconBody = iconBodies.get(node)
     if (iconBody !== undefined) emitStatic(iconBody)
     const outer = engineScope

@@ -1,0 +1,9 @@
+{{-- A textarea's value is its text in HTML: [value] and [(value)] render there, escaped, not as an attribute. --}}
+@input start: string = ''
+
+<script>
+  let note = state(start)
+</script>
+
+<label>Note <textarea [(value)]="note" rows="3"></textarea></label>
+<textarea [value]="'Draft: ' + note" readonly></textarea>
