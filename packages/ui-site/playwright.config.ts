@@ -15,6 +15,7 @@ export default defineConfig({
     url: 'http://localhost:4322',
     // Never test a stale build: a server already on the port is an error, not something to reuse.
     reuseExistingServer: false,
-    timeout: 120_000,
+    // The build runs first (about 80 s on a CI runner, 2 minutes on a slow one): room for both, and the preview.
+    timeout: 300_000,
   },
 })
