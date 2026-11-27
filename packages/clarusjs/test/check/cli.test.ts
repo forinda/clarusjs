@@ -2,9 +2,13 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { check as checkProject } from '../../src/cli/check.ts'
 import type { LintContext } from '../../src/compiler/lint.ts'
+
+// Each test runs a whole TypeScript program: a few hundred ms here, but CI runs every package's tests at once on two
+// cores, where one went past the default 5 s (#641's CI). 30 s leaves room without hiding a real hang.
+vi.setConfig({ testTimeout: 30_000 })
 
 function project(files: Record<string, string>): string {
   const root = mkdtempSync(resolve(tmpdir(), 'clarus-cli-'))
