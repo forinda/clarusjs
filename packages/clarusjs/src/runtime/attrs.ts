@@ -111,6 +111,8 @@ export function attrValue(name: string, value: unknown, tag?: string): string | 
 // Attributes whose URL a site's base applies to (Vite's base: a site at /docs/), for the compiler and h().
 const BASE_ATTRS = new Set(['href', 'src', 'action', 'formaction', 'poster', 'cite', 'data', 'xlink:href'])
 const rooted = (u: string) => u.startsWith('/') && !u.startsWith('//')
+/** Whether a site's base applies to this attribute's URL (srcset included). @internal The compiler asks. */
+export const isBaseAttr = (name: string): boolean => BASE_ATTRS.has(name.toLowerCase()) || name.toLowerCase() === 'srcset'
 
 /**
  * A URL attribute's value with the site's base: a root-relative URL (one `/`) gets it, once (paths are written

@@ -15,6 +15,7 @@ export function emitServer(ir: ComponentIR, clientUrl: string, renderImports = f
     html.includes('__cl_spreadHtml(') && 'spreadHtml as __cl_spreadHtml',
     html.includes('__cl_passedHtml(') && 'passedHtml as __cl_passedHtml',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_classValue(')) && 'classValue as __cl_classValue',
+    all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_baseUrl(')) && 'baseUrl as __cl_baseUrl',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_styleValue(')) && 'styleValue as __cl_styleValue',
     all.some((n) => (n.kind === 'if' || n.kind === 'await') && n.block >= 0) && 'blockHtml as __cl_blockHtml',
     all.some((n) => n.kind === 'await' && n.block < 0) && 'awaitHtml as __cl_awaitHtml',

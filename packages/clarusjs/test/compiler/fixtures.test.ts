@@ -71,7 +71,9 @@ test.each(cases)('%s', (name) => {
   const source = readFileSync(resolve(dir, name, 'input.tscl'), 'utf8')
   const file = `src/components/${name}.tscl`
   const components = componentIndex(Object.keys(others(name)), COMPONENT_DIRS).names
-  matches(resolve(dir, name, 'server.js'), compile(source, { file, target: 'server', clientUrl: `/${file}?import`, icon, components }).code)
-  matches(resolve(dir, name, 'client.js'), compile(source, { file, target: 'client', icon, components }).code)
+  // options.json beside it: compile options this fixture needs (a base, say)
+  const extra = existsSync(resolve(dir, name, 'options.json')) ? JSON.parse(readFileSync(resolve(dir, name, 'options.json'), 'utf8')) : {}
+  matches(resolve(dir, name, 'server.js'), compile(source, { file, target: 'server', clientUrl: `/${file}?import`, icon, components, ...extra }).code)
+  matches(resolve(dir, name, 'client.js'), compile(source, { file, target: 'client', icon, components, ...extra }).code)
   matches(resolve(dir, name, 'check.txt'), diagnostics(name, source))
 }, 60_000)
