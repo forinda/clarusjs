@@ -83,6 +83,7 @@
         [prev]="lessonOf(config, path).prev"
         [next]="lessonOf(config, path).next"
         [leave]="lessonOf(config, path).leave"
+        [layout]="config.learn?.layout ?? 'split'"
       />
     </div>
   </body>

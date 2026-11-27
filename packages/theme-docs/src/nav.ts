@@ -62,9 +62,10 @@ export type ThemeConfig = {
   pages?: readonly PageInfo[]
   /**
    * Learn: the section whose pages are lessons, and its progress page (not a lesson). Progress, XP and badges are
-   * kept in the browser (localStorage); an XP chip shows in lesson headers and on the section's pages.
+   * kept in the browser (localStorage); an XP chip shows in lesson headers and on the section's pages. `layout`: from
+   * 1024px a step's code goes in a side column beside its text (`'split'`, the default); `'stacked'` keeps it inline.
    */
-  learn?: { section: string; progress: string }
+  learn?: { section: string; progress: string; layout?: 'split' | 'stacked' }
   /** A search button (and Ctrl/⌘K, /) in the header; the index comes from the themeDocs() Vite plugin. */
   search?: boolean
   /**
