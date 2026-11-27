@@ -115,6 +115,7 @@ export function navigationState<T = unknown>(): T | undefined {
  */
 export async function navigate(to: string | URL, options: { replace?: boolean; state?: unknown; scroll?: boolean } = {}): Promise<void> {
   if (!browser) return
+  if (typeof to === 'string') to = addBase(siteBase(), to) // a path without the site's base, as everywhere
   if (!navigation) return options.replace ? location.replace(String(to)) : location.assign(String(to))
   try {
     // scroll: false reaches the navigator (navigate.ts) as info: it keeps the scroll position for this navigation.
@@ -313,4 +314,42 @@ export function href<R extends RouteName>(
   const values = (params[0] ?? {}) as Record<string, string>
   const base = ((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/').replace(/\/$/, '')
   return base + route.replace(/\[([^\]]+)\]/g, (_, key: string) => encodeURIComponent(values[key] ?? ''))
+}
+
+const siteBase = () => (import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'
+
+/** `path` with `base` in front, when it's root-relative (one `/`). @internal withBase() and navigate() call this. */
+export function addBase(base: string, path: string): string {
+  return path.startsWith('/') && !path.startsWith('//') ? base.replace(/\/$/, '') + path : path
+}
+
+/** `url` without a leading `base`: the reverse of addBase(). @internal withoutBase() calls this. */
+export function removeBase(base: string, url: string): string {
+  const b = base.replace(/\/$/, '')
+  if (!b) return url
+  if (url === b) return '/'
+  return url.startsWith(b + '/') ? url.slice(b.length) : url
+}
+
+/**
+ * A root-relative path with the site's base (Vite's `base`): `withBase('/guide')` is `/docs/guide` at a site under
+ * `/docs/`. For URLs built in code (`fetch()`, a link from data); templates' URL attributes get the base by themselves.
+ * Full URLs, `//host`, `#…`, `?…` and relative paths are returned as they are.
+ * @example
+ * fetch(withBase('/api/items'))
+ * @see https://clarusjs.com/reference/navigation#withbase
+ */
+export function withBase(path: string): string {
+  return addBase(siteBase(), path)
+}
+
+/**
+ * A URL's path without the site's base, the reverse of `withBase()`: `/docs/guide` is `/guide` at a site under
+ * `/docs/`, to compare a link (which has the base) with a route (which doesn't). Others are returned as they are.
+ * @example
+ * withoutBase(link.getAttribute('href')) === '/guide'
+ * @see https://clarusjs.com/reference/navigation#withoutbase
+ */
+export function withoutBase(url: string): string {
+  return removeBase(siteBase(), url)
 }
