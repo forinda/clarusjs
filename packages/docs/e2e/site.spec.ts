@@ -2996,6 +2996,25 @@ test('animations guide: @transition plays the leave before removing the panel, a
   await expect(demo.locator('.transition-panel')).toHaveCount(0, { timeout: 500 })
 })
 
+test('animations guide: @transition on a list: rows enter, leave before they go, and slide into place when reversed', async ({ page }) => {
+  await page.goto('/guide/animations')
+  const demo = page.locator('cl-island[c="transition-demo"]')
+  await expect(demo).toHaveAttribute('data-cl-ready', '')
+  const rows = demo.locator('.transition-list li')
+  await demo.getByRole('button', { name: 'Add a fruit' }).click()
+  await expect(demo.locator('li[data-fruit="Date"]')).toHaveClass(/list-enter-active/)
+  await expect(demo.locator('li[data-fruit="Date"]')).toHaveClass('')
+  await demo.getByRole('button', { name: 'Remove the first' }).click()
+  const apple = demo.locator('li[data-fruit="Apple"]')
+  await expect(apple).toHaveClass(/list-leave-active/)
+  await expect(apple).toHaveAttribute('inert', '')
+  await expect(apple).toHaveCount(0)
+  await demo.getByRole('button', { name: 'Reverse' }).click()
+  await expect(demo.locator('li.list-move').first()).toBeAttached()
+  await expect(rows).toHaveText(['Date', 'Cherry', 'Banana'])
+  await expect(demo.locator('li.list-move')).toHaveCount(0)
+})
+
 test('animations guide: the flip clock shows the time and flips only the digits that change', async ({ page }) => {
   await page.clock.install({ time: new Date(2026, 10, 26, 10, 59, 58) })
   await page.goto('/guide/animations')

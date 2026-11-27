@@ -288,6 +288,14 @@ export function region(ctx: Ctx, index: number, html: (cx?: object) => string, w
 type Row = Range & { key: unknown; item: Signal<unknown>; index: Signal<number>; dispose: () => void }
 
 /**
+ * @transition around a @for (clarusjs/motion): `in` gets each new row's nodes (`initial` for the server's rows on
+ * attach), `out` a removed row's (instead of removing them), and the update runs inside `frame` so moves can be
+ * measured before and after.
+ * @internal
+ */
+export type ForTransition = { in(nodes: Node[], initial?: boolean): void; out(nodes: Node[]): void; frame(start: Node, end: Node, run: () => void): void }
+
+/**
  * A @for list. Rows the server rendered are adopted in place. When the list changes, rows are matched by key:
  * kept rows keep their DOM nodes (moved only when out of order) and get the new item and index through their
  * signals; new rows are rendered and wired; removed rows are disposed and removed. `@empty` content is shown while
@@ -301,6 +309,7 @@ export function forBlock(
   keyOf: (item: any, i: number) => unknown,
   row: { html: (item: any, i: number, list: unknown[]) => string; wire: (ctx: Ctx, item: Signal<any>, index: Signal<number>, count: Signal<number>) => void },
   empty: { html: () => string; wire: (ctx: Ctx) => void } | null,
+  t?: ForTransition,
 ): void {
   const f = scan(ctx).fors[index]
   if (!f) return
@@ -346,6 +355,7 @@ export function forBlock(
         if (f.rows.length === items.length) {
           rows = f.rows.map((range, i) => wireRow(range, keys[i], items[i], i))
           if (f.empty) emptyRange = wireEmpty(f.empty)
+          if (t) for (const r of rows) t.in(rangeNodes(r.start, r.end), true)
           return
         }
         // The browser's list isn't the one the server rendered (it read something the server couldn't: the URL,
@@ -355,30 +365,44 @@ export function forBlock(
         reshaped()
       }
 
-      const old = new Map(rows.map((r) => [r.key, r]))
-      const next = items.map((item, i) => {
-        const kept = old.get(keys[i])
-        if (kept) {
-          old.delete(keys[i])
-          kept.item.set(item)
-          kept.index.set(i)
-          return kept
+      // With @transition, the update runs inside t.frame (clarusjs/motion measures rows before and after it).
+      const update = () => {
+        const added: Row[] = []
+        const old = new Map(rows.map((r) => [r.key, r]))
+        const next = items.map((item, i) => {
+          const kept = old.get(keys[i])
+          if (kept) {
+            old.delete(keys[i])
+            kept.item.set(item)
+            kept.index.set(i)
+            return kept
+          }
+          const { first: start, last: end } = insertHtml(`<!--[r-->${row.html(item, i, items)}<!--]-->`, f.end)
+          const r = wireRow({ start: start as Comment, end: end as Comment }, keys[i], item, i)
+          added.push(r)
+          return r
+        })
+        for (const r of old.values()) {
+          r.dispose()
+          // With @transition, a removed row leaves first (clarusjs/motion), else it goes now.
+          if (t) t.out(rangeNodes(r.start, r.end))
+          else for (const n of rangeNodes(r.start, r.end)) n.parentNode?.removeChild(n)
         }
-        const { first: start, last: end } = insertHtml(`<!--[r-->${row.html(item, i, items)}<!--]-->`, f.end)
-        return wireRow({ start: start as Comment, end: end as Comment }, keys[i], item, i)
-      })
-      for (const r of old.values()) {
-        r.dispose()
-        for (const n of rangeNodes(r.start, r.end)) n.parentNode?.removeChild(n)
+        reshaped()
+        // Put rows in order, moving only those that are not already right after the previous one.
+        let anchor: Node = f.start
+        for (const r of next) {
+          // With @transition, leaving rows (no markers left) sit between live ones: stepped over, they keep their place.
+          let at = anchor.nextSibling
+          if (t) while (at && at.nodeType !== 8) at = at.nextSibling
+          if (at !== r.start) { (anchor as ChildNode).after(...rangeNodes(r.start, r.end)); reshaped() }
+          anchor = r.end
+        }
+        rows = next
+        if (t) for (const r of added) t.in(rangeNodes(r.start, r.end))
       }
-      reshaped()
-      // Put rows in order, moving only those that are not already right after the previous one.
-      let anchor: Node = f.start
-      for (const r of next) {
-        if (anchor.nextSibling !== r.start) { (anchor as ChildNode).after(...rangeNodes(r.start, r.end)); reshaped() }
-        anchor = r.end
-      }
-      rows = next
+      if (t) t.frame(f.start, f.end, update)
+      else update()
 
       if (items.length && emptyRange) {
         emptyRange.dispose()

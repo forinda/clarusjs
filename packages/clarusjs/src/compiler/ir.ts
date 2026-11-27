@@ -32,7 +32,7 @@ export type IRNode =
   | { kind: 'await'; expr: string; pending: IRNode[]; then: { name: string; nodes: IRNode[] } | null; catch: { name: string; nodes: IRNode[] } | null; block: number }
   // @for / @empty. block = -1 outside islands; inside an island, the list's marker index. `item` and `$index` are in
   // scope in `nodes`; `track` (or the index) keys rows.
-  | { kind: 'for'; item: string; list: string; track: string | null; aliases: { name: string; of: string }[]; nodes: IRNode[]; empty: IRNode[] | null; block: number }
+  | { kind: 'for'; item: string; list: string; track: string | null; aliases: { name: string; of: string }[]; nodes: IRNode[]; empty: IRNode[] | null; block: number; transition?: { name: string | null; options: string | null } }
 // scope: which @if branch the element is in ("block.branch"); undefined at the top level.
 /** An element's (type.mods)="handler"; mods are #444's modifiers, as written. */
 export type IREvent = { index: number; type: string; handler: string; scope?: string; mods?: string[] }
@@ -242,6 +242,12 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       return
     }
     if (node.type === 'for') {
+      const tr = node.transition
+      if (tr) {
+        if (!stateful) fail('@transition runs in the browser: this component needs a <script> or a @model input (an island)', tr.start)
+        if (tr.name !== null) checkExpr(tr.name, file, source, tr.nameStart)
+        if (tr.options !== null) checkExpr(tr.options, file, source, tr.optionsStart)
+      }
       checkExpr(node.list, file, source, node.listStart)
       if (node.track !== null) checkExpr(node.track, file, source, node.trackStart)
       const block = stateful ? forCount++ : -1
@@ -263,7 +269,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
       out = parent
       scopeKey = parentScope
       loopNames = parentLoop
-      out.push({ kind: 'for', item: node.item, list: node.list, track: node.track, aliases: node.aliases.map(({ name, of }) => ({ name, of })), nodes, empty, block })
+      out.push({ kind: 'for', item: node.item, list: node.list, track: node.track, aliases: node.aliases.map(({ name, of }) => ({ name, of })), nodes, empty, block, ...(tr ? { transition: { name: tr.name, options: tr.options } } : {}) })
       return
     }
     if (node.type === 'raw') return emitStatic(node.value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))

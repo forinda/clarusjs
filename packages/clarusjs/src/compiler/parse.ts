@@ -19,6 +19,12 @@ export const awaitLists = (n: Extract<TemplateNode, { type: 'await' }>): Templat
 export type AwaitBranch = { name: string; nameStart: number; children: TemplateNode[] }
 
 /**
+ * `@transition (name, options) { … }` around an @if or a @for: its argument expressions as written (null: none).
+ * @see https://clarusjs.com/guide/animations#transition
+ */
+export type Transition = { name: string | null; nameStart: number; options: string | null; optionsStart: number; start: number }
+
+/**
  * A node of a template's syntax tree: an element, text, a `{{ }}` hole, an `@if`, an `@for`, a slot fill…
  * @see https://clarusjs.com/reference/compiler#parse
  */
@@ -32,13 +38,13 @@ export type TemplateNode =
       branches: { cond: string | null; condStart: number; children: TemplateNode[] }[]
       start: number
       /** `@transition (name, options) { @if … }` around it: the argument expressions as written (null: none). */
-      transition?: { name: string | null; nameStart: number; options: string | null; optionsStart: number; start: number }
+      transition?: Transition
     }
   // @await (promise) { pending } @then (value) { … } @catch (error) { … } (#430)
   | { type: 'await'; expr: string; exprStart: number; pending: TemplateNode[]; then: AwaitBranch | null; catch: AwaitBranch | null; start: number }
   // @slot('name') { … } inside a component tag; @slot('name', { item }) { … } names what the slot passes (#455).
   | { type: 'fill'; name: string; params?: string; paramsStart?: number; children: TemplateNode[]; start: number }
-  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; itemStart: number; listStart: number; trackStart: number; aliases: ForAlias[]; children: TemplateNode[]; empty: TemplateNode[] | null; start: number }
+  | { type: 'for'; item: string; list: string; track: string | null; headStart: number; itemStart: number; listStart: number; trackStart: number; aliases: ForAlias[]; children: TemplateNode[]; empty: TemplateNode[] | null; start: number; transition?: Transition }
 // model: declared with @model, the one kind of input a component may write (two-way binding, [(name)] at the use site).
 /**
  * An `@input` (or `@model`) declaration: its name, type text, default, and offsets.
@@ -415,7 +421,7 @@ export function parse(source: string, file: string): ParsedFile {
     return { type: 'await', expr, exprStart, pending, then, catch: caught, start }
   }
 
-  // @transition (name, options) { @if … }: the one @if inside, carrying the transition (motion phase 2).
+  // @transition (name, options) { @if … } or { @for … }: the one block inside, carrying the transition (motion phases 2, 3).
   function transitionBlock(): TemplateNode {
     const start = i
     i += '@transition'.length
@@ -440,8 +446,9 @@ export function parse(source: string, file: string): ParsedFile {
     const kids = children({ tag: '@transition', start, block: true })
     const wrapped = kids.filter((n) => !(n.type === 'text' && !n.value.trim()))
     const only = wrapped[0]
-    if (wrapped.length !== 1 || only!.type !== 'if') fail('@transition wraps one @if (@for comes later)', (wrapped.find((n) => n.type !== 'if') ?? wrapped[1] ?? { start }).start)
-    const node = only as Extract<TemplateNode, { type: 'if' }>
+    const blockish = (n: TemplateNode) => n.type === 'if' || n.type === 'for'
+    if (wrapped.length !== 1 || !blockish(only!)) fail('@transition wraps one @if or @for', (wrapped.find((n) => !blockish(n)) ?? wrapped[1] ?? { start }).start)
+    const node = only as Extract<TemplateNode, { type: 'if' | 'for' }>
     node.transition = { ...args, start }
     return node
   }

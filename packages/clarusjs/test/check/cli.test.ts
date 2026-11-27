@@ -626,3 +626,10 @@ test("#602: check reads the project's envPrefix for server-env-in-browser", () =
   expect(checkProject({ root, typescript }).diagnostics.map((d) => d.code)).toContain('server-env-in-browser')
   expect(checkProject({ root, typescript, envPrefix: 'PUBLIC_' }).diagnostics.map((d) => d.code)).not.toContain('server-env-in-browser')
 })
+
+test("@transition's arguments are type-checked around a @for too", () => {
+  const root = project({ 'src/components/list-panel.tscl': "<script>\n  let xs = state([1])\n</script>\n<ul>\n  @transition ('list', { apear: true }) { @for (x of xs; track x) { <li>{{ x }}</li> } }\n</ul>\n" })
+  mkdirSync(resolve(root, 'node_modules'), { recursive: true })
+  symlinkSync(resolve(import.meta.dirname, '../..'), resolve(root, 'node_modules/clarusjs'), 'junction')
+  expect(check({ root, typescript }).diagnostics.map((d) => `${d.line} ${d.code}`)).toEqual(['5 TS2561'])
+})

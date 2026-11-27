@@ -28,7 +28,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     all.some((n) => n.kind === 'attr' && n.reactive && n.name === '...') && 'spread as __cl_spread',
     all.some((n) => ((n.kind === 'if' && !n.transition) || n.kind === 'await') && n.block >= 0) && 'block as __cl_block',
     all.some((n) => n.kind === 'await' && n.block >= 0) && 'awaited as __cl_awaited',
-    hasFors && 'forBlock as __cl_for',
+    all.some((n) => n.kind === 'for' && !n.transition && n.block >= 0) && 'forBlock as __cl_for',
     all.some((n) => n.kind === 'for' && n.block >= 0 && rowNames(n, ir.events).some((x) => x !== '$count')) && 'derived as __cl_derived',
     hasRegions && 'region as __cl_region',
     all.some((n) => n.kind === 'component' && (n.children.length > 0 || n.fills.some((f) => !f.params))) && 'untrack as __cl_untrack',
@@ -54,7 +54,11 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
 
   let out = used.length ? `import { ${used.join(', ')} } from 'clarusjs/runtime'\n` : ''
   // @transition (motion phase 2): its own block, from a module only the islands that use it load.
-  if (all.some((n) => n.kind === 'if' && n.transition && n.block >= 0)) out += `import { transitionBlock as __cl_tb } from 'clarusjs/motion'\n`
+  const motion = [
+    all.some((n) => n.kind === 'if' && n.transition && n.block >= 0) && 'transitionBlock as __cl_tb',
+    all.some((n) => n.kind === 'for' && n.transition && n.block >= 0) && 'transitionFor as __cl_tf',
+  ].filter(Boolean)
+  if (motion.length) out += `import { ${motion.join(', ')} } from 'clarusjs/motion'\n`
   if (hot) out += `import { swap as __cl_swap } from ${JSON.stringify(hot)}\n`
   // Child components render in the browser too (in branches, rows and regions): import their server render
   // functions through the plugin's ?render query.
@@ -191,7 +195,10 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
         : 'null'
       // track may name $index by an alias (let at = $index): bound in the key's parameters too.
       const keyParams = [n.item, '$index', ...n.aliases.filter((a) => a.of === '$index').map((a) => `${a.name} = $index`)].join(', ')
-      lines.push(`__cl_for(${ctx}, ${n.block}, () => ${wrapExpr(rw.expr(n.list))}, (${keyParams}) => ${key}, ${row}, ${empty})`)
+      if (n.transition) {
+        const arg = (x: string | null, none: string) => (x === null ? none : wrapExpr(rw.expr(x)))
+        lines.push(`__cl_tf(${ctx}, ${n.block}, () => ${wrapExpr(rw.expr(n.list))}, (${keyParams}) => ${key}, ${row}, ${empty}, ${arg(n.transition.name, '"cl"')}, ${arg(n.transition.options, 'undefined')})`)
+      } else lines.push(`__cl_for(${ctx}, ${n.block}, () => ${wrapExpr(rw.expr(n.list))}, (${keyParams}) => ${key}, ${row}, ${empty})`)
     }
   }
   return lines
