@@ -203,3 +203,85 @@ test("without a name the classes are cl-'s", async () => {
   toggle(island)
   expect(island.querySelector('p.panel')!.classList.contains('cl-enter-from')).toBe(true)
 })
+
+// --- modes, appear, interruption, child islands ---
+
+const ab = (opts: string) => component(`@transition ('fade', ${opts}) { @if (open) { <p class="a" (click)="clicks++">A {{ clicks }}</p> } @else { <p class="b">B</p> } }`)
+
+test("out-in: the new branch comes once the old one is gone; changes during the leave insert only the newest", async () => {
+  const island = await mount(ab("{ mode: 'out-in' }"))
+  const a = island.querySelector('p.a')!
+  const leaving = animate(a)
+  toggle(island) // A leaves; B waits
+  await frame()
+  expect(island.querySelector('p.b')).toBe(null)
+  toggle(island) // back to A, then to B again, during the leave
+  toggle(island)
+  leaving.finish()
+  await settle()
+  await frame()
+  expect(a.isConnected).toBe(false)
+  expect(island.querySelectorAll('p.b')).toHaveLength(1)
+  expect(island.querySelectorAll('p.a')).toHaveLength(0)
+})
+
+test('in-out: the new branch enters first, while the old one waits, unwired and inert; then the old one leaves', async () => {
+  const island = await mount(ab("{ mode: 'in-out' }"))
+  const a = island.querySelector('p.a')!
+  toggle(island)
+  const b = island.querySelector('p.b')!
+  const entering = animate(b)
+  await frame()
+  expect(a.isConnected).toBe(true)
+  expect(a.hasAttribute('inert')).toBe(true)
+  expect(a.classList.contains('fade-leave-from')).toBe(false) // not leaving yet
+  ;(a as HTMLElement).click()
+  expect(a.textContent).toBe('A 0') // unwired
+  entering.finish()
+  await settle()
+  expect(a.classList.contains('fade-leave-from')).toBe(true)
+  await frame()
+  await settle()
+  expect(a.isConnected).toBe(false)
+})
+
+test('appear: the branch the server rendered enters on attach; without it, it does not', async () => {
+  const shown = await mount(component("@transition ('fade', { appear: true }) { @if (open) { <p class=\"panel\">A</p> } }"))
+  expect(shown.querySelector('p.panel')!.classList.contains('fade-enter-from')).toBe(true)
+  const plain = await mount(component("@transition ('fade') { @if (open) { <p class=\"panel\">A</p> } }"))
+  expect([...plain.querySelector('p.panel')!.classList]).toEqual(['panel'])
+})
+
+test('a change while a branch is still entering cancels its enter (onEnterCancelled) and it leaves from where it is', async () => {
+  const cancelled: Element[] = []
+  ;(globalThis as Record<string, unknown>).__cancel = { onEnterCancelled: (el: Element) => cancelled.push(el) }
+  const island = await mount(component("@transition ('fade', globalThis.__cancel) { @if (open) { <p class=\"panel\">A</p> } }", false))
+  toggle(island)
+  const p = island.querySelector('p.panel')!
+  animate(p)
+  await frame()
+  expect(p.classList.contains('fade-enter-active')).toBe(true)
+  toggle(island) // out, mid-enter
+  expect(cancelled).toEqual([p])
+  expect([...p.classList]).toEqual(['panel', 'fade-leave-from', 'fade-leave-active'])
+})
+
+test('a leaving child island that never attached is marked so the next insert does not attach it; the loader is asked to clean up after', async () => {
+  const asked: ParentNode[] = []
+  ;(globalThis as Record<string, unknown>).__clAttach = (root: ParentNode) => asked.push(root)
+  try {
+    const island = await mount(component("@transition ('fade') { @if (open) { <div class=\"box\"><cl-island c=\"later\" a=\"visible\"><p>Later</p></cl-island></div> } @else { <p class=\"b\">B</p> } }"))
+    const child = island.querySelector('cl-island[c="later"]')!
+    const box = island.querySelector('div.box')!
+    expect(child.hasAttribute('data-cl-ready')).toBe(false)
+    toggle(island)
+    expect(child.hasAttribute('data-cl-ready')).toBe(true)
+    const beforeRemoval = asked.length // B's insert asks too
+    await frame()
+    await settle()
+    expect(box.isConnected).toBe(false)
+    expect(asked.length).toBe(beforeRemoval + 1) // and once more after the leaving nodes go
+  } finally {
+    delete (globalThis as Record<string, unknown>).__clAttach
+  }
+})
