@@ -12,7 +12,7 @@
   The value is ProseMirror JSON, or HTML with [format]="'html'". Validate it on the server with the same extensions:
   validate(body, composerExtensions(), { maxLength: 2000 }) from @clarusjs/editor/server.
   A (send) cancelled with $info.cancel() keeps the text; one not cancelled, with [name] inside a form, posts it.
-  Headless: data-part names each element (composer, field, toolbar, button, attach, files, count, send, suggestions,
+  Headless: data-part names each element (composer, field, footer, toolbar, tool, attach, files, count, send, suggestions,
   suggestion). @clarusjs/ui styles them.
 --}}
 @type Item = { id: string; label: string }
@@ -171,12 +171,12 @@
   <ul [id]="id + '-emoji'" data-part="suggestions" aria-label="Emoji" hidden [use]="ref('emoji')"></ul>
   <div data-part="footer">
     <div data-part="toolbar" role="toolbar" aria-label="Formatting" [use]="ref('bar')">
-      <button type="button" data-part="button" data-command="bold" aria-label="Bold" aria-pressed="false">B</button>
-      <button type="button" data-part="button" data-command="italic" aria-label="Italic" aria-pressed="false">I</button>
-      <button type="button" data-part="button" data-command="code" aria-label="Code" aria-pressed="false">&lt;/&gt;</button>
-      <button type="button" data-part="button" data-command="link" aria-label="Link" aria-pressed="false">🔗</button>
+      <button type="button" data-part="tool" data-command="bold" aria-label="Bold" aria-pressed="false">B</button>
+      <button type="button" data-part="tool" data-command="italic" aria-label="Italic" aria-pressed="false">I</button>
+      <button type="button" data-part="tool" data-command="code" aria-label="Code" aria-pressed="false">&lt;/&gt;</button>
+      <button type="button" data-part="tool" data-command="link" aria-label="Link" aria-pressed="false">🔗</button>
       @if (codeBlocks) {
-        <button type="button" data-part="button" data-command="codeBlock" aria-label="Code block" aria-pressed="false">{ }</button>
+        <button type="button" data-part="tool" data-command="codeBlock" aria-label="Code block" aria-pressed="false">{ }</button>
       }
       <button type="button" data-part="attach" aria-label="Attach files" (click)="refs.files?.click()">📎</button>
     </div>

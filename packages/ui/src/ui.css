@@ -899,7 +899,8 @@
     border: 0;
     background: transparent;
     color: inherit;
-    font: inherit;
+    font-family: inherit;
+    font-size: inherit;
     line-height: 1.5;
     resize: none;
     outline: none; /* the composer's ring shows focus */
@@ -960,7 +961,7 @@
     gap: var(--ui-space-1);
     margin-right: auto;
   }
-  :where([data-part='composer']) :where([data-part='button'], [data-part='attach']) {
+  :where([data-part='composer']) :where([data-part='tool'], [data-part='attach']) {
     min-width: var(--ui-control-sm);
     height: var(--ui-control-sm);
     padding: 0 var(--ui-space-1);
@@ -971,16 +972,16 @@
     font: 600 var(--ui-font-size) var(--ui-font);
     cursor: pointer;
   }
-  :where([data-part='composer']) :where([data-part='button'], [data-part='attach']):hover {
+  :where([data-part='composer']) :where([data-part='tool'], [data-part='attach']):hover {
     background: var(--ui-muted-bg);
     color: var(--ui-fg);
   }
-  :where([data-part='composer']) :where([data-part='button'])[aria-pressed='true'] {
+  :where([data-part='composer']) :where([data-part='tool'])[aria-pressed='true'] {
     background: var(--ui-accent-soft);
     color: var(--ui-accent-soft-fg);
     box-shadow: inset 0 -2px 0 var(--ui-accent); /* not by colour alone */
   }
-  :where([data-part='composer']) :where([data-part='button']):disabled {
+  :where([data-part='composer']) :where([data-part='tool']):disabled {
     opacity: 0.4;
     cursor: not-allowed;
   }

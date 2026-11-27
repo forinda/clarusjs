@@ -22,7 +22,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./server": "./src/server.ts"
+    "./server": "./src/server.ts",
+    "./components/*": "./src/components/*"
   },
   "clarusjs": {
     "components": "./src/components",
@@ -44,7 +45,8 @@
       "./server": {
         "types": "./dist/server.d.ts",
         "default": "./dist/server.js"
-      }
+      },
+      "./components/*": "./src/components/*"
     }
   },
   "scripts": {
