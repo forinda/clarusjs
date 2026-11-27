@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync,
 import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
+import { isRunnableDevEnvironment, loadEnv, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
 import { autoImport, COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
@@ -19,6 +19,7 @@ import { writeManifest, type RouteParts } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
+import { loadServerEnv, writeEnvTypes, type EnvOption } from './env.ts'
 import { canonical, checkHeaders, headersFor, readHeaders, writeHeaders, type HeaderRules } from './headers.ts'
 import { projectAliases, resolveAlias, type Alias } from './aliases.ts'
 import { gitDates, sitemapFiles } from './sitemap.ts'
@@ -266,6 +267,13 @@ export type ClarusOptions = {
    */
   headers?: HeaderRules | false
   /**
+   * The environment variables the site needs: `{ server: ['DATABASE_URL'], browser: ['VITE_API_URL'] }`. `vite build`
+   * fails naming any that is missing (dev warns), and `.clarusjs/env.d.ts` types them as strings. Browser ones start
+   * with Vite's prefix (VITE_). Server code reads every .env variable from process.env, whether named here or not.
+   * @see https://clarusjs.com/guide/environment-variables
+   */
+  env?: EnvOption
+  /**
    * Every page's <head>: `titleTemplate` ('%s · Site') wraps the document title, `tags` are added unless the page has
    * its own with the same key. Anything else: export `transformHead(head, page)` from src/head.ts.
    */
@@ -413,6 +421,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   let root = process.cwd()
   let command: 'build' | 'serve' = 'serve'
   let base = '/'
+  let envWarning: string | undefined
   // `vite build` only: client entry name (see entryName) → public URL of its hashed chunk.
   // Read from the client manifest on disk, because Vite resolves config (and so creates a new plugin instance) per
   // environment: the server build cannot see state set during the client build.
@@ -441,7 +450,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   return {
     name: 'clarusjs',
     // For clarusjs check (src/cli/project.ts): the page sources it should type-check too.
-    api: { sources, lint: options.lint, lintRules: options.lintRules, components: options.components },
+    api: { sources, lint: options.lint, lintRules: options.lintRules, components: options.components, env: options.env },
     config(userConfig, env) {
       extra = (appRoot) => pluginsOf(userConfig.plugins).flatMap((p) => (p.api as { clarusComponents?: (root: string) => string[] } | undefined)?.clarusComponents?.(appRoot) ?? [])
       // The plugin's own component and stylesheet discovery resolves the same aliases Vite does.
@@ -463,6 +472,13 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         },
       }
       if (env.isPreview) config.build = { outDir: CLIENT_OUT } // preview serves the static site
+      // .env files for server code (process.env), in dev, build and preview; then the env option's required variables.
+      if (userConfig.envDir !== false) {
+        const missing = loadServerEnv(loadEnv(env.mode, resolve(projectRoot, userConfig.envDir ?? '.'), ''), [userConfig.envPrefix ?? 'VITE_'].flat(), options.env)
+        if (missing && env.command === 'build' && !env.isPreview) throw new Error(missing)
+        envWarning = missing && !env.isPreview ? missing : undefined
+      }
+      if (options.env && !env.isPreview) writeEnvTypes(projectRoot, options.env)
       // Packages that ship components are bundled for server rendering: Node can't load a .tscl file itself.
       const shipping = new Set<string>()
       if (!env.isPreview) {
@@ -527,6 +543,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       }
     },
     configResolved(config) {
+      if (envWarning) config.logger.warn(envWarning)
       root = config.root
       command = config.command
       base = config.base

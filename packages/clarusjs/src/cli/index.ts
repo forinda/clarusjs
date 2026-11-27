@@ -6,6 +6,7 @@ import { loadProject } from './project.ts'
 import { explain } from './explain.ts'
 import { serve as mapper } from './mapper.ts'
 import { serve } from '../node/serve.ts'
+import { writeEnvTypes } from '../vite/env.ts'
 
 const program = new Command('clarusjs').description('clarusjs: clear, compiled views')
 
@@ -18,7 +19,10 @@ program
   .option('--fix', 'apply lint fixes to the .tscl files (wrapping a component\'s several roots in <fragment>, …) before checking')
   .action(async (dir: string, options: { json?: boolean; strict?: boolean; fix?: boolean }) => {
     // The page sources (Markdown, …), Vite aliases and lint settings from the app's Vite config, as the build sees them.
-    const result = check({ root: dir, ...(await loadProject(dir)), strict: options.strict, fix: options.fix })
+    const project = await loadProject(dir)
+    // The env option's types too (.clarusjs/env.d.ts), as dev and build write them: a fresh clone checks the same.
+    if (project.env) writeEnvTypes(dir, project.env)
+    const result = check({ root: dir, ...project, strict: options.strict, fix: options.fix })
     // With --json, stdout is the diagnostics only: the files it rewrote go to stderr.
     for (const file of result.fixed ?? []) (options.json ? console.error : console.log)(`fixed ${file}`)
     if (options.json) console.log(result.json)

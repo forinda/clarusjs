@@ -10,7 +10,7 @@ import { scriptNames } from './script.ts'
  * The built-in rules' names.
  * @see https://clarusjs.com/guide/lint#rules
  */
-export type LintRule = 'unused-input' | 'unused-import' | 'img-alt' | 'label-field' | 'accessible-name' | 'one-root' | 'for-shadow'
+export type LintRule = 'unused-input' | 'unused-import' | 'img-alt' | 'label-field' | 'accessible-name' | 'one-root' | 'for-shadow' | 'server-env-in-browser'
 /**
  * Each rule's level, built-in or a project's, keyed by rule name.
  * @see https://clarusjs.com/guide/lint#warnings-and-errors
@@ -135,6 +135,30 @@ function named(nodes: TemplateNode[], components: Set<string>): boolean {
  * @see https://clarusjs.com/guide/lint#rules
  */
 export const lintRules: LintRuleDef[] = [
+  {
+    // #602: a component's <script> and <script inline> run in the browser, where process.env doesn't exist and Vite
+    // sends only VITE_ variables (and MODE, DEV, PROD, SSR, BASE_URL) in import.meta.env. An error by default.
+    // ponytail: a text match, so a mention in a comment or string counts too; and the prefix is Vite's default (VITE_).
+    name: 'server-env-in-browser',
+    check({ parsed, elements, report }) {
+      const scripts = [
+        ...(parsed.script ? [parsed.script] : []),
+        ...elements.filter((e) => e.tag === 'script' && !e.attrs.some((a) => a.name === 'type' && a.kind === 'static' && a.value !== 'module' && a.value !== 'text/javascript'))
+          .flatMap((e) => e.children.flatMap((c) => (c.type === 'text' ? [{ code: c.value, start: c.start }] : []))),
+      ]
+      for (const { code, start } of scripts) {
+        for (const m of code.matchAll(/\bprocess\.env(?:\.([A-Za-z_$][\w$]*))?/g)) {
+          if (m[1] === 'NODE_ENV') continue // Vite replaces it
+          const name = m[1] ?? 'it'
+          report(start + m.index, `process.env runs in the browser here, where it doesn't exist: read ${name} in <script server> or a load(), or name it VITE_${m[1] ?? 'NAME'} to send it to the browser`)
+        }
+        for (const m of code.matchAll(/\bimport\.meta\.env\.([A-Za-z_$][\w$]*)/g)) {
+          if (/^(VITE_|(MODE|DEV|PROD|SSR|BASE_URL)$)/.test(m[1]!)) continue
+          report(start + m.index, `import.meta.env.${m[1]} is never sent to the browser (only VITE_ variables are): read it in <script server> or a load(), or name it VITE_${m[1]}`)
+        }
+      }
+    },
+  },
   {
     // A component renders one root, so what a parent passes (attributes, class, events) has one place to land (Vue's
     // rule): one element, a <fragment>, a <slot />, or an @if … @else whose branches are one element each. Pages,
@@ -300,7 +324,7 @@ export function lint(source: string, file: string, config: LintConfig = {}, extr
     out.push({ rule, severity, message, file, line, column, start, ...(fix ? { fix } : {}) })
   }
   for (const rule of [...lintRules, ...extra]) {
-    const level = config[rule.name] ?? 'warn'
+    const level = config[rule.name] ?? (rule.name === 'server-env-in-browser' ? 'error' : 'warn')
     if (level === 'off') continue
     try {
       rule.check({ ...base, report: (start, message, fix) => add(rule.name, level === 'error' ? 'error' : 'warning', start, message, fix) })
