@@ -61,7 +61,9 @@ export function writeCloudflareWorker(client: string, server: string, serverRout
   // Pages serves the folder at the site's root: under a base, the worker takes the base's requests and serves its
   // static files from the root. Pages allows 100 rules of 100 characters at most: past that, it takes every request.
   const listed = serverRoutes.flatMap((r) => cloudflareRoutes(r, prefix, fragments))
-  const include = prefix ? [prefix, `${prefix}/*`] : listed.length > 100 || listed.some((r) => r.length > 100) ? ['/*'] : listed
+  const wanted = prefix ? [prefix, `${prefix}/*`] : listed
+  // Checked on the final list: a long base makes a long rule too.
+  const include = wanted.length > 100 || wanted.some((r) => r.length > 100) ? ['/*'] : wanted
   writeFileSync(routesFile, JSON.stringify({ version: 1, include, exclude: [] }))
   writeFileSync(resolve(client, '.assetsignore'), `${WORKER}\n_routes.json\n`)
 }

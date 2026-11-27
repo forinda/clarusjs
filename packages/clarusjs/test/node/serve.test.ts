@@ -227,3 +227,24 @@ test('serve(): a streamed response is sent as it comes (an open event stream), a
     await new Promise((done) => server.close(done))
   }
 }, 120_000)
+
+test('serve(): a response setting several cookies sends every Set-Cookie header', async () => {
+  const root = site({
+    'src/pages/index.tscl': '<h1>Home</h1>',
+    'src/pages/api/login.ts': `export function GET() {
+  const headers = new Headers()
+  headers.append('set-cookie', 'session=abc; HttpOnly; Path=/')
+  headers.append('set-cookie', 'theme=dark; Path=/')
+  return new Response('ok', { headers })
+}`,
+  })
+  await build(root, {})
+  const server = await serve({ root, port: 0, host: '127.0.0.1' })
+  const { port } = server.address() as AddressInfo
+  try {
+    const cookies = await new Promise<string[] | undefined>((done, fail) => get(`http://127.0.0.1:${port}/api/login`, (res) => { res.resume(); done(res.headers['set-cookie']) }).on('error', fail))
+    expect(cookies).toEqual(['session=abc; HttpOnly; Path=/', 'theme=dark; Path=/'])
+  } finally {
+    await new Promise((done) => server.close(done))
+  }
+}, 120_000)

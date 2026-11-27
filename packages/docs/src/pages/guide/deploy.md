@@ -144,7 +144,18 @@ A site with no server routes (and no base) gets no worker: deploy the folder as 
 }
 ```
 
-Under a base (`base: '/docs/'`), Cloudflare serves the folder at the site's root, so the worker takes the base's requests and serves its files without it. That holds even for a static site. The same happens when a site has more server routes than Pages' 100 routing rules allow: the worker then takes every request.
+Under a base (`base: '/docs/'`), Cloudflare serves the folder at the site's root, so the worker takes the base's requests and serves its files without it. That holds even for a static site. On Workers, send the whole base to the worker first. Workers serve a matching file before running the worker, so without this, a page whose own route is `/docs/about` (the file `docs/about/index.html`) would answer `/docs/about/` instead of `/about`'s page:
+
+```jsonc [wrangler.jsonc]
+{
+  "name": "my-site",
+  "main": "dist/client/_worker.js/index.js",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "dist/client", "binding": "ASSETS", "run_worker_first": ["/docs", "/docs/*"] }
+}
+```
+ The same happens when a site has more server routes than Pages' 100 routing rules allow: the worker then takes every request.
 
 On Cloudflare, `process.env` holds the project's variables and secrets (with `nodejs_compat` and a compatibility date from 2025-04-01 on), so server code reads them as on any host. See [Environment variables](/guide/environment-variables).
 

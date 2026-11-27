@@ -130,3 +130,32 @@ test('a static site under a base gets the worker too (to serve its files under t
   expect(existsSync(resolve(docs, 'dist/client/_worker.js/index.js'))).toBe(true)
   expect(JSON.parse(readFileSync(resolve(docs, 'dist/client/_routes.json'), 'utf8')).include).toEqual(['/docs', '/docs/*'])
 }, 120_000)
+
+test('Workers serve matching assets first: under a base, run_worker_first on the base keeps a page at <base><path> from answering for <path>', async () => {
+  // /about's page is about/index.html; a page whose own route is /docs/about is docs/about/index.html. Under the base
+  // /docs/, /docs/about/ means the first: asset-first routing would serve the second.
+  const docs = site({ 'src/pages/about.tscl': '<h1>About</h1>', 'src/pages/docs/about.tscl': '<h1>Docs about</h1>', 'src/pages/index.tscl': '<h1>Home</h1>' })
+  await (await createBuilder({ root: docs, base: '/docs/', configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'cloudflare' })] })).buildApp()
+  const out = resolve(docs, 'dist/client')
+  const workers = (routerConfig: object) => new Miniflare({
+    modules: true, scriptPath: resolve(out, '_worker.js/index.js'), modulesRoot: resolve(out, '_worker.js'),
+    modulesRules: [{ type: 'ESModule', include: ['**/*.js', '**/*.mjs'] }], compatibilityDate: '2025-09-01', compatibilityFlags: ['nodejs_compat'],
+    assets: { directory: out, binding: 'ASSETS', routerConfig: { has_user_worker: true, ...routerConfig } },
+  })
+  const assetFirst = workers({})
+  const workerFirst = workers({ static_routing: { user_worker: ['/docs', '/docs/*'] } }) // run_worker_first: ["/docs", "/docs/*"]
+  try {
+    expect(unscoped(await (await assetFirst.dispatchFetch('https://site.example/docs/about/')).text())).toContain('Docs about')
+    expect(unscoped(await (await workerFirst.dispatchFetch('https://site.example/docs/about/')).text())).toContain('<h1>About</h1>')
+  } finally {
+    await assetFirst.dispose()
+    await workerFirst.dispose()
+  }
+}, 120_000)
+
+test('a base longer than Pages allows in a rule (100 characters): the worker takes every request', async () => {
+  const base = `/${'a'.repeat(98)}/`
+  const root = site({ 'src/pages/index.tscl': '<h1>Home</h1>' })
+  await (await createBuilder({ root, base, configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'cloudflare' })] })).buildApp()
+  expect(JSON.parse(readFileSync(resolve(root, 'dist/client/_routes.json'), 'utf8')).include).toEqual(['/*'])
+}, 120_000)

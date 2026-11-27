@@ -21,7 +21,10 @@ export function toRequest(req: IncomingMessage): Request {
  */
 export async function sendResponse(res: ServerResponse, response: Response): Promise<void> {
   res.statusCode = response.status
-  response.headers.forEach((value, key) => res.setHeader(key, value))
+  response.headers.forEach((value, key) => { if (key !== 'set-cookie') res.setHeader(key, value) })
+  // Each cookie its own Set-Cookie field: forEach gives them one at a time, and setHeader would keep only the last.
+  const cookies = response.headers.getSetCookie()
+  if (cookies.length) res.setHeader('set-cookie', cookies)
   if (!response.body) return void res.end()
   await pipeline(Readable.fromWeb(response.body as import('node:stream/web').ReadableStream), res).catch(() => {})
 }
