@@ -19,6 +19,7 @@ import { writeManifest, type RouteParts } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
+import { canonical, checkHeaders, headersFor, readHeaders, writeHeaders, type HeaderRules } from './headers.ts'
 import { projectAliases, resolveAlias, type Alias } from './aliases.ts'
 import { gitDates, sitemapFiles } from './sitemap.ts'
 import { checkModes, modeFor, routeMatches, type ModeTable } from '../server/modes.ts'
@@ -255,6 +256,15 @@ export type ClarusOptions = {
    * @see https://clarusjs.com/guide/routing
    */
   redirects?: Record<string, string>
+  /**
+   * Response headers by path pattern (`*` anything, `:name` one segment): `{ '/*': { 'X-Frame-Options': 'DENY' } }`.
+   * The build writes them to `_headers` (read as is by Netlify and Cloudflare Pages; applied by `clarusjs serve` and
+   * vite preview), after `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and
+   * immutable caching for hashed assets. A name set by several matching patterns gets their values joined. `false`: no
+   * `_headers` written.
+   * @see https://clarusjs.com/guide/deploy#headers
+   */
+  headers?: HeaderRules | false
   /**
    * Every page's <head>: `titleTemplate` ('%s · Site') wraps the document title, `tags` are added unless the page has
    * its own with the same key. Anything else: export `transformHead(head, page)` from src/head.ts.
@@ -541,6 +551,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (watching) client.config.build.watch = ssr.config.build.watch = null
       const once = async () => {
         // Before anything is built: an old path must not be a page.
+        if (options.headers) checkHeaders(options.headers)
         checkRedirects(options.redirects ?? {}, files.pages(builder.config.root).map((f) => routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`)))
         await builder.build(client)
         await builder.build(ssr)
@@ -594,6 +605,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           writeFileSync(resolve(out, '500.html'), html)
         }
         // Redirect pages exist (links to old paths stay valid); their anchors are the target's, so they go unchecked.
+        if (options.headers !== false) writeHeaders(out, options.headers ?? {}, basePath(builder.config.base).replace(/\/$/, ''), builder.config.build.assetsDir)
         if (options.redirects) {
           writeRedirects(out, options.redirects, basePath(builder.config.base).replace(/\/$/, ''), routes)
           const moved = Object.keys(options.redirects).map((from) => (from.length > 1 ? from.replace(/\/+$/, '') : from))
@@ -838,6 +850,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     configurePreviewServer(server) {
       const outDir = resolve(server.config.root, server.config.build.outDir)
       const base = server.config.base // e.g. '/' or '/docs/'; Vite strips it after this middleware
+      const rules = readHeaders(outDir)
       server.middlewares.use((req, res, next) => {
         let url: string
         try {
@@ -855,6 +868,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           if (file.startsWith(outDir + sep) && existsSync(file)) req.url = base + file.slice(outDir.length + 1).replace(/\\/g, '/')
           precompressed(req, res, outDir, base)
         }
+        // _headers, as the hosts that read it and `clarusjs serve` apply it.
+        for (const [name, value] of headersFor(rules, canonical(url))) res.setHeader(name, value)
         next()
       })
       // Server routes go to the built handler, as they would in production; anything else that isn't a file is a 404.

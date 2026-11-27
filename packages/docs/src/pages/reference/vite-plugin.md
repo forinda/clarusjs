@@ -141,6 +141,25 @@ At `vite build`, each run of whitespace in template text becomes one character: 
 
 At `vite build`, writes `.br` and `.gz` copies next to each HTML, JavaScript, CSS, SVG, JSON and XML file in `dist/client` (with Node's own `zlib`, best compression), keeping each only when it's smaller than the original. For servers that send precompressed files as they are: nginx (`gzip_static`, `brotli_static`), Caddy (`precompressed`). Netlify, Vercel, Cloudflare and most static hosts compress on their own, so leave it off there. `vite preview` serves the copies too (brotli first, then gzip, as the browser's `Accept-Encoding` allows, with `Vary: Accept-Encoding`), so what you measure there is what such a server sends. Pages that server routes render per request are compressed by the host, or by a small wrapper around the handler.
 
+## headers {since=0.17.0}
+
+**Type:** `Record<string, Record<string, string>> | false`
+
+Response headers, by path pattern: `*` matches anything (slashes too) and `:name` matches one segment.
+
+```ts
+clarusjs({
+  headers: {
+    '/*': { 'X-Frame-Options': 'DENY', 'Strict-Transport-Security': 'max-age=63072000; includeSubDomains' },
+    '/api/*': { 'Cache-Control': 'no-store' },
+  },
+})
+```
+
+`vite build` writes them to `dist/client/_headers`, after any `public/_headers` of your own. Netlify and Cloudflare Pages read that file as it is, and [`clarusjs serve`](/reference/cli#clarusjs-serve) and `vite preview` apply it. Before your rules, every site gets `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and, for Vite's hashed files under `/assets/`, `Cache-Control: public, max-age=31536000, immutable`. Patterns get the base (`/docs/*` under `base: '/docs/'`). When several patterns set the same header, their values are joined with `, `, as on those hosts. A pattern must start with `/`, and a name or value can't span lines. `headers: false` writes no `_headers`.
+
+There's no Content-Security-Policy by default, because what it allows depends on the site. See [Deploying](/guide/deploy#headers) for one that fits a clarusjs site.
+
 ## 404 page
 
 `src/pages/404.tscl` (or `404.md`) is the page for any unknown address: in development, in server mode and in `vite preview` it is served with status 404, and `vite build` writes it to `404.html`, which static hosts serve for unknown paths. It is shown at any depth (`/a/b/c`), so its relative links are resolved from the site root: `href="guide"` means `/guide` wherever the visitor is. It is never in the sitemap. Data and fragment requests still get a plain 404.
