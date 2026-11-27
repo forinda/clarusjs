@@ -160,6 +160,12 @@ clarusjs({
 
 There's no Content-Security-Policy by default, because what it allows depends on the site. See [Deploying](/guide/deploy#headers) for one that fits a clarusjs site.
 
+## env {since=0.17.0}
+
+**Type:** `{ server?: string[]; browser?: string[] }`
+
+The environment variables the site needs. `vite build` fails while one is missing, naming each one; the dev server warns. `.clarusjs/env.d.ts` types them as strings on `process.env` and `import.meta.env`. Browser variables start with `VITE_` (Vite's `envPrefix`). Whether named here or not, server code reads every `.env` variable from `process.env`. See [Environment variables](/guide/environment-variables).
+
 ## 404 page
 
 `src/pages/404.tscl` (or `404.md`) is the page for any unknown address: in development, in server mode and in `vite preview` it is served with status 404, and `vite build` writes it to `404.html`, which static hosts serve for unknown paths. It is shown at any depth (`/a/b/c`), so its relative links are resolved from the site root: `href="guide"` means `/guide` wherever the visitor is. It is never in the sitemap. Data and fragment requests still get a plain 404.
