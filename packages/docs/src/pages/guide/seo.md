@@ -90,7 +90,7 @@ head:
 
 | Key | What it does |
 |---|---|
-| `title`, `description` | passed to the page's layout, which writes them into the head, as the docs theme does. `title` defaults to the first heading's text. A page with no layout of its own (`layout: false`, or only folder layouts) gets neither: put them in `head` (`[meta, { name: description, content: … }]`, with `titleTemplate: false` for the title) |
+| `title`, `description` | passed to the page's layout, which writes them into the head, as the docs theme does. `title` defaults to the first heading's text. A page with no layout of its own (`layout: false`, or only folder layouts) gets them in its head instead, the title with the site's title template |
 | `titleTemplate: false` | the title as written, without the site's template |
 | `image` | the page's social card image (`og:image`), made absolute with `site` |
 | `lastmod` | the page's date in the sitemap, over its last commit's |

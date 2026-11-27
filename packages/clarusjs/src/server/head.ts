@@ -92,6 +92,12 @@ export function completeHead(html: string, mask: (html: string) => string, optio
   const find = (k: string) => spansOf(head, mask).find((t) => key(t.text) === k)
   const rawTitle = /<title\b[^>]*>([\s\S]*?)<\/title\s*>/i.exec(own.find((t) => key(t) === 'title') ?? find('title')?.text ?? '')?.[1] ?? ''
   const title = find('title')
+  // A page's own <title data-cl-template> (a Markdown page with no layout to write it) gets the template too.
+  for (let i = 0; i < own.length; i++) {
+    if (key(own[i]!) !== 'title' || !/^<title\b[^>]*\sdata-cl-template\b/i.test(own[i]!)) continue
+    own[i] = own[i]!.replace(/\s+data-cl-template(?:="[^"]*")?/i, '').replace(/(<title\b[^>]*>)([\s\S]*?)(<\/title\s*>)/i, (_, a: string, text: string, b: string) =>
+      options.titleTemplate ? a + escape(options.titleTemplate).replace('%s', () => text) + b : a + text + b)
+  }
   if (options.titleTemplate && title && !own.some((t) => key(t) === 'title')) {
     const wrapped = title.text.replace(/(<title\b[^>]*>)([\s\S]*?)(<\/title\s*>)/i, (_, a: string, text: string, b: string) => a + escape(options.titleTemplate!).replace('%s', () => text) + b)
     head = head.slice(0, title.at) + wrapped + head.slice(title.at + title.text.length)

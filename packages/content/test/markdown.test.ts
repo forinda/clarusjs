@@ -173,3 +173,13 @@ test('#390: frontmatter lastmod becomes the sitemap:lastmod marker (the build us
 test('#396 review: an empty lastmod still becomes a marker, so the build rejects it rather than using git\'s date', () => {
   expect(page("---\ntitle: News\nlastmod: ''\n---\n# News\n")).toContain('<meta name="sitemap:lastmod" content="">')
 })
+
+test('without a layout to pass them to, the title (templated) and description go in the page head', () => {
+  const bare = markdown({}).toTscl('---\ntitle: Notes\ndescription: "A plain page"\n---\n\n# Notes\n', '/app/src/pages/notes.md', { route: '/notes', root: '/a', addDependency: () => {} })
+  expect(bare).toContain('<cl-head><title data-cl-template>Notes</title><meta name="description" content="A plain page"></cl-head>')
+  // layout: false too; titleTemplate: false keeps the title as written.
+  const off = markdown({ layout: '/src/layouts/docs.tscl' }).toTscl('---\nlayout: false\ntitle: Bare\ntitleTemplate: false\n---\n\nHi\n', '/app/src/pages/bare.md', { route: '/bare', root: '/a', addDependency: () => {} })
+  expect(off).toContain('<cl-head><title>Bare</title></cl-head>')
+  // With a layout, they go to it as before, not into the head.
+  expect(page('---\ntitle: Intro\ndescription: d\n---\n\nHi\n')).not.toContain('<cl-head>')
+})

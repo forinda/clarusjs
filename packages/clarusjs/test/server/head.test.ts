@@ -81,3 +81,8 @@ test('$ in titles and page tags is kept as written', async () => {
   const h = createHandler({ '/src/pages/index.tscl': async () => ({ render: () => doc('<title>Save $& more</title><meta name="d" content="a">', '<cl-head><meta name="d" content="$1 off"></cl-head>') }) }, { head: { titleTemplate: '%s · $$' } })
   expect(headOf(await get(h))).toBe('<meta charset="utf-8"><title>Save $& more · $$</title><meta name="d" content="$1 off">')
 })
+
+test('a <cl-head> title marked data-cl-template gets the site template, like the document\'s own title', async () => {
+  const h = createHandler({ '/src/pages/index.tscl': async () => ({ render: () => '<cl-head><title data-cl-template>Pricing</title></cl-head><h1>x</h1>' }) }, { head: { titleTemplate: '%s · Site' } })
+  expect(headOf(await get(h))).toBe('<meta charset="utf-8"><title>Pricing · Site</title>')
+})
