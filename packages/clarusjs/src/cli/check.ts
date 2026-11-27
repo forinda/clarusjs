@@ -72,7 +72,7 @@ function typescriptDir(root: string, override?: string): string {
 export type CheckSource = { extension: string; toTscl(code: string, file: string, context: { route: string; root: string; addDependency(file: string): void }): string }
 
 /** `lint`: the plugin's rule levels; `lintRules`: the project's own rules; `strict`: warnings fail too; `fix`: lint fixes are written to the .tscl files first. */
-export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown; lint?: LintConfig; lintRules?: LintRuleDef[]; strict?: boolean; fix?: boolean; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] } }): CheckResult {
+export function check(options: { root: string; typescript?: string; sources?: CheckSource[]; viteAliases?: unknown; lint?: LintConfig; lintRules?: LintRuleDef[]; strict?: boolean; fix?: boolean; components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }; envPrefix?: string | string[] }): CheckResult {
   const root = resolve(options.root)
   // Automatic component imports (#458), named as the plugin names them.
   const names = componentNames(root, options.components)
@@ -111,7 +111,7 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     // fix: lint's fixes, written to the file (.tscl only: a page source's text is generated), before anything is checked.
     if (options.fix && path.endsWith('.tscl')) {
       let next = original
-      try { next = applyFixes(original, lint(original, file, options.lint, options.lintRules)) } catch {} // a syntax error: reported below
+      try { next = applyFixes(original, lint(original, file, options.lint, options.lintRules, { envPrefix: options.envPrefix })) } catch {} // a syntax error: reported below
       if (next !== original) {
         try {
           writeFileSync(path, next)
@@ -133,7 +133,7 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
     // reported once, below.
     if (!src) {
       try {
-        for (const m of lint(source, file, options.lint, options.lintRules)) diagnostics.push({ file, line: m.line, column: m.column, severity: m.severity, code: m.rule, message: m.message })
+        for (const m of lint(source, file, options.lint, options.lintRules, { envPrefix: options.envPrefix })) diagnostics.push({ file, line: m.line, column: m.column, severity: m.severity, code: m.rule, message: m.message })
       } catch {}
     }
     // A compile error where its author wrote it: a page source's is placed in the source file when its text is found.
@@ -256,7 +256,8 @@ export function check(options: { root: string; typescript?: string; sources?: Ch
       rootDirs: ['..', './virtual'],
       paths,
     },
-    include: ['../src', './virtual', './views.d.ts', './routes.d.ts'],
+    // env.d.ts: the env option's types (#602), when the app sets it. A missing file here is simply not matched.
+    include: ['../src', './virtual', './views.d.ts', './routes.d.ts', './env.d.ts'],
   }
   const configPath = resolve(root, '.clarusjs/tsconfig.check.json')
   mkdirSync(dirname(configPath), { recursive: true })

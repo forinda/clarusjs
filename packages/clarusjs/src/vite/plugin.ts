@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync,
 import { brotliCompressSync, constants as zlibConstants, gzipSync } from 'node:zlib'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { isRunnableDevEnvironment, normalizePath, type Plugin, type UserConfig } from 'vite'
+import { isRunnableDevEnvironment, loadEnv, normalizePath, type Plugin, type UserConfig } from 'vite'
 import { compile, scopeId, ClarusError } from '../compiler/index.ts'
 import { parse } from '../compiler/parse.ts'
 import { autoImport, COMPONENT_DIRS, componentIndex, type ComponentNames } from '../compiler/components.ts'
@@ -17,8 +17,12 @@ export { packageOf } from './build.ts'
 export { gitDates } from './sitemap.ts'
 import { writeManifest, type RouteParts } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
+import { writeVercelOutput } from './vercel.ts'
+import { writeCloudflareWorker } from './cloudflare.ts'
 import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
+import { loadServerEnv, releaseServerEnv, writeEnvTypes, type EnvOption } from './env.ts'
+import { canonical, checkHeaders, headersFor, readHeaders, writeHeaders, type HeaderRules } from './headers.ts'
 import { projectAliases, resolveAlias, type Alias } from './aliases.ts'
 import { gitDates, sitemapFiles } from './sitemap.ts'
 import { checkModes, modeFor, routeMatches, type ModeTable } from '../server/modes.ts'
@@ -228,8 +232,13 @@ export type ClarusOptions = {
    * package.json; your own components win over theirs.
    */
   components?: { dirs?: string[]; auto?: boolean; libraries?: LibraryOption[] }
-  /** Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. */
-  adapter?: 'netlify'
+  /**
+   * Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. 'vercel': the
+   * Build Output API in .vercel/output (static files, one Node function, routes), with the server bundled.
+   * 'cloudflare': a worker in dist/client/_worker.js/ and _routes.json (Pages, or a Worker with static assets).
+   * @see https://clarusjs.com/guide/deploy
+   */
+  adapter?: 'netlify' | 'vercel' | 'cloudflare'
   /** Fragment navigation: each static and server page also answers at <path>/index.frag.html. */
   fragments?: boolean
   /** Page sources for other file types, such as Markdown from @clarusjs/content: `sources: [markdown()]`. */
@@ -255,6 +264,22 @@ export type ClarusOptions = {
    * @see https://clarusjs.com/guide/routing
    */
   redirects?: Record<string, string>
+  /**
+   * Response headers by path pattern (`*` anything, `:name` one segment): `{ '/*': { 'X-Frame-Options': 'DENY' } }`.
+   * The build writes them to `_headers` (read as is by Netlify and Cloudflare Pages; applied by `clarusjs serve` and
+   * vite preview), after `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and
+   * immutable caching for hashed assets. A name set by several matching patterns gets their values joined. `false`: no
+   * `_headers` written.
+   * @see https://clarusjs.com/guide/deploy#headers
+   */
+  headers?: HeaderRules | false
+  /**
+   * The environment variables the site needs: `{ server: ['DATABASE_URL'], browser: ['VITE_API_URL'] }`. `vite build`
+   * fails naming any that is missing (dev warns), and `.clarusjs/env.d.ts` types them as strings. Browser ones start
+   * with Vite's prefix (VITE_). Server code reads every .env variable from process.env, whether named here or not.
+   * @see https://clarusjs.com/guide/environment-variables
+   */
+  env?: EnvOption
   /**
    * Every page's <head>: `titleTemplate` ('%s · Site') wraps the document title, `tags` are added unless the page has
    * its own with the same key. Anything else: export `transformHead(head, page)` from src/head.ts.
@@ -397,12 +422,13 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   }
   const fileRe = new RegExp(`\\.(${extensions.map((e) => e.slice(1)).join('|')})(\\?|$)`)
   const glob = (dir: string) => JSON.stringify(extensions.map((e) => `${dir}/**/*${e}`))
-  if (options.adapter !== undefined && options.adapter !== 'netlify') {
-    throw new Error(`clarusjs: adapter "${options.adapter}" is not supported; use 'netlify'`)
+  if (options.adapter !== undefined && !['netlify', 'vercel', 'cloudflare'].includes(options.adapter)) {
+    throw new Error(`clarusjs: adapter "${options.adapter}" is not supported; use 'netlify', 'vercel' or 'cloudflare'`)
   }
   let root = process.cwd()
   let command: 'build' | 'serve' = 'serve'
   let base = '/'
+  let envWarning: string | undefined
   // `vite build` only: client entry name (see entryName) → public URL of its hashed chunk.
   // Read from the client manifest on disk, because Vite resolves config (and so creates a new plugin instance) per
   // environment: the server build cannot see state set during the client build.
@@ -431,7 +457,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   return {
     name: 'clarusjs',
     // For clarusjs check (src/cli/project.ts): the page sources it should type-check too.
-    api: { sources, lint: options.lint, lintRules: options.lintRules, components: options.components },
+    api: { sources, lint: options.lint, lintRules: options.lintRules, components: options.components, env: options.env },
     config(userConfig, env) {
       extra = (appRoot) => pluginsOf(userConfig.plugins).flatMap((p) => (p.api as { clarusComponents?: (root: string) => string[] } | undefined)?.clarusComponents?.(appRoot) ?? [])
       // The plugin's own component and stylesheet discovery resolves the same aliases Vite does.
@@ -453,6 +479,16 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         },
       }
       if (env.isPreview) config.build = { outDir: CLIENT_OUT } // preview serves the static site
+      // .env files for server code (process.env), in dev, build and preview; then the env option's required variables.
+      // envDir: false loads no file; the required variables are still checked, against the environment.
+      releaseServerEnv()
+      const envFiles = userConfig.envDir === false ? {} : loadEnv(env.mode, resolve(projectRoot, userConfig.envDir ?? '.'), '')
+      const prefixes = [userConfig.envPrefix ?? 'VITE_'].flat()
+      // Browser variables come from the environment too (Vite reads VITE_ ones there), not only the files.
+      const missing = loadServerEnv({ ...Object.fromEntries(Object.entries(process.env).filter(([k, v]) => v !== undefined && prefixes.some((p) => k.startsWith(p))) as [string, string][]), ...envFiles }, prefixes, options.env)
+      if (missing && env.command === 'build' && !env.isPreview) throw new Error(missing)
+      envWarning = missing && !env.isPreview ? missing : undefined
+      if (options.env && !env.isPreview) writeEnvTypes(projectRoot, options.env)
       // Packages that ship components are bundled for server rendering: Node can't load a .tscl file itself.
       const shipping = new Set<string>()
       if (!env.isPreview) {
@@ -461,6 +497,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           if (name) shipping.add(name)
         }
         if (shipping.size) config.ssr = { noExternal: [...shipping] }
+        // Vercel and Cloudflare run the server with nothing installed: every dependency goes in the bundle.
+        if (options.adapter === 'vercel' || options.adapter === 'cloudflare') config.ssr = { noExternal: true }
       }
       if (env.command !== 'build') return config
       if (userConfig.base !== undefined && !userConfig.base.startsWith('/') && !/^https?:\/\//.test(userConfig.base)) {
@@ -517,6 +555,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       }
     },
     configResolved(config) {
+      if (envWarning) config.logger.warn(envWarning)
       root = config.root
       command = config.command
       base = config.base
@@ -541,6 +580,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       if (watching) client.config.build.watch = ssr.config.build.watch = null
       const once = async () => {
         // Before anything is built: an old path must not be a page.
+        if (options.headers) checkHeaders(options.headers)
         checkRedirects(options.redirects ?? {}, files.pages(builder.config.root).map((f) => routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`)))
         await builder.build(client)
         await builder.build(ssr)
@@ -594,6 +634,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           writeFileSync(resolve(out, '500.html'), html)
         }
         // Redirect pages exist (links to old paths stay valid); their anchors are the target's, so they go unchecked.
+        if (options.headers !== false) writeHeaders(out, options.headers ?? {}, basePath(builder.config.base).replace(/\/$/, ''), builder.config.build.assetsDir)
         if (options.redirects) {
           writeRedirects(out, options.redirects, basePath(builder.config.base).replace(/\/$/, ''), routes)
           const moved = Object.keys(options.redirects).map((from) => (from.length > 1 ? from.replace(/\/+$/, '') : from))
@@ -679,10 +720,14 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const sitemap = options.sitemap !== false ? `\nSitemap: ${new URL('sitemap.xml', new URL(builder.config.base, options.site.url.replace(/\/?$/, '/'))).href}\n` : ''
           writeFileSync(resolve(out, 'robots.txt'), `User-agent: *\nAllow: /\n${sitemap}`)
         }
-        if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true)
+        if (options.adapter === 'netlify') writeNetlifyFunction(builder.config.root, entry, server.map((s) => s.route), options.fragments === true, out)
         // Vite's manifest was for this build (island URLs, clarusjs-manifest.json); it isn't part of the site.
         rmSync(resolve(out, '.vite'), { recursive: true, force: true })
         if (options.compress) precompress(out)
+        // Adapters last: they copy dist/client as it ships (no .vite manifest). The base's path: an absolute base
+        // (https://cdn.example/docs/) is served at /docs/.
+        if (options.adapter === 'vercel') writeVercelOutput(builder.config.root, out, dirname(entry), server.map((s) => s.route), basePath(builder.config.base), options.fragments === true)
+        if (options.adapter === 'cloudflare') writeCloudflareWorker(out, dirname(entry), server.map((s) => s.route), basePath(builder.config.base), options.fragments === true)
       }
       await once()
       if (watching) watchApp(builder, once)
@@ -838,6 +883,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
     configurePreviewServer(server) {
       const outDir = resolve(server.config.root, server.config.build.outDir)
       const base = server.config.base // e.g. '/' or '/docs/'; Vite strips it after this middleware
+      const rules = readHeaders(outDir)
       server.middlewares.use((req, res, next) => {
         let url: string
         try {
@@ -855,6 +901,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           if (file.startsWith(outDir + sep) && existsSync(file)) req.url = base + file.slice(outDir.length + 1).replace(/\\/g, '/')
           precompressed(req, res, outDir, base)
         }
+        // _headers, as the hosts that read it and `clarusjs serve` apply it.
+        for (const [name, value] of headersFor(rules, canonical(url))) res.setHeader(name, value)
         next()
       })
       // Server routes go to the built handler, as they would in production; anything else that isn't a file is a 404.

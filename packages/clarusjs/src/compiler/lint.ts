@@ -5,12 +5,13 @@
 import { ClarusError } from './errors.ts'
 import { awaitLists, importNames, kebabOf, parse, rootNodes, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
 import { scriptNames } from './script.ts'
+import { tokenizer } from 'acorn'
 
 /**
  * The built-in rules' names.
  * @see https://clarusjs.com/guide/lint#rules
  */
-export type LintRule = 'unused-input' | 'unused-import' | 'img-alt' | 'label-field' | 'accessible-name' | 'one-root' | 'for-shadow'
+export type LintRule = 'unused-input' | 'unused-import' | 'img-alt' | 'label-field' | 'accessible-name' | 'one-root' | 'for-shadow' | 'server-env-in-browser'
 /**
  * Each rule's level, built-in or a project's, keyed by rule name.
  * @see https://clarusjs.com/guide/lint#warnings-and-errors
@@ -55,6 +56,8 @@ export type LintContext = {
   reads(name: string): boolean
   /** A finding at `start`, an offset in the source (an element's, an attribute's, an @input's). */
   report(start: number, message: string, fix?: LintFix): void
+  /** The prefixes of the environment variables Vite sends to the browser (its `envPrefix`; default `['VITE_']`). */
+  envPrefix: string[]
 }
 /**
  * A lint rule: a name (used in levels and ignore comments) and a check over one file.
@@ -135,6 +138,42 @@ function named(nodes: TemplateNode[], components: Set<string>): boolean {
  * @see https://clarusjs.com/guide/lint#rules
  */
 export const lintRules: LintRuleDef[] = [
+  {
+    // #602: a component's <script> and <script inline> run in the browser, where process.env doesn't exist and Vite
+    // sends only its prefixed variables (VITE_, or the project's envPrefix) and MODE, DEV, PROD, SSR, BASE_URL in
+    // import.meta.env. An error by default. Read as tokens, so a mention in a comment or a string isn't a read.
+    name: 'server-env-in-browser',
+    check({ parsed, elements, report, envPrefix }) {
+      const scripts = [
+        ...(parsed.script ? [parsed.script] : []),
+        ...elements.filter((e) => e.tag === 'script' && !e.attrs.some((a) => a.name === 'type' && a.kind === 'static' && a.value !== 'module' && a.value !== 'text/javascript'))
+          .flatMap((e) => e.children.flatMap((c) => (c.type === 'text' ? [{ code: c.value, start: c.start }] : []))),
+      ]
+      const sent = (name: string) => envPrefix.some((p) => name.startsWith(p)) || /^(MODE|DEV|PROD|SSR|BASE_URL)$/.test(name)
+      const prefixes = envPrefix.join(' or ')
+      for (const { code, start } of scripts) {
+        // acorn's Token type leaves out `value`, which every token has.
+        let tokens: { type: { label: string }; value: unknown; start: number }[]
+        try { tokens = [...tokenizer(code, { ecmaVersion: 'latest', sourceType: 'module' })] as unknown as typeof tokens } catch { continue } // the compiler reports it
+        const is = (i: number, label: string, value?: string) => tokens[i]?.type.label === label && (value === undefined || tokens[i]!.value === value)
+        const dot = (i: number) => is(i, '.') || is(i, '?.')
+        for (let i = 0; i < tokens.length; i++) {
+          // process.env[.NAME], not obj.process.env
+          if (is(i, 'name', 'process') && !dot(i - 1) && dot(i + 1) && is(i + 2, 'name', 'env')) {
+            const name = dot(i + 3) && is(i + 4, 'name') ? String(tokens[i + 4]!.value) : undefined
+            if (name === 'NODE_ENV') continue // Vite replaces it
+            report(start + tokens[i]!.start, `process.env runs in the browser here, where it doesn't exist: read ${name ?? 'it'} in <script server> or a load(), or name it ${envPrefix[0]}${name ?? 'NAME'} to send it to the browser`)
+          }
+          // import.meta.env.NAME
+          if (is(i, 'import') && dot(i + 1) && is(i + 2, 'name', 'meta') && dot(i + 3) && is(i + 4, 'name', 'env') && dot(i + 5) && is(i + 6, 'name')) {
+            const name = String(tokens[i + 6]!.value)
+            if (sent(name)) continue
+            report(start + tokens[i]!.start, `import.meta.env.${name} is never sent to the browser (only ${prefixes} variables are): read it in <script server> or a load(), or name it ${envPrefix[0]}${name}`)
+          }
+        }
+      }
+    },
+  },
   {
     // A component renders one root, so what a parent passes (attributes, class, events) has one place to land (Vue's
     // rule): one element, a <fragment>, a <slot />, or an @if … @else whose branches are one element each. Pages,
@@ -276,7 +315,7 @@ export const lintRules: LintRuleDef[] = [
  * ```
  * @see https://clarusjs.com/reference/compiler#lint
  */
-export function lint(source: string, file: string, config: LintConfig = {}, extra: LintRuleDef[] = []): LintMessage[] {
+export function lint(source: string, file: string, config: LintConfig = {}, extra: LintRuleDef[] = [], options: { envPrefix?: string | string[] } = {}): LintMessage[] {
   const parsed = parse(source, file)
   // Everything that can read a name: the template's expressions, the script, input types and defaults, type aliases.
   const corpus = [
@@ -301,6 +340,7 @@ export function lint(source: string, file: string, config: LintConfig = {}, extr
     elements: [...elements(parsed.nodes)],
     components: new Set(parsed.imports.map((i) => i.name)),
     reads: (name: string) => new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(corpus),
+    envPrefix: [options.envPrefix ?? 'VITE_'].flat(),
   }
 
   const out: LintMessage[] = []
@@ -311,7 +351,7 @@ export function lint(source: string, file: string, config: LintConfig = {}, extr
     out.push({ rule, severity, message, file, line, column, start, ...(fix ? { fix } : {}) })
   }
   for (const rule of [...lintRules, ...extra]) {
-    const level = config[rule.name] ?? 'warn'
+    const level = config[rule.name] ?? (rule.name === 'server-env-in-browser' ? 'error' : 'warn')
     if (level === 'off') continue
     try {
       rule.check({ ...base, report: (start, message, fix) => add(rule.name, level === 'error' ? 'error' : 'warning', start, message, fix) })

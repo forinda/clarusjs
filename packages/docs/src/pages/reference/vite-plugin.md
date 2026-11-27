@@ -36,9 +36,13 @@ clarusjs({ routes: { '/account/*': 'server' } })
 
 ## adapter
 
-**Type:** `'netlify'` · **Default:** none
+**Type:** `'netlify' | 'vercel' | 'cloudflare'` · **Default:** none
 
-Where server routes deploy. With `'netlify'`, `vite build` writes `.netlify/v1/functions/clarusjs-server.mjs` (Netlify's Frameworks API, read from the site's package directory: in a monorepo, set Netlify's package directory to the folder with `vite.config.ts`, and don't also set `base` to it): a function that calls `dist/server/index.mjs` for the server routes' paths, with static files served first. With no server routes, no function is written.
+Where server routes deploy. With `'netlify'`, `vite build` writes `.netlify/v1/functions/clarusjs-server.mjs` (Netlify's Frameworks API, read from the site's package directory: in a monorepo, set Netlify's package directory to the folder with `vite.config.ts`, and don't also set `base` to it): a function that calls `dist/server/index.mjs` for the server routes' paths, with static files served first. Netlify applies `_headers` to static files only, so the function applies them to its own responses. With no server routes, no function is written.
+
+With `'vercel'` {since=0.17.0}, `vite build` writes `.vercel/output` in Vercel's [Build Output API](https://vercel.com/docs/build-output-api/v3). `static/` holds `dist/client`, served under the base. Pages answer without the trailing slash, and the slash form is rewritten to them. `config.json` routes carry your [headers](#headers), [redirects](/guide/routing) and the 404 page. Server routes and endpoints go to one Node function (`functions/clarusjs-server.func`) that calls the same handler. The server build is bundled with its dependencies, so the function needs nothing installed. Vercel deploys `.vercel/output` as it finds it after the build command: set the build command to `vite build`, or run `vercel deploy --prebuilt`.
+
+With `'cloudflare'` {since=0.17.0}, `vite build` writes a worker to `dist/client/_worker.js/`, running the same handler for server routes and endpoints, bundled with its dependencies. It also writes `_routes.json`, so Cloudflare Pages sends only those routes to the worker. Static files are served first, with your `_headers`, `_redirects` and `404.html`, which Pages reads itself. The worker applies `_headers` to its own responses too. An `.assetsignore` keeps the worker out of the static files, so the same folder also deploys as a Worker with static assets. Under a base, or with more server routes (or longer rules) than Pages' limits of 100 rules of 100 characters, the worker takes every request and serves static files from the folder's root. On Workers, list the base in `run_worker_first` (`["/docs", "/docs/*"]`), since Workers serve a matching file before the worker. With no server routes and no base, none of these files is written.
 
 ## fragments
 
@@ -140,6 +144,31 @@ At `vite build`, each run of whitespace in template text becomes one character: 
 **Type:** `boolean` · **Default:** `false`
 
 At `vite build`, writes `.br` and `.gz` copies next to each HTML, JavaScript, CSS, SVG, JSON and XML file in `dist/client` (with Node's own `zlib`, best compression), keeping each only when it's smaller than the original. For servers that send precompressed files as they are: nginx (`gzip_static`, `brotli_static`), Caddy (`precompressed`). Netlify, Vercel, Cloudflare and most static hosts compress on their own, so leave it off there. `vite preview` serves the copies too (brotli first, then gzip, as the browser's `Accept-Encoding` allows, with `Vary: Accept-Encoding`), so what you measure there is what such a server sends. Pages that server routes render per request are compressed by the host, or by a small wrapper around the handler.
+
+## headers {since=0.17.0}
+
+**Type:** `Record<string, Record<string, string>> | false`
+
+Response headers, by path pattern: `*` matches anything (slashes too) and `:name` matches one segment.
+
+```ts
+clarusjs({
+  headers: {
+    '/*': { 'X-Frame-Options': 'DENY', 'Strict-Transport-Security': 'max-age=63072000; includeSubDomains' },
+    '/api/*': { 'Cache-Control': 'no-store' },
+  },
+})
+```
+
+`vite build` writes them to `dist/client/_headers`, after any `public/_headers` of your own. Netlify and Cloudflare Pages read that file as it is, and [`clarusjs serve`](/reference/cli#clarusjs-serve) and `vite preview` apply it. Before your rules, every site gets `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and, for Vite's hashed files under `/assets/`, `Cache-Control: public, max-age=31536000, immutable`. Patterns get the base (`/docs/*` under `base: '/docs/'`). When several patterns set the same header, their values are joined with `, `, as on those hosts. A pattern must start with `/`, and a name or value can't span lines. `headers: false` writes no `_headers`.
+
+There's no Content-Security-Policy by default, because what it allows depends on the site. See [Deploying](/guide/deploy#headers) for one that fits a clarusjs site.
+
+## env {since=0.17.0}
+
+**Type:** `{ server?: string[]; browser?: string[] }`
+
+The environment variables the site needs. `vite build` fails while one is missing, naming each one; the dev server warns. `.clarusjs/env.d.ts` types them as strings on `process.env` and `import.meta.env`. Browser variables start with `VITE_` (Vite's `envPrefix`). Whether named here or not, server code reads every `.env` variable from `process.env`. See [Environment variables](/guide/environment-variables).
 
 ## 404 page
 
