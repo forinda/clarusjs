@@ -141,3 +141,13 @@ test('a trigger right after a line break (Shift+Enter) opens the list, as at the
   await vi.advanceTimersByTimeAsync(200)
   expect(list.hidden).toBe(false)
 })
+
+test('review: an Enter that confirms a composition (keyCode 229, isComposing) does not pick', async () => {
+  const { ed, list, pick } = setup()
+  type(ed, '@ma')
+  await vi.advanceTimersByTimeAsync(200)
+  ed.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 229, bubbles: true, cancelable: true } as KeyboardEventInit))
+  ed.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true, cancelable: true }))
+  expect(pick).not.toHaveBeenCalled()
+  expect(list.hidden).toBe(false)
+})

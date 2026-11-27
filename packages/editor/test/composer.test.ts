@@ -51,7 +51,7 @@ async function composer(props: Record<string, unknown>, before?: (textarea: HTML
 test('the server renders a labelled textarea with the value as text: no JavaScript needed to type or post', async () => {
   const { render } = await load('server')
   const html = await render({ id: 'c', name: 'msg', label: 'Reply', placeholder: 'Reply…', format: 'html', value: '<p>Hi &amp; <b>bye</b></p>' })
-  expect(html).toMatch(/<textarea id="c-field" data-part="field" name="msg" placeholder="Reply…" aria-label="Reply" rows="3"[^>]*>Hi &amp; bye<\/textarea>/)
+  expect(html).toMatch(/<textarea id="c-field" data-part="field" name="msg" placeholder="Reply…" aria-label="Reply" rows="3"[^>]*>\nHi &amp; bye<\/textarea>/)
   expect(html).toContain('role="toolbar"')
   expect(html).toMatch(/<button type="submit" data-part="send"[^>]*>(<!--\[\d+-->)?Send(<!--\]-->)?<\/button>/)
   expect(compile(source, { file: 'composer.tscl', target: 'client' }).stateful).toBe(true)

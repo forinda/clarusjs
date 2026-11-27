@@ -168,8 +168,9 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
   const plugin = new Plugin({
     view: () => ({ update: (v) => update(v.state) }),
     props: {
-      handleKeyDown(_view, event) {
+      handleKeyDown(v, event) {
         if (list.hidden || !items.length) return false
+        if (event.isComposing || event.keyCode === 229 || v.composing) return false // an input method's key
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
           active = (active + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
           render()

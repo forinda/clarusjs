@@ -59,6 +59,7 @@ export type Editor = {
   schema: Schema
 }
 
+const safari = () => typeof navigator !== 'undefined' && /Apple Computer/.test(navigator.vendor)
 const ALIASES: Record<string, string> = { bold: 'strong', italic: 'em', codeBlock: 'code_block' }
 
 /**
@@ -105,7 +106,8 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
         if (event.key !== 'Enter') return false
         // an input method confirming a word: not ours (Chrome sends keyCode 229; Safari a plain Enter just after)
         if (event.isComposing || event.keyCode === 229 || view.composing) return false
-        if (Date.now() - compositionEnd < 500) { compositionEnd = 0; return true }
+        // Safari sends a plain Enter right after compositionend; elsewhere (Android) that Enter is the real one
+        if (safari() && Date.now() - compositionEnd < 500) { compositionEnd = 0; return true }
         if (event.shiftKey) return newLine(view.state, view.dispatch)
         if (event.ctrlKey || event.metaKey) { send(); return true }
         if (!enterSends || view.state.selection.$from.parent.type.spec.code) return baseKeymap.Enter!(view.state, view.dispatch, view)

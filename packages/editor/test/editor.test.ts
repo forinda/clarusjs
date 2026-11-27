@@ -182,3 +182,12 @@ test('plainText never throws on bad input: an out-of-range character reference, 
   expect(plainText('{not json', 'json')).toBe('')
   expect(plainText({ content: 'nope' }, 'json')).toBe('')
 })
+
+test('review: an Enter just after compositionend sends outside Safari (Android sends its Enter that way)', () => {
+  const onSend = vi.fn()
+  const ed = createEditor({ element: mount(), extensions: composerExtensions(), format: 'json', onSend })
+  type(ed, 'hello')
+  ed.view.dom.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }))
+  key(ed, 'Enter')
+  expect(onSend).toHaveBeenCalledTimes(1)
+})
