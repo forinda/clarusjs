@@ -4,10 +4,10 @@
 // closes, and a polite status says how many results came. Search is debounced, the newest query wins (older ones are
 // aborted), and answers are cached by query.
 import { position } from '@clarusjs/ui-primitives/position.js'
-import { Plugin, type EditorState } from 'prosemirror-state'
+import type { EditorState } from 'prosemirror-state'
 import type { Editor } from '../core/editor.ts'
 import type { Emoji } from '../emoji.ts'
-import { editorOf } from './editor.ts'
+import { editorOf } from '../core/registry.ts'
 
 /**
  * One suggestion: an id, the label shown, and for emoji the character.
@@ -165,7 +165,7 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
     }, DEBOUNCE)
   }
 
-  const plugin = new Plugin({
+  const remove = ed.addPlugin({
     view: () => ({ update: (v) => update(v.state) }),
     props: {
       handleKeyDown(v, event) {
@@ -182,13 +182,11 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
       },
     },
   })
-  // first, so the list's keys come before the editor's (Enter picks here, it doesn't send)
-  view.updateState(view.state.reconfigure({ plugins: [plugin, ...view.state.plugins] }))
 
   return () => {
     close()
     status.remove()
-    if (!view.isDestroyed) view.updateState(view.state.reconfigure({ plugins: view.state.plugins.filter((p) => p !== plugin) }))
+    remove()
   }
 }
 

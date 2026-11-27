@@ -57,3 +57,9 @@ test('URL checks follow what is rendered: any attribute name, the real tag, and 
   expect(validate(bad(['javascript:alert(1)']), [base, link])).toEqual({ ok: false, error: 'invalid attribute: href' })
   expect(validate(bad({ toString: () => 'javascript:alert(1)' }), [base, link])).toEqual({ ok: false, error: 'invalid attribute: href' })
 })
+
+test("format 'text': plain text, as a textarea posts it (blank lines make paragraphs, a line break a hard break)", () => {
+  expect(validate('a\n\nb\nc', [base], { format: 'text' })).toEqual({ ok: true, doc: doc([text('a')], [text('b'), { type: 'hard_break' }, text('c')]) })
+  expect(renderHTML('<b>x</b>', [base], { format: 'text' })).toBe('<p>&lt;b&gt;x&lt;/b&gt;</p>')
+  expect(validate('abcd', [base], { format: 'text', maxLength: 3 }).ok).toBe(false)
+})

@@ -1,25 +1,18 @@
-// The editor behaviour, for [use]: an editor inside the element, found again by the other behaviours (suggestion,
-// toolbar) with editorOf().
-import { createEditor, type Editor, type EditorOptions } from '../core/editor.ts'
+// The editor behaviour, for [use]: an editor inside the element, recorded so the parts that name the element's id
+// (for="id"), and the other behaviours, find it.
+import { createEditor, type EditorOptions } from '../core/editor.ts'
+import { register } from '../core/registry.ts'
 
-const instances = new WeakMap<Element, Editor>()
+export { editorOf } from '../core/registry.ts'
 
 /**
  * An editor inside `el`, for `[use]`; returns the dispose.
  * @example
- * <div [use]="editor" [options]="{ extensions: composerExtensions(), format: 'json' }"></div>
+ * <div id="note" [use]="(el) => editor(el, { extensions: composerExtensions(), format: 'json' })"></div>
  * @see https://clarusjs.com/guide/editor-composer#behaviours
  */
 export function editor(el: HTMLElement, options: EditorOptions): () => void {
   const instance = createEditor({ ...options, element: el })
-  instances.set(el, instance)
-  return () => { instances.delete(el); instance.destroy() }
-}
-
-/**
- * The editor the `editor` behaviour made on `el`, if any.
- * @see https://clarusjs.com/guide/editor-composer#behaviours
- */
-export function editorOf(el: Element): Editor | undefined {
-  return instances.get(el)
+  const unregister = register(el, instance)
+  return () => { unregister(); instance.destroy() }
 }

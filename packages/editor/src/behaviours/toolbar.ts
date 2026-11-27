@@ -3,7 +3,7 @@
 // one tab stop, with the arrow keys between its buttons (ui-primitives' rovingFocus).
 import { rovingFocus } from '@clarusjs/ui-primitives/roving-focus.js'
 import { effect } from 'clarusjs/runtime'
-import { editorOf } from './editor.ts'
+import { editorOf } from '../core/registry.ts'
 
 /**
  * A toolbar for the editor on `options.editor`; returns the dispose. The `link` button asks for an address, or

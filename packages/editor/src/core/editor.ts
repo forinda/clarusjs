@@ -5,10 +5,11 @@ import { baseKeymap, chainCommands, newlineInCode } from 'prosemirror-commands'
 import { inputRules } from 'prosemirror-inputrules'
 import { keymap } from 'prosemirror-keymap'
 import { DOMParser, DOMSerializer, Node, type Schema } from 'prosemirror-model'
-import { EditorState, Plugin, Selection, TextSelection, type Command } from 'prosemirror-state'
+import { EditorState, Plugin, Selection, TextSelection, type Command, type PluginSpec } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import type { Extension } from './extension.ts'
 import { docLength } from './length.ts'
+import { fromText } from './from-text.ts'
 import { buildSchema } from './schema.ts'
 
 /**
@@ -50,6 +51,8 @@ export type Editor = {
   can(name: string, ...args: unknown[]): boolean
   /** Whether a mark or block is active at the selection, by command name (`bold`) or mark or node name (`strong`). */
   active(name: string): boolean
+  /** Adds a ProseMirror plugin, before the editor's own (its keys come first); returns how to remove it. */
+  addPlugin(spec: PluginSpec<any>): () => void
   focus(): void
   clear(): void
   /** Sends unless empty or over the limit: calls `onSend`, clears (unless it returned false), and returns true. */
@@ -194,40 +197,16 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
       if (mark) return empty ? !!mark.isInSet(view.state.storedMarks ?? $from.marks()) : view.state.doc.rangeHasMark(from, to, mark)
       return schema.nodes[n] ? $from.parent.type === schema.nodes[n] : false
     },
+    addPlugin(spec) {
+      const plugin = new Plugin(spec)
+      view.updateState(view.state.reconfigure({ plugins: [plugin, ...view.state.plugins] }))
+      return () => {
+        if (!view.isDestroyed) view.updateState(view.state.reconfigure({ plugins: view.state.plugins.filter((p) => p !== plugin) }))
+      }
+    },
     focus: () => view.focus(),
     clear,
     send,
     destroy() { stop(); view.destroy() },
   }
-}
-
-/** A document from plain text (blank lines apart: paragraphs; a line break: a hard break), and where `caret` falls. */
-function fromText(schema: Schema, text: string, caret?: number): { doc: Node; pos?: number } {
-  const blocks: Node[][] = [[]]
-  let buf = ''
-  let pos = 1 // inside the first paragraph
-  let at: number | undefined
-  const flush = () => { if (buf) blocks[blocks.length - 1]!.push(schema.text(buf)); buf = '' }
-  for (let i = 0; i < text.length;) {
-    if (i === caret) at = pos
-    if (text.startsWith('\n\n', i)) {
-      if (caret === i + 1) at = pos
-      flush()
-      blocks.push([])
-      pos += 2 // out of one paragraph, into the next
-      i += 2
-    } else if (text[i] === '\n') {
-      flush()
-      blocks[blocks.length - 1]!.push(schema.nodes.hard_break!.create())
-      pos += 1
-      i += 1
-    } else {
-      buf += text[i]
-      pos += 1 // positions count UTF-16 units, as strings do
-      i += 1
-    }
-  }
-  if (caret !== undefined && caret >= text.length) at = pos
-  flush()
-  return { doc: schema.node('doc', null, blocks.map((b) => schema.node('paragraph', null, b))), pos: at }
 }

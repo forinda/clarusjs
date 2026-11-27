@@ -6,14 +6,16 @@ import { DOMParser, Node, type DOMOutputSpec, type Schema } from 'prosemirror-mo
 import { attrValue, UNSAFE_URL } from 'clarusjs/runtime'
 import type { Extension } from './core/extension.ts'
 import { docLength } from './core/length.ts'
+import { fromText } from './core/from-text.ts'
 import { buildSchema } from './core/schema.ts'
 import { base } from './extensions/base.ts'
 
 /**
- * How a value is stored: ProseMirror JSON (an object, or its string) or HTML.
+ * How a value is stored: ProseMirror JSON (an object, or its string) or HTML; or plain text, as a textarea posts it
+ * before the editor loads (a field's <name>-format says which).
  * @see https://clarusjs.com/guide/editor-composer#format
  */
-export type Format = 'json' | 'html'
+export type Format = 'json' | 'html' | 'text'
 
 const BASE = [base]
 const schemas = new WeakMap<Extension[], Schema>()
@@ -25,6 +27,7 @@ const schemaOf = (extensions: Extension[]) => {
 
 /** The document for `value`, parsed as `format`: throws when it isn't one the schema allows. */
 function parse(value: string | object, schema: Schema, format: Format): Node {
+  if (format === 'text') return fromText(schema, String(value)).doc
   if (format === 'html') {
     const { document } = parseHTML(`<!doctype html><html><body>${String(value)}</body></html>`)
     return DOMParser.fromSchema(schema).parse(document.body as unknown as globalThis.Node)

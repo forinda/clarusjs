@@ -3,6 +3,7 @@
 export { createEditor, type Editor, type EditorOptions } from './core/editor.ts'
 export { buildSchema, defineExtension, type Extension, type MarkSpec, type NodeSpec } from './core/schema.ts'
 export { editor, editorOf } from './behaviours/editor.ts'
+export { onEditor } from './core/registry.ts'
 export type { Emoji } from './emoji.ts'
 export { toolbar } from './behaviours/toolbar.ts'
 export { content } from './behaviours/content.ts'

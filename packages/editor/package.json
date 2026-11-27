@@ -24,7 +24,11 @@
     ".": "./src/index.ts",
     "./server": "./src/server.ts",
     "./components/*": "./src/components/*",
-    "./plain-text": "./src/core/plain-text.ts"
+    "./plain-text": "./src/core/plain-text.ts",
+    "./registry": "./src/core/registry.ts",
+    "./toolbar": "./src/behaviours/toolbar.ts",
+    "./suggestion": "./src/behaviours/suggestion.ts",
+    "./content": "./src/behaviours/content.ts"
   },
   "clarusjs": {
     "components": "./src/components",
@@ -51,6 +55,22 @@
       "./plain-text": {
         "types": "./dist/core/plain-text.d.ts",
         "default": "./dist/core/plain-text.js"
+      },
+      "./registry": {
+        "types": "./dist/core/registry.d.ts",
+        "default": "./dist/core/registry.js"
+      },
+      "./toolbar": {
+        "types": "./dist/behaviours/toolbar.d.ts",
+        "default": "./dist/behaviours/toolbar.js"
+      },
+      "./suggestion": {
+        "types": "./dist/behaviours/suggestion.d.ts",
+        "default": "./dist/behaviours/suggestion.js"
+      },
+      "./content": {
+        "types": "./dist/behaviours/content.d.ts",
+        "default": "./dist/behaviours/content.js"
       }
     }
   },
