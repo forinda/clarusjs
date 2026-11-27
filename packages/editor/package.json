@@ -1,6 +1,6 @@
 {
   "name": "@clarusjs/editor",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A rich-text editor for clarusjs: a composer to drop in, behaviours to build your own, and a server side that validates and renders without a DOM.",
   "type": "module",
   "license": "MIT",

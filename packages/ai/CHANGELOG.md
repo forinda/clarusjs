@@ -1,5 +1,15 @@
 # @clarusjs/ai
 
+## 0.1.5
+
+### Patch Changes
+
+- [#650](https://github.com/forinda/clarusjs/pull/650) [`868376b`](https://github.com/forinda/clarusjs/commit/868376b64647b55b0c4f024b9a57e200bdcd80f5) Thanks [@forinda](https://github.com/forinda)! - The guidance covers `h()` from `clarusjs/views`, for components picked at runtime, built in server code.
+
+- [#647](https://github.com/forinda/clarusjs/pull/647) [`0306c9c`](https://github.com/forinda/clarusjs/commit/0306c9cabe7d8196d400600367d5506e478769be) Thanks [@forinda](https://github.com/forinda)! - The guidance covers rich text: use `@clarusjs/editor`'s composer, and validate on the server, instead of wrapping a React editor.
+- Updated dependencies [[`0306c9c`](https://github.com/forinda/clarusjs/commit/0306c9cabe7d8196d400600367d5506e478769be), [`0306c9c`](https://github.com/forinda/clarusjs/commit/0306c9cabe7d8196d400600367d5506e478769be)]:
+  - clarusjs@0.18.0
+
 ## 0.1.4
 
 ### Patch Changes
