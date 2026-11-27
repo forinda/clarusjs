@@ -140,3 +140,24 @@ test('an island waiting to attach (idle) that starts leaving (@transition makes 
   expect(attached).toEqual([])
   vi.unstubAllGlobals()
 })
+
+test('typed before attach is kept: a field already changed is not reset to state at attach, and the replay writes it', async () => {
+  const src = `<script>let name = state('start'); let note = state('')</script>
+<input class="name" [(value)]="name"><textarea class="note" [(value)]="note"></textarea><p class="out">{{ name }}|{{ note }}</p>`
+  const { render } = await importCode(compile(src, { file: 'f.tscl', target: 'server', clientUrl: '/f.js' }).code, 'lazy-typed-s')
+  const client = await importCode(compile(src, { file: 'f.tscl', target: 'client' }).code, 'lazy-typed-c')
+  const { render: pageRender } = await importCode(compile(`@import f from './f.tscl'\n<f attach="interaction" />`, { file: 'page.tscl', target: 'server' }).code, 'lazy-typed-p', { './f.tscl': compile(src, { file: 'f.tscl', target: 'server', clientUrl: '/f.js' }).code })
+  void render
+  document.body.innerHTML = pageRender()
+  await attachAll(document, async () => client)
+  const name = document.querySelector<HTMLInputElement>('.name')!
+  const note = document.querySelector<HTMLTextAreaElement>('.note')!
+  name.focus()
+  name.value = 'typed'
+  name.dispatchEvent(new Event('input', { bubbles: true }))
+  note.value = 'a note'
+  note.dispatchEvent(new Event('input', { bubbles: true }))
+  await flush(); await flush()
+  expect([name.value, note.value]).toEqual(['typed', 'a note'])
+  expect(document.querySelector('.out')!.textContent).toBe('typed|a note')
+})
