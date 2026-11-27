@@ -39,6 +39,13 @@ export type MarkdownOptions = {
    */
   mermaid?: { tag: string; from: string }
   /**
+   * Synced tabs: `::: code-group sdk` names a group, and groups with the same name switch together (tabs matched by
+   * their label). Your component goes in each named group, `<tag />`, and does the syncing in the browser; theme-docs
+   * ships one: `{ tag: 'codeTabs', from: '@clarusjs/theme-docs/code-tabs.tscl' }`. Without JavaScript, or without this
+   * option, each group works on its own.
+   */
+  codeGroups?: { tag: string; from: string }
+  /**
    * Render `::: quiz` blocks through your quiz component (an island): `<tag [name] [question] [options] [answer]>`
    * with the explanation as its content. Without it they are static HTML that works without JavaScript.
    */
@@ -273,14 +280,22 @@ function renderer(options: MarkdownOptions): Md {
   }
   // ::: code-group: radio inputs and labels, each followed by its block. CSS shows the checked one's block, so the
   // tabs work without JavaScript.
-  md.renderer.rules.cl_group_open = (_t, _i, _o, env) => {
-    const e = env as { groups: number; group?: { id: number; n: number } }
-    e.group = { id: e.groups++, n: 0 }
-    return '<div class="code-group">'
+  // ::: code-group NAME: data-sync="NAME", and the codeGroups component, which switches groups of a name together.
+  md.renderer.rules.cl_group_open = (tokens, i, _o, env) => {
+    const e = env as { groups: number; group?: { id: number; n: number; sync?: string } }
+    const sync = (tokens[i]!.meta as { title?: string }).title
+    e.group = { id: e.groups++, n: 0, ...(sync ? { sync } : {}) }
+    return `<div class="code-group"${sync ? ` data-sync="${inert(sync)}"` : ''}>`
   }
   md.renderer.rules.cl_group_close = (_t, _i, _o, env) => {
-    delete (env as { group?: unknown }).group
-    return '</div>\n'
+    const e = env as { tags: string[]; group?: { sync?: string } }
+    let out = ''
+    if (e.group?.sync && options.codeGroups) {
+      e.tags.push(`<${options.codeGroups.tag} />`)
+      out = `<!--cl-tag-${e.tags.length - 1}-->`
+    }
+    delete e.group
+    return out + '</div>\n'
   }
 
   // A table can take focus: when it scrolls sideways on a small screen, keyboard users can scroll it (WCAG 2.1.1).
@@ -558,6 +573,9 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       if (components.has('cl-layout')) throw new Error(`${file}: cl-layout is reserved for the page's layout; import the component under another name`)
       if (options.quiz && /^\s*:{3,}\s*quiz\b/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.quiz!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.quiz.tag} from '${options.quiz.from}'`)
+      }
+      if (options.codeGroups && /^\s*:{3,}\s*code-group[ \t]+\S/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.codeGroups!.tag}\\s+from`).test(line))) {
+        imports.unshift(`@import ${options.codeGroups.tag} from '${options.codeGroups.from}'`)
       }
       if (options.mermaid && /^\s*(`{3,}|~{3,})\s*mermaid\b/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.mermaid!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.mermaid.tag} from '${options.mermaid.from}'`)

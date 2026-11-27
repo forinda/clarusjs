@@ -120,3 +120,16 @@ test('a language Shiki doesn\'t have stays plain text, and a name that isn\'t on
   expect(md('```notalang\nx\n```\n')).toContain('<span class="line"><span>x</span></span>')
   expect(md('```../../etc\nx\n```\n')).toContain('<span class="line"><span>x</span></span>')
 })
+
+test('::: code-group NAME: a named group is marked to sync (data-sync), and with codeGroups: { tag, from } gets your sync component', () => {
+  const src = '::: code-group sdk\n```ts [TypeScript]\na()\n```\n```py [Python]\na()\n```\n:::\n\n::: code-group\n```sh [pnpm]\nx\n```\n:::\n'
+  const plain = md(src)
+  expect(plain).toContain('<div class="code-group" data-sync="sdk"><input type="radio" name="cl-group-0" id="cl-group-0-0" checked>')
+  expect(plain).toContain('<div class="code-group"><input type="radio" name="cl-group-1"') // unnamed: as before
+  const synced = md(src, { codeGroups: { tag: 'codeTabs', from: '@clarusjs/theme-docs/code-tabs.tscl' } })
+  expect(synced.split('\n')[0]).toBe("@import codeTabs from '@clarusjs/theme-docs/code-tabs.tscl'")
+  expect(synced.match(/<codeTabs \/>/g)).toHaveLength(1) // in the named group only
+  expect(synced).toMatch(/<div class="code-group" data-sync="sdk">[\s\S]*<codeTabs \/><\/div>/)
+  expect(md('::: code-group\n```sh [a]\nx\n```\n:::\n', { codeGroups: { tag: 'codeTabs', from: '/x.tscl' } })).not.toContain('@import codeTabs')
+  expect(md('::: code-group a"b\n```sh [a]\nx\n```\n:::\n')).toContain('data-sync="a&quot;b"')
+})

@@ -1,0 +1,56 @@
+{{--
+  Synced code tabs: markdown({ codeGroups: { tag: 'codeTabs', from: '@clarusjs/theme-docs/code-tabs.tscl' } }) puts it
+  in each named group (::: code-group sdk). Picking a tab picks the tab with the same label in every group of that name
+  on the page, and remembers it (localStorage, per name) for the next page and the next visit. A group without that
+  label keeps its tab. The tab picked stays where it was on screen, though groups above it change height. Without
+  JavaScript each group works on its own.
+--}}
+
+<script>
+  const KEY = 'clarusjs-tabs'
+  function saved() {
+    try {
+      return JSON.parse(localStorage.getItem(KEY) ?? '{}') ?? {}
+    } catch {
+      return {}
+    }
+  }
+  function wire(el) {
+    const group = el.closest('.code-group[data-sync]')
+    if (!(group instanceof HTMLElement)) return
+    const name = group.dataset.sync ?? ''
+    const tabs = () => [...group.querySelectorAll(':scope > input[type="radio"]')].filter((tab) => tab instanceof HTMLInputElement)
+    const labelOf = (input) => input.nextElementSibling?.textContent?.trim() ?? ''
+    function pick(label) {
+      const input = tabs().find((tab) => labelOf(tab) === label)
+      if (input && !input.checked) input.checked = true // no change event: the others aren't told again
+    }
+    const remembered = saved()[name]
+    if (typeof remembered === 'string') pick(remembered)
+    function changed(event) {
+      const input = event.target
+      if (!(input instanceof HTMLInputElement) || !input.checked || input.parentElement !== group) return
+      const label = labelOf(input)
+      const tab = input.nextElementSibling
+      const before = tab?.getBoundingClientRect().top ?? 0
+      try {
+        localStorage.setItem(KEY, JSON.stringify({ ...saved(), [name]: label }))
+      } catch {}
+      window.dispatchEvent(new CustomEvent('code-tabs:pick', { detail: { name, label, from: group } }))
+      const moved = (tab?.getBoundingClientRect().top ?? 0) - before
+      if (moved) window.scrollBy(0, moved) // groups above changed height: keep this one under the pointer
+    }
+    function picked(event) {
+      const { name: other, label, from } = event.detail ?? {}
+      if (other === name && from !== group) pick(label)
+    }
+    group.addEventListener('change', changed)
+    window.addEventListener('code-tabs:pick', picked)
+    return () => {
+      group.removeEventListener('change', changed)
+      window.removeEventListener('code-tabs:pick', picked)
+    }
+  }
+</script>
+
+<span hidden [use]="wire"></span>

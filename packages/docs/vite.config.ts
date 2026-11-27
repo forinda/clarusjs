@@ -57,6 +57,8 @@ export default defineConfig({
         copy: { tag: 'copy', from: '@clarusjs/theme-docs/copy.tscl' },
         // ```mermaid blocks are diagrams, drawn by the theme's component when they scroll into view.
         mermaid: { tag: 'diagram', from: '@clarusjs/theme-docs/mermaid.tscl' },
+        // ::: code-group sdk: groups of a name switch together, and remember the reader's pick.
+        codeGroups: { tag: 'codeTabs', from: '@clarusjs/theme-docs/code-tabs.tscl' },
         // Line numbers on every code block but shell commands.
         lineNumbers: true,
         // ::: quiz blocks in lessons render through the theme's quiz (its options are an island).
