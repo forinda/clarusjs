@@ -23,7 +23,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./server": "./src/server.ts",
-    "./components/*": "./src/components/*"
+    "./components/*": "./src/components/*",
+    "./plain-text": "./src/core/plain-text.ts"
   },
   "clarusjs": {
     "components": "./src/components",
@@ -46,7 +47,11 @@
         "types": "./dist/server.d.ts",
         "default": "./dist/server.js"
       },
-      "./components/*": "./src/components/*"
+      "./components/*": "./src/components/*",
+      "./plain-text": {
+        "types": "./dist/core/plain-text.d.ts",
+        "default": "./dist/core/plain-text.js"
+      }
     }
   },
   "scripts": {
