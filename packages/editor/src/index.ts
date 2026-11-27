@@ -1,3 +1,14 @@
-// @clarusjs/editor, in the browser: extensions and the schema they make (createEditor and the behaviours join them).
+// @clarusjs/editor in the browser: the core (createEditor, extensions), the behaviours for [use], and the composer's
+// extensions. The server side (validate, renderHTML) is @clarusjs/editor/server.
+export { createEditor, type Editor, type EditorOptions } from './core/editor.ts'
 export { buildSchema, defineExtension, type Extension, type MarkSpec, type NodeSpec } from './core/schema.ts'
+export { editor, editorOf } from './behaviours/editor.ts'
 export { base } from './extensions/base.ts'
+export { bold, code, italic } from './extensions/marks.ts'
+export { link } from './extensions/link.ts'
+export { codeBlock } from './extensions/code-block.ts'
+export { mention } from './extensions/mention.ts'
+export { markdownShortcuts } from './extensions/markdown-shortcuts.ts'
+export { history } from './extensions/history.ts'
+export { placeholder } from './extensions/placeholder.ts'
+export { composerExtensions } from './extensions/composer.ts'
