@@ -344,7 +344,8 @@ export function lint(source: string, file: string, config: LintConfig = {}, extr
     parsed,
     elements: [...elements(parsed.nodes)],
     components: new Set(parsed.imports.map((i) => i.name)),
-    reads: (name: string) => new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(corpus),
+    // Not a property (obj.name), but a spread (...name) is a read.
+    reads: (name: string) => new RegExp(`(?<![\\w$])(?<!(?<!\\.\\.)\\.)${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(corpus),
     envPrefix: [options.envPrefix ?? 'VITE_'].flat(),
   }
 
