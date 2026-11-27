@@ -247,7 +247,7 @@ export type ClarusOptions = {
    * Build-time link checking, after every page is built. `pages`: links to pages or files that don't exist (default
    * 'error'). `anchors`: links to a #id the target page doesn't have (default 'warn'). `strict`: warnings fail too.
    */
-  links?: { pages?: LinkLevel; anchors?: LinkLevel; strict?: boolean }
+  links?: { pages?: LinkLevel; anchors?: LinkLevel; outside?: LinkLevel; strict?: boolean }
   /**
    * Template lint levels for `clarusjs check`: `{ 'img-alt': 'off', 'accessible-name': 'error' }`. Rules warn by default.
    * @see https://clarusjs.com/guide/lint
@@ -650,7 +650,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           base: builder.config.base,
           site: options.site?.url,
         })
-        const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn' }
+        // a same-origin link outside the base: a warning (GitHub Pages' sibling sites share the origin)
+        const levels = { pages: options.links?.pages ?? 'error', anchors: options.links?.anchors ?? 'warn', outside: options.links?.outside ?? 'warn' }
         // Each problem names the page's source file, and the line where the link is written literally.
         const sourceOf = new Map(files.pages(builder.config.root).map((f) => [routeFromFile(`/${relative(builder.config.root, f).split(sep).join('/')}`), f]))
         // Literal segments escaped; only whole [param] segments match any one segment (as the handler's routes do).
@@ -660,7 +661,9 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const file = fileOf(page)
           if (!file) return page
           const rel = relative(builder.config.root, file).split(sep).join('/')
-          const line = readFileSync(file, 'utf8').split('\n').findIndex((l) => l.includes(href))
+          // the source has the link without the base the build gave it
+          const written = href.startsWith(builder.config.base) ? href.slice(builder.config.base.length - 1) : href
+          const line = readFileSync(file, 'utf8').split('\n').findIndex((l) => l.includes(href) || l.includes(written))
           return line === -1 ? `${rel} (${page})` : `${rel}:${line + 1}`
         }
         const errors: string[] = []
@@ -870,7 +873,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           const hot = command === 'serve' && target === 'client' ? '/cl-hot.js' : undefined
           // A page's folder and config layouts (#456): its template is wrapped in them.
           const layouts = files.layouts(file, root)
-          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader, hot, icon: iconsFor(file), layouts, components: files.names(root) })
+          // Vite's base for root-relative URL attributes (a CDN base: page links stay as they are)
+          const out = compile(code, { file, target, clientUrl, renderImports, scope: scopeFor(root, file), collapseWhitespace, loader, hot, icon: iconsFor(file), layouts, components: files.names(root), base: /^https?:\/\//.test(base) ? '/' : base })
           // Every component compiles for the server once: warnings from there, so each is said once.
           if (consumer === 'server' && !renderQuery) for (const w of out.warnings) this.warn(w.message)
           return { code: out.code, map: null, moduleType: 'js' }

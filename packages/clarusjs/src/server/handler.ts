@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { toBrowser } from '../runtime/server.ts'
 import { completeHead, type HeadOptions, type SiteOptions } from './head.ts'
 import { escape } from '../runtime/html.ts'
+import { setViewBase } from './views.ts'
 
 const DATA = '__data.json'
 const FRAG = 'index.frag.html'
@@ -204,6 +205,7 @@ export function createHandler(
     endpoints?: Record<string, () => Promise<EndpointModule>>
   } = {},
 ): { fetch(request: Request): Promise<Response>; routes: string[]; serverRoutes: string[]; base: string; paths(): Promise<string[]>; hasLoader(route: string): Promise<boolean>; readsCookies(route: string): Promise<boolean>; isServerPath(pathname: string): boolean } {
+  setViewBase(options.base ?? '/') // h() writes URLs with the same base
   // Static routes first, then dynamic ones with more fixed segments first: /users/new beats /users/[id].
   const routes: Route[] = Object.entries(pages)
     .filter(([file]) => isPageFile(file))

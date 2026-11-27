@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { routeToFile } from './build.ts'
 
-export type LinkIssue = { kind: 'pages' | 'anchors'; page: string; href: string; message: string }
+export type LinkIssue = { kind: 'pages' | 'anchors' | 'outside'; page: string; href: string; message: string }
 
 type Options = {
   outDir: string
@@ -77,11 +77,18 @@ export function checkLinks(options: Options): LinkIssue[] {
         const u = new URL(href)
         if (u.origin === siteRoot.origin && (u.pathname.startsWith(siteRoot.pathname) || `${u.pathname}/` === siteRoot.pathname)) {
           href = base + u.pathname.slice(Math.min(u.pathname.length, siteRoot.pathname.length)) + u.search + u.hash
+        } else if (u.origin === siteRoot.origin && base !== '/') {
+          issues.push({ kind: 'outside', page, href, message: `${href} is outside the base ${base} (fine for another site on this origin)` })
+          continue
         }
       }
       if (/^[a-z][\w+.-]*:|^\/\//i.test(href) || href === '') continue // external, mailto:, tel:, …
       const url = new URL(href, `http://site${base}${page === '/' ? '' : page.slice(1) + '/'}`)
-      if (!url.pathname.startsWith(base) && `${url.pathname}/` !== base) continue // outside this site
+      if (!url.pathname.startsWith(base) && `${url.pathname}/` !== base) {
+        // a root-relative link outside the base: written around it (templates get the base by themselves)
+        if (base !== '/' && href.startsWith('/')) issues.push({ kind: 'outside', page, href, message: `${href} is outside the base ${base} (fine for another site on this origin)` })
+        continue
+      }
       let path = trim(decode(url.pathname.slice(base.length - 1)) || '/')
       if (path.endsWith('/index.html')) path = trim(path.slice(0, -'index.html'.length))
       const anchor = decode(url.hash.slice(1))
