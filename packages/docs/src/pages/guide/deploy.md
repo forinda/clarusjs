@@ -21,7 +21,7 @@ Set Vite's `base` in `vite.config.ts` (`base: '/docs/'`), and write links as if 
 A URL already under the base is left as it is, so `href()` and hand-written `/docs/…` links work too. For URLs built in code (`fetch()`, a link a script makes), use `withBase()` from `clarusjs/navigation`; `withoutBase()` does the reverse. Full URLs, `//host`, `#…` and relative paths are never changed.
 
 - **The build warns** about a link outside the base on the same site (a sibling project on GitHub Pages is fine; set `links: { outside: 'off' }` to stop the warning), and about a route that starts with the base itself (base `/about/` and a route `/about`): its links can't be told apart from the base's own.
-- **A CDN base** (`base: 'https://cdn.example.com/'`) applies to Vite's assets only; page links stay as written.
+- **A CDN base** (`base: 'https://cdn.example.com/'`) applies to Vite's assets only: pages stay at the site's root, so page links stay as written and the link checker checks them there.
 - **Not rewritten:** URLs inside an inline `style` (`url(/x.png)`; in a stylesheet, Vite adds the base), `ping`, a preload's `imagesrcset`, and `<meta http-equiv="refresh">`. Write those with the base, or with `withBase()` in a script.
 
 ## What the build makes

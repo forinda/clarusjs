@@ -184,13 +184,13 @@ test('header rules ignore case, as the file systems that serve /ADMIN/x as admin
   expect(headersFor(rules, '/ADMIN/secret.html').get('x-robots-tag')).toBe('noindex')
 })
 
-test('serve(): an absolute base (a CDN URL) serves pages at its path', async () => {
+test('serve(): a full-URL (CDN) base serves assets only: pages are served at the root (#653)', async () => {
   const root = site({ 'src/pages/index.tscl': '<h1>Docs home</h1>' })
   await build(root, {}, 'https://cdn.example.com/docs/')
   const server = await serve({ root, port: 0, host: '127.0.0.1' })
   const { port } = server.address() as AddressInfo
   try {
-    expect(await (await fetch(`http://127.0.0.1:${port}/docs/`)).text()).toContain('Docs home')
+    expect(await (await fetch(`http://127.0.0.1:${port}/`)).text()).toContain('Docs home')
   } finally {
     await new Promise((done) => server.close(done))
   }

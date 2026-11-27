@@ -1,6 +1,7 @@
 // sitemap.xml for the built static pages, with each page's last change from git (one `git log` for all of them).
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
+import { basePath } from '../server/head.ts'
 
 const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -35,8 +36,8 @@ export function gitDates(root: string, dir: string): Map<string, number> {
  * href resolved the same way) as xhtml:link.
  */
 export function sitemapXml(siteUrl: string, base: string, pages: { path: string; lastmod: number | undefined; images?: string[]; alternates?: { hreflang: string; href: string }[] }[]): string {
-  // An absolute base (a CDN) counts by its path: the pages are on the site.
-  const root = new URL(/^https?:\/\//i.test(base) ? new URL(base).pathname : base, siteUrl.replace(/\/?$/, '/'))
+  // A full-URL (CDN) base moves only the assets: the pages are at the site's root.
+  const root = new URL(basePath(base), siteUrl.replace(/\/?$/, '/'))
   const urls = pages.map(({ path, lastmod, images = [], alternates = [] }) => {
     const loc = new URL(`./${path.slice(1)}`, root).href
     const date = lastmod === undefined ? '' : `<lastmod>${new Date(lastmod * 1000).toISOString().slice(0, 10)}</lastmod>`
@@ -71,7 +72,7 @@ export function sitemapFiles(siteUrl: string, base: string, pages: Parameters<ty
   }
   if (chunks.length === 1) return [{ file: 'sitemap.xml', xml: sitemapXml(siteUrl, base, pages) }]
   const parts = chunks.map((chunk, i) => ({ file: `sitemap-${i + 1}.xml`, xml: sitemapXml(siteUrl, base, chunk) }))
-  const root = new URL(/^https?:\/\//i.test(base) ? new URL(base).pathname : base, siteUrl.replace(/\/?$/, '/'))
+  const root = new URL(basePath(base), siteUrl.replace(/\/?$/, '/'))
   const entries = parts.map((p) => `<sitemap><loc>${xml(new URL(p.file, root).href)}</loc></sitemap>\n`).join('')
   return [...parts, { file: 'sitemap.xml', xml: `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}</sitemapindex>\n` }]
 }

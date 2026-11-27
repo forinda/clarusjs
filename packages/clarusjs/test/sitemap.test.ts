@@ -119,7 +119,8 @@ test('review: gitDates reads non-ASCII file names exactly (git quotes them other
 })
 
 test('review: an absolute base keeps sitemap URLs on the site and 404 links on the site path', () => {
-  expect(sitemapXml('https://example.com', 'https://cdn.example.com/docs/', [{ path: '/a', lastmod: undefined }])).toContain('<loc>https://example.com/docs/a</loc>')
+  // a full-URL (CDN) base serves assets only: pages stay at the site root (#653)
+  expect(sitemapXml('https://example.com', 'https://cdn.example.com/docs/', [{ path: '/a', lastmod: undefined }])).toContain('<loc>https://example.com/a</loc>')
 })
 
 test('review: route patterns with special characters, and noindex written any valid way', async () => {
@@ -135,9 +136,9 @@ test('review: route patterns with special characters, and noindex written any va
   symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
   await (await createBuilder({ root, configFile: false, logLevel: 'silent', base: 'https://cdn.example.com/docs/', plugins: [clarusjs({ site: { url: 'https://example.com' } })] })).buildApp()
   const xml = readFileSync(resolve(root, 'dist/client/sitemap.xml'), 'utf8')
-  expect(xml).toContain('<loc>https://example.com/docs/blog/a</loc>')
+  expect(xml).toContain('<loc>https://example.com/blog/a</loc>') // the CDN base serves assets; pages stay at the root
   expect(xml).not.toContain('quiet')
-  expect(readFileSync(resolve(root, 'dist/client/404.html'), 'utf8')).toContain('<a href="/docs/blog/a">a post</a>')
+  expect(readFileSync(resolve(root, 'dist/client/404.html'), 'utf8')).toContain('<a href="/blog/a">a post</a>')
 }, 120_000)
 
 test('#390: a page sets its own lastmod (it wins over git), and the marker is stripped from the built page', async () => {

@@ -172,7 +172,10 @@ function social(head: string, title: string, options: HeadOptions, page: { path:
   return head
 }
 
-/** Vite's base as a path: an absolute base (https://cdn.example.com/docs/) counts by its pathname. */
+/**
+ * Vite's base as the path pages live under. A full-URL base (https://cdn.example.com/docs/) moves only the assets, as
+ * in Vite: pages stay at the site's root, '/' (#653; the compiler, navigate() and the link checker agree).
+ */
 export function basePath(base = '/'): string {
-  return /^https?:\/\//i.test(base) ? new URL(base).pathname : base
+  return /^https?:\/\//i.test(base) ? '/' : base
 }

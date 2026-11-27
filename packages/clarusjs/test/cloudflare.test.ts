@@ -93,9 +93,9 @@ test('without server routes: no worker', async () => {
   expect(existsSync(resolve(plain, 'dist/client/_routes.json'))).toBe(false)
 }, 120_000)
 
-test('under a base (or an absolute one): the worker takes the base and hands static requests to ASSETS without it', async () => {
+test('under a base: the worker takes the base and hands static requests to ASSETS without it', async () => {
   const docs = site({ 'src/pages/index.tscl': '<h1>Docs</h1>', 'src/pages/about.tscl': '<h1>About</h1>', 'src/pages/api/ping.ts': 'export function GET() { return new Response("pong") }' })
-  await (await createBuilder({ root: docs, base: 'https://cdn.example/docs/', configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'cloudflare' })] })).buildApp()
+  await (await createBuilder({ root: docs, base: '/docs/', configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'cloudflare' })] })).buildApp()
   const out = resolve(docs, 'dist/client')
   expect(JSON.parse(readFileSync(resolve(out, '_routes.json'), 'utf8'))).toEqual({ version: 1, include: ['/docs', '/docs/*'], exclude: [] })
   const asked: string[] = []
@@ -158,4 +158,10 @@ test('a base longer than Pages allows in a rule (100 characters): the worker tak
   const root = site({ 'src/pages/index.tscl': '<h1>Home</h1>' })
   await (await createBuilder({ root, base, configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'cloudflare' })] })).buildApp()
   expect(JSON.parse(readFileSync(resolve(root, 'dist/client/_routes.json'), 'utf8')).include).toEqual(['/*'])
+}, 120_000)
+
+test('a full-URL (CDN) base moves only the assets: the worker answers at the site root (#653)', async () => {
+  const cdn = site({ 'src/pages/index.tscl': '<h1>Docs</h1>', 'src/pages/api/ping.ts': 'export function GET() { return new Response("pong") }' })
+  await (await createBuilder({ root: cdn, base: 'https://cdn.example/docs/', configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'cloudflare' })] })).buildApp()
+  expect(JSON.parse(readFileSync(resolve(cdn, 'dist/client/_routes.json'), 'utf8')).include).toEqual(['/api/ping', '/api/ping/']) // at the root, not under /docs
 }, 120_000)

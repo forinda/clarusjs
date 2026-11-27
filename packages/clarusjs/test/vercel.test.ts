@@ -156,10 +156,11 @@ test('under a base: static files and clean URLs under it', async () => {
   for (const path of ['/docs', '/docs/', '/docs/guide/']) expect((await emulate(out, undefined, `https://site.example${path}`)).status, path).toBe(200)
 }, 120_000)
 
-test('an absolute base (a CDN URL): static files and routes under its path', async () => {
+test('a full-URL (CDN) base moves only the assets: static pages stay at the root (#653)', async () => {
   const cdn = site({ 'src/pages/index.tscl': '<h1>Docs</h1>' })
   await (await createBuilder({ root: cdn, base: 'https://cdn.example/docs/', configFile: false, customLogger: quiet, plugins: [clarusjs({ adapter: 'vercel' })] })).buildApp()
   const out = resolve(cdn, '.vercel/output')
-  expect(JSON.parse(readFileSync(resolve(out, 'config.json'), 'utf8')).overrides).toEqual({ 'docs/index.html': { path: 'docs' } })
-  expect(existsSync(resolve(out, 'static/docs/index.html'))).toBe(true)
+  expect(JSON.parse(readFileSync(resolve(out, 'config.json'), 'utf8')).overrides ?? {}).not.toHaveProperty('docs/index.html')
+  expect(existsSync(resolve(out, 'static/index.html'))).toBe(true)
+  expect(existsSync(resolve(out, 'static/docs/index.html'))).toBe(false)
 }, 120_000)
