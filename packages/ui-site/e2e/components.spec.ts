@@ -259,3 +259,23 @@ test('a component page\'s API section lists every input, model and event, with t
   await expect(api.getByRole('row', { name: "[(value)] model string ''" })).toBeVisible()
   await expect(api.getByRole('row', { name: /^\(search\) event/ })).toContainText('respond')
 })
+
+test('chip input: Enter and a comma add chips, Backspace removes the last, × removes one; duplicates are skipped', async ({ page }) => {
+  await page.goto('/components/chip-input')
+  const field = page.getByRole('textbox', { name: 'Tags' })
+  await page.locator('cl-island[data-cl-ready]', { has: field }).last().waitFor({ state: 'attached' })
+  const out = page.locator('.demo .out').first()
+  await field.fill('js')
+  await field.press('Enter')
+  await expect(out).toHaveText('css, html, js')
+  await field.fill('a11y, ts,')
+  await expect(out).toHaveText('css, html, js, a11y, ts')
+  await field.fill('css')
+  await field.press('Enter')
+  await expect(out).toHaveText('css, html, js, a11y, ts') // already there
+  await field.press('Backspace')
+  await expect(out).toHaveText('css, html, js, a11y')
+  await page.getByRole('button', { name: 'Remove html' }).click()
+  await expect(out).toHaveText('css, js, a11y')
+  expect(await page.locator('.demo input[type="hidden"][name="tag"]').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value))).toEqual(['css', 'js', 'a11y'])
+})

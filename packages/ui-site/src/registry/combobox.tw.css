@@ -15,8 +15,8 @@
   :where([data-part]) :focus-visible {
     @apply outline-2 outline-solid outline-(color:--ui-ring) outline-offset-2;
   }
-  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
-  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+  /* A combobox's or chip input's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input'], [data-part~='chip-input'] [data-part~='input']):focus-visible {
     @apply outline-none;
   }
 
@@ -60,6 +60,17 @@
     @apply p-(--ui-space-1) border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-popover) text-(color:--ui-popover-fg) shadow-(--ui-shadow);
   }
 
+  /* Chips in a control, beside the field you type in (combobox, chip input). */
+  :where([data-part='input']) {
+    @apply flex-1 min-w-[6ch] min-h-[26px] py-0 px-(--ui-space-1) border-0 border-none bg-transparent text-(color:--ui-fg) [font:inherit] outline-none;
+  }
+  :where([data-part='chip']) {
+    @apply inline-flex items-center gap-[calc(var(--ui-space)_*_0.5)] pt-0 pr-[calc(var(--ui-space)_*_0.5)] pb-0 pl-(--ui-space-2) rounded-full bg-(color:--ui-accent-soft) text-[calc(var(--ui-font-size)_-_1px)];
+  }
+  :where([data-part='chip']) button {
+    @apply min-w-[24px] min-h-[24px] border-0 border-none rounded-full bg-transparent text-(color:--ui-muted) cursor-pointer;
+  }
+
   /* Combobox: chips in the control, a list below. */
   :where([data-part='combobox']) {
     @apply grid gap-(--ui-space-1) max-w-[360px] font-normal text-(length:--ui-font-size) leading-[normal] font-(family-name:--ui-font) text-(color:--ui-fg);
@@ -69,15 +80,6 @@
   }
   :where([data-part='combobox']) > :where([data-part='control']):focus-within {
     @apply border-(color:--ui-ring) shadow-[0_0_0_3px_var(--ui-accent-soft)];
-  }
-  :where([data-part='input']) {
-    @apply flex-1 min-w-[6ch] min-h-[26px] py-0 px-(--ui-space-1) border-0 border-none bg-transparent text-(color:--ui-fg) [font:inherit] outline-none;
-  }
-  :where([data-part='chip']) {
-    @apply inline-flex items-center gap-[calc(var(--ui-space)_*_0.5)] pt-0 pr-[calc(var(--ui-space)_*_0.5)] pb-0 pl-(--ui-space-2) rounded-full bg-(color:--ui-accent-soft) text-[calc(var(--ui-font-size)_-_1px)];
-  }
-  :where([data-part='chip']) button {
-    @apply min-w-[24px] min-h-[24px] border-0 border-none rounded-full bg-transparent text-(color:--ui-muted) cursor-pointer;
   }
   :where([data-part='listbox']) {
     @apply mt-(--ui-space-1) p-(--ui-space-1) border border-solid border-(color:--ui-border) rounded-(--ui-radius) bg-(color:--ui-popover) text-(color:--ui-popover-fg) shadow-(--ui-shadow);
