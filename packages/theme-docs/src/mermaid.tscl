@@ -1,0 +1,60 @@
+{{--
+  Draws the ```mermaid diagram it sits next to: markdown({ mermaid: { tag: 'diagram', from: '@clarusjs/theme-docs/mermaid.tscl' } })
+  puts it after each block's <pre class="mermaid">, inside .mermaid-diagram. Loads mermaid (a peer dependency: install
+  it beside the theme) when the diagram scrolls into view, draws it in the page's theme, and draws it again when the
+  theme changes. Each diagram is its own island, so a page swapped in by navigation draws its own. Until it's drawn, or
+  if drawing fails, the source stays readable. The box's data-state is drawn or failed.
+--}}
+
+<script>
+  function wire(el) {
+    const box = el.closest('.mermaid-diagram')
+    const pre = box?.querySelector('pre.mermaid')
+    if (!box || !pre) return
+    const source = pre.textContent ?? ''
+    const root = document.documentElement
+    const media = matchMedia('(prefers-color-scheme: dark)')
+    const dark = () => root.dataset.theme === 'dark' || (root.dataset.theme !== 'light' && media.matches)
+    let latest = 0
+    let gone = false
+    async function draw() {
+      const run = ++latest
+      try {
+        const { default: mermaid } = await import('mermaid')
+        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark() ? 'dark' : 'default' })
+        const { svg } = await mermaid.render('cl-mermaid-' + Math.random().toString(36).slice(2), source)
+        if (gone || run !== latest) return
+        let out = box.querySelector('.mermaid-svg')
+        if (!out) {
+          out = document.createElement('div')
+          out.className = 'mermaid-svg'
+          out.tabIndex = 0 // it scrolls sideways on a narrow screen: reachable by keyboard
+          box.insertBefore(out, pre)
+        }
+        // securityLevel 'strict': mermaid sanitizes its SVG (DOMPurify), and labels' HTML is escaped
+        out.innerHTML = svg
+        // Full size (mermaid's max-width), not shrunk to the column: on a phone the text stays readable and the box scrolls.
+        const drawing = out.querySelector('svg')
+        const natural = parseFloat(drawing?.style.maxWidth ?? '')
+        if (drawing && natural) drawing.style.minWidth = natural + 'px'
+        pre.hidden = true
+        box.dataset.state = 'drawn'
+      } catch (error) {
+        if (gone || run !== latest) return
+        box.dataset.state = 'failed'
+        console.warn('[theme-docs] a mermaid diagram could not be drawn:', error)
+      }
+    }
+    const watch = new MutationObserver(draw)
+    watch.observe(root, { attributes: true, attributeFilter: ['data-theme'] })
+    media.addEventListener('change', draw)
+    draw()
+    return () => {
+      gone = true
+      watch.disconnect()
+      media.removeEventListener('change', draw)
+    }
+  }
+</script>
+
+<span class="mermaid-draw" [use]="wire"></span>

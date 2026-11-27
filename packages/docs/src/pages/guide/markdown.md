@@ -152,6 +152,31 @@ Then give a code block its language with `lang`:
 
 Only static blocks are highlighted. A block with `{{ }}` holes, which changes with the page's data, is left as written, and the build says so. clarusjs itself never loads Shiki: the plugin is part of `@clarusjs/content`.
 
+## Diagrams
+
+A ` ```mermaid ` block becomes a [Mermaid](https://mermaid.js.org) diagram with the `mermaid` option and theme-docs' diagram component. Install `mermaid` beside the theme:
+
+```sh
+pnpm add mermaid
+```
+
+```ts [vite.config.ts]
+markdown({ mermaid: { tag: 'diagram', from: '@clarusjs/theme-docs/mermaid.tscl' } })
+```
+
+Each diagram is drawn in the browser when it scrolls into view, in the page's light or dark theme, and again when the theme changes. Mermaid loads only on pages that have one, and the page shows the diagram's source until then, or if it can't be drawn (without JavaScript, too). How a page becomes HTML:
+
+```mermaid
+flowchart LR
+  md[page.md] -->|"@clarusjs/content"| tscl[.tscl]
+  tscl -->|compile| server[server module]
+  tscl -->|compile| client[island modules]
+  server --> html[HTML]
+  client --> html
+```
+
+Without the option, a ` ```mermaid ` block is code like any other, so a page can still show Mermaid's syntax: write it as ` ```text `, or turn the option off. Your own component works too: it gets `<pre class="mermaid">` with the source as its sibling, inside `.mermaid-diagram`.
+
 ## Snippets and includes
 
 Show a file, or part of it, with `<<<`. `@` is the project root; regions are marked with `#region name` and `#endregion` comments:

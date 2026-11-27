@@ -98,3 +98,15 @@ test('langs by name: loaded from content\'s own Shiki, so the site installs noth
   expect(() => md('', { langs: ['no-such-language'] })).toThrow('@clarusjs/content: Shiki has no grammar "no-such-language"')
   expect(() => md('', { langs: ['../evil'] })).toThrow('@clarusjs/content: Shiki has no grammar "../evil"')
 })
+
+test('with mermaid: { tag, from }, a ```mermaid block is its source in <pre class="mermaid">, not highlighted, with your diagram component', () => {
+  const out = md('```mermaid\ngraph TD\n  A["{x} @y <b>"] --> B\n```\n\n```ts\na()\n```\n', { mermaid: { tag: 'diagram', from: '@clarusjs/theme-docs/mermaid.tscl' } })
+  expect(out.split('\n')[0]).toBe("@import diagram from '@clarusjs/theme-docs/mermaid.tscl'")
+  expect(out).toContain('<div class="mermaid-diagram"><pre class="mermaid" tabindex="0">graph TD\n  A[&quot;&#123;x&#125; &#64;y &lt;b&gt;&quot;] --&gt; B</pre><diagram attach="visible" /></div>')
+  expect(out).toContain('<div class="code-block language-ts">') // other blocks as before
+})
+
+test('without the mermaid option a ```mermaid block is code, as before; with it, a page without diagrams imports nothing', () => {
+  expect(md('```mermaid\ngraph TD\n```\n')).toContain('<div class="code-block language-mermaid">')
+  expect(md('```ts\na()\n```\n', { mermaid: { tag: 'diagram', from: '/x.tscl' } })).not.toContain('@import diagram')
+})
