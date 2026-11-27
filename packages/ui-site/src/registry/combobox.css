@@ -11,8 +11,8 @@
     outline: 2px solid var(--ui-ring);
     outline-offset: 2px;
   }
-  /* A combobox's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
-  :where([data-part~='combobox'] [data-part~='input']):focus-visible {
+  /* A combobox's or chip input's box shows its focus: the input inside doesn't draw a second ring (~=: another part's name, not this one's). */
+  :where([data-part~='combobox'] [data-part~='input'], [data-part~='chip-input'] [data-part~='input']):focus-visible {
     outline: none;
   }
 
@@ -82,25 +82,7 @@
     box-shadow: var(--ui-shadow);
   }
 
-  /* Combobox: chips in the control, a list below. */
-  :where([data-part='combobox']) {
-    display: grid;
-    gap: var(--ui-space-1);
-    max-width: 360px;
-    font: var(--ui-font-size) var(--ui-font);
-    color: var(--ui-fg);
-  }
-  :where([data-part='combobox']) > :where([data-part='control']) {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--ui-space-1);
-    padding: calc(var(--ui-space) * 0.5) calc(var(--ui-space) * 1.5);
-  }
-  :where([data-part='combobox']) > :where([data-part='control']):focus-within {
-    border-color: var(--ui-ring);
-    box-shadow: 0 0 0 3px var(--ui-accent-soft);
-  }
+  /* Chips in a control, beside the field you type in (combobox, chip input). */
   :where([data-part='input']) {
     flex: 1;
     min-width: 6ch;
@@ -129,6 +111,26 @@
     background: none;
     color: var(--ui-muted);
     cursor: pointer;
+  }
+
+  /* Combobox: chips in the control, a list below. */
+  :where([data-part='combobox']) {
+    display: grid;
+    gap: var(--ui-space-1);
+    max-width: 360px;
+    font: var(--ui-font-size) var(--ui-font);
+    color: var(--ui-fg);
+  }
+  :where([data-part='combobox']) > :where([data-part='control']) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ui-space-1);
+    padding: calc(var(--ui-space) * 0.5) calc(var(--ui-space) * 1.5);
+  }
+  :where([data-part='combobox']) > :where([data-part='control']):focus-within {
+    border-color: var(--ui-ring);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
   }
   :where([data-part='listbox']) {
     margin-top: var(--ui-space-1);

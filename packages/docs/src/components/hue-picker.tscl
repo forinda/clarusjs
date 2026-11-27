@@ -1,10 +1,10 @@
 {{-- A parent island passing its state to a nested island (swatch) as an input. --}}
-@import swatch from './swatch.tscl'
+@import colorSwatch from './swatch.tscl'
 
 <script>
   let hue = state(200)
 </script>
 
 <div class="hue-picker">
-  <button type="button" class="hue-next" (click)="hue = (hue + 40) % 360">Next colour</button> <swatch [hue]="hue" />
+  <button type="button" class="hue-next" (click)="hue = (hue + 40) % 360">Next colour</button> <colorSwatch [hue]="hue" />
 </div>

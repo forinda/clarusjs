@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, 
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { expect, onTestFinished, test } from 'vitest'
-import { check } from '../../src/cli/check.ts'
+import { check as checkProject } from '../../src/cli/check.ts'
 import type { LintContext } from '../../src/compiler/lint.ts'
 
 function project(files: Record<string, string>): string {
@@ -15,6 +15,8 @@ function project(files: Record<string, string>): string {
   return root
 }
 const typescript = resolve(import.meta.dirname, '../../node_modules/typescript')
+// These projects name components in one word (badge, card): multi-word-name has its own test, below.
+const check = (options: Parameters<typeof checkProject>[0]) => checkProject({ ...options, lint: { 'multi-word-name': 'off', ...options.lint } })
 
 test('a clean project passes', () => {
   const root = project({
@@ -562,4 +564,15 @@ test('errors only the compiler finds (a slot inside component content in an isla
   expect(result.diagnostics).toEqual([
     { file: 'src/components/menu-bar.tscl', line: 7, column: 8, severity: 'error', code: 'clarus', message: expect.stringContaining('<slot /> goes outside') },
   ])
+})
+
+test('multi-word-name warns about a one-word component name, and --strict fails on it', () => {
+  const root = project({
+    'src/components/badge.tscl': '<b>hi</b>\n',
+    'src/pages/index.tscl': `@import badge from '../components/badge.tscl'\n@import uiBadge from '../components/badge.tscl'\n<badge />\n<ui-badge />\n`,
+  })
+  const result = checkProject({ root, typescript })
+  expect(result.diagnostics.map((d) => `${d.file}:${d.line} ${d.severity} ${d.code}`)).toEqual(['src/pages/index.tscl:1 warning multi-word-name'])
+  expect(result.exitCode).toBe(0)
+  expect(checkProject({ root, typescript, strict: true }).exitCode).toBe(1)
 })

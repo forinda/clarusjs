@@ -27,6 +27,10 @@ Give it a height (or, horizontal, a width) with `class` or `style`. It's a regio
 
 <<< ../../registry/scroll-area-horizontal-demo.tscl
 
+## API
+
+<componentApi name="scroll-area" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `scroll-area.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

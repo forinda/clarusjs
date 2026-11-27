@@ -3,10 +3,11 @@ import { expect, test } from 'vitest'
 import { lint, type LintRuleDef } from '../../src/compiler/index.ts'
 
 const file = 'src/pages/x.tscl' // a page: several top-level elements are fine (one-root has its own test)
-const rules = (source: string, config?: Parameters<typeof lint>[2]) => lint(source, file, config).map((m) => `${m.line}:${m.column} ${m.severity} ${m.rule}`)
+// One-word names (card) in these sources: multi-word-name is off here but in its own test.
+const rules = (source: string, config?: Parameters<typeof lint>[2]) => lint(source, file, { 'multi-word-name': 'off', ...config }).map((m) => `${m.line}:${m.column} ${m.severity} ${m.rule}`)
 
 test('a clean component has nothing to say', () => {
-  const source = `@import badge from './badge.tscl'
+  const source = `@import siteBadge from './badge.tscl'
 @import { site } from '../site.ts'
 @input title: string
 @input count: number = 0
@@ -14,7 +15,7 @@ test('a clean component has nothing to say', () => {
   let n = state(count)
 </script>
 <h1>{{ title }} {{ site.name }}</h1>
-<badge [n]="n" />
+<siteBadge [n]="n" />
 <img src="/a.png" alt="A" />
 <img src="/b.png" alt="" />
 <label>Name <input /></label>
@@ -245,4 +246,11 @@ test('for-shadow: an @for item named like a script name, an input, a model or an
 
 test('for-shadow: a script it can\'t parse is left alone (the compiler reports it)', () => {
   expect(lint('<script>\n  let a = (\n</script>\n@for (a of [1]; track a) { <i>{{ a }}</i> }\n', file).filter((m) => m.rule === 'for-shadow')).toEqual([])
+})
+
+test('multi-word-name: a component imported under one word warns (it has no kebab-case tag); two words or more are fine', () => {
+  const on = { 'multi-word-name': 'warn' } as const
+  expect(rules("@import card from './card.tscl'\n@import UserCard from './card.tscl'\n@import uiCard from './card.tscl'\n<card /><UserCard /><ui-card />\n", on)).toEqual(['1:1 warning multi-word-name'])
+  expect(lint("@import card from './card.tscl'\n<card />\n", file)[0]!.message).toBe("'card' is one word: give components two or more (e.g. appCard), so the tag has a kebab-case form and can't be mistaken for an HTML element")
+  expect(rules("@import XMLViewer from './x.tscl'\n<XMLViewer />\n", on)).toEqual([]) // xml-viewer
 })

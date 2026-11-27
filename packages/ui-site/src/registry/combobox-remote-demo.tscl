@@ -1,0 +1,20 @@
+@import './combobox.css'
+@import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
+
+{{-- [src]: typing asks the server (src?q=…, 200 ms after the last key; the newest search wins) for its options. --}}
+<div class="demo example">
+  <uiCombobox id="remote-city" label="City" placeholder="Search cities…" src="/api/cities" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-4);
+    max-width: 28rem;
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>

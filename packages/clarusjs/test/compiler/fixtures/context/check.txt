@@ -1,1 +1,2 @@
 1:1 TS2307 Cannot find module './badge.tscl.ts' or its corresponding type declarations. (in generated code)
+2:1 multi-word-name 'badge' is one word: give components two or more (e.g. appBadge), so the tag has a kebab-case form and can't be mistaken for an HTML element

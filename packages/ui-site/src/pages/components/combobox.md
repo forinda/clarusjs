@@ -27,6 +27,35 @@ The parts come from `@clarusjs/ui-primitives`; the look is `combobox.css`, impor
 
 <<< ../../registry/combobox-multiple-demo.tscl
 
+### Options from a function
+
+`(search)`: answer each search yourself, for a source that isn't a URL (an API client, IndexedDB, a worker). The event brings the term (`$event.term`) and an `AbortSignal` (`$event.signal`, aborted by a newer search); `$event.respond()` takes the options or a promise of them. Answers are cached by search, like `[src]`'s. The listener is in an island's script, as here:
+
+<comboboxSearchDemo />
+
+<<< ../../registry/combobox-search-demo.tscl
+
+### Options from a server
+
+`[src]`: typing asks the URL for `?q=<search>`, 200 ms after the last key, and lists what it answers (JSON: `[{ value, label }]`). The newest search wins; answers are cached by search. Here `/api/cities` is a small function on this site:
+
+<comboboxRemoteDemo />
+
+<<< ../../registry/combobox-remote-demo.tscl
+
+```ts
+// The endpoint: any server that answers GET ?q= with JSON. A fetch handler, like this site's:
+export default function cities(request: Request): Response {
+  const q = (new URL(request.url).searchParams.get('q') ?? '').toLowerCase()
+  const found = CITIES.filter((c) => c.toLowerCase().includes(q)).slice(0, 8)
+  return Response.json(found.map((c) => ({ value: c.toLowerCase(), label: c })))
+}
+```
+
+## API
+
+<componentApi name="combobox" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `combobox.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `combobox.tw.css`, imported where Tailwind runs.

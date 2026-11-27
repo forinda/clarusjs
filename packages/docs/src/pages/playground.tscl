@@ -1,12 +1,12 @@
-@import docs from '~/layouts/docs.tscl'
-@import callout from '@clarusjs/theme-docs/callout.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
+@import docsCallout from '@clarusjs/theme-docs/callout.tscl'
 @input name: string = ''
 @input renderedAt: string = ''
 @input agent: string = ''
 @input pillHtml: string = ''
 @input built: any = ''
 
-<docs
+<docsLayout
   [title]="'Server demo'"
   [path]="'/playground'"
   [description]="'A page this site renders on every request, on a Netlify Function, from the same handler that builds the static pages.'"
@@ -49,13 +49,13 @@
   </p>
   <div id="h-built">{{ built }}</div>
 
-  <callout [type]="'info'"
+  <docsCallout [type]="'info'"
     >@slot('title') {How it works}
     <p>
       The route is <code>'server'</code> in this site's <code>vite.config.ts</code>, so the build leaves it out of the
       static files. Its <code>load()</code> reads the request: the <code>?name=</code> query and your browser's user
       agent. On Netlify, <code>adapter: 'netlify'</code> deploys it as a function; the page is plain HTML with no
       JavaScript of its own. Run <code>clarusjs explain /playground</code> to see it.
-    </p></callout
+    </p></docsCallout
   >
-</docs>
+</docsLayout>

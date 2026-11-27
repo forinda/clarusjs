@@ -15,6 +15,10 @@ description: "A turning mark that tells screen readers it is loading."
 
 <<< ../../registry/spinner-demo.tscl
 
+## API
+
+<componentApi name="spinner" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `spinner.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

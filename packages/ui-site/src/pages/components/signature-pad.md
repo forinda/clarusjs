@@ -17,6 +17,10 @@ The signature is a PNG data URL (`data:image/png;base64,…`) in a hidden input 
 
 <<< ../../registry/signature-pad-demo.tscl
 
+## API
+
+<componentApi name="signature-pad" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `signature-pad.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

@@ -27,6 +27,10 @@ The button opens three columns: **shortcuts** (Yesterday, Today, Tomorrow, Next 
 
 <<< ../../registry/appointment-picker-min-demo.tscl
 
+## API
+
+<componentApi name="appointment-picker" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `appointment-picker.tscl`, beside the calendar: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

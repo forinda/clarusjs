@@ -15,6 +15,10 @@ description: "A native table that scrolls sideways on small screens."
 
 <<< ../../registry/table-demo.tscl
 
+## API
+
+<componentApi name="table" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `table.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

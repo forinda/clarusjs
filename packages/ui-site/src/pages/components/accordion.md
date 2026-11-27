@@ -15,6 +15,10 @@ description: "Questions that open one at a time, on native details."
 
 <<< ../../registry/accordion-demo.tscl
 
+## API
+
+<componentApi name="accordion" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `accordion.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `accordion.tw.tscl` copied as `accordion.tscl` with `accordion.tw.css` beside it.

@@ -81,6 +81,10 @@ One primary action, the rest outline; group related ones with Button group.
 
 <<< ../../registry/button-actions-demo.tscl
 
+## API
+
+<componentApi name="button" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `button.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

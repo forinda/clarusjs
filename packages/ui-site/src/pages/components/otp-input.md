@@ -17,6 +17,10 @@ It's one `<input autocomplete="one-time-code" inputmode="numeric">` laid, unseen
 
 <<< ../../registry/otp-input-demo.tscl
 
+## API
+
+<componentApi name="otp-input" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `otp-input.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

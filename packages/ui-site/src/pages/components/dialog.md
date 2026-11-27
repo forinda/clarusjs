@@ -27,6 +27,10 @@ The parts come from `@clarusjs/ui-primitives`; the look is `dialog.css`, importe
 
 <<< ../../registry/dialog-backdrop-demo.tscl
 
+## API
+
+<componentApi name="dialog" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `dialog.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `dialog.tw.css`, imported where Tailwind runs.

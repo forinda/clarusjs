@@ -15,6 +15,10 @@ description: "Content that opens and closes under a trigger, on native details."
 
 <<< ../../registry/collapsible-demo.tscl
 
+## API
+
+<componentApi name="collapsible" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `collapsible.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

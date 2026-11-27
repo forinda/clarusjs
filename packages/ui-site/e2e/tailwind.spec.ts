@@ -62,7 +62,7 @@ const PARTS_PROPS = [...PROPS, 'outline-style', 'outline-color', 'outline-width'
 
 // A part's two stylesheets, each alone: the site bundles every component's <style global> on every page, so the parts'
 // markup is rendered in an empty page, once with their CSS rules, once with their Tailwind stylesheets compiled.
-const PARTS = ['checkbox', 'switch', 'radio-group', 'field', 'select', 'combobox', 'toggle', 'dialog', 'sheet', 'alert-dialog', 'popover', 'tooltip', 'menu', 'toast', 'accordion', 'tabs', 'typography', 'sidebar']
+const PARTS = ['checkbox', 'switch', 'radio-group', 'field', 'select', 'combobox', 'toggle', 'dialog', 'sheet', 'alert-dialog', 'popover', 'tooltip', 'menu', 'toast', 'accordion', 'tabs', 'typography', 'sidebar', 'chip-input']
 const registry = resolve(import.meta.dirname, '../src/registry')
 const cssOf = (name: string) => {
   const tscl = resolve(registry, `${name}.tscl`)

@@ -1,8 +1,8 @@
 {{-- Served for any unknown path, at any depth: relative links here are resolved from the site root. --}}
-@import docs from '~/layouts/docs.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
 
-<docs [title]="'Page not found'" [path]="'/404'" [description]="'This page does not exist.'">
+<docsLayout [title]="'Page not found'" [path]="'/404'" [description]="'This page does not exist.'">
   <h1>Page not found</h1>
   <p class="lead">There is no page at this address. It may have moved, or the link may be wrong.</p>
   <p><a class="button" href="guide/getting-started">Get started</a> <a class="button ghost" href="./">Home</a></p>
-</docs>
+</docsLayout>

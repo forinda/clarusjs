@@ -27,6 +27,10 @@ The button names the field and shows the date; it opens the [Calendar](/componen
 
 <<< ../../registry/date-picker-range-demo.tscl
 
+## API
+
+<componentApi name="date-picker" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `date-picker.tscl`, beside the calendar: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

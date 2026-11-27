@@ -1,9 +1,9 @@
-@import docs from '~/layouts/docs.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
 @import type { Release } from '~/releases.ts'
 @input version: string
 @input release: Release
 
-<docs
+<docsLayout
   [title]="'clarusjs ' + version"
   [path]="'/releases'"
   [source]="'/releases/[version]'"
@@ -23,4 +23,4 @@
       }
     </ul>
   }
-</docs>
+</docsLayout>

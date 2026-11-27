@@ -1,5 +1,5 @@
 {{-- The Forms guide's combobox demo: one pick, several picks, and a pick searched on the server, bound into one state object. --}}
-@import combobox from '@clarusjs/ui-primitives/combobox.tscl'
+@import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
 
 <script>
   const countries = [
@@ -24,21 +24,21 @@
 </script>
 
 <div class="combobox-demo" id="combobox-demo">
-  <combobox
+  <uiCombobox
     [id]="'demo-country'"
     [label]="'Country'"
     [options]="countries"
     [placeholder]="'Search countries…'"
     [(value)]="picked.country"
   />
-  <combobox
+  <uiCombobox
     [id]="'demo-languages'"
     [label]="'Languages'"
     [options]="languages"
     [multiple]="true"
     [(values)]="picked.languages"
   />
-  <combobox
+  <uiCombobox
     [id]="'demo-city'"
     [label]="'City'"
     [src]="'/api/demo-cities'"
