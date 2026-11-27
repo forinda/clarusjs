@@ -153,3 +153,10 @@ test(': suggests emoji by any word of their name, from the full list', async () 
   c.key('Enter')
   expect(c.ed.view.state.doc.textContent).toMatch(/^\p{Extended_Pictographic}/u)
 })
+
+test('emoji are inserted fully qualified (with the variation selector), so they draw in colour', async () => {
+  const { emoji } = await import('../src/emoji.ts')
+  expect(emoji.find((e) => e.label === 'red heart')!.char).toBe('❤️')
+  expect(emoji.some((e) => e.label.includes('skin tone'))).toBe(false)
+  expect(emoji.length).toBeGreaterThan(1900)
+})
