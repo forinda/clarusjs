@@ -68,6 +68,8 @@ export type Editor = {
 }
 
 const safari = () => typeof navigator !== 'undefined' && /Apple Computer/.test(navigator.vendor)
+/** The same value: the same string, or a JSON document equal to it (a copy a parent passes back through [(value)]). */
+const same = (a: unknown, b: unknown) => a === b || (typeof a === 'object' && typeof b === 'object' && a !== null && b !== null && JSON.stringify(a) === JSON.stringify(b))
 const ALIASES: Record<string, string> = { bold: 'strong', italic: 'em', codeBlock: 'code_block' }
 
 /**
@@ -177,7 +179,7 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
   // the value set from outside (a parent's [(value)]): the document follows
   const stop = effect(() => {
     const v = value.get()
-    if (v !== lastEmitted) replace(parse(v), false)
+    if (!same(v, lastEmitted)) replace(parse(v), false)
   })
 
   const clear = () => replace(schema.topNodeType.createAndFill()!)

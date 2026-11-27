@@ -211,3 +211,13 @@ test('reshape: over and maxLength for the count and Send parts; caret puts the c
   expect(at(12)).toBe(9) // the start of "end"
   expect(at(99)).toBe(12) // past the end: the end
 })
+
+test('a copy of the current value set from outside (a parent passing [(value)] back) changes nothing', () => {
+  const ed = createEditor({ element: mount(), extensions: composerExtensions(), format: 'json' })
+  type(ed, 'abc')
+  const doc = ed.view.state.doc
+  ed.value.set(structuredClone(ed.value.get()) as object)
+  expect(ed.view.state.doc).toBe(doc) // not replaced: the caret and history stay
+  ed.value.set({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'new' }] }] })
+  expect(ed.view.state.doc.textContent).toBe('new')
+})

@@ -36,6 +36,7 @@
   const initial = plainText(value, format)
   let draft = { text: initial, caret: undefined, focused: false }
   let hidden
+  const key = (v) => (typeof v === 'string' ? v : JSON.stringify(v))
 
   function takeOver(textarea) {
     queueMicrotask(() => {
@@ -74,7 +75,8 @@
       const v = value
       if (v === seen) return
       seen = v
-      if (v !== ed.value.get()) ed.value.set(v)
+      // a parent passes back a copy of what was written: the same document is no change (or the two would loop)
+      if (key(v) !== key(ed.value.get())) ed.value.set(v)
     })
     if (draft.focused) ed.focus()
     return () => {
