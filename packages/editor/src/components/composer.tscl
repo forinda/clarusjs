@@ -37,7 +37,7 @@
 
 <script>
   import { effect } from 'clarusjs/runtime'
-  import { composerExtensions, editor, editorOf, loadEmoji, plainText, suggestion, toolbar } from '@clarusjs/editor'
+  import { composerExtensions, editor, editorOf, plainText, searchEmoji, suggestion, toolbar } from '@clarusjs/editor'
   // The editor replaces the textarea once attached (a microtask later, so the loader's replay finds the textarea).
   let ready = state(false)
   // ponytail: code points until the editor counts graphemes; it does from attach on.
@@ -126,11 +126,7 @@
         suggestion(refs.emoji, {
           editor: el,
           char: ':',
-          // a word of the name starting with what's typed (underscores for spaces: ":thumbs_up")
-          search: async (q) => {
-            const words = ' ' + q.toLowerCase().replace(/_/g, ' ')
-            return (await loadEmoji()).filter((e) => (' ' + e.label).includes(words)).slice(0, 8)
-          },
+          search: (q) => searchEmoji(q),
           pick: (item, range, e) => e.view.dispatch(e.view.state.tr.insertText(item.char, range.from, range.to)),
         }),
       )

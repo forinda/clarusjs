@@ -7,7 +7,7 @@ import { editor, editorOf } from '../src/behaviours/editor.ts'
 import { loadEmoji, suggestion, type SuggestionItem } from '../src/behaviours/suggestion.ts'
 import type { Editor } from '../src/core/editor.ts'
 
-vi.mock('../src/emoji.ts', () => ({ emoji: [{ id: 'smile', label: 'smile', char: '😄' }, { id: 'smirk', label: 'smirk', char: '😏' }] }))
+vi.mock('../src/emoji.ts', () => ({ emoji: [{ id: 'smile', label: 'smile', name: 'smile', char: '😄' }, { id: 'smirk', label: 'smirk', name: 'smirk', char: '😏' }] }))
 
 const people: SuggestionItem[] = [{ id: 'u1', label: 'Mara Okafor' }, { id: 'u2', label: 'Marcus Lee' }, { id: 'u3', label: 'Ada' }]
 let stops: (() => void)[] = []
@@ -120,7 +120,7 @@ test('no trigger mid-word, inside code, or for ":" with one character; "/" runs 
 })
 
 test('emoji: ":" needs two characters; the list loads once, on first use', async () => {
-  const search = vi.fn(async (q: string) => (await loadEmoji()).filter((e) => e.label.startsWith(q)))
+  const search = vi.fn(async (q: string) => (await loadEmoji()).filter((e) => e.name.startsWith(q)))
   const { ed, list } = setup({ char: ':', search, pick: (item, range, e) => { e.view.dispatch(e.view.state.tr.insertText((item as any).char, range.from, range.to)) } })
   type(ed, 'ok :s')
   await vi.advanceTimersByTimeAsync(200)

@@ -145,7 +145,7 @@ test(': suggests emoji by any word of their name, from the full list', async () 
   c.type('nice :thumbs_u')
   await tick(250)
   const emojiList = c.island.querySelectorAll<HTMLElement>('[data-part=suggestions]')[2]!
-  expect([...emojiList.querySelectorAll('[role=option]')].map((o) => o.textContent)).toEqual(['👍 thumbs up'])
+  expect([...emojiList.querySelectorAll('[role=option]')].map((o) => o.textContent)).toEqual(['👍 :+1:'])
   c.ed.clear()
   c.type(':smiling')
   await tick(250)
@@ -156,7 +156,7 @@ test(': suggests emoji by any word of their name, from the full list', async () 
 
 test('emoji are inserted fully qualified (with the variation selector), so they draw in colour', async () => {
   const { emoji } = await import('../src/emoji.ts')
-  expect(emoji.find((e) => e.label === 'red heart')!.char).toBe('❤️')
-  expect(emoji.some((e) => e.label.includes('skin tone'))).toBe(false)
+  expect(emoji.find((e) => e.name === 'red heart')!.char).toBe('❤️')
+  expect(emoji.some((e) => e.name.includes('skin tone'))).toBe(false)
   expect(emoji.length).toBeGreaterThan(1900)
 })

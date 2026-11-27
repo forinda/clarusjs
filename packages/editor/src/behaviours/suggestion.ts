@@ -6,6 +6,7 @@
 import { position } from '@clarusjs/ui-primitives/position.js'
 import { Plugin, type EditorState } from 'prosemirror-state'
 import type { Editor } from '../core/editor.ts'
+import type { Emoji } from '../emoji.ts'
 import { editorOf } from './editor.ts'
 
 /**
@@ -189,13 +190,36 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
   }
 }
 
-let emojiList: Promise<{ id: string; label: string; char: string }[]> | undefined
+let emojiList: Promise<Emoji[]> | undefined
 /**
- * The built-in emoji (all of Unicode's, with their names), loaded on first call as its own chunk.
- * @example
- * search: async (q) => (await loadEmoji()).filter((e) => (' ' + e.label).includes(' ' + q))
+ * The built-in emoji (Unicode's, with their names, groups, and GitHub's shortcodes), loaded on first call as its own
+ * chunk.
  * @see https://clarusjs.com/guide/editor-composer#suggestions
  */
-export function loadEmoji() {
+export function loadEmoji(): Promise<Emoji[]> {
   return (emojiList ??= import('../emoji.ts').then((m) => m.emoji))
+}
+
+/**
+ * Emoji for what's typed after ":", best first: a shortcode that is it (":+1"), one that starts with it (":thumbsu"),
+ * a word of the name starting with it (underscores for spaces: ":thumbs_up"), then a tag (":happy").
+ * @example
+ * search: (q) => searchEmoji(q)
+ * @see https://clarusjs.com/guide/editor-composer#suggestions
+ */
+export async function searchEmoji(query: string, limit = 8): Promise<Emoji[]> {
+  const q = query.toLowerCase()
+  const words = ' ' + q.replace(/_/g, ' ')
+  const rank = (e: Emoji) =>
+    e.aliases.includes(q) ? 0
+      : e.aliases.some((a) => a.startsWith(q)) ? 1
+        : (' ' + e.name).includes(words) ? 2
+          : e.tags.some((t) => t.startsWith(q)) ? 3
+            : 4
+  const found: [number, Emoji][] = []
+  for (const e of await loadEmoji()) {
+    const r = rank(e)
+    if (r < 4) found.push([r, e])
+  }
+  return found.sort((a, b) => a[0] - b[0]).slice(0, limit).map(([, e]) => e) // a stable sort: Unicode's order within a rank
 }
