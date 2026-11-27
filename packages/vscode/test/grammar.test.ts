@@ -64,6 +64,13 @@ test('holes and blocks: {{ expression }}, @if/@else/@for with TypeScript inside,
   expect(scopesOf(src, 'slot')).toContain('keyword.control.flow.tscl')
 })
 
+test('@transition is a block keyword, its arguments TypeScript', () => {
+  const src = "@transition ('fade', { mode: 'out-in' }) {\n  @if (open) {<p>A</p>}\n}\n"
+  expect(scopesOf(src, 'transition')).toContain('keyword.control.flow.tscl')
+  expect(scopesOf(src, 'mode')).toContain('meta.embedded.expression.tscl')
+  expect(scopesOf('@transition {\n  @if (open) {<p>A</p>}\n}\n', 'transition')).toContain('keyword.control.flow.tscl')
+})
+
 test('bindings inside tags: [prop], (event), [(model)] and {{ }} in attribute values hold TypeScript', () => {
   const src = '<button [disabled]="!ok" (click)="count++; save($event)" class="b {{ size }}">go</button>\n<field [(value)]="form.name" />\n'
   expect(scopesOf(src, 'disabled')).toContain('entity.other.attribute-name.tscl')
