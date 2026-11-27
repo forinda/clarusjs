@@ -15,6 +15,10 @@ description: "Grid lines that react to a pointer or finger: a spotlight, a trail
 
 <<< ../../registry/grid-effect-demo.tscl
 
+## API
+
+<componentApi name="grid-effect" />
+
 ## Source
 
 Copy it into `src/components/ui/`. Its `<style global>` holds its rules: change them there to change its look.

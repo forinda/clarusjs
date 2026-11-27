@@ -35,6 +35,10 @@ Icons alone, each named with `aria-label`: several on (Text style) or one (Align
 
 <<< ../../registry/toggle-sizes-demo.tscl
 
+## API
+
+<componentApi name="toggle" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `toggle.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `toggle.tw.css`, imported where Tailwind runs.

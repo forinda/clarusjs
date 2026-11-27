@@ -15,6 +15,10 @@ description: "Buttons that belong together, joined into one row."
 
 <<< ../../registry/button-group-demo.tscl
 
+## API
+
+<componentApi name="button-group" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `button-group.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

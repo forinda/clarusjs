@@ -25,6 +25,10 @@ Unchecked, checked, and disabled either way.
 
 <<< ../../registry/checkbox-states-demo.tscl
 
+## API
+
+<componentApi name="checkbox" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `checkbox.tscl`. Its `<style global>` is the same as `@clarusjs/ui`'s rules for this part, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `checkbox.tw.tscl` copied as `checkbox.tscl` with `checkbox.tw.css` beside it.

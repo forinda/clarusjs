@@ -41,6 +41,10 @@ A count in a button: its name says what's counted, for screen readers; past 99, 
 
 <<< ../../registry/badge-counts-demo.tscl
 
+## API
+
+<componentApi name="badge" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `badge.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

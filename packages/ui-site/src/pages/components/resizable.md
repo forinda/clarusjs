@@ -27,6 +27,10 @@ Fill the `start` and `end` slots. `size` is the first panel's share in percent (
 
 <<< ../../registry/resizable-vertical-demo.tscl
 
+## API
+
+<componentApi name="resizable" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `resizable.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

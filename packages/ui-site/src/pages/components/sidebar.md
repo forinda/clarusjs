@@ -17,6 +17,10 @@ The parts come from `@clarusjs/ui-primitives`; the look is `sidebar.css`, import
 
 <<< ../../registry/sidebar-demo.tscl
 
+## API
+
+<componentApi name="sidebar" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `sidebar.css`. It's the same as `@clarusjs/ui`'s rules for these parts, so using both looks the same. Or the Tailwind version (switch below): the same look in Tailwind utilities, `sidebar.tw.css`, imported where Tailwind runs.

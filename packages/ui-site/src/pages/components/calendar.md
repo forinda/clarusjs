@@ -35,6 +35,10 @@ Bind the day with `[(value)]`, as `'YYYY-MM-DD'`: dates are plain strings, so no
 
 <<< ../../registry/calendar-limits-demo.tscl
 
+## API
+
+<componentApi name="calendar" />
+
 ## Source
 
 Copy both files into `src/components/ui/`: `calendar.tscl` (in plain CSS, or in Tailwind classes: switch below; the Tailwind version needs `tailwind.css`), and `calendar-dates.ts` beside it.

@@ -251,3 +251,11 @@ test('combobox [search] example: a function gives the options for what\'s typed'
   await list.getByRole('option', { name: 'Elm' }).click()
   await expect(lang).toHaveValue('Elm')
 })
+
+test('a component page\'s API section lists every input, model and event, with types and defaults', async ({ page }) => {
+  await page.goto('/components/combobox')
+  const api = page.locator('section.component-api')
+  await expect(api.getByRole('row', { name: "[src] input string ''" })).toBeVisible()
+  await expect(api.getByRole('row', { name: "[(value)] model string ''" })).toBeVisible()
+  await expect(api.getByRole('row', { name: /^\(search\) event/ })).toContainText('respond')
+})

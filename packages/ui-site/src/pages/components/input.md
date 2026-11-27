@@ -89,6 +89,10 @@ A search form: the field and its button, which waits while the search runs.
 
 <<< ../../registry/input-search-demo.tscl
 
+## API
+
+<componentApi name="input" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `input.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).

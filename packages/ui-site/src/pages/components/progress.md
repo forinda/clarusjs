@@ -15,6 +15,10 @@ description: "A native progress bar; without a value, it shows work in progress.
 
 <<< ../../registry/progress-demo.tscl
 
+## API
+
+<componentApi name="progress" />
+
 ## Source
 
 Copy it into `src/components/ui/` as `progress.tscl`: in plain CSS, or in Tailwind classes (switch below; the Tailwind version needs `tailwind.css`).
