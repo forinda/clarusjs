@@ -175,3 +175,10 @@ test('onSend returning false keeps the text (a send the app refused)', () => {
   expect(ed.send()).toBe(false)
   expect(ed.view.state.doc.textContent).toBe('keep me')
 })
+
+test('plainText never throws on bad input: an out-of-range character reference, a surrogate, broken JSON', async () => {
+  const { plainText } = await import('../src/core/plain-text.ts')
+  expect(plainText('<p>a&#99999999;b&#xD800;c&#x;</p>', 'html')).toBe('a�b�c&#x;')
+  expect(plainText('{not json', 'json')).toBe('')
+  expect(plainText({ content: 'nope' }, 'json')).toBe('')
+})
