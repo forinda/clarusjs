@@ -247,3 +247,13 @@ test('toast-region: named "Notifications", or by [label] (two regions on one pag
   expect(await render('toast-region', {})).toContain('aria-label="Notifications"')
   expect(await render('toast-region', { label: 'Sign-in messages' })).toContain('aria-label="Sign-in messages"')
 })
+
+test('chip input: typed values as chips, each with a remove button; a hidden input per value for forms; [(values)]', async () => {
+  const html = await render('chip-input', { id: 'tags', label: 'Tags', name: 'tag', values: ['css', 'html'] })
+  expect(html).toContain('<label for="tags-input" data-part="label">Tags</label>')
+  expect(html).toMatch(/<span data-part="chip">css<button type="button" aria-label="Remove css"/)
+  expect(html).toMatch(/<input type="hidden" name="tag" value="html"/)
+  expect(html).toMatch(/<input id="tags-input"[^>]*data-part="input"/)
+  expect(html).toMatch(/aria-describedby="tags-hint"/)
+  expect(statefulOf('chip-input')).toBe(true)
+})

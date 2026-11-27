@@ -4,12 +4,14 @@
 @import '~/registry/select.css'
 @import '~/registry/combobox.css'
 @import '~/registry/toggle.css'
+@import '~/registry/chip-input.css'
 @import uiCheckbox from '~/registry/checkbox.tscl'
 @import uiSwitch from '~/registry/switch.tscl'
 @import uiRadioGroup from '~/registry/radio-group.tscl'
 @import uiField from '~/registry/field.tscl'
 @import uiSelect from '@clarusjs/ui-primitives/select.tscl'
 @import uiCombobox from '@clarusjs/ui-primitives/combobox.tscl'
+@import uiChipInput from '@clarusjs/ui-primitives/chip-input.tscl'
 @import uiToggle from '@clarusjs/ui-primitives/toggle.tscl'
 @import uiToggleGroup from '@clarusjs/ui-primitives/toggle-group.tscl'
 @import uiToggleItem from '@clarusjs/ui-primitives/toggle-item.tscl'
@@ -75,6 +77,7 @@
     <uiCombobox [id]="'p-fruit'" [label]="'Fruit'" [options]="fruits" />
     <uiCombobox [id]="'p-many'" [label]="'Fruits'" [options]="fruits" [multiple]="true" [values]="['apple', 'pear']" />
   </div>
+  <div data-sample="chip-input"><uiChipInput id="p-tags" label="Tags" [values]="['css', 'html']" /></div>
   <div data-sample="toggle">
     <uiToggle aria-label="Bold"><b>B</b></uiToggle>
     <uiToggleGroup label="Alignment" value="left">
