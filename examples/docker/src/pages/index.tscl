@@ -1,0 +1,2 @@
+<h1>Served from a container</h1>
+<p>This page was built once. <a href="/now">/now</a> is rendered per request.</p>

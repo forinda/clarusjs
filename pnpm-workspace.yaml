@@ -1,6 +1,8 @@
 packages:
   - packages/*
   - examples/*
+  # A standalone app (its own npm install, from the registry), as people copy it: see its Dockerfile.
+  - '!examples/docker'
 
 # Install scripts: none run. @vscode/vsce-sign's (via @vscode/vsce) fetches a signing tool that packaging a .vsix
 # doesn't use (signing is a Marketplace publish step). @parcel/watcher's (via @tailwindcss/cli) builds a fallback for
