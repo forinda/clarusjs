@@ -131,3 +131,47 @@ test("the server's renderHTML matches the browser's HTML for the same document",
   fromJson.value.set(renderHTML(json, exts))
   expect(fromJson.view.state.doc.toJSON()).toEqual(json)
 })
+
+test('starting from a textarea\'s text: blank lines make paragraphs, a line break a hard break, the caret kept', async () => {
+  const ed = createEditor({ element: mount(), extensions: composerExtensions(), format: 'json', text: { value: 'a\n\nb', caret: 3 } })
+  expect(ed.view.state.doc.toJSON()).toEqual({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'a' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'b' }] }] })
+  expect(ed.view.state.selection.from).toBe(4) // just before "b"
+  const lines = createEditor({ element: mount(), extensions: composerExtensions(), format: 'json', text: { value: '  x\ny' } })
+  expect(lines.view.state.doc.firstChild!.toJSON().content).toEqual([{ type: 'text', text: '  x' }, { type: 'hard_break' }, { type: 'text', text: 'y' }])
+  expect(lines.view.state.selection.from).toBe(lines.view.state.doc.content.size - 1) // no caret given: the end
+  expect(lines.value.get()).toEqual(lines.view.state.doc.toJSON())
+})
+
+test('plainText: what a textarea shows for a value, from JSON or HTML, on the server too', async () => {
+  const { plainText } = await import('../src/core/plain-text.ts')
+  const json = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hi ' }, { type: 'mention', attrs: { id: 'u', label: 'Mara' } }, { type: 'hard_break' }, { type: 'text', text: 'x' }] }, { type: 'paragraph', content: [{ type: 'text', text: 'y' }] }] }
+  expect(plainText(json, 'json')).toBe('Hi @Mara\nx\n\ny')
+  expect(plainText(JSON.stringify(json), 'json')).toBe('Hi @Mara\nx\n\ny')
+  expect(plainText('<p>a &amp; <b>b</b><br>c</p><p>&lt;d&gt;</p>', 'html')).toBe('a & b\nc\n\n<d>')
+  expect(plainText('', 'json')).toBe('')
+})
+
+test('files pasted or dropped go to onFiles, not into the document; the state signal follows every change', async () => {
+  const { Slice } = await import('prosemirror-model')
+  const onFiles = vi.fn()
+  const ed = createEditor({ element: mount(), extensions: composerExtensions(), format: 'json', onFiles })
+  const file = new File(['x'], 'a.png', { type: 'image/png' })
+  expect(ed.view.someProp('handlePaste', (f) => f(ed.view, { clipboardData: { files: [file] } } as any, Slice.empty))).toBe(true)
+  expect(ed.view.someProp('handleDrop', (f) => f(ed.view, { dataTransfer: { files: [file] }, preventDefault() {} } as any, Slice.empty, false))).toBe(true)
+  expect(onFiles.mock.calls).toEqual([[[file]], [[file]]])
+  expect(ed.view.someProp('handlePaste', (f) => f(ed.view, { clipboardData: { files: [] } } as any, Slice.empty)) ?? false).toBe(false)
+  const seen: number[] = []
+  const { effect } = await import('clarusjs/runtime')
+  const stop = effect(() => { seen.push(ed.state.get().selection.from) })
+  type(ed, 'ab')
+  ed.view.dispatch(ed.view.state.tr.setSelection((ed.view.state.selection.constructor as any).create(ed.view.state.doc, 2)))
+  stop()
+  expect(seen).toEqual([1, 3, 2]) // "ab" in one transaction, then the caret moved
+})
+
+test('onSend returning false keeps the text (a send the app refused)', () => {
+  const ed = createEditor({ element: mount(), extensions: composerExtensions(), format: 'json', onSend: () => false })
+  type(ed, 'keep me')
+  expect(ed.send()).toBe(false)
+  expect(ed.view.state.doc.textContent).toBe('keep me')
+})

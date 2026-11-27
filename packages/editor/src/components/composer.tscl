@@ -1,0 +1,193 @@
+{{--
+  Composer (@clarusjs/editor): a chat or comment box. From the server it's a plain <textarea>: typing, and posting with
+  a form through [name], work with no JavaScript. With attach="interaction" its code loads on first focus, and the
+  editor takes over with the textarea's text and caret. Enter sends ((send), then it clears; Shift+Enter is a new
+  line), @ mentions people ((search), answered with $event.respond), / lists [commands] ((command), with the editor),
+  : suggests emoji, and files pasted, dropped or picked go to (files).
+
+  <editor-composer attach="interaction" [label]="'Reply'" [maxLength]="2000" [(value)]="draft"
+    (send)="post($event.value)" (search)="$event.respond(people($event.query, $event.signal))"
+    (files)="upload($event.files)" />
+
+  The value is ProseMirror JSON, or HTML with [format]="'html'". Validate it on the server with the same extensions:
+  validate(body, composerExtensions(), { maxLength: 2000 }) from @clarusjs/editor/server.
+  A (send) cancelled with $info.cancel() keeps the text; one not cancelled, with [name] inside a form, posts it.
+  Headless: data-part names each element (composer, field, toolbar, button, attach, files, count, send, suggestions,
+  suggestion). @clarusjs/ui styles them.
+--}}
+@type Item = { id: string; label: string }
+@type Command = { id: string; label: string; keywords?: string[] }
+@input id: string = 'composer'
+@input label: string = 'Message'
+@input placeholder: string = 'Write a message…'
+@input format: 'json' | 'html' = 'json'
+@input name: string = ''
+@input maxLength: number = 0
+@input enterSends: boolean = true
+@input codeBlocks: boolean = true
+@input mentions: boolean = true
+@input emoji: boolean = true
+@input commands: Command[] = []
+@input sendLabel: string = 'Send'
+@model value: any = ''
+@event send: { value: any }
+@event search: { query: string; signal: AbortSignal; respond: (items: Item[] | Promise<Item[]>) => void }
+@event command: { id: string; editor: any }
+@event files: { files: File[] }
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  import { composerExtensions, editor, editorOf, loadEmoji, plainText, suggestion, toolbar } from '@clarusjs/editor'
+  // The editor replaces the textarea once attached (a microtask later, so the loader's replay finds the textarea).
+  let ready = state(false)
+  // ponytail: code points until the editor counts graphemes; it does from attach on.
+  let count = state([...plainText(value, format)].length)
+  const over = derived(() => maxLength > 0 && count > maxLength)
+  const initial = plainText(value, format)
+  let draft = { text: initial, caret: undefined, focused: false }
+  const refs = {}
+  const ref = (key) => (el) => {
+    refs[key] = el
+  }
+  let current
+
+  function takeOver(textarea) {
+    queueMicrotask(() => {
+      draft = { text: textarea.value, caret: textarea.selectionStart, focused: document.activeElement === textarea }
+      ready = true
+    })
+  }
+  // (search): whoever listens answers with respond().
+  function ask(query, signal) {
+    let answer
+    emit('search', { query, signal, respond: (items) => (answer = items) })
+    return answer ?? []
+  }
+  const matching = (q) =>
+    commands.filter((c) => [c.label, ...(c.keywords ?? [])].some((w) => w.toLowerCase().includes(q.toLowerCase())))
+  function sent(v) {
+    if (!emit('send', { value: v })) return false
+    const hidden = refs.hidden
+    if (name && hidden?.form) {
+      hidden.value = typeof v === 'string' ? v : JSON.stringify(v)
+      hidden.form.requestSubmit()
+    }
+  }
+  function mount(el) {
+    const stops = [
+      editor(el, {
+        extensions: composerExtensions({ codeBlocks, mentions, placeholder }),
+        format,
+        label,
+        enterSends,
+        maxLength: maxLength || undefined,
+        ...(draft.text === initial ? { value } : { text: { value: draft.text, caret: draft.caret } }),
+        onSend: sent,
+        onFiles: (files) => emit('files', { files }),
+      }),
+    ]
+    const ed = (current = editorOf(el))
+    stops.push(
+      effect(() => {
+        value = ed.value.get()
+        count = ed.length.get()
+      }),
+    )
+    // A new value from the parent ([(value)]) replaces the document. Only a change: the write above reaches value
+    // through the parent, so until it does value is the old one, which must not undo what was typed.
+    let seen = value
+    stops.push(
+      effect(() => {
+        const v = value
+        if (v === seen) return
+        seen = v
+        if (v !== ed.value.get()) ed.value.set(v)
+      }),
+    )
+    stops.push(toolbar(refs.bar, { editor: el }))
+    if (mentions)
+      stops.push(
+        suggestion(refs.mentions, { editor: el, char: '@', search: ask, pick: (item, range, e) => e.run('mention', item, range) }),
+      )
+    if (commands.length)
+      stops.push(
+        suggestion(refs.commands, {
+          editor: el,
+          char: '/',
+          search: matching,
+          pick: (item, range, e) => {
+            e.view.dispatch(e.view.state.tr.delete(range.from, range.to))
+            emit('command', { id: item.id, editor: e })
+          },
+        }),
+      )
+    if (emoji)
+      stops.push(
+        suggestion(refs.emoji, {
+          editor: el,
+          char: ':',
+          // a word of the name starting with what's typed (underscores for spaces: ":thumbs_up")
+          search: async (q) => {
+            const words = ' ' + q.toLowerCase().replace(/_/g, ' ')
+            return (await loadEmoji()).filter((e) => (' ' + e.label).includes(words)).slice(0, 8)
+          },
+          pick: (item, range, e) => e.view.dispatch(e.view.state.tr.insertText(item.char, range.from, range.to)),
+        }),
+      )
+    if (draft.focused) ed.focus()
+    return () => {
+      for (const stop of stops.reverse()) stop()
+      current = undefined
+    }
+  }
+  function send(event) {
+    event.preventDefault()
+    if (current) current.send()
+    else queueMicrotask(() => current?.send())
+  }
+  function picked(event) {
+    const files = [...event.target.files]
+    event.target.value = ''
+    if (files.length) emit('files', { files })
+  }
+</script>
+
+<div data-part="composer" [data-over]="over ? '' : false">
+  @if (ready) {
+    <div [id]="id + '-field'" data-part="field" [use]="mount"></div>
+    @if (name) {
+      <input type="hidden" [name]="name" [value]="typeof value === 'string' ? value : JSON.stringify(value)" [use]="ref('hidden')" />
+    }
+  } @else {
+    <textarea
+      [id]="id + '-field'"
+      data-part="field"
+      [name]="name || false"
+      [placeholder]="placeholder"
+      [aria-label]="label"
+      rows="3"
+      [value]="initial"
+      [use]="takeOver"
+    ></textarea>
+  }
+  <ul [id]="id + '-mentions'" data-part="suggestions" aria-label="People" hidden [use]="ref('mentions')"></ul>
+  <ul [id]="id + '-commands'" data-part="suggestions" aria-label="Commands" hidden [use]="ref('commands')"></ul>
+  <ul [id]="id + '-emoji'" data-part="suggestions" aria-label="Emoji" hidden [use]="ref('emoji')"></ul>
+  <div data-part="footer">
+    <div data-part="toolbar" role="toolbar" aria-label="Formatting" [use]="ref('bar')">
+      <button type="button" data-part="button" data-command="bold" aria-label="Bold" aria-pressed="false">B</button>
+      <button type="button" data-part="button" data-command="italic" aria-label="Italic" aria-pressed="false">I</button>
+      <button type="button" data-part="button" data-command="code" aria-label="Code" aria-pressed="false">&lt;/&gt;</button>
+      <button type="button" data-part="button" data-command="link" aria-label="Link" aria-pressed="false">🔗</button>
+      @if (codeBlocks) {
+        <button type="button" data-part="button" data-command="codeBlock" aria-label="Code block" aria-pressed="false">{ }</button>
+      }
+      <button type="button" data-part="attach" aria-label="Attach files" (click)="refs.files?.click()">📎</button>
+    </div>
+    <input type="file" multiple hidden data-part="files" [use]="ref('files')" (change)="picked($event)" />
+    @if (maxLength > 0) {
+      <span data-part="count" [data-over]="over ? '' : false">{{ count }}/{{ maxLength }}</span>
+    }
+    <button type="submit" data-part="send" [disabled]="over" (click)="send($event)">{{ sendLabel }}</button>
+  </div>
+</div>

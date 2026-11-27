@@ -5,7 +5,7 @@ import { baseKeymap, chainCommands, newlineInCode } from 'prosemirror-commands'
 import { inputRules } from 'prosemirror-inputrules'
 import { keymap } from 'prosemirror-keymap'
 import { DOMParser, DOMSerializer, Node, type Schema } from 'prosemirror-model'
-import { EditorState, Plugin, type Command } from 'prosemirror-state'
+import { EditorState, Plugin, Selection, TextSelection, type Command } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import type { Extension } from './extension.ts'
 import { docLength } from './length.ts'
@@ -20,14 +20,18 @@ export type EditorOptions = {
   /** How the value is given and emitted: ProseMirror JSON, or HTML. */
   format: 'json' | 'html'
   value?: string | object
+  /** Start from plain text instead (a textarea's, with its caret): blank lines make paragraphs. */
+  text?: { value: string; caret?: number }
   editable?: boolean
   /** The editable's accessible name. */
   label?: string
-  /** Called with the value when the user sends (Enter, or Mod-Enter); the editor then clears. */
-  onSend?(value: string | object): void
+  /** Called with the value when the user sends (Enter, or Mod-Enter); the editor then clears, unless it returns false. */
+  onSend?(value: string | object): boolean | void
   /** Enter sends and Shift+Enter is a new line (the default), or Enter is a new line and Mod-Enter sends. */
   enterSends?: boolean
   maxLength?: number
+  /** Called with files pasted or dropped in; they don't go into the document. */
+  onFiles?(files: File[]): void
 }
 
 /**
@@ -39,6 +43,8 @@ export type Editor = {
   value: Signal<string | object>
   /** The length in graphemes, a mention counting as its label. */
   length: ReadSignal<number>
+  /** The ProseMirror state, after every change (the selection's too): for toolbars. */
+  state: ReadSignal<EditorState>
   /** Runs a command by name (`bold`, `link`, `undo`…), with its arguments: false when it can't run. */
   run(name: string, ...args: unknown[]): boolean
   can(name: string, ...args: unknown[]): boolean
@@ -46,7 +52,7 @@ export type Editor = {
   active(name: string): boolean
   focus(): void
   clear(): void
-  /** Sends unless empty or over the limit: calls `onSend`, clears, and returns true. */
+  /** Sends unless empty or over the limit: calls `onSend`, clears (unless it returned false), and returns true. */
   send(): boolean
   destroy(): void
   view: EditorView
@@ -118,17 +124,31 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
     ...extensions.flatMap((e) => e.plugins?.(schema) ?? []),
   ]
 
-  const initial = EditorState.create({ schema, doc: parse(options.value), plugins })
+  const start = options.text ? fromText(schema, options.text.value, options.text.caret) : { doc: parse(options.value), pos: undefined }
+  const initial = EditorState.create({
+    schema, plugins, doc: start.doc,
+    selection: start.pos === undefined ? (options.text ? Selection.atEnd(start.doc) : undefined) : TextSelection.create(start.doc, start.pos),
+  })
   let lastEmitted = serialize(initial.doc)
   const value = state<string | object>(lastEmitted)
   const length = state(docLength(initial.doc))
+  const current = state(initial)
+  const files = (list: FileList | File[] | undefined) => {
+    const all = Array.from(list ?? [])
+    if (!all.length || !options.onFiles) return false
+    options.onFiles(all)
+    return true
+  }
 
   const view = new EditorView(options.element, {
     state: initial,
     editable: () => editable,
     attributes: { role: 'textbox', 'aria-multiline': 'true', ...(options.label ? { 'aria-label': options.label } : {}), ...(editable ? {} : { 'aria-readonly': 'true' }) },
+    handlePaste: (_view, event) => files(event.clipboardData?.files),
+    handleDrop: (_view, event) => files((event as DragEvent).dataTransfer?.files),
     dispatchTransaction(tr) {
       view.updateState(view.state.apply(tr))
+      current.set(view.state)
       if (!tr.docChanged) return
       lastEmitted = serialize(view.state.doc)
       length.set(docLength(view.state.doc))
@@ -151,7 +171,7 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
   const send = () => {
     const doc = view.state.doc
     if (isBlank(doc) || (maxLength !== undefined && docLength(doc) > maxLength)) return false
-    options.onSend?.(value.get())
+    if (options.onSend?.(value.get()) === false) return false
     clear()
     return true
   }
@@ -160,6 +180,7 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
   return {
     value,
     length,
+    state: current,
     view,
     schema,
     run: (name, ...args) => command(name, args)?.(view.state, view.dispatch, view) ?? false,
@@ -176,4 +197,35 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
     send,
     destroy() { stop(); view.destroy() },
   }
+}
+
+/** A document from plain text (blank lines apart: paragraphs; a line break: a hard break), and where `caret` falls. */
+function fromText(schema: Schema, text: string, caret?: number): { doc: Node; pos?: number } {
+  const blocks: Node[][] = [[]]
+  let buf = ''
+  let pos = 1 // inside the first paragraph
+  let at: number | undefined
+  const flush = () => { if (buf) blocks[blocks.length - 1]!.push(schema.text(buf)); buf = '' }
+  for (let i = 0; i < text.length;) {
+    if (i === caret) at = pos
+    if (text.startsWith('\n\n', i)) {
+      if (caret === i + 1) at = pos
+      flush()
+      blocks.push([])
+      pos += 2 // out of one paragraph, into the next
+      i += 2
+    } else if (text[i] === '\n') {
+      flush()
+      blocks[blocks.length - 1]!.push(schema.nodes.hard_break!.create())
+      pos += 1
+      i += 1
+    } else {
+      buf += text[i]
+      pos += 1 // positions count UTF-16 units, as strings do
+      i += 1
+    }
+  }
+  if (caret !== undefined && caret >= text.length) at = pos
+  flush()
+  return { doc: schema.node('doc', null, blocks.map((b) => schema.node('paragraph', null, b))), pos: at }
 }

@@ -191,9 +191,9 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
 
 let emojiList: Promise<{ id: string; label: string; char: string }[]> | undefined
 /**
- * The built-in emoji (about a hundred, by shortcode), loaded on first call as its own chunk.
+ * The built-in emoji (all of Unicode's, with their names), loaded on first call as its own chunk.
  * @example
- * search: async (q) => (await loadEmoji()).filter((e) => e.label.startsWith(q))
+ * search: async (q) => (await loadEmoji()).filter((e) => (' ' + e.label).includes(' ' + q))
  * @see https://clarusjs.com/guide/editor-composer#suggestions
  */
 export function loadEmoji() {
