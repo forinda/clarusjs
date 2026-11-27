@@ -2,7 +2,9 @@
   Comment box: write a comment, or preview it, then Comment posts it and Cancel clears it. Made of @clarusjs/editor's
   parts: Enter is a new line here (Ctrl/⌘+Enter posts), Markdown shortcuts and @ mentions work. Copy it into
   src/components/, editor.css (under Code) into src/components/ui/, and replace post and people with your own.
+  Give each one its own [id] (the field's, which its parts name) to put several on a page.
 --}}
+@input id: string = 'comment'
 @import '~/components/ui/editor.css'
 @import editorField from '@clarusjs/editor/components/field.tscl'
 @import editorToolbar from '@clarusjs/editor/components/toolbar.tscl'
@@ -27,7 +29,7 @@
     preview = false
   }
   // The field's editor, for Cancel (and nothing to wait for before it loads: there's nothing to clear).
-  const wire = () => onEditor('comment', (e) => {
+  const wire = () => onEditor(id, (e) => {
     editor = e
     return () => (editor = undefined)
   })
@@ -57,7 +59,7 @@
       <button type="button" [aria-pressed]="String(preview)" (click)="preview = true">Preview</button>
     </div>
     <div class="write" [hidden]="preview">
-      <editorToolbar [field]="'comment'">
+      <editorToolbar [field]="id">
         <editorTool command="bold" label="Bold"><b>B</b></editorTool>
         <editorTool command="italic" label="Italic"><i>I</i></editorTool>
         <editorTool command="code" label="Code">&lt;/&gt;</editorTool>
@@ -66,7 +68,7 @@
       </editorToolbar>
       <editorField
         attach="interaction"
-        [id]="'comment'"
+        [id]="id"
         [label]="'Comment'"
         [placeholder]="'Add a comment…'"
         [enterSends]="false"
@@ -74,7 +76,7 @@
         [(value)]="draft"
         (send)="post($event.value)"
       />
-      <editorSuggestions [field]="'comment'" char="@" (search)="$event.respond(find($event.query))" />
+      <editorSuggestions [field]="id" char="@" (search)="$event.respond(find($event.query))" />
     </div>
     @if (preview) {
       <div class="preview" aria-label="Preview">
@@ -88,7 +90,7 @@
     <div class="actions">
       <span class="hint">Markdown works: **bold**, `code`. Ctrl+Enter to comment.</span>
       <button type="button" class="cancel" (click)="cancel()">Cancel</button>
-      <editorSend [field]="'comment'" label="Comment" />
+      <editorSend [field]="id" label="Comment" />
     </div>
   </form>
 </section>

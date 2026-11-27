@@ -4,18 +4,30 @@
 import type { Editor } from './editor.ts'
 
 type Wire = (editor: Editor, el: Element) => (() => void) | void
-type Waiting = { wire: Wire; undo?: (() => void) | void }
+// el: the field it's wired to now, if any (with two fields on one id, the newest)
+type Waiting = { wire: Wire; el?: Element; undo?: (() => void) | void }
 
 const instances = new WeakMap<Element, Editor>()
 const waiting = new Map<string, Set<Waiting>>()
 
+const unwire = (w: Waiting) => {
+  w.undo?.()
+  w.undo = undefined
+  w.el = undefined
+}
+
 /** Records the editor on `el` and wires the parts waiting for its id; returns how to unrecord it (unwiring them). */
 export function register(el: Element, editor: Editor): () => void {
+  const id = el.id // the id it registers with: a later rename doesn't move its wiring
   instances.set(el, editor)
-  for (const w of waiting.get(el.id) ?? []) w.undo = w.wire(editor, el)
+  for (const w of waiting.get(id) ?? []) {
+    unwire(w) // wired to another field with this id: the newest wins, the old wiring is undone first
+    w.el = el
+    w.undo = w.wire(editor, el)
+  }
   return () => {
     instances.delete(el)
-    for (const w of waiting.get(el.id) ?? []) { w.undo?.(); w.undo = undefined }
+    for (const w of waiting.get(id) ?? []) if (w.el === el) unwire(w)
   }
 }
 
@@ -41,11 +53,12 @@ export function onEditor(id: string, wire: Wire): () => void {
   set.add(w)
   const el = typeof document !== 'undefined' ? document.getElementById(id) : null
   const editor = el && instances.get(el)
-  if (el && editor) w.undo = wire(editor, el)
+  if (el && editor) {
+    w.el = el
+    w.undo = wire(editor, el)
+  }
   return () => {
-    set.delete(w)
-    if (!set.size) waiting.delete(id)
-    w.undo?.()
-    w.undo = undefined
+    if (set.delete(w) && !set.size && waiting.get(id) === set) waiting.delete(id)
+    unwire(w)
   }
 }

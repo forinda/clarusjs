@@ -1,7 +1,7 @@
 {{--
   Editor field (@clarusjs/editor): a plain <textarea> from the server (typing, and posting a form through [name], work
   with no JavaScript), then the editor, with the text and caret, once its code loads (attach="interaction": on first
-  focus). Give it an id: the other parts name it with field="that id".
+  focus). Its id (required, unique on the page) is how the other parts name it: field="that id".
 
   <editor-field attach="interaction" [id]="'msg'" [label]="'Message'" [maxLength]="2000" [(value)]="draft"
     (send)="post($event.value)" (files)="upload($event.files)" />
@@ -12,7 +12,7 @@
   validate() from @clarusjs/editor/server.
   Headless: data-part="editor" (the textarea, then the editor's box, whose editable is [role='textbox']).
 --}}
-@input id: string = 'editor'
+@input id: string
 @input label: string = 'Message'
 @input placeholder: string = ''
 @input format: 'json' | 'html' = 'json'

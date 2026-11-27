@@ -45,7 +45,7 @@ export function toolbar(el: HTMLElement, options: { editor: Element }): () => vo
     for (const b of buttons()) {
       const command = b.dataset.command!
       b.setAttribute('aria-pressed', String(ed.active(command)))
-      if (command !== 'link') b.disabled = !ed.can(command)
+      b.disabled = command === 'link' ? false : !ed.can(command) // link asks for its address: always there
     }
   })
 

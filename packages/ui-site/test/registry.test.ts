@@ -585,3 +585,15 @@ test('every component page with inputs, models or events has an API section, gen
     expect(readFileSync(page(e.name), 'utf8'), e.name).toMatch(new RegExp(`^## API\\n\\n<componentApi name="${e.name}" />$`, 'm'))
   }
 })
+
+test('review: the editor blocks take their field\'s id as an input and give it to every part (several on a page work)', () => {
+  for (const name of ['chat-composer', 'comment-box']) {
+    const file = registry.find((e) => e.name === name)!.files[0]!
+    const s = source(file)
+    expect(s, name).toMatch(/^@input id: string = '[\w-]+'$/m)
+    const fields = [...s.matchAll(/\[field\]="([^"]+)"/g)].map((m) => m[1])
+    expect(fields.length, name).toBeGreaterThan(2)
+    expect(new Set(fields), name).toEqual(new Set(['id']))
+    expect(s, name).toContain('[id]="id"')
+  }
+})

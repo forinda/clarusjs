@@ -44,7 +44,7 @@ afterEach(() => { document.body.innerHTML = ''; events = []; document.removeEven
 
 /** A chat composer: field, toolbar with bold and code block, @ / : suggestions, count, files and Send, in a form. */
 async function page(field: object = {}, before?: (t: HTMLTextAreaElement) => void) {
-  const tools = (await render('tool', { command: 'bold', label: 'Bold' }, { default: 'B' })) + (await render('tool', { command: 'codeBlock', label: 'Code block' }, { default: '{}' }))
+  const tools = (await render('tool', { command: 'bold', label: 'Bold' }, { default: 'B' })) + (await render('tool', { command: 'codeBlock', label: 'Code block' }, { default: '{}' })) + (await render('tool', { command: 'link', label: 'Link' }, { default: 'L' }))
   document.body.innerHTML = '<form>'
     + await render('field', { id: 'msg', name: 'msg', ...field })
     + await render('toolbar', { field: 'msg' }, { default: tools })
@@ -107,6 +107,7 @@ test('parts attached before the field wire up when it does: tools enable, bold t
   expect(p.button('[data-command=bold]').disabled).toBe(true)
   const { ed, type } = await p.attachField()
   expect(p.button('[data-command=bold]').disabled).toBe(false)
+  expect(p.button('[data-command=link]').disabled).toBe(false) // review C1: link too, once wired
   type('ab')
   ed.view.dispatch(ed.view.state.tr.setSelection((ed.view.state.selection.constructor as any).create(ed.view.state.doc, 1, 3)))
   p.button('[data-command=bold]').click()
