@@ -21,6 +21,7 @@
 @event command: { id: string; editor: any }
 
 <script>
+  import { effect, untrack } from 'clarusjs/runtime'
   import { onEditor } from '@clarusjs/editor/registry'
   import { searchEmoji, suggestion } from '@clarusjs/editor/suggestion'
   const names = { '@': 'People', '/': 'Commands', ':': 'Emoji' }
@@ -46,7 +47,20 @@
       pick: (item, range, e) => e.view.dispatch(e.view.state.tr.insertText(item.char, range.from, range.to)),
     },
   }
-  const wire = (list) => onEditor(field, (_editor, el) => suggestion(list, { editor: el, char, ...kinds[char] }))
+  // a list for the field [field] names and its [char], again whenever a parent changes either
+  function wire(list) {
+    let off
+    const stop = effect(() => {
+      const id = field
+      const c = char
+      off?.()
+      off = untrack(() => onEditor(id, (_editor, el) => suggestion(list, { editor: el, char: c, ...kinds[c] })))
+    })
+    return () => {
+      stop()
+      off?.()
+    }
+  }
 </script>
 
 <ul data-part="suggestions" [aria-label]="label || names[char]" hidden [use]="wire"></ul>

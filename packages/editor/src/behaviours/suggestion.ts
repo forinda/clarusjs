@@ -144,8 +144,16 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
     const m = match(state)
     if (!m) dismissed = -1
     if (!m || m.from === dismissed) return void (range && close())
+    const moved = range?.from !== m.from
     range = { from: m.from, to: m.to }
-    if (m.query === query) return
+    if (m.query === query) {
+      // the same query at another trigger (the caret moved to another "@ma"): the list goes there
+      if (moved && !list.hidden) {
+        unposition?.()
+        unposition = position(list, anchor, { side: 'bottom', align: 'start' })
+      }
+      return
+    }
     query = m.query
     clearTimeout(timer)
     controller?.abort()
@@ -160,8 +168,9 @@ export function suggestion(list: HTMLElement, options: SuggestionOptions): () =>
       const c = (controller = new AbortController())
       try {
         const result = await options.search(q, c.signal)
+        if (c !== controller) return // cancelled: a newer query owns the cache and the list
         cache.set(q, result)
-        if (c === controller) show(result)
+        show(result)
       } catch (err) {
         if (c.signal.aborted || c !== controller) return
         items = []

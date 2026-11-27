@@ -36,9 +36,13 @@ export function plainText(value: unknown, format: 'json' | 'html'): string {
   }
   // ponytail: tags stripped by pattern, enough for what the editor's own HTML holds; the editor parses it properly
   // once it loads.
+  // a block's end is a mark (\u0000): blocks are joined by a blank line, and line breaks inside them all stay
   const text = String(value)
+    .replace(/(<\/(?:p|pre|h[1-6]|li|blockquote|div)>)\s+/gi, '$1') // the source's whitespace between blocks
     .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|pre|h[1-6]|li|blockquote|div)>/gi, '\n\n')
+    .replace(/<\/(p|pre|h[1-6]|li|blockquote|div)>/gi, '\u0000')
     .replace(/<[^>]*>/g, '')
-  return decode(text).replace(/\n{3,}/g, '\n\n').replace(/\n+$/, '')
+  const blocks = decode(text).split('\u0000')
+  if (blocks.length > 1 && blocks[blocks.length - 1] === '') blocks.pop()
+  return blocks.join('\n\n')
 }

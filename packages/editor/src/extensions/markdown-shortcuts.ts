@@ -13,8 +13,11 @@ const markRule = (pattern: RegExp, type: MarkType) =>
       let leaf = false
       state.doc.nodesBetween(start, end, (node) => { if (node.isInline && !node.isText) leaf = true })
       if (leaf) return null
-      const marks = type.create().addToSet(state.doc.resolve(start).marks())
-      return state.tr.replaceWith(start, end, state.schema.text(match[1]!, marks)).removeStoredMark(type)
+      // the delimiters go and the mark goes on what's between, keeping marks already there (**a _b_ c**)
+      const open = match[0].indexOf(match[1]!)
+      const from = start + open
+      const to = from + match[1]!.length
+      return state.tr.delete(to, end).addMark(from, to, type.create()).delete(start, from).removeStoredMark(type)
     },
     { inCodeMark: false }, // inside inline code, ** and ` are code
   )

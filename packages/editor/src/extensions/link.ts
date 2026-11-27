@@ -30,9 +30,23 @@ export const link = defineExtension({
       return true
     },
     unlink: (): Command => (state, dispatch) => {
-      const { from, to } = state.selection
-      if (!state.doc.rangeHasMark(from, to, schema.marks.link!)) return false
-      dispatch?.(state.tr.removeMark(from, to, schema.marks.link!))
+      let { from, to } = state.selection
+      const type = schema.marks.link!
+      // just a caret: the whole link it's in
+      if (from === to) {
+        const { parent, parentOffset } = state.selection.$from
+        const start = from - parentOffset
+        let pos = start
+        let run: [number, number] | undefined
+        parent.forEach((child) => {
+          const end = pos + child.nodeSize
+          if (type.isInSet(child.marks)) run = run && run[1] === pos ? [run[0], end] : !run || run[1] < from ? [pos, end] : run
+          pos = end
+        })
+        if (run && run[0] <= from && from <= run[1]) [from, to] = run
+      }
+      if (!state.doc.rangeHasMark(from, to, type)) return false
+      dispatch?.(state.tr.removeMark(from, to, type))
       return true
     },
   }),

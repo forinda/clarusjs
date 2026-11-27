@@ -10,22 +10,35 @@
 @input label: string = 'Send'
 
 <script>
-  import { effect } from 'clarusjs/runtime'
+  import { effect, untrack } from 'clarusjs/runtime'
   import { onEditor } from '@clarusjs/editor/registry'
   let over = state(false)
   let current
-  const wire = () =>
-    onEditor(field, (editor) => {
-      current = editor
-      const stop = effect(() => {
-        over = editor.over.get()
-      })
-      return () => {
-        stop()
-        current = undefined
-        over = false
-      }
+  // sends the field [field] names, again whenever a parent changes it
+  function wire() {
+    let off
+    const stop = effect(() => {
+      const id = field
+      off?.()
+      off = untrack(() =>
+        onEditor(id, (editor) => {
+          current = editor
+          const watch = effect(() => {
+            over = editor.over.get()
+          })
+          return () => {
+            watch()
+            current = undefined
+            over = false
+          }
+        }),
+      )
     })
+    return () => {
+      stop()
+      off?.()
+    }
+  }
   function click(event) {
     if (!current) return // no editor yet: the form posts the textarea, as with no JavaScript
     event.preventDefault()

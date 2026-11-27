@@ -83,7 +83,8 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
   const { extensions, format, enterSends = true, maxLength } = options
   const editable = options.editable !== false
   const schema = buildSchema(extensions)
-  const commands: Record<string, (...args: any[]) => Command> = Object.assign({}, ...extensions.map((e) => e.commands?.(schema) ?? {}))
+  // no prototype: run('toString') is no command
+  const commands: Record<string, (...args: any[]) => Command> = Object.assign(Object.create(null), ...extensions.map((e) => e.commands?.(schema) ?? {}))
 
   const parse = (value: string | object | undefined): Node => {
     if (value === undefined || value === '') return schema.topNodeType.createAndFill()!
@@ -216,8 +217,11 @@ export function createEditor(options: EditorOptions & { element: HTMLElement }):
     addPlugin(spec) {
       const plugin = new Plugin(spec)
       view.updateState(view.state.reconfigure({ plugins: [plugin, ...view.state.plugins] }))
+      current.set(view.state)
       return () => {
-        if (!view.isDestroyed) view.updateState(view.state.reconfigure({ plugins: view.state.plugins.filter((p) => p !== plugin) }))
+        if (view.isDestroyed) return
+        view.updateState(view.state.reconfigure({ plugins: view.state.plugins.filter((p) => p !== plugin) }))
+        current.set(view.state)
       }
     },
     focus: () => view.focus(),

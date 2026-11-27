@@ -11,6 +11,14 @@ const fail = (message: string): never => { throw new Error(`@clarusjs/editor: ${
 // asks for. Server and browser render through this.
 const UNSAFE_TAGS = new Set(['script', 'style', 'iframe', 'frame', 'frameset', 'object', 'embed', 'link', 'meta', 'base', 'template', 'noscript'])
 const UNSAFE_ATTR = /^(on|srcdoc$|formaction$)/i
+// What a tag or attribute name may be (optionally after a namespace URI and a space, as ProseMirror specs allow):
+// anything else is data written into a name, which could close the tag and add a handler.
+// The namespace must be a URI (it has a scheme): "data-x onmouseover" is a name with a handler, not a namespace.
+export const TAG_NAME = /^(?:[a-zA-Z][a-zA-Z0-9+.-]*:\S+ )?[a-zA-Z][a-zA-Z0-9-]*$/
+export const ATTR_NAME = /^(?:[a-zA-Z][a-zA-Z0-9+.-]*:\S+ )?[a-zA-Z_:][a-zA-Z0-9_:.-]*$/
+/** A tag or attribute name without its namespace URI (what HTML writes). */
+export const localName = (name: string) => name.slice(name.lastIndexOf(' ') + 1)
+const hasHole = (s: unknown): boolean => s === 0 || (Array.isArray(s) && s.some(hasHole))
 
 /** Every object or array inside a node's or mark's attributes (what a document sets), at any depth. */
 function attrObjects(attrs: Record<string, unknown> | undefined): Map<object, string> {
@@ -49,15 +57,17 @@ export function safeSpec(spec: DOMOutputSpec, attrs?: Record<string, unknown>): 
   const clean = (s: unknown): unknown => {
     if (typeof s === 'string') return s
     if (s && typeof s === 'object' && from.has(s)) return ''
+    // a refused element: an empty span (with the content slot it had, which ProseMirror's serializer needs)
+    const refused = () => (hasHole(s) ? ['span', 0] : ['span'])
     if (!Array.isArray(s)) return s // a DOM node an extension built itself: its own responsibility
     const [tag, ...rest] = s as [unknown, ...unknown[]]
-    if (typeof tag !== 'string' || UNSAFE_TAGS.has(tag.toLowerCase().replace(/^.*\s/, ''))) return ''
+    if (typeof tag !== 'string' || !TAG_NAME.test(tag) || UNSAFE_TAGS.has(localName(tag).toLowerCase())) return refused()
     const out: unknown[] = [tag]
     rest.forEach((child, i) => {
       if (i === 0 && child && typeof child === 'object' && !Array.isArray(child) && !from.has(child)) {
         const kept: Record<string, string> = {}
         for (const [name, value] of Object.entries(child as Record<string, unknown>)) {
-          if (UNSAFE_ATTR.test(name) || (value && typeof value === 'object')) continue
+          if (!ATTR_NAME.test(name) || UNSAFE_ATTR.test(localName(name)) || (value && typeof value === 'object')) continue
           const v = attrValue(name, value, tag)
           if (v !== null) kept[name] = v === true ? '' : v
         }

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // The suggestion behaviour: a trigger character opens a list (mentions, slash commands, emoji) that the editable
 // keeps focus over, as a combobox does: debounced search, the newest query winning, a cache, keys, Escape.
+import { TextSelection } from 'prosemirror-state'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { composerExtensions } from '../src/extensions/composer.ts'
 import { editor, editorOf } from '../src/behaviours/editor.ts'
@@ -188,4 +189,35 @@ test('review: a search that fails closes the list and says so; nothing is thrown
   await vi.advanceTimersByTimeAsync(200)
   expect(list.hidden).toBe(false)
   error.mockRestore()
+})
+
+test('review #648: a cancelled search answering late does not overwrite the cache', async () => {
+  const pending: { q: string; resolve(items: SuggestionItem[]): void }[] = []
+  const search = vi.fn((q: string) => new Promise<SuggestionItem[]>((resolve) => pending.push({ q, resolve })))
+  const { ed, list } = setup({ search })
+  type(ed, '@m')
+  await vi.advanceTimersByTimeAsync(200) // search 1: "m", slow
+  type(ed, 'a')
+  await vi.advanceTimersByTimeAsync(200) // search 2: "ma"
+  ed.view.dispatch(ed.view.state.tr.delete(ed.view.state.selection.from - 1, ed.view.state.selection.from))
+  await vi.advanceTimersByTimeAsync(200) // search 3: "m" again
+  pending[2]!.resolve([{ id: 'new', label: 'Mara (new)' }])
+  await vi.advanceTimersByTimeAsync(0)
+  pending[0]!.resolve([{ id: 'old', label: 'Mara (old)' }]) // the cancelled one, late
+  await vi.advanceTimersByTimeAsync(0)
+  type(ed, 'x')
+  ed.view.dispatch(ed.view.state.tr.delete(ed.view.state.selection.from - 1, ed.view.state.selection.from))
+  expect(labels(list)).toEqual(['Mara (new)']) // from the cache: the answer that counted
+})
+
+test('review #648: moving to another trigger with the same query places the list there', async () => {
+  positioned.length = 0
+  const { ed } = setup()
+  type(ed, '@ma')
+  ed.view.dispatch(ed.view.state.tr.split(ed.view.state.selection.from))
+  type(ed, '@ma')
+  await vi.advanceTimersByTimeAsync(200)
+  expect(positioned).toHaveLength(1)
+  ed.view.dispatch(ed.view.state.tr.setSelection(TextSelection.create(ed.view.state.doc, 4))) // the first paragraph's "@ma"
+  expect(positioned).toHaveLength(2)
 })

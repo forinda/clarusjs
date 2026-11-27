@@ -7,7 +7,7 @@ import { attrValue, UNSAFE_URL } from 'clarusjs/runtime'
 import type { Extension } from './core/extension.ts'
 import { docLength } from './core/length.ts'
 import { fromText } from './core/from-text.ts'
-import { attrInSpec, buildSchema } from './core/schema.ts'
+import { ATTR_NAME, TAG_NAME, attrInSpec, buildSchema, localName } from './core/schema.ts'
 import { base } from './extensions/base.ts'
 
 /**
@@ -48,8 +48,10 @@ function renderProblem(doc: Node): string | undefined {
   const walk = (spec: DOMOutputSpec) => {
     if (found || !Array.isArray(spec)) return
     const [tag, ...rest] = spec as [string, ...unknown[]]
+    if (typeof tag !== 'string' || !TAG_NAME.test(tag)) return void (found = `invalid tag: ${tag}`)
     const attrs = rest[0] && typeof rest[0] === 'object' && !Array.isArray(rest[0]) ? (rest[0] as Record<string, unknown>) : undefined
     for (const [name, value] of Object.entries(attrs ?? {})) {
+      if (!ATTR_NAME.test(name)) return void (found = `invalid attribute: ${name}`)
       if (value != null && typeof value === 'object') return void (found = `invalid attribute: ${name}`)
       if (typeof value === 'string' && attrValue(name, value, tag) === UNSAFE_URL) return void (found = `unsafe URL: ${value}`)
     }
@@ -84,16 +86,19 @@ function renderProblem(doc: Node): string | undefined {
  */
 export function validate(value: string | object, extensions: Extension[], options: { format?: Format; maxLength?: number } = {}): { ok: true; doc: object } | { ok: false; error: string } {
   let doc: Node
+  const schema = schemaOf(extensions)
   try {
-    doc = parse(value, schemaOf(extensions), options.format ?? 'json')
+    doc = parse(value, schema, options.format ?? 'json')
+    if (doc.type !== schema.topNodeType) return { ok: false, error: `not a document: ${doc.type.name}` }
+    // the render checks and the count run on the document's data too: any of them failing is a refusal, not a throw
+    const problem = renderProblem(doc)
+    if (problem) return { ok: false, error: problem }
+    if (options.maxLength !== undefined) {
+      const n = docLength(doc)
+      if (n > options.maxLength) return { ok: false, error: `too long: ${n} of ${options.maxLength}` }
+    }
   } catch (err) {
     return { ok: false, error: (err as Error).message }
-  }
-  const problem = renderProblem(doc)
-  if (problem) return { ok: false, error: problem }
-  if (options.maxLength !== undefined) {
-    const n = docLength(doc)
-    if (n > options.maxLength) return { ok: false, error: `too long: ${n} of ${options.maxLength}` }
   }
   return { ok: true, doc: doc.toJSON() }
 }
@@ -115,14 +120,18 @@ const escapeAttr = (s: string) => escapeText(s).replace(/"/g, '&quot;')
 /** HTML for one render spec, with `inner` at its hole (0). */
 function specHTML(spec: DOMOutputSpec, inner: () => string): string {
   if (!Array.isArray(spec)) return ''
-  const [tag, ...rest] = spec as [string, ...unknown[]]
+  const [full, ...rest] = spec as [string, ...unknown[]]
+  if (typeof full !== 'string' || !TAG_NAME.test(full)) return ''
+  const tag = localName(full) // HTML has no namespaces to write: the local name
   let attrs = ''
   let i = 0
   if (rest[0] && typeof rest[0] === 'object' && !Array.isArray(rest[0])) {
     for (const [name, value] of Object.entries(rest[0] as Record<string, unknown>)) {
-      const v = attrValue(name, value, tag)
+      if (!ATTR_NAME.test(name)) continue
+      const local = localName(name)
+      const v = attrValue(local, value, tag)
       if (v === null) continue
-      attrs += v === true ? ` ${name}` : ` ${name}="${escapeAttr(v)}"`
+      attrs += v === true ? ` ${local}` : ` ${local}="${escapeAttr(v)}"`
     }
     i = 1
   }

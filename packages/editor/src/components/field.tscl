@@ -36,6 +36,8 @@
   const initial = plainText(value, format)
   let draft = { text: initial, caret: undefined, focused: false }
   let hidden
+  // the format the running editor serializes (fixed when it mounts): what the form says it posts
+  let posted = state(format)
   const key = (v) => (typeof v === 'string' ? v : JSON.stringify(v))
 
   function takeOver(textarea) {
@@ -55,6 +57,7 @@
     }
   }
   function mount(el) {
+    posted = format
     const stop = editor(el, {
       extensions: composerExtensions({ codeBlocks, mentions, placeholder }),
       format,
@@ -93,7 +96,7 @@
   <div [id]="id" data-part="editor" [use]="mount"></div>
   @if (name) {
     <input type="hidden" [name]="name" [value]="typeof value === 'string' ? value : JSON.stringify(value)" [use]="(el) => { hidden = el }" />
-    <input type="hidden" [name]="name + '-format'" [value]="format" />
+    <input type="hidden" [name]="name + '-format'" [value]="posted" />
   }
 } @else {
   <textarea

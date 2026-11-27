@@ -34,8 +34,9 @@ const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 const island = (name: string) => document.querySelector<HTMLElement>(`cl-island[c="${name}"]`)!
 /** Attaches a part's island, as the loader does: its props from its p attribute. */
 async function attach(name: string, el = island(name)) {
-  ;(await load(name, 'client')).attach(el, parseIslandData(el.getAttribute('p')!))
+  const update = (await load(name, 'client')).attach(el, parseIslandData(el.getAttribute('p')!))
   await tick()
+  return update as (props: object) => void
 }
 
 let events: { from: string; name: string; value: any; event: CustomEvent }[] = []
@@ -63,8 +64,10 @@ async function page(field: object = {}, before?: (t: HTMLTextAreaElement) => voi
   const button = (sel: string) => document.querySelector<HTMLButtonElement>(sel)!
   return {
     button,
+    updateField: (props: object) => {},
     async attachField() {
-      await attach('field')
+      const update = await attach('field')
+      this.updateField = update
       const { editorOf } = await import(/* @vite-ignore */ src('core/registry.ts'))
       const ed = editorOf(document.getElementById('msg')!)
       return {
@@ -202,4 +205,69 @@ test('review: in a form that fails its own validation, a send neither posts nor 
   expect(submitted).not.toHaveBeenCalled()
   expect(events.some((e) => e.name === 'send')).toBe(false)
   expect(ed.view.state.doc.textContent).toBe('keep')
+})
+
+/** Two editors on the page, "a" and "b", made with the editor behaviour; each with its own text and limit. */
+async function twoFields() {
+  const { editor } = await import(/* @vite-ignore */ src('behaviours/editor.ts'))
+  const { editorOf } = await import(/* @vite-ignore */ src('core/registry.ts'))
+  const { composerExtensions } = await import(/* @vite-ignore */ src('extensions/composer.ts'))
+  const make = (id: string, text: string, maxLength: number) => {
+    const el = document.createElement('div')
+    el.id = id
+    document.body.append(el)
+    editor(el, { extensions: composerExtensions(), format: 'json', maxLength, onSend: () => events.push({ from: id, name: 'sent', value: null, event: null as any }) })
+    const ed = editorOf(el)
+    ed.view.dispatch(ed.view.state.tr.insertText(text))
+    return ed
+  }
+  return { a: make('a', 'aa', 3), b: make('b', 'bbbbbbbb', 10) }
+}
+/** A part's island, rendered and attached; returns the update a parent island calls with new inputs. */
+async function part(name: string, props: object) {
+  document.body.insertAdjacentHTML('beforeend', await render(name, props))
+  const el = [...document.querySelectorAll<HTMLElement>(`cl-island[c="${name}"]`)].pop()!
+  const update = (await load(name, 'client')).attach(el, props)
+  await tick()
+  return { el, update: async (next: object) => { update({ ...props, ...next }); await tick() } }
+}
+
+test('review #648: count, send, suggestions and the toolbar follow a [field] (and char) changed by their parent', async () => {
+  const { b } = await twoFields()
+  const count = await part('count', { field: 'a' })
+  expect(count.el.textContent).toBe('2/3')
+  await count.update({ field: 'b' })
+  expect(count.el.textContent).toBe('8/10')
+
+  const send = await part('send', { field: 'a' })
+  await send.update({ field: 'b' })
+  send.el.querySelector('button')!.click()
+  expect(events.filter((e) => e.name === 'sent').map((e) => e.from)).toEqual(['b'])
+
+  const list = await part('suggestions', { field: 'a', char: '@' })
+  await list.update({ field: 'b', char: ':' })
+  b.view.dispatch(b.view.state.tr.insertText(' :+1'))
+  await vi.waitFor(() => expect(list.el.querySelector('[role=option]')?.textContent).toBe('👍 :+1:'), { timeout: 10_000 })
+
+  const tools = await render('tool', { command: 'bold', label: 'Bold' }, { default: 'B' })
+  document.body.insertAdjacentHTML('beforeend', await render('toolbar', { field: 'nowhere' }, { default: tools }))
+  const barEl = [...document.querySelectorAll<HTMLElement>('cl-island[c="toolbar"]')].pop()!
+  const updateBar = (await load('toolbar', 'client')).attach(barEl, { field: 'nowhere' })
+  expect(barEl.querySelector('button')!.disabled).toBe(true)
+  updateBar({ field: 'b' })
+  await tick()
+  expect(barEl.querySelector('button')!.disabled).toBe(false)
+})
+
+test('review #648: the field posts the format its running editor serializes, even if [format] changes later', async () => {
+  const p = await page({ format: 'json' })
+  const { type } = await p.attachField()
+  const marker = () => document.querySelector<HTMLInputElement>('input[name="msg-format"]')!.value
+  expect(marker()).toBe('json')
+  p.updateField({ id: 'msg', name: 'msg', format: 'html' }) // a parent passing a new format
+  await tick()
+  type('x')
+  await tick()
+  expect(marker()).toBe('json') // the running editor still writes JSON
+  expect(() => JSON.parse(document.querySelector<HTMLInputElement>('input[type=hidden][name=msg]')!.value)).not.toThrow()
 })
