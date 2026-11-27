@@ -9,6 +9,18 @@ description: "Animate what @if and @for insert with CSS alone (@starting-style),
 
 <p class="lead">Most animation needs no JavaScript: CSS animates what an island's <code>@if</code> and <code>@for</code> insert, <code>@transition</code> plays what an <code>@if</code> removes before it goes, and page changes run as view transitions.</p>
 
+## Which one?
+
+Three things here are called a transition. They animate different things:
+
+| | Animates | Where | Written as |
+|---|---|---|---|
+| [CSS transitions with `@starting-style`](#entering-starting-style) | an element appearing (`@if`, `@for`, or on page load) | any page, no JavaScript | CSS: `transition` and `@starting-style` |
+| [`@transition`](#transition) | an island's `@if` branches entering and leaving: the old one stays until it has animated out | in an island; loads `clarusjs/motion` (1.7 KB) | a block in the template, plus Vue's classes in CSS |
+| [View transitions](#page-changes-view-transitions) | the whole page changing on navigation, from the old page to the new | the browser's View Transition API, turned on once with `viewTransitions()` | CSS: `::view-transition-*` |
+
+Use `@starting-style` when only entering needs to animate, and `@transition` when leaving does too. View transitions are separate: they animate one page becoming the next, not an element inside a page. Both can run together.
+
 ## Entering: @starting-style
 
 When `@if` shows a branch or `@for` adds a row in an island, the elements are inserted into the page. Give them a `transition` and say where they start from in `@starting-style`: the browser animates from there to their normal style.
@@ -61,7 +73,7 @@ The whole clock is in `src/components/flip-clock.tscl` on this site: about 30 li
 
 ## @transition {since=0.17.0}
 
-To animate what leaves too, wrap an island's `@if` in `@transition`, with a name. The branch that's going stays in the page until its transition ends, and the one that's coming in gets classes to start from. These are Vue's classes, with your name as the prefix:
+To animate what leaves too, wrap an island's `@if` in `@transition`, with a name. It works inside a page; it isn't the browser's view transitions, which animate page changes (below). The branch that's going stays in the page until its transition ends, and the one that's coming in gets classes to start from. These are Vue's classes, with your name as the prefix:
 
 ```tscl [src/components/info-panel.tscl]
 <script>
@@ -113,7 +125,7 @@ In the default mode, the leaving and the entering branch are both in the page fo
 
 ## Page changes: view transitions
 
-Between pages, turn on [view transitions](/guide/navigation#view-transitions) once, from any island (`viewTransitions()` from `clarusjs/navigation`), or with `viewTransitions: true` in the docs theme. Each page change then cross-fades, and you change the animation with the `::view-transition-*` pseudo-elements. For example, the new page slides in from the right and the old one leaves to the left:
+View transitions are the browser's, for navigation: they animate the old page turning into the new one, and have nothing to do with `@transition`, which animates an `@if` inside an island. Between pages, turn on [view transitions](/guide/navigation#view-transitions) once, from any island (`viewTransitions()` from `clarusjs/navigation`), or with `viewTransitions: true` in the docs theme. Each page change then cross-fades, and you change the animation with the `::view-transition-*` pseudo-elements. For example, the new page slides in from the right and the old one leaves to the left:
 
 ```css
 ::view-transition-old(root) { animation: 0.3s ease both slide-out; }
