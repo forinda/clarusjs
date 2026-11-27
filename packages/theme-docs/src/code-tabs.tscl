@@ -19,7 +19,7 @@
     const group = el.closest('.code-group[data-sync]')
     if (!(group instanceof HTMLElement)) return
     const name = group.dataset.sync ?? ''
-    const tabs = () => [...group.querySelectorAll(':scope > input[type="radio"]')]
+    const tabs = () => [...group.querySelectorAll(':scope > input[type="radio"]')].filter((tab) => tab instanceof HTMLInputElement)
     const labelOf = (input) => input.nextElementSibling?.textContent?.trim() ?? ''
     function pick(label) {
       const input = tabs().find((tab) => labelOf(tab) === label)
