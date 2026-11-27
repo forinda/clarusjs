@@ -37,6 +37,7 @@ It runs at build time only: nothing of it reaches the browser.
   - **`container`** (`{ tag, from }`): render `::: tip` blocks and alerts through your own component, as `<tag [type]="'tip'">`, with a custom title in its `title` slot. Without it they're plain HTML.
   - **`titles`**: block titles, to translate them (`{ tip: 'Astuce', note: 'Remarque' }`).
   - **`copy`** (`{ tag, from }`): put your copy component in every code block.
+  - **`codeGroups`** (`{ tag, from }`): your sync component in each named code group (`::: code-group sdk`); theme-docs ships one, `@clarusjs/theme-docs/code-tabs.tscl`. See [Synced tabs](/guide/markdown#synced-tabs).
   - **`mermaid`** (`{ tag, from }`): ` ```mermaid ` blocks become `<pre class="mermaid">` with your diagram component after each (`attach="visible"`); theme-docs ships one, `@clarusjs/theme-docs/mermaid.tscl`. See [Diagrams](/guide/markdown#diagrams).
   - **`lineNumbers`** (`boolean`): number the lines of every code block except shell commands (`sh`, `bash`, `shell`, `zsh`, `console`, `powershell`, `ps1`). A shell script, with a file title (`[deploy.sh]`) or a `#!` first line, is numbered. `:no-line-numbers` after the language turns one block off.
   - **`quiz`** (`{ tag, from }`): render `::: quiz` blocks through your quiz component (an island). Without it they're static HTML that works without JavaScript.

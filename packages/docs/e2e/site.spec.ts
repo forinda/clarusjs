@@ -3182,3 +3182,36 @@ test('on a phone a wide diagram keeps its text readable: full size, scrolled sid
   await expect(region).toHaveAttribute('tabindex', '0')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true) // the page itself doesn't scroll sideways
 })
+
+test('synced code tabs: picking a language switches every group of that name, keeps the tab in place, and is remembered', async ({ page }) => {
+  await page.goto('/guide/markdown')
+  const groups = page.locator('#synced-tabs ~ .code-group[data-sync="sdk"]')
+  await expect(groups).toHaveCount(2)
+  const shown = (n: number) => groups.nth(n).locator('input:checked + label')
+  await expect(shown(0)).toHaveText('TypeScript')
+  await expect(page.locator('cl-island[c*="code-tabs"]').first()).toHaveAttribute('data-cl-ready', '')
+  // the second group: its tab stays where it was on screen while the first changes too
+  const python = groups.nth(1).getByText('Python', { exact: true })
+  await python.scrollIntoViewIfNeeded()
+  const before = (await python.boundingBox())!.y
+  await python.click()
+  await expect(shown(0)).toHaveText('Python')
+  await expect(shown(1)).toHaveText('Python')
+  await expect(groups.nth(0).locator('.code-block:visible')).toContainText('client = Acme(key=os.environ["ACME_KEY"])')
+  expect(Math.abs((await python.boundingBox())!.y - before)).toBeLessThan(2)
+  // the keyboard: arrows move between tabs, and the other group follows
+  await groups.nth(0).locator('input:checked').focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(shown(1)).toHaveText('Go')
+  // remembered on the next visit
+  await page.reload()
+  await expect(page.locator('cl-island[c*="code-tabs"]').first()).toHaveAttribute('data-cl-ready', '')
+  await expect(shown(0)).toHaveText('Go')
+  await expect(shown(1)).toHaveText('Go')
+  // Ruby is only in the second group: the first keeps its tab
+  await groups.nth(1).getByText('Ruby', { exact: true }).click()
+  await expect(shown(1)).toHaveText('Ruby')
+  await expect(shown(0)).toHaveText('Go')
+  // an unnamed group isn't touched
+  await expect(page.locator('.code-group:not([data-sync]) input:checked + label').first()).toHaveText('pnpm')
+})

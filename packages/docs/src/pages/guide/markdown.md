@@ -130,6 +130,87 @@ npm install @clarusjs/content
 ```
 :::
 
+### Synced tabs
+
+For an SDK in several languages, name the groups: `::: code-group sdk`. Groups with the same name switch together, matching tabs by their label, and the choice is remembered for the next page and the next visit. A group without the reader's language keeps its tab. Set it up with theme-docs' component:
+
+```ts [vite.config.ts]
+markdown({ codeGroups: { tag: 'codeTabs', from: '@clarusjs/theme-docs/code-tabs.tscl' } })
+```
+
+Pick a language in one group below and the other follows. The second has Ruby, which the first doesn't: pick it, and the first keeps its tab.
+
+::: code-group sdk
+```ts [TypeScript]
+import { Acme } from '@acme/sdk'
+
+const client = new Acme({ key: process.env.ACME_KEY })
+const user = await client.users.get('u_1')
+```
+```py [Python]
+from acme import Acme
+
+client = Acme(key=os.environ["ACME_KEY"])
+user = client.users.get("u_1")
+```
+```go [Go]
+import "github.com/acme/acme-go"
+
+client := acme.New(os.Getenv("ACME_KEY"))
+user, err := client.Users.Get("u_1")
+```
+```rust [Rust]
+use acme::Acme;
+
+let client = Acme::new(std::env::var("ACME_KEY")?);
+let user = client.users().get("u_1").await?;
+```
+:::
+
+::: code-group sdk
+```ts [TypeScript]
+function fibonacci(n: number): number {
+  let [a, b] = [0, 1]
+  for (let i = 0; i < n; i++) [a, b] = [b, a + b]
+  return a
+}
+```
+```py [Python]
+def fibonacci(n: int) -> int:
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+```
+```go [Go]
+func fibonacci(n int) int {
+	a, b := 0, 1
+	for i := 0; i < n; i++ {
+		a, b = b, a+b
+	}
+	return a
+}
+```
+```rust [Rust]
+fn fibonacci(n: u32) -> u64 {
+    let (mut a, mut b) = (0, 1);
+    for _ in 0..n {
+        (a, b) = (b, a + b);
+    }
+    a
+}
+```
+```ruby [Ruby]
+def fibonacci(n)
+  a, b = 0, 1
+  n.times { a, b = b, a + b }
+  a
+end
+```
+:::
+
+Without JavaScript, or without the option, each group works on its own. Your own component works too: it goes in each named group (`.code-group[data-sync]`), whose tabs are radio inputs, each followed by its label.
+
 ## Code in templates
 
 Code in a `.tscl` page (a page that has to stay a template) can be highlighted the same way, at build time. Add `highlightTemplates()` from `@clarusjs/content` before clarusjs:
