@@ -5,7 +5,6 @@ import { createReadStream, existsSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { extname, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { pipeline } from 'node:stream/promises'
 import { basePath } from '../server/head.ts'
 import { canonical, headersFor, readHeaders } from '../vite/headers.ts'
 import { acceptsEncoding, sendResponse, toRequest } from '../vite/node.ts'
@@ -91,15 +90,19 @@ export async function createListener(root = '.'): Promise<(req: IncomingMessage,
     res.statusCode = status
     res.setHeader('content-length', statSync(body).size)
     if (req.method === 'HEAD') return void res.end()
-    // A file that can't be read (permissions, removed since the lookup): a 500 if nothing was sent yet, never an
-    // unhandled stream error that ends the process.
-    pipeline(createReadStream(body), res).catch((err) => {
+    // A file that can't be read (permissions, removed since the lookup): a 500, never an unhandled stream error that
+    // ends the process. Piped only once open, so an open error still has the response to answer with (pipeline would
+    // destroy it first). An error later, mid-file, can only cut the response.
+    const stream = createReadStream(body)
+    stream.on('error', (err) => {
       if (res.headersSent) return void res.destroy(err)
       res.statusCode = 500
       res.removeHeader('content-length')
       res.removeHeader('content-encoding')
       res.end()
     })
+    stream.once('open', () => stream.pipe(res))
+    res.once('close', () => stream.destroy())
   }
 
   return async (req, res) => {

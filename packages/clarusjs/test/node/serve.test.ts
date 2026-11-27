@@ -218,7 +218,7 @@ test('serve(): a streamed response is sent as it comes (an open event stream), a
     controller.abort()
     if (process.platform !== 'win32' && process.getuid?.() !== 0) {
       chmodSync(resolve(root, 'dist/client/secret.txt'), 0o000)
-      expect((await fetch(`http://127.0.0.1:${port}/secret.txt`).catch(() => ({ status: 0 }))).status).not.toBe(200)
+      expect((await fetch(`http://127.0.0.1:${port}/secret.txt`).catch(() => ({ status: 0 }))).status).toBe(500)
       // Still serving.
       expect((await fetch(`http://127.0.0.1:${port}/`)).status).toBe(200)
     }
