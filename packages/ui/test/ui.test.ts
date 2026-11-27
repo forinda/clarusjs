@@ -17,6 +17,19 @@ test('every data-part a part renders has a rule', () => {
   expect(missing).toEqual([])
 })
 
+test("the editor's composer: every data-part it renders, and the suggestions its behaviour makes, has a rule", () => {
+  const components = resolve(import.meta.dirname, '../../editor/src/components')
+  const names = new Set(['suggestion'])
+  for (const f of readdirSync(components).filter((f) => f.endsWith('.tscl'))) {
+    for (const m of readFileSync(resolve(components, f), 'utf8').matchAll(/data-part="([\w-]+)"/g)) names.add(m[1]!)
+  }
+  expect(names.size).toBeGreaterThan(8)
+  expect([...names].filter((n) => !css.includes(`[data-part='${n}']`))).toEqual([])
+  // the placeholder, shown while the editor is empty, and mentions
+  expect(css).toMatch(/\[data-empty\][^{]*::before\s*\{[^}]*content: attr\(data-placeholder\)/)
+  expect(css).toContain('[data-mention]')
+})
+
 test('tokens: every --ui- colour has a dark value, set by the system or by data-theme', () => {
   const light = new Set([...css.matchAll(/(--ui-[\w-]+):\s*(#|rgb|oklch|color-mix)/g)].map((m) => m[1]))
   const dark = css.slice(css.indexOf('prefers-color-scheme: dark'))
@@ -37,7 +50,7 @@ test('nothing but CSS: no JavaScript in the package', () => {
 test('after the tokens, every rule sits in exactly one named part section (/* part: name */ … /* end part */)', () => {
   const body = css.slice(css.indexOf('/* part: ')).replace(/\}\s*$/, '') // inside @layer components { … }
   const names = [...body.matchAll(/\/\* part: ([\w-]+) \*\//g)].map((m) => m[1]!)
-  expect(names).toEqual(['focus', 'buttons', 'dialog', 'sheet', 'popover', 'tooltip', 'menu', 'accordion', 'tabs', 'toggle', 'switch-checkbox', 'radio-group', 'field-select', 'chips', 'combobox', 'chip-input', 'sidebar', 'toast', 'motion'])
+  expect(names).toEqual(['focus', 'buttons', 'dialog', 'sheet', 'popover', 'tooltip', 'menu', 'accordion', 'tabs', 'toggle', 'switch-checkbox', 'radio-group', 'field-select', 'chips', 'combobox', 'chip-input', 'sidebar', 'toast', 'composer', 'motion'])
   expect(body.match(/\/\* end part \*\//g)?.length).toBe(names.length)
   // Nothing outside a section but comments and whitespace.
   const outside = body.replace(/\/\* part: [\w-]+ \*\/[\s\S]*?\/\* end part \*\//g, '').replace(/\/\*[\s\S]*?\*\//g, '').trim()

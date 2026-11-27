@@ -864,6 +864,179 @@
   }
   /* end part */
 
+  /* part: composer */
+  /* Composer (@clarusjs/editor): the field (a textarea before the editor loads, the editable after: the same box),
+     then a footer with the toolbar, the count and Send. Suggestions float by the caret. */
+  :where([data-part='composer']) {
+    display: grid;
+    max-width: 640px;
+    border: 1px solid var(--ui-input);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+    font: var(--ui-font-size) var(--ui-font);
+  }
+  :where([data-part='composer']):focus-within {
+    border-color: var(--ui-ring);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+  }
+  :where([data-part='composer'])[data-over] {
+    border-color: var(--ui-danger);
+  }
+  :where([data-part='composer']) > :where([data-part='field']) {
+    display: block;
+    max-width: none;
+  }
+  :where([data-part='composer']) :where(textarea[data-part='field'], [data-part='field'] > [role='textbox']) {
+    position: relative;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: calc(var(--ui-space) * 16);
+    max-height: 40vh;
+    overflow-y: auto;
+    margin: 0;
+    padding: var(--ui-space-2) var(--ui-space-3);
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1.5;
+    resize: none;
+    outline: none; /* the composer's ring shows focus */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  :where([data-part='field'] > [role='textbox'][data-empty])::before {
+    content: attr(data-placeholder);
+    position: absolute;
+    inset: var(--ui-space-2) var(--ui-space-3) auto;
+    color: var(--ui-muted);
+    pointer-events: none;
+  }
+  :where([data-part='composer']) textarea::placeholder {
+    color: var(--ui-muted);
+  }
+  :where([data-part='field'] > [role='textbox']) :where(p) {
+    margin: 0;
+  }
+  :where([data-part='field'] > [role='textbox']) :where(code) {
+    padding: 0 0.25em;
+    border-radius: calc(var(--ui-radius) / 2);
+    background: var(--ui-muted-bg);
+    font: calc(var(--ui-font-size) - 1px) var(--ui-font-mono);
+  }
+  :where([data-part='field'] > [role='textbox']) :where(pre) {
+    margin: var(--ui-space-1) 0;
+    padding: var(--ui-space-2);
+    border-radius: calc(var(--ui-radius) / 2);
+    background: var(--ui-muted-bg);
+    font: calc(var(--ui-font-size) - 1px) var(--ui-font-mono);
+  }
+  :where([data-part='field'] > [role='textbox']) :where(pre code) {
+    padding: 0;
+    background: none;
+  }
+  :where([data-part='field'] > [role='textbox']) :where(a) {
+    color: var(--ui-accent);
+    text-decoration: underline;
+  }
+  :where([data-mention]) {
+    padding: 0 0.2em;
+    border-radius: calc(var(--ui-radius) / 2);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent-soft-fg);
+    font-weight: 600;
+  }
+  :where([data-part='composer']) > :where([data-part='footer']) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ui-space-2);
+    padding: var(--ui-space-1) var(--ui-space-2);
+    border-top: 1px solid var(--ui-border);
+  }
+  :where([data-part='composer']) :where([data-part='toolbar']) {
+    display: flex;
+    gap: var(--ui-space-1);
+    margin-right: auto;
+  }
+  :where([data-part='composer']) :where([data-part='button'], [data-part='attach']) {
+    min-width: var(--ui-control-sm);
+    height: var(--ui-control-sm);
+    padding: 0 var(--ui-space-1);
+    border: 0;
+    border-radius: calc(var(--ui-radius) - 2px);
+    background: transparent;
+    color: var(--ui-muted);
+    font: 600 var(--ui-font-size) var(--ui-font);
+    cursor: pointer;
+  }
+  :where([data-part='composer']) :where([data-part='button'], [data-part='attach']):hover {
+    background: var(--ui-muted-bg);
+    color: var(--ui-fg);
+  }
+  :where([data-part='composer']) :where([data-part='button'])[aria-pressed='true'] {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent-soft-fg);
+    box-shadow: inset 0 -2px 0 var(--ui-accent); /* not by colour alone */
+  }
+  :where([data-part='composer']) :where([data-part='button']):disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  :where([data-part='files'])[hidden] {
+    display: none;
+  }
+  :where([data-part='count']) {
+    color: var(--ui-muted);
+    font-size: calc(var(--ui-font-size) - 1px);
+    font-variant-numeric: tabular-nums;
+  }
+  :where([data-part='count'])[data-over] {
+    color: var(--ui-danger);
+    font-weight: 600;
+  }
+  :where([data-part='send']) {
+    height: var(--ui-control-sm);
+    padding: 0 var(--ui-space-3);
+    border: 0;
+    border-radius: calc(var(--ui-radius) - 2px);
+    background: var(--ui-accent);
+    color: var(--ui-accent-fg);
+    font: 600 var(--ui-font-size) var(--ui-font);
+    cursor: pointer;
+  }
+  :where([data-part='send']):disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  /* No display here: the behaviour shows and hides the list with the hidden attribute. */
+  :where([data-part='suggestions']) {
+    z-index: 50;
+    min-width: 200px;
+    max-height: 240px;
+    overflow-y: auto;
+    margin: 0;
+    padding: var(--ui-space-1);
+    list-style: none;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-popover);
+    color: var(--ui-popover-fg);
+    box-shadow: var(--ui-shadow);
+    font: var(--ui-font-size) var(--ui-font);
+  }
+  :where([data-part='suggestion']) {
+    padding: var(--ui-space-1) var(--ui-space-2);
+    border-radius: calc(var(--ui-radius) - 2px);
+    cursor: pointer;
+  }
+  :where([data-part='suggestion'])[aria-selected='true'] {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent-soft-fg);
+  }
+  /* end part */
+
   /* part: motion */
   @media (prefers-reduced-motion: reduce) {
     :where([data-part]),
