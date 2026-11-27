@@ -18,6 +18,7 @@ export { gitDates } from './sitemap.ts'
 import { writeManifest, type RouteParts } from './manifest.ts'
 import { writeNetlifyFunction } from './netlify.ts'
 import { writeVercelOutput } from './vercel.ts'
+import { writeCloudflareWorker } from './cloudflare.ts'
 import { checkLinks } from './links.ts'
 import { checkRedirects, redirectFor, writeRedirects } from './redirects.ts'
 import { loadServerEnv, writeEnvTypes, type EnvOption } from './env.ts'
@@ -234,9 +235,10 @@ export type ClarusOptions = {
   /**
    * Where server routes deploy. 'netlify': a Netlify Function (Frameworks API) next to the static files. 'vercel': the
    * Build Output API in .vercel/output (static files, one Node function, routes), with the server bundled.
+   * 'cloudflare': a worker in dist/client/_worker.js/ and _routes.json (Pages, or a Worker with static assets).
    * @see https://clarusjs.com/guide/deploy
    */
-  adapter?: 'netlify' | 'vercel'
+  adapter?: 'netlify' | 'vercel' | 'cloudflare'
   /** Fragment navigation: each static and server page also answers at <path>/index.frag.html. */
   fragments?: boolean
   /** Page sources for other file types, such as Markdown from @clarusjs/content: `sources: [markdown()]`. */
@@ -420,8 +422,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
   }
   const fileRe = new RegExp(`\\.(${extensions.map((e) => e.slice(1)).join('|')})(\\?|$)`)
   const glob = (dir: string) => JSON.stringify(extensions.map((e) => `${dir}/**/*${e}`))
-  if (options.adapter !== undefined && options.adapter !== 'netlify' && options.adapter !== 'vercel') {
-    throw new Error(`clarusjs: adapter "${options.adapter}" is not supported; use 'netlify' or 'vercel'`)
+  if (options.adapter !== undefined && !['netlify', 'vercel', 'cloudflare'].includes(options.adapter)) {
+    throw new Error(`clarusjs: adapter "${options.adapter}" is not supported; use 'netlify', 'vercel' or 'cloudflare'`)
   }
   let root = process.cwd()
   let command: 'build' | 'serve' = 'serve'
@@ -492,8 +494,8 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           if (name) shipping.add(name)
         }
         if (shipping.size) config.ssr = { noExternal: [...shipping] }
-        // Vercel runs the server with nothing installed: every dependency goes in the bundle.
-        if (options.adapter === 'vercel') config.ssr = { noExternal: true }
+        // Vercel and Cloudflare run the server with nothing installed: every dependency goes in the bundle.
+        if (options.adapter === 'vercel' || options.adapter === 'cloudflare') config.ssr = { noExternal: true }
       }
       if (env.command !== 'build') return config
       if (userConfig.base !== undefined && !userConfig.base.startsWith('/') && !/^https?:\/\//.test(userConfig.base)) {
@@ -721,6 +723,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
         if (options.compress) precompress(out)
         // Adapters last: they copy dist/client as it ships (no .vite manifest).
         if (options.adapter === 'vercel') writeVercelOutput(builder.config.root, out, dirname(entry), server.map((s) => s.route), builder.config.base, options.fragments === true)
+        if (options.adapter === 'cloudflare') writeCloudflareWorker(out, dirname(entry), server.map((s) => s.route), builder.config.base, options.fragments === true)
       }
       await once()
       if (watching) watchApp(builder, once)

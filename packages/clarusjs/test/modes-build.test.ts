@@ -66,7 +66,7 @@ test('#32: adapter netlify writes a function that serves the server routes with 
 
 test('#32: the adapter config is checked', async () => {
   const { default: clarusjs } = await import('../src/vite/plugin.ts')
-  expect(() => clarusjs({ adapter: 'heroku' as 'netlify' })).toThrow(`clarusjs: adapter "heroku" is not supported; use 'netlify' or 'vercel'`)
+  expect(() => clarusjs({ adapter: 'heroku' as 'netlify' })).toThrow(`clarusjs: adapter "heroku" is not supported; use 'netlify', 'vercel' or 'cloudflare'`)
 })
 
 test('#32: Netlify paths use URLPattern syntax, with literal text escaped', async () => {

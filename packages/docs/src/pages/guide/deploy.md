@@ -30,6 +30,30 @@ clarusjs({ adapter: 'vercel', routes: { '/account/*': 'server' } })
 
 In the Vercel project, set the build command to `vite build` (or `npm run build`) and leave the output directory empty: Vercel uses `.vercel/output` when it's there. Add `.vercel` to `.gitignore`. A fully static site needs no adapter: set the output directory to `dist/client` instead.
 
+## Cloudflare {since=0.17.0}
+
+Set `adapter: 'cloudflare'`. The build adds a worker for server routes to `dist/client`, and Cloudflare serves everything else as static files, with your headers and redirects.
+
+```ts [vite.config.ts]
+clarusjs({ adapter: 'cloudflare', routes: { '/account/*': 'server' } })
+```
+
+**Pages:** set the build command to `vite build` and the output directory to `dist/client`, or run `wrangler pages deploy dist/client`. Turn on the `nodejs_compat` compatibility flag, because the server uses `AsyncLocalStorage`.
+
+**Workers:** point a `wrangler.jsonc` at the same folder. `run_worker_first` sends the server routes to the worker, and everything else is served as a static file:
+
+```jsonc [wrangler.jsonc]
+{
+  "name": "my-site",
+  "main": "dist/client/_worker.js/index.js",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "dist/client", "binding": "ASSETS", "run_worker_first": ["/account/*"] }
+}
+```
+
+On Cloudflare, `process.env` holds the project's variables and secrets (with `nodejs_compat` and a compatibility date from 2025-04-01 on), so server code reads them as on any host. See [Environment variables](/guide/environment-variables).
+
 ## Node {since=0.17.0}
 
 On any host that runs Node (a VPS, Fly.io, Render, Railway, a container), build, then serve:
