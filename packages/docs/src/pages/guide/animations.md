@@ -13,7 +13,7 @@ description: "Animate what @if and @for insert with CSS alone (@starting-style),
 
 Three things here are called a transition. They animate different things:
 
-| | Animates | Where | Written as |
+| Kind | Animates | Where | Written as |
 |---|---|---|---|
 | [CSS transitions with `@starting-style`](#entering-starting-style) | an element appearing (`@if`, `@for`, or on page load) | any page, no JavaScript | CSS: `transition` and `@starting-style` |
 | [`@transition`](#transition) | an island's `@if` branches entering and leaving: the old one stays until it has animated out | in an island; loads `clarusjs/motion` (1.8 KB) | a block in the template, plus Vue's classes in CSS |
