@@ -2,12 +2,12 @@
 title: "Animations"
 group: "Templates"
 order: 14
-description: "Animate what @if and @for insert with CSS alone (@starting-style), page changes with view transitions, and respect reduced motion."
+description: "Animate what @if and @for insert with CSS alone (@starting-style), what @if removes with @transition, page changes with view transitions, and respect reduced motion."
 ---
 
 # Animations
 
-<p class="lead">Most animation needs no JavaScript: CSS animates what an island's <code>@if</code> and <code>@for</code> insert, and page changes run as view transitions. Here is what works today, and what's next.</p>
+<p class="lead">Most animation needs no JavaScript: CSS animates what an island's <code>@if</code> and <code>@for</code> insert, <code>@transition</code> plays what an <code>@if</code> removes before it goes, and page changes run as view transitions.</p>
 
 ## Entering: @starting-style
 
@@ -59,9 +59,57 @@ The same technique, taken further: each digit is a row of a `@for` keyed by its 
 
 The whole clock is in `src/components/flip-clock.tscl` on this site: about 30 lines of script and markup, no animation code.
 
-## Leaving
+## @transition {since=0.17.0}
 
-Leaving is instant for now: `@if` and `@for` remove the elements at once, so there's nothing to animate. An `@transition` block that waits for a leave (and moves list rows into place) is coming, with Vue's class names: `fade-enter-from`, `fade-leave-to` and the rest.
+To animate what leaves too, wrap an island's `@if` in `@transition`, with a name. The branch that's going stays in the page until its transition ends, and the one that's coming in gets classes to start from. These are Vue's classes, with your name as the prefix:
+
+```tscl [src/components/info-panel.tscl]
+<script>
+  let open = state(true)
+</script>
+
+<div>
+  <button type="button" (click)="open = !open">Toggle</button>
+  @transition ('fade') {
+    @if (open) {
+      <p class="panel">Hello</p>
+    }
+  }
+</div>
+```
+
+```css
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s, translate 0.2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; translate: 0 8px; }
+```
+
+| Class | On the element |
+|---|---|
+| `fade-enter-from` | for its first frame in: where it starts |
+| `fade-enter-active` | for the whole enter: put the `transition` here |
+| `fade-enter-to` | from the second frame until its enter ends |
+| `fade-leave-from`, `fade-leave-active`, `fade-leave-to` | the same for leaving; once it ends, the element is removed |
+
+An enter or leave ends when the element's animations do (CSS transitions, CSS animations and the Web Animations API alike), and after 5 seconds at most. `@transition { … }` without a name uses `cl-enter-from` and the rest. A leaving element can't be focused or clicked, and it no longer belongs to the island. If the branch changes again while it's leaving, the branch that's back is a fresh copy.
+
+<transitionDemo />
+
+### Options
+
+`@transition ('fade', { … })` takes options as its second argument:
+
+| Option | Does |
+|---|---|
+| `mode: 'out-in'` | the new branch comes once the old one has left, as the steps above do. `'in-out'`: the new one enters first, then the old one leaves. By default both run at once |
+| `appear: true` | the branch the page loaded with enters too, when the island attaches |
+| `duration: 300` or `{ enter, leave }` | wait this long (ms) instead of the animations |
+| `css: false` | no classes: only the hooks run |
+| `onBeforeEnter(el)`, `onEnter(el, done)`, `onAfterEnter(el)`, `onEnterCancelled(el)` | Vue's hooks. With a `done` parameter, the enter waits until it's called |
+| `onBeforeLeave(el)`, `onLeave(el, done)`, `onAfterLeave(el)` | the same for leaving |
+
+In the default mode, the leaving and the entering branch are both in the page for a moment. Take the leaving one out of the flow, for example with `.fade-leave-active { position: absolute }`, so the page doesn't jump. A branch whose top element is a stateful component animates that component's own root element.
+
+`@transition` needs an island (a `<script>` or a `@model` input), and wraps one `@if`. It isn't available for `@for` yet: rows moving into place are next. The transition code (1.7 KB gzip) loads only in islands that use it.
 
 ## Page changes: view transitions
 
@@ -83,6 +131,7 @@ Some visitors ask their system for less motion. Keep fades, drop movement:
 ```css
 @media (prefers-reduced-motion: reduce) {
   .panel, .rows li { transition: opacity 0.2s; translate: none; }
+  .fade-enter-active, .fade-leave-active { transition: none; } /* @transition: nothing to wait for, so it goes at once */
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; } /* named parts move in their group */
 }
 ```

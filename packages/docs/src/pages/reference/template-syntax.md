@@ -26,6 +26,7 @@ description: "Every directive and binding in .tscl templates, on one page."
 | `@for (x of xs; track x.id) { } @empty { }` | repeat content | [Lists](/guide/lists) |
 | `@for (x of xs; track x.id; let i = $index) { }` | name a row's `$index` (or `$count`, `$first`…) for a nested loop | [Lists](/guide/lists#nested-loops) |
 | `@await (p) { } @then (v) { } @catch (e) { }` | show a promise's states: pending, its value, its error | [Fetching data](/guide/fetching#in-an-island-await) |
+| `@transition ('fade', { mode }) { @if (…) { } }` {since=0.17.0} | play an island's `@if` branches in and out, with Vue's classes (`fade-enter-from`…), `mode`, `appear`, `duration` and hooks | [Animations](/guide/animations#transition) |
 | `<fragment> … </fragment>` {since=0.16.0} | group elements without rendering one; takes no attributes | [Components](/guide/components#several-elements-without-a-wrapper-fragment) |
 | `<slot />, <slot name="x">fallback</slot>` | where wrapped content goes | [Slots](/guide/slots) |
 | `<icon name="set:name" />` | an icon, inlined as SVG at build time (built in, no import) | [Icons](/guide/icons) |

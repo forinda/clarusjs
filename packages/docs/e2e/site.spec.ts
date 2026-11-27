@@ -2944,6 +2944,36 @@ test('animations guide: what @if and @for insert animates in with @starting-styl
   expect(await page.locator('.enter-rows li').last().evaluate((el) => getComputedStyle(el).translate)).toBe('none')
 })
 
+test('animations guide: @transition plays the leave before removing the panel, and out-in waits for the old step', async ({ page }) => {
+  await page.goto('/guide/animations')
+  const demo = page.locator('cl-island[c="transition-demo"]')
+  await expect(demo).toHaveAttribute('data-cl-ready', '')
+  // Leaving: still there, inert and in its leave classes, then gone once its 200 ms transition ends.
+  await demo.getByRole('button', { name: 'Hide the panel' }).click()
+  const panel = demo.locator('.transition-panel')
+  await expect(panel).toHaveClass(/fade-leave-active/)
+  await expect(panel).toHaveAttribute('inert', '')
+  await expect(panel).toHaveCount(0)
+  // Entering again: the enter classes, then none.
+  await demo.getByRole('button', { name: 'Show the panel' }).click()
+  await expect(demo.locator('.transition-panel')).toHaveClass(/fade-enter-active/)
+  await expect(demo.locator('.transition-panel')).toHaveClass('transition-panel')
+  // out-in: the next step is inserted only once the current one has left.
+  await page.evaluate(() => {
+    const seen: string[] = []
+    ;(window as { seen?: string[] }).seen = seen
+    new MutationObserver(() => seen.push([...document.querySelectorAll('.transition-step')].map((s) => s.getAttribute('data-step')).join(','))).observe(document.querySelector('.transition-steps')!, { childList: true, subtree: true })
+  })
+  await demo.getByRole('button', { name: 'Next step' }).click()
+  await expect(demo.locator('.transition-step')).toHaveAttribute('data-step', '2')
+  await expect(demo.locator('.transition-step')).toHaveCount(1)
+  expect(await page.evaluate(() => (window as { seen?: string[] }).seen!.includes('1,2'))).toBe(false) // never both at once
+  // Reduced motion: nothing to wait for, so the panel goes at once.
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await demo.getByRole('button', { name: 'Hide the panel' }).click()
+  await expect(demo.locator('.transition-panel')).toHaveCount(0, { timeout: 500 })
+})
+
 test('animations guide: the flip clock shows the time and flips only the digits that change', async ({ page }) => {
   await page.clock.install({ time: new Date(2026, 10, 26, 10, 59, 58) })
   await page.goto('/guide/animations')
