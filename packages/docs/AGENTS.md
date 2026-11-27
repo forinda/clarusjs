@@ -95,13 +95,14 @@ place with a `-move` class (`.list-move { transition: transform 0.3s }`). Don't 
 
 ### Rich text
 
-For a chat or comment box, use `<editor-composer>` from `@clarusjs/editor` (`@import editorComposer from
-'@clarusjs/editor/components/composer.tscl'`) with `attach="interaction"`: a plain textarea until focused, then the
-editor. Bind `[(value)]` (ProseMirror JSON, or HTML with `[format]="'html'"`), handle `(send)`, answer `(search)` with
-`$event.respond(people)` for @mentions, and take `(files)` to upload. Don't wrap a React editor in an island. On the
-server, check what's sent before storing it: `validate(body, composerExtensions(), { maxLength })` from
-`@clarusjs/editor/server`, and show stored values with `renderHTML()`. To build your own, `[use]` the `editor`,
-`toolbar` and `suggestion` behaviours.
+For rich text, put `@clarusjs/editor`'s parts together; don't wrap a React editor in an island. `<editor-field>`
+(`@import editorField from '@clarusjs/editor/components/field.tscl'`, with `attach="interaction"` and an `[id]`) is a
+textarea until focused, then the editor: bind `[(value)]` (ProseMirror JSON, or HTML with `[format]="'html'"`) and
+handle `(send)` and `(files)`. The other parts name it with `[field]="'that id'"`: `<editor-toolbar>` with
+`<editor-tool command="bold">`, `<editor-suggestions char="@">` (answer `(search)` with `$event.respond(people)`), `"/"`
+with `[commands]`, `":"` for emoji, `<editor-count>`, `<editor-send>`, `<editor-files>`. On the server, check what's
+sent before storing it: `validate(body, composerExtensions(), { format: form.get('<name>-format'), maxLength })` from
+`@clarusjs/editor/server`; show stored values with `renderHTML()`, or in the browser with the `content` behaviour.
 
 ### Tag names
 

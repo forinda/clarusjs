@@ -1,5 +1,11 @@
-{{-- The editor guide's composer: messages sent into a list, people to mention, a /shrug command, and emoji. --}}
-@import editorComposer from '@clarusjs/editor/components/composer.tscl'
+{{-- The editor guide's composer, made of the parts: messages sent into a list, people to mention, a /shrug command,
+     emoji, a limit. ui.clarusjs.com has it as a block to copy. --}}
+@import editorField from '@clarusjs/editor/components/field.tscl'
+@import editorToolbar from '@clarusjs/editor/components/toolbar.tscl'
+@import editorTool from '@clarusjs/editor/components/tool.tscl'
+@import editorSuggestions from '@clarusjs/editor/components/suggestions.tscl'
+@import editorCount from '@clarusjs/editor/components/count.tscl'
+@import editorSend from '@clarusjs/editor/components/send.tscl'
 
 <script>
   const people = [
@@ -36,17 +42,31 @@
       <li class="none">No messages yet. Type one, @ to mention, / for commands, : for emoji.</li>
     }
   </ul>
-  <editorComposer
-    attach="interaction"
-    [id]="'guide-composer'"
-    [label]="'Message'"
-    [placeholder]="'Message #general'"
-    [maxLength]="500"
-    [commands]="commands"
-    (send)="post($event.value)"
-    (search)="$event.respond(find($event.query))"
-    (command)="run($event)"
-  />
+  <form class="composer" (submit)="$event.preventDefault()">
+    <editorField
+      class="field"
+      attach="interaction"
+      [id]="'guide-message'"
+      [label]="'Message'"
+      [placeholder]="'Message #general'"
+      [maxLength]="500"
+      (send)="post($event.value)"
+    />
+    <editorSuggestions [field]="'guide-message'" char="@" (search)="$event.respond(find($event.query))" />
+    <editorSuggestions [field]="'guide-message'" char="/" [commands]="commands" (command)="run($event)" />
+    <editorSuggestions [field]="'guide-message'" char=":" />
+    <div class="footer">
+      <editorToolbar [field]="'guide-message'">
+        <editorTool command="bold" label="Bold"><b>B</b></editorTool>
+        <editorTool command="italic" label="Italic"><i>I</i></editorTool>
+        <editorTool command="code" label="Code">&lt;/&gt;</editorTool>
+        <editorTool command="link" label="Link">🔗</editorTool>
+        <editorTool command="codeBlock" label="Code block">{ }</editorTool>
+      </editorToolbar>
+      <editorCount [field]="'guide-message'" />
+      <editorSend [field]="'guide-message'" />
+    </div>
+  </form>
 </div>
 
 <style scoped>
@@ -77,6 +97,31 @@
     border-radius: 8px;
     background: var(--bg-soft, transparent);
     white-space: pre-wrap;
+  }
+  .composer {
+    display: grid;
+    min-width: 0;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .composer:focus-within {
+    border-color: var(--ui-ring);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+  }
+  .field {
+    border: 0;
+    box-shadow: none;
+  }
+  .footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-top: 1px solid var(--rule);
+  }
+  .footer > :first-child {
+    margin-right: auto;
   }
   .messages .none {
     background: none;

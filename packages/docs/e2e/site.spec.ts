@@ -3059,7 +3059,7 @@ test('editor: the composer is a textarea until used; its code loads on first foc
   await page.goto('/guide/editor-composer')
   const demo = page.locator('.composer-demo')
   await expect(demo.locator('textarea')).toHaveCount(1)
-  const composerCode = () => requests.filter((u) => /\/composer-(?!demo)[\w-]+\.js$/.test(u))
+  const composerCode = () => requests.filter((u) => /\/editor\/src\/components\/field-[\w-]+\.js$/.test(u)) // the editor's field (ui-primitives has a field chunk too)
   expect(composerCode()).toEqual([])
   await demo.getByRole('textbox', { name: 'Message' }).click()
   await page.keyboard.type('Hi all')
@@ -3090,7 +3090,7 @@ test('user: in the guide, long words and code lines wrap inside the composer; no
     await demo.getByRole('button', { name: 'Code block' }).click()
     await page.keyboard.type('const longLine = "' + 'y'.repeat(160) + '"')
     for (let i = 0; i < 20; i++) await page.keyboard.press('Enter')
-    const sizes = await demo.locator('[data-part=composer]').evaluate((el, width) => {
+    const sizes = await demo.locator('form.composer').evaluate((el, width) => {
       const box = el.querySelector('[contenteditable]')!
       const rect = el.getBoundingClientRect(), demoRect = el.closest('.composer-demo')!.getBoundingClientRect()
       return { width, editable: box.scrollWidth - box.clientWidth, composer: el.scrollWidth - el.clientWidth, right: Math.max(0, Math.round(rect.right - demoRect.right)), page: document.documentElement.scrollWidth - innerWidth }
