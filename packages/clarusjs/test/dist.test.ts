@@ -107,10 +107,13 @@ test('the clarusjs command is built, with a shebang', () => {
 // nested-sections fixes and touched/dirty/shown (#443) no longer fit. The tarball stays 170 KB (166,570 B on main).
 // 180 / 640 KB: main is at 171,886 / 613,490 B (2.2 KB and 910 B of room); clarusjs/navigation's query, history state
 // and scroll (searchParams, setSearch, navigationState, scroll: false) with their docs add ~1.5 / ~5 KB.
-test('size budget: the published package stays small (tarball 180 KB, unpacked 640 KB)', () => {
+// 190 / 670 KB: the deploy epic (#599: clarusjs serve and clarusjs/node, _headers, .env loading and the env option,
+// the Vercel and Cloudflare adapters) leaves the package at 183,071 / 648,744 B (1.2 KB and 6.6 KB of room), and
+// clarusjs/seo's typed JSON-LD builders (#606) add 2,005 / 7,407 B: 185,076 / 656,151 B, past both.
+test('size budget: the published package stays small (tarball 190 KB, unpacked 670 KB)', () => {
   const [info] = JSON.parse(execSync('npm pack --dry-run --json --ignore-scripts', { cwd: pkgDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
-  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(180 * 1024)
-  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(640 * 1024)
+  expect(info.size, `tarball ${info.size} B`).toBeLessThanOrEqual(190 * 1024)
+  expect(info.unpackedSize, `unpacked ${info.unpackedSize} B`).toBeLessThanOrEqual(670 * 1024)
 }, 30_000) // npm pack takes over 5 s when every package's tests run at once
 
 test('#197: sideEffects lists only the browser scripts that start work when loaded (bundlers drop the rest when unused)', () => {
