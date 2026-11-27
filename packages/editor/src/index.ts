@@ -5,6 +5,7 @@ export { buildSchema, defineExtension, type Extension, type MarkSpec, type NodeS
 export { editor, editorOf } from './behaviours/editor.ts'
 export type { Emoji } from './emoji.ts'
 export { toolbar } from './behaviours/toolbar.ts'
+export { content } from './behaviours/content.ts'
 export { plainText } from './core/plain-text.ts'
 export { loadEmoji, searchEmoji, suggestion, type SuggestionItem, type SuggestionOptions } from './behaviours/suggestion.ts'
 export { base } from './extensions/base.ts'

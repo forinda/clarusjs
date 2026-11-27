@@ -2,8 +2,6 @@
 @import editorComposer from '@clarusjs/editor/components/composer.tscl'
 
 <script>
-  // the plain-text helper alone: the editor's own code loads with the composer, on first focus
-  import { plainText } from '@clarusjs/editor/plain-text'
   const people = [
     { id: 'mara', label: 'Mara Okafor' },
     { id: 'marcus', label: 'Marcus Lee' },
@@ -13,7 +11,16 @@
   const commands = [{ id: 'shrug', label: 'Shrug', keywords: ['shrug'] }]
   let sent = state([])
   function post(value) {
-    sent = [...sent, { id: sent.length + 1, text: plainText(value, 'json') }]
+    sent = [...sent, { id: sent.length + 1, value }]
+  }
+  // A sent message, shown as it was typed (bold, code, mentions, links). Imported once something is sent: by then
+  // the composer has loaded the editor's code, so this adds nothing.
+  function show(el, value) {
+    let stop
+    import('@clarusjs/editor').then(({ content, composerExtensions }) => {
+      stop = content(el, { value, format: 'json', extensions: composerExtensions() })
+    })
+    return () => stop?.()
   }
   const find = (query) => people.filter((p) => p.label.toLowerCase().includes(query.toLowerCase()))
   function run(event) {
@@ -24,7 +31,7 @@
 <div class="demo">
   <ul class="messages" aria-label="Messages" aria-live="polite">
     @for (m of sent; track m.id) {
-      <li>{{ m.text }}</li>
+      <li [use]="(el) => show(el, m.value)"></li>
     } @empty {
       <li class="none">No messages yet. Type one, @ to mention, / for commands, : for emoji.</li>
     }
@@ -58,6 +65,13 @@
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+  .messages li :where(p, pre) {
+    margin: 0;
+  }
+  .messages li :where(pre) {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
   .messages li {
     padding: var(--ui-space-2) var(--ui-space-3);
