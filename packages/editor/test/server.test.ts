@@ -45,3 +45,15 @@ test('renderHTML escapes text and attributes, and renders marks and breaks', () 
   expect(renderHTML(doc([text('go', [{ type: 'link', attrs: { href: '/a?x="1"&y' } }]), { type: 'hard_break' }, text('on')]), [base, link])).toBe('<p><a href="/a?x=&quot;1&quot;&amp;y">go</a><br>on</p>')
   expect(renderHTML('<p>From <i>html</i></p>', [base], { format: 'html' })).toBe('<p>From html</p>')
 })
+
+test('URL checks follow what is rendered: any attribute name, the real tag, and values that aren\'t strings', () => {
+  // an attribute not called href, rendered as an image's src
+  const picture = defineExtension({ name: 'picture', nodes: { picture: { attrs: { url: {} }, inline: true, group: 'inline', render: (n) => ['img', { src: n.attrs.url }] } } })
+  const pic = (url: unknown) => doc([{ type: 'picture', attrs: { url } }])
+  expect(validate(pic('javascript:alert(1)'), [base, picture])).toEqual({ ok: false, error: 'unsafe URL: javascript:alert(1)' })
+  expect(validate(pic('/a.png'), [base, picture]).ok).toBe(true)
+  // an href that is an array or an object (type confusion), never a string
+  const bad = (href: unknown) => doc([text('x', [{ type: 'link', attrs: { href } }])])
+  expect(validate(bad(['javascript:alert(1)']), [base, link])).toEqual({ ok: false, error: 'invalid attribute: href' })
+  expect(validate(bad({ toString: () => 'javascript:alert(1)' }), [base, link])).toEqual({ ok: false, error: 'invalid attribute: href' })
+})

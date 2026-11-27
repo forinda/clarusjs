@@ -35,18 +35,26 @@ function parse(value: string | object, schema: Schema, format: Format): Node {
   return doc
 }
 
-/** The first URL attribute (href, src) that isn't safe, on a node or a mark, or undefined. */
-function unsafeUrl(doc: Node): string | undefined {
+/**
+ * The first problem in what the document would render, or undefined: every attribute of every node's and mark's
+ * `render` spec, at the tag it's rendered on, must be a plain value (not an object or array) that clarusjs's attribute
+ * check keeps as it is (a URL with an unsafe scheme, under any attribute name, fails).
+ */
+function renderProblem(doc: Node): string | undefined {
   let found: string | undefined
-  const check = (attrs: Record<string, unknown>, tag: string) => {
-    for (const name of ['href', 'src']) {
-      if (found || typeof attrs[name] !== 'string') continue
-      if (attrValue(name, attrs[name], tag) === UNSAFE_URL) found = attrs[name] as string
+  const walk = (spec: DOMOutputSpec) => {
+    if (found || !Array.isArray(spec)) return
+    const [tag, ...rest] = spec as [string, ...unknown[]]
+    const attrs = rest[0] && typeof rest[0] === 'object' && !Array.isArray(rest[0]) ? (rest[0] as Record<string, unknown>) : undefined
+    for (const [name, value] of Object.entries(attrs ?? {})) {
+      if (value != null && typeof value === 'object') return void (found = `invalid attribute: ${name}`)
+      if (typeof value === 'string' && attrValue(name, value, tag) === UNSAFE_URL) return void (found = `unsafe URL: ${value}`)
     }
+    for (const child of rest.slice(attrs ? 1 : 0)) walk(child as DOMOutputSpec)
   }
   doc.descendants((node) => {
-    check(node.attrs, node.type.name)
-    for (const mark of node.marks) check(mark.attrs, 'a')
+    if (!node.isText && node.type.spec.toDOM) walk(node.type.spec.toDOM(node))
+    for (const mark of node.marks) walk(mark.type.spec.toDOM!(mark, true))
     return !found
   })
   return found
@@ -68,8 +76,8 @@ export function validate(value: string | object, extensions: Extension[], option
   } catch (err) {
     return { ok: false, error: (err as Error).message }
   }
-  const url = unsafeUrl(doc)
-  if (url !== undefined) return { ok: false, error: `unsafe URL: ${url}` }
+  const problem = renderProblem(doc)
+  if (problem) return { ok: false, error: problem }
   if (options.maxLength !== undefined) {
     const n = docLength(doc)
     if (n > options.maxLength) return { ok: false, error: `too long: ${n} of ${options.maxLength}` }
@@ -107,7 +115,7 @@ function specHTML(spec: DOMOutputSpec, inner: () => string): string {
   }
   if (VOID.has(tag)) return `<${tag}${attrs}>`
   let body = ''
-  for (const child of rest.slice(i)) body += child === 0 ? inner() : specHTML(child as DOMOutputSpec, inner)
+  for (const child of rest.slice(i)) body += child === 0 ? inner() : typeof child === 'string' ? escapeText(child) : specHTML(child as DOMOutputSpec, inner)
   return `<${tag}${attrs}>${body}</${tag}>`
 }
 
