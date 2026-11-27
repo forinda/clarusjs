@@ -20,7 +20,10 @@ test('an interpolated or bound URL gets the base once; a full URL from data stay
   const html = await server('@input slug: string = \'\'\n@input url: string = \'\'\n<p><a href="/p/{{ slug }}">a</a><a [href]="url">b</a></p>', { slug: '7', url: 'https://x.dev/a' }, 'dyn')
   expect(urls(html)).toEqual(['href=/docs/p/7', 'href=https://x.dev/a'])
   const route = await server('@input url: string = \'\'\n<a [href]="url">x</a>', { url: '/guide/intro' }, 'route')
-  expect(urls(route)).toEqual(['href=/docs/guide/intro']) // paths are base-free: a route named like a part of the base still gets it
+  expect(urls(route)).toEqual(['href=/docs/guide/intro'])
+  // a URL already under the base (href() from clarusjs/navigation gives one) is left as it is
+  const made = await server('@input url: string = \'\'\n<a [href]="url">x</a><a href="/docs/written">y</a>', { url: '/docs/guide' }, 'made')
+  expect(urls(made)).toEqual(['href=/docs/guide', 'href=/docs/written'])
 })
 
 test('in an island: the base stays after attach, after a change, and in rows the browser adds', async () => {

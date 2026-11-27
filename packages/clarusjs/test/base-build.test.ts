@@ -78,3 +78,11 @@ test('a same-origin link outside the base is a warning, not a failed build', asy
   await (await createBuilder({ root, configFile: false, base: '/docs/', customLogger: logger, plugins: [clarusjs({ routes, site: { url: 'https://example.com' } })] })).buildApp()
   expect(warnings.some((w) => /other-repo.*outside the base/.test(w))).toBe(true)
 })
+
+test('a route that starts with the base itself is a warning: its links can\'t be told from the base\'s own', async () => {
+  const root = app(files)
+  const warnings: string[] = []
+  const logger = { info() {}, warn: (m: string) => warnings.push(m), warnOnce() {}, error() {}, clearScreen() {}, hasErrorLogged: () => false, hasWarned: false }
+  await (await createBuilder({ root, configFile: false, base: '/about/', customLogger: logger, plugins: [clarusjs({ routes })] })).buildApp()
+  expect(warnings.some((w) => /route \/about starts with the base \/about\//.test(w))).toBe(true)
+})

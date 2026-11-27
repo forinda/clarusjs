@@ -115,8 +115,8 @@ const rooted = (u: string) => u.startsWith('/') && !u.startsWith('//')
 export const isBaseAttr = (name: string): boolean => BASE_ATTRS.has(name.toLowerCase()) || name.toLowerCase() === 'srcset'
 
 /**
- * A URL attribute's value with the site's base: a root-relative URL (one `/`) gets it, once (paths are written
- * without it); `srcset` gets it on each candidate. Anything else (another attribute, a full or `//` URL, `#`, `?`, a
+ * A URL attribute's value with the site's base: a root-relative URL (one `/`) gets it, unless it's already under it
+ * (`href()` and `withBase()` give such URLs), so the base never doubles; `srcset` gets it on each candidate. Anything else (another attribute, a full or `//` URL, `#`, `?`, a
  * relative path, a value that isn't a string) is returned as it is, and base `/` changes nothing.
  * @internal The compiler and h() call this; apps use `withBase()` from clarusjs/navigation.
  */
@@ -124,7 +124,8 @@ export function baseUrl(base: string, name: string, value: unknown): unknown {
   if (base === '/' || typeof value !== 'string') return value
   const n = name.toLowerCase()
   const prefix = base.replace(/\/$/, '')
-  if (BASE_ATTRS.has(n)) return rooted(value) ? prefix + value : value
+  const add = (u: string) => (rooted(u) && u !== prefix && !u.startsWith(prefix + '/') ? prefix + u : u)
+  if (BASE_ATTRS.has(n)) return add(value)
   if (n !== 'srcset') return value
   // As HTML reads a srcset: a URL runs to the next whitespace (commas inside it stay), commas at its end part two
   // candidates, and its descriptors (1x, 640w) run to the next comma.
@@ -138,7 +139,7 @@ export function baseUrl(base: string, name: string, value: unknown): unknown {
     let url = value.slice(i, j)
     const commas = /,+$/.exec(url)?.[0] ?? ''
     url = url.slice(0, url.length - commas.length)
-    out += (rooted(url) ? prefix + url : url) + commas
+    out += add(url) + commas
     i = j
     if (commas) continue
     while (j < value.length && value[j] !== ',') j++

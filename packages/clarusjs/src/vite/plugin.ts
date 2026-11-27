@@ -642,6 +642,11 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
           pageRoutes.push(...moved)
           clientRoutes.push(...moved)
         }
+        // A route starting with the base itself (/about/ base, /about route): its links look like the base's own.
+        const prefix = basePath(builder.config.base).replace(/\/$/, '')
+        if (prefix) for (const r of [...pageRoutes, ...server.map((x) => x.route)]) {
+          if (r === prefix || r.startsWith(prefix + '/')) builder.config.logger.warn(`clarusjs: route ${r} starts with the base ${builder.config.base}: links to it can't be told from links under the base; rename the route or the base`)
+        }
         const issues = checkLinks({
           outDir: out,
           routes: pageRoutes,

@@ -15,8 +15,9 @@ test('baseUrl: a root-relative URL attribute gets the base; everything else is a
   expect(b('href', null)).toBe(null)
   expect(b('data-href', '/x')).toBe('/x')
   expect(b('title', '/x')).toBe('/x')
-  // paths are base-free: a route named like the base still gets it
-  expect(baseUrl('/guide/', 'href', '/guide/intro')).toBe('/guide/guide/intro')
+  // already under the base (href(), withBase(), written by hand): left as it is, so the base never doubles
+  expect([b('href', '/docs/a'), b('href', '/docs'), b('href', '/docs/'), b('href', '/documents')]).toEqual(['/docs/a', '/docs', '/docs/', '/docs/documents'])
+  expect(baseUrl('/guide/', 'href', '/guide/intro')).toBe('/guide/intro') // (so a route starting with the base can't be linked: the build warns)
   expect(baseUrl('/', 'href', '/a')).toBe('/a')
   expect(baseUrl('/docs', 'href', '/a')).toBe('/docs/a') // a base without its slash
 })
@@ -30,7 +31,7 @@ test('baseUrl: srcset, each candidate (descriptors kept, commas inside a URL kep
 
 test('addBase and removeBase (what withBase, withoutBase and navigate do with Vite\'s base)', async () => {
   const { addBase, removeBase } = await import('../../src/runtime/navigation.ts')
-  expect([addBase('/docs/', '/guide'), addBase('/docs/', '/'), addBase('/docs/', 'https://x'), addBase('/docs/', '#top'), addBase('/docs/', '//x/a'), addBase('/', '/a')]).toEqual(['/docs/guide', '/docs/', 'https://x', '#top', '//x/a', '/a'])
+  expect([addBase('/docs/', '/guide'), addBase('/docs/', '/'), addBase('/docs/', 'https://x'), addBase('/docs/', '#top'), addBase('/docs/', '//x/a'), addBase('/', '/a'), addBase('/docs/', '/docs/guide')]).toEqual(['/docs/guide', '/docs/', 'https://x', '#top', '//x/a', '/a', '/docs/guide'])
   expect([removeBase('/docs/', '/docs/guide'), removeBase('/docs/', '/docs'), removeBase('/docs/', '/docs/'), removeBase('/docs/', '/other'), removeBase('/docs/', '/documents'), removeBase('/', '/a')]).toEqual(['/guide', '/', '/', '/other', '/documents', '/a'])
 })
 

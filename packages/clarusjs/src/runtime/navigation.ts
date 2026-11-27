@@ -320,7 +320,9 @@ const siteBase = () => (import.meta as { env?: { BASE_URL?: string } }).env?.BAS
 
 /** `path` with `base` in front, when it's root-relative (one `/`). @internal withBase() and navigate() call this. */
 export function addBase(base: string, path: string): string {
-  return path.startsWith('/') && !path.startsWith('//') ? base.replace(/\/$/, '') + path : path
+  const b = base.replace(/\/$/, '')
+  // already under it (href() gives such paths): as it is, so the base never doubles
+  return path.startsWith('/') && !path.startsWith('//') && path !== b && !path.startsWith(b + '/') ? b + path : path
 }
 
 /** `url` without a leading `base`: the reverse of addBase(). @internal withoutBase() calls this. */
@@ -333,7 +335,7 @@ export function removeBase(base: string, url: string): string {
 
 /**
  * A root-relative path with the site's base (Vite's `base`): `withBase('/guide')` is `/docs/guide` at a site under
- * `/docs/`. For URLs built in code (`fetch()`, a link from data); templates' URL attributes get the base by themselves.
+ * `/docs/`; a path already under it is returned as it is. For URLs built in code (`fetch()`, a link from data); templates' URL attributes get the base by themselves.
  * Full URLs, `//host`, `#…`, `?…` and relative paths are returned as they are.
  * @example
  * fetch(withBase('/api/items'))
