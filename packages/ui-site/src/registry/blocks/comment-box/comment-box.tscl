@@ -1,0 +1,173 @@
+{{--
+  Comment box: write a comment, or preview it, then Comment posts it and Cancel clears it. Made of @clarusjs/editor's
+  parts: Enter is a new line here (Ctrl/⌘+Enter posts), Markdown shortcuts and @ mentions work. Copy it into
+  src/components/, editor.css (under Code) into src/components/ui/, and replace post and people with your own.
+--}}
+@import '~/components/ui/editor.css'
+@import editorField from '@clarusjs/editor/components/field.tscl'
+@import editorToolbar from '@clarusjs/editor/components/toolbar.tscl'
+@import editorTool from '@clarusjs/editor/components/tool.tscl'
+@import editorSuggestions from '@clarusjs/editor/components/suggestions.tscl'
+@import editorSend from '@clarusjs/editor/components/send.tscl'
+
+<script>
+  import { onEditor } from '@clarusjs/editor/registry'
+  // Replace with your own: who can be mentioned, and where comments go.
+  const people = [
+    { id: 'mara', label: 'Mara Okafor' },
+    { id: 'ada', label: 'Ada Lovelace' },
+  ]
+  let comments = state([])
+  let draft = state('')
+  let preview = state(false)
+  let editor
+  const find = (query) => people.filter((p) => p.label.toLowerCase().includes(query.toLowerCase()))
+  function post(value) {
+    comments = [...comments, { id: comments.length + 1, value }]
+    preview = false
+  }
+  // The field's editor, for Cancel (and nothing to wait for before it loads: there's nothing to clear).
+  const wire = () => onEditor('comment', (e) => {
+    editor = e
+    return () => (editor = undefined)
+  })
+  function cancel() {
+    editor?.clear()
+    preview = false
+  }
+  const empty = (value) => !value || JSON.stringify(value) === '{"type":"doc","content":[{"type":"paragraph"}]}'
+  function show(el, value) {
+    let stop
+    import('@clarusjs/editor').then(({ content, composerExtensions }) => {
+      stop = content(el, { value, format: 'json', extensions: composerExtensions() })
+    })
+    return () => stop?.()
+  }
+</script>
+
+<section class="comments" aria-label="Comments">
+  <ol class="list">
+    @for (c of comments; track c.id) {
+      <li [use]="(el) => show(el, c.value)"></li>
+    }
+  </ol>
+  <form class="box" (submit)="$event.preventDefault()" [use]="wire">
+    <div class="tabs" role="group" aria-label="Write or preview">
+      <button type="button" [aria-pressed]="String(!preview)" (click)="preview = false">Write</button>
+      <button type="button" [aria-pressed]="String(preview)" (click)="preview = true">Preview</button>
+    </div>
+    <div class="write" [hidden]="preview">
+      <editorToolbar [field]="'comment'">
+        <editorTool command="bold" label="Bold"><b>B</b></editorTool>
+        <editorTool command="italic" label="Italic"><i>I</i></editorTool>
+        <editorTool command="code" label="Code">&lt;/&gt;</editorTool>
+        <editorTool command="link" label="Link">🔗</editorTool>
+        <editorTool command="codeBlock" label="Code block">{ }</editorTool>
+      </editorToolbar>
+      <editorField
+        attach="interaction"
+        [id]="'comment'"
+        [label]="'Comment'"
+        [placeholder]="'Add a comment…'"
+        [enterSends]="false"
+        [rows]="4"
+        [(value)]="draft"
+        (send)="post($event.value)"
+      />
+      <editorSuggestions [field]="'comment'" char="@" (search)="$event.respond(find($event.query))" />
+    </div>
+    @if (preview) {
+      <div class="preview" aria-label="Preview">
+        @if (empty(draft)) {
+          <p class="none">Nothing to preview.</p>
+        } @else {
+          <div [use]="(el) => show(el, draft)"></div>
+        }
+      </div>
+    }
+    <div class="actions">
+      <span class="hint">Markdown works: **bold**, `code`. Ctrl+Enter to comment.</span>
+      <button type="button" class="cancel" (click)="cancel()">Cancel</button>
+      <editorSend [field]="'comment'" label="Comment" />
+    </div>
+  </form>
+</section>
+
+<style scoped>
+  @layer theme, base, components, utilities;
+  @layer components {
+    :where(:scope) {
+      display: grid;
+      gap: var(--ui-space-4);
+      max-width: 640px;
+      padding: var(--ui-space-6);
+      background: var(--ui-bg); /* its muted text is measured against this */
+      color: var(--ui-fg);
+    }
+    :where(.list) {
+      display: grid;
+      gap: var(--ui-space-3);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    :where(.list li) {
+      min-width: 0;
+      padding: var(--ui-space-3);
+      border: 1px solid var(--ui-border);
+      border-radius: var(--ui-radius);
+      overflow-wrap: anywhere;
+    }
+    :where(.box),
+    :where(.write) {
+      display: grid;
+      gap: var(--ui-space-2);
+      min-width: 0;
+    }
+    :where(.write[hidden]) {
+      display: none;
+    }
+    :where(.tabs) {
+      display: flex;
+      gap: var(--ui-space-1);
+    }
+    :where(.tabs button),
+    :where(.cancel) {
+      height: var(--ui-control-sm);
+      padding: 0 var(--ui-space-3);
+      border: 1px solid var(--ui-border);
+      border-radius: calc(var(--ui-radius) - 2px);
+      background: var(--ui-bg);
+      color: var(--ui-fg);
+      font: inherit;
+      cursor: pointer;
+    }
+    :where(.tabs button[aria-pressed='true']) {
+      background: var(--ui-accent-soft);
+      color: var(--ui-accent-soft-fg);
+      border-color: var(--ui-accent);
+    }
+    :where(.preview) {
+      min-height: calc(var(--ui-space) * 20);
+      padding: var(--ui-space-2) var(--ui-space-3);
+      border: 1px dashed var(--ui-border);
+      border-radius: var(--ui-radius);
+      overflow-wrap: anywhere;
+    }
+    :where(.none),
+    :where(.hint) {
+      margin: 0;
+      color: var(--ui-muted);
+      font-size: calc(var(--ui-font-size) - 1px);
+    }
+    :where(.actions) {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--ui-space-2);
+    }
+    :where(.hint) {
+      margin-right: auto;
+    }
+  }
+</style>

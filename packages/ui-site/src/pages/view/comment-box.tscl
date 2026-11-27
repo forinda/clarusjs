@@ -1,0 +1,13 @@
+{{-- The comment-box block alone (the frame on /blocks/comment-box shows it). Out of the nav, search and the sitemap. --}}
+@import '~/theme.css'
+@import '~/view.css'
+@import commentBoxBlock from '~/registry/blocks/comment-box/comment-box.tscl'
+
+<cl-head>
+  <meta name="sitemap" content="false" />
+  <meta name="robots" content="noindex" />
+</cl-head>
+
+<div data-ui-preview>
+  <commentBoxBlock />
+</div>

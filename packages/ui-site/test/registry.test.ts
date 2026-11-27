@@ -111,7 +111,7 @@ test('a block imports what works once pasted: components as the ~/components/ui/
       // A component's file only if it is one that gets copied (card has card.tscl, no card.css).
       const copied = /^~\/components\/ui\/([a-z-]+\.(?:tscl|css|ts))$/.exec(s)?.[1]
       const own = /^\.\/([\w.-]+)$/.exec(s)?.[1]
-      const ok = shared(s) || (!!copied && codeFiles(entry).some((f) => f.path === `components/ui/${copied}`)) || (!!own && entry.files.includes(dir + own)) || (entry.packages ?? []).includes(s)
+      const ok = shared(s) || (!!copied && codeFiles(entry).some((f) => f.path === `components/ui/${copied}`)) || (!!own && entry.files.includes(dir + own)) || (entry.packages ?? []).some((p) => s === p || s.startsWith(p + '/'))
       expect(ok, `${file} imports ${s}`).toBe(true)
     }
   }
