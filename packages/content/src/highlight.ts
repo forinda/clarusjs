@@ -1,6 +1,7 @@
 // Build-time code highlighting with Shiki. Synchronous (the JavaScript regex engine, grammars imported up front),
 // because a page source turns Markdown into .tscl synchronously. Nothing here reaches the browser.
-import { createHighlighterCoreSync, type HighlighterCore, type ShikiTransformer } from 'shiki/core'
+import { createRequire } from 'node:module'
+import { createHighlighterCoreSync, type HighlighterCore, type LanguageRegistration, type ShikiTransformer } from 'shiki/core'
 import { createJavaScriptRegexEngine } from 'shiki/engine/javascript'
 import {
   transformerMetaHighlight,
@@ -21,6 +22,7 @@ import toml from 'shiki/langs/toml.mjs'
 import tsx from 'shiki/langs/tsx.mjs'
 import typescript from 'shiki/langs/typescript.mjs'
 import yaml from 'shiki/langs/yaml.mjs'
+import zig from 'shiki/langs/zig.mjs'
 // The *-default GitHub themes: their token colours meet WCAG AA contrast (the classic github-light/dark don't).
 import githubDark from 'shiki/themes/github-dark-default.mjs'
 import githubLight from 'shiki/themes/github-light-default.mjs'
@@ -35,9 +37,33 @@ const light = JSON.parse(JSON.stringify(githubLight).replace(/#6e7781/gi, '#5963
 let highlighter: HighlighterCore | undefined
 const get = () => (highlighter ??= createHighlighterCoreSync({
   themes: [light, githubDark],
-  langs: [angularHtml, bash, css, diff, html, javascript, json, markdown, toml, tsx, typescript, yaml],
+  langs: [angularHtml, bash, css, diff, html, javascript, json, markdown, toml, tsx, typescript, yaml, zig],
   engine: createJavaScriptRegexEngine(),
 }))
+
+const load = createRequire(import.meta.url)
+/** Shiki's grammar for a language name, from this package's own Shiki (the site installs nothing). */
+function grammar(name: string): LanguageRegistration[] {
+  const fail = () => { throw new Error(`@clarusjs/content: Shiki has no grammar "${name}"`) }
+  if (!/^[a-z0-9][a-z0-9+#.-]*$/i.test(name) || name.includes('..')) fail() // a name, never a path
+  try {
+    // require(): synchronous, as highlighting is (Node 22.12+ loads ES modules this way)
+    return (load(`shiki/langs/${name}.mjs`) as { default: LanguageRegistration[] }).default
+  } catch {
+    return fail()
+  }
+}
+
+/**
+ * More languages: names of Shiki's grammars (`'rust'`, `'go'`), loaded from this package's own Shiki, or grammars
+ * of your own. A language already loaded is left as is.
+ */
+export function addLanguages(langs: (string | LanguageRegistration | LanguageRegistration[])[]): void {
+  const hl = get()
+  const loaded = new Set(hl.getLoadedLanguages())
+  const add = langs.flatMap((l) => (typeof l === 'string' ? (loaded.has(l) ? [] : grammar(l)) : l)).filter((l) => !loaded.has(l.name))
+  if (add.length) hl.loadLanguageSync(add)
+}
 
 const transformers: ShikiTransformer[] = [
   transformerNotationDiff(),

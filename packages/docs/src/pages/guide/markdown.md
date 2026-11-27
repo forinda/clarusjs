@@ -90,6 +90,20 @@ markdown({ layout: '/src/layouts/docs.tscl', components: '/src/components' }) //
 
 Fenced code is highlighted at build time with Shiki, in light and dark at once: the page's theme picks the colours with CSS, so no highlighter ships to the browser. `tscl` blocks are highlighted as templates.
 
+Built in: `ts`, `js`, `tsx`, `html`, `css`, `json`, `yaml`, `toml`, `md`, `sh` (bash), `diff`, `zig` and `tscl`; any other language is plain text. Add more by name from [Shiki's languages](https://shiki.style/languages) with `langs`. `@clarusjs/content` loads them from its own Shiki, so there's nothing to install, and they're used at build time only, so they cost the browser nothing. A grammar of your own (a Shiki `LanguageRegistration`) works there too.
+
+```ts [vite.config.ts]
+clarusjs({ sources: [markdown({ langs: ['rust', 'go'] })] })
+```
+
+```zig
+const std = @import("std");
+
+pub fn main() void {
+    std.debug.print("Hello, {s}!\n", .{"clarusjs"});
+}
+```
+
 ```ts [vite.config.ts] {3}
 import { defineConfig } from 'vite'
 import clarusjs from 'clarusjs/vite'
