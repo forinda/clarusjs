@@ -1,13 +1,13 @@
 {{-- The folder layout of every /tour page (#456): each step is a page that only writes its content. Gets the route's
      params from the router, here in the browser (the tour's steps are client routes). --}}
-@import docs from '~/layouts/docs.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
 @input params: { step?: string } = {}
 
-<docs
+<docsLayout
   [title]="'Client tour, step ' + params.step"
   [path]="'/guide/client-routes'"
   [source]="'/tour/[step]'"
   [description]="'A page rendered in the browser by the clarusjs router.'"
 >
   <slot />
-</docs>
+</docsLayout>

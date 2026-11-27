@@ -1,8 +1,8 @@
 {{-- A page only signed-in visitors see: ./+guard.ts protects the whole folder (the Auth guide's demo signs you in). --}}
-@import docs from '~/layouts/docs.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
 @input name: string
 
-<docs
+<docsLayout
   [title]="'Members'"
   [path]="'/guide/auth'"
   [source]="'/members'"
@@ -15,4 +15,4 @@
     Every page under <code>src/pages/members/</code> is protected by one file, <code>+guard.ts</code>. Back to the
     <a href="/guide/auth#guarding-a-folder">Auth guide</a>.
   </p>
-</docs>
+</docsLayout>

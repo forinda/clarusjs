@@ -1,16 +1,16 @@
 {{-- The site's layout without the sidebar, as wide as the screen allows: tool pages (/theme) and blocks. --}}
-@import site from '~/layouts/site.tscl'
+@import siteLayout from '~/layouts/site.tscl'
 @import type { Heading } from '@clarusjs/theme-docs/nav.ts'
 @input title: string
 @input path: string = '/'
 @input description: string = 'Styled clarusjs components to copy into your project.'
 @input headings: Heading[] = []
 
-<site [title]="title" [path]="path" [description]="description" [headings]="headings" [app]="true">
+<siteLayout [title]="title" [path]="path" [description]="description" [headings]="headings" [app]="true">
   <div class="wide-page">
     <div class="wide-inner"><slot /></div>
   </div>
-</site>
+</siteLayout>
 
 <style scoped>
   /* An app page gets no padding or scrolling from the theme: this brings its own. */

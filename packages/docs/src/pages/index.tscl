@@ -1,12 +1,12 @@
-@import copy from '@clarusjs/theme-docs/copy.tscl'
-@import docs from '~/layouts/docs.tscl'
-@import counter from '~/components/counter.tscl'
-@import callout from '@clarusjs/theme-docs/callout.tscl'
+@import copyButton from '@clarusjs/theme-docs/copy.tscl'
+@import docsLayout from '~/layouts/docs.tscl'
+@import clickCounter from '~/components/counter.tscl'
+@import docsCallout from '@clarusjs/theme-docs/callout.tscl'
 @import whatShips from '~/components/what-ships.tscl'
-@import todo from '~/components/todo.tscl'
+@import todoList from '~/components/todo.tscl'
 @import todoSummary from '~/components/todo-summary.tscl'
 
-<docs [title]="'Clear, compiled views'">
+<docsLayout [title]="'Clear, compiled views'">
   <section class="hero">
     <img src="/logo.svg" alt="" width="96" height="96" />
     <h1>clarus<span class="js">.js</span></h1>
@@ -32,7 +32,7 @@
           Everything here is static HTML, rendered at build time. The button is a component with a
           <code>&lt;script&gt;</code>, so it is the only thing that ships JavaScript. Click it.
         </p>
-        <div class="demo"><counter [start]="0" /></div>
+        <div class="demo"><clickCounter [start]="0" /></div>
         <whatShips attach="interaction" />
         <div class="sample">
           <pre tabindex="0"><code verbatim lang="tscl">@input start: number = 0
@@ -44,7 +44,7 @@
 </script>
 
 <button (click)="add()">Clicked {{ count }} times (double: {{ double }})</button></code></pre>
-          <copy attach="interaction" />
+          <copyButton attach="interaction" />
         </div>
       </article>
 
@@ -74,7 +74,7 @@
           without touching the others.
         </p>
         <todoSummary />
-        <todo />
+        <todoList />
       </article>
 
       <article class="bento-card span-3">
@@ -142,13 +142,13 @@ src/pages/index.tscl:3:13 error TS2339:
     </div>
   </section>
 
-  <callout
+  <docsCallout
     ><p>
       This site is built with clarusjs: its pages are static HTML, and only the interactive parts ship JavaScript. Every
       feature it uses is tested here in a real browser.
-    </p></callout
+    </p></docsCallout
   >
-</docs>
+</docsLayout>
 <style scoped>
   /* Home: a bento grid (#372), as on tailwindcss.com and nextjs.org. Six columns from 960px, two from 640px, then one. */
   .bento-section h2,

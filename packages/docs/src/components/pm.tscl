@@ -1,5 +1,5 @@
 {{-- Commands as tabs for pnpm, npm, yarn and bun. Every group on the page follows the same choice, and it is remembered. --}}
-@import copy from '@clarusjs/theme-docs/copy.tscl'
+@import copyButton from '@clarusjs/theme-docs/copy.tscl'
 @input commands: string[]
 
 <script>
@@ -25,5 +25,5 @@
 <div class="sample pm">
   <div class="pm-tabs" role="tablist" aria-label="Package manager">@for (m of managers; track m) {<button type="button" role="tab" [aria-selected]="manager === m ? 'true' : 'false'" (click)="pick(m)">{{ m }}</button>}</div>
   <pre tabindex="0"><code>{{ commands.map((c) => command(manager, c)).join('\n') }}</code></pre>
-  <copy attach="interaction" />
+  <copyButton attach="interaction" />
 </div>

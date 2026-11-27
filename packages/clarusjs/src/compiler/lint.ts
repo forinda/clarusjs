@@ -3,7 +3,7 @@
 // LintRuleDef: the built-in ones below, and a project's own (the plugin's `lintRules`).
 
 import { ClarusError } from './errors.ts'
-import { awaitLists, importNames, parse, rootNodes, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
+import { awaitLists, importNames, kebabOf, parse, rootNodes, type Attr, type ParsedFile, type TemplateNode } from './parse.ts'
 import { scriptNames } from './script.ts'
 
 /**
@@ -190,6 +190,17 @@ export const lintRules: LintRuleDef[] = [
       const close = last.type !== 'text' || source.slice(end, rawEnd).includes('\n') ? nl : ''
       const fix = { start: first!.start, end, text: `${moved}<fragment>${nl}${kept}${close}</fragment>` }
       report(at.start, 'a component renders one root element, for what a parent passes it (attributes, class, events) to land on: wrap these in an element, or in <fragment> if no element is wanted', fix)
+    },
+  },
+  {
+    // A component's name in two words or more (Vue's rule): only then has it a kebab-case tag (uiButton → <ui-button>),
+    // and no one-word name can stand in for an HTML element, today's or a future one.
+    name: 'multi-word-name',
+    check({ parsed, report }) {
+      for (const i of parsed.imports) {
+        if (kebabOf(i.name).includes('-')) continue
+        report(i.start, `'${i.name}' is one word: give components two or more (e.g. app${i.name[0]!.toUpperCase()}${i.name.slice(1)}), so the tag has a kebab-case form and can't be mistaken for an HTML element`)
+      }
     },
   },
   {
