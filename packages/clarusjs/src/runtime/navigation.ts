@@ -3,6 +3,7 @@
 // over exactly like a link click; without it they are normal page loads. Island scripts also run on the server,
 // where this does nothing.
 import { effect, onDispose, state, type Signal } from './signals.ts'
+import { underBase } from './attrs.ts'
 import type { Transition } from './navigate.ts'
 
 export type { Transition }
@@ -329,15 +330,16 @@ const siteBase = () => sitePrefix((import.meta as { env?: { BASE_URL?: string } 
 export function addBase(base: string, path: string): string {
   const b = base.replace(/\/$/, '')
   // already under it (href() gives such paths): as it is, so the base never doubles
-  return path.startsWith('/') && !path.startsWith('//') && path !== b && !path.startsWith(b + '/') ? b + path : path
+  return path.startsWith('/') && !path.startsWith('//') && !underBase(b, path) ? b + path : path
 }
 
 /** `url` without a leading `base`: the reverse of addBase(). @internal withoutBase() calls this. */
 export function removeBase(base: string, url: string): string {
   const b = base.replace(/\/$/, '')
   if (!b) return url
-  if (url === b) return '/'
-  return url.startsWith(b + '/') ? url.slice(b.length) : url
+  if (!underBase(b, url)) return url
+  const rest = url.slice(b.length)
+  return rest.startsWith('/') ? rest : '/' + rest // '/docs?q=1' → '/?q=1'
 }
 
 /**

@@ -54,3 +54,20 @@ test('#430: a view that awaits in its <script server> (an async render) is await
   expect(String(await h('components/slow', { text: 'late' }))).toBe('<i>late</i>')
   expect(await render('components/slow' as never, { text: 'late' } as never)).toBe('<i>late</i>')
 })
+
+test('review (#653): each handler\'s h() uses its own base, even with two handlers in one process and requests overlapping', async () => {
+  const { createHandler } = await import('../../src/server/handler.ts')
+  let release!: () => void
+  const wait = new Promise<void>((r) => { release = r })
+  const site = (base: string, slow: boolean) => createHandler(
+    { '/src/pages/index.tscl': async () => ({ render: (p: { link?: unknown } = {}) => `<p>${p.link}</p>` }) },
+    { base, data: { '/src/pages/index.load.ts': async () => ({ load: async () => { if (slow) await wait; return { link: await h('a', { href: '/guide' }) } } }) } },
+  )
+  const a = site('/a/', true)
+  const b = site('/b/', false)
+  const first = a.fetch(new Request('http://x/'))
+  const second = await (await b.fetch(new Request('http://x/'))).text()
+  release()
+  expect(second).toContain('href="/b/guide"')
+  expect(await (await first).text()).toContain('href="/a/guide"')
+})

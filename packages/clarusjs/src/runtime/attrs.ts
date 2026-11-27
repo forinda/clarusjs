@@ -124,7 +124,7 @@ export function baseUrl(base: string, name: string, value: unknown): unknown {
   if (base === '/' || typeof value !== 'string') return value
   const n = name.toLowerCase()
   const prefix = base.replace(/\/$/, '')
-  const add = (u: string) => (rooted(u) && u !== prefix && !u.startsWith(prefix + '/') ? prefix + u : u)
+  const add = (u: string) => (rooted(u) && !underBase(prefix, u) ? prefix + u : u)
   if (BASE_ATTRS.has(n)) return add(value)
   if (n !== 'srcset') return value
   // As HTML reads a srcset: a URL runs to the next whitespace (commas inside it stay), commas at its end part two
@@ -148,6 +148,12 @@ export function baseUrl(base: string, name: string, value: unknown): unknown {
   }
   return out
 }
+
+/**
+ * `url` is already under the base path `prefix` (`/docs`): it is the prefix, or the prefix then `/`, `?` or `#`
+ * (`/docs/guide`, `/docs?q=1`, `/docs#top`; not `/documents`). '' (base /): every root-relative URL. @internal
+ */
+export const underBase = (prefix: string, url: string): boolean => url.startsWith(prefix) && (url.length === prefix.length || '/?#'.includes(url[prefix.length]!))
 
 /**
  * An attributes object (a spread, or what a component passes on to its root) with the site's base on its URL

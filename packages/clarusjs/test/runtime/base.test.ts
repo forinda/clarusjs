@@ -49,3 +49,10 @@ test('review: under a full-URL (CDN) base, code paths stay on the site: sitePref
   expect([sitePrefix('https://cdn.example.com/'), sitePrefix('https://cdn.example.com/app/'), sitePrefix('/docs/'), sitePrefix('/')]).toEqual(['', '', '/docs', ''])
   expect(addBase(sitePrefix('https://cdn.example.com/') + '/', '/account')).toBe('/account')
 })
+
+test('review (#653): a URL already under the base with a query or #hash right after it is left as it is, and loses the base', async () => {
+  const { addBase, removeBase } = await import('../../src/runtime/navigation.ts')
+  expect(['/docs?q=1', '/docs#intro', '/docs/?q=1', '/documents', '/guide'].map((u) => baseUrl('/docs/', 'href', u))).toEqual(['/docs?q=1', '/docs#intro', '/docs/?q=1', '/docs/documents', '/docs/guide'])
+  expect(['/docs?tab=1', '/docs#top', '/documents'].map((u) => addBase('/docs/', u))).toEqual(['/docs?tab=1', '/docs#top', '/docs/documents'])
+  expect(['/docs?tab=1', '/docs#top', '/documents', '/docs'].map((u) => removeBase('/docs/', u))).toEqual(['/?tab=1', '/#top', '/documents', '/'])
+})
