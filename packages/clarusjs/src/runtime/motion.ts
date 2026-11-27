@@ -2,7 +2,7 @@
 // own, so only islands that use @transition load this: dom.ts's block() stays as it is. Vue's contract (classes
 // `<name>-enter-from/-active/-to`, `-leave-…`, modes, appear, duration, hooks); the end of a transition is read from
 // the element's animations (getAnimations), capped by a timeout.
-import { blocks, insertHtml, reshaped, type Ctx } from './dom.ts'
+import { blocks, insertHtml, owner, reshaped, type Ctx } from './dom.ts'
 import { effect, onDispose, scope, untrack } from './signals.ts'
 
 /**
@@ -36,6 +36,7 @@ export type TransitionOptions = {
 }
 
 type Branch = { html: () => string; wire: () => void }
+const failed = (err: unknown) => console.error('[clarusjs] a @transition hook failed', err)
 type Dir = 'enter' | 'leave'
 
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -104,21 +105,23 @@ function run(el: Element, dir: Dir, name: string, o: TransitionOptions): { done:
  * Make leaving nodes no longer the island's: their markers and data-cl-* attributes go (so the island's scans and a
  * re-wire can't find them), they can't be focused or clicked, and child islands that never attached stay unattached.
  */
-function neutralise(nodes: Node[]): void {
+function neutralise(nodes: Node[], island: Element): void {
   for (const node of nodes) {
     if (node.nodeType !== 1) continue
     const el = node as Element
-    // The outer island's markers only: a child island's own (inside a <cl-island>) are its, and a running child still
-    // updates its blocks during the leave. Its <cl-island> element is the outer island's, so its attributes go.
+    // Only what the outer island owns (owner(): a child island's own markers are its, and a running child still
+    // updates its blocks during the leave; content the outer island passed into a child's slot is the outer's).
+    // The slot markers themselves ([s, ]s) are the child's structure: kept.
     const comments: Node[] = []
     const elements: Element[] = [el]
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT, {
-      acceptNode: (n) => (n.nodeType === 8 ? NodeFilter.FILTER_ACCEPT : (elements.push(n as Element), (n as Element).localName === 'cl-island' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP)),
-    })
-    for (let c = walker.nextNode(); c; c = walker.nextNode()) comments.push(c)
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT)
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (n.nodeType === 8) { if ((n as Comment).data !== '[s' && (n as Comment).data !== ']s' && owner(n) === island) comments.push(n) }
+      else elements.push(n as Element)
+    }
     for (const c of comments) c.parentNode!.removeChild(c)
     for (const e of elements) {
-      for (const a of [...e.attributes]) if (a.name.startsWith('data-cl-') && a.name !== 'data-cl-ready' && a.name !== 'data-cl-error') e.removeAttribute(a.name)
+      if (owner(e) === island) for (const a of [...e.attributes]) if (a.name.startsWith('data-cl-') && a.name !== 'data-cl-ready' && a.name !== 'data-cl-error') e.removeAttribute(a.name)
       // The next insert would attach an island that hasn't yet (idle, visible, interaction): it's leaving.
       if (e.localName === 'cl-island' && !e.hasAttribute('data-cl-error')) e.setAttribute('data-cl-ready', '')
     }
@@ -145,10 +148,12 @@ export function transitionBlock(ctx: Ctx, index: number, which: () => number, br
   const entering = new Map<Element, () => void>()
   onDispose(() => { alive = false; dispose?.() })
 
-  const enter = (nodes: Node[]) => Promise.all(targets(nodes).map((el) => {
-    const r = run(el, 'enter', name, o)
-    entering.set(el, r.cancel)
-    return r.done.finally(() => entering.delete(el))
+  const enter = (nodes: Node[]) => Promise.all(targets(nodes).map(async (el) => {
+    try {
+      const r = run(el, 'enter', name, o)
+      entering.set(el, r.cancel)
+      await r.done
+    } catch (err) { failed(err) } finally { entering.delete(el) }
   }))
   const leave = (nodes: Node[]): Promise<unknown> => {
     // Text goes at once; elements leave, then go.
@@ -157,7 +162,8 @@ export function transitionBlock(ctx: Ctx, index: number, which: () => number, br
     return Promise.all(elements.map(async (top) => {
       const els = targets([top])
       for (const el of els) entering.get(el)?.()
-      await Promise.all(els.map((el) => run(el, 'leave', name, o).done))
+      // A hook that throws is reported; the element still goes, and out-in still inserts what comes next.
+      try { await Promise.all(els.map((el) => run(el, 'leave', name, o).done)) } catch (err) { failed(err) }
       const parent = top.parentNode
       top.remove()
       // Child islands that left are disposed by the loader's next pass over the page.
@@ -201,7 +207,7 @@ export function transitionBlock(ctx: Ctx, index: number, which: () => number, br
       dispose = null
       const old = live
       live = []
-      neutralise(old)
+      neutralise(old, 'root' in ctx ? ctx.root : ctx)
       if (o.mode === 'out-in') {
         const leaving = leave(old)
         if (holding) return

@@ -446,12 +446,36 @@ export function parse(source: string, file: string): ParsedFile {
     return node
   }
 
-  /** The first `,` outside brackets and strings in `text`, or -1. */
+  /**
+   * The first `,` outside brackets, strings, comments and template literals (their `${}` included) in `text`, or -1.
+   */
   function topLevelComma(text: string): number {
     let depth = 0
+    // Past the template literal opening at `j` (its `${…}` parts may hold anything, backticks too).
+    const template = (j: number): number => {
+      for (j++; j < text.length; j++) {
+        if (text[j] === '\\') j++
+        else if (text[j] === '`') return j
+        else if (text[j] === '$' && text[j + 1] === '{') {
+          let inner = 1
+          for (j += 2; j < text.length && inner; j++) {
+            const c = text[j]!
+            if (c === '`') j = template(j)
+            else if (c === '"' || c === "'") { for (j++; j < text.length && text[j] !== c; j++) if (text[j] === '\\') j++ }
+            else if (c === '{') inner++
+            else if (c === '}') inner--
+          }
+          j--
+        }
+      }
+      return j
+    }
     for (let j = 0; j < text.length; j++) {
       const c = text[j]!
-      if (c === '"' || c === "'" || c === '`') { for (j++; j < text.length && text[j] !== c; j++) if (text[j] === '\\') j++ }
+      if (c === '"' || c === "'") { for (j++; j < text.length && text[j] !== c; j++) if (text[j] === '\\') j++ }
+      else if (c === '`') j = template(j)
+      else if (c === '/' && text[j + 1] === '/') { const nl = text.indexOf('\n', j); j = nl === -1 ? text.length : nl }
+      else if (c === '/' && text[j + 1] === '*') { const close = text.indexOf('*/', j + 2); j = close === -1 ? text.length : close + 1 }
       else if (c === '(' || c === '[' || c === '{') depth++
       else if (c === ')' || c === ']' || c === '}') depth--
       else if (c === ',' && depth === 0) return j

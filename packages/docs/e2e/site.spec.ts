@@ -2968,8 +2968,10 @@ test('animations guide: @transition plays the leave before removing the panel, a
   await expect(demo.locator('.transition-step')).toHaveAttribute('data-step', '2')
   await expect(demo.locator('.transition-step')).toHaveCount(1)
   expect(await page.evaluate(() => (window as { seen?: string[] }).seen!.includes('1,2'))).toBe(false) // never both at once
-  // Reduced motion: nothing to wait for, so the panel goes at once.
+  // Reduced motion: nothing to wait for, so the panel goes at once. Its normal leave is made 2 s first, so a leave that
+  // still animated would miss the 500 ms below (under reduced motion the demo's `transition: none` still wins).
   await page.emulateMedia({ reducedMotion: 'reduce' })
+  await demo.locator('.transition-panel').evaluate((el) => ((el as HTMLElement).style.transitionDuration = '2s'))
   await demo.getByRole('button', { name: 'Hide the panel' }).click()
   await expect(demo.locator('.transition-panel')).toHaveCount(0, { timeout: 500 })
 })

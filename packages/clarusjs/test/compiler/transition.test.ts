@@ -74,3 +74,12 @@ test("without arguments the name is 'cl'; a script's names in the arguments are 
 test('a component with only a @model input is an island: @transition compiles', () => {
   expect(() => compile("@model open: boolean = false\n<div>@transition ('fade') { @if (open) { <p>A</p> } }</div>\n", { file: 'x.tscl', target: 'client' })).not.toThrow()
 })
+
+test("a comma inside a JavaScript comment or a template's ${} doesn't split the arguments", () => {
+  const commented = parse("@transition ('fade' /* , */, { mode: 'out-in' }) { @if (a) { <p/> } }", 'x.tscl').nodes[0] as any
+  expect(commented.transition).toMatchObject({ name: "'fade' /* , */", options: "{ mode: 'out-in' }" })
+  const lined = parse("@transition ('fade' // a, b\n, opts) { @if (a) { <p/> } }", 'x.tscl').nodes[0] as any
+  expect(lined.transition).toMatchObject({ name: "'fade' // a, b", options: 'opts' })
+  const template = parse("@transition (`${pick(a, b)}-fade`, opts) { @if (a) { <p/> } }", 'x.tscl').nodes[0] as any
+  expect(template.transition).toMatchObject({ name: '`${pick(a, b)}-fade`', options: 'opts' })
+})

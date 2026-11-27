@@ -315,3 +315,43 @@ test("a running child island inside a leaving branch keeps its own markers (only
   for (let n = walker.nextNode(); n; n = walker.nextNode()) kept.push((n as Comment).data)
   expect(kept).toEqual(['[b0:0', ']'])
 })
+
+// --- PR review (#641) ---
+
+const comments = (root: Node) => {
+  const out: string[] = []
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT)
+  for (let n = w.nextNode(); n; n = w.nextNode()) out.push((n as Comment).data)
+  return out
+}
+
+test("a child island at the branch's top keeps its own markers while it leaves", async () => {
+  const island = await mount(component("@transition ('fade') { @if (open) { <cl-island c=\"inner\" data-cl-ready=\"\"><!--[b0:0--><p>inner</p><!--]--></cl-island> } }"))
+  const inner = island.querySelector('cl-island[c="inner"]')!
+  toggle(island)
+  expect(comments(inner)).toEqual(['[b0:0', ']'])
+})
+
+test("content the outer island passed into a child's slot is the outer's: its markers go; the slot's own stay", async () => {
+  const island = await mount(component("@transition ('fade') { @if (open) { <cl-island c=\"inner\" data-cl-ready=\"\"><div><!--[s--><span data-cl-e=\"9\"><!--[4-->x<!--]--></span><!--]s--></div></cl-island> } }"))
+  const inner = island.querySelector('cl-island[c="inner"]')!
+  const span = inner.querySelector('span')!
+  toggle(island)
+  expect(comments(inner)).toEqual(['[s', ']s'])
+  expect(span.hasAttribute('data-cl-e')).toBe(false)
+})
+
+test('a leave hook that throws still removes the element, and out-in still inserts the next branch', async () => {
+  ;(globalThis as Record<string, unknown>).__throwing = { mode: 'out-in', onLeave: () => { throw new Error('hook') } }
+  const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const island = await mount(component("@transition ('fade', globalThis.__throwing) { @if (open) { <p class=\"a\">A</p> } @else { <p class=\"b\">B</p> } }"))
+  const a = island.querySelector('p.a')!
+  toggle(island)
+  await frame()
+  await settle()
+  await settle()
+  expect(a.isConnected).toBe(false)
+  expect(island.querySelector('p.b')).not.toBe(null)
+  expect(reported).toHaveBeenCalledWith('[clarusjs] a @transition hook failed', expect.any(Error))
+  reported.mockRestore()
+})
