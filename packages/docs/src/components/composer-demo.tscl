@@ -1,0 +1,71 @@
+{{-- The editor guide's composer: messages sent into a list, people to mention, a /shrug command, and emoji. --}}
+@import editorComposer from '@clarusjs/editor/components/composer.tscl'
+
+<script>
+  // the plain-text helper alone: the editor's own code loads with the composer, on first focus
+  import { plainText } from '@clarusjs/editor/plain-text'
+  const people = [
+    { id: 'mara', label: 'Mara Okafor' },
+    { id: 'marcus', label: 'Marcus Lee' },
+    { id: 'ada', label: 'Ada Lovelace' },
+    { id: 'lin', label: 'Lin Wei' },
+  ]
+  const commands = [{ id: 'shrug', label: 'Shrug', keywords: ['shrug'] }]
+  let sent = state([])
+  function post(value) {
+    sent = [...sent, { id: sent.length + 1, text: plainText(value, 'json') }]
+  }
+  const find = (query) => people.filter((p) => p.label.toLowerCase().includes(query.toLowerCase()))
+  function run(event) {
+    if (event.id === 'shrug') event.editor.view.dispatch(event.editor.view.state.tr.insertText('¯\\_(ツ)_/¯'))
+  }
+</script>
+
+<div class="composer-demo">
+  <ul class="messages" aria-label="Messages" aria-live="polite">
+    @for (m of sent; track m.id) {
+      <li>{{ m.text }}</li>
+    } @empty {
+      <li class="none">No messages yet. Type one, @ to mention, / for commands, : for emoji.</li>
+    }
+  </ul>
+  <editorComposer
+    attach="interaction"
+    [id]="'guide-composer'"
+    [label]="'Message'"
+    [placeholder]="'Message #general'"
+    [maxLength]="500"
+    [commands]="commands"
+    (send)="post($event.value)"
+    (search)="$event.respond(find($event.query))"
+    (command)="run($event)"
+  />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+  }
+  .messages {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .messages li {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--bg-soft, transparent);
+    white-space: pre-wrap;
+  }
+  .messages .none {
+    background: none;
+    color: var(--muted, inherit);
+  }
+</style>

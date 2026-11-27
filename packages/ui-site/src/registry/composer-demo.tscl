@@ -2,7 +2,8 @@
 @import editorComposer from '@clarusjs/editor/components/composer.tscl'
 
 <script>
-  import { plainText } from '@clarusjs/editor'
+  // the plain-text helper alone: the editor's own code loads with the composer, on first focus
+  import { plainText } from '@clarusjs/editor/plain-text'
   const people = [
     { id: 'mara', label: 'Mara Okafor' },
     { id: 'marcus', label: 'Marcus Lee' },

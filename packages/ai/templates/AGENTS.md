@@ -92,6 +92,16 @@ place with a `-move` class (`.list-move { transition: transform 0.3s }`). Don't 
 @starting-style { .panel { opacity: 0; translate: 0 8px; } }
 ```
 
+### Rich text
+
+For a chat or comment box, use `<editor-composer>` from `@clarusjs/editor` (`@import editorComposer from
+'@clarusjs/editor/components/composer.tscl'`) with `attach="interaction"`: a plain textarea until focused, then the
+editor. Bind `[(value)]` (ProseMirror JSON, or HTML with `[format]="'html'"`), handle `(send)`, answer `(search)` with
+`$event.respond(people)` for @mentions, and take `(files)` to upload. Don't wrap a React editor in an island. On the
+server, check what's sent before storing it: `validate(body, composerExtensions(), { maxLength })` from
+`@clarusjs/editor/server`, and show stored values with `renderHTML()`. To build your own, `[use]` the `editor`,
+`toolbar` and `suggestion` behaviours.
+
 ### Tag names
 
 A camelCase or PascalCase import name also works as a kebab-case tag: `@import userCard from './user-card.tscl'` (or
