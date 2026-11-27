@@ -43,3 +43,9 @@ test('at base / (as these tests run), withBase, withoutBase and navigate leave p
   await nav.navigate('/guide')
   expect(calls).toEqual(['/guide'])
 })
+
+test('review: under a full-URL (CDN) base, code paths stay on the site: sitePrefix is empty, as for page links', async () => {
+  const { sitePrefix, addBase } = await import('../../src/runtime/navigation.ts')
+  expect([sitePrefix('https://cdn.example.com/'), sitePrefix('https://cdn.example.com/app/'), sitePrefix('/docs/'), sitePrefix('/')]).toEqual(['', '', '/docs', ''])
+  expect(addBase(sitePrefix('https://cdn.example.com/') + '/', '/account')).toBe('/account')
+})

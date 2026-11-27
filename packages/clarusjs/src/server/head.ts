@@ -149,7 +149,11 @@ function social(head: string, title: string, options: HeadOptions, page: { path:
   const root = new URL(basePath(options.base), options.site.url.replace(/\/?$/, '/'))
   // './' keeps the request path a path under the root: '/https:/evil.com' must not become another site.
   const url = new URL(`./${page.path.slice(1)}`, root).href
-  const absolute = (u: string) => (u.startsWith('/') && !u.startsWith('//') ? new URL(u.slice(1), root).href : new URL(u, url.endsWith('/') ? url : `${url}/`).href)
+  const prefix = basePath(options.base).replace(/\/$/, '')
+  // root-relative: under the site's base (once: one already under it, as templates write it now, stays as it is)
+  const absolute = (u: string) => (u.startsWith('/') && !u.startsWith('//')
+    ? (prefix && (u === prefix || u.startsWith(prefix + '/')) ? new URL(u, root.origin).href : new URL(u.slice(1), root).href)
+    : new URL(u, url.endsWith('/') ? url : `${url}/`).href)
   for (const [property, value] of [['og:image', pageSet.image], ['og:url', pageSet.url]] as const) {
     if (relative(value)) head = setTag(head, `<meta property="${property}" content="${escape(absolute(value))}">`, mask)
   }

@@ -149,6 +149,16 @@ export function baseUrl(base: string, name: string, value: unknown): unknown {
   return out
 }
 
+/**
+ * An attributes object (a spread, or what a component passes on to its root) with the site's base on its URL
+ * attributes, as baseUrl() gives each one. The same object when there's nothing to do.
+ * @internal The compiler calls this under a base.
+ */
+export function baseAttrs(base: string, obj: unknown): unknown {
+  if (base === '/' || !obj || typeof obj !== 'object' || Array.isArray(obj)) return obj
+  return Object.fromEntries(Object.entries(obj as Record<string, unknown>).map(([k, v]) => [k, baseUrl(base, k, v)]))
+}
+
 const ATTR_NAME = /^[a-zA-Z_:][-a-zA-Z0-9_:.]*$/
 
 /**

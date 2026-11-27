@@ -57,3 +57,10 @@ test('a request path that looks like a URL stays a path on the site (no canonica
   expect(head).toContain('<link rel="canonical" href="https://example.com/https:/evil.com">')
   expect(head).not.toContain('https://evil.com')
 })
+
+test('review: an og:image already under the base (as a template writes it now) gets it once, not twice', async () => {
+  const h = createHandler({ '/src/pages/index.tscl': async () => ({ render: () => doc('<title>Home</title>', '<cl-head><meta property="og:image" content="/docs/og.png"></cl-head>') }) }, {
+    base: '/docs/', site: { url: 'https://example.com', name: 'Site' },
+  })
+  expect(await headOf(h, '/')).toContain('<meta property="og:image" content="https://example.com/docs/og.png">')
+})

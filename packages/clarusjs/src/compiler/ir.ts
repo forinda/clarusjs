@@ -24,7 +24,8 @@ export type IRNode =
   // name '...': a spread (#405); skip: the names written on the element (lowercase), where: its place, for warnings.
   // content: a textarea's value, written as its text in HTML (a value attribute means nothing there); the browser
   // still sets the property.
-  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string; content?: true }
+  // base: under Vite's base, a spread's (or passed attributes') URL attributes get it.
+  | { kind: 'attr'; name: string; value: { expr: string } | { parts: (string | { expr: string })[] }; reactive: boolean; index: number; tag: string; skip?: string[]; where?: string; content?: true; base?: string }
   // [engine]="f": an element connected to a form from clarusjs/forms (marked data-cl-form="index").
   | { kind: 'connect'; expr: string; index: number }
   // [use]="behaviour" (#464): an element handed to a function in the browser (marked data-cl-u="index").
@@ -534,7 +535,7 @@ export function lower(parsed: ParsedFile, file: string, source: string, options:
         // Written attributes win over the spread's (class and style merge, in the fold): their names, lowercase.
         const skip = [...new Set(attrs.filter((x) => x !== a && x.kind !== 'event').map((x) => x.name.toLowerCase()))]
         const at = new ClarusError('', file, source, a.start)
-        const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, ...(a.expr === '__cl_attrs' ? {} : { where: `${file}:${at.line}:${at.column}` }) }
+        const node_ = { kind: 'attr' as const, name: '...', value: { expr: a.expr }, reactive, index: -1, tag: node.tag, skip, ...(a.expr === '__cl_attrs' ? {} : { where: `${file}:${at.line}:${at.column}` }), ...(base ? { base } : {}) }
         if (reactive) dynamic.push(node_)
         out.push(node_)
       } else if (a.kind === 'prop' && a.name === 'use') {

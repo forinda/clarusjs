@@ -51,3 +51,14 @@ test('base / compiles exactly as no base does', () => {
     expect(compile(src, { file: 'x.tscl', target, clientUrl: '/x.js', base: '/' }).code).toBe(compile(src, { file: 'x.tscl', target, clientUrl: '/x.js' }).code)
   }
 })
+
+test('review: attributes a component passes on to its root element (a link component\'s href), and spreads, get the base', async () => {
+  // a component that stands for an element (@extends a) passes every attribute on to it
+  const btn = '@extends a\n<a class="btn"><slot /></a>'
+  const deps = { './btn.tscl': compile(btn, { file: 'btn.tscl', target: 'server', base }).code }
+  const page = await importCode(compile('@import linkButton from \'./btn.tscl\'\n<p><linkButton href="/x">go</linkButton><linkButton href="https://away.dev">away</linkButton></p>', { file: 'p.tscl', target: 'server', base }).code, 'base-passed', deps)
+  expect(urls(await page.render({}))).toEqual(['href=/docs/x', 'href=https://away.dev'])
+  const spread = await server('@input link: any = {}\n<a [...]="link">s</a>', { link: { href: '/y', title: '/not-a-url' } }, 'spread')
+  expect(urls(spread)).toEqual(['href=/docs/y'])
+  expect(spread).toContain('title="/not-a-url"')
+})

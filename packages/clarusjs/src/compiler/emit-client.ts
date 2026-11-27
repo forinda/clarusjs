@@ -50,6 +50,7 @@ export function emitClient(ir: ComponentIR, hot?: string): string {
     hasRegions && 'regionHtml as __cl_regionHtml',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_classValue(')) && 'classValue as __cl_classValue',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_baseUrl(')) && 'baseUrl as __cl_baseUrl',
+    all.some((n) => n.kind === 'attr' && n.name === '...' && !!n.base) && 'baseAttrs as __cl_baseAttrs',
     all.some((n) => n.kind === 'attr' && JSON.stringify(n.value).includes('__cl_styleValue(')) && 'styleValue as __cl_styleValue',
   ].filter(Boolean)
 
@@ -125,7 +126,7 @@ function wiring(ir: ComponentIR, nodes: IRNode[], scope: string | undefined, ctx
   if (holes.length) lines.push(`const __cl_h = __cl_holes(${ctx})`)
   for (const h of [...holes].sort((a, b) => a.index - b.index)) lines.push(`__cl_text(__cl_h[${h.index}], () => ${wrapExpr(rw.expr(h.expr))})`)
   for (const a of nodes) {
-    if (a.kind === 'attr' && a.reactive && a.name === '...') lines.push(`__cl_spread(${ctx}, ${a.index}, () => ${attrValueExpr(a.value, rw.expr)}, ${JSON.stringify(a.skip ?? [])}, ${JSON.stringify(a.tag)})`)
+    if (a.kind === 'attr' && a.reactive && a.name === '...') lines.push(`__cl_spread(${ctx}, ${a.index}, () => ${a.base ? `__cl_baseAttrs(${JSON.stringify(a.base)}, ${attrValueExpr(a.value, rw.expr)})` : attrValueExpr(a.value, rw.expr)}, ${JSON.stringify(a.skip ?? [])}, ${JSON.stringify(a.tag)})`)
     else if (a.kind === 'attr' && a.reactive) lines.push(`__cl_attr(${ctx}, ${a.index}, ${JSON.stringify(a.name)}, () => ${attrValueExpr(a.value, rw.expr)}${tagArg(a)})`)
     if (a.kind === 'connect') lines.push(`__cl_connect(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)
     if (a.kind === 'use') lines.push(`__cl_useOn(${ctx}, ${a.index}, () => ${wrapExpr(rw.expr(a.expr))})`)

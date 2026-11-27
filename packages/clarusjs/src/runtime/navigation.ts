@@ -312,11 +312,18 @@ export function href<R extends RouteName>(
   ...params: [keyof Routes] extends [never] ? [Record<string, string>?] : keyof ParamsOf<R> extends never ? [] : [ParamsOf<R>]
 ): string {
   const values = (params[0] ?? {}) as Record<string, string>
-  const base = ((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/').replace(/\/$/, '')
+  const base = sitePrefix((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/')
   return base + route.replace(/\[([^\]]+)\]/g, (_, key: string) => encodeURIComponent(values[key] ?? ''))
 }
 
-const siteBase = () => (import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'
+/**
+ * The path a site's own URLs start with, from Vite's base: `/docs/` gives `/docs`; `/` and a full-URL (CDN) base give
+ * '' (a CDN serves the assets; pages, and so links and navigations, stay on the site). @internal
+ */
+export function sitePrefix(base: string): string {
+  return /^https?:\/\//i.test(base) ? '' : base.replace(/\/$/, '')
+}
+const siteBase = () => sitePrefix((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/') + '/'
 
 /** `path` with `base` in front, when it's root-relative (one `/`). @internal withBase() and navigate() call this. */
 export function addBase(base: string, path: string): string {

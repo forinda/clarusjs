@@ -1,4 +1,4 @@
-import { state, attr as __cl_attr, batch as __cl_batch, baseUrl as __cl_baseUrl } from 'clarusjs/runtime'
+import { state, attr as __cl_attr, batch as __cl_batch, baseUrl as __cl_baseUrl, baseAttrs as __cl_baseAttrs } from 'clarusjs/runtime'
 
 export function attach(__cl_root, __cl_props = {}, __cl_state) {
   const __cl_class = __cl_props.__cl_class ? " " + __cl_props.__cl_class : ""
