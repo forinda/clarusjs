@@ -173,3 +173,30 @@ test('review: a field the browser filled before attach (form restore, autofill: 
   await flush(); await flush()
   expect(document.querySelector('.out')!.textContent).toBe('restored')
 })
+
+test('PR #647 review: a field typed in before attach runs its (input) handler once, not twice (replay, then a sync)', async () => {
+  const src = `<script>let name = state(''); let runs = state(0)</script>
+<input class="name" [(value)]="name" (input)="runs++"><p class="out">{{ runs }}</p>`
+  const client = await importCode(compile(src, { file: 'h.tscl', target: 'client' }).code, 'lazy-once-c')
+  const { render: pageRender } = await importCode(compile(`@import h from './h.tscl'\n<h attach="interaction" />`, { file: 'page.tscl', target: 'server' }).code, 'lazy-once-p', { './h.tscl': compile(src, { file: 'h.tscl', target: 'server', clientUrl: '/h.js' }).code })
+  document.body.innerHTML = pageRender()
+  await attachAll(document, async () => client)
+  const name = document.querySelector<HTMLInputElement>('.name')!
+  name.value = 'typed'
+  name.dispatchEvent(new Event('input', { bubbles: true }))
+  await flush(); await flush()
+  expect(document.querySelector('.out')!.textContent).toBe('1')
+})
+
+test('PR #647 review: a restored field reaches state before a replayed submit runs', async () => {
+  const src = `<script>let name = state(''); let sent = state('')</script>
+<form (submit)="$event.preventDefault(); sent = name"><input class="name" [(value)]="name"><button type="submit">go</button></form><p class="out">{{ sent }}</p>`
+  const client = await importCode(compile(src, { file: 'k.tscl', target: 'client' }).code, 'lazy-submit-c')
+  const { render: pageRender } = await importCode(compile(`@import k from './k.tscl'\n<k attach="interaction" />`, { file: 'page.tscl', target: 'server' }).code, 'lazy-submit-p', { './k.tscl': compile(src, { file: 'k.tscl', target: 'server', clientUrl: '/k.js' }).code })
+  document.body.innerHTML = pageRender()
+  document.querySelector<HTMLInputElement>('.name')!.value = 'restored' // the browser restored it: no input event
+  await attachAll(document, async () => client)
+  document.querySelector<HTMLButtonElement>('button')!.click() // held, then replayed after attach
+  await flush(); await flush()
+  expect(document.querySelector('.out')!.textContent).toBe('restored')
+})

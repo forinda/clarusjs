@@ -128,7 +128,14 @@ async function attachOne(el: Element, load: Load, recorded: ReturnType<typeof re
     loading.delete(el)
   }
   recorded.stop()
-  if (el.hasAttribute('data-cl-ready')) replay(recorded.events)
+  if (el.hasAttribute('data-cl-ready')) {
+    // Fields filled before attach with no input to replay (form restore, autofill: the value differs from the
+    // server's) send one now, before a replayed submit reads state; a field typed in gets its recorded input, once.
+    for (const f of el.querySelectorAll<HTMLInputElement>('input,textarea'))
+      // the value check first: owner() walks siblings, too slow to run for every row's field
+      if (f.value !== f.defaultValue && owner(f) === el && !recorded.events.some((e) => e.target === f && e.type === 'input')) f.dispatchEvent(new Event('input', { bubbles: true }))
+    replay(recorded.events)
+  }
 }
 
 /**
