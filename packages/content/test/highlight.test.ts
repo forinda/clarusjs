@@ -76,3 +76,25 @@ test('lineNumbers: a shell script is numbered (a file title, or a #! line); a co
   expect(numbered('```bash\n#!/usr/bin/env bash\nset -e\n```\n')).toBe(true)
   expect(numbered('```sh\npnpm add clarusjs\n```\n')).toBe(false)
 })
+
+// A keyword in its own coloured span: highlighted (plain text is one span per line).
+const keyword = (out: string, word: string) => new RegExp(`<span style="--shiki-light:#[0-9a-f]{6};--shiki-dark:#[0-9a-f]{6}">${word}</span>`, 'i').test(out)
+
+test('zig is highlighted', () => {
+  expect(keyword(md('```zig\nconst std = @import("std");\npub fn main() void {}\n```\n'), 'const')).toBe(true)
+})
+
+test('langs: a site adds Shiki grammars of its own (markdown({ langs: [rust] }))', async () => {
+  const rust = (await import('shiki/langs/rust.mjs')).default
+  const code = '```rust\nfn main() { let x = 1; }\n```\n'
+  expect(keyword(md(code), 'fn')).toBe(false) // not built in: plain text
+  expect(keyword(md(code, { langs: rust }), 'fn')).toBe(true)
+})
+
+test('langs by name: loaded from content\'s own Shiki, so the site installs nothing; an unknown name is a clear error', () => {
+  const code = '```go\nfunc main() { var x = 1 }\n```\n'
+  expect(keyword(md(code), 'func')).toBe(false)
+  expect(keyword(md(code, { langs: ['go'] }), 'func')).toBe(true)
+  expect(() => md('', { langs: ['no-such-language'] })).toThrow('@clarusjs/content: Shiki has no grammar "no-such-language"')
+  expect(() => md('', { langs: ['../evil'] })).toThrow('@clarusjs/content: Shiki has no grammar "../evil"')
+})

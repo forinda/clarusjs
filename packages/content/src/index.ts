@@ -4,8 +4,9 @@ import { existsSync } from 'node:fs'
 import { dirname, relative, resolve, sep } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import { parse as parseYaml } from 'yaml'
+import type { LanguageRegistration } from 'shiki/core'
 import type { Source } from 'clarusjs/vite'
-import { highlight } from './highlight.ts'
+import { addLanguages, highlight } from './highlight.ts'
 import { expand } from './snippets.ts'
 
 /** Shell languages: `lineNumbers` leaves their commands unnumbered (a script, with a title or a #! line, is numbered). */
@@ -42,6 +43,13 @@ export type MarkdownOptions = {
    * @see https://clarusjs.com/guide/markdown#code
    */
   lineNumbers?: boolean
+  /**
+   * More languages to highlight, on top of the built-in ones (TypeScript, JavaScript, TSX, HTML, CSS, JSON, YAML, TOML,
+   * Markdown, bash, diff, Zig, and tscl): names of Shiki's grammars, `markdown({ langs: ['rust', 'go'] })`, loaded from
+   * this package's own Shiki (nothing to install), or grammars of your own. A language not loaded is plain text.
+   * @see https://clarusjs.com/guide/markdown#code
+   */
+  langs?: (string | LanguageRegistration | LanguageRegistration[])[]
   /** `::: quiz` is for lessons (frontmatter `steps: true`); 'everywhere' allows it on any page. */
   quizzes?: 'lessons' | 'everywhere'
   /**
@@ -505,6 +513,7 @@ function protectTags(body: string, components: Set<string>, saved: string[]): { 
  * @see https://clarusjs.com/reference/content#markdown
  */
 export default function markdown(options: MarkdownOptions = {}): Source {
+  if (options.langs?.length) addLanguages(options.langs)
   const md = renderer(options)
   return {
     extension: '.md',
