@@ -1,0 +1,115 @@
+{{--
+  Editor field (@clarusjs/editor): a plain <textarea> from the server (typing, and posting a form through [name], work
+  with no JavaScript), then the editor, with the text and caret, once its code loads (attach="interaction": on first
+  focus). Its id (required, unique on the page) is how the other parts name it: field="that id".
+
+  <editor-field attach="interaction" [id]="'msg'" [label]="'Message'" [maxLength]="2000" [(value)]="draft"
+    (send)="post($event.value)" (files)="upload($event.files)" />
+
+  Enter sends ((send), then it clears; $info.cancel() keeps the text), Shift+Enter is a new line; [enterSends]="false"
+  makes Enter a new line and Ctrl/⌘+Enter send. Files pasted or dropped go to (files). With [name] in a form it posts
+  the value under that name, and <name>-format: 'text' (posted with no JavaScript), 'json' or 'html'. Pass that to
+  validate() from @clarusjs/editor/server.
+  Headless: data-part="editor" (the textarea, then the editor's box, whose editable is [role='textbox']).
+--}}
+@input id: string
+@input label: string = 'Message'
+@input placeholder: string = ''
+@input format: 'json' | 'html' = 'json'
+@input name: string = ''
+@input maxLength: number = 0
+@input enterSends: boolean = true
+@input codeBlocks: boolean = true
+@input mentions: boolean = true
+@input rows: number = 3
+@model value: any = ''
+@event send: { value: any }
+@event files: { files: File[] }
+
+<script>
+  import { effect } from 'clarusjs/runtime'
+  import { editor, editorOf } from '@clarusjs/editor/editor'
+  import { composerExtensions } from '@clarusjs/editor/extensions'
+  import { plainText } from '@clarusjs/editor/plain-text'
+  // The editor replaces the textarea once attached (a microtask later, so the loader's replay finds the textarea).
+  let ready = state(false)
+  const initial = plainText(value, format)
+  let draft = { text: initial, caret: undefined, focused: false }
+  let hidden
+  // the format the running editor serializes (fixed when it mounts): what the form says it posts
+  let posted = state(format)
+  const key = (v) => (typeof v === 'string' ? v : JSON.stringify(v))
+
+  function takeOver(textarea) {
+    queueMicrotask(() => {
+      draft = { text: textarea.value, caret: textarea.selectionStart, focused: document.activeElement === textarea }
+      ready = true
+    })
+  }
+  // (send), then, unless cancelled and with [name] in a form, the form posts it (as it would with no JavaScript).
+  function sent(v) {
+    // a form that isn't valid yet (another field required): it says so, and nothing is sent or cleared
+    if (name && hidden?.form && !hidden.form.reportValidity()) return false
+    if (!emit('send', { value: v })) return false
+    if (name && hidden?.form) {
+      hidden.value = typeof v === 'string' ? v : JSON.stringify(v)
+      hidden.form.requestSubmit()
+    }
+  }
+  function mount(el) {
+    posted = format
+    const stop = editor(el, {
+      extensions: composerExtensions({ codeBlocks, mentions, placeholder }),
+      format,
+      label,
+      enterSends,
+      maxLength: maxLength || undefined,
+      // untouched: the rich value, the caret where it was; typed in: what was typed
+      ...(draft.text === initial ? { value, caret: draft.caret } : { text: { value: draft.text, caret: draft.caret } }),
+      onSend: sent,
+      onFiles: (files) => emit('files', { files }),
+    })
+    const ed = editorOf(el)
+    const write = effect(() => {
+      value = ed.value.get()
+    })
+    // A new value from the parent ([(value)]) replaces the document. Only a change: the write above reaches value
+    // through the parent, so until it does value is the old one, which must not undo what was typed.
+    let seen = value
+    const read = effect(() => {
+      const v = value
+      if (v === seen) return
+      seen = v
+      // a parent passes back a copy of what was written: the same document is no change (or the two would loop)
+      if (key(v) !== key(ed.value.get())) ed.value.set(v)
+    })
+    if (draft.focused) ed.focus()
+    return () => {
+      read()
+      write()
+      stop()
+    }
+  }
+</script>
+
+@if (ready) {
+  <div [id]="id" data-part="editor" [use]="mount"></div>
+  @if (name) {
+    <input type="hidden" [name]="name" [value]="typeof value === 'string' ? value : JSON.stringify(value)" [use]="(el) => { hidden = el }" />
+    <input type="hidden" [name]="name + '-format'" [value]="posted" />
+  }
+} @else {
+  <textarea
+    [id]="id"
+    data-part="editor"
+    [name]="name || false"
+    [placeholder]="placeholder || false"
+    [aria-label]="label"
+    [rows]="rows"
+    [value]="initial"
+    [use]="takeOver"
+  ></textarea>
+  @if (name) {
+    <input type="hidden" [name]="name + '-format'" value="text" />
+  }
+}

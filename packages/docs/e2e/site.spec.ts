@@ -3052,3 +3052,55 @@ test('animations guide: the flip clock takes the theme\'s colours, light and dar
   expect(light.card).not.toBe(dark.card)
   expect(light.text).not.toBe(dark.text)
 })
+
+test('editor: the composer is a textarea until used; its code loads on first focus, and nothing typed is lost', async ({ page }) => {
+  const requests: string[] = []
+  page.on('request', (r) => requests.push(r.url()))
+  await page.goto('/guide/editor-composer')
+  const demo = page.locator('.composer-demo')
+  await expect(demo.locator('textarea')).toHaveCount(1)
+  const composerCode = () => requests.filter((u) => /\/editor\/src\/components\/field-[\w-]+\.js$/.test(u)) // the editor's field (ui-primitives has a field chunk too)
+  expect(composerCode()).toEqual([])
+  await demo.getByRole('textbox', { name: 'Message' }).click()
+  await page.keyboard.type('Hi all')
+  const editable = demo.locator('[contenteditable=true]')
+  await expect(editable).toHaveText('Hi all')
+  expect(composerCode()).toHaveLength(1)
+  await expect(demo.locator('textarea')).toHaveCount(0)
+  await page.keyboard.press('Shift+Enter')
+  await page.keyboard.type('@ma')
+  await page.getByRole('option', { name: 'Mara Okafor' }).waitFor()
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Enter')
+  await expect(demo.locator('.messages li')).toHaveText(/^Hi all\s*@Mara Okafor\s*$/)
+  await expect(demo.locator('.messages li [data-mention="mara"]')).toHaveText('@Mara Okafor') // as typed: the mention, not just its text
+  await expect(editable).toHaveText('')
+})
+
+test('user: in the guide, long words and code lines wrap inside the composer; nothing overflows the page', async ({ page }) => {
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 800 })
+    await page.goto('/guide/editor-composer')
+    const demo = page.locator('.composer-demo')
+    await demo.getByRole('textbox', { name: 'Message' }).click()
+    const editable = demo.locator('[contenteditable=true]')
+    await expect(editable).toBeFocused()
+    await page.keyboard.type('x'.repeat(160))
+    await page.keyboard.press('Shift+Enter')
+    await demo.getByRole('button', { name: 'Code block' }).click()
+    await page.keyboard.type('const longLine = "' + 'y'.repeat(160) + '"')
+    for (let i = 0; i < 20; i++) await page.keyboard.press('Enter')
+    // the editable while it holds the long lines (sending clears it)
+    const editing = await demo.locator('[contenteditable=true]').evaluate((box) => box.scrollWidth - box.clientWidth)
+    expect(editing).toBe(0)
+    // sent too: the long word in the message list (CodeRabbit on #647)
+    await page.keyboard.press('ControlOrMeta+Enter')
+    await expect(demo.locator('.messages li').first()).toContainText('xxxx')
+    const sizes = await demo.locator('form.composer').evaluate((el, width) => {
+      const box = el.querySelector('[contenteditable]')!
+      const rect = el.getBoundingClientRect(), demoRect = el.closest('.composer-demo')!.getBoundingClientRect()
+      return { width, editable: box.scrollWidth - box.clientWidth, composer: el.scrollWidth - el.clientWidth, right: Math.max(0, Math.round(Math.max(rect.right, el.closest('.composer-demo')!.querySelector('.messages')!.getBoundingClientRect().right) - demoRect.right)), page: document.documentElement.scrollWidth - innerWidth }
+    }, width)
+    expect(sizes).toEqual({ width, editable: 0, composer: 0, right: 0, page: 0 })
+  }
+})

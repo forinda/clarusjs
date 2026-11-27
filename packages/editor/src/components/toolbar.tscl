@@ -1,0 +1,34 @@
+{{--
+  Editor toolbar (@clarusjs/editor): the buttons inside it (<editor-tool>, or your own with data-command) run commands
+  on the field named by [field]; aria-pressed and disabled follow the selection; one tab stop, arrow keys between.
+
+  <editor-toolbar [field]="'msg'">
+    <editor-tool command="bold" label="Bold">B</editor-tool>
+    <editor-tool command="italic" label="Italic">I</editor-tool>
+  </editor-toolbar>
+
+  Headless: data-part="toolbar".
+--}}
+@input field: string
+@input label: string = 'Formatting'
+
+<script>
+  import { effect, untrack } from 'clarusjs/runtime'
+  import { onEditor } from '@clarusjs/editor/registry'
+  import { toolbar } from '@clarusjs/editor/toolbar'
+  // wired to the field [field] names, again whenever a parent changes it
+  function wire(el) {
+    let off
+    const stop = effect(() => {
+      const id = field
+      off?.()
+      off = untrack(() => onEditor(id, (_editor, fieldEl) => toolbar(el, { editor: fieldEl })))
+    })
+    return () => {
+      stop()
+      off?.()
+    }
+  }
+</script>
+
+<div data-part="toolbar" role="toolbar" [aria-label]="label" [use]="wire"><slot /></div>

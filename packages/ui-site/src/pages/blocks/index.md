@@ -8,7 +8,7 @@ layout: "/src/layouts/wide.tscl"
 
 # Blocks
 
-<p class="lead">Whole pages built from the components: a login, a checkout, a dashboard, a calendar. And Marketing sections, a hero, pricing, an FAQ, in several versions each, to stack into a landing page. Copy one into <code>src/pages/</code>, the components it lists into <code>src/components/ui/</code>, and it looks done and works. Then swap in your data and your submit. They style themselves with your <code>theme.css</code>, so a theme from the header's Theme button restyles them too.</p>
+<p class="lead">Whole pages built from the components: a login, a checkout, a dashboard, a calendar, a chat composer, a comment box. And Marketing sections, a hero, pricing, an FAQ, in several versions each, to stack into a landing page. Copy one into <code>src/pages/</code>, the components it lists into <code>src/components/ui/</code>, and it looks done and works. Then swap in your data and your submit. They style themselves with your <code>theme.css</code>, so a theme from the header's Theme button restyles them too.</p>
 
 <blockFilter>
 
@@ -26,6 +26,14 @@ layout: "/src/layouts/wide.tscl"
 
 <blockRow name="calendar-app">
   <iframe src="/view/calendar-app" title="Calendar preview" loading="lazy" style="width: 100%; height: 900px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
+<blockRow name="chat-composer">
+  <iframe src="/view/chat-composer" title="Chat composer preview" loading="lazy" style="width: 100%; height: 520px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
+</blockRow>
+
+<blockRow name="comment-box">
+  <iframe src="/view/comment-box" title="Comment box preview" loading="lazy" style="width: 100%; height: 560px; border: 1px solid var(--rule); border-radius: 12px"></iframe>
 </blockRow>
 
 <blockRow name="hero-grid">

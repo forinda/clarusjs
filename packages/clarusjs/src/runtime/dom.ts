@@ -547,8 +547,13 @@ export function spread(ctx: Ctx, index: number, fn: () => unknown, skip: readonl
 export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, tag?: string): void {
   const el = marked(ctx, `[data-cl-a="${index}"]`)
   if (!el) return
+  let first = true
   effect(() => {
     const raw = fn()
+    // At attach, a field already typed in (before the island's code loaded) keeps what was typed: the loader's
+    // replayed input event then writes it to state. Its value differs from the one the server rendered.
+    const typed = first && name === 'value' && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && (el as HTMLInputElement).value !== (el as HTMLInputElement).defaultValue
+    first = false
     // <select multiple> bound to an array: each option selected when the array has its value.
     if (name === 'value' && Array.isArray(raw) && el.tagName === 'SELECT' && (el as HTMLSelectElement).multiple) {
       const values = raw.map(String) // option values are text: [1, 2] selects "1" and "2"
@@ -559,7 +564,7 @@ export function attr(ctx: Ctx, index: number, name: string, fn: () => unknown, t
     if (v === null) el.removeAttribute(name)
     else el.setAttribute(name, v === true ? '' : v)
     // A form field shows its property once someone has typed or clicked in it, not the attribute: set both.
-    if (name === 'value' && 'value' in el) {
+    if (name === 'value' && 'value' in el && !typed) {
       const field = el as HTMLInputElement
       const next = v === null || v === true ? '' : v
       // A number field showing the same number keeps what was typed ("1.0" isn't rewritten to "1" mid-typing).

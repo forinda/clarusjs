@@ -111,7 +111,7 @@ test('a block imports what works once pasted: components as the ~/components/ui/
       // A component's file only if it is one that gets copied (card has card.tscl, no card.css).
       const copied = /^~\/components\/ui\/([a-z-]+\.(?:tscl|css|ts))$/.exec(s)?.[1]
       const own = /^\.\/([\w.-]+)$/.exec(s)?.[1]
-      const ok = shared(s) || (!!copied && codeFiles(entry).some((f) => f.path === `components/ui/${copied}`)) || (!!own && entry.files.includes(dir + own)) || (entry.packages ?? []).includes(s)
+      const ok = shared(s) || (!!copied && codeFiles(entry).some((f) => f.path === `components/ui/${copied}`)) || (!!own && entry.files.includes(dir + own)) || (entry.packages ?? []).some((p) => s === p || s.startsWith(p + '/'))
       expect(ok, `${file} imports ${s}`).toBe(true)
     }
   }
@@ -276,7 +276,7 @@ test('#review: each usage example sits next to its component and imports only wh
     const demo = readFileSync(resolve(registryDir, `${e.name}-demo.tscl`), 'utf8')
     for (const [, s] of demo.matchAll(/@import\s+(?:[\w$]+\s+from\s+)?'([^']+)'/g)) {
       const local = /^\.\/([a-z-]+)\.(tscl|css)$/.exec(s!)
-      const ok = /^@clarusjs\/ui-primitives\//.test(s!) || /^clarusjs(\/|$)/.test(s!)
+      const ok = /^@clarusjs\/ui-primitives\//.test(s!) || /^clarusjs(\/|$)/.test(s!) || (!!e.partsFrom && e.parts.some((p) => s === `${e.partsFrom}/${p}`))
         || (!!local && (e.files.includes(`${local[1]}.${local[2]}`) || [...e.uses, ...(e.example ?? [])].includes(local[1]!)))
       expect(ok, `${e.name}-demo.tscl imports ${s}`).toBe(true)
     }
@@ -583,5 +583,17 @@ test('every component page with inputs, models or events has an API section, gen
     const tscl = [...e.files.filter((f) => f.endsWith('.tscl')), ...e.parts.filter((f) => f.endsWith('.tscl'))]
     if (!tscl.length) continue
     expect(readFileSync(page(e.name), 'utf8'), e.name).toMatch(new RegExp(`^## API\\n\\n<componentApi name="${e.name}" />$`, 'm'))
+  }
+})
+
+test('review: the editor blocks take their field\'s id as an input and give it to every part (several on a page work)', () => {
+  for (const name of ['chat-composer', 'comment-box']) {
+    const file = registry.find((e) => e.name === name)!.files[0]!
+    const s = source(file)
+    expect(s, name).toMatch(/^@input id: string = '[\w-]+'$/m)
+    const fields = [...s.matchAll(/\[field\]="([^"]+)"/g)].map((m) => m[1])
+    expect(fields.length, name).toBeGreaterThan(2)
+    expect(new Set(fields), name).toEqual(new Set(['id']))
+    expect(s, name).toContain('[id]="id"')
   }
 })

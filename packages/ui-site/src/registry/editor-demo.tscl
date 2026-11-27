@@ -1,0 +1,33 @@
+@import './editor.css'
+@import editorField from '@clarusjs/editor/components/field.tscl'
+@import editorToolbar from '@clarusjs/editor/components/toolbar.tscl'
+@import editorTool from '@clarusjs/editor/components/tool.tscl'
+@import editorCount from '@clarusjs/editor/components/count.tscl'
+
+<script>
+  let notes = state('')
+</script>
+
+<div class="demo">
+  <editorToolbar [field]="'demo-notes'">
+    <editorTool command="bold" label="Bold"><b>B</b></editorTool>
+    <editorTool command="italic" label="Italic"><i>I</i></editorTool>
+    <editorTool command="code" label="Code">&lt;/&gt;</editorTool>
+    <editorTool command="link" label="Link">🔗</editorTool>
+    <editorTool command="codeBlock" label="Code block">{ }</editorTool>
+  </editorToolbar>
+  <editorField attach="interaction" [id]="'demo-notes'" [label]="'Notes'" [placeholder]="'Write, or type **bold**…'" [enterSends]="false" [maxLength]="1000" [(value)]="notes" />
+  <editorCount [field]="'demo-notes'" />
+</div>
+
+<style scoped>
+  :scope {
+    display: grid;
+    gap: var(--ui-space-2);
+    padding: var(--ui-space-6);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    background: var(--ui-bg);
+    color: var(--ui-fg);
+  }
+</style>
