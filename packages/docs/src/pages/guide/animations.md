@@ -134,7 +134,7 @@ View transitions are the browser's, for navigation: they animate the old page tu
 @keyframes slide-in { from { translate: 100% 0; } }
 ```
 
-Name a part of the page (`view-transition-name: hero`) and it animates on its own, from where it was to where it is on the new page.
+Name a part of the page (`view-transition-name: hero`) and it animates on its own, from where it was to where it is on the new page. [Try it on two demo pages](/demos/view-transitions/one): a card named the same on both moves and grows between them.
 
 ## Reduced motion
 

@@ -323,8 +323,8 @@ test('the route manifest matches what the browser loads', async ({ page }) => {
   // Every sidebar page, plus the pages dynamic routes generate (release notes per version, the client tour), 404 and 500.
   const routes = Object.keys(manifest.routes)
   // /api/demo-stats and /api/demo-records are the Fetching guide's endpoints (server routes), not sidebar pages.
-  // /members is the Auth guide's guarded page (#457).
-  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500' || r.startsWith('/api/') || r === '/members'
+  // /members is the Auth guide's guarded page (#457); /demos/ pages are linked from the guides, not the sidebar.
+  const generated = (r: string) => r.startsWith('/releases/') || r.startsWith('/tour/') || r === '/404' || r === '/500' || r.startsWith('/api/') || r === '/members' || r.startsWith('/demos/')
   expect(routes.filter((r) => !generated(r)).sort()).toEqual(pages.map((p) => p.path).sort())
   for (const path of ['/', '/guide/state']) {
     const route = manifest.routes[path]
@@ -881,6 +881,26 @@ test('view transitions: a page change runs inside document.startViewTransition, 
   await expect(page.locator('h1')).toHaveText('Lists')
   expect(await page.evaluate(() => (window as { __vt?: number }).__vt)).toBe(1)
   await expect(page.locator('cl-island[c="view-transitions"]')).toHaveAttribute('data-cl-ready', '') // kept across swaps
+})
+
+test('view transitions demo: the named card is on both pages, larger on the second, and the page change runs as a view transition', async ({ page }) => {
+  await page.goto('/demos/view-transitions/one')
+  await expect(page.locator('cl-island[c="view-transitions"]')).toHaveAttribute('data-cl-ready', '')
+  const card = page.locator('figure.vt-card')
+  await expect(card).toHaveCSS('view-transition-name', 'vt-demo-card')
+  const small = (await card.boundingBox())!
+  await page.evaluate(() => {
+    const start = document.startViewTransition.bind(document)
+    ;(window as { __vt?: number }).__vt = 0
+    document.startViewTransition = ((update: () => Promise<void>) => { (window as { __vt?: number }).__vt!++; return start(update) }) as typeof document.startViewTransition
+  })
+  await page.getByRole('link', { name: 'Next page: the same card, wide' }).click()
+  await expect(page.locator('h1')).toHaveText('View transitions demo, page two')
+  expect(await page.evaluate(() => (window as { __vt?: number }).__vt)).toBe(1)
+  await expect(card).toHaveCSS('view-transition-name', 'vt-demo-card')
+  expect((await card.boundingBox())!.width).toBeGreaterThan(small.width * 2)
+  // Not in the sidebar: a demo, linked from the animations guide.
+  await expect(page.locator('.sidebar a[href="/demos/view-transitions/one"]')).toHaveCount(0)
 })
 
 test('inputs: a nested island gets new props in place, keeping its own state', async ({ page }) => {
