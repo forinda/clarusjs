@@ -208,7 +208,19 @@ const CLIENT_OUT = 'dist/client'
 const CHUNK_TOKEN = '__CLARUS_CHUNK__'
 const SERVER_OUT = 'dist/server'
 // Outside the app (a workspace package): each leading ../ becomes _/, so chunk names stay inside dist/.
-const entryName = (root: string, file: string) => relative(root, file).split(sep).join('/').replace(/\.[^./\\]+$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))
+/**
+ * A client entry's name, from its path: `src/components/counter.tscl` → `src/components/counter`. A file from an
+ * installed package is named from the package (`_pkg/acme-theme/src/counter`), not from pnpm's `node_modules/.pnpm/…`:
+ * a folder starting with a dot is hidden, and GitHub Pages' upload skips hidden folders, so a theme's stylesheet and
+ * islands went missing. Any other dot folder becomes `_…` too. ponytail: two versions of one package share names.
+ */
+const sourceName = (root: string, file: string) => {
+  let path = relative(root, file).split(sep).join('/')
+  const pkg = path.lastIndexOf('node_modules/')
+  if (pkg !== -1) path = '_pkg/' + path.slice(pkg + 'node_modules/'.length)
+  return path.replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3)).replace(/(^|\/)\./g, '$1_')
+}
+const entryName = (root: string, file: string) => sourceName(root, file).replace(/\.[^./]+$/, '')
 
 /**
  * The Vite plugin's options: when routes render, the deploy adapter, fragment navigation, link checks, head tags, the
@@ -521,7 +533,7 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       // Stylesheets imported by pages and components: each goes through Vite's CSS pipeline as its own entry.
       for (const sheet of new Set([...pageGraph(appRoot, files, aliases).values()].flatMap((p) => p.css))) {
         if (!existsSync(sheet)) throw new Error(`clarusjs: imported stylesheet not found: ${relative(appRoot, sheet)}`)
-        input[`css/${relative(appRoot, sheet).split(sep).join('/').replace(/\.css$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))}`] = sheet
+        input[`css/${sourceName(appRoot, sheet).replace(/\.css$/, '')}`] = sheet
       }
       for (const file of client.values()) input[renderEntry(entryName(appRoot, file))] = `${file}?render`
       config.builder = {}
