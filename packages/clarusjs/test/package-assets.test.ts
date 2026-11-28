@@ -30,14 +30,14 @@ test('files from a pnpm-installed package are emitted outside hidden folders, an
   for (const file of [sheet!, island!]) expect(emitted.map((parts) => parts.join('/'))).toContain(file)
 }, 120_000)
 
-async function buildWith(files: Record<string, string>, links: Record<string, string> = {}) {
+async function buildWith(files: Record<string, string>, links: Record<string, string> = {}, options: Parameters<typeof clarusjs>[0] = {}) {
   const root = mkdtempSync(resolve(tmpdir(), 'clarusjs-pkg-names-'))
   const w = (path: string, text: string) => { mkdirSync(resolve(root, path, '..'), { recursive: true }); writeFileSync(resolve(root, path), text) }
   for (const [path, text] of Object.entries(files)) w(path, text)
   mkdirSync(resolve(root, 'node_modules'), { recursive: true })
   for (const [link, target] of Object.entries(links)) symlinkSync(resolve(root, target), resolve(root, link), 'junction')
   symlinkSync(resolve(import.meta.dirname, '..'), resolve(root, 'node_modules/clarusjs'), 'junction')
-  return (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs()] })).buildApp()
+  return (await createBuilder({ root, configFile: false, logLevel: 'silent', plugins: [clarusjs(options)] })).buildApp()
 }
 const island = "<script>\n  let n = state(0)\n</script>\n<button (click)=\"n++\">{{ n }}</button>"
 
@@ -62,4 +62,18 @@ test('review (#662): two versions of one package with islands stop the build, na
     'node_modules/acme': 'node_modules/.pnpm/acme@2.0.0/node_modules/acme',
     'node_modules/acme-old': 'node_modules/.pnpm/acme@1.0.0/node_modules/acme',
   })).rejects.toThrow(/acme@1\.0\.0.*and.*acme@2\.0\.0.*same name|acme@2\.0\.0.*and.*acme@1\.0\.0.*same name/)
+}, 120_000)
+
+test('review (#662): a component named like one of clarusjs\'s own entries (cl-nav, with fragments on) stops the build too', async () => {
+  await expect(buildWith({
+    'cl-nav.tscl': island,
+    'src/pages/index.tscl': "@import nav from '../../cl-nav.tscl'\n<html><head><title>H</title></head><body><nav /></body></html>",
+  }, {}, { fragments: true })).rejects.toThrow(/cl-nav\.tscl .*same name "cl-nav"/)
+}, 120_000)
+
+test('review (#662): a component at the app root named constructor builds (the entry names hold no inherited keys)', async () => {
+  await expect(buildWith({
+    'constructor.tscl': island,
+    'src/pages/index.tscl': "@import thing from '../../constructor.tscl'\n<html><head><title>H</title></head><body><thing /></body></html>",
+  })).resolves.toBeUndefined()
 }, 120_000)
