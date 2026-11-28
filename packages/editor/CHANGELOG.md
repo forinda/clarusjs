@@ -1,5 +1,13 @@
 # @clarusjs/editor
 
+## 0.1.2
+
+### Patch Changes
+
+- [#664](https://github.com/forinda/clarusjs/pull/664) [`f91e3c7`](https://github.com/forinda/clarusjs/commit/f91e3c7d45cbc7d52ea12ebcaddd05aaff1d7e0d) Thanks [@forinda](https://github.com/forinda)! - No code changes: the same as 0.1.1. This release makes the newest version the one npm installs by default again, since 0.1.0 was published after 0.1.1 and took the `latest` tag.
+- Updated dependencies [[`287127f`](https://github.com/forinda/clarusjs/commit/287127fc8d391d734fb379155a79d64e393fb2ce)]:
+  - clarusjs@0.19.1
+
 ## 0.1.1
 
 ### Patch Changes

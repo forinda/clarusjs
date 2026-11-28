@@ -1,5 +1,11 @@
 # clarusjs
 
+## 0.19.1
+
+### Patch Changes
+
+- [#662](https://github.com/forinda/clarusjs/pull/662) [`287127f`](https://github.com/forinda/clarusjs/commit/287127fc8d391d734fb379155a79d64e393fb2ce) Thanks [@forinda](https://github.com/forinda)! - A theme or other package installed by pnpm had its built stylesheet and island scripts written under `assets/node_modules/.pnpm/…`. GitHub Pages' upload skips folders starting with a dot, so on Pages the site came out unstyled. Files from a package are now named from the package (`assets/_pkg/@clarusjs/theme-docs/…`), and no built file lands in a folder starting with a dot.
+
 ## 0.19.0
 
 ### Minor Changes
