@@ -208,7 +208,19 @@ const CLIENT_OUT = 'dist/client'
 const CHUNK_TOKEN = '__CLARUS_CHUNK__'
 const SERVER_OUT = 'dist/server'
 // Outside the app (a workspace package): each leading ../ becomes _/, so chunk names stay inside dist/.
-const entryName = (root: string, file: string) => relative(root, file).split(sep).join('/').replace(/\.[^./\\]+$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))
+/**
+ * A client entry's name, from its path: `src/components/counter.tscl` → `src/components/counter`. A file from an
+ * installed package is named from the package (`_pkg/acme-theme/src/counter`), not from pnpm's `node_modules/.pnpm/…`:
+ * a folder starting with a dot is hidden, and GitHub Pages' upload skips hidden folders, so a theme's stylesheet and
+ * islands went missing. Any other dot folder becomes `_…` too. Two files that end up with one name stop the build (add()).
+ */
+const sourceName = (root: string, file: string) => {
+  let path = relative(root, file).split(sep).join('/')
+  const pkg = path.lastIndexOf('node_modules/')
+  if (pkg !== -1) path = '_pkg/' + path.slice(pkg + 'node_modules/'.length)
+  return path.replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3)).replace(/(^|\/)\./g, '$1_')
+}
+const entryName = (root: string, file: string) => sourceName(root, file).replace(/\.[^./]+$/, '')
 
 /**
  * The Vite plugin's options: when routes render, the deploy adapter, fragment navigation, link checks, head tags, the
@@ -508,22 +520,35 @@ export default function clarusjs(options: ClarusOptions = {}): Plugin {
       }
       // Client entries: the island loader plus every stateful component. Stateless components never reach the client.
       const appRoot = resolve(userConfig.root ?? process.cwd())
-      const input: Record<string, string> = { [LOADER_ENTRY]: here('../runtime/loader') }
+      // No prototype: a component named constructor or __proto__ is an entry like any other.
+      const input: Record<string, string> = Object.create(null)
+      // One file per name: two that would share one (a dot folder and its _ twin, two versions of a package) stop the
+      // build, instead of one island quietly loading the other's code.
+      const add = (name: string, file: string) => {
+        const taken = input[name]
+        if (taken !== undefined && taken !== file) {
+          const show = (f: string) => relative(appRoot, f.replace(/\?render$/, '')).split(sep).join('/')
+          throw new Error(`clarusjs: ${show(taken)} and ${show(file)} would be built under the same name "${name}" (a folder starting with a dot is named with _, a package's files after the package): rename one, or use one version of the package`)
+        }
+        input[name] = file
+      }
+      // clarusjs's own entries first, through add() too: a component named like one (cl-router.tscl) is an error.
+      add(LOADER_ENTRY, here('../runtime/loader'))
+      const client = clientPages(appRoot, modes, files)
+      if (client.size) add(ROUTER_ENTRY, here('../runtime/router'))
+      if (options.fragments) add(NAV_ENTRY, here('../runtime/fragments'))
+      if (writeStyles(appRoot, files)) add(STYLES_ENTRY, resolve(appRoot, STYLES_FILE))
       const components = files.components(appRoot)
       for (const file of components) {
-        if (compile(files.read(file, appRoot), { file, target: 'client', icon: iconsFor(file), layouts: files.layouts(file, appRoot), components: files.names(appRoot) }).stateful) input[entryName(appRoot, file)] = file
+        if (compile(files.read(file, appRoot), { file, target: 'client', icon: iconsFor(file), layouts: files.layouts(file, appRoot), components: files.names(appRoot) }).stateful) add(entryName(appRoot, file), file)
       }
-      // Client routes: the router, and each page's render function for the browser.
-      const client = clientPages(appRoot, modes, files)
-      if (client.size) input[ROUTER_ENTRY] = here('../runtime/router')
-      if (options.fragments) input[NAV_ENTRY] = here('../runtime/fragments')
-      if (writeStyles(appRoot, files)) input[STYLES_ENTRY] = resolve(appRoot, STYLES_FILE)
+      // Client routes: each page's render function for the browser (the router was added above).
       // Stylesheets imported by pages and components: each goes through Vite's CSS pipeline as its own entry.
       for (const sheet of new Set([...pageGraph(appRoot, files, aliases).values()].flatMap((p) => p.css))) {
         if (!existsSync(sheet)) throw new Error(`clarusjs: imported stylesheet not found: ${relative(appRoot, sheet)}`)
-        input[`css/${relative(appRoot, sheet).split(sep).join('/').replace(/\.css$/, '').replace(/^(\.\.\/)+/, (ups) => '_/'.repeat(ups.length / 3))}`] = sheet
+        add(`css/${sourceName(appRoot, sheet).replace(/\.css$/, '')}`, sheet)
       }
-      for (const file of client.values()) input[renderEntry(entryName(appRoot, file))] = `${file}?render`
+      for (const file of client.values()) add(renderEntry(entryName(appRoot, file)), `${file}?render`)
       config.builder = {}
       config.environments = {
         // Island chunks are loaded with import() and must keep their `attach` export.
