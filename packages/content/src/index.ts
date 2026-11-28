@@ -39,6 +39,13 @@ export type MarkdownOptions = {
    */
   mermaid?: { tag: string; from: string }
   /**
+   * Synced tabs: `::: code-group sdk` names a group, and groups with the same name switch together (tabs matched by
+   * their label). Your component goes in each named group, `<tag />`, and does the syncing in the browser; theme-docs
+   * ships one: `{ tag: 'codeTabs', from: '@clarusjs/theme-docs/code-tabs.tscl' }`. Without JavaScript, or without this
+   * option, each group works on its own.
+   */
+  codeGroups?: { tag: string; from: string }
+  /**
    * Render `::: quiz` blocks through your quiz component (an island): `<tag [name] [question] [options] [answer]>`
    * with the explanation as its content. Without it they are static HTML that works without JavaScript.
    */
@@ -51,9 +58,10 @@ export type MarkdownOptions = {
    */
   lineNumbers?: boolean
   /**
-   * More languages to highlight, on top of the built-in ones (TypeScript, JavaScript, TSX, HTML, CSS, JSON, YAML, TOML,
-   * Markdown, bash, diff, Zig, and tscl): names of Shiki's grammars, `markdown({ langs: ['rust', 'go'] })`, loaded from
-   * this package's own Shiki (nothing to install), or grammars of your own. A language not loaded is plain text.
+   * Every language Shiki has is highlighted already, loaded the first time a page uses it (by name or alias:
+   * ```` ```rust ````, ```` ```py ````), from this package's own Shiki (nothing to install). Add grammars of your own
+   * here, or names of Shiki's (`markdown({ langs: ['rust'] })`) to load them up front, where a typo is a build error.
+   * A language Shiki doesn't have is plain text.
    * @see https://clarusjs.com/guide/markdown#code
    */
   langs?: (string | LanguageRegistration | LanguageRegistration[])[]
@@ -168,7 +176,8 @@ function renderer(options: MarkdownOptions): Md {
     }
     const open = state.push(m[2] === 'code-group' ? 'cl_group_open' : 'cl_container_open', 'div', 1)
     open.info = m[2]!
-    open.meta = { title: m[3]?.trim() || titles[m[2]!]! }
+    // name: as written (a code group's sync name); title falls back to the type's default
+    open.meta = { title: m[3]?.trim() || titles[m[2]!]!, name: m[3]?.trim() || undefined }
     const oldMax = state.lineMax
     state.lineMax = close
     state.md.block.tokenize(state, startLine + 1, close)
@@ -272,14 +281,22 @@ function renderer(options: MarkdownOptions): Md {
   }
   // ::: code-group: radio inputs and labels, each followed by its block. CSS shows the checked one's block, so the
   // tabs work without JavaScript.
-  md.renderer.rules.cl_group_open = (_t, _i, _o, env) => {
-    const e = env as { groups: number; group?: { id: number; n: number } }
-    e.group = { id: e.groups++, n: 0 }
-    return '<div class="code-group">'
+  // ::: code-group NAME: data-sync="NAME", and the codeGroups component, which switches groups of a name together.
+  md.renderer.rules.cl_group_open = (tokens, i, _o, env) => {
+    const e = env as { groups: number; group?: { id: number; n: number; sync?: string } }
+    const sync = (tokens[i]!.meta as { name?: string }).name // written, never a default title
+    e.group = { id: e.groups++, n: 0, ...(sync ? { sync } : {}) }
+    return `<div class="code-group"${sync ? ` data-sync="${inert(sync)}"` : ''}>`
   }
   md.renderer.rules.cl_group_close = (_t, _i, _o, env) => {
-    delete (env as { group?: unknown }).group
-    return '</div>\n'
+    const e = env as { tags: string[]; group?: { sync?: string } }
+    let out = ''
+    if (e.group?.sync && options.codeGroups) {
+      e.tags.push(`<${options.codeGroups.tag} />`)
+      out = `<!--cl-tag-${e.tags.length - 1}-->`
+    }
+    delete e.group
+    return out + '</div>\n'
   }
 
   // A table can take focus: when it scrolls sideways on a small screen, keyboard users can scroll it (WCAG 2.1.1).
@@ -557,6 +574,9 @@ export default function markdown(options: MarkdownOptions = {}): Source {
       if (components.has('cl-layout')) throw new Error(`${file}: cl-layout is reserved for the page's layout; import the component under another name`)
       if (options.quiz && /^\s*:{3,}\s*quiz\b/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.quiz!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.quiz.tag} from '${options.quiz.from}'`)
+      }
+      if (options.codeGroups && /^\s*:{3,}\s*code-group[^\S\n]+\S/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.codeGroups!.tag}\\s+from`).test(line))) {
+        imports.unshift(`@import ${options.codeGroups.tag} from '${options.codeGroups.from}'`)
       }
       if (options.mermaid && /^\s*(`{3,}|~{3,})\s*mermaid\b/m.test(body) && !imports.some((line) => new RegExp(`^@import\\s+${options.mermaid!.tag}\\s+from`).test(line))) {
         imports.unshift(`@import ${options.mermaid.tag} from '${options.mermaid.from}'`)

@@ -90,7 +90,9 @@ markdown({ layout: '/src/layouts/docs.tscl', components: '/src/components' }) //
 
 Fenced code is highlighted at build time with Shiki, in light and dark at once: the page's theme picks the colours with CSS, so no highlighter ships to the browser. `tscl` blocks are highlighted as templates.
 
-Built in: `ts`, `js`, `tsx`, `html`, `css`, `json`, `yaml`, `toml`, `md`, `sh` (bash), `diff`, `zig` and `tscl`; any other language is plain text. Add more by name from [Shiki's languages](https://shiki.style/languages) with `langs`. `@clarusjs/content` loads them from its own Shiki, so there's nothing to install, and they're used at build time only, so they cost the browser nothing. A grammar of your own (a Shiki `LanguageRegistration`) works there too.
+Every one of [Shiki's languages](https://shiki.style/languages) is highlighted, by name or alias (` ```rust `, ` ```py `, ` ```tscl `): `@clarusjs/content` loads a language from its own Shiki the first time a page uses it, so there's nothing to install, and highlighting happens at build time only, so it costs the browser nothing. A language Shiki doesn't have is plain text.
+
+`langs` adds a grammar of your own (a Shiki `LanguageRegistration`), or loads Shiki's by name up front, where a misspelt name fails the build:
 
 ```ts [vite.config.ts]
 clarusjs({ sources: [markdown({ langs: ['rust', 'go'] })] })
@@ -127,6 +129,87 @@ pnpm add @clarusjs/content
 npm install @clarusjs/content
 ```
 :::
+
+### Synced tabs
+
+For an SDK in several languages, name the groups: `::: code-group sdk`. Groups with the same name switch together, matching tabs by their label, and the choice is remembered for the next page and the next visit. A group without the reader's language keeps its tab. Set it up with theme-docs' component:
+
+```ts [vite.config.ts]
+markdown({ codeGroups: { tag: 'codeTabs', from: '@clarusjs/theme-docs/code-tabs.tscl' } })
+```
+
+Pick a language in one group below and the other follows. The second has Ruby, which the first doesn't: pick it, and the first keeps its tab.
+
+::: code-group sdk
+```ts [TypeScript]
+import { Acme } from '@acme/sdk'
+
+const client = new Acme({ key: process.env.ACME_KEY })
+const user = await client.users.get('u_1')
+```
+```py [Python]
+from acme import Acme
+
+client = Acme(key=os.environ["ACME_KEY"])
+user = client.users.get("u_1")
+```
+```go [Go]
+import "github.com/acme/acme-go"
+
+client := acme.New(os.Getenv("ACME_KEY"))
+user, err := client.Users.Get("u_1")
+```
+```rust [Rust]
+use acme::Acme;
+
+let client = Acme::new(std::env::var("ACME_KEY")?);
+let user = client.users().get("u_1").await?;
+```
+:::
+
+::: code-group sdk
+```ts [TypeScript]
+function fibonacci(n: number): number {
+  let [a, b] = [0, 1]
+  for (let i = 0; i < n; i++) [a, b] = [b, a + b]
+  return a
+}
+```
+```py [Python]
+def fibonacci(n: int) -> int:
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+```
+```go [Go]
+func fibonacci(n int) int {
+	a, b := 0, 1
+	for i := 0; i < n; i++ {
+		a, b = b, a+b
+	}
+	return a
+}
+```
+```rust [Rust]
+fn fibonacci(n: u32) -> u64 {
+    let (mut a, mut b) = (0, 1);
+    for _ in 0..n {
+        (a, b) = (b, a + b);
+    }
+    a
+}
+```
+```ruby [Ruby]
+def fibonacci(n)
+  a, b = 0, 1
+  n.times { a, b = b, a + b }
+  a
+end
+```
+:::
+
+Without JavaScript, or without the option, each group works on its own. Your own component works too: it goes in each named group (`.code-group[data-sync]`), whose tabs are radio inputs, each followed by its label.
 
 ## Code in templates
 

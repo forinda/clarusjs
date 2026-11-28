@@ -22,7 +22,7 @@ test('every docs and theme template: the server reports what compile() reports',
     const got = diagnosticsFor(project, file, text).map((d) => d.message)
     expect(got.length, file).toBe(expected.length)
   }
-})
+}, 60_000) // loads the compiler and checks every template (~0.5 s alone); CI runs the packages' suites side by side
 
 test('broken templates: the server reports the compiler\'s message at the compiler\'s place', async () => {
   // A root without a tsconfig.json: no content mapper, so syntax errors are the server's too.

@@ -87,13 +87,11 @@ test('zig is highlighted', () => {
 test('langs: a site adds Shiki grammars of its own (markdown({ langs: [rust] }))', async () => {
   const rust = (await import('shiki/langs/rust.mjs')).default
   const code = '```rust\nfn main() { let x = 1; }\n```\n'
-  expect(keyword(md(code), 'fn')).toBe(false) // not built in: plain text
   expect(keyword(md(code, { langs: rust }), 'fn')).toBe(true)
 })
 
 test('langs by name: loaded from content\'s own Shiki, so the site installs nothing; an unknown name is a clear error', () => {
   const code = '```go\nfunc main() { var x = 1 }\n```\n'
-  expect(keyword(md(code), 'func')).toBe(false)
   expect(keyword(md(code, { langs: ['go'] }), 'func')).toBe(true)
   expect(() => md('', { langs: ['no-such-language'] })).toThrow('@clarusjs/content: Shiki has no grammar "no-such-language"')
   expect(() => md('', { langs: ['../evil'] })).toThrow('@clarusjs/content: Shiki has no grammar "../evil"')
@@ -109,4 +107,43 @@ test('with mermaid: { tag, from }, a ```mermaid block is its source in <pre clas
 test('without the mermaid option a ```mermaid block is code, as before; with it, a page without diagrams imports nothing', () => {
   expect(md('```mermaid\ngraph TD\n```\n')).toContain('<div class="code-block language-mermaid">')
   expect(md('```ts\na()\n```\n', { mermaid: { tag: 'diagram', from: '/x.tscl' } })).not.toContain('@import diagram')
+})
+
+test('a language Shiki has is loaded the first time a page uses it, by name or alias, with no langs option', () => {
+  const lua = md('```lua\nlocal x = 1\n```\n')
+  expect(lua).toContain('<div class="code-block language-lua">')
+  expect(keyword(lua, 'local')).toBe(true)
+  expect(keyword(md('```rb\ndef f\nend\n```\n'), 'def')).toBe(true) // Shiki's alias for ruby
+})
+
+test('a language Shiki doesn\'t have stays plain text, and a name that isn\'t one never reaches require()', () => {
+  expect(md('```notalang\nx\n```\n')).toContain('<span class="line"><span>x</span></span>')
+  expect(md('```../../etc\nx\n```\n')).toContain('<span class="line"><span>x</span></span>')
+})
+
+test('::: code-group NAME: a named group is marked to sync (data-sync), and with codeGroups: { tag, from } gets your sync component', () => {
+  const src = '::: code-group sdk\n```ts [TypeScript]\na()\n```\n```py [Python]\na()\n```\n:::\n\n::: code-group\n```sh [pnpm]\nx\n```\n:::\n'
+  const plain = md(src)
+  expect(plain).toContain('<div class="code-group" data-sync="sdk"><input type="radio" name="cl-group-0" id="cl-group-0-0" checked>')
+  expect(plain).toContain('<div class="code-group"><input type="radio" name="cl-group-1"') // unnamed: as before
+  const synced = md(src, { codeGroups: { tag: 'codeTabs', from: '@clarusjs/theme-docs/code-tabs.tscl' } })
+  expect(synced.split('\n')[0]).toBe("@import codeTabs from '@clarusjs/theme-docs/code-tabs.tscl'")
+  expect(synced.match(/<codeTabs \/>/g)).toHaveLength(1) // in the named group only
+  expect(synced).toMatch(/<div class="code-group" data-sync="sdk">[\s\S]*<codeTabs \/><\/div>/)
+  expect(md('::: code-group\n```sh [a]\nx\n```\n:::\n', { codeGroups: { tag: 'codeTabs', from: '/x.tscl' } })).not.toContain('@import codeTabs')
+  expect(md('::: code-group a"b\n```sh [a]\nx\n```\n:::\n')).toContain('data-sync="a&quot;b"')
+})
+
+test('review (#660): a fence named like an object property (constructor, __proto__) is plain text, not a crash', () => {
+  for (const name of ['constructor', '__proto__', 'toString']) expect(md('```' + name + '\nx\n```\n')).toContain('<span class="line"><span>x</span></span>')
+})
+
+test('review (#660): only a written name syncs a code group, not a default title; any space but a newline separates it', () => {
+  const opts = { titles: { 'code-group': 'Examples' }, codeGroups: { tag: 'codeTabs', from: '/x.tscl' } }
+  const unnamed = md('::: code-group\n```sh [a]\nx\n```\n:::\n', opts)
+  expect(unnamed).not.toContain('data-sync')
+  expect(unnamed).not.toContain('codeTabs')
+  const nbsp = md('::: code-group sdk\n```sh [a]\nx\n```\n:::\n', opts)
+  expect(nbsp).toContain('data-sync="sdk"')
+  expect(nbsp.split('\n')[0]).toBe("@import codeTabs from '/x.tscl'")
 })
