@@ -1,5 +1,20 @@
 # @clarusjs/content
 
+## 0.8.0
+
+### Minor Changes
+
+- [#661](https://github.com/forinda/clarusjs/pull/661) [`09f21a3`](https://github.com/forinda/clarusjs/commit/09f21a38fc55a5f556a10f755bde4d4783e7856c) Thanks [@forinda](https://github.com/forinda)! - Named code groups: `::: code-group sdk` marks the group (`data-sync="sdk"`), and `markdown({ codeGroups: { tag, from } })` puts your sync component in each named group. Unnamed groups are unchanged.
+
+- [#660](https://github.com/forinda/clarusjs/pull/660) [`c7e468e`](https://github.com/forinda/clarusjs/commit/c7e468ef9234fc553f9553721c3400adb704569d) Thanks [@forinda](https://github.com/forinda)! - Every language Shiki has is highlighted with no setup: a code block's language (by name or alias, ` ```rust `, ` ```py `) is loaded from content's own Shiki the first time a page uses it. `langs` is still there for grammars of your own, or to load names up front where a typo fails the build. A language Shiki doesn't have is plain text, as before.
+
+- [#655](https://github.com/forinda/clarusjs/pull/655) [`76b04b7`](https://github.com/forinda/clarusjs/commit/76b04b78db574d84d6d7989d39f433ac866eee77) Thanks [@forinda](https://github.com/forinda)! - `markdown({ mermaid: { tag, from } })`: a ` ```mermaid ` block becomes its source in `<pre class="mermaid">` (not highlighted) with your diagram component after it, which draws it in the browser. Without the option a ` ```mermaid ` block is code, as before.
+
+### Patch Changes
+
+- Updated dependencies [[`45aed57`](https://github.com/forinda/clarusjs/commit/45aed578d7d0ba4222fc76071dc7d2635d8751f1), [`ce0714b`](https://github.com/forinda/clarusjs/commit/ce0714bb00875a455c532a1ab477d55ce8ea7e8c)]:
+  - clarusjs@0.19.0
+
 ## 0.7.0
 
 ### Minor Changes

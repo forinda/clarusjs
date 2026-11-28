@@ -1,5 +1,21 @@
 # @clarusjs/theme-docs
 
+## 0.6.0
+
+### Minor Changes
+
+- [#661](https://github.com/forinda/clarusjs/pull/661) [`09f21a3`](https://github.com/forinda/clarusjs/commit/09f21a38fc55a5f556a10f755bde4d4783e7856c) Thanks [@forinda](https://github.com/forinda)! - `code-tabs.tscl`: synced code tabs. Groups with the same name (`::: code-group sdk`) switch together, matching tabs by label, and the reader's pick is remembered for the next page and visit (localStorage). A group without that language keeps its tab, and the tab clicked stays in place on screen.
+
+- [#656](https://github.com/forinda/clarusjs/pull/656) [`f5db74c`](https://github.com/forinda/clarusjs/commit/f5db74caa886fcdec4d6ea8d9147da4c22d92eba) Thanks [@forinda](https://github.com/forinda)! - `learn.layout`: `'stacked'` keeps a lesson step's code inline with its text on wide screens; `'split'` (the default) puts it in a side column, as before.
+
+- [#655](https://github.com/forinda/clarusjs/pull/655) [`76b04b7`](https://github.com/forinda/clarusjs/commit/76b04b78db574d84d6d7989d39f433ac866eee77) Thanks [@forinda](https://github.com/forinda)! - `mermaid.tscl`: draws Markdown's ` ```mermaid ` diagrams (`markdown({ mermaid: { tag: 'diagram', from: '@clarusjs/theme-docs/mermaid.tscl' } })`, with `mermaid` installed as an optional peer). Each diagram is drawn when it scrolls into view, after a navigation too, in the page's light or dark theme, and again when the theme changes; its source shows until then, or if it can't be drawn.
+
+### Patch Changes
+
+- [#653](https://github.com/forinda/clarusjs/pull/653) [`45aed57`](https://github.com/forinda/clarusjs/commit/45aed578d7d0ba4222fc76071dc7d2635d8751f1) Thanks [@forinda](https://github.com/forinda)! - Lesson progress marks the sidebar's lessons on a site under a base path.
+- Updated dependencies [[`45aed57`](https://github.com/forinda/clarusjs/commit/45aed578d7d0ba4222fc76071dc7d2635d8751f1), [`ce0714b`](https://github.com/forinda/clarusjs/commit/ce0714bb00875a455c532a1ab477d55ce8ea7e8c)]:
+  - clarusjs@0.19.0
+
 ## 0.5.2
 
 ### Patch Changes
